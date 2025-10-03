@@ -1,0 +1,13 @@
+---
+alwaysApply: false
+---
+
+Frontend Architecture:
+
+-
+
+App.tsx contains global truth for
+
+- Bubbleflow that is activated
+  - This is used for displaying the bubble parameters and used as ground truth
+  -

@@ -1,0 +1,37 @@
+{
+  "name": "@bubblelab/bubble-runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude='**/*.integration.test.{ts,tsx,js,jsx}'",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "@bubblelab/bubble-core": "workspace:*",
+    "@bubblelab/shared-schemas": "workspace:*",
+    "@typescript-eslint/scope-manager": "=8.43.0",
+    "@typescript-eslint/typescript-estree": "=8.43.0",
+    "typescript": "^5.4.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.21",
+    "@types/node": "^20.12.12",
+    "@vitest/ui": "^3.2.4",
+    "vitest": "^3.2.4"
+  }
+}
