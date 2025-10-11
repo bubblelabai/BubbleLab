@@ -56,4 +56,45 @@ describe('parameter-formatter', () => {
     const hasLogger = originalScript.some((line) => line.includes('logger'));
     expect(hasLogger).toBe(true);
   });
+
+  it('should format parameters correctly with complex string literals', async () => {
+    const bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+    const multiVariablesScript = getFixture('yfinance');
+    const bubbleScript = new BubbleScript(multiVariablesScript, bubbleFactory);
+    const bubbles = bubbleScript.getParsedBubbles();
+    const yfinanceBubble = Object.values(bubbles).find(
+      (bubble) => bubble.bubbleName === 'resend'
+    );
+    if (!yfinanceBubble) {
+      throw new Error('Yfinance bubble not found');
+    }
+    // Check if subject of email contains string literal
+    expect(yfinanceBubble.parameters[2].value).toBe("`Your Automated Financial Analysis for ${ticker.toUpperCase()}`");
+    const result = buildParametersObject(yfinanceBubble.parameters, undefined, false);
+    expect(result).toContain("subject: `Your Automated Financial Analysis for ${ticker.toUpperCase()}`");
+  
+  });
+
+  it('should format parameters correctly for simple http', async () => {
+    const bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+    const simpleHttpScript = getFixture('simple-http');
+    const bubbleScript = new BubbleScript(simpleHttpScript, bubbleFactory);
+    const bubbles = bubbleScript.getParsedBubbles();
+    const httpBubble = Object.values(bubbles).find(
+      (bubble) => bubble.bubbleName === 'http'
+    );
+    if (!httpBubble) {
+      throw new Error('HTTP bubble not found');
+    }
+    expect(httpBubble.parameters.length > 0).toBe(true);
+    expect(httpBubble.parameters[0].name).toBe('url');
+    expect(httpBubble.parameters[0].value).toBe('url');
+    expect(httpBubble.parameters[1].name).toBe('method');
+    expect(httpBubble.parameters[1].value).toBe('GET');
+
+    const result = buildParametersObject(httpBubble.parameters, undefined, false);
+    expect(result).toContain("method: 'GET'");
+  });
 });

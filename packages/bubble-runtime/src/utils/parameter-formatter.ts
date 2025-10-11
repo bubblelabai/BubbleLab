@@ -52,11 +52,16 @@ export function formatParameterValue(value: unknown, type: string): string {
       if (stringValue.startsWith('`') && stringValue.endsWith('`')) {
         return stringValue;
       }
-      // Check if the value is already quoted
-      if (stringValue.startsWith("'") && stringValue.endsWith("'")) {
-        return stringValue; // Already quoted
+      // If already quoted, return as-is
+      if (
+        (stringValue.startsWith("'") && stringValue.endsWith("'")) ||
+        (stringValue.startsWith('"') && stringValue.endsWith('"'))
+      ) {
+        return stringValue;
       }
-      return `\`'${stringValue}'\``;
+      // Escape single quotes and return single-quoted string
+      const escapedValue = stringValue.replace(/'/g, "\\'");
+      return `'${escapedValue}'`;
     }
     case 'number':
       return String(value);
