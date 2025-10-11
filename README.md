@@ -1,6 +1,7 @@
 # Bubble Lab
 
 [![Discord](https://img.shields.io/discord/1411776181476266184?color=7289da&label=Discord&logo=discord&logoColor=ffffff)](https://discord.com/invite/PkJvcU2myV)
+[![Docs](https://img.shields.io/badge/Docs-📘%20Documentation-blue)](https://docs.bubblelab.ai/intro)
 [![GitHub Stars](https://img.shields.io/github/stars/bubblelabai/BubbleLab?style=social)](https://github.com/bubblelabai/BubbleLab/stargazers)
 [![CI Status](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml/badge.svg)](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE.txt)
