@@ -10,6 +10,7 @@ describe('BubbleRunner correctly runs and plans', () => {
   const multipleActionCallsScript = getFixture('mulitple-action-calls');
   const helloWorldScript = getFixture('hello-world');
   const helloWorldMultipleScript = getFixture('hello-world-multiple');
+  const simpleHttpScript = getFixture('simple-http');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -131,13 +132,24 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
     });
     it('should execute multiple bubble flows', async () => {
-      const runner = new BubbleRunner(helloWorldMultipleScript, bubbleFactory);
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
+      const result = await runner.runAll({
+        url: 'https://example.com',
+      });
+      console.log(runner.getLogger()?.getExecutionSummary());
+      console.log(runner.getLogger()?.getLogs());
+      console.log(result);
+      expect(result.success).toBe(true);
+    }, 300000); // 5 minutes timeout
+
+    it('should execute a simple http bubble flow', async () => {
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
       console.log(result);
       expect(result).toBeDefined();
-    }, 300000); // 5 minutes timeout
+    });
 
     it('should inject logger and modify bubble parameters', async () => {
       const runner = new BubbleRunner(helloWorldScript, bubbleFactory);

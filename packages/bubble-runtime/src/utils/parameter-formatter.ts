@@ -190,23 +190,25 @@ export function replaceBubbleInstantiation(
           lines[i] = replacement;
 
           // Delete only the parameter lines, not the entire block
-          // Find the actual end of the bubble parameters by looking for the closing });
-          // We need to be more precise - look for the }); that matches the indentation
+          // Find the actual end of the bubble parameters by looking for the closing paren
+          // Look for patterns: });  or })  or }).action();
           let actualEndLine = i;
           const startIndentation = lines[i].match(/^(\s*)/)?.[1] || '';
 
           for (let j = i + 1; j < lines.length; j++) {
             const line = lines[j];
-            // Look for a line that contains '});' and has the same or less indentation than the start
-            // For regular bubbles, it might end with '});' or '}).action();'
-            const hasClosingBrace = line.includes('});');
-            const endsWithClosingBrace = line.trim().endsWith('});');
-            const containsActionCall = line.trim().includes('}).action();');
+            const trimmedLine = line.trim();
+            
+            // Look for various closing patterns:
+            // 1. '});' - object parameter closing with semicolon
+            // 2. '})' - object parameter closing without semicolon
+            // 3. '}).action();' - with action call
+            const endsWithClosing = 
+              trimmedLine === '});' || 
+              trimmedLine === '})' ||
+              trimmedLine.includes('}).action();');
 
-            if (
-              (hasClosingBrace && endsWithClosingBrace) ||
-              containsActionCall
-            ) {
+            if (endsWithClosing) {
               const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
               // If this line has the same or less indentation than the start line, it's likely the end
               if (lineIndentation.length <= startIndentation.length) {
@@ -245,23 +247,25 @@ export function replaceBubbleInstantiation(
             lines[i] = replacement;
 
             // Delete only the parameter lines, not the entire block
-            // Find the actual end of the bubble parameters by looking for the closing });
-            // We need to be more precise - look for the }); that matches the indentation
+            // Find the actual end of the bubble parameters by looking for the closing paren
+            // Look for patterns: });  or })  or }).action();
             let actualEndLine = i;
             const startIndentation = lines[i].match(/^(\s*)/)?.[1] || '';
 
             for (let j = i + 1; j < lines.length; j++) {
               const line = lines[j];
-              // Look for a line that contains '});' and has the same or less indentation than the start
-              // For anonymous bubbles, it might end with '}).action();' instead of just '});'
-              const hasClosingBrace = line.includes('});');
-              const endsWithClosingBrace = line.trim().endsWith('});');
-              const containsActionCall = line.trim().includes('}).action();');
+              const trimmedLine = line.trim();
+              
+              // Look for various closing patterns:
+              // 1. '});' - object parameter closing with semicolon
+              // 2. '})' - object parameter closing without semicolon
+              // 3. '}).action();' - with action call
+              const endsWithClosing = 
+                trimmedLine === '});' || 
+                trimmedLine === '})' ||
+                trimmedLine.includes('}).action();');
 
-              if (
-                (hasClosingBrace && endsWithClosingBrace) ||
-                containsActionCall
-              ) {
+              if (endsWithClosing) {
                 const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
                 // If this line has the same or less indentation than the start line, it's likely the end
                 if (lineIndentation.length <= startIndentation.length) {

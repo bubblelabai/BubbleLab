@@ -19,8 +19,8 @@ import {
       const httpRequest = new HttpBubble({
         url: url,
         method: "GET"
-      });
-      let resp = await httpRequest.action();
+      })
+      const resp = await httpRequest.action();
       return {
         message: `Successfully added ${JSON.stringify(resp)}`,
         newContactsAdded: 0
