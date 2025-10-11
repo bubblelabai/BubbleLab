@@ -1,6 +1,19 @@
-# BubbleLab
+# Bubble Lab
+
+[![Discord](https://img.shields.io/discord/1411776181476266184?color=7289da&label=Discord&logo=discord&logoColor=ffffff)](https://discord.com/invite/PkJvcU2myV)
+[![GitHub Stars](https://img.shields.io/github/stars/bubblelabai/BubbleLab?style=social)](https://github.com/bubblelabai/BubbleLab/stargazers)
+[![CI Status](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml/badge.svg)](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE.txt)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/bubblelabai/BubbleLab/pulls)
 
 Open-source agentic workflow automation builder with full observability and exportability.
+
+- Orchestrate workflows in TypeScript with visual feedback side-by-side
+- Full observability
+- Export workflows directly to your JS/TS backend
+
+![Bubble Studio](./demo-pic.png)
 
 ## 🚀 Quick Start
 
@@ -10,14 +23,12 @@ The quickest way to get started with BubbleLab is through our hosted Bubble Stud
 
 <!-- Insert screenshot here -->
 
-![Bubble Studio](./demo-pic.png)
-
 **Benefits:**
 
 - No setup required - start building immediately
 - Visual flow builder with drag-and-drop interface
 - Export your flows to run on your own backend
-- Follow the in-studio instructions to integrate with your application
+- Free AI credits
 
 👉 [Try Bubble Studio Now](https://app.bubblelab.ai)
 
@@ -261,7 +272,7 @@ In the meantime, feel free to:
 - Explore the source code
 - Open issues for bugs or feature requests about Bubble Studio or add more bubbles
 - Submit pull requests
-- Join our community discussions
+- [Join our Discord community](https://discord.gg/PkJvcU2myV) for discussions and support
 
 ## License
 
