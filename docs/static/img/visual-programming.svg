@@ -1,0 +1,34 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bubbleGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#ec4899;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="bubbleGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.7" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:0.7" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="none"/>
+  
+  <!-- Connected bubbles representing visual programming -->
+  <circle cx="60" cy="80" r="25" fill="url(#bubbleGradient1)" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="140" cy="60" r="20" fill="url(#bubbleGradient2)" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="100" cy="140" r="30" fill="url(#bubbleGradient1)" stroke="#ffffff" stroke-width="2"/>
+  
+  <!-- Connection lines -->
+  <line x1="85" y1="80" x2="120" y2="60" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+  <line x1="80" y1="100" x2="100" y2="110" stroke="#ec4899" stroke-width="3" stroke-linecap="round"/>
+  <line x1="130" y1="80" x2="120" y2="120" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Small data flow indicators -->
+  <circle cx="102" cy="70" r="3" fill="#ffffff">
+    <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="90" cy="120" r="3" fill="#ffffff">
+    <animate attributeName="opacity" values="0;1;0" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

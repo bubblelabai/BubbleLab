@@ -1,0 +1,25 @@
+version: '3.8'
+
+# Development override - use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  nginx:
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./logs/nginx:/var/log/nginx
+
+  bubblelab-api:
+    build:
+      context: ../apps/bubblelab-api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../apps/bubblelab-api:/app
+      - /app/node_modules
+      - bubblelab-api-dev-data:/app/data
+    environment:
+      - NODE_ENV=development
+    command: bun run dev
+
+volumes:
+  bubblelab-api-dev-data:

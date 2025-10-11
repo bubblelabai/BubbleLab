@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nodex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nodex_dev
+      POSTGRES_USER: nodex
+      POSTGRES_PASSWORD: K9mQ7#xP$2vR8nL!wZ4jN6yE3tF5uA
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nodex -d nodex_dev']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

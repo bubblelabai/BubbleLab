@@ -1,0 +1,90 @@
+# Bubbleflow Validation Tool
+
+Validates BubbleFlow TypeScript code for syntax and structure
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { BubbleFlowValidationTool } from '@bubblelab/bubble-core';
+const result = await new BubbleFlowValidationTool({
+  code: "export const flow = () => 'hello'",
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>code</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>TypeScript code to validate</dd>
+
+<dt>
+  <code>options</code> <em>object</em>{' '}
+</dt>
+<dd>Validation configuration options</dd>
+
+<dt>
+  <code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em>{' '}
+</dt>
+<dd>Credentials (HIDDEN from AI - injected at runtime)</dd>
+
+  <dt><code>config</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>Configuration for the validation tool (HIDDEN from AI - injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>valid</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the code is valid</dd>
+
+<dt>
+  <code>errors</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of validation errors if any</dd>
+
+<dt>
+  <code>bubbleCount</code> <em>number</em>{' '}
+</dt>
+<dd>Number of bubbles found in the code</dd>
+
+<dt>
+  <code>bubbles</code> <em>object[]</em>{' '}
+</dt>
+<dd>Details about each bubble found</dd>
+
+<dt>
+  <code>metadata</code> <em>object</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd></dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the validation operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if validation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

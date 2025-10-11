@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1754009955479,
+      "tag": "0000_jazzy_the_leader",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1754085438458,
+      "tag": "0001_magical_lady_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1754169174365,
+      "tag": "0002_pink_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1754328150706,
+      "tag": "0003_hot_fabian_cortez",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1754383079429,
+      "tag": "0004_powerful_stepford_cuckoos",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1755591187420,
+      "tag": "0005_tiny_millenium_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1755639670408,
+      "tag": "0006_crazy_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1756717927528,
+      "tag": "0007_living_adam_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1759179602770,
+      "tag": "0008_noisy_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1759431244934,
+      "tag": "0009_slow_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1759792515892,
+      "tag": "0010_powerful_george_stacy",
+      "breakpoints": true
+    }
+  ]
+}

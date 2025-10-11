@@ -1,0 +1,10 @@
+[test]
+timeout = 60000
+coverage = true
+coverageDir = "./coverage"
+coverageReporter = ["text", "lcov"]
+coveragePathIgnorePatterns = [
+  "**/*.spec.ts",
+  "**/dist/**",
+  "*.config.js"
+]

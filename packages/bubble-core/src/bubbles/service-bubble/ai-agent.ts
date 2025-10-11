@@ -1,0 +1,1276 @@
+import { z } from 'zod';
+import { ServiceBubble } from '../../types/service-bubble-class.js';
+import type { BubbleContext } from '../../types/bubble.js';
+import {
+  CredentialType,
+  BUBBLE_CREDENTIAL_OPTIONS,
+} from '@bubblelab/shared-schemas';
+import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
+import { ToolNode } from '@langchain/langgraph/prebuilt';
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableTools } from '../../types/available-tools.js';
+import { BubbleFactory } from '../../bubble-factory.js';
+import type { BubbleName } from '@bubblelab/shared-schemas';
+import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
+
+// Define tool call interface (from LangChain)
+interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+// Define streaming event types for real-time AI agent feedback
+export type StreamingEvent =
+  | {
+      type: 'start';
+      data: { message: string; maxIterations: number; timestamp: string };
+    }
+  | { type: 'llm_start'; data: { model: string; temperature: number } }
+  | { type: 'token'; data: { content: string; messageId: string } }
+  | { type: 'llm_complete'; data: { messageId: string; totalTokens?: number } }
+  | {
+      type: 'tool_start';
+      data: { tool: string; input: unknown; callId: string };
+    }
+  | {
+      type: 'tool_complete';
+      data: { callId: string; output: unknown; duration: number };
+    }
+  | { type: 'iteration_start'; data: { iteration: number } }
+  | {
+      type: 'iteration_complete';
+      data: { iteration: number; hasToolCalls: boolean };
+    }
+  | { type: 'error'; data: { error: string; recoverable: boolean } }
+  | {
+      type: 'complete';
+      data: { result: AIAgentResult; totalDuration: number };
+    };
+
+// Type for streaming callback function
+export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;
+
+// Define model configuration
+const ModelConfigSchema = z.object({
+  model: AvailableModels.default('google/gemini-2.5-flash').describe(
+    'AI model to use (format: provider/model-name).'
+  ),
+  temperature: z
+    .number()
+    .min(0)
+    .max(2)
+    .default(0.7)
+    .describe(
+      'Temperature for response randomness (0 = deterministic, 2 = very random)'
+    ),
+  maxTokens: z
+    .number()
+    .positive()
+    .optional()
+    .default(40000)
+    .describe('Maximum number of tokens to generate in response'),
+  jsonMode: z
+    .boolean()
+    .default(false)
+    .describe(
+      'When true, strips markdown formatting and returns clean JSON response'
+    ),
+});
+
+// Define tool configuration
+const ToolConfigSchema = z.object({
+  name: AvailableTools.describe(
+    'Name of the tool type or tool bubble to enable for the AI agent'
+  ),
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .default({})
+    .optional()
+    .describe(
+      'Credential types to use for the tool bubble (injected at runtime)'
+    ),
+  config: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe('Configuration for the tool or tool bubble'),
+});
+
+// Define image input schemas - supports both base64 data and URLs
+const Base64ImageSchema = z.object({
+  type: z.literal('base64').default('base64'),
+  data: z
+    .string()
+    .describe('Base64 encoded image data (without data:image/... prefix)'),
+  mimeType: z
+    .string()
+    .default('image/png')
+    .describe('MIME type of the image (e.g., image/png, image/jpeg)'),
+  description: z
+    .string()
+    .optional()
+    .describe('Optional description or context for the image'),
+});
+
+const UrlImageSchema = z.object({
+  type: z.literal('url'),
+  url: z.string().url().describe('URL to the image (http/https)'),
+  description: z
+    .string()
+    .optional()
+    .describe('Optional description or context for the image'),
+});
+
+const ImageInputSchema = z.discriminatedUnion('type', [
+  Base64ImageSchema,
+  UrlImageSchema,
+]);
+
+// Define the parameters schema for the AI Agent bubble
+const AIAgentParamsSchema = z.object({
+  message: z
+    .string()
+    .min(1, 'Message is required')
+    .describe('The message or question to send to the AI agent'),
+  images: z
+    .array(ImageInputSchema)
+    .default([])
+    .describe(
+      'Array of base64 encoded images to include with the message (for multimodal AI models). Example: [{type: "base64", data: "base64...", mimeType: "image/png", description: "A beautiful image of a cat"}] or [{type: "url", url: "https://example.com/image.png", description: "A beautiful image of a cat"}]'
+    ),
+  systemPrompt: z
+    .string()
+    .default('You are a helpful AI assistant')
+    .describe(
+      'System prompt that defines the AI agents behavior and personality'
+    ),
+  name: z
+    .string()
+    .default('AI Agent')
+    .optional()
+    .describe('A friendly name for the AI agent'),
+  model: ModelConfigSchema.default({
+    model: 'google/gemini-2.5-flash',
+    temperature: 0.7,
+    maxTokens: 50000,
+    jsonMode: false,
+  }).describe(
+    'AI model configuration including provider, temperature, and tokens. For model unless otherwise specified, use google/gemini-2.5-flash as default. Use google/gemini-2.5-flash-image-preview to edit and generate images.'
+  ),
+  tools: z
+    .array(ToolConfigSchema)
+    .default([
+      {
+        name: 'web-search-tool',
+        config: {
+          maxResults: 5,
+        },
+      },
+    ])
+    .describe(
+      'Array of tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool). If using image models, set the tools to []'
+    ),
+  maxIterations: z
+    .number()
+    .positive()
+    .default(10)
+    .describe('Maximum number of iterations for the agent workflow'),
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .optional()
+    .describe(
+      'Object mapping credential types to values (injected at runtime)'
+    ),
+  streaming: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Enable real-time streaming of tokens, tool calls, and iteration progress'
+    ),
+});
+const AIAgentResultSchema = z.object({
+  response: z
+    .string()
+    .describe(
+      'The AI agents final response to the user message. For text responses, returns plain text or JSON string. For image generation models (like gemini-2.5-flash-image-preview), returns base64-encoded image data with data URI format (data:image/png;base64,...)'
+    ),
+  toolCalls: z
+    .array(
+      z.object({
+        tool: z.string().describe('Name of the tool that was called'),
+        input: z.unknown().describe('Input parameters passed to the tool'),
+        output: z.unknown().describe('Output returned by the tool'),
+      })
+    )
+    .describe('Array of tool calls made during the conversation'),
+  iterations: z
+    .number()
+    .describe('Number of back-and-forth iterations in the agent workflow'),
+  error: z
+    .string()
+    .describe('Error message of the run, undefined if successful'),
+  success: z
+    .boolean()
+    .describe('Whether the agent execution completed successfully'),
+});
+
+type AIAgentParams = z.input<typeof AIAgentParamsSchema>;
+type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema>;
+
+type AIAgentResult = z.output<typeof AIAgentResultSchema>;
+
+export class AIAgentBubble extends ServiceBubble<
+  AIAgentParamsParsed,
+  AIAgentResult
+> {
+  static readonly type = 'service' as const;
+  static readonly service = 'ai-agent';
+  static readonly authType = 'apikey' as const;
+  static readonly bubbleName: BubbleName = 'ai-agent';
+  static readonly schema = AIAgentParamsSchema;
+  static readonly resultSchema = AIAgentResultSchema;
+  static readonly shortDescription =
+    'AI agent with LangGraph for tool-enabled conversations, multimodal support, and JSON mode';
+  static readonly longDescription = `
+    An AI agent powered by LangGraph that can use any tool bubble to answer questions.
+    Use cases:
+    - Add tools to enhance the AI agent's capabilities (web-search-tool, web-scrape-tool)
+    - Multi-step reasoning with tool assistance
+    - Tool-augmented conversations with any registered tool
+    - JSON mode for structured output (strips markdown formatting)
+  `;
+  static readonly alias = 'agent';
+
+  private factory: BubbleFactory;
+
+  constructor(
+    params: AIAgentParams = {
+      message: 'Hello, how are you?',
+      systemPrompt: 'You are a helpful AI assistant',
+    },
+    context?: BubbleContext
+  ) {
+    super(params, context);
+    this.factory = new BubbleFactory();
+  }
+
+  public async testCredential(): Promise<boolean> {
+    // Make a test API call to the model provider
+    const llm = this.initializeModel(this.params.model);
+
+    const response = await llm.invoke(['Hello, how are you?']);
+    if (response.content) {
+      return true;
+    }
+    return false;
+  }
+
+  protected async performAction(
+    context?: BubbleContext
+  ): Promise<AIAgentResult> {
+    // Context is available but not currently used in this implementation
+    void context;
+    const { message, images, systemPrompt, model, tools, maxIterations } =
+      this.params;
+
+    try {
+      // Initialize the language model
+      const llm = this.initializeModel(model);
+
+      // Initialize tools
+      const agentTools = await this.initializeTools(tools);
+
+      // Create the agent graph
+      const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
+
+      // Execute the agent
+      const result = await this.executeAgent(
+        graph,
+        message,
+        images,
+        maxIterations,
+        model.jsonMode
+      );
+
+      return result;
+    } catch (error) {
+      // Return error information but mark as recoverable
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.warn('[AIAgent] Execution error (continuing):', errorMessage);
+
+      return {
+        response: `Error: ${errorMessage}`,
+        success: false, // Still false but execution can continue
+        toolCalls: [],
+        error: errorMessage,
+        iterations: 0,
+      };
+    }
+  }
+
+  /**
+   * Execute the AI agent with streaming support for real-time feedback
+   */
+  public async actionWithStreaming(
+    streamingCallback: StreamingCallback,
+    context?: BubbleContext
+  ): Promise<AIAgentResult> {
+    // Context is available but not currently used in this implementation
+    void context;
+    const { message, images, systemPrompt, model, tools, maxIterations } =
+      this.params;
+
+    const startTime = Date.now();
+    // Send start event
+    await streamingCallback({
+      type: 'start',
+      data: {
+        message: `Analyzing with ${this.params.name || 'AI Agent'}`,
+        maxIterations,
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    try {
+      // Send LLM start event
+      await streamingCallback({
+        type: 'llm_start',
+        data: {
+          model: model.model,
+          temperature: model.temperature,
+        },
+      });
+
+      // Initialize the language model
+      const llm = this.initializeModel(model);
+
+      // Initialize tools
+      const agentTools = await this.initializeTools(tools);
+
+      // Create the agent graph
+      const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
+
+      // Execute the agent with streaming
+      const result = await this.executeAgentWithStreaming(
+        graph,
+        message,
+        images,
+        maxIterations,
+        model.jsonMode,
+        streamingCallback
+      );
+
+      const totalDuration = Date.now() - startTime;
+
+      // Send completion event
+      await streamingCallback({
+        type: 'complete',
+        data: {
+          result,
+          totalDuration,
+        },
+      });
+
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      // Send error event as recoverable
+      await streamingCallback({
+        type: 'error',
+        data: {
+          error: errorMessage,
+          recoverable: true, // Mark as recoverable to continue execution
+        },
+      });
+
+      console.warn(
+        '[AIAgent] Streaming execution error (continuing):',
+        errorMessage
+      );
+
+      return {
+        response: `Error: ${errorMessage}`,
+        success: false, // Still false but execution can continue
+        toolCalls: [],
+        error: errorMessage,
+        iterations: 0,
+      };
+    }
+  }
+
+  protected chooseCredential(): string | undefined {
+    const { model } = this.params;
+    const credentials = this.params.credentials as
+      | Record<CredentialType, string>
+      | undefined;
+    const [provider] = model.model.split('/');
+
+    // If no credentials were injected, throw error immediately (like PostgreSQL)
+    if (!credentials || typeof credentials !== 'object') {
+      throw new Error(`No ${provider.toUpperCase()} credentials provided`);
+    }
+
+    // Choose credential based on the model provider
+    switch (provider) {
+      case 'openai':
+        return credentials[CredentialType.OPENAI_CRED];
+      case 'google':
+        return credentials[CredentialType.GOOGLE_GEMINI_CRED];
+      case 'anthropic':
+        return credentials[CredentialType.ANTHROPIC_CRED];
+      case 'openrouter':
+        return credentials[CredentialType.OPENROUTER_CRED];
+      default:
+        throw new Error(`Unsupported model provider: ${provider}`);
+    }
+  }
+
+  /**
+   * Format final response with special handling for Gemini image models and JSON mode
+   */
+  private async formatFinalResponse(
+    response: string | unknown,
+    modelConfig: AIAgentParamsParsed['model'],
+    jsonMode?: boolean
+  ): Promise<{ response: string; error?: string }> {
+    let finalResponse =
+      typeof response === 'string' ? response : JSON.stringify(response);
+
+    // Special handling for Gemini image models that return images in inlineData format
+    if (
+      modelConfig.model.includes('gemini') &&
+      modelConfig.model.includes('image')
+    ) {
+      finalResponse = this.formatGeminiImageResponse(finalResponse);
+    } else if (jsonMode && typeof finalResponse === 'string') {
+      // Handle JSON mode: use the improved utility function
+      const result = parseJsonWithFallbacks(finalResponse);
+
+      if (!result.success) {
+        return {
+          response: result.response,
+          error: `${this.params.name || 'AI Agent'} failed to generate valid JSON. Post-processing attempted but JSON is still malformed. Original response: ${finalResponse}`,
+        };
+      }
+
+      return { response: result.response };
+    }
+
+    return { response: finalResponse };
+  }
+
+  /**
+   * Convert Gemini's inlineData format to LangChain-compatible data URI format
+   */
+  private formatGeminiImageResponse(response: string | unknown): string {
+    if (typeof response !== 'string') {
+      return String(response);
+    }
+
+    try {
+      console.log('[AIAgent] Formatting Gemini image response...');
+      // Look for Gemini's inlineData format in the response
+      const inlineDataRegex =
+        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"\s*\}\s*\}/;
+
+      const match = response.match(inlineDataRegex);
+
+      if (match) {
+        const [, mimeType, data] = match;
+        const dataUri = `data:${mimeType};base64,${data}`;
+        console.log(
+          `[AIAgent] Extracted first data URI from Gemini inlineData: ${mimeType}`
+        );
+        return dataUri;
+      }
+
+      // Also check for the more complex format with text
+      const complexInlineDataRegex =
+        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"/;
+
+      const complexMatch = response.match(complexInlineDataRegex);
+
+      if (complexMatch) {
+        const [, mimeType, data] = complexMatch;
+        const dataUri = `data:${mimeType};base64,${data}`;
+        console.log(
+          `[AIAgent] Extracted first data URI from complex Gemini inlineData: ${mimeType}`
+        );
+        return dataUri;
+      }
+
+      // If no inlineData found, return original response
+      return response;
+    } catch (error) {
+      console.warn('[AIAgent] Error formatting Gemini image response:', error);
+      return response;
+    }
+  }
+
+  private initializeModel(modelConfig: AIAgentParamsParsed['model']) {
+    const { model, temperature, maxTokens } = modelConfig;
+    const [provider, modelName] = model.split('/');
+
+    // Use chooseCredential to get the appropriate credential
+    // This will throw immediately if credentials are missing
+    const apiKey = this.chooseCredential();
+
+    switch (provider) {
+      case 'openai':
+        return new ChatOpenAI({
+          model: modelName,
+          temperature,
+          maxTokens,
+          apiKey,
+        });
+      case 'google':
+        return new ChatGoogleGenerativeAI({
+          model: modelName,
+          temperature,
+          maxOutputTokens: maxTokens,
+          apiKey,
+        });
+      case 'anthropic':
+        return new ChatAnthropic({
+          model: modelName,
+          temperature,
+          anthropicApiKey: apiKey,
+          maxTokens: 1000,
+          streaming: false,
+          apiKey,
+        });
+      case 'openrouter':
+        return new ChatOpenAI({
+          model: modelName,
+          temperature,
+          maxTokens,
+          apiKey,
+          configuration: {
+            baseURL: 'https://openrouter.ai/api/v1',
+          },
+        });
+      default:
+        throw new Error(`Unsupported model provider: ${provider}`);
+    }
+  }
+
+  private async initializeTools(
+    toolConfigs: AIAgentParamsParsed['tools']
+  ): Promise<DynamicStructuredTool[]> {
+    const tools: DynamicStructuredTool[] = [];
+    await this.factory.registerDefaults();
+    for (const toolConfig of toolConfigs) {
+      try {
+        // Get the tool bubble class from the factory
+        const ToolBubbleClass = this.factory.get(toolConfig.name as BubbleName);
+
+        if (!ToolBubbleClass) {
+          console.warn(`Tool bubble '${toolConfig.name}' not found in factory`);
+          continue;
+        }
+
+        // Check if it's a tool bubble (has toAgentTool method)
+        if (!('type' in ToolBubbleClass) || ToolBubbleClass.type !== 'tool') {
+          console.warn(`Bubble '${toolConfig.name}' is not a tool bubble`);
+          continue;
+        }
+
+        // Convert to LangGraph tool and add to tools array
+        if (!ToolBubbleClass.toolAgent) {
+          console.warn(
+            `Tool bubble '${toolConfig.name}' does not have a toolAgent method`
+          );
+          continue;
+        }
+
+        // Get tool's credential requirements and pass relevant credentials from AI agent
+        const toolCredentialOptions =
+          BUBBLE_CREDENTIAL_OPTIONS[toolConfig.name as BubbleName] || [];
+        const toolCredentials: Record<string, string> = {};
+
+        // Pass AI agent's credentials to tools that need them
+        for (const credType of toolCredentialOptions) {
+          if (this.params.credentials && this.params.credentials[credType]) {
+            toolCredentials[credType] = this.params.credentials[credType];
+          }
+        }
+
+        // Merge with any explicitly provided tool credentials (explicit ones take precedence)
+        const finalToolCredentials = {
+          ...toolCredentials,
+          ...(toolConfig.credentials || {}),
+        };
+
+        console.log(
+          `🔍 [AIAgent] Passing credentials to ${toolConfig.name}:`,
+          Object.keys(finalToolCredentials)
+        );
+
+        const langGraphTool = ToolBubbleClass.toolAgent(
+          finalToolCredentials,
+          toolConfig.config || {},
+          this.context
+        );
+
+        const dynamicTool = new DynamicStructuredTool({
+          name: langGraphTool.name,
+          description: langGraphTool.description,
+          schema: langGraphTool.schema as any,
+          func: langGraphTool.func as any,
+        });
+
+        tools.push(dynamicTool);
+      } catch (error) {
+        console.error(`Error initializing tool '${toolConfig.name}':`, error);
+        // Continue with other tools even if one fails
+        continue;
+      }
+    }
+
+    return tools;
+  }
+
+  private async createAgentGraph(
+    llm: ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic,
+    tools: DynamicStructuredTool[],
+    systemPrompt: string
+  ) {
+    // Define the agent node
+    const agentNode = async ({ messages }: typeof MessagesAnnotation.State) => {
+      // Enhance system prompt for JSON mode
+
+      const systemMessage = new HumanMessage(systemPrompt);
+      const allMessages = [systemMessage, ...messages];
+
+      // If we have tools, bind them to the LLM
+      const modelWithTools = tools.length > 0 ? llm.bindTools(tools) : llm;
+
+      const response = await modelWithTools.invoke(allMessages);
+
+      return { messages: [response] };
+    };
+
+    // Define conditional edge function
+    const shouldContinue = ({ messages }: typeof MessagesAnnotation.State) => {
+      const lastMessage = messages[messages.length - 1] as AIMessage;
+
+      // Check if the last message has tool calls
+      if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+        return 'tools';
+      }
+      return '__end__';
+    };
+
+    // Build the graph
+    const graph = new StateGraph(MessagesAnnotation).addNode(
+      'agent',
+      agentNode
+    );
+
+    if (tools.length > 0) {
+      // Use the official ToolNode for tool execution
+      const toolNode = new ToolNode(tools);
+
+      graph
+        .addNode('tools', toolNode)
+        .addEdge('__start__', 'agent')
+        .addConditionalEdges('agent', shouldContinue)
+        .addEdge('tools', 'agent');
+    } else {
+      graph.addEdge('__start__', 'agent').addEdge('agent', '__end__');
+    }
+
+    return graph.compile();
+  }
+
+  private async executeAgent(
+    graph: ReturnType<typeof StateGraph.prototype.compile>,
+    message: string,
+    images: AIAgentParamsParsed['images'],
+    maxIterations: number,
+    jsonMode?: boolean
+  ): Promise<AIAgentResult> {
+    const toolCalls: AIAgentResult['toolCalls'] = [];
+    let iterations = 0;
+
+    console.log(
+      '[AIAgent] Starting execution with message:',
+      message.substring(0, 100) + '...'
+    );
+    console.log('[AIAgent] Max iterations:', maxIterations);
+
+    try {
+      console.log('[AIAgent] Invoking graph...');
+
+      // Create human message with text and optional images
+      let humanMessage: HumanMessage;
+
+      if (images && images.length > 0) {
+        console.log(
+          '[AIAgent] Creating multimodal message with',
+          images.length,
+          'images'
+        );
+
+        // Create multimodal content array
+        const content: Array<{
+          type: string;
+          text?: string;
+          image_url?: { url: string };
+        }> = [{ type: 'text', text: message }];
+
+        // Add images to content
+        for (const image of images) {
+          let imageUrl: string;
+
+          if (image.type === 'base64') {
+            // Base64 encoded image
+            imageUrl = `data:${image.mimeType};base64,${image.data}`;
+          } else {
+            // URL image - fetch and convert to base64 for Google Gemini compatibility
+            try {
+              console.log('[AIAgent] Fetching image from URL:', image.url);
+              const response = await fetch(image.url);
+              if (!response.ok) {
+                throw new Error(
+                  `Failed to fetch image: ${response.status} ${response.statusText}`
+                );
+              }
+
+              const arrayBuffer = await response.arrayBuffer();
+              const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+              // Detect MIME type from response or default to PNG
+              const contentType =
+                response.headers.get('content-type') || 'image/png';
+              imageUrl = `data:${contentType};base64,${base64Data}`;
+
+              console.log(
+                '[AIAgent] Successfully converted URL image to base64'
+              );
+            } catch (error) {
+              console.error('[AIAgent] Error fetching image from URL:', error);
+              throw new Error(
+                `Failed to load image from URL ${image.url}: ${error instanceof Error ? error.message : 'Unknown error'}`
+              );
+            }
+          }
+
+          content.push({
+            type: 'image_url',
+            image_url: { url: imageUrl },
+          });
+
+          // Add image description if provided
+          if (image.description) {
+            content.push({
+              type: 'text',
+              text: `Image description: ${image.description}`,
+            });
+          }
+        }
+
+        humanMessage = new HumanMessage({ content });
+      } else {
+        // Text-only message
+        humanMessage = new HumanMessage(message);
+      }
+
+      const result = await graph.invoke(
+        { messages: [humanMessage] },
+        { recursionLimit: maxIterations }
+      );
+
+      console.log('[AIAgent] Graph execution completed');
+      console.log('[AIAgent] Total messages:', result.messages.length);
+      iterations = result.messages.length;
+
+      // Extract tool calls from messages
+      // Store tool calls temporarily to match with their responses
+      const toolCallMap = new Map<string, { name: string; args: unknown }>();
+
+      for (let i = 0; i < result.messages.length; i++) {
+        const msg = result.messages[i];
+        if (msg instanceof AIMessage && msg.tool_calls) {
+          const typedToolCalls = msg.tool_calls as ToolCall[];
+          // Log and track tool calls
+          for (const toolCall of typedToolCalls) {
+            toolCallMap.set(toolCall.id, {
+              name: toolCall.name,
+              args: toolCall.args,
+            });
+
+            console.log(
+              '[AIAgent] Tool call:',
+              toolCall.name,
+              'with args:',
+              toolCall.args
+            );
+          }
+        } else if (msg instanceof ToolMessage) {
+          // Match tool response to its call
+          const toolCall = toolCallMap.get(msg.tool_call_id);
+          if (toolCall) {
+            // Parse content if it's a JSON string
+            let output = msg.content;
+            if (typeof output === 'string') {
+              try {
+                output = JSON.parse(output);
+              } catch {
+                // Keep as string if not valid JSON
+              }
+            }
+
+            console.log(
+              '[AIAgent] Tool output preview:',
+              typeof output === 'string'
+                ? output.substring(0, 100) + '...'
+                : JSON.stringify(output).substring(0, 100) + '...'
+            );
+
+            toolCalls.push({
+              tool: toolCall.name,
+              input: toolCall.args,
+              output,
+            });
+          }
+        }
+      }
+
+      // Get the final AI message response
+      console.log('[AIAgent] Filtering AI messages...');
+      const aiMessages = result.messages.filter(
+        (msg: BaseMessage) => msg instanceof AIMessage
+      );
+      console.log('[AIAgent] Found', aiMessages.length, 'AI messages');
+      const finalMessage = aiMessages[aiMessages.length - 1] as AIMessage;
+
+      // Check for MAX_TOKENS finish reason
+      if (finalMessage?.additional_kwargs?.finishReason === 'MAX_TOKENS') {
+        throw new Error(
+          'Response was truncated due to max tokens limit. Please increase maxTokens in model configuration.'
+        );
+      }
+
+      // Track token usage from ALL AI messages (not just the final one)
+      // This is critical for multi-iteration workflows where the agent calls tools multiple times
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+      let totalTokensSum = 0;
+
+      for (const msg of result.messages) {
+        if (msg instanceof AIMessage && msg.usage_metadata) {
+          totalInputTokens += msg.usage_metadata.input_tokens || 0;
+          totalOutputTokens += msg.usage_metadata.output_tokens || 0;
+          totalTokensSum += msg.usage_metadata.total_tokens || 0;
+        }
+      }
+
+      if (totalTokensSum > 0 && this.context && this.context.logger) {
+        this.context.logger.logTokenUsage(
+          {
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            totalTokens: totalTokensSum,
+            modelName: this.params.model.model,
+          },
+          `LLM completion: ${totalInputTokens} input + ${totalOutputTokens} output = ${totalTokensSum} total tokens`,
+          {
+            bubbleName: 'ai-agent',
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+
+      const response = finalMessage?.content || 'No response generated';
+
+      // Use shared formatting method
+      const formattedResult = await this.formatFinalResponse(
+        response,
+        this.params.model,
+        jsonMode
+      );
+
+      // If there's an error from formatting (e.g., invalid JSON), return early
+      if (formattedResult.error) {
+        return {
+          response: formattedResult.response,
+          toolCalls: toolCalls.length > 0 ? toolCalls : [],
+          iterations,
+          error: formattedResult.error,
+          success: false,
+        };
+      }
+
+      const finalResponse = formattedResult.response;
+
+      console.log(
+        '[AIAgent] Final response length:',
+        typeof finalResponse === 'string'
+          ? finalResponse.length
+          : JSON.stringify(finalResponse).length
+      );
+      console.log('[AIAgent] Tool calls made:', toolCalls.length);
+      console.log(
+        '[AIAgent] Execution completed with',
+        iterations,
+        'iterations'
+      );
+
+      return {
+        response:
+          typeof finalResponse === 'string'
+            ? finalResponse
+            : JSON.stringify(finalResponse),
+        toolCalls: toolCalls.length > 0 ? toolCalls : [],
+        iterations,
+        error: '',
+        success: true,
+      };
+    } catch (error) {
+      console.warn('[AIAgent] Execution error (continuing):', error);
+      console.log('[AIAgent] Tool calls before error:', toolCalls.length);
+      console.log('[AIAgent] Iterations before error:', iterations);
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      // Return partial results to allow execution to continue
+      // Include any tool calls that were completed before the error
+      return {
+        response: `Execution error: ${errorMessage}`,
+        success: false, // Still false but don't completely halt execution
+        iterations,
+        toolCalls: toolCalls.length > 0 ? toolCalls : [], // Preserve completed tool calls
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Execute agent with streaming support using LangGraph streamEvents
+   */
+  private async executeAgentWithStreaming(
+    graph: ReturnType<typeof StateGraph.prototype.compile>,
+    message: string,
+    images: AIAgentParamsParsed['images'],
+    maxIterations: number,
+    jsonMode?: boolean,
+    streamingCallback?: StreamingCallback
+  ): Promise<AIAgentResult> {
+    const toolCalls: AIAgentResult['toolCalls'] = [];
+    let iterations = 0;
+    let currentMessageId = '';
+
+    console.log(
+      '[AIAgent] Starting streaming execution with message:',
+      message.substring(0, 100) + '...'
+    );
+
+    try {
+      // Create human message with text and optional images
+      let humanMessage: HumanMessage;
+
+      if (images && images.length > 0) {
+        console.log(
+          '[AIAgent] Creating multimodal message with',
+          images.length,
+          'images'
+        );
+
+        // Create multimodal content array
+        const content: Array<{
+          type: string;
+          text?: string;
+          image_url?: { url: string };
+        }> = [{ type: 'text', text: message }];
+
+        // Add images to content
+        for (const image of images) {
+          let imageUrl: string;
+
+          if (image.type === 'base64') {
+            // Base64 encoded image
+            imageUrl = `data:${image.mimeType};base64,${image.data}`;
+          } else {
+            // URL image - fetch and convert to base64 for Google Gemini compatibility
+            try {
+              console.log('[AIAgent] Fetching image from URL:', image.url);
+              const response = await fetch(image.url);
+              if (!response.ok) {
+                throw new Error(
+                  `Failed to fetch image: ${response.status} ${response.statusText}`
+                );
+              }
+
+              const arrayBuffer = await response.arrayBuffer();
+              const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+              // Detect MIME type from response or default to PNG
+              const contentType =
+                response.headers.get('content-type') || 'image/png';
+              imageUrl = `data:${contentType};base64,${base64Data}`;
+
+              console.log(
+                '[AIAgent] Successfully converted URL image to base64'
+              );
+            } catch (error) {
+              console.error('[AIAgent] Error fetching image from URL:', error);
+              throw new Error(
+                `Failed to load image from URL ${image.url}: ${error instanceof Error ? error.message : 'Unknown error'}`
+              );
+            }
+          }
+
+          content.push({
+            type: 'image_url',
+            image_url: { url: imageUrl },
+          });
+
+          // Add image description if provided
+          if (image.description) {
+            content.push({
+              type: 'text',
+              text: `Image description: ${image.description}`,
+            });
+          }
+        }
+
+        humanMessage = new HumanMessage({ content });
+      } else {
+        // Text-only message
+        humanMessage = new HumanMessage(message);
+      }
+
+      // Stream events from the graph
+      const eventStream = graph.streamEvents(
+        { messages: [humanMessage] },
+        {
+          version: 'v2',
+          recursionLimit: maxIterations,
+        }
+      );
+
+      let currentIteration = 0;
+      const toolCallMap = new Map<
+        string,
+        { name: string; args: unknown; startTime: number }
+      >();
+      let accumulatedContent = '';
+
+      // Track processed events to prevent duplicates
+      const processedIterationEvents = new Set<string>();
+
+      for await (const event of eventStream) {
+        if (!event || typeof event !== 'object') continue;
+
+        // Handle different types of streaming events
+        switch (event.event) {
+          case 'on_chat_model_start':
+            currentIteration++;
+            currentMessageId = `msg-${Date.now()}-${currentIteration}`;
+
+            if (streamingCallback) {
+              await streamingCallback({
+                type: 'iteration_start',
+                data: { iteration: currentIteration },
+              });
+            }
+            break;
+
+          case 'on_chat_model_stream':
+            // Stream individual tokens
+            if (event.data?.chunk?.content && streamingCallback) {
+              const content = event.data.chunk.content;
+              accumulatedContent += content;
+
+              await streamingCallback({
+                type: 'token',
+                data: {
+                  content,
+                  messageId: currentMessageId,
+                },
+              });
+            }
+            break;
+
+          case 'on_chat_model_end':
+            if (streamingCallback) {
+              const usageMetadata = event.data?.output?.usage_metadata;
+              const totalTokens = usageMetadata?.total_tokens;
+
+              // Track token usage if available
+              if (
+                usageMetadata &&
+                this.context != null &&
+                this.context.logger != null
+              ) {
+                const tokenUsage = {
+                  inputTokens: usageMetadata.input_tokens || 0,
+                  outputTokens: usageMetadata.output_tokens || 0,
+                  totalTokens: totalTokens || 0,
+                  modelName: this.params.model.model,
+                };
+
+                this.context.logger.logTokenUsage(
+                  tokenUsage,
+                  `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
+                  {
+                    bubbleName: 'ai-agent',
+                    operationType: 'bubble_execution',
+                  }
+                );
+              }
+
+              await streamingCallback({
+                type: 'llm_complete',
+                data: {
+                  messageId: currentMessageId,
+                  totalTokens,
+                },
+              });
+            }
+            break;
+
+          case 'on_tool_start':
+            if (event.name && event.data?.input && streamingCallback) {
+              const callId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+              toolCallMap.set(callId, {
+                name: event.name,
+                args: event.data.input,
+                startTime: Date.now(),
+              });
+
+              await streamingCallback({
+                type: 'tool_start',
+                data: {
+                  tool: event.name,
+                  input: event.data.input,
+                  callId,
+                },
+              });
+            }
+            break;
+
+          case 'on_tool_end':
+            if (event.name && event.data?.output && streamingCallback) {
+              // Find matching tool call
+              const matchingCall = Array.from(toolCallMap.entries()).find(
+                ([, callData]) => callData.name === event.name
+              );
+
+              if (matchingCall) {
+                const [callId, callData] = matchingCall;
+                const duration = Date.now() - callData.startTime;
+
+                toolCalls.push({
+                  tool: callData.name,
+                  input: callData.args,
+                  output: event.data.output,
+                });
+
+                await streamingCallback({
+                  type: 'tool_complete',
+                  data: {
+                    callId,
+                    output: event.data.output,
+                    duration,
+                  },
+                });
+
+                toolCallMap.delete(callId);
+              }
+            }
+            break;
+
+          case 'on_chain_end':
+            // This indicates the completion of the entire graph
+            if (event.data?.output) {
+              iterations = currentIteration;
+
+              // Prevent duplicate iteration_complete events
+              const iterationKey = `iteration_${currentIteration}`;
+              if (
+                streamingCallback &&
+                !processedIterationEvents.has(iterationKey)
+              ) {
+                processedIterationEvents.add(iterationKey);
+                await streamingCallback({
+                  type: 'iteration_complete',
+                  data: {
+                    iteration: currentIteration,
+                    hasToolCalls: toolCalls.length > 0,
+                  },
+                });
+              }
+            }
+            break;
+        }
+      }
+
+      // Process final result
+      const accumulatedResponse = accumulatedContent || 'No response generated';
+
+      // Use shared formatting method
+      const formattedResult = await this.formatFinalResponse(
+        accumulatedResponse,
+        this.params.model,
+        jsonMode
+      );
+
+      // If there's an error from formatting (e.g., invalid JSON), return early with consistent behavior
+      if (formattedResult.error) {
+        return {
+          response: formattedResult.response,
+          toolCalls: toolCalls.length > 0 ? toolCalls : [],
+          iterations,
+          error: formattedResult.error,
+          success: false,
+        };
+      }
+
+      const finalResponse = formattedResult.response;
+
+      console.log(
+        '[AIAgent] Streaming execution completed with',
+        iterations,
+        'iterations and',
+        toolCalls.length,
+        'tool calls'
+      );
+
+      return {
+        response:
+          typeof finalResponse === 'string'
+            ? finalResponse
+            : JSON.stringify(finalResponse),
+        toolCalls: toolCalls.length > 0 ? toolCalls : [],
+        iterations,
+        error: '',
+        success: true,
+      };
+    } catch (error) {
+      console.warn('[AIAgent] Streaming execution error (continuing):', error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      return {
+        response: `Execution error: ${errorMessage}`,
+        success: false, // Still false but don't completely halt execution
+        iterations,
+        toolCalls: toolCalls.length > 0 ? toolCalls : [], // Preserve completed tool calls
+        error: errorMessage,
+      };
+    }
+  }
+}

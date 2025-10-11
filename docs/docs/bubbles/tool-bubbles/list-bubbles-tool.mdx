@@ -1,0 +1,58 @@
+# List Bubbles Tool
+
+Lists all available bubbles in the registry
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { ListBubblesTool } from '@bubblelab/bubble-core';
+const result = await new ListBubblesTool({}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>bubbles</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of bubble information objects</dd>
+
+<dt>
+  <code>totalCount</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Total number of bubbles in the registry</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

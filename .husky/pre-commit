@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if pnpm-lock.yaml is up to date
+echo "📦 Checking lockfile sync..."
+if ! pnpm install --frozen-lockfile > /dev/null 2>&1; then
+  echo "❌ pnpm-lock.yaml is out of sync with package.json files"
+  echo "💡 Run 'pnpm install' to update the lockfile"
+  exit 1
+fi
+echo "✅ Lockfile is up to date"
+
+# Run lint-staged for staged files
+echo "🧹 Running lint-staged..."
+npx lint-staged

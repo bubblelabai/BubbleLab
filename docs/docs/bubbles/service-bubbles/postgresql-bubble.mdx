@@ -1,0 +1,136 @@
+# Postgresql Bubble
+
+Execute PostgreSQL queries with operation validation
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { PostgreSQLBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new PostgreSQLBubble({
+  query: 'SELECT id, email FROM users WHERE active = $1 LIMIT 10',
+  parameters: [true],
+  allowedOperations: ['SELECT'],
+  credentials: {
+    [CredentialType.DATABASE_CRED]: process.env
+      .BUBBLE_CONNECTING_STRING_URL as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>ignoreSSL</code> <em>boolean</em> </dt>
+  <dd>Ignore SSL certificate errors when connecting to the database</dd>
+
+<dt>
+  <code>query</code> <em>unknown</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  SQL query to execute against the PostgreSQL database (use parameterized
+  queries with $1, $2, etc.)
+</dd>
+
+<dt>
+  <code>allowedOperations</code>{' '}
+  <em>
+    'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'WITH' | 'EXPLAIN' | 'ANALYZE' |
+    'SHOW' | 'DESCRIBE' | 'DESC' | 'CREATE'[]
+  </em>{' '}
+</dt>
+<dd>
+  List of allowed SQL operations for security (defaults to read-only operations)
+</dd>
+
+<dt>
+  <code>parameters</code> <em>unknown[]</em>{' '}
+</dt>
+<dd>
+  Parameters for parameterized queries (e.g., [value1, value2] for $1, $2)
+</dd>
+
+<dt>
+  <code>timeout</code> <em>number</em>{' '}
+</dt>
+<dd>
+  Query timeout in milliseconds (default: 30 seconds, max recommended: 300000)
+</dd>
+
+<dt>
+  <code>maxRows</code> <em>number</em>{' '}
+</dt>
+<dd>
+  Maximum number of rows to return to prevent large result sets (default: 1000)
+</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>rows</code> <em>Record&lt;string,unknown&gt;[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of result rows, each row is an object with column names as keys</dd>
+
+<dt>
+  <code>rowCount</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of rows affected by the query (null for SELECT queries)</dd>
+
+<dt>
+  <code>command</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>SQL command that was executed (SELECT, INSERT, UPDATE, DELETE)</dd>
+
+<dt>
+  <code>fields</code> <em>object[]</em>{' '}
+</dt>
+<dd>Metadata about the columns returned by the query</dd>
+
+<dt>
+  <code>executionTime</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Query execution time in milliseconds</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the query executed successfully</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if query execution failed (empty string if successful)</dd>
+
+  <dt><code>cleanedJSONString</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Clean JSON string representation of the row data, suitable for AI prompts and integrations</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

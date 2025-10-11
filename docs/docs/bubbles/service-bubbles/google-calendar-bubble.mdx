@@ -1,0 +1,481 @@
+# Google Calendar Bubble
+
+Google Calendar integration for managing events
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { GoogleCalendarBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new GoogleCalendarBubble({
+  operation: 'create_event',
+  calendar_id: 'primary',
+  summary: 'Weekly Sync',
+  start: { dateTime: '2025-09-18T10:00:00-07:00' },
+  end: { dateTime: '2025-09-18T10:30:00-07:00' },
+  attendees: [{ email: 'teammate@example.com' }],
+  conference: true,
+  credentials: {
+    [CredentialType.GOOGLE_CALENDAR_CRED]: process.env
+      .GOOGLE_CALENDAR_CRED as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `list_calendars`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_calendars'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List calendars for the user</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of calendars to return</dd>
+
+<dt>
+  <code>page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_calendars'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List calendars for the user</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the calendar list was retrieved successfully</dd>
+
+<dt>
+  <code>calendars</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of calendars</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_events`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_events'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List events in a calendar</dd>
+
+<dt>
+  <code>calendar_id</code> <em>string</em>{' '}
+</dt>
+<dd>Calendar ID</dd>
+
+<dt>
+  <code>time_min</code> <em>string</em>{' '}
+</dt>
+<dd>Lower bound (RFC3339 timestamp)</dd>
+
+<dt>
+  <code>time_max</code> <em>string</em>{' '}
+</dt>
+<dd>Upper bound (RFC3339 timestamp)</dd>
+
+<dt>
+  <code>q</code> <em>string</em>{' '}
+</dt>
+<dd>Free text search query</dd>
+
+<dt>
+  <code>single_events</code> <em>boolean</em>{' '}
+</dt>
+<dd>Expand recurring events</dd>
+
+<dt>
+  <code>order_by</code> <em>'startTime' | 'updated'</em>{' '}
+</dt>
+<dd>Sort order</dd>
+
+<dt>
+  <code>page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of events to return</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_events'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List events in a calendar</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the event list was retrieved successfully</dd>
+
+<dt>
+  <code>events</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of events</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a single event</dd>
+
+<dt>
+  <code>calendar_id</code> <em>string</em>{' '}
+</dt>
+<dd>Calendar ID</dd>
+
+<dt>
+  <code>event_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Event ID to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a single event</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the event was retrieved successfully</dd>
+
+<dt>
+  <code>event</code> <em>object</em>{' '}
+</dt>
+<dd>Event details</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create an event</dd>
+
+<dt>
+  <code>calendar_id</code> <em>string</em>{' '}
+</dt>
+<dd>Calendar ID</dd>
+
+<dt>
+  <code>summary</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Event title</dd>
+
+<dt>
+  <code>description</code> <em>string</em>{' '}
+</dt>
+<dd>Event description</dd>
+
+<dt>
+  <code>location</code> <em>string</em>{' '}
+</dt>
+<dd>Event location</dd>
+
+<dt>
+  <code>start</code> <em>object</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Start date/time</dd>
+
+<dt>
+  <code>end</code> <em>object</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>End date/time</dd>
+
+<dt>
+  <code>attendees</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of event attendees</dd>
+
+<dt>
+  <code>conference</code> <em>boolean</em>{' '}
+</dt>
+<dd>Create a Google Meet conference link</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create an event</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the event was created successfully</dd>
+
+<dt>
+  <code>event</code> <em>object</em>{' '}
+</dt>
+<dd>Created event details</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing event</dd>
+
+<dt>
+  <code>calendar_id</code> <em>string</em>{' '}
+</dt>
+<dd>Calendar ID</dd>
+
+<dt>
+  <code>event_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Event ID to update</dd>
+
+<dt>
+  <code>summary</code> <em>string</em>{' '}
+</dt>
+<dd>Event title</dd>
+
+<dt>
+  <code>description</code> <em>string</em>{' '}
+</dt>
+<dd>Event description</dd>
+
+<dt>
+  <code>location</code> <em>string</em>{' '}
+</dt>
+<dd>Event location</dd>
+
+<dt>
+  <code>start</code> <em>object</em>{' '}
+</dt>
+<dd>Start date/time</dd>
+
+<dt>
+  <code>end</code> <em>object</em>{' '}
+</dt>
+<dd>End date/time</dd>
+
+<dt>
+  <code>attendees</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of event attendees</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing event</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the event was updated successfully</dd>
+
+<dt>
+  <code>event</code> <em>object</em>{' '}
+</dt>
+<dd>Updated event details</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete an event</dd>
+
+<dt>
+  <code>calendar_id</code> <em>string</em>{' '}
+</dt>
+<dd>Calendar ID</dd>
+
+<dt>
+  <code>event_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Event ID to delete</dd>
+
+<dt>
+  <code>send_updates</code> <em>'all' | 'externalOnly' | 'none'</em>{' '}
+</dt>
+<dd>Whether to notify attendees</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete an event</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the event was deleted successfully</dd>
+
+<dt>
+  <code>deleted</code> <em>boolean</em>{' '}
+</dt>
+<dd>Whether the event was actually deleted</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,12 @@
+{
+  "name": "@bubblelab/tsconfig",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "react.json",
+    "node.json"
+  ]
+}

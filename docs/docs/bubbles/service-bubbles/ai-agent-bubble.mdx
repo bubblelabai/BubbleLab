@@ -1,0 +1,127 @@
+# Ai Agent Bubble
+
+AI agent with LangGraph for tool-enabled conversations, multimodal support, and JSON mode
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new AIAgentBubble({
+  message: "Summarize today's top 3 Node.js headlines and include links.",
+  tools: [{ name: 'web-search-tool', config: { maxResults: 5 } }],
+  model: { model: 'google/gemini-2.5-flash', temperature: 0.5 },
+  credentials: {
+    [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY as string,
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>message</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The message or question to send to the AI agent</dd>
+
+<dt>
+  <code>images</code> <em>unknown[]</em>{' '}
+</dt>
+<dd>
+  Array of base64 encoded images to include with the message (for multimodal AI
+  models). Example: [&#123;type: "base64", data: "base64...", mimeType:
+  "image/png", description: "A beautiful image of a cat"&#125;] or [&#123;type:
+  "url", url: "https://example.com/image.png", description: "A beautiful image
+  of a cat"&#125;]
+</dd>
+
+<dt>
+  <code>systemPrompt</code> <em>string</em>{' '}
+</dt>
+<dd>System prompt that defines the AI agents behavior and personality</dd>
+
+<dt>
+  <code>name</code> <em>string</em>{' '}
+</dt>
+<dd>A friendly name for the AI agent</dd>
+
+<dt>
+  <code>model</code> <em>object</em>{' '}
+</dt>
+<dd>
+  AI model configuration including provider, temperature, and tokens. For model
+  unless otherwise specified, use google/gemini-2.5-flash as default. Use
+  google/gemini-2.5-flash-image-preview to edit and generate images.
+</dd>
+
+<dt>
+  <code>tools</code> <em>object[]</em>{' '}
+</dt>
+<dd>
+  Array of tools the AI agent can use. Can be tool types (web-search-tool,
+  web-scrape-tool, web-crawl-tool, web-extract-tool). If using image models, set
+  the tools to []
+</dd>
+
+<dt>
+  <code>maxIterations</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of iterations for the agent workflow</dd>
+
+<dt>
+  <code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em>{' '}
+</dt>
+<dd>Object mapping credential types to values (injected at runtime)</dd>
+
+  <dt><code>streaming</code> <em>boolean</em> </dt>
+  <dd>Enable real-time streaming of tokens, tool calls, and iteration progress</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>response</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The AI agents final response to the user message. For text responses, returns plain text or JSON string. For image generation models (like gemini-2.5-flash-image-preview), returns base64-encoded image data with data URI format (data:image/png;base64,...)</dd>
+
+<dt>
+  <code>toolCalls</code> <em>object[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Array of tool calls made during the conversation</dd>
+
+<dt>
+  <code>iterations</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of back-and-forth iterations in the agent workflow</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message of the run, undefined if successful</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the agent execution completed successfully</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,38 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:0.8" />
+    </linearGradient>
+    <radialGradient id="brainGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:0.3" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="none"/>
+  
+  <!-- AI Brain/Network representation -->
+  <circle cx="100" cy="100" r="50" fill="url(#brainGradient)" stroke="url(#aiGradient)" stroke-width="3"/>
+  
+  <!-- Neural network nodes -->
+  <circle cx="80" cy="80" r="8" fill="url(#aiGradient)"/>
+  <circle cx="120" cy="80" r="8" fill="url(#aiGradient)"/>
+  <circle cx="100" cy="100" r="8" fill="url(#aiGradient)"/>
+  <circle cx="80" cy="120" r="8" fill="url(#aiGradient)"/>
+  <circle cx="120" cy="120" r="8" fill="url(#aiGradient)"/>
+  
+  <!-- Neural connections -->
+  <line x1="80" y1="80" x2="100" y2="100" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="120" y1="80" x2="100" y2="100" stroke="#a855f7" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="100" x2="80" y2="120" stroke="#ec4899" stroke-width="2" opacity="0.6"/>
+  <line x1="100" y1="100" x2="120" y2="120" stroke="#ec4899" stroke-width="2" opacity="0.6"/>
+  
+  <!-- AI spark effect -->
+  <g transform="translate(100,60)">
+    <path d="M0,0 L3,8 L0,6 L-3,8 Z" fill="#ffffff">
+      <animateTransform attributeName="transform" type="scale" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+</svg>

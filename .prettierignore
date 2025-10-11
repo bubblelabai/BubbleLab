@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+.turbo/
+out/
+
+# External submodules (have their own prettier config)
+external/
+
+# Generated files
+*.tsbuildinfo
+coverage/
+
+# Cache directories
+.cache/
+.vite/
+
+# OS files
+.DS_Store
+Thumbs.db

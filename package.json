@@ -1,0 +1,84 @@
+{
+  "name": "bubblelab",
+  "private": true,
+  "scripts": {
+    "build": "pnpm build:core && turbo build --filter=\"!@bubblelab/bubble-core\" --filter=\"!@bubblelab/shared-schemas\"",
+    "build:all": "pnpm build:core && turbo build --filter=\"!@bubblelab/bubble-core\" --filter=\"!@bubblelab/shared-schemas\"",
+    "build:core": "turbo build --filter=\"@bubblelab/shared-schemas\" --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\"",
+    "publish:packages": "pnpm build:core && pnpm --filter=\"@bubblelab/shared-schemas\" --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\" --filter=\"create-bubblelab-app\" --filter=\"@bubblelab/ts-scope-manager\" publish --access public",
+    "setup:env": "bash setup-env.sh",
+    "dev": "pnpm setup:env && pnpm build:core && turbo dev --filter=\"bubblelab-api\" --filter=\"bubble-studio\"",
+    "dev:all": "turbo dev",
+    "build:dashboard": "pnpm run build:core && cd apps/nodex-dashboard && pnpm build",
+    "build:ide": "pnpm run build:core && cd apps/bubble-studio && pnpm build",
+    "lint": "turbo lint",
+    "lint:src": "eslint \"packages/**/src/**/*.{js,ts,tsx}\" \"apps/**/src/**/*.{js,ts,tsx}\" --ignore-pattern \"**/external/**\" --ignore-pattern \"**/node_modules/**\" --ignore-pattern \"**/dist/**\" --ignore-pattern \"**/.next/**\" --fix",
+    "lint:check": "eslint \"packages/**/src/**/*.{js,ts,tsx}\" \"apps/**/src/**/*.{js,ts,tsx}\" --ignore-pattern \"**/external/**\" --ignore-pattern \"**/node_modules/**\" --ignore-pattern \"**/dist/**\" --ignore-pattern \"**/.next/**\"",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:core": "turbo test --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\"",
+    "test:coverage": "turbo run test:coverage",
+    "bubble-to-request": "bun scripts/bubble-to-request.ts",
+    "bump-versions": "tsx scripts/bump-package-versions.ts",
+    "docs:dev": "cd docs && pnpm start",
+    "docs:build": "cd docs && pnpm build",
+    "docs:serve": "cd docs && pnpm serve",
+    "prepare": "husky install",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.12",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "dotenv": "^17.2.0",
+    "eslint": "^9.31.0",
+    "glob": "^11.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
+    "turbo": "^1.13.4",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.0.0",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "packageManager": "pnpm@10.16.1",
+  "engines": {
+    "node": ">=18"
+  },
+  "lint-staged": {
+    "apps/bubble-studio/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix --config apps/bubble-studio/eslint.config.js --ignore-pattern '**/public/**/*'",
+      "prettier --write"
+    ],
+    "apps/bubblelab-api/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "packages/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "scripts/**/*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "**/*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "pnpm": {
+    "overrides": {
+      "canvas": "^3.1.2",
+      "zod": "3.25.76",
+      "@hono/zod-openapi": "0.18.3",
+      "@asteasolutions/zod-to-openapi": "7.3.4"
+    }
+  },
+  "dependencies": {}
+}

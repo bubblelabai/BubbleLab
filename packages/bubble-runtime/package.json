@@ -1,0 +1,49 @@
+{
+  "name": "@bubblelab/bubble-runtime",
+  "version": "0.1.7",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE.txt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bubblelabai/BubbleLab.git",
+    "directory": "packages/bubble-runtime"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude='**/*.integration.test.{ts,tsx,js,jsx}'",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.tsx",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@bubblelab/bubble-core": "workspace:*",
+    "@bubblelab/shared-schemas": "workspace:*",
+    "@bubblelab/ts-scope-manager": "workspace:*",
+    "@typescript-eslint/typescript-estree": "=8.43.0",
+    "patch-package": "^8.0.0",
+    "typescript": "^5.4.5",
+    "zod": "=3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.21",
+    "@types/node": "^20.12.12",
+    "@vitest/ui": "^3.2.4",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "environments": {
+    "production": {
+      "services": {
+        "landing": {
+          "build": {
+            "builder": "DOCKERFILE",
+            "dockerfilePath": "landing.Dockerfile"
+          }
+        },
+
+        "dashboard": {
+          "build": {
+            "builder": "DOCKERFILE",
+            "dockerfilePath": "Dockerfile.dashboard"
+          }
+        },
+        "api": {
+          "build": {
+            "builder": "DOCKERFILE",
+            "dockerfilePath": "Dockerfile.api"
+          }
+        }
+      }
+    }
+  }
+}

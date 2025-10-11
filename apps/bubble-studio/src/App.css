@@ -1,0 +1,197 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+/* Ensure all elements use Inter by default, except code editors */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+/* Ensure Monaco Editor uses monospace fonts */
+.monaco-editor,
+.monaco-editor *,
+.monaco-editor-container,
+.monaco-editor-container * {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* App layout */
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Header */
+.App-header {
+  background: #252526;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #3e3e42;
+  flex-shrink: 0;
+}
+
+.App-header h1 {
+  font-size: 1.5rem;
+  color: #007acc;
+  margin: 0;
+}
+
+.App-header p {
+  color: #cccccc;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.9rem;
+}
+
+/* Editor container */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Editor toolbar */
+.editor-toolbar {
+  background: #2d2d30;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #3e3e42;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.editor-toolbar button {
+  background: #007acc;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-toolbar button:hover:not(:disabled) {
+  background: #106ba3;
+}
+
+.editor-toolbar button:disabled {
+  background: #4a4a4a;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.editor-toolbar .status {
+  margin-left: auto;
+  color: #4ec9b0;
+  font-size: 0.85rem;
+}
+
+/* Editor panel */
+.editor-panel {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Output panel */
+.output-panel {
+  height: 200px;
+  background: #1e1e1e;
+  border-top: 1px solid #3e3e42;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.output-panel h3 {
+  color: #cccccc;
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.output-panel pre {
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
+}
+
+/* Monaco editor overrides */
+.monaco-editor {
+  background: #1e1e1e !important;
+}
+
+.monaco-editor .margin {
+  background: #1e1e1e !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .App-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .App-header h1 {
+    font-size: 1.25rem;
+  }
+  
+  .App-header p {
+    font-size: 0.8rem;
+  }
+  
+  .editor-toolbar {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+  
+  .editor-toolbar button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .output-panel {
+    height: 150px;
+  }
+}

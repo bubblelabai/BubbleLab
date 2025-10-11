@@ -1,0 +1,66 @@
+{
+  "name": "@bubblelab/bubble-core",
+  "version": "0.1.4",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE.txt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bubblelabai/BubbleLab.git",
+    "directory": "packages/bubble-core"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc && tsx scripts/bubble-bundler.ts",
+    "build:types": "tsc",
+    "build:bundle": "tsx scripts/bubble-bundler.ts",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude='**/*.integration.{test,spec}.ts'",
+    "test:coverage": "vitest run --coverage --exclude='**/*.integration.{test,spec}.ts'",
+    "test:integration": "vitest run --run 'src/**/*.integration.{test,spec}.ts'",
+    "test:all": "vitest run",
+    "test:all:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "lint": "eslint . --ext .ts,.tsx",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.873.0",
+    "@aws-sdk/s3-request-presigner": "^3.873.0",
+    "@bubblelab/shared-schemas": "workspace:*",
+    "@langchain/anthropic": "^0.3.30",
+    "@langchain/community": "^0.3.53",
+    "@langchain/core": "^0.3.66",
+    "@langchain/google-genai": "^0.2.15",
+    "@langchain/langgraph": "^0.3.10",
+    "@langchain/openai": "^0.6.2",
+    "@mendable/firecrawl-js": "^3.2.1",
+    "@types/pg": "^8.15.4",
+    "@typescript-eslint/typescript-estree": "8.46.0",
+    "chart.js": "^4.5.0",
+    "chartjs-node-canvas": "^5.0.0",
+    "pg": "^8.16.3",
+    "resend": "^4.8.0",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@vitest/ui": "^3.2.4",
+    "tsx": "^4.20.3",
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.4"
+  }
+}

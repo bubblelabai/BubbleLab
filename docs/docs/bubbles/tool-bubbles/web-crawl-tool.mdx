@@ -1,0 +1,124 @@
+# Web Crawl Tool
+
+Multi-page web crawling tool for exploring entire websites and subdomains.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { WebCrawlTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new WebCrawlTool({
+  url: 'https://nodejs.org',
+  maxPages: 10,
+  crawlDepth: 2,
+  credentials: {
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The root URL to crawl and extract content from</dd>
+
+<dt>
+  <code>format</code> <em>'markdown'</em>{' '}
+</dt>
+<dd>Output format for crawled content</dd>
+
+<dt>
+  <code>onlyMainContent</code> <em>boolean</em>{' '}
+</dt>
+<dd>Extract only main content, filtering out navigation/footers</dd>
+
+<dt>
+  <code>maxPages</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of pages to crawl</dd>
+
+<dt>
+  <code>crawlDepth</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum depth to crawl</dd>
+
+<dt>
+  <code>includePaths</code> <em>string[]</em>{' '}
+</dt>
+<dd>
+  URL patterns to include in crawl (regex patterns), Example: ["^/blog/.*$",
+  "^/docs/.*$"]
+</dd>
+
+<dt>
+  <code>excludePaths</code> <em>string[]</em>{' '}
+</dt>
+<dd>
+  URL patterns to exclude from crawl (regex patterns), ["^/admin/.*$",
+  "^/private/.*$"]
+</dd>
+
+<dt>
+  <code>waitFor</code> <em>number</em>{' '}
+</dt>
+<dd>Time to wait for dynamic content in milliseconds</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials including FIRECRAWL_API_KEY</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The original URL that was crawled</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the crawl operation was successful</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if crawl failed</dd>
+
+<dt>
+  <code>pages</code> <em>object[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Array of crawled pages with content</dd>
+
+<dt>
+  <code>totalPages</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Total number of pages crawled</dd>
+
+  <dt><code>metadata</code> <em>object</em> </dt>
+  <dd>Additional metadata about the crawl operation</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

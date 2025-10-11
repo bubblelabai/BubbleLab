@@ -1,0 +1,99 @@
+# Reddit Scrape Tool
+
+Scrapes posts from any Reddit subreddit with flexible filtering and sorting options
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { RedditScrapeTool } from '@bubblelab/bubble-core';
+const result = await new RedditScrapeTool({
+  subreddit: 'programming',
+  sort: 'top',
+  timeFilter: 'day',
+  limit: 25,
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>subreddit</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the subreddit to scrape (without r/ prefix)</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of posts to fetch (1-500, default: 25)</dd>
+
+<dt>
+  <code>sort</code> <em>'hot' | 'new' | 'top' | 'rising'</em>{' '}
+</dt>
+<dd>Sorting method for posts (default: hot)</dd>
+
+<dt>
+  <code>timeFilter</code>{' '}
+  <em>'hour' | 'day' | 'week' | 'month' | 'year' | 'all'</em>{' '}
+</dt>
+<dd>Time filter for "top" sort (only applies when sort=top)</dd>
+
+<dt>
+  <code>filterToday</code> <em>boolean</em>{' '}
+</dt>
+<dd>Filter results to only include posts from today</dd>
+
+<dt>
+  <code>includeStickied</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include stickied/pinned posts in results</dd>
+
+<dt>
+  <code>minScore</code> <em>number</em>{' '}
+</dt>
+<dd>Minimum upvote score required for posts</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Optional credentials for enhanced features</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>posts</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of scraped Reddit posts</dd>
+
+<dt>
+  <code>metadata</code> <em>object</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Metadata about the scraping operation</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the scraping was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if scraping failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,64 @@
+# Hello World Bubble
+
+Simple hello world bubble for testing purposes
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { HelloWorldBubble } from '@bubblelab/bubble-core';
+const result = await new HelloWorldBubble({
+  name: 'Ada',
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name to include in the greeting message</dd>
+
+<dt>
+  <code>message</code> <em>string</em>{' '}
+</dt>
+<dd>Custom greeting message</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>greeting</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The generated greeting message</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

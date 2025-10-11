@@ -1,0 +1,508 @@
+# Google Drive Bubble
+
+Google Drive integration for file management
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { GoogleDriveBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new GoogleDriveBubble({
+  operation: 'upload_file',
+  name: 'report.txt',
+  content: 'Quarterly report contents',
+  mimeType: 'text/plain',
+  credentials: {
+    [CredentialType.GOOGLE_DRIVE_CRED]: process.env.GOOGLE_DRIVE_CRED as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `upload_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'upload_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Upload a file to Google Drive</dd>
+
+<dt>
+  <code>name</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Name for the uploaded file</dd>
+
+<dt>
+  <code>content</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>File content as base64 encoded string or plain text</dd>
+
+<dt>
+  <code>mimeType</code> <em>string</em>{' '}
+</dt>
+<dd>MIME type of the file (auto-detected if not provided)</dd>
+
+<dt>
+  <code>parent_folder_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the parent folder (uploads to root if not provided)</dd>
+
+<dt>
+  <code>convert_to_google_docs</code> <em>boolean</em>{' '}
+</dt>
+<dd>Convert uploaded file to Google Docs format if possible</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'upload_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Upload a file to Google Drive</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file was uploaded successfully</dd>
+
+<dt>
+  <code>file</code> <em>object</em>{' '}
+</dt>
+<dd>Uploaded file metadata</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `download_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'download_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Download a file from Google Drive</dd>
+
+<dt>
+  <code>file_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Google Drive file ID to download</dd>
+
+<dt>
+  <code>export_format</code> <em>string</em>{' '}
+</dt>
+<dd>
+  Export format for Google Workspace files (e.g., "application/pdf",
+  "text/plain")
+</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'download_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Download a file from Google Drive</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file was downloaded successfully</dd>
+
+<dt>
+  <code>content</code> <em>string</em>{' '}
+</dt>
+<dd>File content as base64 encoded string</dd>
+
+<dt>
+  <code>filename</code> <em>string</em>{' '}
+</dt>
+<dd>Original filename</dd>
+
+<dt>
+  <code>mimeType</code> <em>string</em>{' '}
+</dt>
+<dd>MIME type of the downloaded file</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_files`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_files'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List files and folders in Google Drive</dd>
+
+<dt>
+  <code>folder_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of folder to list files from (lists from root if not provided)</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+</dt>
+<dd>Search query to filter files (e.g., "name contains 'report'"</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of files to return</dd>
+
+<dt>
+  <code>include_folders</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include folders in the results</dd>
+
+<dt>
+  <code>order_by</code> <em>string</em>{' '}
+</dt>
+<dd>Order results by field (e.g., "name", "modifiedTime desc")</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_files'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List files and folders in Google Drive</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file list was retrieved successfully</dd>
+
+<dt>
+  <code>files</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of files and folders</dd>
+
+<dt>
+  <code>total_count</code> <em>number</em>{' '}
+</dt>
+<dd>Total number of files found</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_folder`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_folder'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new folder in Google Drive</dd>
+
+<dt>
+  <code>name</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Name of the folder to create</dd>
+
+<dt>
+  <code>parent_folder_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the parent folder (creates in root if not provided)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_folder'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new folder in Google Drive</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the folder was created successfully</dd>
+
+<dt>
+  <code>folder</code> <em>object</em>{' '}
+</dt>
+<dd>Created folder metadata</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a file or folder from Google Drive</dd>
+
+<dt>
+  <code>file_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Google Drive file or folder ID to delete</dd>
+
+<dt>
+  <code>permanent</code> <em>boolean</em>{' '}
+</dt>
+<dd>Permanently delete (true) or move to trash (false)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a file or folder from Google Drive</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file was deleted successfully</dd>
+
+<dt>
+  <code>deleted_file_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the deleted file</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_file_info`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_file_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a file or folder</dd>
+
+<dt>
+  <code>file_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Google Drive file or folder ID to get info for</dd>
+
+<dt>
+  <code>include_permissions</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include file permissions in the response</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_file_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a file or folder</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file information was retrieved successfully</dd>
+
+<dt>
+  <code>file</code> <em>object</em>{' '}
+</dt>
+<dd>File metadata and information</dd>
+
+<dt>
+  <code>permissions</code> <em>object[]</em>{' '}
+</dt>
+<dd>File permissions (if requested)</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `share_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'share_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Share a file or folder with specific users or make it public</dd>
+
+<dt>
+  <code>file_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Google Drive file or folder ID to share</dd>
+
+<dt>
+  <code>email_address</code> <em>string</em>{' '}
+</dt>
+<dd>Email address to share with (for specific user sharing)</dd>
+
+<dt>
+  <code>role</code> <em>'reader' | 'writer' | 'commenter' | 'owner'</em>{' '}
+</dt>
+<dd>Permission role to grant</dd>
+
+<dt>
+  <code>type</code> <em>'user' | 'group' | 'domain' | 'anyone'</em>{' '}
+</dt>
+<dd>Type of permission to create</dd>
+
+<dt>
+  <code>send_notification</code> <em>boolean</em>{' '}
+</dt>
+<dd>Send notification email to the user</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'share_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Share a file or folder with specific users or make it public</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the file was shared successfully</dd>
+
+<dt>
+  <code>permission_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the created permission</dd>
+
+<dt>
+  <code>share_link</code> <em>string</em>{' '}
+</dt>
+<dd>Shareable link to the file</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

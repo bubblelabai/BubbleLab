@@ -1,0 +1,97 @@
+# Sql Query Tool
+
+Execute read-only SQL queries against PostgreSQL databases for data analysis
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { SQLQueryTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new SQLQueryTool({
+  query:
+    "SELECT id, email FROM users WHERE created_at > NOW() - INTERVAL '7 days'",
+  reasoning: 'Get recent signups for weekly report.',
+  credentials: {
+    [CredentialType.DATABASE_CRED]: process.env
+      .BUBBLE_CONNECTING_STRING_URL as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>query</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>SQL query to execute (SELECT, WITH, EXPLAIN, ANALYZE, SHOW, DESCRIBE only)</dd>
+
+<dt>
+  <code>reasoning</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Explain why you're running this specific query and what you hope to learn from
+  it
+</dd>
+
+<dt>
+  <code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em>{' '}
+</dt>
+<dd>Database credentials (injected at runtime)</dd>
+
+  <dt><code>config</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>Configuration for the tool bubble</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>rows</code> <em>Record&lt;string,unknown&gt;[]</em> </dt>
+  <dd>Array of query result rows as objects</dd>
+
+<dt>
+  <code>rowCount</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of rows returned by the query</dd>
+
+<dt>
+  <code>executionTime</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Query execution time in milliseconds</dd>
+
+<dt>
+  <code>fields</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of column metadata from the query result</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the query execution was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if query execution failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

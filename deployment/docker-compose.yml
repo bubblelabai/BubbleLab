@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nodex-nginx
+    ports:
+      - '${NGINX_PORT:-80}:80'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - bubblelab-api
+    restart: unless-stopped
+    networks:
+      - nodex-network
+
+  bubblelab-api:
+    build:
+      context: ../apps/bubblelab-api
+      dockerfile: Dockerfile
+    container_name: bubblelab-api
+    expose:
+      - '${NODEX_API_PORT:-3001}'
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${NODEX_API_PORT:-3001}
+      - DATABASE_URL=${DATABASE_URL:-file:./dev.db}
+      - NODEX_API_URL=${NODEX_API_URL:-http://localhost}
+      - BUBBLE_CONNECTING_STRING_URL=${BUBBLE_CONNECTING_STRING_URL}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - bubblelab-api-data:/app/data
+    restart: unless-stopped
+    networks:
+      - nodex-network
+
+  # Add more services here as needed
+  # nodex-web:
+  #   build:
+  #     context: ../apps/nodex-web
+  #     dockerfile: Dockerfile
+  #   container_name: nodex-web
+  #   expose:
+  #     - "3000"
+  #   environment:
+  #     - NODE_ENV=${NODE_ENV:-production}
+  #   restart: unless-stopped
+  #   networks:
+  #     - nodex-network
+
+networks:
+  nodex-network:
+    driver: bridge
+
+volumes:
+  bubblelab-api-data:

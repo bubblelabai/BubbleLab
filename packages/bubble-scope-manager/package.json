@@ -1,0 +1,27 @@
+{
+  "name": "@bubblelab/ts-scope-manager",
+  "version": "0.1.4",
+  "private": false,
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "require": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.mjs",
+    "index.d.ts"
+  ],
+  "peerDependencies": {
+    "typescript": ">=4.8.4 <5.9.0"
+  },
+  "dependencies": {
+    "@typescript-eslint/scope-manager": "=8.43.0"
+  }
+}

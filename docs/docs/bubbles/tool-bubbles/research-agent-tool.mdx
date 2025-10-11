@@ -1,0 +1,116 @@
+# Research Agent Tool
+
+AI-powered research agent that searches and scrapes the internet to gather structured information
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { ResearchAgentTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new ResearchAgentTool({
+  task: 'Summarize the top 5 frameworks for building Node.js APIs with pros/cons.',
+  expectedResultSchema:
+    '{"frameworks":[{"name":"string","pros":["string"],"cons":["string"]}],"summary":"string"}',
+  model: 'google/gemini-2.5-flash',
+  maxIterations: 25,
+  credentials: {
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+    [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>task</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The research task that requires searching the internet and gathering information</dd>
+
+<dt>
+  <code>expectedResultSchema</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  JSON schema string that defines the expected structure of the research result
+</dd>
+
+<dt>
+  <code>model</code>{' '}
+  <em>
+    'openai/gpt-5' | 'openai/gpt-5-mini' | 'openai/gpt-o4-mini' |
+    'google/gemini-2.5-pro' | 'google/gemini-2.5-flash' |
+    'google/gemini-2.5-flash-lite' | 'google/gemini-2.5-flash-image-preview'
+  </em>{' '}
+</dt>
+<dd>Model to use for the research agent (default: google/gemini-2.5-flash)</dd>
+
+<dt>
+  <code>maxTokens</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of tokens for the research agent (default: 40000)</dd>
+
+<dt>
+  <code>maxIterations</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of iterations for the research agent (default: 100)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>result</code> <em>Record&lt;string,unknown&gt;</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The research result matching the expected JSON schema structure, parsed to object</dd>
+
+<dt>
+  <code>summary</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>1-2 sentence summary of what research was conducted and completed</dd>
+
+<dt>
+  <code>sourcesUsed</code> <em>string[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Array of URLs and sources that were searched and scraped during research
+</dd>
+
+<dt>
+  <code>iterationsUsed</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of AI agent iterations used to complete the research</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the research task was completed successfully</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if research failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

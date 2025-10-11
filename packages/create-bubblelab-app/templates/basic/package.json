@@ -1,0 +1,22 @@
+{
+  "name": "my-bubblelab-app",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "BubbleLab AI agent application",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bubblelab/bubble-core": "^0.1.1",
+    "@bubblelab/bubble-runtime": "^0.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.20.3",
+    "typescript": "^5.4.5"
+  }
+}

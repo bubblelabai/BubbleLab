@@ -1,0 +1,849 @@
+# Gmail Bubble
+
+Gmail integration for email management
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { GmailBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new GmailBubble({
+  operation: 'send_email',
+  to: ['recipient@example.com'],
+  subject: 'Welcome!',
+  body_text: 'Hi there — your account is ready. Enjoy!',
+  credentials: {
+    [CredentialType.GMAIL_CRED]: process.env.GMAIL_CRED as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `send_email`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send an email message</dd>
+
+<dt>
+  <code>to</code> <em>string[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>List of recipient email addresses</dd>
+
+<dt>
+  <code>cc</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of CC recipient email addresses</dd>
+
+<dt>
+  <code>bcc</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of BCC recipient email addresses</dd>
+
+<dt>
+  <code>subject</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Email subject line</dd>
+
+<dt>
+  <code>body_text</code> <em>string</em>{' '}
+</dt>
+<dd>Plain text email body</dd>
+
+<dt>
+  <code>body_html</code> <em>string</em>{' '}
+</dt>
+<dd>HTML email body</dd>
+
+<dt>
+  <code>reply_to</code> <em>string</em>{' '}
+</dt>
+<dd>Reply-to email address</dd>
+
+<dt>
+  <code>thread_id</code> <em>string</em>{' '}
+</dt>
+<dd>Thread ID to reply to (for threaded conversations)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send an email message</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email was sent successfully</dd>
+
+<dt>
+  <code>message_id</code> <em>string</em>{' '}
+</dt>
+<dd>Sent message ID</dd>
+
+<dt>
+  <code>thread_id</code> <em>string</em>{' '}
+</dt>
+<dd>Thread ID</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_emails`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_emails'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List emails in the user mailbox</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+</dt>
+<dd>Gmail search query (e.g., "from:user@example.com is:unread")</dd>
+
+<dt>
+  <code>label_ids</code> <em>string[]</em>{' '}
+</dt>
+<dd>Filter by specific label IDs</dd>
+
+<dt>
+  <code>include_spam_trash</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include messages from SPAM and TRASH</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of messages to return</dd>
+
+<dt>
+  <code>page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for pagination to get next page</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_emails'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List emails in the user mailbox</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email list was retrieved successfully</dd>
+
+<dt>
+  <code>messages</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of email messages</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+<dt>
+  <code>result_size_estimate</code> <em>number</em>{' '}
+</dt>
+<dd>Estimated total number of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_email`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific email message</dd>
+
+<dt>
+  <code>message_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Gmail message ID to retrieve</dd>
+
+<dt>
+  <code>format</code> <em>'minimal' | 'full' | 'raw' | 'metadata'</em>{' '}
+</dt>
+<dd>Format to return the message in</dd>
+
+<dt>
+  <code>metadata_headers</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of headers to include when format is metadata</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific email message</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email was retrieved successfully</dd>
+
+<dt>
+  <code>message</code> <em>object</em>{' '}
+</dt>
+<dd>Email message details</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `search_emails`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'search_emails'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Search emails with query</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Gmail search query string</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of results to return</dd>
+
+<dt>
+  <code>include_spam_trash</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include messages from SPAM and TRASH</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'search_emails'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Search emails with query</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email search was completed successfully</dd>
+
+<dt>
+  <code>messages</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of matching email messages</dd>
+
+<dt>
+  <code>result_size_estimate</code> <em>number</em>{' '}
+</dt>
+<dd>Estimated total number of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `mark_as_read`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'mark_as_read'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Mark one or more messages as read</dd>
+
+<dt>
+  <code>message_ids</code> <em>string[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>List of message IDs to mark as read</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'mark_as_read'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Mark one or more messages as read</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the messages were marked as read successfully</dd>
+
+<dt>
+  <code>modified_messages</code> <em>string[]</em>{' '}
+</dt>
+<dd>IDs of messages that were modified</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `mark_as_unread`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'mark_as_unread'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Mark one or more messages as unread</dd>
+
+<dt>
+  <code>message_ids</code> <em>string[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>List of message IDs to mark as unread</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'mark_as_unread'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Mark one or more messages as unread</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the messages were marked as unread successfully</dd>
+
+<dt>
+  <code>modified_messages</code> <em>string[]</em>{' '}
+</dt>
+<dd>IDs of messages that were modified</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_draft`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_draft'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a draft email</dd>
+
+<dt>
+  <code>to</code> <em>string[]</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>List of recipient email addresses</dd>
+
+<dt>
+  <code>cc</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of CC recipient email addresses</dd>
+
+<dt>
+  <code>bcc</code> <em>string[]</em>{' '}
+</dt>
+<dd>List of BCC recipient email addresses</dd>
+
+<dt>
+  <code>subject</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Email subject line</dd>
+
+<dt>
+  <code>body_text</code> <em>string</em>{' '}
+</dt>
+<dd>Plain text email body</dd>
+
+<dt>
+  <code>body_html</code> <em>string</em>{' '}
+</dt>
+<dd>HTML email body</dd>
+
+<dt>
+  <code>reply_to</code> <em>string</em>{' '}
+</dt>
+<dd>Reply-to email address</dd>
+
+<dt>
+  <code>thread_id</code> <em>string</em>{' '}
+</dt>
+<dd>Thread ID to reply to (for threaded conversations)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_draft'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a draft email</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the draft was created successfully</dd>
+
+<dt>
+  <code>draft</code> <em>object</em>{' '}
+</dt>
+<dd>Created draft</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `send_draft`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_draft'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a draft email</dd>
+
+<dt>
+  <code>draft_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Gmail draft ID to send</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_draft'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a draft email</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the draft was sent successfully</dd>
+
+<dt>
+  <code>message_id</code> <em>string</em>{' '}
+</dt>
+<dd>Sent message ID</dd>
+
+<dt>
+  <code>thread_id</code> <em>string</em>{' '}
+</dt>
+<dd>Thread ID</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_drafts`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_drafts'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List draft emails</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+</dt>
+<dd>Search query to filter drafts</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of drafts to return</dd>
+
+<dt>
+  <code>page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for pagination to get next page</dd>
+
+<dt>
+  <code>include_spam_trash</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include drafts from SPAM and TRASH</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_drafts'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List draft emails</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the draft list was retrieved successfully</dd>
+
+<dt>
+  <code>drafts</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of drafts</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+<dt>
+  <code>result_size_estimate</code> <em>number</em>{' '}
+</dt>
+<dd>Estimated total number of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_email`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete an email message permanently</dd>
+
+<dt>
+  <code>message_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Gmail message ID to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete an email message permanently</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email was deleted successfully</dd>
+
+<dt>
+  <code>deleted_message_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the deleted message</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `trash_email`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trash_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Move an email message to trash</dd>
+
+<dt>
+  <code>message_id</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Gmail message ID to move to trash</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trash_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Move an email message to trash</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the email was moved to trash successfully</dd>
+
+<dt>
+  <code>trashed_message_id</code> <em>string</em>{' '}
+</dt>
+<dd>ID of the trashed message</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_threads`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_threads'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List email threads</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+</dt>
+<dd>Gmail search query to filter threads</dd>
+
+<dt>
+  <code>label_ids</code> <em>string[]</em>{' '}
+</dt>
+<dd>Filter by specific label IDs</dd>
+
+<dt>
+  <code>include_spam_trash</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include threads from SPAM and TRASH</dd>
+
+<dt>
+  <code>max_results</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of threads to return</dd>
+
+<dt>
+  <code>page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for pagination to get next page</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_threads'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List email threads</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the thread list was retrieved successfully</dd>
+
+<dt>
+  <code>threads</code> <em>object[]</em>{' '}
+</dt>
+<dd>List of email threads</dd>
+
+<dt>
+  <code>next_page_token</code> <em>string</em>{' '}
+</dt>
+<dd>Token for fetching next page</dd>
+
+<dt>
+  <code>result_size_estimate</code> <em>number</em>{' '}
+</dt>
+<dd>Estimated total number of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

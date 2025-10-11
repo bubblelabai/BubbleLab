@@ -1,0 +1,94 @@
+# Web Extract Tool
+
+Extracts structured data from web pages using Firecrawl AI-powered extraction with custom prompts and schemas
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { WebExtractTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new WebExtractTool({
+  url: 'https://store.example.com/product/123',
+  prompt: 'Extract product name, price, and image URLs.',
+  schema: '{"name":"string","price":"number","images":["string"]}',
+  credentials: {
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The URL to extract structured data from</dd>
+
+<dt>
+  <code>prompt</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Detailed prompt describing what data to extract from the web page</dd>
+
+<dt>
+  <code>schema</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>JSON schema string defining the structure of the data to extract</dd>
+
+<dt>
+  <code>timeout</code> <em>number</em>{' '}
+</dt>
+<dd>Timeout in milliseconds for the extraction (default: 30000)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials including FIRECRAWL_API_KEY</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The original URL that was processed</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the extraction was successful</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if extraction failed</dd>
+
+<dt>
+  <code>extractedData</code> <em>Record&lt;string,unknown&gt;</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>The extracted structured data matching the provided schema</dd>
+
+  <dt><code>metadata</code> <em>object</em> </dt>
+  <dd>Additional metadata about the extraction</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

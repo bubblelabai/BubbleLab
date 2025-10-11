@@ -1,0 +1,36 @@
+{
+  "name": "create-bubblelab-app",
+  "version": "0.1.5",
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Create BubbleLab AI agent applications with one command",
+  "bin": {
+    "create-bubblelab-app": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "templates",
+    "LICENSE.txt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bubblelabai/BubbleLab.git",
+    "directory": "packages/create-bubblelab-app"
+  },
+  "keywords": [
+    "bubblelab",
+    "ai",
+    "agent",
+    "llm",
+    "scaffold",
+    "cli"
+  ],
+  "dependencies": {
+    "prompts": "^2.4.2",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@types/prompts": "^2.4.9"
+  }
+}

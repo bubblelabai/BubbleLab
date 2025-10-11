@@ -1,0 +1,44 @@
+{
+  "name": "@bubblelab/shared-schemas",
+  "version": "0.1.4",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE.txt"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bubblelabai/BubbleLab.git",
+    "directory": "packages/shared-schemas"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "zod": "=3.25.76",
+    "@hono/zod-openapi": "=0.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "@typescript-eslint/eslint-plugin": "^8.37.0",
+    "@typescript-eslint/parser": "^8.37.0",
+    "eslint": "^9.31.0",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.8"
+  }
+}

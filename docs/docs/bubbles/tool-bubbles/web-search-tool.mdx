@@ -1,0 +1,92 @@
+# Web Search Tool
+
+Performs web searches using Firecrawl to find current information from the web
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { WebSearchTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new WebSearchTool({
+  query: 'latest Node.js LTS release notes',
+  limit: 3,
+  credentials: {
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>query</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The search query to execute</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of search results to return</dd>
+
+<dt>
+  <code>location</code> <em>string</em>{' '}
+</dt>
+<dd>Location parameter for search results (e.g., "us", "uk")</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials including FIRECRAWL_API_KEY</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>results</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of search results with title, URL, and content</dd>
+
+<dt>
+  <code>query</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>The original search query</dd>
+
+<dt>
+  <code>totalResults</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of results returned</dd>
+
+<dt>
+  <code>searchEngine</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Search engine used (Firecrawl)</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the search was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if search failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

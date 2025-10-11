@@ -1,0 +1,62 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#a855f7;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#ec4899;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:0.4" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="none"/>
+  
+  <!-- Workflow pipeline -->
+  <rect x="30" y="80" width="40" height="40" rx="8" fill="url(#flowGradient)" opacity="0.7"/>
+  <rect x="80" y="80" width="40" height="40" rx="8" fill="url(#flowGradient)" opacity="0.7"/>
+  <rect x="130" y="80" width="40" height="40" rx="8" fill="url(#flowGradient)" opacity="0.7"/>
+  
+  <!-- Flow arrows -->
+  <path d="M70 100 L80 100" stroke="#a855f7" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <path d="M120 100 L130 100" stroke="#a855f7" stroke-width="3" marker-end="url(#arrowhead)"/>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#a855f7"/>
+    </marker>
+  </defs>
+  
+  <!-- Real-time pulse indicators -->
+  <circle cx="50" cy="100" r="5" fill="url(#pulseGradient)">
+    <animate attributeName="r" values="3;8;3" dur="1.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="100" cy="100" r="5" fill="url(#pulseGradient)">
+    <animate attributeName="r" values="3;8;3" dur="1.5s" begin="0.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="150" cy="100" r="5" fill="url(#pulseGradient)">
+    <animate attributeName="r" values="3;8;3" dur="1.5s" begin="1s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" begin="1s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Data flow particles -->
+  <circle cx="75" cy="100" r="2" fill="#ffffff">
+    <animateMotion dur="2s" repeatCount="indefinite">
+      <mpath href="#flowPath1"/>
+    </animateMotion>
+  </circle>
+  <circle cx="125" cy="100" r="2" fill="#ffffff">
+    <animateMotion dur="2s" begin="1s" repeatCount="indefinite">
+      <mpath href="#flowPath2"/>
+    </animateMotion>
+  </circle>
+  
+  <!-- Hidden paths for animation -->
+  <path id="flowPath1" d="M70 100 L80 100" opacity="0"/>
+  <path id="flowPath2" d="M120 100 L130 100" opacity="0"/>
+</svg>

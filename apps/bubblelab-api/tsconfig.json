@@ -1,0 +1,15 @@
+{
+  "extends": "../../tools/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/bubble-core/src/bubbles/tool-bubble/bubbleflow-validation-tool.ts"
+  ],
+  "exclude": ["dist", "node_modules"]
+}

@@ -1,0 +1,161 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #a855f7; /* purple-500 */
+  --ifm-color-primary-dark: #9333ea; /* purple-600 */
+  --ifm-color-primary-darker: #7c3aed; /* purple-700 */
+  --ifm-color-primary-darkest: #6d28d9; /* purple-800 */
+  --ifm-color-primary-light: #c084fc; /* purple-400 */
+  --ifm-color-primary-lighter: #d8b4fe; /* purple-300 */
+  --ifm-color-primary-lightest: #e9d5ff; /* purple-200 */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  
+  /* Bubble Lab specific colors */
+  --bubble-lab-purple: #a855f7;
+  --bubble-lab-pink: #ec4899;
+  --bubble-lab-blue: #3b82f6;
+  --bubble-lab-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #3b82f6 100%);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #c084fc; /* purple-400 */
+  --ifm-color-primary-dark: #a855f7; /* purple-500 */
+  --ifm-color-primary-darker: #9333ea; /* purple-600 */
+  --ifm-color-primary-darkest: #7c3aed; /* purple-700 */
+  --ifm-color-primary-light: #d8b4fe; /* purple-300 */
+  --ifm-color-primary-lighter: #e9d5ff; /* purple-200 */
+  --ifm-color-primary-lightest: #f3e8ff; /* purple-100 */
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  
+  /* Dark mode background */
+  --ifm-background-color: #0a0a0a;
+  --ifm-background-surface-color: #1a1a1a;
+}
+
+/* Custom Bubble Lab styling */
+.navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar__logo {
+  margin-right: 0.5rem;
+  object-fit: contain;
+  max-height: 32px;
+  width: auto;
+}
+
+/* Add gradient effects to buttons */
+.button--primary {
+  background: var(--bubble-lab-gradient);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, #9333ea 0%, #db2777 50%, #2563eb 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+}
+
+/* Style the hero section */
+.hero {
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+}
+
+.hero__title {
+  background: var(--bubble-lab-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+/* Add bubble-like effects to cards */
+.card {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+/* Style the sidebar */
+.theme-doc-sidebar-item-link-level-1 > .menu__link--active {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+  border-left: 3px solid var(--ifm-color-primary);
+}
+
+/* Add some bubble-inspired animations */
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Logo animation removed - keeping it still */
+
+/* Use standard scrollbar - no custom styling */
+
+/* Schema cards for Input/Output sections in MDX */
+.schema-card {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-background-surface-color);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  margin: 0.75rem 0 1.25rem 0;
+}
+
+.schema-card dl {
+  margin: 0;
+}
+
+.schema-card dt {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-weight: 600;
+  padding: 1rem 1rem 0.25rem 1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.schema-card dt:first-of-type {
+  border-top: none;
+}
+
+.schema-card dd {
+  margin: 0;
+  padding: 0 1rem 1rem 1rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.schema-required {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 6px;
+  border: 1px solid rgba(211,47,47,0.25);
+  background: rgba(211,47,47,0.06);
+  color: #d32f2f;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+[data-theme='dark'] .schema-card {
+  border-color: var(--ifm-color-emphasis-300);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+[data-theme='dark'] .schema-card dt {
+  border-top-color: var(--ifm-color-emphasis-300);
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `bubble_flows` ADD `input_schema` text;

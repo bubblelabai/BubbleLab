@@ -1,0 +1,1021 @@
+# Slack Bubble
+
+Slack integration for messaging and workspace management
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { SlackBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new SlackBubble({
+  operation: 'send_message',
+  channel: '#general',
+  text: 'Deployed! ✅ Version 1.2.3 is live.',
+  credentials: {
+    [CredentialType.SLACK_CRED]: process.env.SLACK_TOKEN as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `send_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a message to a Slack channel or DM</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or
+  user ID for DM
+</dd>
+
+<dt>
+  <code>text</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Message text content</dd>
+
+<dt>
+  <code>username</code> <em>string</em>{' '}
+</dt>
+<dd>Override bot username for this message</dd>
+
+<dt>
+  <code>icon_emoji</code> <em>string</em>{' '}
+</dt>
+<dd>Override bot icon with emoji (e.g., :robot_face:)</dd>
+
+<dt>
+  <code>icon_url</code> <em>string</em>{' '}
+</dt>
+<dd>Override bot icon with custom image URL</dd>
+
+<dt>
+  <code>attachments</code> <em>object[]</em>{' '}
+</dt>
+<dd>Legacy message attachments</dd>
+
+<dt>
+  <code>blocks</code> <em>object[]</em>{' '}
+</dt>
+<dd>Block Kit structured message blocks</dd>
+
+<dt>
+  <code>thread_ts</code> <em>string</em>{' '}
+</dt>
+<dd>Timestamp of parent message to reply in thread</dd>
+
+<dt>
+  <code>reply_broadcast</code> <em>boolean</em>{' '}
+</dt>
+<dd>Broadcast thread reply to channel</dd>
+
+<dt>
+  <code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em>{' '}
+</dt>
+<dd>Object mapping credential types to values (injected at runtime)</dd>
+
+<dt>
+  <code>unfurl_links</code> <em>boolean</em>{' '}
+</dt>
+<dd>Enable automatic link unfurling</dd>
+
+  <dt><code>unfurl_media</code> <em>boolean</em> </dt>
+  <dd>Enable automatic media unfurling</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a message to a Slack channel or DM</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+</dt>
+<dd>Channel ID where the message was sent</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+</dt>
+<dd>Timestamp of the sent message</dd>
+
+<dt>
+  <code>message</code> <em>object</em>{' '}
+</dt>
+<dd>Details of the sent message</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_channels`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_channels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all channels in the Slack workspace</dd>
+
+<dt>
+  <code>types</code>{' '}
+  <em>'public_channel' | 'private_channel' | 'mpim' | 'im'[]</em>{' '}
+</dt>
+<dd>Types of channels to include in results</dd>
+
+<dt>
+  <code>exclude_archived</code> <em>boolean</em>{' '}
+</dt>
+<dd>Exclude archived channels from results</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of channels to return (1-1000)</dd>
+
+<dt>
+  <code>cursor</code> <em>string</em>{' '}
+</dt>
+<dd>Cursor for pagination to get next set of results</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_channels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all channels in the Slack workspace</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>channels</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of channel objects</dd>
+
+<dt>
+  <code>response_metadata</code> <em>object</em>{' '}
+</dt>
+<dd>Metadata for pagination</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_channel_info`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_channel_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific channel</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+</dd>
+
+<dt>
+  <code>include_locale</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include locale information in the response</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_channel_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific channel</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>channel</code> <em>object</em>{' '}
+</dt>
+<dd>Channel information object</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_user_info`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_user_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific user</dd>
+
+<dt>
+  <code>user</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>User ID to get information about</dd>
+
+<dt>
+  <code>include_locale</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include locale information in the response</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_user_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific user</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>user</code> <em>object</em>{' '}
+</dt>
+<dd>User information object</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_users`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_users'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all users in the Slack workspace</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of users to return (1-1000)</dd>
+
+<dt>
+  <code>cursor</code> <em>string</em>{' '}
+</dt>
+<dd>Cursor for pagination to get next set of results</dd>
+
+<dt>
+  <code>include_locale</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include locale information in the response</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_users'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all users in the Slack workspace</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>members</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of user objects</dd>
+
+<dt>
+  <code>response_metadata</code> <em>object</em>{' '}
+</dt>
+<dd>Metadata for pagination</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_conversation_history`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation_history'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Retrieve message history from a channel or direct message</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+</dd>
+
+<dt>
+  <code>latest</code> <em>string</em>{' '}
+</dt>
+<dd>End of time range of messages to include (timestamp)</dd>
+
+<dt>
+  <code>oldest</code> <em>string</em>{' '}
+</dt>
+<dd>Start of time range of messages to include (timestamp)</dd>
+
+<dt>
+  <code>inclusive</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include messages with latest or oldest timestamps in results</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of messages to return (1-1000)</dd>
+
+<dt>
+  <code>cursor</code> <em>string</em>{' '}
+</dt>
+<dd>Cursor for pagination to get next set of results</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation_history'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Retrieve message history from a channel or direct message</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>messages</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of message objects</dd>
+
+<dt>
+  <code>has_more</code> <em>boolean</em>{' '}
+</dt>
+<dd>Whether there are more messages to retrieve</dd>
+
+<dt>
+  <code>response_metadata</code> <em>object</em>{' '}
+</dt>
+<dd>Metadata for pagination</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_thread_replies`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_thread_replies'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Retrieve all replies to a thread in a channel</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Channel ID where the thread exists</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Timestamp of the parent message to get replies for</dd>
+
+<dt>
+  <code>latest</code> <em>string</em>{' '}
+</dt>
+<dd>End of time range of messages to include (timestamp)</dd>
+
+<dt>
+  <code>oldest</code> <em>string</em>{' '}
+</dt>
+<dd>Start of time range of messages to include (timestamp)</dd>
+
+<dt>
+  <code>inclusive</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include messages with latest or oldest timestamps in results</dd>
+
+<dt>
+  <code>limit</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of messages to return (1-1000)</dd>
+
+<dt>
+  <code>cursor</code> <em>string</em>{' '}
+</dt>
+<dd>Cursor for pagination to get next set of results</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_thread_replies'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Retrieve all replies to a thread in a channel</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>messages</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of message objects in the thread</dd>
+
+<dt>
+  <code>has_more</code> <em>boolean</em>{' '}
+</dt>
+<dd>Whether there are more messages to retrieve</dd>
+
+<dt>
+  <code>response_metadata</code> <em>object</em>{' '}
+</dt>
+<dd>Metadata for pagination</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing message in a channel</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+  where the message is located
+</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Timestamp of the message to update</dd>
+
+<dt>
+  <code>text</code> <em>string</em>{' '}
+</dt>
+<dd>New text content for the message</dd>
+
+<dt>
+  <code>attachments</code> <em>object[]</em>{' '}
+</dt>
+<dd>New legacy message attachments</dd>
+
+<dt>
+  <code>blocks</code> <em>object[]</em>{' '}
+</dt>
+<dd>New Block Kit structured message blocks</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing message in a channel</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+</dt>
+<dd>Channel ID where the message was updated</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+</dt>
+<dd>Timestamp of the updated message</dd>
+
+<dt>
+  <code>text</code> <em>string</em>{' '}
+</dt>
+<dd>Updated text content of the message</dd>
+
+<dt>
+  <code>message</code> <em>object</em>{' '}
+</dt>
+<dd>Details of the updated message</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a message from a channel</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+  where the message is located
+</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Timestamp of the message to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a message from a channel</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+</dt>
+<dd>Channel ID where the message was deleted</dd>
+
+<dt>
+  <code>ts</code> <em>string</em>{' '}
+</dt>
+<dd>Timestamp of the deleted message</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `add_reaction`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'add_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add an emoji reaction to a message</dd>
+
+<dt>
+  <code>name</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Emoji name without colons (e.g., thumbsup, heart)</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+  where the message is located
+</dd>
+
+<dt>
+  <code>timestamp</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Timestamp of the message to react to</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'add_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add an emoji reaction to a message</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `remove_reaction`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'remove_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Remove an emoji reaction from a message</dd>
+
+<dt>
+  <code>name</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Emoji name without colons (e.g., thumbsup, heart)</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890) or channel name (e.g., general or #general)
+  where the message is located
+</dd>
+
+<dt>
+  <code>timestamp</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Timestamp of the message to remove reaction from</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'remove_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Remove an emoji reaction from a message</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `upload_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'upload_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Upload a file to a Slack channel</dd>
+
+<dt>
+  <code>channel</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>
+  Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or
+  user ID for DM
+</dd>
+
+<dt>
+  <code>file_path</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Local file path to upload</dd>
+
+<dt>
+  <code>filename</code> <em>string</em>{' '}
+</dt>
+<dd>Override filename for the upload</dd>
+
+<dt>
+  <code>title</code> <em>string</em>{' '}
+</dt>
+<dd>Title for the file</dd>
+
+<dt>
+  <code>initial_comment</code> <em>string</em>{' '}
+</dt>
+<dd>Initial comment to post with the file</dd>
+
+<dt>
+  <code>thread_ts</code> <em>string</em>{' '}
+</dt>
+<dd>Timestamp of parent message to upload file in thread</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'upload_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Upload a file to a Slack channel</dd>
+
+<dt>
+  <code>ok</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the Slack API call was successful</dd>
+
+<dt>
+  <code>file</code> <em>object</em>{' '}
+</dt>
+<dd>File information object</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

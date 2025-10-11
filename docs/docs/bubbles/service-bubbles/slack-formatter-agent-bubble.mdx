@@ -1,0 +1,133 @@
+# Slack Formatter Agent Bubble
+
+AI agent for creating well-formatted Slack messages with adjustable verbosity and technicality
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { SlackFormatterAgentBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new SlackFormatterAgentBubble({
+  message: 'example',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>message</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The message or question to send to the AI agent</dd>
+
+<dt>
+  <code>verbosity</code> <em>'1' | '2' | '3' | '4' | '5'</em>{' '}
+</dt>
+<dd>
+  Response verbosity level (1-5): 1=concise bullet points, 5=comprehensive
+  explanations
+</dd>
+
+<dt>
+  <code>technicality</code> <em>'1' | '2' | '3' | '4' | '5'</em>{' '}
+</dt>
+<dd>Technical complexity level (1-5): 1=plain English, 5=expert terminology</dd>
+
+<dt>
+  <code>includeBlockKit</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include Slack Block Kit JSON for rich formatting</dd>
+
+<dt>
+  <code>includeQuery</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include the query that was executed in the response</dd>
+
+<dt>
+  <code>includeExplanation</code> <em>boolean</em>{' '}
+</dt>
+<dd>Include explanation of what the query does and why it was chosen</dd>
+
+<dt>
+  <code>model</code> <em>object</em>{' '}
+</dt>
+<dd>AI model configuration including provider, temperature, and tokens</dd>
+
+<dt>
+  <code>tools</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of tool bubbles the AI agent can use</dd>
+
+<dt>
+  <code>maxIterations</code> <em>number</em>{' '}
+</dt>
+<dd>Maximum number of iterations for the agent workflow</dd>
+
+<dt>
+  <code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em>{' '}
+</dt>
+<dd>Object mapping credential types to values (injected at runtime)</dd>
+
+  <dt><code>additionalContext</code> <em>string</em> </dt>
+  <dd>Additional context about how to answer the question</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>response</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The AI agents formatted response in Slack markdown</dd>
+
+<dt>
+  <code>blocks</code> <em>object[]</em>{' '}
+</dt>
+<dd>Slack Block Kit formatted blocks for rich message display</dd>
+
+<dt>
+  <code>metadata</code> <em>object</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Metadata about the formatting</dd>
+
+<dt>
+  <code>toolCalls</code> <em>object[]</em>{' '}
+</dt>
+<dd>Array of tool calls made during the conversation</dd>
+
+<dt>
+  <code>iterations</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Number of back-and-forth iterations in the agent workflow</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message of the run, undefined if successful</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the agent execution completed successfully</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

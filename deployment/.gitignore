@@ -1,0 +1,22 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Data volumes
+data/
+*.db
+
+# Certificates (for future use)
+letsencrypt/
+certbot-webroot/
+*.pem
+*.key
+
+# OS files
+.DS_Store
+Thumbs.db

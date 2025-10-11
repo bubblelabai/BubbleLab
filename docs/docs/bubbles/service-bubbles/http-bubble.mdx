@@ -1,0 +1,122 @@
+# Http Bubble
+
+Makes HTTP requests to external APIs and services
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { HttpBubble } from '@bubblelab/bubble-core';
+const result = await new HttpBubble({
+  url: 'https://api.github.com/repos/nodejs/node',
+  method: 'GET',
+  headers: { Accept: 'application/vnd.github+json' },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The URL to make the HTTP request to</dd>
+
+<dt>
+  <code>method</code>{' '}
+  <em>'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'</em>{' '}
+</dt>
+<dd>HTTP method to use (default: GET)</dd>
+
+<dt>
+  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
+</dt>
+<dd>HTTP headers to include in the request</dd>
+
+<dt>
+  <code>body</code> <em>unknown</em>{' '}
+</dt>
+<dd>Request body (string or JSON object)</dd>
+
+<dt>
+  <code>timeout</code> <em>number</em>{' '}
+</dt>
+<dd>Request timeout in milliseconds (default: 30000, max: 120000)</dd>
+
+<dt>
+  <code>followRedirects</code> <em>boolean</em>{' '}
+</dt>
+<dd>Whether to follow HTTP redirects (default: true)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Optional credentials for authentication (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>status</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>HTTP status code</dd>
+
+<dt>
+  <code>statusText</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>HTTP status text</dd>
+
+<dt>
+  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Response headers</dd>
+
+<dt>
+  <code>body</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Response body as string</dd>
+
+<dt>
+  <code>json</code> <em>unknown</em>{' '}
+</dt>
+<dd>Parsed JSON response (if applicable)</dd>
+
+<dt>
+  <code>success</code> <em>boolean</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Whether the request was successful (HTTP 2xx status codes)</dd>
+
+<dt>
+  <code>error</code> <em>string</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Error message if request failed</dd>
+
+<dt>
+  <code>responseTime</code> <em>number</em>{' '}
+  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
+</dt>
+<dd>Response time in milliseconds</dd>
+
+  <dt><code>size</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Response size in bytes</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>

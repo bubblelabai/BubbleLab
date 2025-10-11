@@ -1,0 +1,1 @@
+ALTER TABLE `user_credentials` ADD `metadata` text;

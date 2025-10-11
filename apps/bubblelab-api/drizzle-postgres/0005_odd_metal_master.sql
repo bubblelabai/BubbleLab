@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "app_type" text DEFAULT 'nodex' NOT NULL;

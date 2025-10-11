@@ -1,0 +1,27 @@
+FROM node:20-slim AS builder
+RUN corepack enable
+WORKDIR /workspace
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages ./packages/
+COPY apps/nodex-landing ./apps/nodex-landing/
+COPY tools ./tools/
+COPY .npmrc ./. 
+
+RUN pnpm install --frozen-lockfile
+
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+
+ARG NEXT_PUBLIC_DASHBOARD_URL
+ENV NEXT_PUBLIC_DASHBOARD_URL=${NEXT_PUBLIC_DASHBOARD_URL}
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+RUN cd packages/bubble-shared-schemas && pnpm run build
+RUN cd packages/bubble-core && pnpm run build
+RUN cd apps/nodex-landing && pnpm run build
+
+EXPOSE 3000
+CMD ["sh", "-c", "cd apps/nodex-landing && PORT=3000 pnpm start"]
