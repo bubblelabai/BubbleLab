@@ -927,6 +927,10 @@ function App() {
   };
   // Validate that all required, non-system credentials with available options are selected
   const isCredentialsSelectionValid = () => {
+
+    console.log('currentFlow', currentFlow);
+    console.log('pendingExecutionCredentials', pendingExecutionCredentials);
+    console.log('availableCredentials', availableCredentials);
     const required = currentFlow?.requiredCredentials || {};
     const requiredEntries = Object.entries(required) as Array<
       [string, string[]]
@@ -935,11 +939,8 @@ function App() {
 
     for (const [bubbleKey, credTypes] of requiredEntries) {
       for (const credType of credTypes) {
-        const hasAvailable = availableCredentials.some(
-          (c) => c.credentialType === credType
-        );
+
         if (isSystemCredential(credType as CredentialType)) continue; // system-managed
-        if (!hasAvailable) continue; // nothing to pick from
 
         const selectedForBubble = pendingExecutionCredentials[bubbleKey] || {};
         const selectedId = selectedForBubble[credType];
@@ -976,6 +977,7 @@ function App() {
     if (!isCredentialsSelectionValid()) {
       toast.error('Please select all required credentials before running.');
       console.groupEnd();
+      setIsRunning(false);
       return;
     }
 

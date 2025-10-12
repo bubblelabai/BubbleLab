@@ -331,29 +331,23 @@ export class BubbleInjector {
   }
 
   /**
-   * Inject statement logging using original line numbers for traceability
+   * Reapply bubble instantiations by normalizing them to single-line format
+   * and deleting old multi-line parameters. Processes bubbles in order and
+   * tracks line shifts to adjust subsequent bubble locations.
    */
-  private injectStatementLogging(
-    originalAST: any,
-    originalHandleMethodLocation: any
-  ) {
-    this.loggerInjector.injectLoggingWithOriginalLines(
-      originalAST,
-      originalHandleMethodLocation
-    );
-  }
-
   private reapplyBubbleInstantiations(bubbles: ParsedBubbleWithInfo[]): string {
     const lines = this.bubbleScript.currentBubbleScript.split('\n');
-
-    // Process bubbles in forward order and track line number shifts
+    console.log('Lines:', lines);
+    // Sort bubbles by start line to process in order
     const sortedBubbles = [...bubbles].sort(
       (a, b) => a.location.startLine - b.location.startLine
     );
 
+    // Track cumulative line shift as we delete lines
     let lineShift = 0;
+
     for (const bubble of sortedBubbles) {
-      // Adjust bubble location for previous replacements
+      // Adjust bubble location for deletions from previous bubbles
       const adjustedBubble = {
         ...bubble,
         location: {
@@ -363,16 +357,18 @@ export class BubbleInjector {
         },
       };
 
-      const originalLineCount = lines.length;
+      const linesBefore = lines.length;
       replaceBubbleInstantiation(lines, adjustedBubble);
-      const newLineCount = lines.length;
+      const linesAfter = lines.length;
 
-      // Track how many lines were added/removed
-      const lineChange = newLineCount - originalLineCount;
-      lineShift += lineChange;
+      // Update shift: negative means lines were deleted
+      const linesDeleted = linesBefore - linesAfter;
+      lineShift -= linesDeleted;
     }
 
     const finalScript = lines.join('\n');
+    console.log('Final script done!!!:', finalScript);
+
     this.bubbleScript.currentBubbleScript = finalScript;
     this.bubbleScript.reparseAST();
     return finalScript;
@@ -385,17 +381,19 @@ export class BubbleInjector {
   injectBubbleLoggingAndReinitializeBubbleParameters() {
     const parsedBubbles = this.bubbleScript.getParsedBubbles();
 
-    // Store original line numbers for traceability
-    const originalHandleMethodLocation =
-      this.bubbleScript.getHandleMethodLocation();
-    const originalAST = this.bubbleScript.getAST();
+    // Normalize to single-line instantiations and refresh AST
     this.reapplyBubbleInstantiations(Object.values(parsedBubbles));
-    // Now inject statement logging with original line numbers for traceability
-    this.injectStatementLogging(originalAST, originalHandleMethodLocation);
+
+    // Inject logging based on the current AST/locations to avoid placement inside params
+    this.loggerInjector.injectLogging();
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */
-  changeBubbleParameters(bubbleId: number, key: string, value: unknown) {
+  changeBubbleParameters(
+    bubbleId: number,
+    key: string,
+    value: string | number | boolean | Record<string, unknown> | unknown[]
+  ) {
     // Find the bubble class in the bubble script
     const parameters = this.getBubble(bubbleId).parameters;
     if (!parameters) {

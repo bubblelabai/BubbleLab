@@ -48,7 +48,7 @@ export const BUBBLE_NAMES_WITH_CONTEXT_INJECTION = [
 export interface BubbleParameter {
   variableId?: number;
   name: string;
-  value: unknown; // Raw string representation of the value
+  value: string | number | boolean | Record<string, unknown> | unknown[]; // Raw string representation of the value
   type: BubbleParameterType;
 }
 
@@ -108,9 +108,20 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
 export const BubbleParameterTypeSchema = z.nativeEnum(BubbleParameterType);
 
 export const BubbleParameterSchema = z.object({
-  variableId: z.number().optional(),
-  name: z.string(),
-  value: z.unknown(),
+  variableId: z
+    .number()
+    .optional()
+    .describe('The variable id of the parameter'),
+  name: z.string().describe('The name of the parameter'),
+  value: z
+    .union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.record(z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .describe('The value of the parameter'),
   type: BubbleParameterTypeSchema,
 });
 

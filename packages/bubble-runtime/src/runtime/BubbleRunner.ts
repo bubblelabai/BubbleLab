@@ -344,7 +344,14 @@ export class BubbleRunner {
   }
 
   getParsedBubbles(): Record<string, ParsedBubbleWithInfo> {
-    return this.bubbleScript.getParsedBubbles();
+    return this.bubbleScript.getOriginalParsedBubbles();
+  }
+
+  /**
+   * Get the ORIGINAL parsed bubbles (locations from the initial script before any rewrites)
+   */
+  getOriginalParsedBubbles(): Record<number, ParsedBubbleWithInfo> {
+    return this.bubbleScript.getOriginalParsedBubbles();
   }
 
   getVariables() {

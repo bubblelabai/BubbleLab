@@ -12,6 +12,7 @@ describe('BubbleRunner correctly runs and plans', () => {
   const helloWorldMultipleScript = getFixture('hello-world-multiple');
   const researchWeatherScript = getFixture('research-weather');
   const simpleHttpScript = getFixture('simple-http');
+  const helloWorldNoPayloadScript = getFixture('hello-world-no-payload');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -194,8 +195,65 @@ describe('BubbleRunner correctly runs and plans', () => {
       const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
       const result = await runner.runAll();
       console.log(result);
+      console.log('Logs:', runner.getLogger()?.getLogs());
       expect(result).toBeDefined();
+      expect(result.success).toBe(true);
     });
+    it('should execute a webhook flow with no payload', async () => {
+      const testWebhookScript = getFixture('hello-world-no-payload');
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const result = await runner.runAll();
+      console.log(result);
+      console.log('Logs:', runner.getLogger()?.getLogs());
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+
+    it('should execute a flow with multiple bubble instantiations (multi-line params) and preserve structure', async () => {
+      const testScript = getFixture('hello-world-multiple');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+
+      const code = runner.bubbleScript.bubblescript;
+      // Should have exactly the same number of instantiations as source (1 var + 2 anonymous + 1 in loop body)
+      const occurrences = (code.match(/new\s+HelloWorldBubble\(/g) || []).length;
+      expect(occurrences).toBe(4);
+      // No stray duplicated parameter lines like a standalone "{ name: 'World' }" after replacement
+      expect(code).not.toMatch(/^\s*\{\s*name:\s*'World'\s*\}\s*$/m);
+    });
+    it('should execute a webhook flow with multi-line parameters', async () => {
+      const testWebhookScript = getFixture('hello-world-multi-line-para');
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const result = await runner.runAll();
+      console.log(result);
+      console.log('Logs:', runner.getLogger()?.getLogs());
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+
+    it('should run reddit-lead-finder flow', async () => {
+      const testScript = getFixture('reddit-lead-finder');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+
+      const bubbles = runner.getParsedBubbles();
+      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      const result = await runner.runAll({
+        spreadsheetId: '1234567890',
+        subreddit: 'n8n',
+        limit: 10,
+      });
+
+      console.log(result);
+      expect(result).toBeDefined();
+      expect(
+        result.error?.includes('Google Sheets API error') || result.success === false
+      ).toBe(true);
+      console.log('Logs:', runner.getLogger()?.getLogs());
+    });
+
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
       const bubbles = runner.getParsedBubbles();

@@ -202,7 +202,10 @@ function extractFromNewExpression(
 function extractParameterValue(
   expression: ts.Expression,
   sourceFile: ts.SourceFile
-): { value: unknown; type: BubbleParameterType } {
+): {
+  value: string | number | boolean | Record<string, unknown> | unknown[];
+  type: BubbleParameterType;
+} {
   const valueText = expression.getText(sourceFile);
 
   // process.env detection (with or without non-null)

@@ -26,8 +26,6 @@ interface BubbleNodeData {
   onHighlightChange?: () => void;
   onBubbleClick?: () => void;
   hasMissingRequirements?: boolean;
-  hasMissingCredentials?: boolean;
-  hasMissingInputs?: boolean;
   // Credentials props for this bubble
   requiredCredentialTypes?: string[];
   availableCredentials?: CredentialResponse[];
@@ -38,23 +36,6 @@ interface BubbleNodeData {
   ) => void;
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
-  // Entry bubble input/execute props
-  isEntryBubble?: boolean;
-  inputFlowName?: string;
-  inputSchema?: string;
-  onInputsChange?: (inputs: Record<string, unknown>) => void;
-  onExecuteFlow?: () => void;
-  isExecuting?: boolean;
-  isFormValid?: boolean;
-  // Inline inputs per field
-  inputSchemaFields?: Array<{
-    name: string;
-    type?: string;
-    required?: boolean;
-    description?: string;
-  }>;
-  executionInputs?: Record<string, unknown>;
-  onExecutionInputChange?: (fieldName: string, value: unknown) => void;
   hasSubBubbles?: boolean;
   areSubBubblesVisible?: boolean;
   onToggleSubBubbles?: () => void;
@@ -73,17 +54,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onHighlightChange,
     onBubbleClick,
     hasMissingRequirements = false,
-    hasMissingCredentials = false,
-    hasMissingInputs = false,
     requiredCredentialTypes = [],
     availableCredentials = [],
     selectedBubbleCredentials = {},
     onCredentialSelectionChange,
-    isEntryBubble = false,
-    inputSchema,
-    inputSchemaFields = [],
-    executionInputs = {},
-    onExecutionInputChange,
     hasSubBubbles = false,
     areSubBubblesVisible = false,
     onToggleSubBubbles,
@@ -224,7 +198,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
             {!hasError && hasMissingRequirements && (
               <div className="flex-shrink-0">
                 <div
-                  title={`${hasMissingInputs ? 'Missing inputs' : ''}${hasMissingInputs && hasMissingCredentials ? ' • ' : ''}${hasMissingCredentials ? 'Missing credentials' : ''}`}
+                  title="Missing credentials"
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-600/40"
                 >
                   <span>⚠️</span>
@@ -401,76 +375,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   </button>
                 )}
               </div>
-              <div className="space-y-1">
-                {(() => {
-                  // Only show editable input if type is 'variable' or 'expression' AND value references a schema field
-                  const isVariableOrExpression =
-                    param.type === 'variable' || param.type === 'expression';
-                  const valueStr =
-                    typeof param.value === 'string' ? param.value : '';
-
-                  // Extract field name from value (e.g., ${email} -> email or payload.email -> email)
-                  const fieldNameMatch =
-                    valueStr.match(/\$\{(\w+)\}/) ||
-                    valueStr.match(/payload\.(\w+)/);
-                  const referencedFieldName = fieldNameMatch
-                    ? fieldNameMatch[1]
-                    : '';
-
-                  // Check if this field exists in the input schema
-                  const field = inputSchemaFields.find(
-                    (f) => f.name === referencedFieldName
-                  );
-
-                  // Show editable input only if it's variable/expression type AND references a valid schema field
-                  if (isVariableOrExpression && field) {
-                    const isNumber = field.type === 'number';
-                    const currentValue = executionInputs[
-                      referencedFieldName
-                    ] as string | number | undefined;
-
-                    return (
-                      <div className="space-y-1">
-                        {field.description && (
-                          <p className="text-[10px] text-neutral-400">
-                            {field.description}
-                          </p>
-                        )}
-                        <input
-                          type={isNumber ? 'number' : 'text'}
-                          value={
-                            typeof currentValue === 'string' ||
-                            typeof currentValue === 'number'
-                              ? currentValue
-                              : ''
-                          }
-                          onChange={(e) =>
-                            onExecutionInputChange?.(
-                              referencedFieldName,
-                              isNumber
-                                ? e.target.value
-                                  ? Number(e.target.value)
-                                  : ''
-                                : e.target.value
-                            )
-                          }
-                          placeholder={
-                            field.description ||
-                            `Enter ${referencedFieldName}...`
-                          }
-                          className="w-full px-2 py-1 text-xs bg-neutral-900 border border-neutral-600 rounded text-neutral-100"
-                        />
-                      </div>
-                    );
-                  }
-
-                  // Default: just display the value as read-only
-                  return (
-                    <div className="px-2 py-1 text-xs bg-neutral-900 border border-neutral-600 rounded text-neutral-300">
-                      {formatValue(param.value)}
-                    </div>
-                  );
-                })()}
+              {/* Display parameter value as read-only */}
+              <div className="px-2 py-1 text-xs bg-neutral-900 border border-neutral-600 rounded text-neutral-300">
+                {formatValue(param.value)}
               </div>
             </div>
           ))}
@@ -487,61 +394,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Entry bubble inputs and execute controls */}
-      {isEntryBubble && inputSchema && (
-        <div className="p-4 border-t border-neutral-600 bg-neutral-900">
-          <div className="text-xs text-neutral-400 mb-2">Inputs</div>
-          {inputSchemaFields && inputSchemaFields.length === 0 && (
-            <div className="text-xs text-neutral-400">No input parameters</div>
-          )}
-          <div className="space-y-2">
-            {inputSchemaFields?.map((field) => {
-              const isNumber = field.type === 'number';
-              const currentValue = executionInputs?.[field.name] as
-                | string
-                | number
-                | undefined;
-              return (
-                <div key={field.name} className={`space-y-1`}>
-                  <label className="block text-[11px] text-neutral-300">
-                    {field.name}
-                    {field.required && (
-                      <span className="text-red-400 ml-1">*</span>
-                    )}
-                  </label>
-                  {field.description && (
-                    <div className="text-[10px] text-neutral-500">
-                      {field.description}
-                    </div>
-                  )}
-                  <input
-                    type={isNumber ? 'number' : 'text'}
-                    value={
-                      typeof currentValue === 'string' ||
-                      typeof currentValue === 'number'
-                        ? currentValue
-                        : ''
-                    }
-                    onChange={(e) =>
-                      onExecutionInputChange?.(
-                        field.name,
-                        isNumber
-                          ? e.target.value
-                            ? Number(e.target.value)
-                            : ''
-                          : e.target.value
-                      )
-                    }
-                    placeholder={field.description || `Enter ${field.name}...`}
-                    className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${field.required && (currentValue === undefined || currentValue === '') ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
-                  />
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 

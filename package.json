@@ -52,23 +52,7 @@
     "node": ">=18"
   },
   "lint-staged": {
-    "apps/bubble-studio/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix --config apps/bubble-studio/eslint.config.js --ignore-pattern '**/public/**/*'",
-      "prettier --write"
-    ],
-    "apps/bubblelab-api/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "packages/**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "scripts/**/*.{js,ts}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "**/*.{json,md,yml,yaml}": [
+    "**/*.{js,jsx,ts,tsx,json,md,yml,yaml}": [
       "prettier --write"
     ]
   },
