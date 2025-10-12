@@ -283,9 +283,6 @@ export async function injectCredentials(
     for (const [varName, sources] of Object.entries(injectedCredentials)) {
       console.debug(`  ${varName}: ${sources}`);
     }
-    console.debug('');
-
-    console.log(reconstructResult.code);
 
     return {
       success: true,

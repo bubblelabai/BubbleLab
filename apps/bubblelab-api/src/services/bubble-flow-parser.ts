@@ -471,7 +471,6 @@ export async function reconstructBubbleFlow(
             classNameLookup,
             new Set() // Empty set for reconstruction, we don't track errors here
           );
-          console.log('bubbleInfo', bubbleInfo);
           if (bubbleInfo) {
             // Validate bubble name matches
             if (bubbleInfo.bubbleName !== newBubbleParams.bubbleName) {
@@ -523,7 +522,6 @@ export async function reconstructBubbleFlow(
             ) {
               // Mark this anonymous bubble as used
               usedAnonymousBubbles.add(paramKey);
-              console.log('FOUND ANONYMOUS BUBBLE', bubbleParam);
 
               // Generate new bubble instantiation
               const newInstantiation = generateBubbleInstantiation(bubbleParam);
@@ -607,8 +605,6 @@ function generateBubbleInstantiation(bubble: ParsedBubble): string {
 
     return `${param.name}: ${valueStr}`;
   });
-
-  console.log('paramStrings', paramStrings);
 
   const hasParams = bubble.parameters.length > 0;
   const paramsString = hasParams ? `{\n  ${paramStrings.join(',\n  ')}\n}` : '';
