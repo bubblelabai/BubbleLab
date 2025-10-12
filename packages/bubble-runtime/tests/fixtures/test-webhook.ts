@@ -24,7 +24,7 @@ import {
         message:`User has name of ${name} and age of ${age}`,
         systemPrompt: "Say greeting to user"
      });
-      let resp = await agent.action();
+      const resp = await agent.action();
       return {
         message: `Successfully added ${JSON.stringify(resp)}`,
         newContactsAdded: 0
