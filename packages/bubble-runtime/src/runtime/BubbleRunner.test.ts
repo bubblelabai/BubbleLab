@@ -124,7 +124,7 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
   });
 
-  describe('Execution', () => {
+  describe('Simple Execution', () => {
     it('should execute a simple bubble flow', async () => {
       const runner = new BubbleRunner(helloWorldScript, bubbleFactory);
       const result = await runner.runAll();
@@ -189,7 +189,7 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
   });
 
-  describe('Webhook Execution', () => {
+  describe('Execution With Edge Cases', () => {
     it('should execute a webhook flow', async () => {
       const testWebhookScript = getFixture('test-webhook');
       const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
@@ -235,8 +235,15 @@ describe('BubbleRunner correctly runs and plans', () => {
     it('should execute a flow with a starter flow', async () => {
       const testScript = getFixture('starter-flow');
       const runner = new BubbleRunner(testScript, bubbleFactory);
+      runner.injector.injectCredentials(
+        runner.getParsedBubbles(),
+        [],
+        getUserCredential()
+      );
       const result = await runner.runAll();
       expect(result).toBeDefined();
+      console.log(result);
+      console.log('Logs:', runner.getLogger()?.getLogs());
       expect(result.success).toBe(true);
     });
 
@@ -265,7 +272,8 @@ describe('BubbleRunner correctly runs and plans', () => {
       const testScript = getFixture('para-with-comment');
       const runner = new BubbleRunner(testScript, bubbleFactory);
       const result = await runner.runAll();
-      console.log(result);
+      // inject credentials
+      const bubbles = runner.getParsedBubbles();
       console.log('Logs:', runner.getLogger()?.getLogs());
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
