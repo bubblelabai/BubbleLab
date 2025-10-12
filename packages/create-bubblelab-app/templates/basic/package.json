@@ -13,7 +13,7 @@
   "dependencies": {
     "@bubblelab/bubble-core": "^0.1.8",
     "@bubblelab/bubble-runtime": "^0.1.11",
-    "@bubblelab/bubble-shared-schemas": "^0.1.8"
+    "@bubblelab/shared-schemas": "^0.1.8"
   },
   "devDependencies": {
     "@types/node": "^20.12.12",
