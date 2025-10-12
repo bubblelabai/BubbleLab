@@ -28,6 +28,7 @@ export const fixtures = {
   'hello-world-no-payload': '',
   'hello-world-multi-line-para': '',
   yfinance: '',
+  'techweek-scrape': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

@@ -56,7 +56,16 @@ export class BubbleLogger {
   private startTime: number;
   private lastLogTime: number;
   private executionId: string;
-  private lineTimings: Map<number, number[]> = new Map();
+  private lineTimings: Map<
+    number,
+    {
+      min: number;
+      max: number;
+      sum: number;
+      count: number;
+    }
+  > = new Map();
+  private lineLogCounts: Map<number, number> = new Map();
   private peakMemoryUsage?: NodeJS.MemoryUsage;
   private buffer: LogEntry[] = [];
   private flushTimer?: NodeJS.Timeout;
@@ -95,28 +104,58 @@ export class BubbleLogger {
 
   /**
    * Log execution at a specific line with timing information
+   * Returns the message for backward compatibility, use shouldLogLine() to check if logging occurred
    */
   logLine(
     lineNumber: number,
     message: string,
     additionalData?: Record<string, unknown>
   ): string {
-    this.log(LogLevel.INFO, message, {
-      lineNumber,
-      operationType: 'script',
-      additionalData,
-    });
+    const MAX_LOGS_PER_LINE = 5;
 
-    // Track line execution timing
+    // Track how many times this line has been logged
+    const logCount = this.lineLogCounts.get(lineNumber) ?? 0;
+
+    // Only log if under the limit
+    if (logCount < MAX_LOGS_PER_LINE) {
+      this.log(LogLevel.INFO, message, {
+        lineNumber,
+        operationType: 'script',
+        additionalData,
+      });
+      this.lineLogCounts.set(lineNumber, logCount + 1);
+    }
+
+    // Track line execution timing (always track, even if not logging)
     const now = Date.now();
     const duration = now - this.lastLogTime;
 
-    if (!this.lineTimings.has(lineNumber)) {
-      this.lineTimings.set(lineNumber, []);
+    // Update timing statistics for this line
+    const stats = this.lineTimings.get(lineNumber);
+    if (!stats) {
+      this.lineTimings.set(lineNumber, {
+        min: duration,
+        max: duration,
+        sum: duration,
+        count: 1,
+      });
+    } else {
+      stats.min = Math.min(stats.min, duration);
+      stats.max = Math.max(stats.max, duration);
+      stats.sum += duration;
+      stats.count++;
     }
-    this.lineTimings.get(lineNumber)!.push(duration);
 
     return message;
+  }
+
+  /**
+   * Check if a line should be logged (hasn't exceeded the limit)
+   */
+  protected shouldLogLine(lineNumber: number): boolean {
+    const MAX_LOGS_PER_LINE = 5;
+    const logCount = this.lineLogCounts.get(lineNumber) ?? 0;
+    return logCount < MAX_LOGS_PER_LINE;
   }
 
   /**
@@ -513,6 +552,7 @@ export class BubbleLogger {
 
     const endTime = Date.now();
     const totalDuration = endTime - this.startTime;
+    const MAX_LOG_ENTRIES = 1000;
 
     const errorLogs = this.logs.filter((log) => log.level >= LogLevel.ERROR);
     const warningLogs = this.logs.filter((log) => log.level === LogLevel.WARN);
@@ -520,25 +560,28 @@ export class BubbleLogger {
       (log) => log.metadata.lineNumber !== undefined
     );
 
-    // Calculate average line execution time
-    const lineExecutionTimes: number[] = [];
-    for (const timings of this.lineTimings.values()) {
-      lineExecutionTimes.push(...timings);
-    }
-    const averageLineExecutionTime =
-      lineExecutionTimes.length > 0
-        ? lineExecutionTimes.reduce((a, b) => a + b, 0) /
-          lineExecutionTimes.length
-        : 0;
+    // Calculate average line execution time from statistics
+    let totalExecutionTime = 0;
+    let totalExecutionCount = 0;
 
-    // Find slowest lines
+    for (const stats of this.lineTimings.values()) {
+      totalExecutionTime += stats.sum;
+      totalExecutionCount += stats.count;
+    }
+
+    const averageLineExecutionTime =
+      totalExecutionCount > 0 ? totalExecutionTime / totalExecutionCount : 0;
+    // Find slowest lines using max from statistics
     const slowestLines: Array<{
       lineNumber: number;
       duration: number;
       message: string;
     }> = [];
-    for (const [lineNumber, timings] of this.lineTimings.entries()) {
-      const maxDuration = Math.max(...timings);
+
+    for (const [lineNumber, stats] of this.lineTimings.entries()) {
+      if (slowestLines.length >= MAX_LOG_ENTRIES) break;
+
+      const maxDuration = stats.max;
       const logEntry = this.logs.find(
         (log) =>
           log.metadata.lineNumber === lineNumber && log.duration === maxDuration

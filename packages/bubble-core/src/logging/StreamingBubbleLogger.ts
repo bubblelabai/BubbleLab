@@ -35,19 +35,24 @@ export class StreamingBubbleLogger extends BubbleLogger {
     message: string,
     additionalData?: Record<string, unknown>
   ): string {
+    // Check if this line should be logged before emitting
+    const shouldLog = this.shouldLogLine(lineNumber);
+
     // Call parent method to maintain existing functionality and get the message
     const logMessage = super.logLine(lineNumber, message, additionalData);
 
-    // Emit streaming event using the returned message
-    this.emitStreamEvent({
-      type: 'log_line',
-      timestamp: new Date().toISOString(),
-      lineNumber,
-      message: logMessage,
-      additionalData,
-      executionTime: this.getCurrentExecutionTime(),
-      memoryUsage: this.getCurrentMemoryUsage(),
-    });
+    // Only emit streaming event if the line was actually logged
+    if (shouldLog) {
+      this.emitStreamEvent({
+        type: 'log_line',
+        timestamp: new Date().toISOString(),
+        lineNumber,
+        message: logMessage,
+        additionalData,
+        executionTime: this.getCurrentExecutionTime(),
+        memoryUsage: this.getCurrentMemoryUsage(),
+      });
+    }
 
     return logMessage;
   }
