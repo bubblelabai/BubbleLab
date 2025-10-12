@@ -165,3 +165,5 @@ dist/
 **/output/*.webp
 **/output/*.heic
 **/output/*.heif
+
+**/private_apps/** 

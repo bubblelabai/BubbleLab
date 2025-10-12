@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
+    "dev": "bun run src/index.ts",
+    "dev:hot": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts --outdir=dist --target=bun",
     "start": "bun run src/index.js",
     "lint": "eslint src/**/*.ts",

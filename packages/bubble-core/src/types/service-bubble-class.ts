@@ -45,6 +45,13 @@ export abstract class ServiceBubble<
     return sanitized as Omit<TParams, 'credentials'>;
   }
 
+  setParam<K extends keyof TParams>(
+    paramName: K,
+    paramValue: TParams[K]
+  ): void {
+    this.params[paramName] = paramValue;
+  }
+
   /**
    * Get the current context
    */

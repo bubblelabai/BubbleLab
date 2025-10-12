@@ -460,8 +460,10 @@ export async function reconstructBubbleFlow(
       // Look for variable declarations with bubble instantiations
       if (ts.isVariableDeclaration(node) && node.initializer) {
         const variableName = node.name.getText(sourceFile);
-        const newBubbleParams = bubbleParameters[variableName];
-
+        const param_by_id = Object.values(bubbleParameters).find(
+          (param) => param.variableName === variableName
+        );
+        const newBubbleParams = bubbleParameters[variableName] || param_by_id;
         if (newBubbleParams) {
           const bubbleInfo = extractBubbleFromExpression(
             node.initializer,
@@ -469,6 +471,7 @@ export async function reconstructBubbleFlow(
             classNameLookup,
             new Set() // Empty set for reconstruction, we don't track errors here
           );
+          console.log('bubbleInfo', bubbleInfo);
           if (bubbleInfo) {
             // Validate bubble name matches
             if (bubbleInfo.bubbleName !== newBubbleParams.bubbleName) {
@@ -513,13 +516,15 @@ export async function reconstructBubbleFlow(
             bubbleParameters
           )) {
             if (
-              paramKey.startsWith('_anonymous_') &&
-              !usedAnonymousBubbles.has(paramKey) &&
-              bubbleParam.bubbleName === bubbleInfo.bubbleName &&
-              bubbleParam.className === bubbleInfo.className
+              paramKey.startsWith('_anonymous_') ||
+              (Number(paramKey) < 0 &&
+                !usedAnonymousBubbles.has(paramKey) &&
+                bubbleParam.bubbleName === bubbleInfo.bubbleName &&
+                bubbleParam.className === bubbleInfo.className)
             ) {
               // Mark this anonymous bubble as used
               usedAnonymousBubbles.add(paramKey);
+              console.log('FOUND ANONYMOUS BUBBLE', bubbleParam);
 
               // Generate new bubble instantiation
               const newInstantiation = generateBubbleInstantiation(bubbleParam);
@@ -568,13 +573,10 @@ export async function reconstructBubbleFlow(
 
 function generateBubbleInstantiation(bubble: ParsedBubble): string {
   const paramStrings = bubble.parameters.map((param) => {
-    // Handle case where value might be an object (like credentials)
-    const valueStr =
-      typeof param.value === 'string'
-        ? param.value
-        : JSON.stringify(param.value);
-    return `${param.name}: ${valueStr}`;
+    return `${param.name}: ${param.value}`;
   });
+
+  console.log('paramStrings', paramStrings);
 
   const hasParams = bubble.parameters.length > 0;
   const paramsString = hasParams ? `{\n  ${paramStrings.join(',\n  ')}\n}` : '';

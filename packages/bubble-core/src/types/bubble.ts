@@ -33,14 +33,17 @@ export interface IBubble<
 
 // Service Bubble - API integrations like Gmail, Slack
 export interface IServiceBubble<
+  TParams extends Record<string, unknown> = Record<string, unknown>,
   TResult extends BubbleOperationResult = BubbleOperationResult,
 > extends IBubble<TResult> {
   readonly type: 'service';
   authType?: 'oauth' | 'apikey' | 'none' | 'connection-string';
   // Test the credential by making a test API call
   testCredential: () => Promise<boolean>;
-  setCredentials: (credentials: Record<string, string>) => void;
-  setParam: (paramName: string, paramValue: unknown) => void;
+  setParam: <K extends keyof TParams>(
+    paramName: K,
+    paramValue: TParams[K]
+  ) => void;
   getCredentialMetadata: () => Promise<DatabaseMetadata | undefined>;
 }
 
