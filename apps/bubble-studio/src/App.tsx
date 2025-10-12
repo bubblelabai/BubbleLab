@@ -939,9 +939,7 @@ function App() {
 
     for (const [bubbleKey, credTypes] of requiredEntries) {
       for (const credType of credTypes) {
-        const hasAvailable = availableCredentials.some(
-          (c) => c.credentialType === credType
-        );
+
         if (isSystemCredential(credType as CredentialType)) continue; // system-managed
 
         const selectedForBubble = pendingExecutionCredentials[bubbleKey] || {};

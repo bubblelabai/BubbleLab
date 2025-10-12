@@ -26,7 +26,6 @@ interface BubbleNodeData {
   onHighlightChange?: () => void;
   onBubbleClick?: () => void;
   hasMissingRequirements?: boolean;
-  hasMissingCredentials?: boolean;
   // Credentials props for this bubble
   requiredCredentialTypes?: string[];
   availableCredentials?: CredentialResponse[];
@@ -55,7 +54,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onHighlightChange,
     onBubbleClick,
     hasMissingRequirements = false,
-    hasMissingCredentials = false,
     requiredCredentialTypes = [],
     availableCredentials = [],
     selectedBubbleCredentials = {},
