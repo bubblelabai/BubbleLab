@@ -23,6 +23,8 @@ export const fixtures = {
   'data-assistant': '',
   'research-agent': '',
   'research-weather': '',
+  'simple-http': '',
+  'test-webhook': '',
   yfinance: '',
 } as const;
 

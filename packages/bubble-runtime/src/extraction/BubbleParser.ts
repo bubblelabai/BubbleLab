@@ -1223,7 +1223,8 @@ export class BubbleParser {
     // Literals and structured
     if (expression.type === 'Literal') {
       if (typeof expression.value === 'string') {
-        return { value: valueText, type: BubbleParameterType.STRING };
+        // Use expression.value to get the actual string without quotes
+        return { value: expression.value, type: BubbleParameterType.STRING };
       }
       if (typeof expression.value === 'number') {
         return { value: valueText, type: BubbleParameterType.NUMBER };

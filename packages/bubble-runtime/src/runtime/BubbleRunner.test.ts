@@ -1,5 +1,5 @@
 import { BubbleRunner } from './BubbleRunner';
-import { getFixture } from '../../tests/fixtures/index.js';
+import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
 import { BubbleFactory } from '@bubblelab/bubble-core';
 import { BubbleInjector } from '../injection/BubbleInjector';
 
@@ -10,6 +10,8 @@ describe('BubbleRunner correctly runs and plans', () => {
   const multipleActionCallsScript = getFixture('mulitple-action-calls');
   const helloWorldScript = getFixture('hello-world');
   const helloWorldMultipleScript = getFixture('hello-world-multiple');
+  const researchWeatherScript = getFixture('research-weather');
+  const simpleHttpScript = getFixture('simple-http');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -131,13 +133,24 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
     });
     it('should execute multiple bubble flows', async () => {
-      const runner = new BubbleRunner(helloWorldMultipleScript, bubbleFactory);
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
+      const result = await runner.runAll({
+        url: 'https://example.com',
+      });
+      console.log(runner.getLogger()?.getExecutionSummary());
+      console.log(runner.getLogger()?.getLogs());
+      console.log(result);
+      expect(result.success).toBe(true);
+    }, 300000); // 5 minutes timeout
+
+    it('should execute a simple http bubble flow', async () => {
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
       console.log(result);
       expect(result).toBeDefined();
-    }, 300000); // 5 minutes timeout
+    });
 
     it('should inject logger and modify bubble parameters', async () => {
       const runner = new BubbleRunner(helloWorldScript, bubbleFactory);
@@ -173,5 +186,35 @@ describe('BubbleRunner correctly runs and plans', () => {
 
       expect(result).toBeDefined();
     });
+  });
+
+  describe('Webhook Execution', () => {
+    it('should execute a webhook flow', async () => {
+      const testWebhookScript = getFixture('test-webhook');
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const result = await runner.runAll();
+      console.log(result);
+      expect(result).toBeDefined();
+    });
+    it('should inject logger with credentials and modify bubble parameters', async () => {
+      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
+      const bubbles = runner.getParsedBubbles();
+      const bubbleIds = Object.keys(bubbles).map(Number);
+      expect(bubbleIds.length).toBeGreaterThan(0);
+      const city = 'New York';
+      runner.injector.changeBubbleParameters(
+        bubbleIds[0],
+        'message',
+        `What is the weather in ${city}? Find info from web.`
+      );
+      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      console.log('Final script:', runner.bubbleScript.bubblescript);
+      const result = await runner.runAll();    
+      expect(result).toBeDefined();
+      const logger = runner.getLogger();
+      console.log('Logger:', logger?.getLogs());
+      expect(result.success).toBe(true);
+      
+    }, 300000); // 5 minutes timeout
   });
 });
