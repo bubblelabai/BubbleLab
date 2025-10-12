@@ -330,7 +330,6 @@ export class BubbleInjector {
     return bubbleClass;
   }
 
-
   /**
    * Reapply bubble instantiations by normalizing them to single-line format
    * and deleting old multi-line parameters. Processes bubbles in order and
@@ -346,7 +345,7 @@ export class BubbleInjector {
 
     // Track cumulative line shift as we delete lines
     let lineShift = 0;
-    
+
     for (const bubble of sortedBubbles) {
       // Adjust bubble location for deletions from previous bubbles
       const adjustedBubble = {
@@ -357,7 +356,7 @@ export class BubbleInjector {
           endLine: bubble.location.endLine + lineShift,
         },
       };
-      
+
       const linesBefore = lines.length;
       replaceBubbleInstantiation(lines, adjustedBubble);
       const linesAfter = lines.length;
@@ -366,7 +365,6 @@ export class BubbleInjector {
       const linesDeleted = linesBefore - linesAfter;
       lineShift -= linesDeleted;
     }
-
 
     const finalScript = lines.join('\n');
     console.log('Final script done!!!:', finalScript);
@@ -391,7 +389,11 @@ export class BubbleInjector {
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */
-  changeBubbleParameters(bubbleId: number, key: string, value: unknown) {
+  changeBubbleParameters(
+    bubbleId: number,
+    key: string,
+    value: string | number | boolean | Record<string, unknown> | unknown[]
+  ) {
     // Find the bubble class in the bubble script
     const parameters = this.getBubble(bubbleId).parameters;
     if (!parameters) {

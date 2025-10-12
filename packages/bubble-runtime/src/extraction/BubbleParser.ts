@@ -1180,7 +1180,7 @@ export class BubbleParser {
    * Extract parameter value and type from an expression
    */
   private extractParameterValue(expression: TSESTree.Expression): {
-    value: unknown;
+    value: string | number | boolean | Record<string, unknown> | unknown[];
     type: BubbleParameterType;
   } {
     const valueText = this.bubbleScript.substring(
