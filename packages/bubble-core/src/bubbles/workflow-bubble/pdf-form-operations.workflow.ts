@@ -1093,14 +1093,10 @@ Example: **[25]** for field ID 25, or [x] **[42]** for a checked checkbox with I
                 temperature: 0.3,
                 jsonMode: false,
               },
+              credentials: this.params.credentials,
             },
             this.context
           );
-
-          // Set credentials from the workflow context if available
-          if (this.params.credentials) {
-            aiAgent.setCredentials(this.params.credentials);
-          }
 
           const aiResult = await aiAgent.action();
 

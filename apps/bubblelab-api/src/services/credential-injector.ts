@@ -103,27 +103,11 @@ export async function injectCredentials(
         const envName = CREDENTIAL_ENV_MAP[credentialType];
         const envValue = process.env[envName];
 
-        console.log(
-          `🔍 [CredentialInjector] Checking ${credentialType} -> ${envName} = ${envValue ? '[SET]' : '[NOT SET]'}`
-        );
-
         if (envValue) {
           credentialMapping[credentialType] = escapeString(envValue);
           credentialSources.push(`${credentialType}:system`);
         }
       }
-
-      // Gather all user credentials for this bubble (these override matching credential types)
-      console.log(
-        `🔍 [CredentialInjector] Looking for user credentials for bubble: ${varName}`
-      );
-      console.log(
-        `🔍 [CredentialInjector] All user credentials:`,
-        userCredentials.map((uc) => ({
-          bubbleVarName: uc.bubbleVarName,
-          credentialType: uc.credentialType,
-        }))
-      );
 
       const userCreds = userCredentials.filter(
         (uc) => uc.bubbleVarName === varName
@@ -143,15 +127,11 @@ export async function injectCredentials(
 
         if (allCredentialOptions.includes(userCredType)) {
           // Check if this is an OAuth credential
-          console.log(
-            `🔍 [CredentialInjector] Checking if ${userCredType} is an OAuth credential`
-          );
           if (isOAuthCredential(userCredType)) {
             try {
               console.log(
                 `🔍 [CredentialInjector] Getting OAuth token for ${userCredType}, credential ID: ${userCred.credentialId}`
               );
-
               // Get valid OAuth token (automatically refreshes if needed)
               const oauthToken = await oauthService.getValidToken(
                 userCred.credentialId!
@@ -273,12 +253,6 @@ export async function injectCredentials(
               },
             ],
           };
-
-          console.log(
-            `[CredentialInjector] Injected metadata with ${
-              Object.keys(injectedMetadata.tables).length
-            } tables and ${injectedMetadata.rules.length} rules and ${Object.keys(injectedMetadata.tableNotes).length} table notes`
-          );
         }
       }
     }
@@ -291,7 +265,7 @@ export async function injectCredentials(
         injectedCredentials: {},
       };
     }
-
+    console.log(JSON.stringify(modifiedBubbles, null, 2));
     const reconstructResult = await reconstructBubbleFlow(
       originalCode,
       modifiedBubbles
@@ -305,11 +279,10 @@ export async function injectCredentials(
     }
 
     // Print clean summary of credential injection
-    // console.debug('\n[Credential Injection Summary]');
-    // for (const [varName, sources] of Object.entries(injectedCredentials)) {
-    //   console.debug(`  ${varName}: ${sources}`);
-    // }
-    // console.debug('');
+    console.debug('\n[Credential Injection Summary]');
+    for (const [varName, sources] of Object.entries(injectedCredentials)) {
+      console.debug(`  ${varName}: ${sources}`);
+    }
 
     return {
       success: true,

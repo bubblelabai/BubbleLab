@@ -460,8 +460,10 @@ export async function reconstructBubbleFlow(
       // Look for variable declarations with bubble instantiations
       if (ts.isVariableDeclaration(node) && node.initializer) {
         const variableName = node.name.getText(sourceFile);
-        const newBubbleParams = bubbleParameters[variableName];
-
+        const param_by_id = Object.values(bubbleParameters).find(
+          (param) => param.variableName === variableName
+        );
+        const newBubbleParams = bubbleParameters[variableName] || param_by_id;
         if (newBubbleParams) {
           const bubbleInfo = extractBubbleFromExpression(
             node.initializer,
@@ -513,7 +515,7 @@ export async function reconstructBubbleFlow(
             bubbleParameters
           )) {
             if (
-              paramKey.startsWith('_anonymous_') &&
+              (paramKey.startsWith('_anonymous_') || Number(paramKey) < 0) &&
               !usedAnonymousBubbles.has(paramKey) &&
               bubbleParam.bubbleName === bubbleInfo.bubbleName &&
               bubbleParam.className === bubbleInfo.className
@@ -568,11 +570,39 @@ export async function reconstructBubbleFlow(
 
 function generateBubbleInstantiation(bubble: ParsedBubble): string {
   const paramStrings = bubble.parameters.map((param) => {
-    // Handle case where value might be an object (like credentials)
-    const valueStr =
-      typeof param.value === 'string'
-        ? param.value
-        : JSON.stringify(param.value);
+    // Format the value based on its type
+    let valueStr: string;
+
+    if (typeof param.value === 'string') {
+      // Check if the string already looks like a code literal (starts with quote, number, boolean keyword, etc.)
+      const trimmed = param.value.trim();
+      const looksLikeCode =
+        trimmed.startsWith('"') ||
+        trimmed.startsWith("'") ||
+        trimmed.startsWith('`') ||
+        trimmed.startsWith('{') ||
+        trimmed.startsWith('[') ||
+        trimmed === 'true' ||
+        trimmed === 'false' ||
+        trimmed === 'null' ||
+        trimmed === 'undefined' ||
+        /^\d/.test(trimmed); // Starts with a digit
+
+      if (looksLikeCode) {
+        // Already formatted as code, use as-is
+        valueStr = param.value;
+      } else if (param.type === BubbleParameterType.STRING) {
+        // Raw string value that needs quotes
+        valueStr = JSON.stringify(param.value);
+      } else {
+        // Other types, use as-is
+        valueStr = param.value;
+      }
+    } else {
+      // Non-string values (objects, numbers, etc.)
+      valueStr = JSON.stringify(param.value);
+    }
+
     return `${param.name}: ${valueStr}`;
   });
 

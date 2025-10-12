@@ -36,19 +36,20 @@ export abstract class ServiceBubble<
   }
 
   /**
-   * Get the current parameters
+   * Get the current parameters (credentials are excluded for security)
+   * Use chooseCredential() method to access credentials in a controlled way
    */
-  get currentParams(): TParams {
-    return this.params;
+  get currentParams(): Omit<TParams, 'credentials'> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { credentials, ...sanitized } = this.params as ServiceBubbleParams;
+    return sanitized as Omit<TParams, 'credentials'>;
   }
 
-  setCredentials(credentials: Record<string, string>) {
-    this.params.credentials = credentials;
-  }
-
-  setParam(paramName: string, paramValue: unknown): void {
-    this.params[paramName as keyof TParams] =
-      paramValue as TParams[keyof TParams];
+  setParam<K extends keyof TParams>(
+    paramName: K,
+    paramValue: TParams[K]
+  ): void {
+    this.params[paramName] = paramValue;
   }
 
   /**

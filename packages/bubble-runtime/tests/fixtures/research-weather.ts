@@ -17,6 +17,8 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       model: { model: 'google/gemini-2.5-flash' },
       tools: [{ name: 'research-agent-tool' }],
     });
+
+    this.logger?.info(JSON.stringify(weatherAgent.currentParams, null, 2));
     const weatherResult = await weatherAgent.action();
     return {
       message: weatherResult.data?.response,

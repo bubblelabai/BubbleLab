@@ -293,11 +293,15 @@ describe('BubbleRunner correctly runs and plans', () => {
         `What is the weather in ${city}? Find info from web.`
       );
       runner.injector.injectCredentials(bubbles, [], getUserCredential());
-      console.log('Final script:', runner.bubbleScript.bubblescript);
       const result = await runner.runAll();
       expect(result).toBeDefined();
       const logger = runner.getLogger();
-      console.log('Logger:', logger?.getLogs());
+      // Should not include credentials in the logs
+      expect(
+        logger
+          ?.getLogs()
+          ?.some((log) => log.message.includes('test-openai-key'))
+      ).toBe(false);
       expect(result.success).toBe(true);
     }, 300000); // 5 minutes timeout
   });
