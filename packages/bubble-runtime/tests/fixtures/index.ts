@@ -27,7 +27,9 @@ export const fixtures = {
   'test-webhook': '',
   'hello-world-no-payload': '',
   'hello-world-multi-line-para': '',
+  'para-with-comment': '',
   yfinance: '',
+  'starter-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
