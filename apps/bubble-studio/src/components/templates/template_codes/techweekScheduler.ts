@@ -5,7 +5,7 @@ export const templateCode = `import {
     BubbleFlow,
     AIAgentBubble,
     ResendBubble,
-    GoogleSheetsBubble,
+    HttpBubble,
     type WebhookEvent,
   } from '@bubblelab/bubble-core';
 
@@ -15,8 +15,8 @@ export const templateCode = `import {
   }
 
   export interface CustomWebhookPayload extends WebhookEvent {
-    productInfo: string;
-    recipientEmail: string;
+    preferences: string;
+    email: string;
   }
 
   interface Event {
@@ -30,22 +30,90 @@ export const templateCode = `import {
 
   export class TechweekSchedulerFlow extends BubbleFlow<'webhook/http'> {
     async handle(payload: CustomWebhookPayload): Promise<Output> {
-      const { productInfo, recipientEmail } = payload;
+      const { preferences, email } = payload;
 
-      // STEP 1: Read events from Google Sheets
-      const sheetsResult = await new GoogleSheetsBubble({
-        operation: 'read_values',
-        spreadsheet_id: '1x3GLPIpeesH_OzwgdYN-c_I18_8HvubW2nJN6WBnBr0',
-        range: 'techweek_sf_events!A:F',
-        major_dimension: 'ROWS',
+      // STEP 1: Read events from public Google Sheets via HTTP (no credentials needed)
+      const spreadsheetId = '1TIWYh-sye1vGoLv-VzDtOB__hoUwxPyijiARayUIPuE';
+      
+      // Use direct export URL for public sheets (more reliable than gviz/tq endpoint)
+      // Note: This exports the first sheet. For specific sheets, you'd need the gid parameter
+      const csvUrl = \`https://docs.google.com/spreadsheets/d/\${spreadsheetId}/export?format=csv&gid=0\`;
+      
+      this.logger?.info(\`Fetching spreadsheet from: \${csvUrl}\`);
+      
+      const httpResult = await new HttpBubble({
+        url: csvUrl,
+        method: 'GET',
+        timeout: 30000,
+        followRedirects: true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/csv,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
       }).action();
 
-      if (!sheetsResult.success || !sheetsResult.data?.values || sheetsResult.data.values.length < 2) {
-        throw new Error('Failed to retrieve data from Google Sheets or the sheet has no content.');
+      this.logger?.info(\`HTTP Response Status: \${httpResult.data?.status}, Success: \${httpResult.success}\`);
+      
+      if (!httpResult.success) {
+        throw new Error(\`Failed to retrieve data from Google Sheets: \${httpResult.data?.error || 'Unknown error'}. Status: \${httpResult.data?.status}\`);
+      }
+      
+      if (!httpResult.data?.body) {
+        throw new Error('Google Sheets response has no content.');
+      }
+
+      // Parse CSV response into rows
+      const csvText = httpResult.data.body;
+      this.logger?.info(\`Received CSV data, length: \${csvText.length} characters\`);
+      
+      // Simple CSV parser for Google Sheets export
+      const parseCSVRow = (row: string): string[] => {
+        const fields: string[] = [];
+        let currentField = '';
+        let insideQuotes = false;
+        
+        for (let i = 0; i < row.length; i++) {
+          const char = row[i];
+          
+          if (char === '"') {
+            if (insideQuotes && row[i + 1] === '"') {
+              currentField += '"';
+              i++; // Skip escaped quote
+            } else {
+              insideQuotes = !insideQuotes;
+            }
+          } else if (char === ',' && !insideQuotes) {
+            fields.push(currentField.trim());
+            currentField = '';
+          } else {
+            currentField += char;
+          }
+        }
+        fields.push(currentField.trim());
+        return fields;
+      };
+      
+      const rows = csvText
+        .split('\\n')
+        .map(row => row.trim())
+        .filter(row => row.length > 0)
+        .map(parseCSVRow);
+
+      this.logger?.info(\`Parsed \${rows.length} rows from CSV\`);
+
+      if (rows.length < 2) {
+        throw new Error(\`Sheet has insufficient data. Only \${rows.length} rows found.\`);
       }
 
       // Parse the sheet data into structured events
-      const [headerRow, ...dataRows] = sheetsResult.data.values;
+      const [headerRow, ...dataRows] = rows;
+      this.logger?.info(\`Header row: \${JSON.stringify(headerRow)}\`);
+      this.logger?.info(\`First data row: \${JSON.stringify(dataRows[0])}\`);
+      
       let events: Event[] = dataRows.map(row => ({
         title: row[0] as string,
         date: row[1] as string,
@@ -72,7 +140,7 @@ export const templateCode = `import {
 Based on the following product information and list of Techweek events, please create a proposed schedule for \${date}.
 
 **Product Information:**
-\${productInfo}
+\${preferences}
 
 **All Techweek Events for \${date} (JSON format):**
 \${JSON.stringify(dayEvents, null, 2)}
@@ -175,6 +243,9 @@ Based on the following product information and list of Techweek events, please c
           <tr>
             <td style="padding: 30px; background-color: #f8f9fa; text-align: center; border-top: 1px solid #dee2e6;">
               <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px; line-height: 1.6;">
+                📊 <strong>View Full Techweek Schedule:</strong> <a href="https://docs.google.com/spreadsheets/d/\${spreadsheetId}/edit" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">Open Spreadsheet</a>
+              </p>
+              <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px; line-height: 1.6;">
                 ⚡ This workflow is powered by <a href="https://bubblelab.ai" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">Bubble Lab</a> — an open-source AI automation platform (with code exports and observability) launching very soon!
               </p>
               <a href="https://x.com/Selinaliyy" style="display: inline-block; padding: 10px 24px; background-color: #1DA1F2; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 10px;">Follow on X</a>
@@ -199,7 +270,7 @@ Based on the following product information and list of Techweek events, please c
           // STEP 5: Send the formatted email
           await new ResendBubble({
             operation: 'send_email',
-            to: [recipientEmail],
+            to: [email],
             bcc: ['selinali@bubblelab.ai'],
             from: 'Bubble Lab Team <welcome@hello.bubblelab.ai>',
             subject: \`🚀 Your Techweek Schedule: \${date}\`,
@@ -223,21 +294,20 @@ export const metadata = {
   inputsSchema: JSON.stringify({
     type: 'object',
     properties: {
-      productInfo: {
+      preferences: {
         type: 'string',
         description:
           'Information about your product/interests to help curate relevant events',
       },
-      recipientEmail: {
+      email: {
         type: 'string',
         description:
           'Email address to receive the personalized daily schedules',
       },
     },
-    required: ['productInfo', 'recipientEmail'],
+    required: ['preferences', 'email'],
   }),
   requiredCredentials: {
-    'google-sheets': ['read'],
     resend: ['send'],
   },
 };
