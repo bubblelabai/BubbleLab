@@ -516,11 +516,10 @@ export async function reconstructBubbleFlow(
             bubbleParameters
           )) {
             if (
-              paramKey.startsWith('_anonymous_') ||
-              (Number(paramKey) < 0 &&
-                !usedAnonymousBubbles.has(paramKey) &&
-                bubbleParam.bubbleName === bubbleInfo.bubbleName &&
-                bubbleParam.className === bubbleInfo.className)
+              (paramKey.startsWith('_anonymous_') || Number(paramKey) < 0) &&
+              !usedAnonymousBubbles.has(paramKey) &&
+              bubbleParam.bubbleName === bubbleInfo.bubbleName &&
+              bubbleParam.className === bubbleInfo.className
             ) {
               // Mark this anonymous bubble as used
               usedAnonymousBubbles.add(paramKey);
@@ -573,7 +572,40 @@ export async function reconstructBubbleFlow(
 
 function generateBubbleInstantiation(bubble: ParsedBubble): string {
   const paramStrings = bubble.parameters.map((param) => {
-    return `${param.name}: ${param.value}`;
+    // Format the value based on its type
+    let valueStr: string;
+
+    if (typeof param.value === 'string') {
+      // Check if the string already looks like a code literal (starts with quote, number, boolean keyword, etc.)
+      const trimmed = param.value.trim();
+      const looksLikeCode =
+        trimmed.startsWith('"') ||
+        trimmed.startsWith("'") ||
+        trimmed.startsWith('`') ||
+        trimmed.startsWith('{') ||
+        trimmed.startsWith('[') ||
+        trimmed === 'true' ||
+        trimmed === 'false' ||
+        trimmed === 'null' ||
+        trimmed === 'undefined' ||
+        /^\d/.test(trimmed); // Starts with a digit
+
+      if (looksLikeCode) {
+        // Already formatted as code, use as-is
+        valueStr = param.value;
+      } else if (param.type === BubbleParameterType.STRING) {
+        // Raw string value that needs quotes
+        valueStr = JSON.stringify(param.value);
+      } else {
+        // Other types, use as-is
+        valueStr = param.value;
+      }
+    } else {
+      // Non-string values (objects, numbers, etc.)
+      valueStr = JSON.stringify(param.value);
+    }
+
+    return `${param.name}: ${valueStr}`;
   });
 
   console.log('paramStrings', paramStrings);
