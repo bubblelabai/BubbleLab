@@ -418,10 +418,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'SlackBubble',
           nodeType: 'service',
           location: {
-            startLine: 3,
-            startCol: 0,
-            endLine: 6,
-            endCol: 0,
+            startLine: 4,
+            startCol: 22,
+            endLine: 7,
+            endCol: 10,
           },
           parameters: [
             {
@@ -506,7 +506,7 @@ describe('BubbleInjector.injectCredentials()', () => {
 
     it('should inject system credentials when no user credentials provided', () => {
       const bubbleScript = `
-        const slack = new SlackBubble({
+      const slack = new SlackBubble({
           channel: '#general',
           message: 'Hello world'
         });
@@ -522,10 +522,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'SlackBubble',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 4,
-            endCol: 0,
+            startLine: 2,
+            startCol: 20,
+            endLine: 5,
+            endCol: 10,
           },
           parameters: [
             {
@@ -586,10 +586,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'SlackBubble',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 3,
-            endCol: 0,
+            startLine: 2,
+            startCol: 22,
+            endLine: 4,
+            endCol: 10,
           },
           parameters: [
             {
@@ -653,10 +653,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'AIAgent',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 4,
-            endCol: 0,
+            startLine: 2,
+            startCol: 22,
+            endLine: 5,
+            endCol: 10,
           },
           parameters: [
             {
@@ -744,10 +744,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'HttpBubble',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 3,
-            endCol: 0,
+            startLine: 2,
+            startCol: 26,
+            endLine: 4,
+            endCol: 10,
           },
           parameters: [
             {
@@ -799,10 +799,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'SlackBubble',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 3,
-            endCol: 0,
+            startLine: 2,
+            startCol: 22,
+            endLine: 4,
+            endCol: 10,
           },
           parameters: [
             {
@@ -850,10 +850,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'SlackBubble',
           nodeType: 'service',
           location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 3,
-            endCol: 0,
+            startLine: 2,
+            startCol: 22,
+            endLine: 4,
+            endCol: 10,
           },
           parameters: [
             {
@@ -906,10 +906,10 @@ describe('BubbleInjector.injectCredentials()', () => {
           className: 'HelloWorldBubble',
           nodeType: 'service',
           location: {
-            startLine: 2,
-            startCol: 10,
-            endLine: 5,
-            endCol: 8,
+            startLine: 3,
+            startCol: 16,
+            endLine: 6,
+            endCol: 18,
           },
           parameters: [
             {
@@ -1000,11 +1000,9 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
       injector.injectBubbleLoggingAndReinitializeBubbleParameters();
       const lines = mockBubbleScript.bubblescript.split('\n');
 
-      console.log(lines);
-
-      // Check if line 4 contains console.log("Hello, World!");
-      expect(lines[17].trim()).toContain(
-        '}, {logger: this.logger, variableId: 412, dependencyGraph: {"name":"hello-world","uniqueId":"412","variableId":412,"variableName":"greeting","nodeType":"service","dependencies":[]}, currentUniqueId: "412"}); '.trim()
+      // Check if line 14 contains the logger configuration with dependency graph
+      expect(lines[14]).toContain(
+        '}, {logger: this.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"});'
       );
     });
     it('The line numbers should not change from original script', () => {

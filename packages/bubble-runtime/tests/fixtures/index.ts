@@ -25,6 +25,8 @@ export const fixtures = {
   'research-weather': '',
   'simple-http': '',
   'test-webhook': '',
+  'hello-world-no-payload': '',
+  'hello-world-multi-line-para': '',
   yfinance: '',
 } as const;
 
@@ -56,7 +58,7 @@ export function getUserCredential(): Partial<Record<CredentialType, string>> {
     [CredentialType.ANTHROPIC_CRED]: 'test-anthropic-key',
     [CredentialType.DATABASE_CRED]: 'test-database-key',
     [CredentialType.SLACK_CRED]: 'test-slack-key',
-    [CredentialType.GOOGLE_SHEETS_CRED]: env.GOOGLE_SHEETS_CRED,
+    [CredentialType.GOOGLE_SHEETS_CRED]: 'test-google-sheets-key',
   };
 }
 

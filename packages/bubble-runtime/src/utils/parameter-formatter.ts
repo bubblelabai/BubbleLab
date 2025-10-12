@@ -149,6 +149,11 @@ function coerceJsArrayLiteralToJson(input: string): string | null {
 
 /**
  * Replace a bubble instantiation with updated parameters
+ * 
+ * This function:
+ * 1. Replaces the bubble instantiation line with a single-line version
+ * 2. Deletes all lines that were part of the original multi-line parameters
+ * 3. Uses bubble.location.endLine to know exactly where to stop deleting
  */
 export function replaceBubbleInstantiation(
   lines: string[],
@@ -156,142 +161,73 @@ export function replaceBubbleInstantiation(
 ) {
   const { location, className, parameters } = bubble;
 
-  // Build the new instantiation code
-  // Only include logger config for bubbles that need it (typically those with logging capabilities)
+  // Build the new single-line instantiation
   const dependencyGraphLiteral = JSON.stringify(
     bubble.dependencyGraph || { name: bubble.bubbleName, dependencies: [] }
   ).replace(/</g, '\u003c');
-  const parametersObject = buildParametersObject(
+  
+  let parametersObject = buildParametersObject(
     parameters,
     bubble.variableId,
     true,
     dependencyGraphLiteral,
     String(bubble.variableId)
   );
+  
+  // Condense to single line
+  parametersObject = parametersObject
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\{\s+/g, '{ ')
+    .replace(/\s+\}/g, ' }')
+    .replace(/\s*,\s*/g, ', ')
+    .trim();
+  
   const newInstantiationBase = `new ${className}(${parametersObject})`;
 
-  // Find the bubble instantiation lines and replace them
-  for (let i = location.startLine - 1; i <= location.endLine - 1; i++) {
-    if (i < lines.length) {
-      const line = lines[i];
+  // Find the line with the bubble instantiation
+  for (let i = location.startLine - 1; i < lines.length; i++) {
+    const line = lines[i];
 
-      // Replace the bubble instantiation
-      if (line.includes(`new ${className}`)) {
-        // Pattern 1: variableName = new BubbleClass(...)
-        const variableMatch = line.match(
-          /^(\s*)(const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=]+)?=\s*/
-        );
-        if (variableMatch) {
-          const [, indentation, declaration, variableName] = variableMatch;
-          const hadAwait = /\bawait\b/.test(line);
-          const actionCall = bubble.hasActionCall ? '.action()' : '';
-          const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
-          const replacement = `${indentation}${declaration} ${variableName} = ${newExpression};`;
-          lines[i] = replacement;
+    if (line.includes(`new ${className}`)) {
+      // Pattern 1: Variable assignment (const foo = new Bubble(...))
+      const variableMatch = line.match(
+        /^(\s*)(const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=]+)?=\s*/
+      );
+      
+      if (variableMatch) {
+        const [, indentation, declaration, variableName] = variableMatch;
+        const hadAwait = /\bawait\b/.test(line);
+        const actionCall = bubble.hasActionCall ? '.action()' : '';
+        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
+        const replacement = `${indentation}${declaration} ${variableName} = ${newExpression};`;
+        
+        lines[i] = replacement;
 
-          // Delete only the parameter lines, not the entire block
-          // Find the actual end of the bubble parameters by looking for the closing paren
-          // Look for patterns: });  or })  or }).action();
-          let actualEndLine = i;
-          const startIndentation = lines[i].match(/^(\s*)/)?.[1] || '';
-
-          for (let j = i + 1; j < lines.length; j++) {
-            const line = lines[j];
-            const trimmedLine = line.trim();
-            
-            // Look for various closing patterns at the start of the line:
-            // 1. '});' - object parameter closing with semicolon
-            // 2. '})' - object parameter closing without semicolon  
-            // 3. '}).action();' - with action call
-            // 4. '}, {' - object parameter closing followed by logger config
-            const endsWithClosing = 
-              trimmedLine === '});' || 
-              trimmedLine === '})' ||
-              trimmedLine.startsWith('}).action();') ||
-              trimmedLine.startsWith('}, {');
-
-            if (endsWithClosing) {
-              const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
-              // If this line has the same or less indentation than the start line, it's likely the end
-              if (lineIndentation.length <= startIndentation.length) {
-                actualEndLine = j;
-                break;
-              }
-            }
-          }
-
-          const deleteCount = Math.max(0, actualEndLine - i);
-
-          if (deleteCount > 0) {
-            lines.splice(i + 1, deleteCount);
-          }
-        } else {
-          // Pattern 2: Anonymous bubbles like "await new BubbleClass(...).action()"
-          // Check if this is an anonymous bubble (synthetic variable name)
-          if (bubble.variableName.startsWith('_anonymous_')) {
-            // For anonymous bubbles, we need to replace the new expression part only
-            // while preserving the await and adding .action() if needed
-            const beforePattern = line.substring(
-              0,
-              line.indexOf(`new ${className}`)
-            );
-
-            const hadAwait = /\bawait\b/.test(beforePattern);
-            const actionCall = bubble.hasActionCall ? '.action()' : '';
-            const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
-
-            // Construct the new single-line expression; ensure it ends with semicolon
-            const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
-            const replacement = `${beforeClean}${newExpression};`;
-            console.debug(
-              `Anonymous replacement: "${lines[i]}" -> "${replacement}"`
-            );
-            lines[i] = replacement;
-
-            // Delete only the parameter lines, not the entire block
-            // Find the actual end of the bubble parameters by looking for the closing paren
-            // Look for patterns: });  or })  or }).action();
-            let actualEndLine = i;
-            const startIndentation = lines[i].match(/^(\s*)/)?.[1] || '';
-
-            for (let j = i + 1; j < lines.length; j++) {
-              const line = lines[j];
-              const trimmedLine = line.trim();
-              
-              // Look for various closing patterns at the start of the line:
-              // 1. '});' - object parameter closing with semicolon
-              // 2. '})' - object parameter closing without semicolon
-              // 3. '}).action();' - with action call
-              // 4. '}, {' - object parameter closing followed by logger config
-              const endsWithClosing = 
-                trimmedLine === '});' || 
-                trimmedLine === '})' ||
-                trimmedLine.startsWith('}).action();') ||
-                trimmedLine.startsWith('}, {');
-
-              if (endsWithClosing) {
-                const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
-                // If this line has the same or less indentation than the start line, it's likely the end
-                if (lineIndentation.length <= startIndentation.length) {
-                  actualEndLine = j;
-                  break;
-                }
-              }
-            }
-
-            const deleteCount = Math.max(0, actualEndLine - i);
-            console.debug(
-              `Anonymous: Deleting ${deleteCount} lines starting from line ${i + 1} (actualEndLine: ${actualEndLine}, original endLine: ${location.endLine})`
-            );
-            if (deleteCount > 0) {
-              const deletedLines = lines.slice(i + 1, i + 1 + deleteCount);
-              console.debug(`Anonymous deleted lines:`, deletedLines);
-              lines.splice(i + 1, deleteCount);
-            }
-          }
+        // Delete all lines that were part of the old multi-line parameters
+        const linesToDelete = location.endLine - (i + 1);
+        if (linesToDelete > 0) {
+          lines.splice(i + 1, linesToDelete);
         }
-        break;
+      } 
+      // Pattern 2: Anonymous bubble (await new Bubble(...).action())
+      else if (bubble.variableName.startsWith('_anonymous_')) {
+        const beforePattern = line.substring(0, line.indexOf(`new ${className}`));
+        const hadAwait = /\bawait\b/.test(beforePattern);
+        const actionCall = bubble.hasActionCall ? '.action()' : '';
+        const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
+        const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
+        const replacement = `${beforeClean}${newExpression};`;
+        
+        lines[i] = replacement;
+
+        // Delete all lines that were part of the old multi-line parameters
+        const linesToDelete = location.endLine - (i + 1);
+        if (linesToDelete > 0) {
+          lines.splice(i + 1, linesToDelete);
+        }
       }
+      break;
     }
   }
 }
