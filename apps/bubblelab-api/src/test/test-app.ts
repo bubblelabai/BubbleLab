@@ -1,5 +1,5 @@
 import app from '../index.js';
-import { DEV_USER_ID } from '../db/seed-dev-user.js';
+import { TEST_USER_ID } from './setup.js';
 
 /**
  * Test helper that provides a fetch-like interface for testing the Hono app
@@ -22,7 +22,7 @@ export class TestApp {
     // Default headers
     const defaultHeaders = {
       'Content-Type': 'application/json',
-      'X-User-ID': DEV_USER_ID, // Use dev user ID that matches seeded user
+      'X-User-ID': TEST_USER_ID, // Use dev user ID that matches seeded user
       ...headers,
     };
 
