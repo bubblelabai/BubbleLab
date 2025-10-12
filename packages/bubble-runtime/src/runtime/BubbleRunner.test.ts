@@ -219,7 +219,8 @@ describe('BubbleRunner correctly runs and plans', () => {
 
       const code = runner.bubbleScript.bubblescript;
       // Should have exactly the same number of instantiations as source (1 var + 2 anonymous + 1 in loop body)
-      const occurrences = (code.match(/new\s+HelloWorldBubble\(/g) || []).length;
+      const occurrences = (code.match(/new\s+HelloWorldBubble\(/g) || [])
+        .length;
       expect(occurrences).toBe(4);
       // No stray duplicated parameter lines like a standalone "{ name: 'World' }" after replacement
       expect(code).not.toMatch(/^\s*\{\s*name:\s*'World'\s*\}\s*$/m);
@@ -228,8 +229,13 @@ describe('BubbleRunner correctly runs and plans', () => {
       const testWebhookScript = getFixture('hello-world-multi-line-para');
       const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
       const result = await runner.runAll();
-      console.log(result);
-      console.log('Logs:', runner.getLogger()?.getLogs());
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+    it('should execute a flow with a starter flow', async () => {
+      const testScript = getFixture('starter-flow');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
@@ -249,9 +255,20 @@ describe('BubbleRunner correctly runs and plans', () => {
       console.log(result);
       expect(result).toBeDefined();
       expect(
-        result.error?.includes('Google Sheets API error') || result.success === false
+        result.error?.includes('Google Sheets API error') ||
+          result.success === false
       ).toBe(true);
       console.log('Logs:', runner.getLogger()?.getLogs());
+    });
+
+    it('should execute a flow with a parameter with a comment', async () => {
+      const testScript = getFixture('para-with-comment');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      console.log(result);
+      console.log('Logs:', runner.getLogger()?.getLogs());
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {
@@ -267,12 +284,11 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
       runner.injector.injectCredentials(bubbles, [], getUserCredential());
       console.log('Final script:', runner.bubbleScript.bubblescript);
-      const result = await runner.runAll();    
+      const result = await runner.runAll();
       expect(result).toBeDefined();
       const logger = runner.getLogger();
       console.log('Logger:', logger?.getLogs());
       expect(result.success).toBe(true);
-      
     }, 300000); // 5 minutes timeout
   });
 });

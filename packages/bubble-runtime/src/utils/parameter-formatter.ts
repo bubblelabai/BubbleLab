@@ -148,8 +148,122 @@ function coerceJsArrayLiteralToJson(input: string): string | null {
 }
 
 /**
+ * Strip // line comments and /* block comments *\/ that are outside of string and template literals.
+ * This is used before we condense parameters into a single line so inline comments don't swallow code.
+ */
+function stripCommentsOutsideStrings(input: string): string {
+  let result = '';
+  let inSingle = false;
+  let inDouble = false;
+  let inTemplate = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    const next = i + 1 < input.length ? input[i + 1] : '';
+
+    if (inLineComment) {
+      if (ch === '\n') {
+        inLineComment = false;
+        result += ch;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (ch === '*' && next === '/') {
+        inBlockComment = false;
+        i++; // skip '/'
+      }
+      continue;
+    }
+
+    if (inSingle) {
+      if (escapeNext) {
+        result += ch;
+        escapeNext = false;
+        continue;
+      }
+      if (ch === '\\') {
+        result += ch;
+        escapeNext = true;
+        continue;
+      }
+      result += ch;
+      if (ch === "'") inSingle = false;
+      continue;
+    }
+
+    if (inDouble) {
+      if (escapeNext) {
+        result += ch;
+        escapeNext = false;
+        continue;
+      }
+      if (ch === '\\') {
+        result += ch;
+        escapeNext = true;
+        continue;
+      }
+      result += ch;
+      if (ch === '"') inDouble = false;
+      continue;
+    }
+
+    if (inTemplate) {
+      if (escapeNext) {
+        result += ch;
+        escapeNext = false;
+        continue;
+      }
+      if (ch === '\\') {
+        result += ch;
+        escapeNext = true;
+        continue;
+      }
+      result += ch;
+      if (ch === '`') inTemplate = false;
+      continue;
+    }
+
+    // Not in any string/comment
+    if (ch === '/' && next === '/') {
+      inLineComment = true;
+      i++; // skip next '/'
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      inBlockComment = true;
+      i++; // skip next '*'
+      continue;
+    }
+    if (ch === "'") {
+      inSingle = true;
+      result += ch;
+      continue;
+    }
+    if (ch === '"') {
+      inDouble = true;
+      result += ch;
+      continue;
+    }
+    if (ch === '`') {
+      inTemplate = true;
+      result += ch;
+      continue;
+    }
+
+    result += ch;
+  }
+
+  return result;
+}
+
+/**
  * Replace a bubble instantiation with updated parameters
- * 
+ *
  * This function:
  * 1. Replaces the bubble instantiation line with a single-line version
  * 2. Deletes all lines that were part of the original multi-line parameters
@@ -165,7 +279,7 @@ export function replaceBubbleInstantiation(
   const dependencyGraphLiteral = JSON.stringify(
     bubble.dependencyGraph || { name: bubble.bubbleName, dependencies: [] }
   ).replace(/</g, '\u003c');
-  
+
   let parametersObject = buildParametersObject(
     parameters,
     bubble.variableId,
@@ -173,7 +287,10 @@ export function replaceBubbleInstantiation(
     dependencyGraphLiteral,
     String(bubble.variableId)
   );
-  
+
+  // Remove JS/TS comments that would otherwise break single-line formatting
+  parametersObject = stripCommentsOutsideStrings(parametersObject);
+
   // Condense to single line
   parametersObject = parametersObject
     .replace(/\s*\n\s*/g, ' ')
@@ -182,7 +299,7 @@ export function replaceBubbleInstantiation(
     .replace(/\s+\}/g, ' }')
     .replace(/\s*,\s*/g, ', ')
     .trim();
-  
+
   const newInstantiationBase = `new ${className}(${parametersObject})`;
 
   // Find the line with the bubble instantiation
@@ -194,14 +311,14 @@ export function replaceBubbleInstantiation(
       const variableMatch = line.match(
         /^(\s*)(const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[^=]+)?=\s*/
       );
-      
+
       if (variableMatch) {
         const [, indentation, declaration, variableName] = variableMatch;
         const hadAwait = /\bawait\b/.test(line);
         const actionCall = bubble.hasActionCall ? '.action()' : '';
         const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
         const replacement = `${indentation}${declaration} ${variableName} = ${newExpression};`;
-        
+
         lines[i] = replacement;
 
         // Delete all lines that were part of the old multi-line parameters
@@ -209,16 +326,19 @@ export function replaceBubbleInstantiation(
         if (linesToDelete > 0) {
           lines.splice(i + 1, linesToDelete);
         }
-      } 
+      }
       // Pattern 2: Anonymous bubble (await new Bubble(...).action())
       else if (bubble.variableName.startsWith('_anonymous_')) {
-        const beforePattern = line.substring(0, line.indexOf(`new ${className}`));
+        const beforePattern = line.substring(
+          0,
+          line.indexOf(`new ${className}`)
+        );
         const hadAwait = /\bawait\b/.test(beforePattern);
         const actionCall = bubble.hasActionCall ? '.action()' : '';
         const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
         const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
         const replacement = `${beforeClean}${newExpression};`;
-        
+
         lines[i] = replacement;
 
         // Delete all lines that were part of the old multi-line parameters
