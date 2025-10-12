@@ -186,4 +186,14 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
     });
   });
+
+  describe('Webhook Execution', () => {
+    it('should execute a webhook flow', async () => {
+      const testWebhookScript = getFixture('test-webhook');
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const result = await runner.runAll();
+      console.log(result);
+      expect(result).toBeDefined();
+    });
+  });
 });

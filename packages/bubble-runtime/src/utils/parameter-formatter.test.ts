@@ -293,5 +293,80 @@ describe('parameter-formatter', () => {
       expect(lines[0]).toContain('logger: this.logger');
       expect(lines[0]).toContain('variableId: 222');
     });
+
+    it('should handle bubble with credentials object followed by logger config', () => {
+      // This simulates the case where credentials have been injected
+      // and then the bubble is being replaced again with logger config
+      const lines = [
+        '    const agent = new AIAgentBubble({',
+        '      message: "Test message",',
+        '      model: { model: "gpt-4" },',
+        '      credentials: {',
+        '        "OPENAI_CRED": "test-key"',
+        '      }',
+        '    }, {logger: this.logger, variableId: 333});',
+        '    const result = await agent.action();'
+      ];
+
+      const bubble = {
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        variableName: 'agent',
+        variableId: 333,
+        location: { startLine: 1, endLine: 7 },
+        parameters: [
+          { name: 'message', value: 'Updated message', type: 'string' },
+          { name: 'model', value: { model: 'gpt-4' }, type: 'object' },
+          { name: 'credentials', value: { OPENAI_CRED: 'test-key' }, type: 'object' }
+        ],
+        hasActionCall: false,
+        dependencyGraph: { name: 'ai-agent', dependencies: [] }
+      } as any;
+
+      replaceBubbleInstantiation(lines, bubble);
+
+      // Should have replaced the multi-line instantiation with single line
+      expect(lines.length).toBe(2);
+      expect(lines[0]).toContain('const agent = new AIAgentBubble({');
+      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('variableId: 333');
+      expect(lines[1]).toContain('const result = await agent.action()');
+    });
+
+    it('should handle bubble with nested credentials object ending with }, {', () => {
+      // This is the exact pattern from the bug report
+      const lines = [
+        '    const weatherAgent = new AIAgentBubble({',
+        '      message: "Find weather",',
+        '      credentials: {',
+        '        "OPENAI_CRED": "key1",',
+        '        "ANTHROPIC_CRED": "key2"',
+        '      }',
+        '    }, {logger: this.logger, variableId: 412, dependencyGraph: {...}});',
+        '    const result = await weatherAgent.action();'
+      ];
+
+      const bubble = {
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        variableName: 'weatherAgent',
+        variableId: 412,
+        location: { startLine: 1, endLine: 7 },
+        parameters: [
+          { name: 'message', value: 'Updated weather query', type: 'string' },
+          { name: 'credentials', value: { OPENAI_CRED: 'key1', ANTHROPIC_CRED: 'key2' }, type: 'object' }
+        ],
+        hasActionCall: false,
+        dependencyGraph: { name: 'ai-agent', dependencies: [] }
+      } as any;
+
+      replaceBubbleInstantiation(lines, bubble);
+
+      expect(lines.length).toBe(2);
+      expect(lines[0]).toContain('const weatherAgent = new AIAgentBubble({');
+      expect(lines[0]).toContain('Updated weather query');
+      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[1]).toContain('const result = await weatherAgent.action()');
+    });
   });
 });

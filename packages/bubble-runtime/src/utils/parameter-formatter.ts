@@ -199,14 +199,16 @@ export function replaceBubbleInstantiation(
             const line = lines[j];
             const trimmedLine = line.trim();
             
-            // Look for various closing patterns:
+            // Look for various closing patterns at the start of the line:
             // 1. '});' - object parameter closing with semicolon
-            // 2. '})' - object parameter closing without semicolon
+            // 2. '})' - object parameter closing without semicolon  
             // 3. '}).action();' - with action call
+            // 4. '}, {' - object parameter closing followed by logger config
             const endsWithClosing = 
               trimmedLine === '});' || 
               trimmedLine === '})' ||
-              trimmedLine.includes('}).action();');
+              trimmedLine.startsWith('}).action();') ||
+              trimmedLine.startsWith('}, {');
 
             if (endsWithClosing) {
               const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
@@ -256,14 +258,16 @@ export function replaceBubbleInstantiation(
               const line = lines[j];
               const trimmedLine = line.trim();
               
-              // Look for various closing patterns:
+              // Look for various closing patterns at the start of the line:
               // 1. '});' - object parameter closing with semicolon
               // 2. '})' - object parameter closing without semicolon
               // 3. '}).action();' - with action call
+              // 4. '}, {' - object parameter closing followed by logger config
               const endsWithClosing = 
                 trimmedLine === '});' || 
                 trimmedLine === '})' ||
-                trimmedLine.includes('}).action();');
+                trimmedLine.startsWith('}).action();') ||
+                trimmedLine.startsWith('}, {');
 
               if (endsWithClosing) {
                 const lineIndentation = line.match(/^(\s*)/)?.[1] || '';
