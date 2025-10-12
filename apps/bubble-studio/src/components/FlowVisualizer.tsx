@@ -13,6 +13,7 @@ import type { Node, Edge, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
+import InputSchemaNode from './InputSchemaNode';
 import type {
   CredentialType,
   CredentialResponse,
@@ -20,13 +21,12 @@ import type {
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import { bubbleReferencesSchemaFields } from '../utils/inputSchemaParser';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
 
 interface FlowVisualizerProps {
-  bubbleParameters: Record<string | number, unknown>;
+  bubbleParameters: Record<string | number, ParsedBubbleWithInfo>;
   onParameterChange?: (
     bubbleKey: string | number,
     paramName: string,
@@ -75,6 +75,7 @@ interface FlowVisualizerProps {
 
 const nodeTypes = {
   bubbleNode: BubbleNode,
+  inputSchemaNode: InputSchemaNode,
 };
 
 const proOptions = { hideAttribution: true };
@@ -82,32 +83,7 @@ const proOptions = { hideAttribution: true };
 const sanitizeIdSegment = (value: string) =>
   value.replace(/[^a-zA-Z0-9_-]/g, '') || 'segment';
 
-function toParsedBubble(
-  key: string | number,
-  bubbleData: unknown
-): ParsedBubble {
-  const typedBubbleData = bubbleData as Partial<ParsedBubble>;
-  return {
-    variableId: typedBubbleData?.variableId ?? (parseInt(String(key), 10) || 0),
-    bubbleName: typedBubbleData?.bubbleName ?? String(key),
-    variableName: typedBubbleData?.variableName ?? String(key),
-    className: typedBubbleData?.className ?? 'Unknown',
-    nodeType: typedBubbleData?.nodeType ?? 'unknown',
-    hasAwait: typedBubbleData?.hasAwait ?? false,
-    hasActionCall: typedBubbleData?.hasActionCall ?? false,
-    location:
-      typedBubbleData?.location ??
-      ({
-        startLine: 1,
-        startCol: 1,
-        endLine: 1,
-        endCol: 1,
-      } as ParsedBubble['location']),
-    parameters: typedBubbleData?.parameters ?? [],
-    dependencies: typedBubbleData?.dependencies,
-    dependencyGraph: typedBubbleData?.dependencyGraph,
-  };
-}
+
 
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
@@ -173,7 +149,7 @@ function FlowVisualizerInner({
     if (isExecuting) {
       const allRoots: string[] = [];
       bubbleEntries.forEach(([key, bubbleData]) => {
-        const bubble = toParsedBubble(key, bubbleData);
+        const bubble = bubbleData as ParsedBubbleWithInfo;
         if (bubble.dependencyGraph?.dependencies?.length) {
           const nodeId = bubble.variableId
             ? String(bubble.variableId)
@@ -223,7 +199,7 @@ function FlowVisualizerInner({
     };
 
     bubbleEntries.forEach(([key, bubbleData]) => {
-      const bubble = toParsedBubble(key, bubbleData);
+      const bubble = bubbleData
       const parentNodeId = bubble.variableId
         ? String(bubble.variableId)
         : String(key);
@@ -519,13 +495,37 @@ function FlowVisualizerInner({
       return SYSTEM_CREDENTIALS.has(credType);
     };
 
+    // Create InputSchemaNode as the first node (if schema exists)
+    if (parsedFields.length > 0 && flowName) {
+      const inputSchemaNode: Node = {
+        id: 'input-schema-node',
+        type: 'inputSchemaNode',
+        position: {
+          x: startX - 450, // Position it before the first bubble
+          y: baseY,
+        },
+        origin: [0, 0.5] as [number, number],
+        data: {
+          flowName: flowName,
+          schemaFields: parsedFields,
+          executionInputs: executionInputs || {},
+          onExecutionInputChange: onExecutionInputChange || (() => {}),
+          onExecuteFlow: onExecute,
+          isExecuting: isExecuting,
+          isFormValid: isFormValid,
+        },
+      };
+      nodes.push(inputSchemaNode);
+    }
+
     // Create nodes for each bubble
     bubbleEntries.forEach(([key, bubbleData], index) => {
-      const bubble = toParsedBubble(key, bubbleData);
+      const bubble = bubbleData 
 
       const nodeId = bubble.variableId
         ? String(bubble.variableId)
         : String(key);
+
       // Determine which key in requiredCredentials applies to this bubble
       const keyCandidates = [
         String(bubble.variableId),
@@ -537,16 +537,6 @@ function FlowVisualizerInner({
           (k) =>
             k && Array.isArray((requiredByKey as Record<string, unknown>)[k])
         ) || bubble.bubbleName;
-
-      // Decide which bubble should show input fields. Only attach to bubbles
-      // that actually reference a schema field name among their parameters.
-      // This now checks both parameter names AND parameter values for references
-      // to schema fields (e.g., template literals like ${ticker})
-      const schemaFieldNames = parsedFields.map((f) => f.name);
-      const hasSchemaFieldInBubble = bubbleReferencesSchemaFields(
-        bubble.parameters,
-        schemaFieldNames
-      );
 
       // Determine missing credentials for this bubble
       const requiredCredTypes =
@@ -562,20 +552,6 @@ function FlowVisualizerInner({
         const selectedId = selected[credType];
         return selectedId === undefined || selectedId === null;
       });
-
-      // Determine if any required input mapped to this bubble is missing
-      const requiredInputFields = parsedFields
-        .filter((f) => f.required)
-        .map((f) => f.name);
-      const hasMissingInputs =
-        hasSchemaFieldInBubble &&
-        requiredInputFields.some(
-          (fieldName) =>
-            !executionInputs ||
-            (executionInputs as Record<string, unknown>)[fieldName] ===
-              undefined ||
-            (executionInputs as Record<string, unknown>)[fieldName] === ''
-        );
 
       const rootExpanded = expandedRootIds.includes(nodeId);
       const rootSuppressed = suppressedRootIds.includes(nodeId);
@@ -602,9 +578,8 @@ function FlowVisualizerInner({
         data: {
           bubble,
           bubbleKey: key,
-          hasMissingRequirements: missingCreds || hasMissingInputs,
+          hasMissingRequirements: missingCreds,
           hasMissingCredentials: missingCreds,
-          hasMissingInputs: hasMissingInputs,
           onParameterChange: onParameterChange
             ? (paramName: string, newValue: unknown) =>
                 onParameterChange(key, paramName, newValue)
@@ -641,19 +616,6 @@ function FlowVisualizerInner({
                   credId
                 )
             : undefined,
-          // Inline inputs/execute: only if this bubble maps to schema fields
-          isEntryBubble: hasSchemaFieldInBubble,
-          inputFlowName: flowName,
-          inputSchema: inputsSchema,
-          onInputsChange,
-          onExecuteFlow: onExecute,
-          isExecuting,
-          isFormValid,
-          // Inline input schema + values
-          // Show all schema fields if this bubble references any of them
-          inputSchemaFields: hasSchemaFieldInBubble ? parsedFields : [],
-          executionInputs,
-          onExecutionInputChange,
           // Error state
           hasError: hasErrorState,
         },
@@ -694,6 +656,32 @@ function FlowVisualizerInner({
       })
       .filter((bubble) => bubble.startLine > 0)
       .sort((a, b) => a.startLine - b.startLine); // Sort by line number
+
+    // Connect InputSchemaNode to the first bubble (if input schema node exists)
+    if (
+      parsedFields.length > 0 &&
+      flowName &&
+      mainBubbles.length > 0 &&
+      nodes.some((n) => n.id === 'input-schema-node')
+    ) {
+      const firstBubbleId = mainBubbles[0].nodeId;
+      if (nodes.some((n) => n.id === firstBubbleId)) {
+        edges.push({
+          id: 'input-schema-to-first-bubble',
+          source: 'input-schema-node',
+          target: firstBubbleId,
+          sourceHandle: 'right',
+          targetHandle: 'left',
+          type: 'straight',
+          animated: true,
+          style: {
+            stroke: '#60a5fa', // Blue to match the input schema node theme
+            strokeWidth: 2,
+            strokeDasharray: '5,5',
+          },
+        });
+      }
+    }
 
     // Connect main bubbles sequentially (different color from dependency edges)
     for (let i = 0; i < mainBubbles.length - 1; i++) {
@@ -791,10 +779,15 @@ function FlowVisualizerInner({
     // Always update edges as they don't have user-modified positions
     setFlowEdges(initialEdges);
 
-    // Auto-fit viewport only on first load or when nodes are significantly changed AND flow is executing
-    if (initialNodes.length > 0 && shouldUpdateNodes && isExecuting) {
+    // Auto-fit viewport only on first load or when nodes are significantly changed
+    if (initialNodes.length > 0 && shouldUpdateNodes) {
       setTimeout(() => {
-        // If there are more than 4 main bubbles, only fit the first 4
+        // Check if InputSchemaNode exists
+        const inputSchemaNode = initialNodes.find(
+          (node) => node.id === 'input-schema-node'
+        );
+
+        // If there are more than 4 main bubbles, fit to InputSchemaNode + first 4 bubbles
         const mainBubbleCount = bubbleEntries.length;
         if (mainBubbleCount > 4) {
           // Find the first 4 main bubble nodes
@@ -809,9 +802,14 @@ function FlowVisualizerInner({
             })
             .slice(0, 4);
 
-          if (firstFourMainBubbles.length > 0) {
+          // Include InputSchemaNode if it exists
+          const nodesToFit = inputSchemaNode
+            ? [inputSchemaNode, ...firstFourMainBubbles]
+            : firstFourMainBubbles;
+
+          if (nodesToFit.length > 0) {
             fitView({
-              nodes: firstFourMainBubbles,
+              nodes: nodesToFit,
               padding: 0.1,
               includeHiddenNodes: false,
               minZoom: 0.1,
@@ -819,13 +817,32 @@ function FlowVisualizerInner({
             });
           }
         } else {
-          // Default behavior for 4 or fewer bubbles
-          fitView({
-            padding: 0.1,
-            includeHiddenNodes: false,
-            minZoom: 0.1,
-            maxZoom: 1.5,
-          });
+          // Default behavior for 4 or fewer bubbles - include InputSchemaNode if exists
+          if (inputSchemaNode) {
+            // Fit to InputSchemaNode + all main bubbles
+            const mainBubbleNodes = initialNodes.filter((node) => {
+              const bubbleKey = node.data.bubbleKey;
+              return bubbleEntries.some(
+                ([key]) => String(key) === String(bubbleKey)
+              );
+            });
+            const nodesToFit = [inputSchemaNode, ...mainBubbleNodes];
+            fitView({
+              nodes: nodesToFit,
+              padding: 0.1,
+              includeHiddenNodes: false,
+              minZoom: 0.1,
+              maxZoom: 1.5,
+            });
+          } else {
+            // No InputSchemaNode, fit all nodes
+            fitView({
+              padding: 0.1,
+              includeHiddenNodes: false,
+              minZoom: 0.1,
+              maxZoom: 1.5,
+            });
+          }
         }
       }, 200);
     }
