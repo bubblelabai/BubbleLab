@@ -191,6 +191,21 @@ export abstract class BaseBubble<
   }
 
   /**
+   * Override toJSON to prevent credential leaking via JSON.stringify or console.log
+   * Only exposes safe metadata, never params which may contain credentials
+   */
+  toJSON(): Record<string, unknown> {
+    return {
+      name: this.name,
+      type: this.type,
+      shortDescription: this.shortDescription,
+      alias: this.alias,
+      // Explicitly exclude params, context, and previousResult
+      // These may contain sensitive credentials
+    };
+  }
+
+  /**
    * Execute the bubble - just runs the action
    */
   async action(): Promise<BubbleResult<TResult>> {
