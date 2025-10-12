@@ -17,10 +17,10 @@ export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 // To add more templates to Popular category:
 // 1. Add the template ID to this array
 // 2. The template will automatically appear in both Popular and its main category
-export const POPULAR_TEMPLATES = [0, 3, 9] as const;
+export const POPULAR_TEMPLATES = [0, 1, 4, 10] as const;
 
 // Hidden templates - central control for suppressing templates without breaking indices
-const HIDDEN_TEMPLATES = new Set<number>([7]);
+const HIDDEN_TEMPLATES = new Set<number>([9]);
 
 export function isTemplateHidden(index: number): boolean {
   return HIDDEN_TEMPLATES.has(index);
@@ -35,6 +35,7 @@ export interface TemplateMetadata {
 
 // Import individual template files
 // Note: metadata export is optional - defaults to {} if not provided
+import * as techweekTemplate from './template_codes/techweekScheduler';
 import * as redditTemplate from './template_codes/redditLeadGeneration';
 import * as personalTemplate from './template_codes/personalAssistant';
 import * as financialTemplate from './template_codes/financialAdvisor';
@@ -57,16 +58,23 @@ export const TEMPLATE_REGISTRY: Array<
 > = [
   // Index 0
   {
+    name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
+    prompt: `Get your personalized LA Tech Week Calendar curated to your preferences and interests, alongside the scraped event schedule!`,
+    code: techweekTemplate.templateCode,
+    category: 'Popular',
+  },
+  // Index 1
+  {
     name: 'Reddit Lead Generation (Firecrawl, Google Sheets)',
     prompt: `Find qualified prospects from relevant Reddit threads/users and log them to a sheet with an auto-drafted outreach message.`,
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
   },
-  // Index 1 - Website Directory Scraper (removed)
+  // Index 2 - Website Directory Scraper (removed)
   // undefined,
-  // Index 2 - Daily Slack Digest (removed)
+  // Index 3 - Daily Slack Digest (removed)
   // undefined,
-  // Index 3
+  // Index 4
   {
     name: 'Project Management Assistant (Slack, Email)',
     prompt:
@@ -74,7 +82,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: projectManagementTemplate.templateCode,
     category: 'Project Management',
   },
-
+  // Index 5
   {
     name: 'Daily Briefing (Google Calendar, Email)',
     prompt:
@@ -82,7 +90,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: personalTemplate.templateCode,
     category: 'Personal Assistant',
   },
-  // Index 4
+  // Index 6
   {
     name: 'Financial Portfolio Advisor (Firecrawl, Email)',
     prompt:
@@ -90,7 +98,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
   },
-  // Index 5
+  // Index 7
   {
     name: 'Github Contributor Report (Firecrawl, Email)',
     prompt:
@@ -98,7 +106,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: githubScraperTemplate.templateCode,
     category: 'Lead Generation',
   },
-  // Index 6
+  // Index 8
   {
     name: 'Database Metrics Assistant (Postgres, Gmail)',
     prompt:
@@ -106,7 +114,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: databaseTemplate.templateCode,
     category: 'Project Management',
   },
-  // Index 7
+  // Index 9
   // {
   //   name: 'Batch Creative Generator (OpenRouter, Google Drive, Google Sheets)',
   //   prompt:
@@ -114,7 +122,7 @@ export const TEMPLATE_REGISTRY: Array<
   //   code: nanobananaTemplate.templateCode,
   //   category: 'Marketing',
   // },
-  // Index 8
+  // Index 10
   {
     name: 'Daily News Digest (Firecrawl, Email, Reddit)',
     prompt:
@@ -122,7 +130,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: dailyNewsTemplate.templateCode,
     category: 'Personal Assistant',
   },
-  // Index 9
+  // Index 11
   {
     name: 'Gmail Reply Assistant (Gmail)',
     prompt:
@@ -130,7 +138,7 @@ export const TEMPLATE_REGISTRY: Array<
     code: gmailReplyTemplate.templateCode,
     category: 'Personal Assistant',
   },
-  // Index 10
+  // Index 12
   {
     name: 'Content Creation Trends (Firecrawl, Google Drive, Email)',
     prompt:
