@@ -11,6 +11,11 @@ const GetBubbleDetailsToolParamsSchema = z.object({
     .string()
     .min(1, 'Bubble name is required')
     .describe('The name of the bubble to get details about'),
+  includeInputSchema: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Include input parameter schema in the response'),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -35,6 +40,10 @@ type GetBubbleDetailsToolResult = z.output<
 const GetBubbleDetailsToolResultSchema = z.object({
   name: z.string().describe('Name of the bubble'),
   alias: z.string().optional().describe('Short alias for the bubble'),
+  inputSchema: z
+    .string()
+    .optional()
+    .describe('String representation of the input parameter schema types'),
   outputSchema: z
     .string()
     .describe('String representation of the output schema types'),
@@ -115,9 +124,15 @@ export class GetBubbleDetailsTool extends ToolBubble<
       metadata.resultSchema
     );
 
+    // Generate string representation of input schema if requested
+    const inputSchemaString = this.params.includeInputSchema
+      ? this.generateOutputSchemaString(metadata.schema)
+      : undefined;
+
     return {
       name: metadata.name,
       alias: metadata.alias,
+      inputSchema: inputSchemaString,
       outputSchema: outputSchemaString,
       usageExample,
       success: true,
