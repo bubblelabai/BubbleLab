@@ -535,6 +535,16 @@ export function CreateCredentialModal({
                   completed, the connection will be saved automatically.
                 </p>
               </div>
+              {getOAuthProvider(formData.credentialType as CredentialType) ===
+                'google' && (
+                <div className="mt-3 bg-yellow-900 bg-opacity-20 rounded-lg p-3 border border-yellow-500">
+                  <p className="text-xs text-yellow-300">
+                    ⚠️ Our Google OAuth app is pending approval. You may see a
+                    warning about an "untrusted app" during authentication. This
+                    is normal and safe to proceed.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
