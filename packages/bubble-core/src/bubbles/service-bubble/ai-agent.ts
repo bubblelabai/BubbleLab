@@ -18,21 +18,21 @@ import {
   type AvailableTool,
 } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
-import type { BubbleName } from '@bubblelab/shared-schemas';
+import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
   toolName: AvailableTool;
   toolInput: unknown;
-  toolOutput?: unknown; // Only available in afterToolCall
+  toolOutput?: BubbleResult<unknown>; // Only available in afterToolCall
   messages: BaseMessage[];
 };
 
 // Tool hooks can modify the entire messages array (including system prompt)
 export type ToolHookAfter = (
   context: ToolHookContext
-) => Promise<BaseMessage[]>;
+) => Promise<{ messages: BaseMessage[]; shouldStop?: boolean }>;
 
 export type ToolHookBefore = (
   context: ToolHookContext
@@ -271,6 +271,7 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  private shouldStopAfterTools = false;
 
   constructor(
     params: AIAgentParams = {
@@ -469,6 +470,32 @@ export class AIAgentBubble extends ServiceBubble<
   ): Promise<{ response: string; error?: string }> {
     let finalResponse =
       typeof response === 'string' ? response : JSON.stringify(response);
+    // If response is an array, look for first parsable JSON in text
+
+    console.log(
+      '[AIAgent] Checking if response is an array:',
+      Array.isArray(response)
+    );
+    console.log('[AIAgent] Response:', response);
+    if (Array.isArray(response)) {
+      for (const item of response) {
+        if (
+          item &&
+          typeof item === 'object' &&
+          'type' in item &&
+          item.type === 'text'
+        ) {
+          try {
+            if (parseJsonWithFallbacks(item.text).success) {
+              return { response: item.text };
+            }
+          } catch {
+            // Continue to next item if not valid JSON
+            continue;
+          }
+        }
+      }
+    }
 
     // Special handling for Gemini image models that return images in inlineData format
     if (
@@ -683,6 +710,9 @@ export class AIAgentBubble extends ServiceBubble<
     const toolMessages: BaseMessage[] = [];
     let currentMessages = [...messages];
 
+    // Reset stop flag at the start of tool execution
+    this.shouldStopAfterTools = false;
+
     // Execute each tool call
     for (const toolCall of toolCalls) {
       const tool = tools.find((t) => t.name === toolCall.name);
@@ -737,8 +767,14 @@ export class AIAgentBubble extends ServiceBubble<
         });
 
         // If hook returns modified messages, update current messages
-        if (hookResult_after && Array.isArray(hookResult_after)) {
-          currentMessages = hookResult_after;
+        if (hookResult_after) {
+          if (hookResult_after.messages) {
+            currentMessages = hookResult_after.messages;
+          }
+          // Check if hook wants to stop execution
+          if (hookResult_after.shouldStop === true) {
+            this.shouldStopAfterTools = true;
+          }
         }
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
@@ -791,6 +827,16 @@ export class AIAgentBubble extends ServiceBubble<
       return '__end__';
     };
 
+    // Define conditional edge after tools to check if we should stop
+    const shouldContinueAfterTools = () => {
+      // Check if the afterToolCall hook requested stopping
+      if (this.shouldStopAfterTools) {
+        return '__end__';
+      }
+      // Otherwise continue back to agent
+      return 'agent';
+    };
+
     // Build the graph
     const graph = new StateGraph(MessagesAnnotation).addNode(
       'agent',
@@ -807,7 +853,7 @@ export class AIAgentBubble extends ServiceBubble<
         .addNode('tools', toolNode)
         .addEdge('__start__', 'agent')
         .addConditionalEdges('agent', shouldContinue)
-        .addEdge('tools', 'agent');
+        .addConditionalEdges('tools', shouldContinueAfterTools);
     } else {
       graph.addEdge('__start__', 'agent').addEdge('agent', '__end__');
     }
