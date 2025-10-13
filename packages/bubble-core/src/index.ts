@@ -25,6 +25,9 @@ export {
   AIAgentBubble,
   type StreamingEvent,
   type StreamingCallback,
+  type ToolHookContext,
+  type ToolHookBefore,
+  type ToolHookAfter,
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
 export { SlackBubble } from './bubbles/service-bubble/slack.js';
