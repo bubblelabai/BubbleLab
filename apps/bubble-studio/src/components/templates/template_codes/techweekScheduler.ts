@@ -33,11 +33,13 @@ export const templateCode = `import {
       const { preferences, email } = payload;
 
       // STEP 1: Read events from public Google Sheets via HTTP (no credentials needed)
-      const spreadsheetId = '1TIWYh-sye1vGoLv-VzDtOB__hoUwxPyijiARayUIPuE';
+      const SPREADSHEET_ID = '1TIWYh-sye1vGoLv-VzDtOB__hoUwxPyijiARayUIPuE';
+
+      const SHEET_NAME = "techweek_events_clean"
       
       // Use direct export URL for public sheets (more reliable than gviz/tq endpoint)
       // Note: This exports the first sheet. For specific sheets, you'd need the gid parameter
-      const csvUrl = \`https://docs.google.com/spreadsheets/d/\${spreadsheetId}/export?format=csv&gid=0\`;
+      const csvUrl = \`https://docs.google.com/spreadsheets/d/\${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=\${SHEET_NAME}\`;
       
       this.logger?.info(\`Fetching spreadsheet from: \${csvUrl}\`);
       
@@ -125,7 +127,7 @@ export const templateCode = `import {
 
 
       // STEP 3: Process each day and send personalized schedule emails
-      const dates = ['Oct 6', 'Oct 7', 'Oct 8', 'Oct 9', 'Oct 10', 'Oct 11', 'Oct 12'];
+      const dates = ['Oct 13', 'Oct 14', 'Oct 15', 'Oct 16', 'Oct 17', 'Oct 18', 'Oct 19'];
 
       for (const date of dates) {
         // Filter events for this specific date
@@ -135,6 +137,8 @@ export const templateCode = `import {
           this.logger?.info(\`No events found for \${date}\`);
           continue;
         }
+
+        this.logger?.info(\`Found \${dayEvents.length} for \${date}\`)
 
         const prompt = \`
 Based on the following product information and list of Techweek events, please create a proposed schedule for \${date}.
@@ -243,7 +247,7 @@ Based on the following product information and list of Techweek events, please c
           <tr>
             <td style="padding: 30px; background-color: #f8f9fa; text-align: center; border-top: 1px solid #dee2e6;">
               <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px; line-height: 1.6;">
-                📊 <strong>View Full Techweek Schedule:</strong> <a href="https://docs.google.com/spreadsheets/d/\${spreadsheetId}/edit" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">Open Spreadsheet</a>
+                📊 <strong>View Full Techweek Schedule:</strong> <a href="https://docs.google.com/spreadsheets/d/\${SPREADSHEET_ID}/edit" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">Open Spreadsheet</a>
               </p>
               <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px; line-height: 1.6;">
                 ⚡ This workflow is powered by <a href="https://bubblelab.ai" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">Bubble Lab</a> — an open-source AI automation platform (with code exports and observability) launching very soon!
@@ -271,7 +275,6 @@ Based on the following product information and list of Techweek events, please c
           await new ResendBubble({
             operation: 'send_email',
             to: [email],
-            bcc: ['selinali@bubblelab.ai'],
             from: 'Bubble Lab Team <welcome@hello.bubblelab.ai>',
             subject: \`🚀 Your Techweek Schedule: \${date}\`,
             html: htmlEmail,
