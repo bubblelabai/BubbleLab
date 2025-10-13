@@ -10,6 +10,8 @@ export default defineConfig({
     hookTimeout: 120000,
     teardownTimeout: 120000,
     pool: 'forks',
+    // Load environment variables before running tests
+    setupFiles: ['./vitest.setup.ts'],
   },
   resolve: {
     alias: {

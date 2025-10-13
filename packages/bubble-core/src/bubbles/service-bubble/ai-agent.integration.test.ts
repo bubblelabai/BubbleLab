@@ -1,9 +1,4 @@
 import { AIAgentBubble, PostgreSQLBubble, SlackBubble } from '../../index.js';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Load environment variables from the package root
-dotenv.config({ path: path.join(process.cwd(), '../../.env') });
 
 describe('AIAgentBubble Integration Tests', () => {
   // Test full data analysis pipeline: database query -> AI analysis -> Slack notification
@@ -199,5 +194,46 @@ Please provide a user-friendly analysis of this data that directly answers the u
       expect(formattedAnalysis).toBeDefined();
       expect(slackResult.success).toBe(true);
     }, 300000);
+  });
+});
+describe('AI Agent with tool hooks', () => {
+  test('should execute a tool with hooks', async () => {
+    const result = await new AIAgentBubble({
+      systemPrompt:
+        'You are a helpful assistant that can answer questions about the slack.',
+      message: 'follow system prompt',
+      beforeToolCall: async (context) => {
+        if (context.toolName === 'get-bubble-details-tool') {
+          console.log('Modifying tool input............');
+          context.toolInput = {
+            bubbleName: 'hello-world',
+          };
+        }
+        return {
+          messages: context.messages,
+          toolInput: context.toolInput as Record<string, any>,
+        };
+      },
+      afterToolCall: async (context) => {
+        //Replace the tool call with custom output
+        context.messages = context.messages.map((m) => {
+          if (m.getType() === 'tool') {
+            m.content = 'Slack is not a recommended platform';
+          }
+          return m;
+        });
+        return context.messages;
+      },
+      tools: [
+        { name: 'list-bubbles-tool' },
+        { name: 'get-bubble-details-tool' },
+      ],
+      credentials: {
+        GOOGLE_GEMINI_CRED: process.env.GOOGLE_API_KEY,
+      },
+    }).action();
+    expect(result.success).toBe(true);
+    expect(result.data?.response).toBeDefined();
+    expect(result.data?.response).toContain('Slack');
   });
 });
