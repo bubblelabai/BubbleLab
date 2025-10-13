@@ -208,7 +208,6 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
-
     it('should execute a flow with multiple bubble instantiations (multi-line params) and preserve structure', async () => {
       const testScript = getFixture('hello-world-multiple');
       const runner = new BubbleRunner(testScript, bubbleFactory);
@@ -248,7 +247,6 @@ describe('BubbleRunner correctly runs and plans', () => {
         result.success || result.error?.includes('Failed to scrape Reddit')
       ).toBe(true);
     });
-
     it('should run reddit-lead-finder flow', async () => {
       const testScript = getFixture('reddit-lead-finder');
       const runner = new BubbleRunner(testScript, bubbleFactory);
@@ -269,48 +267,46 @@ describe('BubbleRunner correctly runs and plans', () => {
       ).toBe(true);
       console.log('Logs:', runner.getLogger()?.getLogs());
     });
-
     it('should execute a techweek-scrape flow', async () => {
       const testScript = getFixture('techweek-scrape');
       const runner = new BubbleRunner(testScript, bubbleFactory);
       const result = await runner.runAll();
       console.log(result);
       console.log('Logs:', runner.getLogger()?.getLogs());
-      it('should execute a flow with a parameter with a comment', async () => {
-        const testScript = getFixture('para-with-comment');
-        const runner = new BubbleRunner(testScript, bubbleFactory);
-        const result = await runner.runAll();
-        // inject credentials
-        const bubbles = runner.getParsedBubbles();
-        console.log('Logs:', runner.getLogger()?.getLogs());
-        expect(result).toBeDefined();
-        expect(result.success).toBe(true);
-      });
-
-      it('should inject logger with credentials and modify bubble parameters', async () => {
-        const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
-        const bubbles = runner.getParsedBubbles();
-        const bubbleIds = Object.keys(bubbles).map(Number);
-        expect(bubbleIds.length).toBeGreaterThan(0);
-        const city = 'New York';
-        runner.injector.changeBubbleParameters(
-          bubbleIds[0],
-          'message',
-          `What is the weather in ${city}? Find info from web.`
-        );
-        runner.injector.injectCredentials(bubbles, [], getUserCredential());
-        console.log('Final script:', runner.bubbleScript.bubblescript);
-        const result = await runner.runAll();
-        expect(result).toBeDefined();
-        const logger = runner.getLogger();
-        // Should not include credentials in the logs
-        expect(
-          logger
-            ?.getLogs()
-            ?.some((log) => log.message.includes('test-openai-key'))
-        ).toBe(false);
-        expect(result.success).toBe(true);
-      }, 300000); // 5 minutes timeout
     });
+    it('should execute a flow with a parameter with a comment', async () => {
+      const testScript = getFixture('para-with-comment');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      // inject credentials
+      const bubbles = runner.getParsedBubbles();
+      console.log('Logs:', runner.getLogger()?.getLogs());
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+    it('should inject logger with credentials and modify bubble parameters', async () => {
+      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
+      const bubbles = runner.getParsedBubbles();
+      const bubbleIds = Object.keys(bubbles).map(Number);
+      expect(bubbleIds.length).toBeGreaterThan(0);
+      const city = 'New York';
+      runner.injector.changeBubbleParameters(
+        bubbleIds[0],
+        'message',
+        `What is the weather in ${city}? Find info from web.`
+      );
+      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      console.log('Final script:', runner.bubbleScript.bubblescript);
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      const logger = runner.getLogger();
+      // Should not include credentials in the logs
+      expect(
+        logger
+          ?.getLogs()
+          ?.some((log) => log.message.includes('test-openai-key'))
+      ).toBe(false);
+      expect(result.success).toBe(true);
+    }, 300000); // 5 minutes timeout
   });
 });
