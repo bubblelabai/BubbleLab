@@ -499,7 +499,7 @@ export class BubbleRunner {
         executionId: 0,
         success: true,
         error: '',
-        summary: this.logger.getExecutionSummary()!,
+        summary: this.logger.getExecutionSummary(),
         data: result,
       };
     } catch (error) {
@@ -607,7 +607,7 @@ export class BubbleRunner {
 
         return {
           executionId: 0,
-          summary: this.logger.getExecutionSummary()!,
+          summary: this.logger.getExecutionSummary(),
           success: false,
           error: (error as Error).message,
           data: undefined,
