@@ -13,10 +13,9 @@ export interface Output {
 }
 
 // Define your custom input interface
-export interface CustomWebhookPayload extends WebhookEvent {}
 
 export class CalendarEventChecker extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
+  async handle(payload: WebhookEvent): Promise<Output> {
     // STEP 1: Generate mock CSV data to simulate 100,000 rows from spreadsheet
     this.logger?.info('Generating mock CSV data for 100,000 events');
 
