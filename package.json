@@ -8,6 +8,7 @@
     "publish:packages": "pnpm build:core && pnpm --filter=\"@bubblelab/shared-schemas\" --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\" --filter=\"create-bubblelab-app\" --filter=\"@bubblelab/ts-scope-manager\" publish --access public",
     "setup:env": "bash setup-env.sh",
     "dev": "pnpm setup:env && pnpm build:core && turbo dev --filter=\"bubblelab-api\" --filter=\"bubble-studio\"",
+    "dev:hot": "pnpm setup:env && pnpm build:core && turbo run dev:hot --filter=\"bubblelab-api\" --filter=\"bubble-studio\"",
     "dev:all": "turbo dev",
     "build:dashboard": "pnpm run build:core && cd apps/nodex-dashboard && pnpm build",
     "build:ide": "pnpm run build:core && cd apps/bubble-studio && pnpm build",

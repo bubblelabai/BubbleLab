@@ -56,9 +56,7 @@ export class CredentialValidator {
         bubbleName,
         Object.keys(testParams).length > 0 ? testParams : undefined
       );
-      (bubbleInstance as IServiceBubble).setCredentials({
-        [credentialType]: credentialValue,
-      }); // Cast to service bubble and call testCredential method
+
       const serviceBubble = bubbleInstance as IServiceBubble;
       // Apply configurations if provided
       if (configurations) {
@@ -66,6 +64,9 @@ export class CredentialValidator {
           serviceBubble.setParam(paramName, paramValue);
         }
       }
+      serviceBubble.setParam('credentials', {
+        [credentialType]: credentialValue,
+      });
       const isValid = await serviceBubble.testCredential();
 
       return {
@@ -217,11 +218,6 @@ export class CredentialValidator {
         Object.keys(testParams).length > 0 ? testParams : undefined
       );
 
-      // Set credentials
-      (bubbleInstance as IServiceBubble).setCredentials({
-        [credentialType]: credentialValue,
-      });
-
       const serviceBubble = bubbleInstance as IServiceBubble;
 
       // Apply configurations if provided
@@ -230,6 +226,9 @@ export class CredentialValidator {
           serviceBubble.setParam(paramName, paramValue);
         }
       }
+      serviceBubble.setParam('credentials', {
+        [credentialType]: credentialValue,
+      });
 
       // Get metadata using reflection to access protected method
       const metadata = await (
