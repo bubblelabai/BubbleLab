@@ -6,7 +6,6 @@ import {
   BUBBLE_CREDENTIAL_OPTIONS,
 } from '@bubblelab/shared-schemas';
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
-import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -14,17 +13,30 @@ import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { AvailableModels } from '../../types/ai-models.js';
-import { AvailableTools } from '../../types/available-tools.js';
+import {
+  AvailableTools,
+  type AvailableTool,
+} from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
 
-// Define tool call interface (from LangChain)
-interface ToolCall {
-  id: string;
-  name: string;
-  args: Record<string, unknown>;
-}
+// Define tool hook context - provides access to messages and tool call details
+export type ToolHookContext = {
+  toolName: AvailableTool;
+  toolInput: unknown;
+  toolOutput?: unknown; // Only available in afterToolCall
+  messages: BaseMessage[];
+};
+
+// Tool hooks can modify the entire messages array (including system prompt)
+export type ToolHookAfter = (
+  context: ToolHookContext
+) => Promise<BaseMessage[]>;
+
+export type ToolHookBefore = (
+  context: ToolHookContext
+) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
 
 // Define streaming event types for real-time AI agent feedback
 export type StreamingEvent =
@@ -193,6 +205,8 @@ const AIAgentParamsSchema = z.object({
     .describe(
       'Enable real-time streaming of tokens, tool calls, and iteration progress'
     ),
+  // Note: beforeToolCall and afterToolCall are function hooks added via TypeScript interface
+  // They cannot be part of the Zod schema but are available in the params
 });
 const AIAgentResultSchema = z.object({
   response: z
@@ -220,8 +234,15 @@ const AIAgentResultSchema = z.object({
     .describe('Whether the agent execution completed successfully'),
 });
 
-type AIAgentParams = z.input<typeof AIAgentParamsSchema>;
-type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema>;
+type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
+  // Optional hooks for intercepting tool calls
+  beforeToolCall?: ToolHookBefore;
+  afterToolCall?: ToolHookAfter;
+};
+type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
+  beforeToolCall?: ToolHookBefore;
+  afterToolCall?: ToolHookAfter;
+};
 
 type AIAgentResult = z.output<typeof AIAgentResultSchema>;
 
@@ -248,6 +269,8 @@ export class AIAgentBubble extends ServiceBubble<
   static readonly alias = 'agent';
 
   private factory: BubbleFactory;
+  private beforeToolCallHook: ToolHookBefore | undefined;
+  private afterToolCallHook: ToolHookAfter | undefined;
 
   constructor(
     params: AIAgentParams = {
@@ -257,6 +280,8 @@ export class AIAgentBubble extends ServiceBubble<
     context?: BubbleContext
   ) {
     super(params, context);
+    this.beforeToolCallHook = params.beforeToolCall;
+    this.afterToolCallHook = params.afterToolCall;
     this.factory = new BubbleFactory();
   }
 
@@ -574,7 +599,12 @@ export class AIAgentBubble extends ServiceBubble<
         const ToolBubbleClass = this.factory.get(toolConfig.name as BubbleName);
 
         if (!ToolBubbleClass) {
-          console.warn(`Tool bubble '${toolConfig.name}' not found in factory`);
+          this.context?.logger?.warn(
+            `Tool bubble '${toolConfig.name}' not found in factory. This tool will not be used.`
+          );
+          console.warn(
+            `Tool bubble '${toolConfig.name}' not found in factory. This tool will not be used.`
+          );
           continue;
         }
 
@@ -639,6 +669,97 @@ export class AIAgentBubble extends ServiceBubble<
     return tools;
   }
 
+  /**
+   * Custom tool execution node that supports hooks
+   */
+  private async executeToolsWithHooks(
+    state: typeof MessagesAnnotation.State,
+    tools: DynamicStructuredTool[]
+  ): Promise<{ messages: BaseMessage[] }> {
+    const { messages } = state;
+    const lastMessage = messages[messages.length - 1] as AIMessage;
+    const toolCalls = lastMessage.tool_calls || [];
+
+    const toolMessages: BaseMessage[] = [];
+    let currentMessages = [...messages];
+
+    // Execute each tool call
+    for (const toolCall of toolCalls) {
+      const tool = tools.find((t) => t.name === toolCall.name);
+      if (!tool) {
+        console.warn(`Tool ${toolCall.name} not found`);
+        toolMessages.push(
+          new ToolMessage({
+            content: `Error: Tool ${toolCall.name} not found`,
+            tool_call_id: toolCall.id!,
+          })
+        );
+        continue;
+      }
+
+      try {
+        // Call beforeToolCall hook if provided
+        const hookResult_before = await this.beforeToolCallHook?.({
+          toolName: toolCall.name as AvailableTool,
+          toolInput: toolCall.args,
+          messages: currentMessages,
+        });
+
+        // If hook returns modified messages/toolInput, apply them
+        if (hookResult_before) {
+          if (hookResult_before.messages) {
+            currentMessages = hookResult_before.messages;
+          }
+          toolCall.args = hookResult_before.toolInput;
+        }
+
+        // Execute the tool
+        const toolOutput = await tool.invoke(toolCall.args);
+
+        // Create tool message
+        const toolMessage = new ToolMessage({
+          content:
+            typeof toolOutput === 'string'
+              ? toolOutput
+              : JSON.stringify(toolOutput),
+          tool_call_id: toolCall.id!,
+        });
+
+        toolMessages.push(toolMessage);
+        currentMessages = [...currentMessages, toolMessage];
+
+        // Call afterToolCall hook if provided
+        const hookResult_after = await this.afterToolCallHook?.({
+          toolName: toolCall.name as AvailableTool,
+          toolInput: toolCall.args,
+          toolOutput,
+          messages: currentMessages,
+        });
+
+        // If hook returns modified messages, update current messages
+        if (hookResult_after && Array.isArray(hookResult_after)) {
+          currentMessages = hookResult_after;
+        }
+      } catch (error) {
+        console.error(`Error executing tool ${toolCall.name}:`, error);
+        const errorMessage = new ToolMessage({
+          content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          tool_call_id: toolCall.id!,
+        });
+        toolMessages.push(errorMessage);
+        currentMessages = [...currentMessages, errorMessage];
+      }
+    }
+
+    // Return the updated messages
+    // If hooks modified messages, use those; otherwise use the original messages + tool messages
+    if (currentMessages.length !== messages.length + toolMessages.length) {
+      return { messages: currentMessages };
+    }
+
+    return { messages: toolMessages };
+  }
+
   private async createAgentGraph(
     llm: ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic,
     tools: DynamicStructuredTool[],
@@ -677,8 +798,10 @@ export class AIAgentBubble extends ServiceBubble<
     );
 
     if (tools.length > 0) {
-      // Use the official ToolNode for tool execution
-      const toolNode = new ToolNode(tools);
+      // Use custom tool node with hooks support
+      const toolNode = async (state: typeof MessagesAnnotation.State) => {
+        return await this.executeToolsWithHooks(state, tools);
+      };
 
       graph
         .addNode('tools', toolNode)
@@ -794,17 +917,17 @@ export class AIAgentBubble extends ServiceBubble<
       console.log('[AIAgent] Total messages:', result.messages.length);
       iterations = result.messages.length;
 
-      // Extract tool calls from messages
+      // Extract tool calls from messages and track individual LLM calls
       // Store tool calls temporarily to match with their responses
       const toolCallMap = new Map<string, { name: string; args: unknown }>();
 
       for (let i = 0; i < result.messages.length; i++) {
         const msg = result.messages[i];
         if (msg instanceof AIMessage && msg.tool_calls) {
-          const typedToolCalls = msg.tool_calls as ToolCall[];
+          const typedToolCalls = msg.tool_calls;
           // Log and track tool calls
           for (const toolCall of typedToolCalls) {
-            toolCallMap.set(toolCall.id, {
+            toolCallMap.set(toolCall.id!, {
               name: toolCall.name,
               args: toolCall.args,
             });
