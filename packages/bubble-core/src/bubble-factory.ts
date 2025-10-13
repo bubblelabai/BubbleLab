@@ -331,7 +331,6 @@ export class BubbleFactory {
       // Cache detailed dependencies globally for seeding future instances
       BubbleFactory.detailedDepsCache = new Map(this.detailedDeps);
     } else {
-      console.log('Bubble dependencies already populated....');
       // Seed this instance from the global cache if available
       if (BubbleFactory.detailedDepsCache.size > 0) {
         for (const [name, deps] of BubbleFactory.detailedDepsCache) {

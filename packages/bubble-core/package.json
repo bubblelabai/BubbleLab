@@ -22,9 +22,10 @@
     }
   },
   "scripts": {
-    "build": "tsc && tsx scripts/bubble-bundler.ts",
+    "build": "tsc && tsx scripts/bubble-bundler.ts && tsx scripts/bubble-metadata-bundler.ts",
     "build:types": "tsc",
     "build:bundle": "tsx scripts/bubble-bundler.ts",
+    "build:metadata": "tsx scripts/bubble-metadata-bundler.ts",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --exclude='**/*.integration.{test,spec}.ts'",
