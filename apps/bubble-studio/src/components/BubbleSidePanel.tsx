@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   X,
   Search,
@@ -345,12 +345,21 @@ interface BubblePromptViewProps {
   bubbleDefinition: BubbleDefinition | undefined;
 }
 
+interface ChatMessage {
+  id: string;
+  type: 'user' | 'assistant';
+  content: string;
+  resultType?: 'code' | 'question' | 'reject';
+  timestamp: Date;
+}
+
 function BubblePromptView({
   bubbleName,
   bubbleDefinition,
 }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
-  const [generatedSnippet, setGeneratedSnippet] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
 
@@ -362,15 +371,36 @@ function BubblePromptView({
   // MilkTea mutation
   const milkTeaMutation = useMilkTea();
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, milkTeaMutation.isPending]);
+
   const handleGenerate = () => {
     if (!bubbleDefinition) {
       toast.error('Bubble definition not found');
       return;
     }
 
+    if (!prompt.trim()) {
+      return;
+    }
+
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: prompt.trim(),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Clear input
+    setPrompt('');
+
     milkTeaMutation.mutate(
       {
-        userRequest: prompt,
+        userRequest: userMessage.content,
         bubbleName: bubbleDefinition.name,
         bubbleSchema: {
           name: bubbleDefinition.name,
@@ -387,30 +417,39 @@ function BubblePromptView({
       },
       {
         onSuccess: (result) => {
-          if (result.type === 'code' && result.snippet) {
-            setGeneratedSnippet(result.snippet);
-            toast.success('Code generated successfully!');
-          } else if (result.type === 'question') {
-            toast.info(result.message);
-          } else if (result.type === 'reject') {
-            toast.error(result.message);
-          }
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content:
+              result.type === 'code' && result.snippet
+                ? result.snippet
+                : result.message || '',
+            resultType: result.type,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
         },
         onError: (error) => {
-          toast.error(
-            error instanceof Error ? error.message : 'Failed to generate code'
-          );
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content:
+              error instanceof Error
+                ? error.message
+                : 'Failed to generate code',
+            resultType: 'reject',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
         },
       }
     );
   };
 
-  const handleInsert = () => {
-    if (generatedSnippet) {
-      insertCodeAtTargetLine(generatedSnippet, false);
-      toast.success('Code inserted!');
-      closeSidePanel();
-    }
+  const handleInsert = (code: string) => {
+    insertCodeAtTargetLine(code, false);
+    toast.success('Code inserted!');
+    closeSidePanel();
   };
 
   return (
@@ -451,57 +490,71 @@ function BubblePromptView({
 
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
-        {/* Show generated snippet */}
-        {generatedSnippet && (
-          <div className="p-3 bg-green-900/20 border border-green-700 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Check className="w-4 h-4 text-green-400" />
-              <span className="text-sm font-medium text-green-300">
-                Code Generated
-              </span>
-            </div>
-            <pre className="text-xs text-gray-300 overflow-x-auto max-h-32 overflow-y-auto thin-scrollbar">
-              {generatedSnippet}
-            </pre>
+        {messages.length === 0 && !milkTeaMutation.isPending && (
+          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+            Start a conversation to configure this bubble
           </div>
         )}
 
-        {/* Show error */}
-        {milkTeaMutation.isError && (
-          <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`p-3 ${
+              message.type === 'user' ? 'flex justify-end' : ''
+            }`}
+          >
+            {message.type === 'user' ? (
+              <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                <div className="text-sm text-gray-900">{message.content}</div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  {message.resultType === 'code' && (
+                    <Check className="w-4 h-4 text-green-400" />
+                  )}
+                  {message.resultType === 'reject' && (
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className="text-xs font-medium text-gray-400">
+                    Assistant
+                    {message.resultType === 'code' && ' - Code Generated'}
+                    {message.resultType === 'question' && ' - Question'}
+                    {message.resultType === 'reject' && ' - Error'}
+                  </span>
+                </div>
+                {message.resultType === 'code' ? (
+                  <>
+                    <pre className="text-xs text-gray-300 overflow-x-auto max-h-48 overflow-y-auto thin-scrollbar mb-2 p-2 bg-black/30 rounded">
+                      {message.content}
+                    </pre>
+                    <button
+                      onClick={() => handleInsert(message.content)}
+                      className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Insert Code
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-200">{message.content}</div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {milkTeaMutation.isPending && (
+          <div className="p-3">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-red-300">
-                {milkTeaMutation.error instanceof Error
-                  ? milkTeaMutation.error.message
-                  : 'Failed to generate code'}
-              </span>
+              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+              <span className="text-sm text-gray-400">Thinking...</span>
             </div>
           </div>
         )}
 
-        {/* Action buttons - Only show when code is generated */}
-        {generatedSnippet && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setGeneratedSnippet(null);
-                setPrompt('');
-                milkTeaMutation.reset();
-              }}
-              className="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-            >
-              Try Again
-            </button>
-            <button
-              onClick={handleInsert}
-              className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              Insert Code
-            </button>
-          </div>
-        )}
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Compact chat input at bottom */}
