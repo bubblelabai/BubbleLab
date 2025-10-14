@@ -15,6 +15,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { MonacoEditor } from './components/MonacoEditor';
 import { ExportModal } from './components/ExportModal';
 import FlowVisualizer from './components/FlowVisualizer';
+import { BubbleSidePanel } from './components/BubbleSidePanel';
 import { CredentialsPage } from './pages/CredentialsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 import { DashboardPage } from './pages/DashboardPage';
@@ -927,7 +928,6 @@ function App() {
   };
   // Validate that all required, non-system credentials with available options are selected
   const isCredentialsSelectionValid = () => {
-
     console.log('currentFlow', currentFlow);
     console.log('pendingExecutionCredentials', pendingExecutionCredentials);
     console.log('availableCredentials', availableCredentials);
@@ -939,7 +939,6 @@ function App() {
 
     for (const [bubbleKey, credTypes] of requiredEntries) {
       for (const credType of credTypes) {
-
         if (isSystemCredential(credType as CredentialType)) continue; // system-managed
 
         const selectedForBubble = pendingExecutionCredentials[bubbleKey] || {};
@@ -1832,6 +1831,9 @@ function App() {
         inputsSchema={JSON.stringify(currentFlow?.inputSchema)}
         requiredCredentials={currentFlow?.requiredCredentials}
       />
+
+      {/* Bubble Side Panel for adding bubbles */}
+      <BubbleSidePanel />
 
       {/* Toast Container */}
       <ToastContainer
