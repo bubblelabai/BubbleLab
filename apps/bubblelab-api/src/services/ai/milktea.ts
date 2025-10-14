@@ -270,12 +270,80 @@ export async function runMilkTea(
     };
 
     const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
+      const reasoningContent = '';
       if (context.toolName === 'bubbleflow-validation-tool') {
         console.log('[MilkTea] Post-hook: Checking validation result');
 
-        // Restore original snippet in the tool message so agent sees what it sent
+        // Restore original snippet in both tool message AND AIMessage tool_calls
         if (savedOriginalSnippet) {
-          console.log('[MilkTea] Restoring original snippet in tool message');
+          console.log('[MilkTea] Restoring original snippet in messages');
+
+          // Find the last AIMessage with tool calls
+          const lastAIMessageIndex = [...context.messages]
+            .reverse()
+            .findIndex(
+              (msg) =>
+                msg.constructor.name === 'AIMessage' &&
+                'tool_calls' in msg &&
+                Array.isArray(msg.tool_calls) &&
+                msg.tool_calls.length > 0
+            );
+
+          if (lastAIMessageIndex !== -1) {
+            const actualAIIndex =
+              context.messages.length - 1 - lastAIMessageIndex;
+            const aiMessage = context.messages[actualAIIndex] as AIMessage;
+
+            // Restore original snippet in tool_calls args
+            if (aiMessage.tool_calls && aiMessage.tool_calls.length > 0) {
+              const toolCall = aiMessage.tool_calls[0];
+              if (toolCall.args && typeof toolCall.args === 'object') {
+                toolCall.args = { code: savedOriginalSnippet };
+              }
+              console.log(
+                '[MilkTea] Restored original snippet in AIMessage tool_calls'
+              );
+            }
+
+            // Also preserve reasoning/thinking content if present
+            const additionalKwargs = (
+              aiMessage as unknown as {
+                additional_kwargs?: Record<string, unknown>;
+              }
+            ).additional_kwargs;
+            if (additionalKwargs?.__raw_response) {
+              const rawResponse = additionalKwargs.__raw_response as {
+                choices?: Array<{
+                  message?: {
+                    reasoning?: string;
+                    reasoning_details?: Array<{ type: string; text: string }>;
+                  };
+                }>;
+              };
+
+              if (rawResponse.choices?.[0]?.message) {
+                const messageData = rawResponse.choices[0].message;
+
+                // Extract reasoning content
+                let reasoningContent = '';
+                if (messageData.reasoning) {
+                  reasoningContent = messageData.reasoning;
+                } else if (
+                  messageData.reasoning_details &&
+                  Array.isArray(messageData.reasoning_details)
+                ) {
+                  reasoningContent = messageData.reasoning_details
+                    .map((detail) => detail.text)
+                    .join('\n\n');
+                }
+
+                if (reasoningContent) {
+                  // Store reasoning in a special field for later use
+                  reasoningContent = reasoningContent;
+                }
+              }
+            }
+          }
 
           // Find the last ToolMessage in the messages array
           const lastToolMessageIndex = [...context.messages]
@@ -367,7 +435,7 @@ export async function runMilkTea(
               // Construct the JSON response with original snippet
               const response = {
                 type: 'code',
-                message,
+                message: message + reasoningContent,
                 snippet,
               };
 

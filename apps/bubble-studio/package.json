@@ -30,6 +30,7 @@
     "react-dom": "^19.1.0",
     "react-resizable-panels": "^3.0.4",
     "react-toastify": "^11.0.5",
+    "zustand": "^4.5.7",
     "zod": "3.25.76"
   },
   "devDependencies": {
