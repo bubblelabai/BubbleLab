@@ -626,9 +626,11 @@ export class AIAgentBubble extends ServiceBubble<
         const ToolBubbleClass = this.factory.get(toolConfig.name as BubbleName);
 
         if (!ToolBubbleClass) {
-          this.context?.logger?.warn(
-            `Tool bubble '${toolConfig.name}' not found in factory. This tool will not be used.`
-          );
+          if (this.context && this.context.logger) {
+            this.context.logger.warn(
+              `Tool bubble '${toolConfig.name}' not found in factory. This tool will not be used.`
+            );
+          }
           console.warn(
             `Tool bubble '${toolConfig.name}' not found in factory. This tool will not be used.`
           );

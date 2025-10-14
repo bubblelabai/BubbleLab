@@ -106,7 +106,9 @@ function createTestCase(
  * Test helper to execute and validate a test case
  */
 async function runTestCase(testCase: MilkTeaTestCase) {
-  console.log('Running test case:', testCase.request.userRequest);
+  if (!env.GOOGLE_API_KEY && !env.OPENAI_API_KEY) {
+    return;
+  }
 
   // Execute Milk Tea agent
   const result = await runMilkTea(testCase.request, {
