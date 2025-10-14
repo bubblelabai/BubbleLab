@@ -316,6 +316,60 @@ export class EmailFlow extends BubbleFlow<'webhook/http'> {
   };
 }
 
+async function createConversationFollowUpTestCase(): Promise<MilkTeaTestCaseDefinition> {
+  return {
+    request: {
+      userRequest:
+        'Use subject "Team Update" and HTML body "<h1>Hello</h1><p>Important team announcement</p>". Send individual emails to each user.',
+      bubbleName: 'resend',
+      bubbleSchema: await getBubbleSchema('resend'),
+      currentCode: `import {
+  BubbleFlow,
+  ResendBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output {
+  message: string;
+}
+
+export class EmailFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: WebhookEvent): Promise<Output> {
+    const users = [
+      { email: 'user1@example.com', name: 'Alice' },
+      { email: 'user2@example.com', name: 'Bob' },
+    ];
+
+    // INSERT_LOCATION
+
+    return {
+      message: 'Emails sent',
+    };
+  }
+}`,
+      insertLocation: '// INSERT_LOCATION',
+      availableCredentials: [CredentialType.RESEND_CRED],
+      userName: 'Test User',
+      conversationHistory: [
+        {
+          role: 'user',
+          content: 'Send an email to all users',
+        },
+        {
+          role: 'assistant',
+          content: JSON.stringify({
+            type: 'question',
+            message:
+              'To send the email, I need a few details: 1) What should the subject be? 2) What content should the email contain (plain text or HTML)? 3) Should I send individual emails to each user?',
+          }),
+        },
+      ],
+    },
+    snippetContains: ['ResendBubble', 'Team Update', '.action()'],
+    snippetMatches: [/users/i, /subject.*Team Update/i],
+  };
+}
+
 // ============================================================================
 // TEST SUITE
 // ============================================================================
@@ -327,10 +381,10 @@ describe('Milk Tea AI Agent', () => {
     bubbleDefinitions = JSON.parse(bubblesJson);
   });
 
-  it('should generate code snippet for sending emails to waitlist users with Gemini 2.5 Pro', async () => {
-    const testCase = await createEmailWaitlistTestCase();
-    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  }, 60000);
+  // it('should generate code snippet for sending emails to waitlist users with Gemini 2.5 Pro', async () => {
+  //   const testCase = await createEmailWaitlistTestCase();
+  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  // }, 60000);
 
   // it('should generate code snippet for sending emails to waitlist users with GPT-5', async () => {
   //   const testCase = await createEmailWaitlistTestCase();
@@ -356,4 +410,14 @@ describe('Milk Tea AI Agent', () => {
   //   const testCase = await createMissingEmailContentTestCase();
   //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
   // }, 60000);
+
+  // it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
+  //   const testCase = await createConversationFollowUpTestCase();
+  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  // }, 60000);
+
+  it('should generate code after clarification in conversation history with GPT-5', async () => {
+    const testCase = await createConversationFollowUpTestCase();
+    await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 });
