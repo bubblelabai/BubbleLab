@@ -212,6 +212,7 @@ export const TEMPLATE_REGISTRY = getVisibleTemplates().map((template) => ({
 }));
 
 // Legacy: Check if template is hidden by index
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function isTemplateHidden(index: number): boolean {
   // All templates in getVisibleTemplates() are not hidden by definition
   return false;
