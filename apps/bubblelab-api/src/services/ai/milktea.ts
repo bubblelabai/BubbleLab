@@ -221,7 +221,8 @@ export async function runMilkTea(
     const conversationMessages = buildConversationMessages(request);
 
     // State to preserve original snippet across hook calls
-    const hookState = new Map<string, { originalSnippet: string }>();
+    // We use a simple string to store the most recent snippet (one tool call at a time)
+    let savedOriginalSnippet: string | undefined;
 
     // Create hooks for validation tool
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
@@ -240,6 +241,10 @@ export async function runMilkTea(
         }
 
         console.log('[MilkTea] Extracted snippet from tool input:', snippet);
+
+        // Save original snippet for restoration in afterToolCall
+        savedOriginalSnippet = snippet;
+        console.log('[MilkTea] Saved original snippet for restoration');
 
         // Insert snippet into full code
         const fullCode = insertSnippetAtLocation(
@@ -267,14 +272,45 @@ export async function runMilkTea(
       if (context.toolName === 'bubbleflow-validation-tool') {
         console.log('[MilkTea] Post-hook: Checking validation result');
 
+        // Restore original snippet in the tool message so agent sees what it sent
+        if (savedOriginalSnippet) {
+          console.log('[MilkTea] Restoring original snippet in tool message');
+
+          // Find the last ToolMessage in the messages array
+          const lastToolMessageIndex = [...context.messages]
+            .reverse()
+            .findIndex((msg) => msg.constructor.name === 'ToolMessage');
+
+          if (lastToolMessageIndex !== -1) {
+            // Convert reversed index to actual index
+            const actualIndex =
+              context.messages.length - 1 - lastToolMessageIndex;
+            const toolMessage = context.messages[actualIndex];
+
+            // Replace tool message content with validation result containing original snippet
+            // This way the agent sees the snippet it sent, not the full code
+            const validationResult: BubbleResult<ValidationToolResult> =
+              context.toolOutput as BubbleResult<ValidationToolResult>;
+
+            toolMessage.content = JSON.stringify({
+              ...validationResult,
+              // Keep validation data but note that we validated the full code
+              _note:
+                'Validation was performed on full code with snippet inserted',
+            });
+
+            console.log('[MilkTea] Updated tool message with restored context');
+          }
+        }
+
         try {
           const validationResult: BubbleResult<ValidationToolResult> =
             context.toolOutput as BubbleResult<ValidationToolResult>;
           if (validationResult.data?.valid === true) {
             console.log('[MilkTea] Validation passed! Signaling completion.');
 
-            // Extract the snippet directly from tool input
-            const snippet = (context.toolInput as { code?: string })?.code;
+            // Use the saved original snippet (not the full code from toolInput)
+            const snippet = savedOriginalSnippet || '';
 
             // Try to extract summary/message from AI message if available
             let message = 'Code snippet generated and validated successfully';
@@ -311,7 +347,7 @@ export async function runMilkTea(
                 }
               }
 
-              // Construct the JSON response
+              // Construct the JSON response with original snippet
               const response = {
                 type: 'code',
                 message,
@@ -321,9 +357,12 @@ export async function runMilkTea(
               // Inject the response into the AI message
               lastAIMessage.content = JSON.stringify(response);
               console.log(
-                '[MilkTea] Injected JSON response with snippet into AI message'
+                '[MilkTea] Injected JSON response with original snippet into AI message'
               );
             }
+
+            // Clear saved snippet after successful validation
+            savedOriginalSnippet = undefined;
 
             return {
               messages: context.messages,
@@ -340,12 +379,14 @@ export async function runMilkTea(
       return { messages: context.messages };
     };
 
+    console.debug(
+      '[MilkTea] Conversation messages:',
+      JSON.stringify(conversationMessages, null, 2)
+    );
     // Create AI agent with hooks
     const agent = new AIAgentBubble({
       name: `Milk Tea - ${request.bubbleName} Builder`,
-      message:
-        (conversationMessages[conversationMessages.length - 1]
-          ?.content as string) || request.userRequest,
+      message: JSON.stringify(conversationMessages) || request.userRequest,
       systemPrompt,
       model: {
         model: request.model,
