@@ -49,6 +49,7 @@ console.log('');
 
 // Type definitions for environment variables (optional but recommended)
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace NodeJS {
     interface ProcessEnv {
       GOOGLE_API_KEY?: string;
