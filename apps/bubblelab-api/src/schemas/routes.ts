@@ -28,6 +28,8 @@ import {
   validateBubbleFlowCodeSchema,
   generateBubbleFlowCodeSchema,
   validateBubbleFlowCodeResponseSchema,
+  MilkTeaRequestSchema,
+  MilkTeaResponseSchema,
 } from './index.js';
 
 export const webhookRoute = createRoute({
@@ -1203,4 +1205,51 @@ export const oauthRevokeRoute = createRoute({
     },
   },
   tags: ['OAuth'],
+});
+
+// ========================= AI Routes =========================
+
+// POST /ai/milktea - Run MilkTea AI agent
+export const milkTeaRoute = createRoute({
+  method: 'post',
+  path: '/milktea',
+  summary: 'Run MilkTea AI Agent',
+  description:
+    'Execute MilkTea AI agent to help configure bubble parameters through conversation',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: MilkTeaRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'MilkTea agent executed successfully',
+      content: {
+        'application/json': {
+          schema: MilkTeaResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Bad request or validation failed',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+  tags: ['AI'],
 });
