@@ -31,6 +31,7 @@ export const fixtures = {
   yfinance: '',
   'techweek-scrape': '',
   'starter-flow': '',
+  'bubble-inside-promise': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

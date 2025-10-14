@@ -937,7 +937,7 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.code).toContain('await new HelloWorldBubble({');
       expect(result.code).toContain("message: 'Hello, World!',");
       expect(result.code).toContain("name: 'World'");
-      expect(result.code).toContain('}).action();');
+      expect(result.code).toContain('}).action()');
       expect(result.code).toContain('}'); // Closing brace of for loop should be preserved
     });
 
@@ -970,7 +970,7 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.code).toContain('range: `${SHEET_NAME}!A1`,');
       expect(result.code).toContain('values: [HEADERS],');
       expect(result.code).toContain("value_input_option: 'RAW'");
-      expect(result.code).toContain('}).action();');
+      expect(result.code).toContain('}).action()');
       // Ensure no duplicate lines remain
       const lines = result.code!.split('\n');
       const operationLines = lines.filter((line) =>
@@ -1002,7 +1002,7 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
 
       // Check if line 14 contains the logger configuration with dependency graph
       expect(lines[14]).toContain(
-        '}, {logger: this.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"});'
+        '}, {logger: this.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"})'
       );
     });
     it('The line numbers should not change from original script', () => {

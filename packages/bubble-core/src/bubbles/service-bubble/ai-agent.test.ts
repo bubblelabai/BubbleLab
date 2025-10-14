@@ -3,9 +3,8 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
 import { AvailableModels } from '../../types/ai-models.js';
 
-// Mock environment variables for testing
-process.env.OPENAI_API_KEY = 'test-openai-key';
-process.env.TAVILY_API_KEY = 'test-tavily-key';
+//Remove all environment variables
+process.env = {};
 
 const factory = new BubbleFactory();
 
