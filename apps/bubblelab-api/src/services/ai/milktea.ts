@@ -57,7 +57,12 @@ YOUR ROLE:
 DECISION PROCESS:
 1. Analyze the user's request carefully
 2. Check if request mentions or requires MULTIPLE bubbles � If yes, REJECT immediately
-3. Check if request is unclear or missing critical information � If yes, ASK QUESTION
+3. Check the bubble's inputSchema for REQUIRED parameters:
+   - Look at each required field in the inputSchema
+   - Verify the user's request provides enough information for EACH required parameter
+   - If ANY required parameter is missing or unclear from the request � ASK QUESTION immediately
+   - DO NOT make assumptions or use placeholder values like "Hello World"
+   - DO NOT proceed with code generation if required information is missing
 4. If request is clear and feasible � GENERATE CODE snippet and call validation tool
 
 OUTPUT FORMAT (JSON):
@@ -85,10 +90,10 @@ CRITICAL CODE GENERATION RULES:
 1. Generate ONLY the minimal code snippet needed
 4. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
 5. Access data from context variables that would be available in the workflow
-6. DO NOT include credentials in the snippet - they are injected automatically
+6. DO NOT include credentials in the snippet - they are injected automatically, DO NOT INCLUDE THE ENTIRE code ! ONLY INCLUDE THE SNIPPET 
 7. When you generate code (type: "code"), you MUST immediately call the validation tool with the snippet
 8. The validation tool will validate your snippet inserted into the full code
-9. If validation fails, fix the snippet and try again until validation passes
+9. If validation fails, fix the snippet and try again with SNIPPET only until validation passes
 
 CONTEXT:
 User: ${userName}
@@ -191,58 +196,6 @@ export class GeneratedFlow extends BubbleFlow {
   // Ultimate fallback: append to end
   return currentCode + `\n\n${snippet}`;
 }
-
-/**
- * Check if validation passed from tool calls
- */
-function checkValidationSuccess(
-  toolCalls: Array<{
-    tool: string;
-    input?: unknown;
-    output?: unknown;
-  }>
-): { validated: boolean; errors?: string[] } {
-  // Find the last validation tool call
-  for (let i = toolCalls.length - 1; i >= 0; i--) {
-    const call = toolCalls[i];
-    if (
-      call.tool === 'bubbleflow-validation-tool' ||
-      call.tool === 'bubbleflow-validation'
-    ) {
-      try {
-        let outputContent: string;
-
-        // Handle different output formats
-        if (typeof call.output === 'string') {
-          outputContent = call.output;
-        } else if (
-          call.output &&
-          typeof call.output === 'object' &&
-          'content' in call.output
-        ) {
-          const content = (call.output as { content: unknown }).content;
-          outputContent =
-            typeof content === 'string' ? content : JSON.stringify(content);
-        } else {
-          outputContent = JSON.stringify(call.output);
-        }
-
-        const validationResult = JSON.parse(outputContent);
-
-        return {
-          validated: validationResult.valid === true,
-          errors: validationResult.errors || [],
-        };
-      } catch {
-        // Failed to parse, assume not validated
-        continue;
-      }
-    }
-  }
-
-  return { validated: false };
-}
-
 /**
  * Main Milk Tea service function
  */
@@ -266,6 +219,9 @@ export async function runMilkTea(
     );
 
     const conversationMessages = buildConversationMessages(request);
+
+    // State to preserve original snippet across hook calls
+    const hookState = new Map<string, { originalSnippet: string }>();
 
     // Create hooks for validation tool
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
