@@ -39,6 +39,7 @@ import webhookRoutes from './routes/webhooks.js';
 import authRoutes from './routes/auth.js';
 import subscriptionRoutes from './routes/subscription.js';
 import joinWaitlistRoutes from './routes/join-waitlist.js';
+import aiRoutes from './routes/ai.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -61,6 +62,7 @@ app.use('/oauth/:provider/refresh', authMiddleware);
 app.use('/oauth/:provider/revoke/*', authMiddleware);
 app.use('/auth/*', authMiddleware);
 app.use('/execute-bubble-flow/*', authMiddleware);
+app.use('/ai/*', authMiddleware);
 
 // Note: webhook and execute-bubble-flow routes will handle verification internally
 // They don't need auth middleware since they use their own authentication
@@ -85,6 +87,7 @@ app.route('/webhook', webhookRoutes);
 app.route('/auth', authRoutes);
 app.route('/subscription', subscriptionRoutes);
 app.route('/join-waitlist', joinWaitlistRoutes);
+app.route('/ai', aiRoutes);
 console.log('[DEBUG] All routes mounted.');
 
 // Legacy route support for /execute-bubble-flow/:id
