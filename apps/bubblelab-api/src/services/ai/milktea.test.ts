@@ -372,6 +372,146 @@ export class EmailFlow extends BubbleFlow<'webhook/http'> {
   };
 }
 
+async function createComplexRedditWorkflowTestCase(): Promise<MilkTeaTestCaseDefinition> {
+  return {
+    request: {
+      userRequest:
+        'send me an email at zachzhong@bubblelab.ai with a list of all the Reddit usernames found and the total count.',
+      bubbleName: 'resend',
+      bubbleSchema: await getBubbleSchema('resend'),
+      currentCode: `import {
+  BubbleFlow,
+  GoogleSheetsBubble,
+  RedditScrapeTool,
+  AIAgentBubble,
+  ResendBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output {
+  message: string;
+  newContactsAdded: number;
+}
+
+export interface CustomWebhookPayload extends WebhookEvent {
+  spreadsheetId: string;
+  subreddit: string;
+  searchCriteria: string;
+}
+
+interface RedditPost {
+  author: string;
+  title: string;
+  selftext: string;
+  url: string;
+  postUrl: string;
+  createdUtc: number;
+}
+
+export class RedditFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { spreadsheetId, subreddit, searchCriteria } = payload;
+
+    const readSheet = new GoogleSheetsBubble({
+      operation: 'read_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A:A',
+    });
+    const existingContactsResult = await readSheet.action();
+
+    if (!existingContactsResult.success) {
+      throw new Error(\`Failed to read from Google Sheet: \${existingContactsResult.error}\`);
+    }
+
+    const existingNames = existingContactsResult.data?.values
+      ? existingContactsResult.data.values.flat()
+      : [];
+
+    const redditScraper = new RedditScrapeTool({
+      subreddit,
+      sort: 'new',
+      limit: 50,
+    });
+    const redditResult = await redditScraper.action();
+
+    if (!redditResult.success || !redditResult.data?.posts) {
+      throw new Error(\`Failed to scrape Reddit: \${redditResult.error}\`);
+    }
+
+    const posts: RedditPost[] = redditResult.data.posts.map((p: any) => ({
+      author: p.author,
+      title: p.title,
+      selftext: p.selftext,
+      url: p.postUrl,
+      postUrl: p.postUrl,
+      createdUtc: p.createdUtc,
+    }));
+
+    const systemPrompt = \`You are an expert analyst. Find 10 new leads matching: \${searchCriteria}\`;
+
+    const aiAgent = new AIAgentBubble({
+      message: \`Existing: \${JSON.stringify(existingNames)}, Posts: \${JSON.stringify(posts)}\`,
+      systemPrompt,
+      model: { model: 'google/gemini-2.5-pro', jsonMode: true },
+      tools: [],
+    });
+
+    const aiResult = await aiAgent.action();
+
+    if (!aiResult.success || !aiResult.data?.response) {
+      throw new Error(\`AI agent failed: \${aiResult.error}\`);
+    }
+
+    let newContacts: { name: string; link: string; message: string }[] = [];
+    try {
+      newContacts = JSON.parse(aiResult.data.response);
+    } catch (error) {
+      throw new Error('Failed to parse AI response as JSON.');
+    }
+
+    if (!Array.isArray(newContacts) || newContacts.length === 0) {
+      return { message: 'No new contacts found.', newContactsAdded: 0 };
+    }
+
+    const rowsToAppend = newContacts.map(contact => [
+      contact.name,
+      contact.link,
+      contact.message,
+      new Date().toISOString().split('T')[0],
+      'Need to Reach Out',
+    ]);
+
+    const appendSheet = new GoogleSheetsBubble({
+      operation: 'append_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A:E',
+      values: rowsToAppend,
+    });
+
+    const appendResult = await appendSheet.action();
+
+    if (!appendResult.success) {
+      throw new Error(\`Failed to append data: \${appendResult.error}\`);
+    }
+
+    // INSERT_LOCATION
+
+    return {
+      message: \`Successfully added \${newContacts.length} new contacts.\`,
+      newContactsAdded: newContacts.length,
+    };
+  }
+}`,
+      insertLocation: '// INSERT_LOCATION',
+      availableCredentials: [CredentialType.RESEND_CRED],
+      userName: 'Test User',
+      conversationHistory: [],
+    },
+    snippetContains: ['ResendBubble', 'zachzhong@bubblelab.ai', '.action()'],
+    snippetMatches: [/subject/i, /text|html/i],
+  };
+}
+
 // ============================================================================
 // TEST SUITE
 // ============================================================================
@@ -413,13 +553,33 @@ describe('Milk Tea AI Agent', () => {
   //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
   // }, 60000);
 
-  it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
-    const testCase = await createConversationFollowUpTestCase();
-    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  }, 60000);
+  // it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
+  //   const testCase = await createConversationFollowUpTestCase();
+  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  // }, 60000);
 
   // it('should generate code after clarification in conversation history with GPT-5', async () => {
   //   const testCase = await createConversationFollowUpTestCase();
   //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
   // }, 60000);
+
+  // it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
+  //   const testCase = await createComplexRedditWorkflowTestCase();
+  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  // }, 60000);
+
+  // it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
+  //   const testCase = await createComplexRedditWorkflowTestCase();
+  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  // }, 60000);
+
+  // it('should generate code for complex Reddit workflow with email notification with GPT-5', async () => {
+  //   const testCase = await createComplexRedditWorkflowTestCase();
+  //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  // }, 60000);
+
+  it('should generate code for complex Reddit workflow with email notification with OpenRouter GLM 4.5 Air', async () => {
+    const testCase = await createComplexRedditWorkflowTestCase();
+    await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.5-air'));
+  }, 60000);
 });

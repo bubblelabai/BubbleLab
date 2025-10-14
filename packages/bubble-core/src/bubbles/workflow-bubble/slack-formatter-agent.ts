@@ -8,7 +8,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName } from '@bubblelab/shared-schemas';
 import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
