@@ -83,8 +83,6 @@ const proOptions = { hideAttribution: true };
 const sanitizeIdSegment = (value: string) =>
   value.replace(/[^a-zA-Z0-9_-]/g, '') || 'segment';
 
-
-
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
   parentNodeId: string,
@@ -199,7 +197,7 @@ function FlowVisualizerInner({
     };
 
     bubbleEntries.forEach(([key, bubbleData]) => {
-      const bubble = bubbleData
+      const bubble = bubbleData;
       const parentNodeId = bubble.variableId
         ? String(bubble.variableId)
         : String(key);
@@ -520,7 +518,7 @@ function FlowVisualizerInner({
 
     // Create nodes for each bubble
     bubbleEntries.forEach(([key, bubbleData], index) => {
-      const bubble = bubbleData 
+      const bubble = bubbleData;
 
       const nodeId = bubble.variableId
         ? String(bubble.variableId)
@@ -749,19 +747,34 @@ function FlowVisualizerInner({
   // Use ref to track previous initialNodes to detect actual changes
   const prevInitialNodesRef = useRef(initialNodes);
 
+  // Track if we've done the initial fit view - only auto-fit once per flow
+  const hasInitialFitRef = useRef(false);
+
+  // Track the set of bubble IDs to detect when we switch to a completely different flow
+  const prevBubbleIdsRef = useRef<string>(
+    Object.keys(bubbleParameters).sort().join(',')
+  );
+
   // Update nodes when inputs that affect node rendering change, preserving user positions
   useEffect(() => {
     const prevInitialNodes = prevInitialNodesRef.current;
+    const currentBubbleIds = Object.keys(bubbleParameters).sort().join(',');
+    const prevBubbleIds = prevBubbleIdsRef.current;
 
-    // Only update nodes if the initial nodes have actually changed
-    const shouldUpdateNodes =
-      prevInitialNodes !== initialNodes ||
+    // Reset the fit flag if we've switched to a different flow (different set of bubbles)
+    if (currentBubbleIds !== prevBubbleIds) {
+      hasInitialFitRef.current = false;
+      prevBubbleIdsRef.current = currentBubbleIds;
+    }
+
+    // Check for structural changes (nodes added/removed or IDs changed)
+    const hasStructuralChange =
       prevInitialNodes.length !== initialNodes.length ||
       !prevInitialNodes.every(
         (prevNode, index) => prevNode.id === initialNodes[index]?.id
       );
 
-    if (shouldUpdateNodes) {
+    if (hasStructuralChange) {
       // When updating nodes, preserve existing positions where possible
       setFlowNodes((currentNodes) => {
         const updatedNodes = initialNodes.map((initNode) => {
@@ -774,13 +787,24 @@ function FlowVisualizerInner({
         });
         return updatedNodes;
       });
+    } else {
+      // No structural change, just update node data in place to preserve positions and zoom
+      setFlowNodes((currentNodes) => {
+        return currentNodes.map((currentNode) => {
+          const updatedNode = initialNodes.find((n) => n.id === currentNode.id);
+          return updatedNode
+            ? { ...updatedNode, position: currentNode.position }
+            : currentNode;
+        });
+      });
     }
 
     // Always update edges as they don't have user-modified positions
     setFlowEdges(initialEdges);
 
-    // Auto-fit viewport only on first load or when nodes are significantly changed
-    if (initialNodes.length > 0 && shouldUpdateNodes) {
+    // Auto-fit viewport on first load or when switching to a new flow (not on data-only changes)
+    if (initialNodes.length > 0 && !hasInitialFitRef.current) {
+      hasInitialFitRef.current = true;
       setTimeout(() => {
         // Check if InputSchemaNode exists
         const inputSchemaNode = initialNodes.find(

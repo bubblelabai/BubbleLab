@@ -1,6 +1,6 @@
 import { api } from '../lib/api';
 import {
-  loadTemplateCode,
+  getTemplateByIndex,
   hasTemplate,
 } from '../components/templates/templateLoader';
 import { toast } from 'react-toastify';
@@ -34,7 +34,9 @@ export const useFlowGeneration = () => {
     // Check if this is a preset template that should skip flow generation
     if (selectedPreset !== undefined && hasTemplate(selectedPreset)) {
       try {
-        const templateResult = loadTemplateCode(selectedPreset);
+        // Get template by index for backward compatibility
+        const template = getTemplateByIndex(selectedPreset);
+        const templateResult = template ? { code: template.code } : null;
 
         if (templateResult) {
           // Set generation info immediately
