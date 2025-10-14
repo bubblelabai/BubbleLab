@@ -18,7 +18,7 @@ import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 
 /**
  * System prompt for document analysis and data extraction

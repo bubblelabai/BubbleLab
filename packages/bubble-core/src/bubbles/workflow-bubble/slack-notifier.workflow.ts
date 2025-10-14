@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
 import { SlackBubble } from '../service-bubble/slack.js';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
-import { AvailableModels } from '../../types/ai-models.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import {
   type CredentialOptions,
   CredentialType,
+  AvailableModels,
 } from '@bubblelab/shared-schemas';
 
 // Parameter schema with user-friendly names and clear descriptions
