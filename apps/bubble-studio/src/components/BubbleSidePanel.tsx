@@ -15,6 +15,7 @@ import {
 } from '../stores/editorStore';
 import { useMilkTea } from '../hooks/useMilkTea';
 import { toast } from 'react-toastify';
+import { findLogoForBubble } from '../lib/integrations';
 
 /**
  * Bubble definition from bubbles.json
@@ -137,7 +138,7 @@ export function BubbleSidePanel() {
 
       {/* Target line info */}
       {targetInsertLine && (
-        <div className="px-4 py-2 bg-blue-900/20 border-b border-blue-800/30 text-sm text-blue-300">
+        <div className="px-4 py-2 bg-purple-900/20 border-b border-purple-800/30 text-sm text-purple-300">
           Inserting at line {targetInsertLine}
         </div>
       )}
@@ -206,7 +207,7 @@ function BubbleListView({
             placeholder="Search bubbles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
 
@@ -218,11 +219,11 @@ function BubbleListView({
               onClick={() => setSelectedType(type)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 selectedType === type
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-purple-600 text-white'
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              {type}
+              {type.charAt(0).toUpperCase() + type.slice(1)}
             </button>
           ))}
         </div>
@@ -232,36 +233,46 @@ function BubbleListView({
       <div className="flex-1 overflow-y-auto thin-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
           </div>
         ) : filteredBubbles && filteredBubbles.length > 0 ? (
           <div className="p-2 space-y-2">
-            {filteredBubbles.map((bubble) => (
-              <button
-                key={bubble.name}
-                onClick={() => onSelectBubble(bubble.name)}
-                className="w-full text-left p-3 bg-[#252526] hover:bg-[#2d2d2d] border border-gray-700 hover:border-blue-600 rounded-lg transition-all group"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-100 group-hover:text-blue-400 transition-colors">
-                        {bubble.name}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        ({bubble.alias})
-                      </span>
+            {filteredBubbles.map((bubble) => {
+              const logo = findLogoForBubble({ bubbleName: bubble.name });
+
+              return (
+                <button
+                  key={bubble.name}
+                  onClick={() => onSelectBubble(bubble.name)}
+                  className="w-full text-left p-3 bg-[#252526] hover:bg-[#2d2d2d] border border-gray-700 hover:border-purple-600 rounded-lg transition-all group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {logo && (
+                          <img
+                            src={logo.file}
+                            alt={`${logo.name} logo`}
+                            className="h-4 w-4 opacity-80 shrink-0"
+                            loading="lazy"
+                          />
+                        )}
+                        <h3 className="font-medium text-gray-100 group-hover:text-purple-400 transition-colors">
+                          {bubble.name}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                        {bubble.shortDescription}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                      {bubble.shortDescription}
-                    </p>
+                    <span className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded shrink-0">
+                      {bubble.type.charAt(0).toUpperCase() +
+                        bubble.type.slice(1)}
+                    </span>
                   </div>
-                  <span className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded shrink-0">
-                    {bubble.type}
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-32 text-gray-400">
@@ -290,6 +301,11 @@ function BubblePromptView({
   const [generatedSnippet, setGeneratedSnippet] = useState<string | null>(null);
 
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
+
+  // Get logo for the bubble
+  const logo = bubbleDefinition
+    ? findLogoForBubble({ bubbleName: bubbleDefinition.name })
+    : null;
 
   // MilkTea mutation
   const milkTeaMutation = useMilkTea();
@@ -350,9 +366,19 @@ function BubblePromptView({
       {/* Bubble Info */}
       {bubbleDefinition && (
         <div className="mb-4 p-3 bg-[#252526] border border-gray-700 rounded-lg">
-          <h3 className="font-medium text-gray-100 mb-1">
-            {bubbleDefinition.name}
-          </h3>
+          <div className="flex items-center gap-2 mb-1">
+            {logo && (
+              <img
+                src={logo.file}
+                alt={`${logo.name} logo`}
+                className="h-5 w-5 opacity-80"
+                loading="lazy"
+              />
+            )}
+            <h3 className="font-medium text-gray-100">
+              {bubbleDefinition.name}
+            </h3>
+          </div>
           <p className="text-xs text-gray-400">
             {bubbleDefinition.shortDescription}
           </p>
@@ -380,7 +406,7 @@ function BubblePromptView({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Example: Send an email to all users in the waitlist array with subject 'Welcome!' and a greeting message..."
-          className="flex-1 min-h-[200px] p-3 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="flex-1 min-h-[200px] p-3 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
           disabled={milkTeaMutation.isPending}
         />
 
@@ -439,7 +465,7 @@ function BubblePromptView({
             <button
               onClick={handleGenerate}
               disabled={!prompt.trim() || milkTeaMutation.isPending}
-              className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {milkTeaMutation.isPending ? (
                 <>
