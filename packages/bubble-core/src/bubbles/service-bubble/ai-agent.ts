@@ -12,7 +12,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 import {
   AvailableTools,
   type AvailableTool,
@@ -78,7 +78,7 @@ const ModelConfigSchema = z.object({
     .number()
     .min(0)
     .max(2)
-    .default(0.7)
+    .default(1)
     .describe(
       'Temperature for response randomness (0 = deterministic, 2 = very random)'
     ),
@@ -570,7 +570,9 @@ export class AIAgentBubble extends ServiceBubble<
 
   private initializeModel(modelConfig: AIAgentParamsParsed['model']) {
     const { model, temperature, maxTokens } = modelConfig;
-    const [provider, modelName] = model.split('/');
+    const slashIndex = model.indexOf('/');
+    const provider = model.substring(0, slashIndex);
+    const modelName = model.substring(slashIndex + 1);
 
     // Use chooseCredential to get the appropriate credential
     // This will throw immediately if credentials are missing
@@ -601,6 +603,7 @@ export class AIAgentBubble extends ServiceBubble<
           apiKey,
         });
       case 'openrouter':
+        console.log('openrouter', modelName);
         return new ChatOpenAI({
           model: modelName,
           temperature,

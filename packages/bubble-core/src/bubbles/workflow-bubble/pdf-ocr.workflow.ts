@@ -19,7 +19,7 @@ import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { PDFFormOperationsWorkflow } from './pdf-form-operations.workflow.js';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 
 /**
  * System prompts for different modes

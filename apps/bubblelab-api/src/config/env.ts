@@ -69,6 +69,7 @@ export const env = {
   NODEX_API_URL: process.env.NODEX_API_URL,
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
   DATABASE_URL: process.env.DATABASE_URL!,
   PYTHON_PATH: process.env.PYTHON_PATH,
   BUBBLE_ENV: process.env.BUBBLE_ENV || 'dev',
@@ -92,6 +93,7 @@ console.log(`📦 Using ${envType} database:`, env.DATABASE_URL);
 console.log('🔧 Environment variables loaded:', {
   GOOGLE_API_KEY: env.GOOGLE_API_KEY ? '✅ Set' : '❌ Missing',
   OPENAI_API_KEY: env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing',
+  OPENROUTER_API_KEY: env.OPENROUTER_API_KEY ? '✅ Set' : '❌ Missing',
   DATABASE_URL: env.DATABASE_URL ? '✅ Set' : '❌ Missing',
   NODEX_API_URL: env.NODEX_API_URL,
   PYTHON_PATH: env.PYTHON_PATH,
