@@ -6,6 +6,7 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  ArrowUp,
 } from 'lucide-react';
 import {
   useEditorStore,
@@ -397,19 +398,8 @@ function BubblePromptView({
         </div>
       )}
 
-      {/* Prompt Input */}
-      <div className="flex-1 flex flex-col gap-3">
-        <label className="text-sm font-medium text-gray-300">
-          Describe what you want this bubble to do:
-        </label>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Example: Send an email to all users in the waitlist array with subject 'Welcome!' and a greeting message..."
-          className="flex-1 min-h-[200px] p-3 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-          disabled={milkTeaMutation.isPending}
-        />
-
+      {/* Scrollable content area for messages/results */}
+      <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
         {/* Show generated snippet */}
         {generatedSnippet && (
           <div className="p-3 bg-green-900/20 border border-green-700 rounded-lg">
@@ -419,7 +409,7 @@ function BubblePromptView({
                 Code Generated
               </span>
             </div>
-            <pre className="text-xs text-gray-300 overflow-x-auto max-h-32 overflow-y-auto">
+            <pre className="text-xs text-gray-300 overflow-x-auto max-h-32 overflow-y-auto thin-scrollbar">
               {generatedSnippet}
             </pre>
           </div>
@@ -439,44 +429,81 @@ function BubblePromptView({
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          {generatedSnippet ? (
-            <>
-              <button
-                onClick={() => {
-                  setGeneratedSnippet(null);
-                  setPrompt('');
-                  milkTeaMutation.reset();
-                }}
-                className="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={handleInsert}
-                className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Insert Code
-              </button>
-            </>
-          ) : (
+        {/* Action buttons - Only show when code is generated */}
+        {generatedSnippet && (
+          <div className="flex gap-2">
             <button
-              onClick={handleGenerate}
-              disabled={!prompt.trim() || milkTeaMutation.isPending}
-              className="w-full py-2 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+              onClick={() => {
+                setGeneratedSnippet(null);
+                setPrompt('');
+                milkTeaMutation.reset();
+              }}
+              className="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
             >
-              {milkTeaMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                'Generate Code'
-              )}
+              Try Again
             </button>
-          )}
+            <button
+              onClick={handleInsert}
+              className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              Insert Code
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Compact chat input at bottom */}
+      <div className="p-2">
+        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Example: Send an email to all users in the waitlist..."
+            className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
+            disabled={milkTeaMutation.isPending}
+            onKeyDown={(e) => {
+              if (
+                e.key === 'Enter' &&
+                e.ctrlKey &&
+                !milkTeaMutation.isPending &&
+                prompt.trim()
+              ) {
+                handleGenerate();
+              }
+            }}
+          />
+
+          {/* Generate Button - Inside the prompt container */}
+          <div className="flex justify-end mt-2">
+            <div className="flex flex-col items-end">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || milkTeaMutation.isPending}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  !prompt.trim() || milkTeaMutation.isPending
+                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                    : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+                }`}
+              >
+                {milkTeaMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowUp className="w-5 h-5" />
+                )}
+              </button>
+              <div
+                className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
+                  !prompt.trim() || milkTeaMutation.isPending
+                    ? 'text-gray-500/60'
+                    : 'text-gray-400'
+                }`}
+              >
+                Ctrl+Enter
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
