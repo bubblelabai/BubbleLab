@@ -317,7 +317,7 @@ export function replaceBubbleInstantiation(
         const hadAwait = /\bawait\b/.test(line);
         const actionCall = bubble.hasActionCall ? '.action()' : '';
         const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
-        const replacement = `${indentation}${declaration} ${variableName} = ${newExpression};`;
+        const replacement = `${indentation}${declaration} ${variableName} = ${newExpression}`;
 
         lines[i] = replacement;
 
@@ -337,7 +337,7 @@ export function replaceBubbleInstantiation(
         const actionCall = bubble.hasActionCall ? '.action()' : '';
         const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
         const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
-        const replacement = `${beforeClean}${newExpression};`;
+        const replacement = `${beforeClean}${newExpression}`;
 
         lines[i] = replacement;
 

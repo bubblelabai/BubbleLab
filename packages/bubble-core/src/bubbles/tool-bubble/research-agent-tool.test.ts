@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { ResearchAgentTool } from './research-agent-tool.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
+//Remove all environment variables
+process.env = {};
+
 describe('ResearchAgentTool', () => {
   describe('performAction', () => {
     it('should handle missing FIRECRAWL_API_KEY gracefully', async () => {
