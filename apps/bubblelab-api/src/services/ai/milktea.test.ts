@@ -413,13 +413,13 @@ describe('Milk Tea AI Agent', () => {
   //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
   // }, 60000);
 
-  // it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createConversationFollowUpTestCase();
-  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
-
-  it('should generate code after clarification in conversation history with GPT-5', async () => {
+  it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
     const testCase = await createConversationFollowUpTestCase();
-    await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
   }, 60000);
+
+  // it('should generate code after clarification in conversation history with GPT-5', async () => {
+  //   const testCase = await createConversationFollowUpTestCase();
+  //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  // }, 60000);
 });
