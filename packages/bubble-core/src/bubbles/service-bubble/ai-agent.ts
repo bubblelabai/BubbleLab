@@ -606,6 +606,7 @@ export class AIAgentBubble extends ServiceBubble<
         console.log('openrouter', modelName);
         return new ChatOpenAI({
           model: modelName,
+          __includeRawResponse: true,
           temperature,
           maxTokens,
           apiKey,
@@ -686,8 +687,8 @@ export class AIAgentBubble extends ServiceBubble<
         const dynamicTool = new DynamicStructuredTool({
           name: langGraphTool.name,
           description: langGraphTool.description,
-          schema: langGraphTool.schema as any,
-          func: langGraphTool.func as any,
+          schema: langGraphTool.schema,
+          func: langGraphTool.func,
         });
 
         tools.push(dynamicTool);
