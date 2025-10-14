@@ -24,9 +24,10 @@ import {
   type ToolHookAfter,
   BubbleFactory,
   BubbleFlowValidationTool,
+  HumanMessage,
+  AIMessage,
+  type BaseMessage,
 } from '@bubblelab/bubble-core';
-import { HumanMessage, AIMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
 import { z } from 'zod';
 
 /**
