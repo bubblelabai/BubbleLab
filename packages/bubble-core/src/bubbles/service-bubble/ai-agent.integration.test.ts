@@ -11,7 +11,7 @@ describe('AI Agent with open router', () => {
         'You are a helpful assistant that can answer questions about the slack.',
       message: 'what is the required parameters for the slack bubble?',
       model: {
-        model: 'openrouter/z-ai/glm-4.5-air',
+        model: 'openrouter/x-ai/grok-code-fast-1',
       },
       tools: [
         { name: 'list-bubbles-tool' },

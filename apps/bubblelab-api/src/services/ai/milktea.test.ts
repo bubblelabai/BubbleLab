@@ -1,5 +1,5 @@
 // @ts-expect-error - Bun test types
-import { describe, it, expect, beforeAll } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { runMilkTea } from './milktea.js';
 import type { AvailableModel, MilkTeaRequest } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
@@ -114,6 +114,7 @@ async function runTestCase(testCase: MilkTeaTestCase) {
   const result = await runMilkTea(testCase.request, {
     [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY!,
     [CredentialType.OPENAI_CRED]: env.OPENAI_API_KEY!,
+    [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY!,
   });
 
   console.log('Milk Tea result:', JSON.stringify(result, null, 2));
@@ -133,11 +134,6 @@ async function runTestCase(testCase: MilkTeaTestCase) {
   for (const pattern of testCase.snippetMatches) {
     expect(result.snippet).toMatch(pattern);
   }
-
-  // Wait for logger to upload logs before test ends
-  console.log('Waiting for logger to finish uploading logs...');
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-  console.log('Logger upload complete, test ending');
 }
 
 /**
@@ -167,6 +163,7 @@ async function runRejectTestCase(testCase: MilkTeaRejectTestCase) {
   const result = await runMilkTea(testCase.request, {
     [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY!,
     [CredentialType.OPENAI_CRED]: env.OPENAI_API_KEY!,
+    [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY!,
   });
 
   console.log('Milk Tea result:', JSON.stringify(result, null, 2));
@@ -522,6 +519,12 @@ describe('Milk Tea AI Agent', () => {
     const bubblesJson = await readFile(bubblesJsonPath, 'utf-8');
     bubbleDefinitions = JSON.parse(bubblesJson);
   });
+  afterAll(async () => {
+    // Wait for logger to upload logs before test ends
+    console.log('Waiting for logger to finish uploading logs...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    console.log('Logger upload complete, test ending');
+  });
 
   // it('should generate code snippet for sending emails to waitlist users with Gemini 2.5 Pro', async () => {
   //   const testCase = await createEmailWaitlistTestCase();
@@ -551,6 +554,11 @@ describe('Milk Tea AI Agent', () => {
   // it('should ask for clarification when email content is missing with GPT-5', async () => {
   //   const testCase = await createMissingEmailContentTestCase();
   //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
+  // }, 60000);
+
+  //   it('should ask for clarification when email content is missing with grok code fast 1', async () => {
+  //   const testCase = await createMissingEmailContentTestCase();
+  //   await runRejectTestCase(createRejectTestCase(testCase, 'openrouter/x-ai/grok-code-fast-1'));
   // }, 60000);
 
   // it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {

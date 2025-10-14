@@ -29,6 +29,7 @@ import {
   type BaseMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
+import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 
 /**
  * Type for BubbleFlow validation result - inferred from the validation tool's result schema
@@ -229,7 +230,6 @@ export async function runMilkTea(
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
       if (context.toolName === 'bubbleflow-validation-tool') {
         console.log('[MilkTea] Pre-hook: Intercepting validation tool call');
-
         // Extract snippet from tool input (where agent puts the code to validate)
         const snippet = (context.toolInput as { code?: string })?.code;
 
@@ -345,6 +345,22 @@ export async function runMilkTea(
                   if (text.trim()) {
                     message = text;
                   }
+                  // Check is message is parsable JSON
+                  if (
+                    parseJsonWithFallbacks(message).success &&
+                    parseJsonWithFallbacks(message).response
+                  ) {
+                    const parsed = parseJsonWithFallbacks(message);
+                    if (
+                      parsed.success &&
+                      parsed.response &&
+                      typeof parsed.response === 'object' &&
+                      'message' in parsed.response
+                    ) {
+                      message = (parsed.response as { message: string })
+                        .message;
+                    }
+                  }
                 }
               }
 
@@ -361,6 +377,11 @@ export async function runMilkTea(
                 '[MilkTea] Injected JSON response with original snippet into AI message'
               );
             }
+
+            console.debug(
+              '[MilkTea] Post tool call context for AI Agent:',
+              JSON.stringify(context.messages, null, 2)
+            );
 
             // Clear saved snippet after successful validation
             savedOriginalSnippet = undefined;

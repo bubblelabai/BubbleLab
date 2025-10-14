@@ -36,6 +36,8 @@ export abstract class ToolBubble<
   }
 
   // Static method - returns LangChain tool with credentials injected
+  // Creates a LangGraph compatible tool with specific configurations that will
+  // be passed in to the tool bubble
   static toolAgent(
     credentials?: Partial<Record<CredentialType, string>>,
     config?: Record<string, unknown>,
@@ -64,6 +66,7 @@ export abstract class ToolBubble<
     if (agentSchema.shape?.config) {
       agentSchema = agentSchema.omit({ config: true });
     }
+    agentSchema = agentSchema.passthrough();
 
     return {
       name: bubbleName,
@@ -71,10 +74,17 @@ export abstract class ToolBubble<
       schema: agentSchema,
       func: async (toolParams: unknown) => {
         // Create instance with credentials and config injected
+
+        // Sometimes config should be dynamic and determined on each
+        // tool invocation, rather than the start of agent run
+        // In this case, we will replace the config (statically configured in the tool bubble)
+        // with the runtime config
+
+        const runtimeConfig = (toolParams as Record<string, unknown>)?.config;
         const enrichedParams = {
-          ...(toolParams as object),
+          ...(toolParams as Record<string, unknown>),
           credentials,
-          config,
+          config: runtimeConfig || config,
         };
 
         // 'this' in static context is the constructor
