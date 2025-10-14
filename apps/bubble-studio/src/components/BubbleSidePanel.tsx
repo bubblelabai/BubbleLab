@@ -52,6 +52,13 @@ export function BubbleSidePanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
 
+  // Resizable panel state
+  const [panelWidth, setPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('bubbleSidePanelWidth');
+    return saved ? parseInt(saved, 10) : 384; // Default 384px (w-96)
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
   // Store state
   const isSidePanelOpen = useEditorStore((state) => state.isSidePanelOpen);
   const selectedBubbleName = useEditorStore(
@@ -82,6 +89,34 @@ export function BubbleSidePanel() {
     loadBubbles();
   }, []);
 
+  // Handle panel resize
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(280, Math.min(800, e.clientX)); // Min 280px, max 800px
+      setPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem('bubbleSidePanelWidth', panelWidth.toString());
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, panelWidth]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
   // Filter bubbles based on search and type
   const filteredBubbles = bubblesData?.bubbles.filter((bubble) => {
     const matchesSearch =
@@ -106,69 +141,85 @@ export function BubbleSidePanel() {
   }
 
   return (
-    <div
-      className="fixed inset-y-0 left-0 w-96 bg-[#1e1e1e] border-r border-gray-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
-      style={{
-        transform: isSidePanelOpen ? 'translateX(0)' : 'translateX(-100%)',
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700">
-        <div className="flex items-center gap-2">
-          {isPromptView && (
-            <button
-              onClick={() => selectBubble(null)}
-              className="p-1 hover:bg-gray-700 rounded transition-colors"
-              title="Back to bubble list"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-300" />
-            </button>
-          )}
-          <h2 className="text-lg font-semibold text-gray-100">
-            {isPromptView ? `Configure ${selectedBubbleName}` : 'Add Bubble'}
-          </h2>
-        </div>
-        <button
-          onClick={closeSidePanel}
-          className="p-1 hover:bg-gray-700 rounded transition-colors"
-          title="Close panel"
-        >
-          <X className="w-5 h-5 text-gray-300" />
-        </button>
-      </div>
-
-      {/* Target line info */}
-      {targetInsertLine && (
-        <div className="px-4 py-2 bg-purple-900/20 border-b border-purple-800/30 text-sm text-purple-300">
-          Inserting at line {targetInsertLine}
-        </div>
+    <>
+      {/* Global cursor override when resizing */}
+      {isResizing && (
+        <style>{`* { cursor: col-resize !important; user-select: none !important; }`}</style>
       )}
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {isListView && (
-          <BubbleListView
-            filteredBubbles={filteredBubbles}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            selectedType={selectedType}
-            setSelectedType={setSelectedType}
-            bubbleTypes={bubbleTypes}
-            onSelectBubble={selectBubble}
-            isLoading={!bubblesData}
-          />
+      <div
+        className="fixed inset-y-0 left-0 bg-[#1e1e1e] border-r border-gray-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
+        style={{
+          width: `${panelWidth}px`,
+          transform: isSidePanelOpen ? 'translateX(0)' : 'translateX(-100%)',
+        }}
+      >
+        {/* Resize Handle */}
+        <div
+          className={`absolute inset-y-0 right-0 w-1 hover:w-1.5 bg-transparent hover:bg-purple-500/50 cursor-col-resize transition-all z-10 ${
+            isResizing ? 'w-1.5 bg-purple-500' : ''
+          }`}
+          onMouseDown={handleResizeStart}
+          style={{ touchAction: 'none' }}
+        />
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <div className="flex items-center gap-2">
+            {isPromptView && (
+              <button
+                onClick={() => selectBubble(null)}
+                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                title="Back to bubble list"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-300" />
+              </button>
+            )}
+            <h2 className="text-lg font-semibold text-gray-100">
+              {isPromptView ? `Configure ${selectedBubbleName}` : 'Add Bubble'}
+            </h2>
+          </div>
+          <button
+            onClick={closeSidePanel}
+            className="p-1 hover:bg-gray-700 rounded transition-colors"
+            title="Close panel"
+          >
+            <X className="w-5 h-5 text-gray-300" />
+          </button>
+        </div>
+
+        {/* Target line info */}
+        {targetInsertLine && (
+          <div className="px-4 py-2 bg-purple-900/20 border-b border-purple-800/30 text-sm text-purple-300">
+            Inserting at line {targetInsertLine}
+          </div>
         )}
 
-        {isPromptView && selectedBubbleName && (
-          <BubblePromptView
-            bubbleName={selectedBubbleName}
-            bubbleDefinition={bubblesData?.bubbles.find(
-              (b) => b.name === selectedBubbleName
-            )}
-          />
-        )}
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {isListView && (
+            <BubbleListView
+              filteredBubbles={filteredBubbles}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
+              bubbleTypes={bubbleTypes}
+              onSelectBubble={selectBubble}
+              isLoading={!bubblesData}
+            />
+          )}
+
+          {isPromptView && selectedBubbleName && (
+            <BubblePromptView
+              bubbleName={selectedBubbleName}
+              bubbleDefinition={bubblesData?.bubbles.find(
+                (b) => b.name === selectedBubbleName
+              )}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
