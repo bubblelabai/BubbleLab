@@ -32,7 +32,6 @@ export const fixtures = {
   'techweek-scrape': '',
   'starter-flow': '',
   'emails-complex': '',
-  'bubble-inside-promise': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
