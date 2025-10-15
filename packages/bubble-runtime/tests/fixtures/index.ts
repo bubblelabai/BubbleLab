@@ -31,6 +31,7 @@ export const fixtures = {
   yfinance: '',
   'techweek-scrape': '',
   'starter-flow': '',
+  'emails-complex': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
@@ -61,6 +62,7 @@ export function getUserCredential(): Partial<Record<CredentialType, string>> {
     [CredentialType.ANTHROPIC_CRED]: 'test-anthropic-key',
     [CredentialType.DATABASE_CRED]: 'test-database-key',
     [CredentialType.SLACK_CRED]: 'test-slack-key',
+    [CredentialType.RESEND_CRED]: 'test-resend-key',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'test-google-sheets-key',
   };
 }

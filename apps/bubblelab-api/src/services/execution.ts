@@ -31,7 +31,7 @@ function convertScriptBubblesToCredentialFormat(
   const converted: Record<string, ParsedBubbleWithInfo> = {};
 
   for (const [, bubble] of Object.entries(scriptBubbles)) {
-    converted[bubble.variableName] = bubble;
+    converted[bubble.variableId.toString()] = bubble;
   }
 
   return converted;
@@ -82,13 +82,6 @@ async function runBubbleFlowCommon(
   // Get user credentials when needed
   const userCredentials: UserCredentialWithId[] = [];
 
-  console.log('[runBubbleFlowCommon] User credentials:', userCredentials);
-  console.log(
-    '[runBubbleFlowCommon] Original parsed bubbles:',
-    bubbleScriptInstance.getOriginalParsedBubbles()
-  );
-  console.log('[runBubbleFlowCommon] Bubble parameters:', bubbleParameters);
-
   if (Object.keys(bubbleParameters).length > 0) {
     //Find user credentials from database
     const userCredentialMappings = await CredentialHelper.getUserCredentials(
@@ -129,6 +122,8 @@ async function runBubbleFlowCommon(
       systemCredentials
     );
 
+    console.log('injectionResult', JSON.stringify(injectionResult, null, 2));
+
     if (!injectionResult.success) {
       console.error(
         '[runBubbleFlowCommon] Credential injection failed:',
@@ -143,6 +138,8 @@ async function runBubbleFlowCommon(
       };
     }
 
+    console.log('[runBubbleFlowCommon] System credentials:', systemCredentials);
+    console.log('[runBubbleFlowCommon] User credentials:', userCredentials);
     console.log(
       '[runBubbleFlowCommon] Credentials injected successfully:',
       Object.keys(injectionResult.injectedCredentials || {})

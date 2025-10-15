@@ -571,7 +571,6 @@ export class BubbleScript {
 
     // Split the current script into lines
     const scriptLines = this.currentBubbleScript.split('\n');
-    console.log('scriptLines', scriptLines);
 
     // Convert from 1-based to 0-based indexing
     const insertIndex = lineNumber - 1;
