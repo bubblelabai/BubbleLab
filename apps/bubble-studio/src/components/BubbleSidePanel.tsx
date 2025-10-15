@@ -380,15 +380,10 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-function BubblePromptView({
-  bubbleName,
-  bubbleDefinition,
-}: BubblePromptViewProps) {
+function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
 
   // Get logo for the bubble
   const logo = bubbleDefinition

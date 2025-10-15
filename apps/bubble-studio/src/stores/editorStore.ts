@@ -183,7 +183,7 @@ export const useEditorStore = create<EditorState>((set) => ({
     }),
 
   selectBubble: (bubbleName) =>
-    set((state) => ({
+    set(() => ({
       sidePanelMode: bubbleName === null ? 'bubbleList' : 'milktea',
       selectedBubbleName: bubbleName,
       // Keep targetInsertLine from when panel was opened
