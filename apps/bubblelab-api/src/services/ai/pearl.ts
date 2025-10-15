@@ -83,10 +83,10 @@ Rejection (when infeasible):
 CRITICAL CODE GENERATION RULES:
 1. Generate COMPLETE workflow code including:
    - All necessary imports from @bubblelab/bubble-core
-   - A class that extends BubbleFlow
+   - A class that extends BubbleFlow<'webhook/http'>
    - A handle() method with the workflow logic
    - Proper error handling and return values
-2. Use available bubbles: EmailBubble, SlackBubble, WebhookBubble, HttpRequestBubble, etc.
+2. Use available bubbles: EmailBubble, SlackBubble, HttpBubble, etc.
 3. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
 4. Access data from context variables and parameters
 5. DO NOT include credentials in code - they are injected automatically
@@ -104,7 +104,7 @@ Example 1 - Email to multiple users:
 import { BubbleFlow } from '@bubblelab/bubble-core';
 import { EmailBubble } from '@bubblelab/bubble-core';
 
-export class SendEmailsFlow extends BubbleFlow {
+export class SendEmailsFlow extends BubbleFlow<'webhook/http'> {
   async handle() {
     const users = [
       { email: 'user1@example.com', name: 'User 1' },
@@ -129,12 +129,12 @@ export class SendEmailsFlow extends BubbleFlow {
 Example 2 - Fetch data and send to Slack:
 \`\`\`typescript
 import { BubbleFlow } from '@bubblelab/bubble-core';
-import { HttpRequestBubble, SlackBubble } from '@bubblelab/bubble-core';
+import { HttpBubble, SlackBubble } from '@bubblelab/bubble-core';
 
-export class FetchAndNotifyFlow extends BubbleFlow {
+export class FetchAndNotifyFlow extends BubbleFlow<'webhook/http'> {
   async handle() {
     // Fetch data
-    const fetchResult = await new HttpRequestBubble({
+    const fetchResult = await new HttpBubble({
       url: 'https://api.example.com/data',
       method: 'GET',
     }).action();
@@ -357,7 +357,7 @@ export async function runPearl(
           credentials: credentials || {},
         },
       ],
-      maxIterations: 10,
+      maxIterations: 25,
       credentials,
       beforeToolCall,
       afterToolCall,
