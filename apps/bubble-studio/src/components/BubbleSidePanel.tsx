@@ -7,6 +7,7 @@ import {
   Check,
   AlertCircle,
   ArrowUp,
+  ChevronDown,
 } from 'lucide-react';
 import {
   useEditorStore,
@@ -20,6 +21,7 @@ import { useMilkTea } from '../hooks/useMilkTea';
 import { usePearl } from '../hooks/usePearl';
 import { toast } from 'react-toastify';
 import { findLogoForBubble } from '../lib/integrations';
+import { type AvailableModel } from '@bubblelab/shared-schemas';
 
 /**
  * Bubble definition from bubbles.json
@@ -380,9 +382,26 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+// Available AI models
+const AVAILABLE_MODELS: { value: AvailableModel; label: string }[] = [
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'openai/gpt-5', label: 'GPT-5' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+  { value: 'openai/gpt-4o', label: 'GPT-4o' },
+  { value: 'openai/gpt-o4-mini', label: 'GPT-o4 Mini' },
+  { value: 'anthropic/claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' },
+  { value: 'openrouter/x-ai/grok-code-fast-1', label: 'Grok Code Fast' },
+  { value: 'openrouter/z-ai/glm-4.5-air', label: 'GLM 4.5 Air' },
+] as const;
+
 function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>(
+    'google/gemini-2.5-flash'
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get logo for the bubble
@@ -435,7 +454,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
         availableCredentials: bubbleDefinition.requiredCredentials,
         userName: 'User', // TODO: Get from auth context
         conversationHistory: [],
-        model: 'openrouter/z-ai/glm-4.5-air',
+        model: selectedModel,
       },
       {
         onSuccess: (result) => {
@@ -506,6 +525,27 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
               ))}
             </div>
           )}
+          {/* Model Selector */}
+          <div className="mt-3">
+            <label className="text-xs text-gray-400 mb-1 block">AI Model</label>
+            <div className="relative">
+              <select
+                title="AI Model"
+                value={selectedModel}
+                onChange={(e) =>
+                  setSelectedModel(e.target.value as AvailableModel)
+                }
+                className="w-full bg-[#1e1e1e] border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 appearance-none cursor-pointer hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+              >
+                {AVAILABLE_MODELS.map((model) => (
+                  <option key={model.value} value={model.value}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
         </div>
       )}
 
@@ -642,17 +682,20 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
 function GeneralChatView() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [selectedModel, setSelectedModel] = useState<AvailableModel>(
+    'google/gemini-2.5-pro'
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
 
   // General chat mutation
-  const generalChatMutation = usePearl();
+  const pearlChat = usePearl();
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, generalChatMutation.isPending]);
+  }, [messages, pearlChat.isPending]);
 
   const handleGenerate = () => {
     if (!prompt.trim()) {
@@ -671,7 +714,7 @@ function GeneralChatView() {
     // Clear input
     setPrompt('');
 
-    generalChatMutation.mutate(
+    pearlChat.mutate(
       {
         userRequest: userMessage.content,
         userName: 'User', // TODO: Get from auth context
@@ -681,7 +724,7 @@ function GeneralChatView() {
         })),
         availableVariables: [],
         currentCode: '',
-        model: 'openrouter/z-ai/glm-4.5-air',
+        model: selectedModel,
       },
       {
         onSuccess: (result) => {
@@ -732,9 +775,29 @@ function GeneralChatView() {
         </p>
       </div>
 
+      {/* Model Selector */}
+      <div className="mb-4 px-2">
+        <label className="text-xs text-gray-400 mb-1 block">AI Model</label>
+        <div className="relative">
+          <select
+            title="AI Model"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value as AvailableModel)}
+            className="w-full bg-[#1e1e1e] border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 appearance-none cursor-pointer hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+          >
+            {AVAILABLE_MODELS.map((model) => (
+              <option key={model.value} value={model.value}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
+      </div>
+
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
-        {messages.length === 0 && !generalChatMutation.isPending && (
+        {messages.length === 0 && !pearlChat.isPending && (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
             <p className="text-center">
               Start a conversation to modify your current workflow
@@ -803,7 +866,7 @@ function GeneralChatView() {
           </div>
         ))}
 
-        {generalChatMutation.isPending && (
+        {pearlChat.isPending && (
           <div className="p-3">
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
@@ -824,12 +887,12 @@ function GeneralChatView() {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Example: Create a workflow that fetches data from Airtable and sends it via email..."
             className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
-            disabled={generalChatMutation.isPending}
+            disabled={pearlChat.isPending}
             onKeyDown={(e) => {
               if (
                 e.key === 'Enter' &&
                 e.ctrlKey &&
-                !generalChatMutation.isPending &&
+                !pearlChat.isPending &&
                 prompt.trim()
               ) {
                 handleGenerate();
@@ -843,14 +906,14 @@ function GeneralChatView() {
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || generalChatMutation.isPending}
+                disabled={!prompt.trim() || pearlChat.isPending}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  !prompt.trim() || generalChatMutation.isPending
+                  !prompt.trim() || pearlChat.isPending
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                 }`}
               >
-                {generalChatMutation.isPending ? (
+                {pearlChat.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <ArrowUp className="w-5 h-5" />
@@ -858,7 +921,7 @@ function GeneralChatView() {
               </button>
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                  !prompt.trim() || generalChatMutation.isPending
+                  !prompt.trim() || pearlChat.isPending
                     ? 'text-gray-500/60'
                     : 'text-gray-400'
                 }`}
