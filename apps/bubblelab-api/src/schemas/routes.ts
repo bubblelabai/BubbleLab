@@ -30,6 +30,8 @@ import {
   validateBubbleFlowCodeResponseSchema,
   MilkTeaRequestSchema,
   MilkTeaResponseSchema,
+  PearlRequestSchema,
+  PearlResponseSchema,
 } from './index.js';
 
 export const webhookRoute = createRoute({
@@ -1231,6 +1233,51 @@ export const milkTeaRoute = createRoute({
       content: {
         'application/json': {
           schema: MilkTeaResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Bad request or validation failed',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+  tags: ['AI'],
+});
+
+// POST /ai/pearl - Run Pearl AI agent
+export const pearlRoute = createRoute({
+  method: 'post',
+  path: '/pearl',
+  summary: 'Run Pearl AI Agent',
+  description:
+    'Execute Pearl AI agent to help build complete workflows with multiple integrations',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: PearlRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Pearl agent executed successfully',
+      content: {
+        'application/json': {
+          schema: PearlResponseSchema,
         },
       },
     },

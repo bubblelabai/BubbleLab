@@ -1,7 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
+import { Plus } from 'lucide-react';
 import { useEditorStore } from '../stores/editorStore';
+import { setConfiguredMonaco } from '../utils/editorContext';
 
 interface MonacoEditorProps {
   value?: string;
@@ -28,12 +30,16 @@ export function MonacoEditor({
   const setCursorPosition = useEditorStore((state) => state.setCursorPosition);
   const setSelectedRange = useEditorStore((state) => state.setSelectedRange);
   const openSidePanel = useEditorStore((state) => state.openSidePanel);
+  const openPearlChat = useEditorStore((state) => state.openPearlChat);
 
   const handleEditorDidMount = async (
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
   ) => {
     editorRef.current = editor;
+
+    // Store the configured Monaco instance for TypeScript worker access
+    setConfiguredMonaco(monacoInstance);
 
     // Store editor instance in Zustand
     setEditorInstance(editor);
@@ -382,6 +388,11 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     }
   };
 
+  const handleAddBubble = () => {
+    // Open side panel at current cursor position
+    openPearlChat();
+  };
+
   return (
     <div className={`relative monaco-editor-container ${className}`}>
       {isLoading && (
@@ -392,6 +403,20 @@ ${cleanedTypes.replace(/^/gm, '  ')}
           </div>
         </div>
       )}
+
+      {/* Floating Action Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={handleAddBubble}
+          className="group relative p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+          title="Add Bubble at Cursor"
+        >
+          <Plus className="w-5 h-5" />
+          <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Add Bubble
+          </span>
+        </button>
+      </div>
 
       {/* @ts-expect-error - React 19 compatibility issue with Monaco Editor */}
       <Editor

@@ -4,8 +4,7 @@ import type {
   MilkTeaRequest,
   MilkTeaResponse,
 } from '@bubblelab/shared-schemas';
-import { getCodeContextForAI } from '../stores/editorStore';
-import { AvailableModels } from '@bubblelab/shared-schemas';
+import { getCodeContextForMilkTea } from '../utils/editorContext';
 
 /**
  * Request type for MilkTea mutation (without code context which we'll add)
@@ -44,7 +43,7 @@ export function useMilkTea() {
       request: MilkTeaGenerateRequest
     ): Promise<MilkTeaResponse> => {
       // Get code context from editor
-      const context = await getCodeContextForAI();
+      const context = await getCodeContextForMilkTea();
 
       if (!context) {
         throw new Error('Could not get code context from editor');

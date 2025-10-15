@@ -12,9 +12,12 @@ import {
   useEditorStore,
   selectIsListView,
   selectIsPromptView,
+  selectIsGeneralChatView,
   insertCodeAtTargetLine,
+  replaceAllEditorContent,
 } from '../stores/editorStore';
 import { useMilkTea } from '../hooks/useMilkTea';
+import { usePearl } from '../hooks/usePearl';
 import { toast } from 'react-toastify';
 import { findLogoForBubble } from '../lib/integrations';
 
@@ -60,7 +63,9 @@ export function BubbleSidePanel() {
   const [isResizing, setIsResizing] = useState(false);
 
   // Store state
-  const isSidePanelOpen = useEditorStore((state) => state.isSidePanelOpen);
+  const isSidePanelOpen = useEditorStore(
+    (state) => state.sidePanelMode !== 'closed'
+  );
   const selectedBubbleName = useEditorStore(
     (state) => state.selectedBubbleName
   );
@@ -70,6 +75,8 @@ export function BubbleSidePanel() {
 
   const isListView = useEditorStore(selectIsListView);
   const isPromptView = useEditorStore(selectIsPromptView);
+  const isGeneralChatView = useEditorStore(selectIsGeneralChatView);
+  const openGeneralChat = useEditorStore((state) => state.openPearlChat);
 
   // Load bubbles data from public/bubbles.json
   useEffect(() => {
@@ -165,7 +172,7 @@ export function BubbleSidePanel() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center gap-2">
-            {isPromptView && (
+            {(isPromptView || isGeneralChatView) && (
               <button
                 onClick={() => selectBubble(null)}
                 className="p-1 hover:bg-gray-700 rounded transition-colors"
@@ -175,7 +182,11 @@ export function BubbleSidePanel() {
               </button>
             )}
             <h2 className="text-lg font-semibold text-gray-100">
-              {isPromptView ? `Configure ${selectedBubbleName}` : 'Add Bubble'}
+              {isPromptView
+                ? `Configure ${selectedBubbleName}`
+                : isGeneralChatView
+                  ? 'General AI Chat'
+                  : 'Add Bubble'}
             </h2>
           </div>
           <button
@@ -205,6 +216,7 @@ export function BubbleSidePanel() {
               setSelectedType={setSelectedType}
               bubbleTypes={bubbleTypes}
               onSelectBubble={selectBubble}
+              onOpenGeneralChat={openGeneralChat}
               isLoading={!bubblesData}
             />
           )}
@@ -217,6 +229,8 @@ export function BubbleSidePanel() {
               )}
             />
           )}
+
+          {isGeneralChatView && <GeneralChatView />}
         </div>
       </div>
     </>
@@ -234,6 +248,7 @@ interface BubbleListViewProps {
   setSelectedType: (type: string) => void;
   bubbleTypes: string[];
   onSelectBubble: (bubbleName: string) => void;
+  onOpenGeneralChat: () => void;
   isLoading: boolean;
 }
 
@@ -245,10 +260,21 @@ function BubbleListView({
   setSelectedType,
   bubbleTypes,
   onSelectBubble,
+  onOpenGeneralChat,
   isLoading,
 }: BubbleListViewProps) {
   return (
     <>
+      {/* General Chat Button */}
+      <div className="p-4 border-b border-gray-700">
+        <button
+          onClick={onOpenGeneralChat}
+          className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+        >
+          <span>General AI Chat</span>
+        </button>
+      </div>
+
       {/* Search and Filter */}
       <div className="p-4 space-y-3 border-b border-gray-700">
         {/* Search */}
@@ -348,7 +374,8 @@ interface BubblePromptViewProps {
 interface ChatMessage {
   id: string;
   type: 'user' | 'assistant';
-  content: string;
+  content: string; // For user messages, this is the message. For assistant, this is the message text
+  code?: string; // Optional code snippet for assistant responses
   resultType?: 'code' | 'question' | 'reject';
   timestamp: Date;
 }
@@ -413,7 +440,7 @@ function BubblePromptView({
         availableCredentials: bubbleDefinition.requiredCredentials,
         userName: 'User', // TODO: Get from auth context
         conversationHistory: [],
-        model: 'google/gemini-2.5-flash',
+        model: 'openrouter/z-ai/glm-4.5-air',
       },
       {
         onSuccess: (result) => {
@@ -449,7 +476,6 @@ function BubblePromptView({
   const handleInsert = (code: string) => {
     insertCodeAtTargetLine(code, false);
     toast.success('Code inserted!');
-    closeSidePanel();
   };
 
   return (
@@ -600,6 +626,244 @@ function BubblePromptView({
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
                   !prompt.trim() || milkTeaMutation.isPending
+                    ? 'text-gray-500/60'
+                    : 'text-gray-400'
+                }`}
+              >
+                Ctrl+Enter
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * General Chat View - AI chat for general workflow assistance
+ * Can read entire code and replace entire editor content
+ */
+function GeneralChatView() {
+  const [prompt, setPrompt] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
+
+  // General chat mutation
+  const generalChatMutation = usePearl();
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, generalChatMutation.isPending]);
+
+  const handleGenerate = () => {
+    if (!prompt.trim()) {
+      return;
+    }
+
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: prompt.trim(),
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Clear input
+    setPrompt('');
+
+    generalChatMutation.mutate(
+      {
+        userRequest: userMessage.content,
+        userName: 'User', // TODO: Get from auth context
+        conversationHistory: messages.map((msg) => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content,
+        })),
+        availableVariables: [],
+        currentCode: '',
+        model: 'openrouter/z-ai/glm-4.5-air',
+      },
+      {
+        onSuccess: (result) => {
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: result.message || '',
+            code:
+              result.type === 'code' && result.snippet
+                ? result.snippet
+                : undefined,
+            resultType: result.type,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        },
+        onError: (error) => {
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content:
+              error instanceof Error
+                ? error.message
+                : 'Failed to generate response',
+            resultType: 'reject',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+        },
+      }
+    );
+  };
+
+  const handleReplace = (code: string) => {
+    replaceAllEditorContent(code);
+    toast.success('Entire workflow replaced!');
+    closeSidePanel();
+  };
+
+  return (
+    <div className="flex-1 flex flex-col p-4">
+      {/* Info Banner */}
+      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
+        <p className="text-xs text-blue-300">
+          💡 <strong>General AI Chat</strong> - Create complete workflows with
+          multiple integrations. Generated code will replace your entire editor
+          content.
+        </p>
+      </div>
+
+      {/* Scrollable content area for messages/results */}
+      <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
+        {messages.length === 0 && !generalChatMutation.isPending && (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
+            <p className="text-center">
+              Start a conversation to modify your current workflow
+            </p>
+            <p className="text-xs text-gray-600 text-center">
+              Example: "After the google sheet is updated, also send me an email
+              with the updated data"
+            </p>
+          </div>
+        )}
+
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`p-3 ${
+              message.type === 'user' ? 'flex justify-end' : ''
+            }`}
+          >
+            {message.type === 'user' ? (
+              <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                <div className="text-sm text-gray-900">{message.content}</div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  {message.resultType === 'code' && (
+                    <Check className="w-4 h-4 text-green-400" />
+                  )}
+                  {message.resultType === 'reject' && (
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                  )}
+                  <span className="text-xs font-medium text-gray-400">
+                    Assistant
+                    {message.resultType === 'code' && ' - Code Generated'}
+                    {message.resultType === 'question' && ' - Question'}
+                    {message.resultType === 'reject' && ' - Error'}
+                  </span>
+                </div>
+                {message.resultType === 'code' ? (
+                  <>
+                    {message.content && (
+                      <div className="text-sm text-gray-200 mb-2">
+                        {message.content}
+                      </div>
+                    )}
+                    {message.code && (
+                      <>
+                        <pre className="text-xs text-gray-300 overflow-x-auto max-h-96 overflow-y-auto thin-scrollbar mb-2 p-2 bg-black/30 rounded">
+                          {message.code}
+                        </pre>
+                        <button
+                          onClick={() => handleReplace(message.code!)}
+                          className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Check className="w-4 h-4" />
+                          Replace Entire Workflow
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-200">{message.content}</div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {generalChatMutation.isPending && (
+          <div className="p-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+              <span className="text-sm text-gray-400">Thinking...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Compact chat input at bottom */}
+      <div className="p-2">
+        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Example: Create a workflow that fetches data from Airtable and sends it via email..."
+            className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
+            disabled={generalChatMutation.isPending}
+            onKeyDown={(e) => {
+              if (
+                e.key === 'Enter' &&
+                e.ctrlKey &&
+                !generalChatMutation.isPending &&
+                prompt.trim()
+              ) {
+                handleGenerate();
+              }
+            }}
+          />
+
+          {/* Generate Button - Inside the prompt container */}
+          <div className="flex justify-end mt-2">
+            <div className="flex flex-col items-end">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || generalChatMutation.isPending}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  !prompt.trim() || generalChatMutation.isPending
+                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                    : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+                }`}
+              >
+                {generalChatMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowUp className="w-5 h-5" />
+                )}
+              </button>
+              <div
+                className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
+                  !prompt.trim() || generalChatMutation.isPending
                     ? 'text-gray-500/60'
                     : 'text-gray-400'
                 }`}

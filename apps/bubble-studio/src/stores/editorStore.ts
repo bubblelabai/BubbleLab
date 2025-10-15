@@ -38,6 +38,11 @@ export interface SelectedRange {
 }
 
 /**
+ * Side panel modes
+ */
+export type SidePanelMode = 'closed' | 'bubbleList' | 'milktea' | 'pearl';
+
+/**
  * Editor state interface
  */
 interface EditorState {
@@ -64,19 +69,24 @@ interface EditorState {
   // ============= Side Panel UI State =============
 
   /**
-   * Whether the bubble insertion side panel is open
+   * Current mode of the side panel
+   * - 'closed': Panel is not visible
+   * - 'bubbleList': Showing list of available bubbles
+   * - 'milktea': Configuring a specific bubble with MilkTea AI
+   * - 'pearl': General AI chat with Pearl (can read/replace entire code)
    */
-  isSidePanelOpen: boolean;
+  sidePanelMode: SidePanelMode;
 
   /**
-   * Name of the bubble selected for configuration (e.g., "resend", "slack")
-   * Null when in bubble list view, set when user clicks a bubble
+   * Name of the bubble being configured in MilkTea mode (e.g., "resend", "slack")
+   * Only used when sidePanelMode is 'milktea'
    */
   selectedBubbleName: string | null;
 
   /**
    * Target line number where generated bubble code will be inserted
-   * Set when user clicks on a line in the editor to add a bubble
+   * Only used when sidePanelMode is 'milktea'
+   * Null when in Pearl mode (replaces entire content)
    */
   targetInsertLine: number | null;
 
@@ -102,21 +112,26 @@ interface EditorState {
   setSelectedRange: (range: SelectedRange | null) => void;
 
   /**
-   * Open the side panel for bubble insertion at specified line
+   * Open the side panel in bubble list mode at specified line
    * @param line - Line number where bubble will be inserted
    */
   openSidePanel: (line: number) => void;
 
   /**
-   * Close the side panel and reset bubble selection
+   * Close the side panel and reset state
    */
   closeSidePanel: () => void;
 
   /**
-   * Select a bubble for configuration (transitions to prompt view)
+   * Select a bubble for configuration (transitions to MilkTea mode)
    * @param bubbleName - Name of the bubble (e.g., "resend") or null to go back to list
    */
   selectBubble: (bubbleName: string | null) => void;
+
+  /**
+   * Open Pearl chat mode (general AI chat - can read/replace entire code)
+   */
+  openPearlChat: () => void;
 }
 
 /**
@@ -142,7 +157,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   editorInstance: null,
   cursorPosition: null,
   selectedRange: null,
-  isSidePanelOpen: false,
+  sidePanelMode: 'closed',
   selectedBubbleName: null,
   targetInsertLine: null,
 
@@ -155,36 +170,36 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   openSidePanel: (line) =>
     set({
-      isSidePanelOpen: true,
+      sidePanelMode: 'bubbleList',
       targetInsertLine: line,
-      selectedBubbleName: null, // Reset to list view
+      selectedBubbleName: null,
     }),
 
   closeSidePanel: () =>
     set({
-      isSidePanelOpen: false,
+      sidePanelMode: 'closed',
       selectedBubbleName: null,
       targetInsertLine: null,
     }),
 
   selectBubble: (bubbleName) =>
-    set({
+    set((state) => ({
+      sidePanelMode: bubbleName === null ? 'bubbleList' : 'milktea',
       selectedBubbleName: bubbleName,
+      // Keep targetInsertLine from when panel was opened
+    })),
+
+  openPearlChat: () =>
+    set({
+      sidePanelMode: 'pearl',
+      selectedBubbleName: null,
+      targetInsertLine: null,
     }),
 }));
 
 // ============= Derived Selectors =============
 // These selector functions derive data from the editor state
 // Usage: const errors = useEditorStore(selectTypeScriptErrors);
-
-/**
- * Type information at a position
- */
-export interface TypeInfo {
-  displayString: string; // e.g., "const foo: string"
-  documentation: string; // JSDoc or description
-  kind: string; // "variable", "function", "class", etc.
-}
 
 /**
  * TypeScript diagnostic (error/warning/info)
@@ -197,15 +212,6 @@ export interface Diagnostic {
   message: string;
   severity: 'error' | 'warning' | 'info' | 'hint';
   code: string | number;
-}
-
-/**
- * Variable found in the code
- */
-export interface VariableInfo {
-  name: string;
-  type: string; // Inferred type
-  kind: 'var' | 'let' | 'const' | 'parameter';
 }
 
 /**
@@ -310,7 +316,9 @@ export const selectSelectedText = (state: EditorState): string => {
  * const isListView = useEditorStore(selectIsListView);
  */
 export const selectIsListView = (state: EditorState): boolean => {
-  return state.isSidePanelOpen && state.selectedBubbleName === null;
+  return (
+    state.sidePanelMode === 'bubbleList' && state.selectedBubbleName === null
+  );
 };
 
 /**
@@ -320,177 +328,21 @@ export const selectIsListView = (state: EditorState): boolean => {
  * const isPromptView = useEditorStore(selectIsPromptView);
  */
 export const selectIsPromptView = (state: EditorState): boolean => {
-  return state.isSidePanelOpen && state.selectedBubbleName !== null;
+  return state.sidePanelMode === 'milktea' && state.selectedBubbleName !== null;
 };
 
-// ============= Async Helper Functions =============
-// These are async functions that need to be called directly (not as selectors)
-// They fetch data from Monaco's TypeScript worker
-
 /**
- * Get type information at a specific position (async)
- * Call this directly, don't use as a selector
+ * Check if side panel is in general chat view
  *
  * @example
- * const typeInfo = await getTypeInfoAtPosition(42, 10);
+ * const isGeneralChatView = useEditorStore(selectIsGeneralChatView);
  */
-export async function getTypeInfoAtPosition(
-  lineNumber: number,
-  column: number
-): Promise<TypeInfo | null> {
-  const { editorInstance } = useEditorStore.getState();
-  if (!editorInstance) return null;
+export const selectIsGeneralChatView = (state: EditorState): boolean => {
+  return state.sidePanelMode === 'pearl';
+};
 
-  const model = editorInstance.getModel();
-  if (!model) return null;
-
-  try {
-    const position = { lineNumber, column };
-    const offset = model.getOffsetAt(position);
-
-    const worker = await monaco.languages.typescript.getTypeScriptWorker();
-    const client = await worker(model.uri);
-
-    const quickInfo = await client.getQuickInfoAtPosition(
-      model.uri.toString(),
-      offset
-    );
-
-    if (!quickInfo) return null;
-
-    return {
-      displayString:
-        quickInfo.displayParts?.map((p: { text: string }) => p.text).join('') ||
-        '',
-      documentation:
-        quickInfo.documentation
-          ?.map((d: { text: string }) => d.text)
-          .join('\n') || '',
-      kind: quickInfo.kind || 'unknown',
-    };
-  } catch (error) {
-    console.error('Failed to get type info:', error);
-    return null;
-  }
-}
-
-/**
- * Get available variables at a specific position (async)
- * Call this directly, don't use as a selector
- *
- * @example
- * const vars = await getAvailableVariables(42, 1);
- */
-export async function getAvailableVariables(
-  lineNumber: number,
-  column: number = 1
-): Promise<VariableInfo[]> {
-  const { editorInstance } = useEditorStore.getState();
-  if (!editorInstance) return [];
-
-  const model = editorInstance.getModel();
-  if (!model) return [];
-
-  try {
-    const position = { lineNumber, column };
-    const offset = model.getOffsetAt(position);
-
-    const worker = await monaco.languages.typescript.getTypeScriptWorker();
-    const client = await worker(model.uri);
-
-    const completions = await client.getCompletionsAtPosition(
-      model.uri.toString(),
-      offset
-    );
-
-    if (!completions) return [];
-
-    const variables: VariableInfo[] = [];
-
-    for (const entry of completions.entries) {
-      if (
-        entry.kind === 'var' ||
-        entry.kind === 'let' ||
-        entry.kind === 'const' ||
-        entry.kind === 'parameter'
-      ) {
-        const details = await client.getCompletionEntryDetails(
-          model.uri.toString(),
-          offset,
-          entry.name
-        );
-
-        variables.push({
-          name: entry.name,
-          type:
-            details?.displayParts
-              ?.map((p: { text: string }) => p.text)
-              .join('') || 'unknown',
-          kind: entry.kind as VariableInfo['kind'],
-        });
-      }
-    }
-
-    return variables;
-  } catch (error) {
-    console.error('Failed to get available variables:', error);
-    return [];
-  }
-}
-
-/**
- * Get code context for AI (MilkTea API) - async
- * Call this directly before calling MilkTea API
- *
- * @example
- * const context = await getCodeContextForAI();
- * if (context) {
- *   await callMilkTeaAPI({ currentCode: context.fullCode, ... });
- * }
- */
-export async function getCodeContextForAI(): Promise<{
-  fullCode: string;
-  contextCode: string;
-  availableVariables: VariableInfo[];
-  insertLine: number;
-  insertLocation: string;
-} | null> {
-  const { editorInstance, targetInsertLine } = useEditorStore.getState();
-  if (!editorInstance || !targetInsertLine) return null;
-
-  const model = editorInstance.getModel();
-  if (!model) return null;
-
-  // Get full code
-  const fullCode = model.getValue();
-
-  // Get surrounding context (10 lines before, 5 after)
-  const startLine = Math.max(1, targetInsertLine - 10);
-  const endLine = Math.min(model.getLineCount(), targetInsertLine + 5);
-  const contextCode = model.getValueInRange({
-    startLineNumber: startLine,
-    startColumn: 1,
-    endLineNumber: endLine,
-    endColumn: model.getLineMaxColumn(endLine),
-  });
-
-  // Get available variables
-  const availableVariables = await getAvailableVariables(targetInsertLine, 1);
-
-  // Look for insert location marker
-  const lineContent = model.getLineContent(targetInsertLine);
-  const insertLocation =
-    lineContent.match(/\/\/\s*(INSERT[_\s]?(LOCATION|HERE|POINT))/i)?.[0] ||
-    `// Line ${targetInsertLine}`;
-
-  return {
-    fullCode,
-    contextCode,
-    availableVariables,
-    insertLine: targetInsertLine,
-    insertLocation,
-  };
-}
+// ============= Editor Manipulation Functions =============
+// These functions modify editor content
 
 /**
  * Insert code at target insert line
@@ -552,5 +404,39 @@ export function insertCodeAtTargetLine(
   };
   editorInstance.setPosition(newPosition);
   editorInstance.revealLineInCenter(targetLine);
+  editorInstance.focus();
+}
+
+/**
+ * Replace entire editor content
+ * Call this when getting code from general chat mode
+ *
+ * @example
+ * replaceAllEditorContent('// New complete workflow\n...');
+ */
+export function replaceAllEditorContent(code: string): void {
+  const { editorInstance } = useEditorStore.getState();
+  if (!editorInstance) return;
+
+  const model = editorInstance.getModel();
+  if (!model) return;
+
+  // Replace entire content
+  const fullRange = model.getFullModelRange();
+
+  editorInstance.executeEdits('replace-all-code', [
+    {
+      range: fullRange,
+      text: code,
+    },
+  ]);
+
+  // Move cursor to the beginning
+  const newPosition = {
+    lineNumber: 1,
+    column: 1,
+  };
+  editorInstance.setPosition(newPosition);
+  editorInstance.revealLineInCenter(1);
   editorInstance.focus();
 }
