@@ -123,6 +123,19 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('jsonMode:');
     });
 
+    test('should show ouput schema for complex schema', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'google-calendar' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).toBeDefined();
+      console.log(result.data.usageExample);
+
+      //For output schema, should show the structure of the schema
+      expect(usageExample).toContain('timeZone');
+      expect(usageExample).toContain('selected');
+      expect(usageExample).toContain('accessRole');
+    });
+
     test('should throw error for non-existent bubble', async () => {
       const tool = new GetBubbleDetailsTool({
         bubbleName: 'non-existent-bubble',

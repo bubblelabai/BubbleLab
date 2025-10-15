@@ -285,12 +285,9 @@ export class GetBubbleDetailsTool extends ToolBubble<
       if (def.typeName === 'ZodDiscriminatedUnion') {
         const options = def.options as z.ZodTypeAny[];
         const discriminatorKey = def.discriminator;
-
         // Limit to first 4 operations to avoid overwhelming output
-        const maxOperations = 4;
-        const operationsToShow = options.slice(0, maxOperations);
 
-        operationsToShow.forEach((option, index) => {
+        options.forEach((option, index) => {
           if (option && typeof option === 'object' && 'shape' in option) {
             const shape = (option as z.ZodObject<z.ZodRawShape>).shape;
 
@@ -351,13 +348,33 @@ export class GetBubbleDetailsTool extends ToolBubble<
                 lines.push('});');
                 lines.push('');
                 lines.push(`const result = await ${variableName}.action();`);
+                // Inline output schema for this specific operation
+                if (metadata.resultSchema) {
+                  const optionSchema = this.getResultSchemaOption(
+                    metadata.resultSchema,
+                    String(operationName)
+                  );
+                  if (optionSchema) {
+                    const outputSchemaStr =
+                      this.generateOutputSchemaString(optionSchema);
+                    if (outputSchemaStr) {
+                      lines.push(
+                        `// outputSchema for result.data when operation === '${String(operationName)}':`
+                      );
+                      outputSchemaStr
+                        .split('\n')
+                        .forEach((l) => lines.push(`// ${l}`));
+                      lines.push('');
+                    }
+                  }
+                }
               }
             }
           }
         });
 
         // Add common result handling code once at the end
-        if (operationsToShow.length > 0) {
+        if (lines.length > 0) {
           lines.push('');
           lines.push('// Always check success status before using data');
           lines.push('if (!result.success) {');
@@ -367,29 +384,11 @@ export class GetBubbleDetailsTool extends ToolBubble<
           lines.push('}');
           lines.push('');
 
-          // Add output schema information
-          if (metadata.resultSchema) {
-            const outputExample = this.generateOutputExample(
-              metadata.resultSchema
-            );
-            if (outputExample) {
-              lines.push('// Expected output structure in result.data:');
-              lines.push(`// ${outputExample}`);
-              lines.push('');
-            }
-          }
+          // Output schema per operation is shown inline above.
 
           lines.push('// Access the actual data');
           lines.push('const actualData = result.data;');
           lines.push('console.log(actualData);');
-
-          // Add note if there are more operations
-          if (options.length > maxOperations) {
-            lines.push('');
-            lines.push(
-              `// ... and ${options.length - maxOperations} more operations available`
-            );
-          }
         }
       }
     }
@@ -434,10 +433,15 @@ export class GetBubbleDetailsTool extends ToolBubble<
 
     // Add output schema information
     if (metadata.resultSchema) {
-      const outputExample = this.generateOutputExample(metadata.resultSchema);
-      if (outputExample) {
-        lines.push('// Expected output structure in result.data:');
-        lines.push(`// ${outputExample}`);
+      // If the result is a discriminated union, show the first option
+      const optionSchema = this.getFirstResultSchemaOption(
+        metadata.resultSchema
+      );
+      const schemaToRender = optionSchema ?? metadata.resultSchema;
+      const outputSchemaStr = this.generateOutputSchemaString(schemaToRender);
+      if (outputSchemaStr && outputSchemaStr !== 'No output schema defined') {
+        lines.push('// outputSchema for result.data:');
+        outputSchemaStr.split('\n').forEach((l) => lines.push(`// ${l}`));
         lines.push('');
       }
     }
@@ -459,38 +463,65 @@ export class GetBubbleDetailsTool extends ToolBubble<
     );
   }
 
-  private generateOutputExample(resultSchema: unknown): string | null {
+  // generateOutputExample was removed in favor of generateOutputSchemaString with per-operation rendering
+
+  private getResultSchemaOption(
+    resultSchema: unknown,
+    operationName: string
+  ): z.ZodTypeAny | null {
     try {
-      // Try to generate a meaningful example of the output structure
       if (
         resultSchema &&
         typeof resultSchema === 'object' &&
-        'shape' in resultSchema
+        '_def' in resultSchema
       ) {
-        const shape = (resultSchema as any).shape;
-        const outputFields: string[] = [];
-
-        for (const [key, value] of Object.entries(shape)) {
-          if (value && typeof value === 'object' && '_def' in value) {
-            const zodType = value as z.ZodTypeAny;
-            const example = this.generateExampleValue(zodType);
-            const description = this.getParameterDescription(zodType);
-
-            if (example !== null) {
-              let fieldLine = `${key}: ${example}`;
-              if (description) {
-                fieldLine += ` // ${description}`;
+        const zodSchema = resultSchema as z.ZodTypeAny;
+        const def = zodSchema._def;
+        if (def.typeName === 'ZodDiscriminatedUnion') {
+          const options = def.options as z.ZodTypeAny[];
+          for (const option of options) {
+            if (option && typeof option === 'object' && 'shape' in option) {
+              const shape = (option as z.ZodObject<z.ZodRawShape>).shape;
+              const discriminatorValue = shape[def.discriminator];
+              if (
+                discriminatorValue &&
+                typeof discriminatorValue === 'object' &&
+                '_def' in discriminatorValue &&
+                discriminatorValue._def.typeName === 'ZodLiteral' &&
+                String(discriminatorValue._def.value) === operationName
+              ) {
+                return option;
               }
-              outputFields.push(fieldLine);
             }
           }
-        }
-
-        if (outputFields.length > 0) {
-          return `{ ${outputFields.join(', ')} }`;
+        } else if ('shape' in zodSchema) {
+          return zodSchema;
         }
       }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
+  private getFirstResultSchemaOption(
+    resultSchema: unknown
+  ): z.ZodTypeAny | null {
+    try {
+      if (
+        resultSchema &&
+        typeof resultSchema === 'object' &&
+        '_def' in resultSchema
+      ) {
+        const zodSchema = resultSchema as z.ZodTypeAny;
+        const def = zodSchema._def;
+        if (def.typeName === 'ZodDiscriminatedUnion') {
+          const options = def.options as z.ZodTypeAny[];
+          return options?.[0] ?? null;
+        } else if ('shape' in zodSchema) {
+          return zodSchema;
+        }
+      }
       return null;
     } catch {
       return null;
