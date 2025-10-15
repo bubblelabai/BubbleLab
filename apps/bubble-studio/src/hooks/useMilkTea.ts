@@ -54,7 +54,7 @@ export function useMilkTea() {
         ...request,
         currentCode: context.fullCode,
         insertLocation: context.insertLocation,
-        model: 'openrouter/z-ai/glm-4.5-air',
+        model: 'google/gemini-2.5-pro',
       };
 
       // Call MilkTea API

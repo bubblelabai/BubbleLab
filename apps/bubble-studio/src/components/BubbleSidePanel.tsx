@@ -393,7 +393,7 @@ const AVAILABLE_MODELS: { value: AvailableModel; label: string }[] = [
   { value: 'openai/gpt-o4-mini', label: 'GPT-o4 Mini' },
   { value: 'anthropic/claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' },
   { value: 'openrouter/x-ai/grok-code-fast-1', label: 'Grok Code Fast' },
-  { value: 'openrouter/z-ai/glm-4.5-air', label: 'GLM 4.5 Air' },
+  { value: 'openrouter/z-ai/glm-4.6', label: 'GLM 4.6' },
 ] as const;
 
 function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {

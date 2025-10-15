@@ -360,14 +360,18 @@ export function postProcessJSON(jsonString: string): string {
  */
 export function parseJsonWithFallbacks(finalResponse: string): {
   response: string;
+  parsed: object | null;
   success: boolean;
   error?: string;
 } {
   const attempts = [
     // Attempt 1: Try parsing the original response as-is
     () => {
-      JSON.parse(finalResponse);
-      return finalResponse;
+      return {
+        response: finalResponse,
+        parsed: JSON.parse(finalResponse),
+        success: true,
+      };
     },
     // Attempt 2: Strip code fences, scan-extract, then post-process
     () => {
@@ -375,14 +379,17 @@ export function parseJsonWithFallbacks(finalResponse: string): {
       const scanned = extractTopLevelJson(stripped);
       if (!scanned) throw new Error('No valid JSON found');
       const cleaned = postProcessJSON(scanned);
-      JSON.parse(cleaned);
-      return cleaned;
+      return { response: cleaned, parsed: JSON.parse(cleaned), success: true };
     },
     // Attempt 3: Try basic post-processing on original
     () => {
       const processed = postProcessJSON(finalResponse);
       JSON.parse(processed);
-      return processed;
+      return {
+        response: processed,
+        parsed: JSON.parse(processed),
+        success: true,
+      };
     },
     // Attempt 4: Last resort - try to wrap in object if it looks like key-value content
     () => {
@@ -393,7 +400,11 @@ export function parseJsonWithFallbacks(finalResponse: string): {
           const wrapped = `{${trimmed}}`;
           const processed = postProcessJSON(wrapped);
           JSON.parse(processed);
-          return processed;
+          return {
+            response: processed,
+            parsed: JSON.parse(processed),
+            success: true,
+          };
         }
       }
       throw new Error('Cannot convert to valid JSON');
@@ -408,7 +419,12 @@ export function parseJsonWithFallbacks(finalResponse: string): {
       if (i > 0) {
         console.log(`[JSON Parser] Parsing successful on attempt ${i + 1}`);
       }
-      return { response: result, error: undefined, success: true };
+      return {
+        response: result.response,
+        parsed: result.parsed,
+        error: undefined,
+        success: true,
+      };
     } catch (error) {
       lastError =
         error instanceof Error ? error : new Error('Unknown parsing error');
@@ -429,6 +445,7 @@ export function parseJsonWithFallbacks(finalResponse: string): {
 
   return {
     response: lastAttempt,
+    parsed: null,
     error: `AI Agent failed to generate valid JSON. Post-processing attempted but JSON is still malformed: ${lastError?.message || 'Unknown error'}`,
     success: false,
   };

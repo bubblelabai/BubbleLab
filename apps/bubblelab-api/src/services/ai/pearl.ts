@@ -261,13 +261,22 @@ export async function runPearl(
             let message = 'Workflow code generated and validated successfully';
             const lastAIMessage = [...context.messages]
               .reverse()
-              .find((msg) => msg.constructor.name === 'AIMessage');
-
+              .find(
+                (msg) =>
+                  msg.constructor.name === 'AIMessage' ||
+                  msg.constructor.name === 'AIMessageChunk'
+              );
             if (lastAIMessage) {
               const messageContent = lastAIMessage.content;
 
               if (typeof messageContent === 'string' && messageContent.trim()) {
-                message = messageContent;
+                // Check if message is parsable JSON
+                const result = parseJsonWithFallbacks(messageContent);
+                if (result.success && result.parsed) {
+                  message = (result.parsed as { message: string }).message;
+                } else {
+                  message = messageContent;
+                }
               } else if (Array.isArray(messageContent)) {
                 const textBlock = messageContent.find(
                   (block: unknown) =>
@@ -289,20 +298,10 @@ export async function runPearl(
                   }
 
                   // Check if message is parsable JSON
-                  if (
-                    parseJsonWithFallbacks(message).success &&
-                    parseJsonWithFallbacks(message).response
-                  ) {
-                    const parsed = parseJsonWithFallbacks(message);
-                    if (
-                      parsed.success &&
-                      parsed.response &&
-                      typeof parsed.response === 'object' &&
-                      'message' in parsed.response
-                    ) {
-                      message = (parsed.response as { message: string })
-                        .message;
-                    }
+                  const result = parseJsonWithFallbacks(message);
+                  if (result.success && result.response) {
+                    const parsed = result.parsed;
+                    message = (parsed as { message: string }).message;
                   }
                 }
               }
@@ -316,9 +315,6 @@ export async function runPearl(
 
               // Inject the response into the AI message
               lastAIMessage.content = JSON.stringify(response);
-              console.log(
-                '[GeneralChat] Injected JSON response into AI message'
-              );
             }
 
             savedOriginalCode = undefined;
@@ -392,8 +388,16 @@ export async function runPearl(
     try {
       const responseText = result.data?.response || '';
       agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
+      // if type is code and no snippet, return reject
+      if (agentOutput.type === 'code' && !agentOutput.snippet) {
+        return {
+          type: 'reject',
+          message: 'No snippet found in agent response',
+          success: false,
+        };
+      }
     } catch (error) {
-      console.error('[GeneralChat] Failed to parse agent output:', error);
+      console.error('[Pearl] Failed to parse agent output:', error);
       return {
         type: 'reject',
         message: 'Failed to parse agent response',
@@ -401,8 +405,6 @@ export async function runPearl(
         error: error instanceof Error ? error.message : 'Unknown parsing error',
       };
     }
-
-    console.log('[GeneralChat] Agent output type:', agentOutput.type);
 
     // Handle different response types
     if (agentOutput.type === 'question' || agentOutput.type === 'reject') {
