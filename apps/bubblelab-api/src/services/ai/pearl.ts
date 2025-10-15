@@ -173,10 +173,9 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
       }
     }
   }
-
   // Add current request with code context if available
   const contextInfo = request.currentCode
-    ? `\n\nCurrent workflow code:\n\`\`\`typescript\n${request.currentCode}\n\`\`\` Available Variables:${request.availableVariables.join(', ')}`
+    ? `\n\nCurrent workflow code:\n\`\`\`typescript\n${request.currentCode}\n\`\`\` Available Variables:${JSON.stringify(request.availableVariables)}`
     : '';
 
   messages.push(
@@ -195,8 +194,7 @@ export async function runPearl(
   request: PearlRequest,
   credentials?: Partial<Record<CredentialType, string>>
 ): Promise<PearlResponse> {
-  console.log('[GeneralChat] Starting agent');
-  console.log('[GeneralChat] User request:', request.userRequest);
+  console.debug('[Pearl] User request:', request.userRequest);
 
   try {
     const bubbleFactory = new BubbleFactory();
@@ -212,7 +210,7 @@ export async function runPearl(
     // Create hooks for validation tool
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
       if (context.toolName === 'bubbleflow-validation-tool') {
-        console.log(
+        console.debug(
           '[GeneralChat] Pre-hook: Intercepting validation tool call'
         );
 
@@ -226,10 +224,7 @@ export async function runPearl(
             toolInput: context.toolInput as Record<string, unknown>,
           };
         }
-
-        console.log('[GeneralChat] Code to validate:', code);
         savedOriginalCode = code;
-
         return {
           messages: context.messages,
           toolInput: { code },
@@ -251,7 +246,7 @@ export async function runPearl(
             context.toolOutput as BubbleResult<ValidationToolResult>;
 
           if (validationResult.data?.valid === true) {
-            console.log(
+            console.debug(
               '[GeneralChat] Validation passed! Signaling completion.'
             );
 
@@ -325,7 +320,7 @@ export async function runPearl(
             };
           }
 
-          console.log('[GeneralChat] Validation failed, agent will retry');
+          console.debug('[GeneralChat] Validation failed, agent will retry');
           console.log('[GeneralChat] Errors:', validationResult.data?.errors);
         } catch (error) {
           console.warn(
@@ -368,11 +363,11 @@ export async function runPearl(
       afterToolCall,
     });
 
-    console.log('[GeneralChat] Executing agent...');
+    console.debug('[GeneralChat] Executing agent...');
     const result = await agent.action();
 
-    console.log('[GeneralChat] Agent execution completed');
-    console.log('[GeneralChat] Success:', result.success);
+    console.debug('[GeneralChat] Agent execution completed');
+    console.debug('[GeneralChat] Success:', result.success);
 
     if (!result.success) {
       return {

@@ -44,7 +44,9 @@ export function usePearl() {
         userName: request.userName,
         conversationHistory: request.conversationHistory,
         availableVariables:
-          request.availableVariables || codeContext?.availableVariables,
+          request.availableVariables.length > 0
+            ? request.availableVariables
+            : codeContext?.availableVariables,
         model: request.model || 'google/gemini-2.5-pro',
       };
 
