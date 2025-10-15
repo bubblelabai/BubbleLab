@@ -9,12 +9,8 @@ export interface Output {
   total_sent: number;
 }
 
-export interface CustomWebhookPayload {
-  // Add any specific payload properties if needed
-}
-
 export class UserOutreachFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
+  async handle(_payload): Promise<Output> {
     const MAX_USERS = 10;
 
     // Get list of contacted users
