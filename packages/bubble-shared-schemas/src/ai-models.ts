@@ -18,7 +18,7 @@ export const AvailableModels = z.enum([
 
   // OpenRouter models
   'openrouter/x-ai/grok-code-fast-1',
-  'openrouter/z-ai/glm-4.5-air',
+  'openrouter/z-ai/glm-4.6',
 ]);
 
 export type AvailableModel = z.infer<typeof AvailableModels>;

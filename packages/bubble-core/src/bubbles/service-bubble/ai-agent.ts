@@ -9,7 +9,12 @@ import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+import {
+  HumanMessage,
+  AIMessage,
+  ToolMessage,
+  AIMessageChunk,
+} from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { AvailableModels } from '@bubblelab/shared-schemas';
@@ -20,6 +25,7 @@ import {
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
+import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -191,8 +197,11 @@ const AIAgentParamsSchema = z.object({
   maxIterations: z
     .number()
     .positive()
+    .min(2)
     .default(10)
-    .describe('Maximum number of iterations for the agent workflow'),
+    .describe(
+      'Maximum number of iterations for the agent workflow, 2 iterations per turn of conversation'
+    ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -486,8 +495,9 @@ export class AIAgentBubble extends ServiceBubble<
           item.type === 'text'
         ) {
           try {
-            if (parseJsonWithFallbacks(item.text).success) {
-              return { response: item.text };
+            const result = parseJsonWithFallbacks(item.text);
+            if (result.success) {
+              return { response: result.response };
             }
           } catch {
             // Continue to next item if not valid JSON
@@ -516,6 +526,8 @@ export class AIAgentBubble extends ServiceBubble<
 
       return { response: result.response };
     }
+
+    console.log('[AIAgent] Final response:', finalResponse);
 
     return { response: finalResponse };
   }
@@ -598,8 +610,8 @@ export class AIAgentBubble extends ServiceBubble<
           model: modelName,
           temperature,
           anthropicApiKey: apiKey,
-          maxTokens: 1000,
-          streaming: false,
+          maxTokens,
+          streaming: true,
           apiKey,
         });
       case 'openrouter':
@@ -824,7 +836,9 @@ export class AIAgentBubble extends ServiceBubble<
 
     // Define conditional edge function
     const shouldContinue = ({ messages }: typeof MessagesAnnotation.State) => {
-      const lastMessage = messages[messages.length - 1] as AIMessage;
+      const lastMessage = messages[messages.length - 1] as
+        | AIMessage
+        | AIMessageChunk;
 
       // Check if the last message has tool calls
       if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
@@ -975,10 +989,13 @@ export class AIAgentBubble extends ServiceBubble<
 
       for (let i = 0; i < result.messages.length; i++) {
         const msg = result.messages[i];
-        if (msg instanceof AIMessage && msg.tool_calls) {
+        if (
+          msg instanceof AIMessage ||
+          (msg instanceof AIMessageChunk && msg.tool_calls)
+        ) {
           const typedToolCalls = msg.tool_calls;
           // Log and track tool calls
-          for (const toolCall of typedToolCalls) {
+          for (const toolCall of typedToolCalls || []) {
             toolCallMap.set(toolCall.id!, {
               name: toolCall.name,
               args: toolCall.args,
@@ -1024,10 +1041,12 @@ export class AIAgentBubble extends ServiceBubble<
       // Get the final AI message response
       console.log('[AIAgent] Filtering AI messages...');
       const aiMessages = result.messages.filter(
-        (msg: BaseMessage) => msg instanceof AIMessage
+        (msg: any) => isAIMessage(msg) || isAIMessageChunk(msg)
       );
       console.log('[AIAgent] Found', aiMessages.length, 'AI messages');
-      const finalMessage = aiMessages[aiMessages.length - 1] as AIMessage;
+      const finalMessage = aiMessages[aiMessages.length - 1] as
+        | AIMessage
+        | AIMessageChunk;
 
       // Check for MAX_TOKENS finish reason
       if (finalMessage?.additional_kwargs?.finishReason === 'MAX_TOKENS') {
@@ -1043,10 +1062,19 @@ export class AIAgentBubble extends ServiceBubble<
       let totalTokensSum = 0;
 
       for (const msg of result.messages) {
-        if (msg instanceof AIMessage && msg.usage_metadata) {
-          totalInputTokens += msg.usage_metadata.input_tokens || 0;
-          totalOutputTokens += msg.usage_metadata.output_tokens || 0;
-          totalTokensSum += msg.usage_metadata.total_tokens || 0;
+        if (
+          msg instanceof AIMessage ||
+          (msg instanceof AIMessageChunk && msg.usage_metadata)
+        ) {
+          totalInputTokens +=
+            (msg as AIMessage | AIMessageChunk).usage_metadata?.input_tokens ||
+            0;
+          totalOutputTokens +=
+            (msg as AIMessage | AIMessageChunk).usage_metadata?.output_tokens ||
+            0;
+          totalTokensSum +=
+            (msg as AIMessage | AIMessageChunk).usage_metadata?.total_tokens ||
+            0;
         }
       }
 
