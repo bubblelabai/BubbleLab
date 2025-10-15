@@ -383,12 +383,32 @@ export async function runPearl(
     try {
       const responseText = result.data?.response || '';
       agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
-      // if type is code and no snippet, return reject
-      if (agentOutput.type === 'code' && !agentOutput.snippet) {
+
+      if (!agentOutput.type || !agentOutput.message) {
         return {
           type: 'reject',
-          message: 'No snippet found in agent response',
+          message: 'Error parsing agent response',
           success: false,
+        };
+      }
+      if (agentOutput.type === 'code' && agentOutput.snippet) {
+        return {
+          type: 'code',
+          message: agentOutput.message,
+          snippet: agentOutput.snippet,
+          success: true,
+        };
+      } else if (agentOutput.type === 'question') {
+        return {
+          type: 'question',
+          message: agentOutput.message,
+          success: true,
+        };
+      } else {
+        return {
+          type: 'reject',
+          message: agentOutput.message,
+          success: true,
         };
       }
     } catch (error) {
@@ -400,33 +420,6 @@ export async function runPearl(
         error: error instanceof Error ? error.message : 'Unknown parsing error',
       };
     }
-
-    // Handle different response types
-    if (agentOutput.type === 'question' || agentOutput.type === 'reject') {
-      return {
-        type: agentOutput.type,
-        message: agentOutput.message,
-        success: true,
-      };
-    }
-
-    // For code type, return the complete workflow
-    if (agentOutput.type === 'code') {
-      return {
-        type: 'code',
-        message: agentOutput.message,
-        snippet: agentOutput.snippet,
-        success: true,
-      };
-    }
-
-    // Should never reach here
-    return {
-      type: 'reject',
-      message: 'Unexpected agent output format',
-      success: false,
-      error: 'Invalid response type',
-    };
   } catch (error) {
     console.error('[GeneralChat] Error during execution:', error);
     return {
