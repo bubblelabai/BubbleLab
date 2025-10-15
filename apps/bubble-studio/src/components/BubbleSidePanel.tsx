@@ -232,7 +232,7 @@ export function BubbleSidePanel() {
             />
           )}
 
-          {isGeneralChatView && <GeneralChatView />}
+          {isGeneralChatView && <PearlChat />}
         </div>
       </div>
     </>
@@ -679,7 +679,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
  * General Chat View - AI chat for general workflow assistance
  * Can read entire code and replace entire editor content
  */
-function GeneralChatView() {
+function PearlChat() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedModel, setSelectedModel] = useState<AvailableModel>(

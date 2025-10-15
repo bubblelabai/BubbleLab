@@ -24,7 +24,7 @@ export const PearlRequestSchema = z.object({
 
   userName: z.string().describe('Name of the user making the request'),
   availableVariables: z
-    .array(z.string())
+    .array(z.any())
     .describe('List of available variables in the current code'),
   conversationHistory: z
     .array(ConversationMessageSchema)
