@@ -699,8 +699,8 @@ export class AIAgentBubble extends ServiceBubble<
         const dynamicTool = new DynamicStructuredTool({
           name: langGraphTool.name,
           description: langGraphTool.description,
-          schema: langGraphTool.schema,
-          func: langGraphTool.func,
+          schema: langGraphTool.schema as any,
+          func: langGraphTool.func as any,
         });
 
         tools.push(dynamicTool);
