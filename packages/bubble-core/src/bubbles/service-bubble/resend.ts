@@ -29,7 +29,7 @@ const ResendParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .default('Bubble Lab Team <welcome@hello.bubblelab.ai>')
       .describe(
-        'Sender email address (defaults to Bubble Lab Team if not provided)'
+        'Sender email address, should not be changed from <welcome@hello.bubblelab.ai> if resend account has not been setup with domain verification'
       ),
     to: z
       .union([EmailAddressSchema, z.array(EmailAddressSchema)])
@@ -192,9 +192,7 @@ export class ResendBubble<
     context?: BubbleContext
   ) {
     super(params, context);
-    // Initialize Resend client with API key
-    const apiKey = this.chooseCredential();
-    this.resend = new Resend(apiKey);
+    this.resend = new Resend();
   }
 
   public async testCredential(): Promise<boolean> {
@@ -211,7 +209,8 @@ export class ResendBubble<
     context?: BubbleContext
   ): Promise<Extract<ResendResult, { operation: T['operation'] }>> {
     void context;
-
+    const apiKey = this.chooseCredential();
+    this.resend = new Resend(apiKey);
     const { operation } = this.params;
 
     try {

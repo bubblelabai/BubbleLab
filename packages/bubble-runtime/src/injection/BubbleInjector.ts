@@ -239,6 +239,8 @@ export class BubbleInjector {
       const finalScript = this.reapplyBubbleInstantiations(
         Object.values(modifiedBubbles)
       );
+
+      console.debug('INJECTED CREDENTIALS', injectedCredentials);
       return {
         success: errors.length === 0,
         code: finalScript,
