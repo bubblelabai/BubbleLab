@@ -2,6 +2,7 @@ import { AIAgentBubble } from './ai-agent.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
+import { z } from 'zod';
 
 //Remove all environment variables
 process.env = {};
@@ -541,5 +542,32 @@ describe('AIAgentBubble - Tool Bubble Integration', () => {
     expect(bubble.currentParams.tools).toHaveLength(1);
     expect(bubble.currentParams.tools[0].name).toBe('web-search-tool');
     expect(bubble.currentParams.tools[0].config).toEqual({ maxResults: 5 });
+  });
+
+  test('should accept dynamic custom tools without pre-registration', () => {
+    const bubble = new AIAgentBubble({
+      message: 'Calculate sales tax for $100',
+      customTools: [
+        {
+          name: 'calculate-tax',
+          description: 'Calculates sales tax for a given amount',
+          schema: {
+            amount: z.number().describe('Amount to calculate tax on'),
+            taxRate: z.number().describe('Tax rate percentage'),
+          },
+          func: async (input: Record<string, unknown>) => {
+            const amount = input.amount as number;
+            const taxRate = input.taxRate as number;
+            return (amount * taxRate) / 100;
+          },
+        },
+      ],
+    });
+
+    expect(bubble.currentParams.tools).toHaveLength(1);
+    expect(bubble.currentParams.customTools![0]).toMatchObject({
+      name: 'calculate-tax',
+      description: expect.stringContaining('sales tax'),
+    });
   });
 });

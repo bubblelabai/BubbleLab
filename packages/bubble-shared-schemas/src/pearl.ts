@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AvailableModels } from './ai-models.js';
+import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema.js';
 
 // Reuse the ConversationMessageSchema from milk-tea to avoid duplication
 const ConversationMessageSchema = z.object({
@@ -60,6 +61,20 @@ export const PearlResponseSchema = z.object({
     .optional()
     .describe(
       'Generated TypeScript code for complete workflow (only present when type is "code")'
+    ),
+
+  bubbleParameters: z
+    .record(z.number(), ParsedBubbleWithInfoSchema)
+    .optional()
+    .describe(
+      'Parsed bubble parameters from the generated workflow (only present when type is "code")'
+    ),
+
+  inputSchema: z
+    .record(z.unknown())
+    .optional()
+    .describe(
+      'Input schema for the generated workflow (only present when type is "code")'
     ),
 
   success: z.boolean().describe('Whether the operation completed successfully'),

@@ -1,3 +1,4 @@
+import z from 'zod';
 import { CredentialType } from '../../../../bubble-shared-schemas/dist/types.js';
 import { AIAgentBubble } from '../../index.js';
 
@@ -21,7 +22,6 @@ describe('AI Agent with open router', () => {
         [CredentialType.OPENROUTER_CRED]: openrouterApiKey,
       },
     }).action();
-    console.log(result);
   });
   test('should get JSON response from open router', async () => {
     const result = await new AIAgentBubble({
@@ -37,9 +37,41 @@ describe('AI Agent with open router', () => {
         [CredentialType.OPENROUTER_CRED]: openrouterApiKey,
       },
     });
-    console.log(result);
   });
 });
+
+describe('AI Agent with custom tools', () => {
+  test('should execute a tool with custom tools', async () => {
+    const result = await new AIAgentBubble({
+      model: {
+        jsonMode: true,
+      },
+      message:
+        'Calculate sales tax for $100 PLEASE RETURN A JSON RESPONSE of json schema { "sales_tax": number }',
+      customTools: [
+        {
+          name: 'calculate-tax',
+          description: 'Calculates sales tax for a given amount',
+          schema: {
+            amount: z.number().describe('Amount to calculate tax on'),
+          },
+          func: async (input: Record<string, unknown>) => {
+            return 299999;
+          },
+        },
+      ],
+
+      credentials: {
+        [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY,
+      },
+    }).action();
+    const response = JSON.parse(result.data?.response as string) as {
+      sales_tax: number;
+    };
+    expect(response.sales_tax).toBe(299999);
+  });
+});
+
 describe('AI Agent with tool hooks', () => {
   test('should execute a tool with hooks', async () => {
     const result = await new AIAgentBubble({

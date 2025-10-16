@@ -102,7 +102,7 @@ const ModelConfigSchema = z.object({
     ),
 });
 
-// Define tool configuration
+// Define tool configuration for pre-registered tools
 const ToolConfigSchema = z.object({
   name: AvailableTools.describe(
     'Name of the tool type or tool bubble to enable for the AI agent'
@@ -118,6 +118,32 @@ const ToolConfigSchema = z.object({
     .record(z.string(), z.unknown())
     .optional()
     .describe('Configuration for the tool or tool bubble'),
+});
+
+// Define custom tool schema for runtime-defined tools
+const CustomToolSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .describe('Unique name for your custom tool (e.g., "calculate-tax")'),
+  description: z
+    .string()
+    .min(1)
+    .describe(
+      'Description of what the tool does - helps the AI know when to use it'
+    ),
+  schema: z
+    .record(z.string(), z.unknown())
+    .describe(
+      'Zod schema object defining the tool parameters. Example: { amount: z.number().describe("Amount to calculate tax on"), rate: z.number().describe("Tax rate") }'
+    ),
+  func: z
+    .function()
+    .args(z.record(z.string(), z.unknown()))
+    .returns(z.promise(z.unknown()))
+    .describe(
+      'Async function that executes the tool logic. Receives params matching the schema and returns a result.'
+    ),
 });
 
 // Define image input schemas - supports both base64 data and URLs
@@ -192,7 +218,14 @@ const AIAgentParamsSchema = z.object({
       },
     ])
     .describe(
-      'Array of tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool). If using image models, set the tools to []'
+      'Array of pre-registered tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool). If using image models, set the tools to []'
+    ),
+  customTools: z
+    .array(CustomToolSchema)
+    .default([])
+    .optional()
+    .describe(
+      'Array of custom runtime-defined tools with their own schemas and functions. Use this to add domain-specific tools without pre-registration. Example: [{ name: "calculate-tax", description: "Calculates sales tax", schema: { amount: z.number() }, func: async (input) => {...} }]'
     ),
   maxIterations: z
     .number()
@@ -311,15 +344,22 @@ export class AIAgentBubble extends ServiceBubble<
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-    const { message, images, systemPrompt, model, tools, maxIterations } =
-      this.params;
+    const {
+      message,
+      images,
+      systemPrompt,
+      model,
+      tools,
+      customTools,
+      maxIterations,
+    } = this.params;
 
     try {
       // Initialize the language model
       const llm = this.initializeModel(model);
 
-      // Initialize tools
-      const agentTools = await this.initializeTools(tools);
+      // Initialize tools (both pre-registered and custom)
+      const agentTools = await this.initializeTools(tools, customTools);
 
       // Create the agent graph
       const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
@@ -359,8 +399,15 @@ export class AIAgentBubble extends ServiceBubble<
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-    const { message, images, systemPrompt, model, tools, maxIterations } =
-      this.params;
+    const {
+      message,
+      images,
+      systemPrompt,
+      model,
+      tools,
+      customTools,
+      maxIterations,
+    } = this.params;
 
     const startTime = Date.now();
     // Send start event
@@ -386,8 +433,8 @@ export class AIAgentBubble extends ServiceBubble<
       // Initialize the language model
       const llm = this.initializeModel(model);
 
-      // Initialize tools
-      const agentTools = await this.initializeTools(tools);
+      // Initialize tools (both pre-registered and custom)
+      const agentTools = await this.initializeTools(tools, customTools);
 
       // Create the agent graph
       const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
@@ -632,13 +679,40 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   private async initializeTools(
-    toolConfigs: AIAgentParamsParsed['tools']
+    toolConfigs: AIAgentParamsParsed['tools'],
+    customToolConfigs: AIAgentParamsParsed['customTools'] = []
   ): Promise<DynamicStructuredTool[]> {
     const tools: DynamicStructuredTool[] = [];
     await this.factory.registerDefaults();
+
+    // First, initialize custom tools
+    for (const customTool of customToolConfigs) {
+      try {
+        console.log(
+          `🛠️ [AIAgent] Initializing custom tool: ${customTool.name}`
+        );
+
+        const dynamicTool = new DynamicStructuredTool({
+          name: customTool.name,
+          description: customTool.description,
+          schema: z.object(customTool.schema as z.ZodRawShape) as z.ZodTypeAny,
+          func: customTool.func as (input: any) => Promise<any>,
+        } as any);
+
+        tools.push(dynamicTool);
+      } catch (error) {
+        console.error(
+          `Error initializing custom tool '${customTool.name}':`,
+          error
+        );
+        // Continue with other tools even if one fails
+        continue;
+      }
+    }
+
+    // Then, initialize pre-registered tools from factory
     for (const toolConfig of toolConfigs) {
       try {
-        // Get the tool bubble class from the factory
         const ToolBubbleClass = this.factory.get(toolConfig.name as BubbleName);
 
         if (!ToolBubbleClass) {
@@ -699,9 +773,9 @@ export class AIAgentBubble extends ServiceBubble<
         const dynamicTool = new DynamicStructuredTool({
           name: langGraphTool.name,
           description: langGraphTool.description,
-          schema: langGraphTool.schema as any,
-          func: langGraphTool.func as any,
-        });
+          schema: langGraphTool.schema as unknown as z.ZodTypeAny,
+          func: langGraphTool.func as (input: any) => Promise<any>,
+        } as any);
 
         tools.push(dynamicTool);
       } catch (error) {

@@ -194,7 +194,7 @@ export class WebScrapeTool extends ToolBubble<
       }
 
       // Summarize the scraped content for better consumption
-      if (content && content.length > 500) {
+      if (content && content.length > 5000000) {
         try {
           const summarizeAgent = new AIAgentBubble(
             {

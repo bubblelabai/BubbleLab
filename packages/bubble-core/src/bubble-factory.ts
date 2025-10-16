@@ -608,10 +608,8 @@ import {
   GoogleDriveBubble,
   GmailBubble,
   SlackFormatterAgentBubble,
-  
-  // Template Workflows
-  SlackDataAssistantWorkflow,
-  PDFFormOperationsWorkflow,
+  HttpBubble,
+
 
   // Specialized Tool Bubbles
   ResearchAgentTool,
@@ -621,7 +619,6 @@ import {
   BubbleFactory,
   type BubbleClassWithMetadata,
   type BubbleContext,
-  type BubbleOperationResult,
   type BubbleTriggerEvent,
   type WebhookEvent,
 } from '@bubblelab/bubble-core';
