@@ -25,6 +25,9 @@ export {
   AIAgentBubble,
   type StreamingEvent,
   type StreamingCallback,
+  type ToolHookContext,
+  type ToolHookBefore,
+  type ToolHookAfter,
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
 export { SlackBubble } from './bubbles/service-bubble/slack.js';
@@ -77,3 +80,8 @@ export { StreamingBubbleLogger } from './logging/StreamingBubbleLogger.js';
 
 // Re-export MockDataGenerator from shared-schemas for convenience
 export { MockDataGenerator } from '@bubblelab/shared-schemas';
+
+// Re-export langchain message types for use in API and other packages
+export { HumanMessage, AIMessage } from '@langchain/core/messages';
+export type { BaseMessage } from '@langchain/core/messages';
+export { parseJsonWithFallbacks } from './utils/json-parsing.js';

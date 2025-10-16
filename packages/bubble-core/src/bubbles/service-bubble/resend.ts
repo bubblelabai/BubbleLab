@@ -179,7 +179,7 @@ export class ResendBubble<
   `;
   static readonly alias = 'resend';
 
-  private resend: Resend;
+  private resend?: Resend;
 
   constructor(
     params: T = {
@@ -192,13 +192,15 @@ export class ResendBubble<
     context?: BubbleContext
   ) {
     super(params, context);
-    this.resend = new Resend();
   }
 
   public async testCredential(): Promise<boolean> {
     try {
       // Test the API key by making a simple API call
-      await this.resend.domains.list();
+      if (!this.resend) {
+        throw new Error('Resend client not initialized');
+      }
+      await this.resend?.domains.list();
       return true;
     } catch {
       return false;
@@ -254,6 +256,10 @@ export class ResendBubble<
       scheduled_at,
     } = params;
 
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
     // Validate that either text or html content is provided
     if (!text && !html) {
       throw new Error('Either text or html content must be provided');
@@ -277,6 +283,10 @@ export class ResendBubble<
     if (tags) emailPayload.tags = tags;
     if (headers) emailPayload.headers = headers;
 
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
     const { data, error } = await this.resend.emails.send(emailPayload);
 
     if (error) {
@@ -294,6 +304,10 @@ export class ResendBubble<
   private async getEmailStatus(
     params: Extract<ResendParams, { operation: 'get_email_status' }>
   ): Promise<Extract<ResendResult, { operation: 'get_email_status' }>> {
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
     const { email_id } = params;
 
     const { data, error } = await this.resend.emails.get(email_id);

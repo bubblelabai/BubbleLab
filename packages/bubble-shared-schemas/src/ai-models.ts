@@ -13,7 +13,12 @@ export const AvailableModels = z.enum([
   'google/gemini-2.5-flash-lite',
   'google/gemini-2.5-flash-image-preview',
 
+  // Anthropic models
   'anthropic/claude-sonnet-4-5-20250929',
+
+  // OpenRouter models
+  'openrouter/x-ai/grok-code-fast-1',
+  'openrouter/z-ai/glm-4.6',
 ]);
 
 export type AvailableModel = z.infer<typeof AvailableModels>;

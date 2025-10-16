@@ -76,6 +76,7 @@ export function DashboardPage({
     }
   });
   const [pendingGeneration, setPendingGeneration] = useState<boolean>(false);
+  const [pendingJsonImport, setPendingJsonImport] = useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const isGenerateDisabled = useMemo(
     () => isStreaming || !generationPrompt?.trim(),
@@ -123,9 +124,13 @@ export function DashboardPage({
     }
   }, [isSignedIn, savedPrompt, setGenerationPrompt]);
 
-  // Clear generation prompt when "Generate your own" category is selected
+  // Clear generation prompt when "Generate your own" or "Import JSON Workflow" category is selected
   useEffect(() => {
-    if (selectedCategory === 'Generate your own' && generationPrompt.trim()) {
+    if (
+      (selectedCategory === 'Generate your own' ||
+        selectedCategory === 'Import JSON Workflow') &&
+      generationPrompt.trim()
+    ) {
       setGenerationPrompt('');
       setSelectedPreset(-1);
     }
@@ -138,6 +143,14 @@ export function DashboardPage({
       onGenerateCode();
     }
   }, [pendingGeneration, selectedPreset, generationPrompt, onGenerateCode]);
+
+  // Handle pending JSON import after prompt is updated with system message
+  useEffect(() => {
+    if (pendingJsonImport && generationPrompt.trim()) {
+      setPendingJsonImport(false);
+      onGenerateCode();
+    }
+  }, [pendingJsonImport, generationPrompt, onGenerateCode]);
 
   // Wrapper function to check authentication before navigation
   const handlePageChange = (
@@ -203,6 +216,35 @@ export function DashboardPage({
 
             {/* Category Filter Buttons */}
             <div className="flex flex-wrap gap-2 justify-center mb-6">
+              {/* Generate your own - First button */}
+              {TEMPLATE_CATEGORIES.includes('Generate your own') && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('Generate your own')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                    selectedCategory === 'Generate your own'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                  }`}
+                >
+                  Generate your own
+                </button>
+              )}
+              {/* Import JSON Workflow - Second button */}
+              {TEMPLATE_CATEGORIES.includes('Import JSON Workflow') && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('Import JSON Workflow')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                    selectedCategory === 'Import JSON Workflow'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                  }`}
+                >
+                  Import JSON Workflow
+                </button>
+              )}
+              {/* All Templates - Third button */}
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
@@ -214,7 +256,11 @@ export function DashboardPage({
               >
                 All Templates
               </button>
-              {TEMPLATE_CATEGORIES.map((category) => (
+              {/* Rest of the categories (excluding Generate your own and Import JSON Workflow) */}
+              {TEMPLATE_CATEGORIES.filter(
+                (cat) =>
+                  cat !== 'Generate your own' && cat !== 'Import JSON Workflow'
+              ).map((category) => (
                 <button
                   key={category}
                   type="button"
@@ -326,6 +372,111 @@ export function DashboardPage({
                   </div>
                 </div>
               </div>
+            ) : selectedCategory === 'Import JSON Workflow' ? (
+              <div className="bg-[#252525] rounded-xl p-6 shadow-lg">
+                {/* Import JSON Section */}
+                <div>
+                  <div className="mb-4">
+                    <h3 className="text-lg font-medium text-gray-100 mb-2">
+                      Paste your JSON file to convert it to a Bubble Lab
+                      workflow
+                    </h3>
+                  </div>
+                  <textarea
+                    ref={promptRef}
+                    placeholder="Paste your JSON here..."
+                    value={generationPrompt}
+                    onChange={(e) => {
+                      setGenerationPrompt(e.target.value);
+                      if (selectedPreset !== -1) {
+                        setSelectedPreset(-1);
+                      }
+                      if (!e.target.value.trim() && savedPrompt) {
+                        setSavedPrompt('');
+                        localStorage.removeItem('savedPrompt');
+                      }
+                    }}
+                    onInput={(e) => autoResize(e.currentTarget)}
+                    className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
+                    onKeyDown={(e) => {
+                      // Only allow Ctrl+Enter for "Import JSON Workflow" category
+                      if (
+                        e.key === 'Enter' &&
+                        e.ctrlKey &&
+                        !isStreaming &&
+                        selectedCategory === 'Import JSON Workflow'
+                      ) {
+                        if (!isSignedIn) {
+                          if (generationPrompt.trim()) {
+                            setSavedPrompt(generationPrompt);
+                            localStorage.setItem(
+                              'savedPrompt',
+                              generationPrompt
+                            );
+                          }
+                          setShowSignInModal(true);
+                          return;
+                        }
+                        // Prepend system prompt before generating
+                        const jsonContent = generationPrompt.trim();
+                        setGenerationPrompt(
+                          `Convert the following JSON file to a workflow:\n\n${jsonContent}`
+                        );
+                        setPendingJsonImport(true);
+                      }
+                    }}
+                  />
+
+                  {/* Generate Button - Inside the prompt container */}
+                  <div className="flex justify-end mt-4">
+                    <div className="flex flex-col items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isSignedIn) {
+                            if (generationPrompt.trim()) {
+                              setSavedPrompt(generationPrompt);
+                              localStorage.setItem(
+                                'savedPrompt',
+                                generationPrompt
+                              );
+                            }
+                            setShowSignInModal(true);
+                            return;
+                          }
+                          // Prepend system prompt before generating
+                          const jsonContent = generationPrompt.trim();
+                          setGenerationPrompt(
+                            `Convert the following JSON file to a workflow:\n\n${jsonContent}`
+                          );
+                          setPendingJsonImport(true);
+                        }}
+                        disabled={isGenerateDisabled}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                          isGenerateDisabled
+                            ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                            : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+                        }`}
+                      >
+                        {isStreaming ? (
+                          <LoadingDots />
+                        ) : (
+                          <ArrowUp className="w-5 h-5" />
+                        )}
+                      </button>
+                      <div
+                        className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
+                          isGenerateDisabled
+                            ? 'text-gray-500/60'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        Ctrl+Enter
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
               /* Template Grid */
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start">
@@ -397,7 +548,8 @@ export function DashboardPage({
               </div>
             )}
 
-            {selectedCategory === 'Generate your own' &&
+            {(selectedCategory === 'Generate your own' ||
+              selectedCategory === 'Import JSON Workflow') &&
               selectedPreset === -1 && (
                 <div className="mt-16 p-5 bg-[#0d1117] border border-[#30363d] rounded-xl">
                   <div className="flex items-center justify-between mb-4">

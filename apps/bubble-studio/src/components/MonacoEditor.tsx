@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
+import { Bot } from 'lucide-react';
+import { useEditorStore } from '../stores/editorStore';
+import { setConfiguredMonaco } from '../utils/editorContext';
 
 interface MonacoEditorProps {
   value?: string;
@@ -22,11 +25,66 @@ export function MonacoEditor({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const rangeDecorationRef = useRef<string[]>([]);
 
+  // Connect to Zustand store
+  const setEditorInstance = useEditorStore((state) => state.setEditorInstance);
+  const setCursorPosition = useEditorStore((state) => state.setCursorPosition);
+  const setSelectedRange = useEditorStore((state) => state.setSelectedRange);
+  const openSidePanel = useEditorStore((state) => state.openSidePanel);
+  const openPearlChat = useEditorStore((state) => state.openPearlChat);
+
   const handleEditorDidMount = async (
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
   ) => {
     editorRef.current = editor;
+
+    // Store the configured Monaco instance for TypeScript worker access
+    setConfiguredMonaco(monacoInstance);
+
+    // Store editor instance in Zustand
+    setEditorInstance(editor);
+
+    // Track cursor position changes
+    editor.onDidChangeCursorPosition((e) => {
+      setCursorPosition({
+        lineNumber: e.position.lineNumber,
+        column: e.position.column,
+      });
+    });
+
+    // Track selection changes
+    editor.onDidChangeCursorSelection((e) => {
+      const selection = e.selection;
+      if (
+        selection.startLineNumber === selection.endLineNumber &&
+        selection.startColumn === selection.endColumn
+      ) {
+        // No selection, just cursor
+        setSelectedRange(null);
+      } else {
+        // Text is selected
+        setSelectedRange({
+          startLineNumber: selection.startLineNumber,
+          startColumn: selection.startColumn,
+          endLineNumber: selection.endLineNumber,
+          endColumn: selection.endColumn,
+        });
+      }
+    });
+
+    // Add click handler on line numbers (gutter) to open side panel
+    editor.onMouseDown((e) => {
+      // Check if click is on gutter/line numbers
+      if (
+        e.target.type ===
+        monacoInstance.editor.MouseTargetType.GUTTER_LINE_NUMBERS
+      ) {
+        const lineNumber = e.target.position?.lineNumber;
+        if (lineNumber) {
+          openSidePanel(lineNumber);
+        }
+      }
+    });
 
     // Set up Monaco to properly support TypeScript
     monacoInstance.languages.typescript.typescriptDefaults.setEagerModelSync(
@@ -217,6 +275,15 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     setIsLoading(false);
   };
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setEditorInstance(null);
+      setCursorPosition(null);
+      setSelectedRange(null);
+    };
+  }, [setEditorInstance, setCursorPosition, setSelectedRange]);
+
   // Note: single highlighter mode uses highlightedRange for both range and single-line
 
   // Effect to handle highlighting (single tool): use highlightedRange, including single-line where start=end
@@ -321,6 +388,11 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     }
   };
 
+  const handleAddBubble = () => {
+    // Open side panel at current cursor position
+    openPearlChat();
+  };
+
   return (
     <div className={`relative monaco-editor-container ${className}`}>
       {isLoading && (
@@ -331,6 +403,20 @@ ${cleanedTypes.replace(/^/gm, '  ')}
           </div>
         </div>
       )}
+
+      {/* Floating Action Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={handleAddBubble}
+          className="group relative p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+          title="AI Assistant"
+        >
+          <Bot className="w-5 h-5" />
+          <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            AI Assistant
+          </span>
+        </button>
+      </div>
 
       {/* @ts-expect-error - React 19 compatibility issue with Monaco Editor */}
       <Editor

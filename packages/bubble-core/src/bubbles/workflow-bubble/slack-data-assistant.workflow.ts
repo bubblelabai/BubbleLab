@@ -6,7 +6,7 @@ import { DatabaseAnalyzerWorkflowBubble } from './database-analyzer.workflow.js'
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { SlackFormatterAgentBubble } from './slack-formatter-agent.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 
 // Define the parameters schema for the Slack Data Assistant workflow
 const SlackDataAssistantParamsSchema = z.object({

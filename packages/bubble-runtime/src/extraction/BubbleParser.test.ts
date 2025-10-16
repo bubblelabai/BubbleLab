@@ -12,6 +12,33 @@ describe('BubbleParser.parseBubblesFromAST()', () => {
     await bubbleFactory.registerDefaults();
   });
 
+  it('should parse bubbles from bubble inside promise correctly', async () => {
+    const bubbleScript = getFixture('bubble-inside-promise');
+    const bubbleParser = new BubbleParser(bubbleScript);
+    const ast = parse(bubbleScript, {
+      range: true, // Required for scope-manager
+      loc: true, // Location info for line numbers
+      sourceType: 'module', // Treat as ES module
+      ecmaVersion: 2022, // Modern JS/TS features
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+    expect(parseResult.bubbles).toBeDefined();
+    console.log(parseResult.bubbles);
+    const bubbles = (Object.values(parseResult.bubbles).filter(Boolean) ||
+      []) as any[];
+    const names = bubbles
+      .map((b: any) => (b ? b.bubbleName : undefined))
+      .filter(Boolean);
+    expect(names).toContain('resend');
+  });
+
   it('should parse bubbles from data assistant workflow correctly', async () => {
     const bubbleScript = getFixture('data-assistant');
     // Parse the script into AST

@@ -9,12 +9,14 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   Play,
+  Bot,
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MonacoEditor } from './components/MonacoEditor';
 import { ExportModal } from './components/ExportModal';
 import FlowVisualizer from './components/FlowVisualizer';
+import { BubbleSidePanel } from './components/BubbleSidePanel';
 import { CredentialsPage } from './pages/CredentialsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 import { DashboardPage } from './pages/DashboardPage';
@@ -23,6 +25,7 @@ import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
 import { Sidebar } from './components/Sidebar';
 import { Tooltip } from './components/Tooltip';
+import { useEditorStore } from './stores/editorStore';
 import { useCredentials } from './hooks/useCredentials';
 import { useClerkTokenSync } from './hooks/useClerkTokenSync';
 import { useExecutionStream } from './hooks/useExecutionStream';
@@ -55,6 +58,7 @@ function App() {
     'Ready to code! Try the examples above to test TypeScript IntelliSense.'
   );
   const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
+  const openPearlChat = useEditorStore((state) => state.openPearlChat);
   const [code, setCode] = useState<string>('');
   const {
     data: currentFlow,
@@ -927,7 +931,6 @@ function App() {
   };
   // Validate that all required, non-system credentials with available options are selected
   const isCredentialsSelectionValid = () => {
-
     console.log('currentFlow', currentFlow);
     console.log('pendingExecutionCredentials', pendingExecutionCredentials);
     console.log('availableCredentials', availableCredentials);
@@ -939,7 +942,6 @@ function App() {
 
     for (const [bubbleKey, credTypes] of requiredEntries) {
       for (const credType of credTypes) {
-
         if (isSystemCredential(credType as CredentialType)) continue; // system-managed
 
         const selectedForBubble = pendingExecutionCredentials[bubbleKey] || {};
@@ -1261,6 +1263,18 @@ function App() {
               <SignedIn>
                 {!isStreaming && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openPearlChat();
+                        setShowEditor(true);
+                      }}
+                      className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
+                    >
+                      <Bot className="w-3 h-3" />
+                      AI Assistant
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setShowEditor(!showEditor)}
@@ -1832,6 +1846,9 @@ function App() {
         inputsSchema={JSON.stringify(currentFlow?.inputSchema)}
         requiredCredentials={currentFlow?.requiredCredentials}
       />
+
+      {/* Bubble Side Panel for adding bubbles */}
+      <BubbleSidePanel />
 
       {/* Toast Container */}
       <ToastContainer

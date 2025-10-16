@@ -20,6 +20,7 @@ export const fixtures = {
   'reddit-scraper': '',
   'test-script': '',
   'parameter-with-string': '',
+  'bubble-inside-promise': '',
   'data-assistant': '',
   'research-agent': '',
   'research-weather': '',

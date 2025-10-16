@@ -28,6 +28,10 @@ import {
   validateBubbleFlowCodeSchema,
   generateBubbleFlowCodeSchema,
   validateBubbleFlowCodeResponseSchema,
+  MilkTeaRequestSchema,
+  MilkTeaResponseSchema,
+  PearlRequestSchema,
+  PearlResponseSchema,
 } from './index.js';
 
 export const webhookRoute = createRoute({
@@ -1203,4 +1207,96 @@ export const oauthRevokeRoute = createRoute({
     },
   },
   tags: ['OAuth'],
+});
+
+// ========================= AI Routes =========================
+
+// POST /ai/milktea - Run MilkTea AI agent
+export const milkTeaRoute = createRoute({
+  method: 'post',
+  path: '/milktea',
+  summary: 'Run MilkTea AI Agent',
+  description:
+    'Execute MilkTea AI agent to help configure bubble parameters through conversation',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: MilkTeaRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'MilkTea agent executed successfully',
+      content: {
+        'application/json': {
+          schema: MilkTeaResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Bad request or validation failed',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+  tags: ['AI'],
+});
+
+// POST /ai/pearl - Run Pearl AI agent
+export const pearlRoute = createRoute({
+  method: 'post',
+  path: '/pearl',
+  summary: 'Run Pearl AI Agent',
+  description:
+    'Execute Pearl AI agent to help build complete workflows with multiple integrations',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: PearlRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Pearl agent executed successfully',
+      content: {
+        'application/json': {
+          schema: PearlResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Bad request or validation failed',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    500: {
+      description: 'Internal server error',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+  tags: ['AI'],
 });

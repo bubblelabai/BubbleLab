@@ -889,6 +889,56 @@ export class BubbleParser {
       }
     }
 
+    // Arrow function concise body returning a bubble expression, e.g., (u) => new X({...}).action()
+    if (
+      node.type === 'ArrowFunctionExpression' &&
+      node.body &&
+      node.body.type !== 'BlockStatement'
+    ) {
+      const bubbleNode = this.extractBubbleFromExpression(
+        node.body as TSESTree.Expression,
+        classNameLookup
+      );
+      if (bubbleNode) {
+        const synthetic = `_anonymous_${bubbleNode.className}_${Object.keys(nodes).length}`;
+        bubbleNode.variableName = synthetic;
+
+        const syntheticId = -1 * (Object.keys(nodes).length + 1);
+        bubbleNode.variableId = syntheticId;
+
+        bubbleNode.parameters = this.addVariableReferencesToParameters(
+          bubbleNode.parameters,
+          node,
+          scopeManager
+        );
+
+        nodes[syntheticId] = bubbleNode;
+      }
+    }
+
+    // Return statements returning a bubble expression inside function bodies
+    if (node.type === 'ReturnStatement' && node.argument) {
+      const bubbleNode = this.extractBubbleFromExpression(
+        node.argument as TSESTree.Expression,
+        classNameLookup
+      );
+      if (bubbleNode) {
+        const synthetic = `_anonymous_${bubbleNode.className}_${Object.keys(nodes).length}`;
+        bubbleNode.variableName = synthetic;
+
+        const syntheticId = -1 * (Object.keys(nodes).length + 1);
+        bubbleNode.variableId = syntheticId;
+
+        bubbleNode.parameters = this.addVariableReferencesToParameters(
+          bubbleNode.parameters,
+          node,
+          scopeManager
+        );
+
+        nodes[syntheticId] = bubbleNode;
+      }
+    }
+
     // Recursively visit child nodes
     for (const key in node) {
       const child = (node as unknown as Record<string, unknown>)[key];

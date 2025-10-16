@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && vite --host 0.0.0.0 --port 3000",
-    "dev:hot": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && vite --host 0.0.0.0 --port 3000",
-    "build": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && tsc -b && vite build",
+    "dev": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && cp ../../packages/bubble-core/dist/bubbles.json public/bubbles.json && vite --host 0.0.0.0 --port 3000",
+    "dev:hot": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && cp ../../packages/bubble-core/dist/bubbles.json public/bubbles.json && vite --host 0.0.0.0 --port 3000",
+    "build": "cp ../../packages/bubble-core/dist/bubble-bundle.d.ts public/bubble-types.txt && cp ../../packages/bubble-core/dist/bubbles.json public/bubbles.json && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -30,6 +30,7 @@
     "react-dom": "^19.1.0",
     "react-resizable-panels": "^3.0.4",
     "react-toastify": "^11.0.5",
+    "zustand": "^4.5.7",
     "zod": "3.25.76"
   },
   "devDependencies": {

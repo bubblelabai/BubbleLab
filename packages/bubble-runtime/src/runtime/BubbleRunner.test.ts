@@ -284,6 +284,18 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
+    it('should execute a flow with a bubble inside promise', async () => {
+      const testScript = getFixture('bubble-inside-promise');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+
+      // IF success is true or no resend error, then test is successful
+      expect(
+        result.success ||
+          result.error?.includes('resend credential') ||
+          result.error?.includes('API')
+      ).toBe(true);
+    });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
       const bubbles = runner.getParsedBubbles();

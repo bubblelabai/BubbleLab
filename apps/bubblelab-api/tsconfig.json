@@ -9,7 +9,8 @@
   },
   "include": [
     "src/**/*",
-    "../../packages/bubble-core/src/bubbles/tool-bubble/bubbleflow-validation-tool.ts"
+    "../../packages/bubble-core/src/bubbles/tool-bubble/bubbleflow-validation-tool.ts",
+    "src/services/ai/pearl.ts"
   ],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["**/*.test.ts", "dist", "node_modules"]
 }
