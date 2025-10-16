@@ -1,7 +1,7 @@
 import { AIAgentBubble } from './ai-agent.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
-import { AvailableModels } from '../../types/ai-models.js';
+import { AvailableModels } from '@bubblelab/shared-schemas';
 
 //Remove all environment variables
 process.env = {};
