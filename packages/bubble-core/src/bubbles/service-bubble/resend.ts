@@ -197,6 +197,9 @@ export class ResendBubble<
   public async testCredential(): Promise<boolean> {
     try {
       // Test the API key by making a simple API call
+      if (!this.resend) {
+        throw new Error('Resend client not initialized');
+      }
       await this.resend?.domains.list();
       return true;
     } catch {
