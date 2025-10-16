@@ -46,7 +46,7 @@ export function usePearl() {
         availableVariables:
           request.availableVariables.length > 0
             ? request.availableVariables
-            : codeContext?.availableVariables,
+            : codeContext?.availableVariables || [],
         model: request.model || 'google/gemini-2.5-pro',
       };
 

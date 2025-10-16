@@ -54,7 +54,7 @@ export function useMilkTea() {
         ...request,
         currentCode: context.fullCode,
         insertLocation: context.insertLocation,
-        model: 'google/gemini-2.5-pro',
+        model: request.model || 'google/gemini-2.5-pro',
       };
 
       // Call MilkTea API
