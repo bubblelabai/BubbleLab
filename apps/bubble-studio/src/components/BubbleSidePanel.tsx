@@ -7,7 +7,6 @@ import {
   Check,
   AlertCircle,
   ArrowUp,
-  ChevronDown,
 } from 'lucide-react';
 import {
   useEditorStore,
@@ -382,26 +381,25 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-// Available AI models
-const AVAILABLE_MODELS: { value: AvailableModel; label: string }[] = [
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
-  { value: 'openai/gpt-5', label: 'GPT-5' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-  { value: 'openai/gpt-4o', label: 'GPT-4o' },
-  { value: 'openai/gpt-o4-mini', label: 'GPT-o4 Mini' },
-  { value: 'anthropic/claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' },
-  { value: 'openrouter/x-ai/grok-code-fast-1', label: 'Grok Code Fast' },
-  { value: 'openrouter/z-ai/glm-4.6', label: 'GLM 4.6' },
-] as const;
+// Available AI models - COMMENTED OUT: Using Grok Code Fast only
+// const AVAILABLE_MODELS: { value: AvailableModel; label: string }[] = [
+//   { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+//   { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+//   { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+//   { value: 'openai/gpt-5', label: 'GPT-5' },
+//   { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+//   { value: 'openai/gpt-4o', label: 'GPT-4o' },
+//   { value: 'openai/gpt-o4-mini', label: 'GPT-o4 Mini' },
+//   { value: 'anthropic/claude-sonnet-4-5-20250929', label: 'Claude Sonnet 4.5' },
+//   { value: 'openrouter/x-ai/grok-code-fast-1', label: 'Grok Code Fast' },
+//   { value: 'openrouter/z-ai/glm-4.6', label: 'GLM 4.6' },
+// ] as const;
 
 function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>(
-    'openrouter/x-ai/grok-code-fast-1'
-  );
+  // Fixed model - users cannot change this currently
+  const selectedModel: AvailableModel = 'openrouter/x-ai/grok-code-fast-1';
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get logo for the bubble
@@ -682,9 +680,8 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
 function PearlChat() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [selectedModel, setSelectedModel] = useState<AvailableModel>(
-    'openrouter/x-ai/grok-code-fast-1'
-  );
+  // Fixed model - users cannot change this currently
+  const selectedModel: AvailableModel = 'openrouter/x-ai/grok-code-fast-1';
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
