@@ -56,13 +56,6 @@ export function BubbleSidePanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
 
-  // Resizable panel state
-  const [panelWidth, setPanelWidth] = useState(() => {
-    const saved = localStorage.getItem('bubbleSidePanelWidth');
-    return saved ? parseInt(saved, 10) : 384; // Default 384px (w-96)
-  });
-  const [isResizing, setIsResizing] = useState(false);
-
   // Store state
   const isSidePanelOpen = useEditorStore(
     (state) => state.sidePanelMode !== 'closed'
@@ -97,34 +90,6 @@ export function BubbleSidePanel() {
     loadBubbles();
   }, []);
 
-  // Handle panel resize
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(280, Math.min(800, e.clientX)); // Min 280px, max 800px
-      setPanelWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-      localStorage.setItem('bubbleSidePanelWidth', panelWidth.toString());
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, panelWidth]);
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  };
-
   // Filter bubbles based on search and type
   const filteredBubbles = bubblesData?.bubbles.filter((bubble) => {
     const matchesSearch =
@@ -150,26 +115,13 @@ export function BubbleSidePanel() {
 
   return (
     <>
-      {/* Global cursor override when resizing */}
-      {isResizing && (
-        <style>{`* { cursor: col-resize !important; user-select: none !important; }`}</style>
-      )}
-
       <div
         className="fixed inset-y-0 left-0 bg-[#1e1e1e] border-r border-gray-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
         style={{
-          width: `${panelWidth}px`,
+          width: '320px',
           transform: isSidePanelOpen ? 'translateX(0)' : 'translateX(-100%)',
         }}
       >
-        {/* Resize Handle */}
-        <div
-          className={`absolute inset-y-0 right-0 w-1 hover:w-1.5 bg-transparent hover:bg-purple-500/50 cursor-col-resize transition-all z-10 ${
-            isResizing ? 'w-1.5 bg-purple-500' : ''
-          }`}
-          onMouseDown={handleResizeStart}
-          style={{ touchAction: 'none' }}
-        />
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center gap-2">
