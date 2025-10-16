@@ -251,7 +251,7 @@ function quoteUnquotedKeysOutsideStrings(input: string): string {
       // after performing key-fix in the buffer.
       // Replace occurrences of ({|,)\s*identifier\s*:
       buffer = buffer.replace(
-        /([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
+        /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
         '$1"$2"$3:'
       );
       flushBuffer();
@@ -265,7 +265,7 @@ function quoteUnquotedKeysOutsideStrings(input: string): string {
 
   // Process remainder outside-string buffer for unquoted keys
   buffer = buffer.replace(
-    /([\{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
+    /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
     '$1"$2"$3:'
   );
   flushBuffer();
