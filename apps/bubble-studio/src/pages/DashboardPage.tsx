@@ -65,7 +65,7 @@ export function DashboardPage({
   const { isSignedIn } = useAuth();
   const [showSignInModal, setShowSignInModal] = useState(false);
   const [selectedCategory, setSelectedCategory] =
-    useState<TemplateCategory | null>(null);
+    useState<TemplateCategory | null>('Generate your own');
   const [savedPrompt, setSavedPrompt] = useState<string>(() => {
     // Load saved prompt from localStorage on initialization
     try {
