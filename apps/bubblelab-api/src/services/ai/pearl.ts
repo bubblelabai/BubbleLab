@@ -15,34 +15,31 @@ import {
   type PearlAgentOutput,
   PearlAgentOutputSchema,
   CredentialType,
-  BubbleResult,
+  ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
-  BubbleFlowValidationTool,
+  BubbleFactory,
   HumanMessage,
   AIMessage,
   type BaseMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
-import { validateAndExtract } from '@bubblelab/bubble-runtime';
+import {
+  validateAndExtract,
+  ValidationAndExtractionResult,
+} from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
-
-/**
- * Type for BubbleFlow validation result
- */
-type ValidationToolResult = z.infer<
-  typeof BubbleFlowValidationTool.resultSchema
->;
 
 /**
  * Build the system prompt for General Chat agent
  */
-function buildSystemPrompt(userName: string): string {
+async function buildSystemPrompt(userName: string): Promise<string> {
+  const bubbleFactory = await getBubbleFactory();
   return `You are Pearl, an AI Builder Agent specializing in creating complete BubbleLab workflows.
 
 YOUR ROLE:
@@ -75,6 +72,8 @@ Code (when ready to generate):
   "message": "Brief explanation of what the workflow does"
 }
 
+Then call the validation tool with the code
+
 Rejection (when infeasible):
 {
   "type": "reject",
@@ -84,75 +83,31 @@ Rejection (when infeasible):
 CRITICAL CODE GENERATION RULES:
 1. Generate COMPLETE workflow code including:
    - All necessary imports from @bubblelab/bubble-core
-   - A class that extends BubbleFlow
+   - A class that extends BubbleFlow<'webhook/http'>
    - A handle() method with the workflow logic
    - Proper error handling and return values
-2. Use available bubbles: EmailBubble, SlackBubble, WebhookBubble, HttpRequestBubble, etc.
-3. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
-4. Access data from context variables and parameters
-5. DO NOT include credentials in code - they are injected automatically
-6. When you generate code (type: "code"), you MUST immediately call the validation tool
-7. The validation tool will validate your complete workflow code
-8. If validation fails, fix the code and try again until validation passes
+2. Find available bubbles using the list-bubbles-tool
+3. For each bubble, use the get-bubble-details-tool to understand the proper usage
+4. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
+5. Access data from context variables and parameters
+6. DO NOT include credentials in code - they are injected automatically
+7. When you generate code (type: "code"), you MUST immediately call the validation tool
+8. The validation tool will validate your complete workflow code
+9. If validation fails, fix the code and try again until validation passes
+
+For input schema, ie. the interface passed to the handle method. Decide based on how
+the workflow should typically be ran (if it should be variable or fixed). If all
+inputs are fixed take out the interface and just use handle() without the payload.
+
+If no particular trigger is specified, use the webhook/http trigger.
 
 CONTEXT:
 User: ${userName}
 
-EXAMPLES OF GOOD WORKFLOWS:
+Template Code:
+${bubbleFactory.generateBubbleFlowBoilerplate()}
 
-Example 1 - Email to multiple users:
-\`\`\`typescript
-import { BubbleFlow } from '@bubblelab/bubble-core';
-import { EmailBubble } from '@bubblelab/bubble-core';
 
-export class SendEmailsFlow extends BubbleFlow {
-  async handle() {
-    const users = [
-      { email: 'user1@example.com', name: 'User 1' },
-      { email: 'user2@example.com', name: 'User 2' },
-    ];
-
-    const results = [];
-    for (const user of users) {
-      const result = await new EmailBubble({
-        to: user.email,
-        subject: \`Hello \${user.name}\`,
-        body: 'Welcome to our platform!',
-      }).action();
-      results.push(result);
-    }
-
-    return { success: true, count: results.length };
-  }
-}
-\`\`\`
-
-Example 2 - Fetch data and send to Slack:
-\`\`\`typescript
-import { BubbleFlow } from '@bubblelab/bubble-core';
-import { HttpRequestBubble, SlackBubble } from '@bubblelab/bubble-core';
-
-export class FetchAndNotifyFlow extends BubbleFlow {
-  async handle() {
-    // Fetch data
-    const fetchResult = await new HttpRequestBubble({
-      url: 'https://api.example.com/data',
-      method: 'GET',
-    }).action();
-
-    if (!fetchResult.success) {
-      throw new Error('Failed to fetch data');
-    }
-
-    // Send to Slack
-    const slackResult = await new SlackBubble({
-      channel: '#notifications',
-      message: \`Received data: \${JSON.stringify(fetchResult.data)}\`,
-    }).action();
-
-    return { success: true, data: fetchResult.data };
-  }
-}
 \`\`\`
 
 Remember: You are building COMPLETE workflows that can include multiple integrations and complex logic!`;
@@ -198,14 +153,23 @@ export async function runPearl(
   console.debug('[Pearl] User request:', request.userRequest);
 
   try {
-    const bubbleFactory = await getBubbleFactory();
+    const bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
 
     // Build system prompt and conversation messages
-    const systemPrompt = buildSystemPrompt(request.userName);
+    const systemPrompt = await buildSystemPrompt(request.userName);
     const conversationMessages = buildConversationMessages(request);
 
-    // State to preserve original code across hook calls
+    // State to preserve original code and validation results across hook calls
     let savedOriginalCode: string | undefined;
+    let savedValidationResult:
+      | {
+          valid: boolean;
+          errors: string[];
+          bubbleParameters: Record<number, ParsedBubbleWithInfo>;
+          inputSchema: Record<string, unknown>;
+        }
+      | undefined;
 
     // Create hooks for validation tool
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
@@ -242,15 +206,23 @@ export async function runPearl(
         console.log('[GeneralChat] Post-hook: Checking validation result');
 
         try {
-          const validationResult: BubbleResult<ValidationToolResult> =
-            context.toolOutput as BubbleResult<ValidationToolResult>;
+          const validationResult: ValidationAndExtractionResult = context
+            .toolOutput?.data as ValidationAndExtractionResult;
 
-          if (validationResult.data?.valid === true) {
+          if (validationResult.valid === true) {
             console.debug(
               '[GeneralChat] Validation passed! Signaling completion.'
             );
 
             const code = savedOriginalCode || '';
+
+            // Save validation result for later use
+            savedValidationResult = {
+              valid: validationResult.valid || false,
+              errors: validationResult.errors || [],
+              bubbleParameters: validationResult.bubbleParameters || [],
+              inputSchema: validationResult.inputSchema || {},
+            };
 
             // Extract message from AI
             let message = 'Workflow code generated and validated successfully';
@@ -321,7 +293,7 @@ export async function runPearl(
           }
 
           console.debug('[GeneralChat] Validation failed, agent will retry');
-          console.log('[GeneralChat] Errors:', validationResult.data?.errors);
+          console.log('[GeneralChat] Errors:', validationResult.errors);
         } catch (error) {
           console.warn(
             '[GeneralChat] Failed to parse validation result:',
@@ -329,6 +301,7 @@ export async function runPearl(
           );
         }
       }
+
       return { messages: context.messages };
     };
 
@@ -365,25 +338,22 @@ export async function runPearl(
               bubbleFactory
             );
             return {
-              valid: validationResult.valid,
-              errors: validationResult.errors,
-              bubbleParameters: validationResult.bubbleParameters,
-              inputSchema: validationResult.inputSchema,
+              data: {
+                valid: validationResult.valid,
+                errors: validationResult.errors,
+                bubbleParameters: validationResult.bubbleParameters,
+                inputSchema: validationResult.inputSchema,
+              },
             };
           },
         },
       ],
-      maxIterations: 10,
+      maxIterations: 20,
       credentials,
       beforeToolCall,
       afterToolCall,
     });
-
     const result = await agent.action();
-
-    console.debug('[Pearl] Agent execution completed');
-    console.debug('[Pearl] Success:', result.success);
-
     if (!result.success) {
       return {
         type: 'reject',
@@ -398,12 +368,34 @@ export async function runPearl(
     try {
       const responseText = result.data?.response || '';
       agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
-      // if type is code and no snippet, return reject
-      if (agentOutput.type === 'code' && !agentOutput.snippet) {
+
+      if (!agentOutput.type || !agentOutput.message) {
         return {
           type: 'reject',
-          message: 'No snippet found in agent response',
+          message: 'Error parsing agent response',
           success: false,
+        };
+      }
+      if (agentOutput.type === 'code' && agentOutput.snippet) {
+        return {
+          type: 'code',
+          message: agentOutput.message,
+          snippet: agentOutput.snippet,
+          bubbleParameters: savedValidationResult?.bubbleParameters,
+          inputSchema: savedValidationResult?.inputSchema,
+          success: true,
+        };
+      } else if (agentOutput.type === 'question') {
+        return {
+          type: 'question',
+          message: agentOutput.message,
+          success: true,
+        };
+      } else {
+        return {
+          type: 'reject',
+          message: agentOutput.message,
+          success: true,
         };
       }
     } catch (error) {
@@ -415,33 +407,6 @@ export async function runPearl(
         error: error instanceof Error ? error.message : 'Unknown parsing error',
       };
     }
-
-    // Handle different response types
-    if (agentOutput.type === 'question' || agentOutput.type === 'reject') {
-      return {
-        type: agentOutput.type,
-        message: agentOutput.message,
-        success: true,
-      };
-    }
-
-    // For code type, return the complete workflow
-    if (agentOutput.type === 'code') {
-      return {
-        type: 'code',
-        message: agentOutput.message,
-        snippet: agentOutput.snippet,
-        success: true,
-      };
-    }
-
-    // Should never reach here
-    return {
-      type: 'reject',
-      message: 'Unexpected agent output format',
-      success: false,
-      error: 'Invalid response type',
-    };
   } catch (error) {
     console.error('[GeneralChat] Error during execution:', error);
     return {

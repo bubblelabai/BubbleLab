@@ -608,10 +608,8 @@ import {
   GoogleDriveBubble,
   GmailBubble,
   SlackFormatterAgentBubble,
-  
-  // Template Workflows
-  SlackDataAssistantWorkflow,
-  PDFFormOperationsWorkflow,
+  HttpBubble,
+
 
   // Specialized Tool Bubbles
   ResearchAgentTool,

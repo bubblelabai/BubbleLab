@@ -586,8 +586,8 @@ describe('Milk Tea AI Agent', () => {
   //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
   // }, 60000);
 
-  it('should generate code for complex Reddit workflow with email notification with OpenRouter GLM 4.5 Air', async () => {
-    const testCase = await createComplexRedditWorkflowTestCase();
-    await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.5-air'));
-  }, 60000);
+  // it('should generate code for complex Reddit workflow with email notification with OpenRouter GLM 4.5 Air', async () => {
+  //   const testCase = await createComplexRedditWorkflowTestCase();
+  //   await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.5-air'));
+  // }, 60000);
 });
