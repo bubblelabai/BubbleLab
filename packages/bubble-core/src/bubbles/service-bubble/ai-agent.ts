@@ -695,11 +695,9 @@ export class AIAgentBubble extends ServiceBubble<
         const dynamicTool = new DynamicStructuredTool({
           name: customTool.name,
           description: customTool.description,
-          schema: z.object(customTool.schema as z.ZodRawShape),
-          func: customTool.func as (
-            input: Record<string, unknown>
-          ) => Promise<unknown>,
-        });
+          schema: z.object(customTool.schema as z.ZodRawShape) as z.ZodTypeAny,
+          func: customTool.func as (input: any) => Promise<any>,
+        } as any);
 
         tools.push(dynamicTool);
       } catch (error) {
@@ -775,11 +773,9 @@ export class AIAgentBubble extends ServiceBubble<
         const dynamicTool = new DynamicStructuredTool({
           name: langGraphTool.name,
           description: langGraphTool.description,
-          schema: langGraphTool.schema as z.ZodObject<z.ZodRawShape>,
-          func: langGraphTool.func as (
-            input: Record<string, unknown>
-          ) => Promise<unknown>,
-        });
+          schema: langGraphTool.schema as unknown as z.ZodTypeAny,
+          func: langGraphTool.func as (input: any) => Promise<any>,
+        } as any);
 
         tools.push(dynamicTool);
       } catch (error) {
