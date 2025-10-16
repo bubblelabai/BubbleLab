@@ -9,6 +9,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   Play,
+  Bot,
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -24,6 +25,7 @@ import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
 import { Sidebar } from './components/Sidebar';
 import { Tooltip } from './components/Tooltip';
+import { useEditorStore } from './stores/editorStore';
 import { useCredentials } from './hooks/useCredentials';
 import { useClerkTokenSync } from './hooks/useClerkTokenSync';
 import { useExecutionStream } from './hooks/useExecutionStream';
@@ -56,6 +58,7 @@ function App() {
     'Ready to code! Try the examples above to test TypeScript IntelliSense.'
   );
   const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
+  const openPearlChat = useEditorStore((state) => state.openPearlChat);
   const [code, setCode] = useState<string>('');
   const {
     data: currentFlow,
@@ -1260,6 +1263,18 @@ function App() {
               <SignedIn>
                 {!isStreaming && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openPearlChat();
+                        setShowEditor(true);
+                      }}
+                      className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
+                    >
+                      <Bot className="w-3 h-3" />
+                      AI Assistant
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setShowEditor(!showEditor)}
