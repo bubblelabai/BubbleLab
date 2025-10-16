@@ -458,6 +458,7 @@ function FlowVisualizerInner({
       type?: string;
       required?: boolean;
       description?: string;
+      default?: unknown;
     };
     const parsedFields: SimpleField[] = (() => {
       if (!inputsSchema) return [];
@@ -469,13 +470,14 @@ function FlowVisualizerInner({
         const props = schema.properties || {};
         return Object.entries(props).map(([name, val]: [string, unknown]) => {
           const valObj = val as
-            | { type?: string; description?: string }
+            | { type?: string; description?: string; default?: unknown }
             | undefined;
           return {
             name,
             type: valObj?.type,
             required: req.includes(name),
             description: valObj?.description,
+            default: (valObj as { default?: unknown } | undefined)?.default,
           };
         });
       } catch {

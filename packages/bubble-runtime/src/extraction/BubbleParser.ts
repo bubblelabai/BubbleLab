@@ -413,7 +413,27 @@ export class BubbleParser {
 
     if (!typeAnn) return {};
 
-    return this.tsTypeToJsonSchema(typeAnn.typeAnnotation, ast) || {};
+    const schema = this.tsTypeToJsonSchema(typeAnn.typeAnnotation, ast) || {};
+
+    // Extract defaults from destructuring of the first parameter (e.g. const { a = 1 } = payload)
+    const defaults = this.extractPayloadDefaultsFromHandle(handleNode);
+    if (
+      defaults &&
+      schema &&
+      typeof schema === 'object' &&
+      (schema as Record<string, unknown>).properties &&
+      typeof (schema as Record<string, unknown>).properties === 'object'
+    ) {
+      const props = (schema as { properties: Record<string, any> }).properties;
+      for (const [key, defVal] of Object.entries(defaults)) {
+        if (key in props && defVal !== undefined) {
+          const current = props[key] as Record<string, unknown>;
+          props[key] = { ...current, default: defVal };
+        }
+      }
+    }
+
+    return schema;
   }
   /**
    * Find the actual Function/ArrowFunction node corresponding to the handle entrypoint.
@@ -493,6 +513,138 @@ export class BubbleParser {
       }
     }
     return null;
+  }
+  /** Extract defaults from object destructuring of the first handle parameter */
+  private extractPayloadDefaultsFromHandle(
+    handleNode:
+      | TSESTree.FunctionDeclaration
+      | TSESTree.FunctionExpression
+      | TSESTree.ArrowFunctionExpression
+  ): Record<string, unknown> | null {
+    const params = handleNode.params || [];
+    if (params.length === 0) return null;
+
+    const paramName = this.getFirstParamIdentifierName(params[0]);
+    if (!paramName) return null;
+
+    const body = handleNode.body;
+    if (!body || body.type !== 'BlockStatement') return null;
+
+    const defaults: Record<string, unknown> = {};
+
+    for (const stmt of body.body) {
+      if (stmt.type !== 'VariableDeclaration') continue;
+      for (const decl of stmt.declarations) {
+        if (
+          decl.type === 'VariableDeclarator' &&
+          decl.id.type === 'ObjectPattern' &&
+          decl.init &&
+          decl.init.type === 'Identifier' &&
+          decl.init.name === paramName
+        ) {
+          for (const prop of decl.id.properties) {
+            if (prop.type !== 'Property') continue;
+
+            // Source property name on payload
+            let keyName: string | null = null;
+            if (prop.key.type === 'Identifier') keyName = prop.key.name;
+            else if (
+              prop.key.type === 'Literal' &&
+              typeof prop.key.value === 'string'
+            )
+              keyName = prop.key.value;
+
+            if (!keyName) continue;
+
+            // Default value: { key = <expr> }
+            if (prop.value.type === 'AssignmentPattern') {
+              const defExpr = prop.value.right;
+              const evaluated = this.evaluateDefaultExpressionToJSON(defExpr);
+              if (evaluated !== undefined && !(keyName in defaults)) {
+                defaults[keyName] = evaluated;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return Object.keys(defaults).length > 0 ? defaults : null;
+  }
+  private getFirstParamIdentifierName(
+    firstParam: TSESTree.Parameter
+  ): string | null {
+    if (firstParam.type === 'Identifier') return firstParam.name;
+    if (
+      firstParam.type === 'AssignmentPattern' &&
+      firstParam.left.type === 'Identifier'
+    ) {
+      return firstParam.left.name;
+    }
+    if (
+      firstParam.type === 'RestElement' &&
+      firstParam.argument.type === 'Identifier'
+    ) {
+      return firstParam.argument.name;
+    }
+    return null;
+  }
+  /** Best-effort conversion of default expression to JSON-safe value */
+  private evaluateDefaultExpressionToJSON(
+    expr: TSESTree.Expression
+  ): unknown | undefined {
+    switch (expr.type) {
+      case 'Literal':
+        // string | number | boolean | null
+        return (expr as any).value as unknown;
+      case 'TemplateLiteral': {
+        if (expr.expressions.length === 0) {
+          // join cooked string parts
+          const cooked = expr.quasis.map((q) => q.value.cooked || '').join('');
+          return cooked;
+        }
+        return undefined;
+      }
+      case 'UnaryExpression': {
+        if (
+          (expr.operator === '-' || expr.operator === '+') &&
+          expr.argument.type === 'Literal' &&
+          typeof (expr.argument as any).value === 'number'
+        ) {
+          const num = (expr.argument as any).value as number;
+          return expr.operator === '-' ? -num : +num;
+        }
+        if (expr.operator === '!' && expr.argument.type === 'Literal') {
+          const val = (expr.argument as any).value;
+          if (typeof val === 'boolean') return !val;
+        }
+        return undefined;
+      }
+      case 'ArrayExpression': {
+        const out: unknown[] = [];
+        for (const el of expr.elements) {
+          if (!el || el.type !== 'Literal') return undefined;
+          out.push((el as any).value as unknown);
+        }
+        return out;
+      }
+      case 'ObjectExpression': {
+        const obj: Record<string, unknown> = {};
+        for (const p of expr.properties) {
+          if (p.type !== 'Property') return undefined;
+          let pk: string | null = null;
+          if (p.key.type === 'Identifier') pk = p.key.name;
+          else if (p.key.type === 'Literal' && typeof p.key.value === 'string')
+            pk = p.key.value;
+          if (!pk) return undefined;
+          if (p.value.type !== 'Literal') return undefined;
+          obj[pk] = (p.value as any).value as unknown;
+        }
+        return obj;
+      }
+      default:
+        return undefined;
+    }
   }
   /** Convert a TS type AST node into a JSON Schema object */
   private tsTypeToJsonSchema(
