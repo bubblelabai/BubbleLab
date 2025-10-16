@@ -66,22 +66,6 @@ describe('BubbleAnalyzer', () => {
         expect(parsedBubbles[-1].hasAwait).toBe(true);
         expect(parsedBubbles[-1].hasActionCall).toBe(true);
       });
-      it('works for yfinance flow', () => {
-        const yfinanceScript = getFixture('yfinance');
-        const analyzer = new BubbleScript(yfinanceScript, bubbleFactory);
-        analyzer.getParsedBubbles();
-        const inputSchema = analyzer.getPayloadJsonSchema();
-        console.log(JSON.stringify(inputSchema, null, 2));
-        expect(inputSchema).toBeDefined();
-        expect(inputSchema).toEqual({
-          type: 'object',
-          properties: {
-            ticker: { type: 'string' },
-            email: { type: 'string' },
-          },
-          required: ['ticker', 'email'],
-        });
-      });
     });
 
     it('should identify all user variables in the script', () => {
@@ -473,6 +457,61 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       );
       const parsedBubbles = analyzer.getParsedBubbles();
       console.log(JSON.stringify(parsedBubbles, null, 2));
+    });
+  });
+  describe('should get payload json schema with defaults', () => {
+    it('works for annotated bubble parsing with defaults', () => {
+      const contentCreationTrendsScript = getFixture('content-creation');
+      const analyzer = new BubbleScript(
+        contentCreationTrendsScript,
+        bubbleFactory
+      );
+      const inputSchema = analyzer.getPayloadJsonSchema();
+      console.log(JSON.stringify(inputSchema, null, 2));
+      expect(inputSchema).toBeDefined();
+      expect(inputSchema).toEqual({
+        type: 'object',
+        properties: {
+          email: {
+            type: 'string',
+          },
+          productName: {
+            type: 'string',
+          },
+          industry: {
+            type: 'string',
+            default: 'general',
+          },
+          targetAudience: {
+            type: 'string',
+            default: 'general audience',
+          },
+          subreddits: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+            default: ['ContentCreator', 'InstagramMarketing', 'NewTubers'],
+          },
+        },
+        required: ['email', 'productName'],
+      });
+    });
+    it('works for yfinance flow', () => {
+      const yfinanceScript = getFixture('yfinance');
+      const analyzer = new BubbleScript(yfinanceScript, bubbleFactory);
+      analyzer.getParsedBubbles();
+      const inputSchema = analyzer.getPayloadJsonSchema();
+      console.log(JSON.stringify(inputSchema, null, 2));
+      expect(inputSchema).toBeDefined();
+      expect(inputSchema).toEqual({
+        type: 'object',
+        properties: {
+          ticker: { type: 'string' },
+          email: { type: 'string' },
+        },
+        required: ['ticker', 'email'],
+      });
     });
   });
 });

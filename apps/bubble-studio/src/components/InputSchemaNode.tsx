@@ -7,6 +7,7 @@ interface SchemaField {
   type?: string;
   required?: boolean;
   description?: string;
+  default?: unknown;
 }
 
 interface InputSchemaNodeData {
@@ -41,8 +42,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
     .filter((field) => field.required)
     .filter(
       (field) =>
-        executionInputs[field.name] === undefined ||
-        executionInputs[field.name] === ''
+        (executionInputs[field.name] === undefined ||
+          executionInputs[field.name] === '') &&
+        field.default === undefined
     );
 
   const hasMissingRequired = missingRequiredFields.length > 0;
@@ -121,7 +123,8 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
                 | undefined;
               const isMissing =
                 field.required &&
-                (currentValue === undefined || currentValue === '');
+                (currentValue === undefined || currentValue === '') &&
+                field.default === undefined;
 
               return (
                 <div key={field.name} className="space-y-1">
@@ -159,7 +162,15 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
                           : e.target.value
                       )
                     }
-                    placeholder={field.description || `Enter ${field.name}...`}
+                    placeholder={
+                      field.type === 'array'
+                        ? Array.isArray(field.default)
+                          ? JSON.stringify(field.default)
+                          : '["item1","item2"]'
+                        : field.default !== undefined
+                          ? String(field.default)
+                          : field.description || `Enter ${field.name}...`
+                    }
                     disabled={isExecuting}
                     className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
                       isMissing

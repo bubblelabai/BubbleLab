@@ -33,6 +33,7 @@ export const fixtures = {
   'techweek-scrape': '',
   'starter-flow': '',
   'emails-complex': '',
+  'content-creation': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
