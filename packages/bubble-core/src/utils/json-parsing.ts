@@ -143,8 +143,28 @@ function escapeProblematicQuotesAndControlChars(input: string): string {
       continue;
     }
     if (ch === '\\') {
-      out.push('\\');
-      escapeNext = true;
+      // Handle invalid JSON escape sequences by converting \x (where x is not a valid escape)
+      // into a literal backslash followed by the character (i.e., "\\x").
+      const next = input[i + 1];
+      const isValidEscape =
+        next === '"' ||
+        next === '\\' ||
+        next === '/' ||
+        next === 'b' ||
+        next === 'f' ||
+        next === 'n' ||
+        next === 'r' ||
+        next === 't' ||
+        next === 'u';
+
+      if (isValidEscape && typeof next === 'string') {
+        // Preserve valid escape as-is
+        out.push('\\');
+        escapeNext = true; // consume next char verbatim
+        continue;
+      }
+      // Not a valid JSON escape: emit a literal backslash and continue
+      out.push('\\\\');
       continue;
     }
     if (ch === '"') {
@@ -192,6 +212,107 @@ function escapeProblematicQuotesAndControlChars(input: string): string {
   if (insideString) {
     // Close any unterminated string
     out.push('"');
+  }
+  return out.join('');
+}
+
+/**
+ * Quote unquoted object keys, but ONLY when outside of strings.
+ */
+function quoteUnquotedKeysOutsideStrings(input: string): string {
+  const out: string[] = [];
+  let insideString = false;
+  let escapeNext = false;
+
+  // Sliding window buffer to detect patterns like: { name: or , name:
+  let buffer = '';
+
+  const flushBuffer = () => {
+    out.push(buffer);
+    buffer = '';
+  };
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (insideString) {
+      buffer += ch;
+      if (escapeNext) {
+        escapeNext = false;
+      } else if (ch === '\\') {
+        escapeNext = true;
+      } else if (ch === '"') {
+        insideString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      // We're about to enter a string; flush any pending outside buffer first
+      // after performing key-fix in the buffer.
+      // Replace occurrences of ({|,)\s*identifier\s*:
+      buffer = buffer.replace(
+        /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
+        '$1"$2"$3:'
+      );
+      flushBuffer();
+      insideString = true;
+      out.push('"');
+      continue;
+    }
+
+    buffer += ch;
+  }
+
+  // Process remainder outside-string buffer for unquoted keys
+  buffer = buffer.replace(
+    /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*):/g,
+    '$1"$2"$3:'
+  );
+  flushBuffer();
+  return out.join('');
+}
+
+/**
+ * Remove trailing commas before } or ] but ONLY when outside of strings.
+ */
+function removeTrailingCommasOutsideStrings(input: string): string {
+  const out: string[] = [];
+  let insideString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    out.push(ch);
+    if (insideString) {
+      if (escapeNext) {
+        escapeNext = false;
+      } else if (ch === '\\') {
+        escapeNext = true;
+      } else if (ch === '"') {
+        insideString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      insideString = true;
+      continue;
+    }
+    // If we see a comma followed only by whitespace then a closing } or ], drop the comma
+    if (
+      ch === ',' &&
+      (() => {
+        for (let j = i + 1; j < input.length; j++) {
+          const c = input[j];
+          if (/\s/.test(c)) continue;
+          return c === '}' || c === ']';
+        }
+        return false;
+      })()
+    ) {
+      // remove the last pushed comma
+      out.pop();
+      // and skip pushing it; continue loop
+    }
   }
   return out.join('');
 }
@@ -266,24 +387,15 @@ export function postProcessJSON(jsonString: string): string {
     .replace(/^["']?\s*/, '') // Remove leading quotes/spaces
     .replace(/\s*["']?$/, ''); // Remove trailing quotes/spaces
 
-  // Fix unquoted keys first (before dealing with quotes)
-  processed = processed.replace(
-    /([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)(\s*):/g,
-    '$1"$2"$3:'
-  );
+  // Fix unquoted keys ONLY outside strings
+  processed = quoteUnquotedKeysOutsideStrings(processed);
 
-  // Remove trailing commas before closing brackets/braces
-  processed = processed.replace(/,\s*(?=[}\]])/g, '');
+  // Remove trailing commas ONLY outside strings
+  processed = removeTrailingCommasOutsideStrings(processed);
 
-  // Only convert single-quoted strings to double-quoted strings if the ENTIRE JSON uses single quotes
-  // We detect this by checking if there are more single-quoted keys/values than double-quoted ones
-  const singleQuotedPattern = /:\s*'[^']*'/g;
-  const doubleQuotedPattern = /:\s*"[^"]*"/g;
-  const singleQuoteCount = (processed.match(singleQuotedPattern) || []).length;
-  const doubleQuoteCount = (processed.match(doubleQuotedPattern) || []).length;
-
-  // Only do global single-quote replacement if it looks like the JSON is using single quotes throughout
-  if (singleQuoteCount > doubleQuoteCount && singleQuoteCount > 2) {
+  // Convert single-quoted values to double-quoted ONLY when the JSON-like input
+  // appears to not use any double quotes at all (to avoid corrupting content strings).
+  if (!processed.includes('"')) {
     processed = processed.replace(
       /(^|:|\[|,|\{)\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g,
       '$1"$2"'
@@ -293,26 +405,72 @@ export function postProcessJSON(jsonString: string): string {
   // Escape problematic quotes and control chars in strings via state machine
   processed = escapeProblematicQuotesAndControlChars(processed);
 
-  // Remove trailing commas before closing brackets/braces again after quote fixes
-  processed = processed.replace(/,\s*(?=[}\]])/g, '');
+  // Remove trailing commas again after quote fixes (outside strings)
+  processed = removeTrailingCommasOutsideStrings(processed);
 
   // Remove control characters that can break JSON
   // eslint-disable-next-line no-control-regex
   processed = processed.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
 
   // Remove any trailing non-JSON content (like explanatory text after JSON)
-  const lastObj = processed.lastIndexOf('}');
-  const lastArr = processed.lastIndexOf(']');
-  const lastClose = Math.max(lastObj, lastArr);
-  if (lastClose !== -1) {
-    processed = processed.slice(0, lastClose + 1);
+  // but only consider braces/brackets that are OUTSIDE of strings.
+  {
+    let inside = false;
+    let esc = false;
+    let lastClose = -1;
+    for (let i = 0; i < processed.length; i++) {
+      const ch = processed[i];
+      if (inside) {
+        if (esc) {
+          esc = false;
+        } else if (ch === '\\') {
+          esc = true;
+        } else if (ch === '"') {
+          inside = false;
+        }
+        continue;
+      }
+      if (ch === '"') {
+        inside = true;
+        continue;
+      }
+      if (ch === '}' || ch === ']') lastClose = i;
+    }
+    if (lastClose !== -1) {
+      processed = processed.slice(0, lastClose + 1);
+    }
   }
 
   // Attempt to balance brackets and braces more intelligently
-  const openBraces = (processed.match(/{/g) || []).length;
-  const closeBraces = (processed.match(/}/g) || []).length;
-  const openBrackets = (processed.match(/\[/g) || []).length;
-  const closeBrackets = (processed.match(/]/g) || []).length;
+  let openBraces = 0;
+  let closeBraces = 0;
+  let openBrackets = 0;
+  let closeBrackets = 0;
+  {
+    let inside = false;
+    let esc = false;
+    for (let i = 0; i < processed.length; i++) {
+      const ch = processed[i];
+      if (inside) {
+        if (esc) {
+          esc = false;
+        } else if (ch === '\\') {
+          esc = true;
+        } else if (ch === '"') {
+          inside = false;
+        }
+        continue;
+      }
+      if (ch === '"') {
+        inside = true;
+        continue;
+      }
+      if (ch === '{') openBraces++;
+      else if (ch === '}') closeBraces++;
+      else if (ch === '[') openBrackets++;
+      else if (ch === ']') closeBrackets++;
+    }
+  }
 
   // Add missing closing braces/brackets, but only if the string looks like it should have them
   if (openBraces > closeBraces && processed.includes('{')) {
