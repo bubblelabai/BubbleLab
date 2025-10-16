@@ -25,7 +25,7 @@ import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
 import { Sidebar } from './components/Sidebar';
 import { Tooltip } from './components/Tooltip';
-import { useEditorStore } from './stores/editorStore';
+import { useEditorStore, selectIsGeneralChatView } from './stores/editorStore';
 import { useCredentials } from './hooks/useCredentials';
 import { useClerkTokenSync } from './hooks/useClerkTokenSync';
 import { useExecutionStream } from './hooks/useExecutionStream';
@@ -59,6 +59,11 @@ function App() {
   );
   const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
   const openPearlChat = useEditorStore((state) => state.openPearlChat);
+  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
+  const isPearlChatOpen = useEditorStore(selectIsGeneralChatView);
+  const isBubbleSidePanelOpen = useEditorStore(
+    (state) => state.sidePanelMode !== 'closed'
+  );
   const [code, setCode] = useState<string>('');
   const {
     data: currentFlow,
@@ -1266,13 +1271,18 @@ function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        openPearlChat();
-                        setShowEditor(true);
+                        if (isPearlChatOpen) {
+                          closeSidePanel();
+                        } else {
+                          openPearlChat();
+                        }
                       }}
                       className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                     >
                       <Bot className="w-3 h-3" />
-                      AI Assistant
+                      {isPearlChatOpen
+                        ? 'Hide AI Assistant'
+                        : 'Show AI Assistant'}
                     </button>
 
                     <button
@@ -1502,13 +1512,37 @@ function App() {
                         // Normal Editor/Flow Section
                         <PanelGroup
                           direction="horizontal"
-                          autoSaveId="bubbleflow-editor-flow-layout"
+                          autoSaveId="bubbleflow-3panel-layout-v2"
                           className="h-full"
                         >
+                          {/* Bubble Side Panel */}
+                          {isBubbleSidePanelOpen && (
+                            <>
+                              <Panel
+                                id="bubble-side-panel"
+                                defaultSize={25}
+                                minSize={15}
+                                maxSize={40}
+                              >
+                                <BubbleSidePanel />
+                              </Panel>
+                              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-purple-500 transition-colors" />
+                            </>
+                          )}
+
                           {/* Flow Panel */}
                           <Panel
-                            defaultSize={showEditor ? 50 : 100}
-                            minSize={30}
+                            id="flow-visualizer-panel"
+                            defaultSize={
+                              isBubbleSidePanelOpen && showEditor
+                                ? 40
+                                : isBubbleSidePanelOpen
+                                  ? 75
+                                  : showEditor
+                                    ? 65
+                                    : 100
+                            }
+                            minSize={25}
                           >
                             <div className="h-full bg-[#1a1a1a] min-h-0">
                               <div className="h-full min-h-0">
@@ -1758,7 +1792,11 @@ function App() {
                               <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
 
                               {/* Editor Panel */}
-                              <Panel defaultSize={50} minSize={30}>
+                              <Panel
+                                id="monaco-editor-panel"
+                                defaultSize={isBubbleSidePanelOpen ? 35 : 35}
+                                minSize={25}
+                              >
                                 <div className="h-full bg-[#1a1a1a] min-h-0">
                                   <div className="h-full min-h-0">
                                     <div className="h-full relative">
@@ -1846,9 +1884,6 @@ function App() {
         inputsSchema={JSON.stringify(currentFlow?.inputSchema)}
         requiredCredentials={currentFlow?.requiredCredentials}
       />
-
-      {/* Bubble Side Panel for adding bubbles */}
-      <BubbleSidePanel />
 
       {/* Toast Container */}
       <ToastContainer
