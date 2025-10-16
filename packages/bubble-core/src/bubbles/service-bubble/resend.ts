@@ -280,7 +280,11 @@ export class ResendBubble<
     if (tags) emailPayload.tags = tags;
     if (headers) emailPayload.headers = headers;
 
-    const { data, error } = await this.resend?.emails.send(emailPayload);
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
+    const { data, error } = await this.resend.emails.send(emailPayload);
 
     if (error) {
       throw new Error(`Failed to send email: ${JSON.stringify(error)}`);
@@ -303,7 +307,7 @@ export class ResendBubble<
 
     const { email_id } = params;
 
-    const { data, error } = await this.resend?.emails.get(email_id);
+    const { data, error } = await this.resend.emails.get(email_id);
 
     if (error) {
       throw new Error(`Failed to get email status: ${error.message}`);
