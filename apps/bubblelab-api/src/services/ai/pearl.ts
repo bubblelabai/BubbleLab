@@ -22,7 +22,6 @@ import {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
-  BubbleFactory,
   BubbleFlowValidationTool,
   HumanMessage,
   AIMessage,
@@ -30,6 +29,8 @@ import {
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
+import { validateAndExtract } from '@bubblelab/bubble-runtime';
+import { getBubbleFactory } from '../bubble-factory-instance.js';
 
 /**
  * Type for BubbleFlow validation result
@@ -197,8 +198,7 @@ export async function runPearl(
   console.debug('[Pearl] User request:', request.userRequest);
 
   try {
-    const bubbleFactory = new BubbleFactory();
-    await bubbleFactory.registerDefaults();
+    const bubbleFactory = await getBubbleFactory();
 
     // Build system prompt and conversation messages
     const systemPrompt = buildSystemPrompt(request.userName);
@@ -329,7 +329,6 @@ export async function runPearl(
           );
         }
       }
-
       return { messages: context.messages };
     };
 
@@ -345,10 +344,6 @@ export async function runPearl(
       },
       tools: [
         {
-          name: 'bubbleflow-validation-tool',
-          credentials: credentials || {},
-        },
-        {
           name: 'list-bubbles-tool',
           credentials: credentials || {},
         },
@@ -357,17 +352,37 @@ export async function runPearl(
           credentials: credentials || {},
         },
       ],
+      customTools: [
+        {
+          name: 'bubbleflow-validation-tool',
+          description: 'Calculates sales tax for a given amount',
+          schema: {
+            code: z.string().describe('Code to validate'),
+          },
+          func: async (input: Record<string, unknown>) => {
+            const validationResult = await validateAndExtract(
+              input.code as string,
+              bubbleFactory
+            );
+            return {
+              valid: validationResult.valid,
+              errors: validationResult.errors,
+              bubbleParameters: validationResult.bubbleParameters,
+              inputSchema: validationResult.inputSchema,
+            };
+          },
+        },
+      ],
       maxIterations: 10,
       credentials,
       beforeToolCall,
       afterToolCall,
     });
 
-    console.debug('[GeneralChat] Executing agent...');
     const result = await agent.action();
 
-    console.debug('[GeneralChat] Agent execution completed');
-    console.debug('[GeneralChat] Success:', result.success);
+    console.debug('[Pearl] Agent execution completed');
+    console.debug('[Pearl] Success:', result.success);
 
     if (!result.success) {
       return {
