@@ -12,6 +12,7 @@ export const TEMPLATE_CATEGORIES = [
   'Personal Assistant',
   'Marketing',
   'Generate your own',
+  'Import JSON Workflow',
 ] as const;
 
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];

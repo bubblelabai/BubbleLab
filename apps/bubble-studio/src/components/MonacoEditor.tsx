@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
-import { Plus } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useEditorStore } from '../stores/editorStore';
 import { setConfiguredMonaco } from '../utils/editorContext';
 
@@ -409,11 +409,11 @@ ${cleanedTypes.replace(/^/gm, '  ')}
         <button
           onClick={handleAddBubble}
           className="group relative p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-          title="Add Bubble at Cursor"
+          title="AI Assistant"
         >
-          <Plus className="w-5 h-5" />
+          <Bot className="w-5 h-5" />
           <span className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Add Bubble
+            AI Assistant
           </span>
         </button>
       </div>

@@ -853,7 +853,7 @@ function PearlChat() {
                           className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                         >
                           <Check className="w-4 h-4" />
-                          Replace Entire Workflow
+                          Update Workflow
                         </button>
                       </>
                     )}
