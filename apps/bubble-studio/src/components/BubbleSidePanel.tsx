@@ -173,7 +173,7 @@ export function BubbleSidePanel() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center gap-2">
-            {(isPromptView || isGeneralChatView) && (
+            {/* {(isPromptView || isGeneralChatView) && (
               <button
                 onClick={() => selectBubble(null)}
                 className="p-1 hover:bg-gray-700 rounded transition-colors"
@@ -181,12 +181,12 @@ export function BubbleSidePanel() {
               >
                 <ArrowLeft className="w-5 h-5 text-gray-300" />
               </button>
-            )}
+            )} */}
             <h2 className="text-lg font-semibold text-gray-100">
               {isPromptView
                 ? `Configure ${selectedBubbleName}`
                 : isGeneralChatView
-                  ? 'General AI Chat'
+                  ? 'Chat with Pearl (AI Assistant)'
                   : 'Add Bubble'}
             </h2>
           </div>
