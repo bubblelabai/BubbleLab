@@ -619,7 +619,6 @@ import {
   BubbleFactory,
   type BubbleClassWithMetadata,
   type BubbleContext,
-  type BubbleOperationResult,
   type BubbleTriggerEvent,
   type WebhookEvent,
 } from '@bubblelab/bubble-core';

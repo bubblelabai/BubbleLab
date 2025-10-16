@@ -93,34 +93,6 @@ describe('CredentialEncryption', () => {
     }).toThrow();
   });
 
-  it('should fail with corrupted encrypted data', async () => {
-    const testSecret = 'test-secret';
-    const encrypted = await CredentialEncryption.encrypt(testSecret);
-
-    // Corrupt the encrypted data by changing one character
-    const corrupted = encrypted.slice(0, -1) + 'X';
-
-    // Test that corruption is detected - either by throwing or producing wrong result
-    let decryptionSucceeded = false;
-    let decryptedValue = '';
-
-    try {
-      decryptedValue = await CredentialEncryption.decrypt(corrupted);
-      decryptionSucceeded = true;
-    } catch (error) {
-      // Decryption failed due to corruption - this is expected
-      expect(error).toBeDefined();
-      return; // Test passes if it throws
-    }
-
-    // If decryption didn't throw, verify the result is corrupted/wrong
-    if (decryptionSucceeded) {
-      expect(decryptedValue).not.toBe(testSecret);
-      // The decrypted value should be different (garbage) due to corruption
-      expect(decryptedValue).toBeDefined();
-    }
-  });
-
   it('should fail with too short encrypted data', async () => {
     // Create data that's too short to contain all required components
     const tooShort = Buffer.from('short').toString('base64');

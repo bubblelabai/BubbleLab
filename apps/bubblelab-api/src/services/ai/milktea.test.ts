@@ -513,7 +513,7 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
 // TEST SUITE
 // ============================================================================
 
-describe('Milk Tea AI Agent', () => {
+describe.skip('Milk Tea AI Agent', () => {
   beforeAll(async () => {
     const bubblesJsonPath = join(__dirname, 'bubbles.json');
     const bubblesJson = await readFile(bubblesJsonPath, 'utf-8');
@@ -526,68 +526,74 @@ describe('Milk Tea AI Agent', () => {
     console.log('Logger upload complete, test ending');
   });
 
-  // it('should generate code snippet for sending emails to waitlist users with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createEmailWaitlistTestCase();
-  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should generate code snippet for sending emails to waitlist users with Gemini 2.5 Pro', async () => {
+    const testCase = await createEmailWaitlistTestCase();
+    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  }, 60000);
 
-  // it('should generate code snippet for sending emails to waitlist users with GPT-5', async () => {
-  //   const testCase = await createEmailWaitlistTestCase();
-  //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
-  // }, 60000);
+  it('should generate code snippet for sending emails to waitlist users with GPT-5', async () => {
+    const testCase = await createEmailWaitlistTestCase();
+    await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 
-  // it('should reject requests involving multiple bubbles with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createMultipleBubblesRejectTestCase();
-  //   await runRejectTestCase(createRejectTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should reject requests involving multiple bubbles with Gemini 2.5 Pro', async () => {
+    const testCase = await createMultipleBubblesRejectTestCase();
+    await runRejectTestCase(
+      createRejectTestCase(testCase, 'google/gemini-2.5-pro')
+    );
+  }, 60000);
 
-  // it('should reject requests involving multiple bubbles with GPT-5', async () => {
-  //   const testCase = await createMultipleBubblesRejectTestCase();
-  //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
-  // }, 60000);
+  it('should reject requests involving multiple bubbles with GPT-5', async () => {
+    const testCase = await createMultipleBubblesRejectTestCase();
+    await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 
-  // it('should ask for clarification when email content is missing with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createMissingEmailContentTestCase();
-  //   await runRejectTestCase(createRejectTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should ask for clarification when email content is missing with Gemini 2.5 Pro', async () => {
+    const testCase = await createMissingEmailContentTestCase();
+    await runRejectTestCase(
+      createRejectTestCase(testCase, 'google/gemini-2.5-pro')
+    );
+  }, 60000);
 
-  // it('should ask for clarification when email content is missing with GPT-5', async () => {
-  //   const testCase = await createMissingEmailContentTestCase();
-  //   await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
-  // }, 60000);
+  it('should ask for clarification when email content is missing with GPT-5', async () => {
+    const testCase = await createMissingEmailContentTestCase();
+    await runRejectTestCase(createRejectTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 
-  //   it('should ask for clarification when email content is missing with grok code fast 1', async () => {
-  //   const testCase = await createMissingEmailContentTestCase();
-  //   await runRejectTestCase(createRejectTestCase(testCase, 'openrouter/x-ai/grok-code-fast-1'));
-  // }, 60000);
+  it('should ask for clarification when email content is missing with grok code fast 1', async () => {
+    const testCase = await createMissingEmailContentTestCase();
+    await runRejectTestCase(
+      createRejectTestCase(testCase, 'openrouter/x-ai/grok-code-fast-1')
+    );
+  }, 60000);
 
-  // it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createConversationFollowUpTestCase();
-  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should generate code after clarification in conversation history with Gemini 2.5 Pro', async () => {
+    const testCase = await createConversationFollowUpTestCase();
+    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  }, 60000);
 
-  // it('should generate code after clarification in conversation history with GPT-5', async () => {
-  //   const testCase = await createConversationFollowUpTestCase();
-  //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
-  // }, 60000);
+  it('should generate code after clarification in conversation history with GPT-5', async () => {
+    const testCase = await createConversationFollowUpTestCase();
+    await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 
-  // it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createComplexRedditWorkflowTestCase();
-  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
+    const testCase = await createComplexRedditWorkflowTestCase();
+    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  }, 60000);
 
-  // it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
-  //   const testCase = await createComplexRedditWorkflowTestCase();
-  //   await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
-  // }, 60000);
+  it('should generate code for complex Reddit workflow with email notification with Gemini 2.5 Pro', async () => {
+    const testCase = await createComplexRedditWorkflowTestCase();
+    await runTestCase(createTestCase(testCase, 'google/gemini-2.5-pro'));
+  }, 60000);
 
-  // it('should generate code for complex Reddit workflow with email notification with GPT-5', async () => {
-  //   const testCase = await createComplexRedditWorkflowTestCase();
-  //   await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
-  // }, 60000);
+  it('should generate code for complex Reddit workflow with email notification with GPT-5', async () => {
+    const testCase = await createComplexRedditWorkflowTestCase();
+    await runTestCase(createTestCase(testCase, 'openai/gpt-5'));
+  }, 60000);
 
-  // it('should generate code for complex Reddit workflow with email notification with OpenRouter GLM 4.5 Air', async () => {
-  //   const testCase = await createComplexRedditWorkflowTestCase();
-  //   await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.5-air'));
-  // }, 60000);
+  it('should generate code for complex Reddit workflow with email notification with OpenRouter GLM 4.5 Air', async () => {
+    const testCase = await createComplexRedditWorkflowTestCase();
+    await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.6'));
+  }, 60000);
 });
