@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   X,
   Search,
-  ArrowLeft,
+  // ArrowLeft,
   Loader2,
   Check,
   AlertCircle,
@@ -757,7 +757,7 @@ function PearlChat() {
 
   const handleReplace = (code: string) => {
     replaceAllEditorContent(code);
-    toast.success('Entire workflow replaced!');
+    toast.success('Workflow updated!');
     closeSidePanel();
   };
 
