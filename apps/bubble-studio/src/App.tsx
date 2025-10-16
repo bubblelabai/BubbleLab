@@ -1510,186 +1510,58 @@ function App() {
                         />
                       ) : (
                         // Normal Editor/Flow Section
-                        <PanelGroup
-                          direction="horizontal"
-                          autoSaveId="bubbleflow-3panel-layout-v2"
-                          className="h-full"
-                        >
-                          {/* Bubble Side Panel */}
+                        <div className="h-full flex flex-row">
+                          {/* Bubble Side Panel - Fixed Width */}
                           {isBubbleSidePanelOpen && (
-                            <>
-                              <Panel
-                                id="bubble-side-panel"
-                                defaultSize={25}
-                                minSize={15}
-                                maxSize={40}
-                              >
-                                <BubbleSidePanel />
-                              </Panel>
-                              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-purple-500 transition-colors" />
-                            </>
+                            <div className="h-full w-[400px] flex-shrink-0">
+                              <BubbleSidePanel />
+                            </div>
                           )}
 
-                          {/* Flow Panel */}
-                          <Panel
-                            id="flow-visualizer-panel"
-                            defaultSize={
-                              isBubbleSidePanelOpen && showEditor
-                                ? 40
-                                : isBubbleSidePanelOpen
-                                  ? 75
-                                  : showEditor
-                                    ? 65
-                                    : 100
-                            }
-                            minSize={25}
+                          {/* Resizable Flow and Editor */}
+                          <PanelGroup
+                            direction="horizontal"
+                            autoSaveId="bubbleflow-flow-editor-layout"
+                            className="flex-1"
                           >
-                            <div className="h-full bg-[#1a1a1a] min-h-0">
-                              <div className="h-full min-h-0">
-                                <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
-                                  <FlowVisualizer
-                                    bubbleParameters={
-                                      currentFlow?.bubbleParameters || {}
-                                    }
-                                    onParameterChange={handleParameterChange}
-                                    highlightedBubble={highlightedBubble}
-                                    onHighlightChange={(bubbleKey) => {
-                                      console.log(
-                                        'Bubble highlight changed to:',
-                                        bubbleKey
-                                      );
-                                      setHighlightedBubble(bubbleKey);
-
-                                      // Clear code highlighting when bubble is deselected
-                                      if (bubbleKey === null) {
-                                        setHighlightedRange(null);
+                            {/* Flow Panel */}
+                            <Panel
+                              id="flow-visualizer-panel"
+                              defaultSize={showEditor ? 65 : 100}
+                              minSize={25}
+                            >
+                              <div className="h-full bg-[#1a1a1a] min-h-0">
+                                <div className="h-full min-h-0">
+                                  <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
+                                    <FlowVisualizer
+                                      bubbleParameters={
+                                        currentFlow?.bubbleParameters || {}
                                       }
-                                    }}
-                                    onBubbleClick={(bubbleKey, bubble) => {
-                                      console.log(
-                                        'Bubble clicked:',
-                                        bubbleKey,
-                                        bubble
-                                      );
+                                      onParameterChange={handleParameterChange}
+                                      highlightedBubble={highlightedBubble}
+                                      onHighlightChange={(bubbleKey) => {
+                                        console.log(
+                                          'Bubble highlight changed to:',
+                                          bubbleKey
+                                        );
+                                        setHighlightedBubble(bubbleKey);
 
-                                      // Highlight the bubble in the flow
-                                      setHighlightedBubble(String(bubbleKey));
-
-                                      // Highlight the line range in the editor (validate line numbers)
-                                      if (
-                                        bubble.location.startLine > 0 &&
-                                        bubble.location.endLine > 0
-                                      ) {
-                                        setHighlightedRange({
-                                          startLine: bubble.location.startLine,
-                                          endLine: bubble.location.endLine,
-                                        });
-                                      } else {
-                                        console.warn(
-                                          'Invalid line numbers for clicked bubble:',
+                                        // Clear code highlighting when bubble is deselected
+                                        if (bubbleKey === null) {
+                                          setHighlightedRange(null);
+                                        }
+                                      }}
+                                      onBubbleClick={(bubbleKey, bubble) => {
+                                        console.log(
+                                          'Bubble clicked:',
+                                          bubbleKey,
                                           bubble
                                         );
-                                      }
-                                    }}
-                                    onParamEditInCode={(
-                                      bubbleKey,
-                                      bubble,
-                                      paramName
-                                    ) => {
-                                      // Show the editor first
-                                      if (!showEditor) {
-                                        setShowEditor(true);
-                                      }
 
-                                      // Set single-line selection using the shared range highlighter
-                                      // We'll compute the exact line and then set start=end=that line
+                                        // Highlight the bubble in the flow
+                                        setHighlightedBubble(String(bubbleKey));
 
-                                      // Try to find the parameter's exact line from server-provided param location
-                                      try {
-                                        const param = (
-                                          bubble.parameters || []
-                                        ).find(
-                                          (p: { name?: string }) =>
-                                            p?.name === paramName
-                                        ) as
-                                          | ((typeof bubble.parameters)[number] & {
-                                              location?: {
-                                                startLine?: number;
-                                              };
-                                            })
-                                          | undefined;
-
-                                        const paramLine =
-                                          param?.location?.startLine;
-                                        if (
-                                          typeof paramLine === 'number' &&
-                                          paramLine > 0
-                                        ) {
-                                          setHighlightedRange({
-                                            startLine: paramLine,
-                                            endLine: paramLine,
-                                          });
-                                        } else {
-                                          // Fallback: scan code between bubble range for the property name
-                                          const start = Math.max(
-                                            1,
-                                            bubble.location.startLine || 1
-                                          );
-                                          const end = Math.max(
-                                            start,
-                                            bubble.location.endLine || start
-                                          );
-                                          const codeLines = code.split('\n');
-                                          const searchStart = Math.min(
-                                            start - 1,
-                                            codeLines.length - 1
-                                          );
-                                          const searchEnd = Math.min(
-                                            end - 1,
-                                            codeLines.length - 1
-                                          );
-                                          let foundLine: number | null = null;
-                                          for (
-                                            let i = searchStart;
-                                            i <= searchEnd;
-                                            i++
-                                          ) {
-                                            const line = codeLines[i];
-                                            if (!line) continue;
-                                            // match `<paramName>:` allowing spaces and quotes
-                                            const re = new RegExp(
-                                              `(^|[,{\n\r\t\\s])${paramName}\\s*:`
-                                            );
-                                            if (re.test(line)) {
-                                              foundLine = i + 1; // 1-based
-                                              break;
-                                            }
-                                          }
-                                          if (foundLine) {
-                                            setHighlightedRange({
-                                              startLine: foundLine,
-                                              endLine: foundLine,
-                                            });
-                                          } else {
-                                            // No specific line found; default to highlighting the bubble block
-                                            if (
-                                              bubble.location.startLine > 0 &&
-                                              bubble.location.endLine > 0
-                                            ) {
-                                              setHighlightedRange({
-                                                startLine:
-                                                  bubble.location.startLine,
-                                                endLine:
-                                                  bubble.location.endLine,
-                                              });
-                                            }
-                                          }
-                                        }
-                                      } catch (error) {
-                                        console.warn(
-                                          'Param location resolution failed',
-                                          error
-                                        );
+                                        // Highlight the line range in the editor (validate line numbers)
                                         if (
                                           bubble.location.startLine > 0 &&
                                           bubble.location.endLine > 0
@@ -1700,125 +1572,252 @@ function App() {
                                             endLine: bubble.location.endLine,
                                           });
                                         } else {
-                                          setHighlightedRange(null);
+                                          console.warn(
+                                            'Invalid line numbers for clicked bubble:',
+                                            bubble
+                                          );
                                         }
-                                      }
+                                      }}
+                                      onParamEditInCode={(
+                                        bubbleKey,
+                                        bubble,
+                                        paramName
+                                      ) => {
+                                        // Show the editor first
+                                        if (!showEditor) {
+                                          setShowEditor(true);
+                                        }
 
-                                      // Keep the flow selection
-                                      setHighlightedBubble(String(bubbleKey));
-                                    }}
-                                    requiredCredentials={(() => {
-                                      return (
-                                        currentFlow?.requiredCredentials || {}
-                                      );
-                                    })()}
-                                    availableCredentials={availableCredentials}
-                                    selectedCredentials={
-                                      pendingExecutionCredentials
-                                    }
-                                    onCredentialsPendingChange={(
-                                      bubbleName,
-                                      credType,
-                                      credId
-                                    ) => {
-                                      setPendingExecutionCredentials((prev) => {
-                                        const next = { ...prev };
-                                        const required =
-                                          currentFlow?.requiredCredentials ||
-                                          {};
+                                        // Set single-line selection using the shared range highlighter
+                                        // We'll compute the exact line and then set start=end=that line
 
-                                        // Propagate the selection to all bubbles that require this credType
-                                        Object.entries(required).forEach(
-                                          ([bKey, types]) => {
-                                            if (
-                                              Array.isArray(types) &&
-                                              (types as string[]).includes(
-                                                credType
-                                              )
+                                        // Try to find the parameter's exact line from server-provided param location
+                                        try {
+                                          const param = (
+                                            bubble.parameters || []
+                                          ).find(
+                                            (p: { name?: string }) =>
+                                              p?.name === paramName
+                                          ) as
+                                            | ((typeof bubble.parameters)[number] & {
+                                                location?: {
+                                                  startLine?: number;
+                                                };
+                                              })
+                                            | undefined;
+
+                                          const paramLine =
+                                            param?.location?.startLine;
+                                          if (
+                                            typeof paramLine === 'number' &&
+                                            paramLine > 0
+                                          ) {
+                                            setHighlightedRange({
+                                              startLine: paramLine,
+                                              endLine: paramLine,
+                                            });
+                                          } else {
+                                            // Fallback: scan code between bubble range for the property name
+                                            const start = Math.max(
+                                              1,
+                                              bubble.location.startLine || 1
+                                            );
+                                            const end = Math.max(
+                                              start,
+                                              bubble.location.endLine || start
+                                            );
+                                            const codeLines = code.split('\n');
+                                            const searchStart = Math.min(
+                                              start - 1,
+                                              codeLines.length - 1
+                                            );
+                                            const searchEnd = Math.min(
+                                              end - 1,
+                                              codeLines.length - 1
+                                            );
+                                            let foundLine: number | null = null;
+                                            for (
+                                              let i = searchStart;
+                                              i <= searchEnd;
+                                              i++
                                             ) {
-                                              if (!next[bKey]) next[bKey] = {};
-                                              if (credId === null) {
-                                                delete next[bKey][credType];
-                                                if (
-                                                  Object.keys(next[bKey])
-                                                    .length === 0
-                                                ) {
-                                                  delete next[bKey];
-                                                }
-                                              } else {
-                                                next[bKey][credType] = credId;
+                                              const line = codeLines[i];
+                                              if (!line) continue;
+                                              // match `<paramName>:` allowing spaces and quotes
+                                              const re = new RegExp(
+                                                `(^|[,{\n\r\t\\s])${paramName}\\s*:`
+                                              );
+                                              if (re.test(line)) {
+                                                foundLine = i + 1; // 1-based
+                                                break;
+                                              }
+                                            }
+                                            if (foundLine) {
+                                              setHighlightedRange({
+                                                startLine: foundLine,
+                                                endLine: foundLine,
+                                              });
+                                            } else {
+                                              // No specific line found; default to highlighting the bubble block
+                                              if (
+                                                bubble.location.startLine > 0 &&
+                                                bubble.location.endLine > 0
+                                              ) {
+                                                setHighlightedRange({
+                                                  startLine:
+                                                    bubble.location.startLine,
+                                                  endLine:
+                                                    bubble.location.endLine,
+                                                });
                                               }
                                             }
                                           }
-                                        );
+                                        } catch (error) {
+                                          console.warn(
+                                            'Param location resolution failed',
+                                            error
+                                          );
+                                          if (
+                                            bubble.location.startLine > 0 &&
+                                            bubble.location.endLine > 0
+                                          ) {
+                                            setHighlightedRange({
+                                              startLine:
+                                                bubble.location.startLine,
+                                              endLine: bubble.location.endLine,
+                                            });
+                                          } else {
+                                            setHighlightedRange(null);
+                                          }
+                                        }
 
-                                        return next;
-                                      });
-                                    }}
-                                    flowName={
-                                      currentFlow?.name ||
-                                      getFlowNameFromCode(code)
-                                    }
-                                    inputsSchema={JSON.stringify(
-                                      currentFlow?.inputSchema ||
-                                        extractInputSchemaFromCode(code)
-                                    )}
-                                    onInputsChange={handleExecutionInputsChange}
-                                    onExecute={handleExecuteFromMainPage}
-                                    isExecuting={isRunning}
-                                    isFormValid={isExecutionFormValid()}
-                                    executionInputs={executionInputs}
-                                    onExecutionInputChange={(field, value) => {
-                                      setExecutionInputs((prev) => ({
-                                        ...prev,
-                                        [field]: value,
-                                      }));
-                                    }}
-                                    isLoading={
-                                      createBubbleFlowMutation.isLoading ||
-                                      currentFlowLoading
-                                    }
-                                    onValidate={validateCode}
-                                    isRunning={isRunning}
-                                    bubbleWithError={bubbleWithError}
-                                  />
+                                        // Keep the flow selection
+                                        setHighlightedBubble(String(bubbleKey));
+                                      }}
+                                      requiredCredentials={(() => {
+                                        return (
+                                          currentFlow?.requiredCredentials || {}
+                                        );
+                                      })()}
+                                      availableCredentials={
+                                        availableCredentials
+                                      }
+                                      selectedCredentials={
+                                        pendingExecutionCredentials
+                                      }
+                                      onCredentialsPendingChange={(
+                                        bubbleName,
+                                        credType,
+                                        credId
+                                      ) => {
+                                        setPendingExecutionCredentials(
+                                          (prev) => {
+                                            const next = { ...prev };
+                                            const required =
+                                              currentFlow?.requiredCredentials ||
+                                              {};
+
+                                            // Propagate the selection to all bubbles that require this credType
+                                            Object.entries(required).forEach(
+                                              ([bKey, types]) => {
+                                                if (
+                                                  Array.isArray(types) &&
+                                                  (types as string[]).includes(
+                                                    credType
+                                                  )
+                                                ) {
+                                                  if (!next[bKey])
+                                                    next[bKey] = {};
+                                                  if (credId === null) {
+                                                    delete next[bKey][credType];
+                                                    if (
+                                                      Object.keys(next[bKey])
+                                                        .length === 0
+                                                    ) {
+                                                      delete next[bKey];
+                                                    }
+                                                  } else {
+                                                    next[bKey][credType] =
+                                                      credId;
+                                                  }
+                                                }
+                                              }
+                                            );
+
+                                            return next;
+                                          }
+                                        );
+                                      }}
+                                      flowName={
+                                        currentFlow?.name ||
+                                        getFlowNameFromCode(code)
+                                      }
+                                      inputsSchema={JSON.stringify(
+                                        currentFlow?.inputSchema ||
+                                          extractInputSchemaFromCode(code)
+                                      )}
+                                      onInputsChange={
+                                        handleExecutionInputsChange
+                                      }
+                                      onExecute={handleExecuteFromMainPage}
+                                      isExecuting={isRunning}
+                                      isFormValid={isExecutionFormValid()}
+                                      executionInputs={executionInputs}
+                                      onExecutionInputChange={(
+                                        field,
+                                        value
+                                      ) => {
+                                        setExecutionInputs((prev) => ({
+                                          ...prev,
+                                          [field]: value,
+                                        }));
+                                      }}
+                                      isLoading={
+                                        createBubbleFlowMutation.isLoading ||
+                                        currentFlowLoading
+                                      }
+                                      onValidate={validateCode}
+                                      isRunning={isRunning}
+                                      bubbleWithError={bubbleWithError}
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </Panel>
+                            </Panel>
 
-                          {showEditor && (
-                            <>
-                              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
+                            {showEditor && (
+                              <>
+                                <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
 
-                              {/* Editor Panel */}
-                              <Panel
-                                id="monaco-editor-panel"
-                                defaultSize={isBubbleSidePanelOpen ? 35 : 35}
-                                minSize={25}
-                              >
-                                <div className="h-full bg-[#1a1a1a] min-h-0">
-                                  <div className="h-full min-h-0">
-                                    <div className="h-full relative">
-                                      <MonacoEditor
-                                        value={code || currentFlow?.code}
-                                        onChange={(value) => {
-                                          setCode(value);
-                                        }}
-                                        language="typescript"
-                                        highlightedRange={highlightedRange}
-                                      />
-                                      {/* Code editor overlay with line count */}
-                                      <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
-                                        {code.split('\n').length} lines
+                                {/* Editor Panel */}
+                                <Panel
+                                  id="monaco-editor-panel"
+                                  defaultSize={isBubbleSidePanelOpen ? 35 : 35}
+                                  minSize={25}
+                                >
+                                  <div className="h-full bg-[#1a1a1a] min-h-0">
+                                    <div className="h-full min-h-0">
+                                      <div className="h-full relative">
+                                        <MonacoEditor
+                                          value={code || currentFlow?.code}
+                                          onChange={(value) => {
+                                            setCode(value);
+                                          }}
+                                          language="typescript"
+                                          highlightedRange={highlightedRange}
+                                        />
+                                        {/* Code editor overlay with line count */}
+                                        <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
+                                          {code.split('\n').length} lines
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              </Panel>
-                            </>
-                          )}
-                        </PanelGroup>
+                                </Panel>
+                              </>
+                            )}
+                          </PanelGroup>
+                        </div>
                       )}
                     </div>
                   </div>
