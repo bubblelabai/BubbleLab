@@ -203,6 +203,21 @@ export function DashboardPage({
 
             {/* Category Filter Buttons */}
             <div className="flex flex-wrap gap-2 justify-center mb-6">
+              {/* Generate your own - First button */}
+              {TEMPLATE_CATEGORIES.includes('Generate your own') && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('Generate your own')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                    selectedCategory === 'Generate your own'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                  }`}
+                >
+                  Generate your own
+                </button>
+              )}
+              {/* All Templates - Second button */}
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
@@ -214,7 +229,10 @@ export function DashboardPage({
               >
                 All Templates
               </button>
-              {TEMPLATE_CATEGORIES.map((category) => (
+              {/* Rest of the categories (excluding Generate your own) */}
+              {TEMPLATE_CATEGORIES.filter(
+                (cat) => cat !== 'Generate your own'
+              ).map((category) => (
                 <button
                   key={category}
                   type="button"
