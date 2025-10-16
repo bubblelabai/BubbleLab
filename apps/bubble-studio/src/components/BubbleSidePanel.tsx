@@ -400,7 +400,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedModel, setSelectedModel] = useState<AvailableModel>(
-    'google/gemini-2.5-flash'
+    'openrouter/x-ai/grok-code-fast-1'
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -525,8 +525,8 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
               ))}
             </div>
           )}
-          {/* Model Selector */}
-          <div className="mt-3">
+          {/* Model Selector - COMMENTED OUT: Using Grok Code Fast only */}
+          {/* <div className="mt-3">
             <label className="text-xs text-gray-400 mb-1 block">AI Model</label>
             <div className="relative">
               <select
@@ -545,7 +545,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -683,7 +683,7 @@ function PearlChat() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedModel, setSelectedModel] = useState<AvailableModel>(
-    'google/gemini-2.5-pro'
+    'openrouter/x-ai/grok-code-fast-1'
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -769,14 +769,13 @@ function PearlChat() {
       {/* Info Banner */}
       <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
         <p className="text-xs text-blue-300">
-          💡 <strong>General AI Chat</strong> - Create complete workflows with
-          multiple integrations. Generated code will replace your entire editor
-          content.
+          💡 <strong>New Feature</strong> - Chat with our AI Assistant "Pearl"
+          to modify your workflow!
         </p>
       </div>
 
-      {/* Model Selector */}
-      <div className="mb-4 px-2">
+      {/* Model Selector - COMMENTED OUT: Using Grok Code Fast only */}
+      {/* <div className="mb-4 px-2">
         <label className="text-xs text-gray-400 mb-1 block">AI Model</label>
         <div className="relative">
           <select
@@ -793,7 +792,7 @@ function PearlChat() {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
-      </div>
+      </div> */}
 
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
