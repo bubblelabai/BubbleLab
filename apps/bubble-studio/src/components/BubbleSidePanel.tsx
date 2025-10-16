@@ -19,7 +19,7 @@ import {
 import { useMilkTea } from '../hooks/useMilkTea';
 import { usePearl } from '../hooks/usePearl';
 import { toast } from 'react-toastify';
-import { findLogoForBubble } from '../lib/integrations';
+import { findLogoForBubble, INTEGRATIONS } from '../lib/integrations';
 import { type AvailableModel } from '@bubblelab/shared-schemas';
 
 /**
@@ -765,10 +765,28 @@ function PearlChat() {
     <div className="flex-1 flex flex-col p-4">
       {/* Info Banner */}
       <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
-        <p className="text-xs text-blue-300">
-          💡 <strong>New Feature</strong> - Chat with our AI Assistant "Pearl"
-          to modify your workflow!
+        <p className="text-xs text-blue-300 mb-3">
+          💡 If adding new bubbles, please stick to these supported
+          integrations.
         </p>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {INTEGRATIONS.map((integration) => (
+            <div
+              key={integration.name}
+              className="flex items-center gap-1.5 p-1 bg-blue-900/10 rounded"
+            >
+              <img
+                src={integration.file}
+                alt={`${integration.name} logo`}
+                className="h-3.5 w-3.5 opacity-80"
+                loading="lazy"
+              />
+              <p className="text-[10px] text-blue-200 truncate">
+                {integration.name}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Model Selector - COMMENTED OUT: Using Grok Code Fast only */}
