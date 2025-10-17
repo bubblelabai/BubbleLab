@@ -21,7 +21,7 @@ function getSelfHostedUserId(): string {
     }
 
     return userId;
-  } catch (error) {
+  } catch {
     // Fallback if localStorage is not available
     console.warn(
       '[Analytics] localStorage not available, using session-only ID'
@@ -36,7 +36,8 @@ function getSelfHostedUserId(): string {
  */
 export function useAnalyticsIdentity(): void {
   const { isSignedIn } = useAuth();
-  const { user } = DISABLE_AUTH ? { user: null } : useUser();
+  const clerkUser = useUser();
+  const user = DISABLE_AUTH ? null : clerkUser.user;
   const identifiedRef = useRef(false);
 
   useEffect(() => {
