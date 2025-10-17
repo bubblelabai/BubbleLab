@@ -11,6 +11,8 @@
 Open-source agentic workflow automation builder with full observability and exportability.
 
 - Orchestrate workflows in TypeScript with visual feedback side-by-side
+- Built-in AI Assistant to instantly spin up a workflow and amend as needed
+- Import existing N8N workflow
 - Full observability
 - Export workflows directly to your JS/TS backend
 
