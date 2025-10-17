@@ -243,11 +243,9 @@ export abstract class BaseBubble<
 
         const finalResult = {
           success: result.success,
-          // For data we strip out the success and error fields
+          // For data we strip out any excessive fields
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          data: (({ success: _success, error: _error, ...rest }) => rest)(
-            validatedResult
-          ) as TResult,
+          data: (({ ...rest }) => rest)(validatedResult) as TResult,
           executionId: randomUUID(),
           error: validatedResult.error || '',
           timestamp: new Date(),
@@ -287,10 +285,9 @@ export abstract class BaseBubble<
     // No result schema defined - proceed without validation
     const finalResult = {
       success: result.success,
+      // For data we strip out any excessive fields
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      data: (({ success: _success, error: _error, ...rest }) => rest)(
-        result
-      ) as TResult,
+      data: (({ ...rest }) => rest)(result) as TResult,
       error: result.error || '',
       executionId: randomUUID(),
       timestamp: new Date(),
