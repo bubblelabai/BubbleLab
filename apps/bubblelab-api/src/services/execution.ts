@@ -137,13 +137,6 @@ async function runBubbleFlowCommon(
         data: undefined,
       };
     }
-
-    console.log('[runBubbleFlowCommon] System credentials:', systemCredentials);
-    console.log('[runBubbleFlowCommon] User credentials:', userCredentials);
-    console.log(
-      '[runBubbleFlowCommon] Credentials injected successfully:',
-      Object.keys(injectionResult.injectedCredentials || {})
-    );
   }
 
   // Emit bubble parameters when streaming
