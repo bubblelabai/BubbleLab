@@ -241,27 +241,29 @@ export default function LiveOutput({
     <div className="h-full flex flex-col bg-[#0f1115] rounded-lg border border-[#30363d]">
       {/* Header with Tabs */}
       <div className="border-b border-[#30363d]">
-        <div className="flex items-center justify-between p-4 pb-0">
+        <button
+          onClick={onToggleCollapse}
+          className="w-full flex items-center justify-between p-4 pb-0 hover:bg-[#161b22] transition-colors cursor-pointer"
+          title="Collapse Execution Output"
+          disabled={!onToggleCollapse}
+        >
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-medium text-gray-100">
               Execution Output
             </h3>
           </div>
           {onToggleCollapse && (
-            <button
-              onClick={onToggleCollapse}
-              className="p-1 hover:bg-[#161b22] rounded transition-all duration-200"
-              title="Collapse Execution Output"
-            >
-              <ChevronDownIcon className="w-4 h-4 text-gray-300 hover:text-gray-200" />
-            </button>
+            <ChevronDownIcon className="w-4 h-4 text-gray-300" />
           )}
-        </div>
+        </button>
 
         {/* Tab Navigation */}
         <div className="flex border-b border-[#30363d]">
           <button
-            onClick={() => setActiveTab('live')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('live');
+            }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'live'
                 ? 'border-blue-500 text-blue-300'
@@ -271,7 +273,10 @@ export default function LiveOutput({
             Live Output
           </button>
           <button
-            onClick={() => setActiveTab('history')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('history');
+            }}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
               activeTab === 'history'
                 ? 'border-blue-500 text-blue-300'
@@ -326,7 +331,10 @@ export default function LiveOutput({
         <div className="flex items-center gap-2 px-4 py-2 bg-[#0f1115] border-b border-[#30363d]">
           <button
             type="button"
-            onClick={() => setFilterTab('all')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setFilterTab('all');
+            }}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
               filterTab === 'all'
                 ? 'bg-blue-600 text-white'
@@ -337,7 +345,10 @@ export default function LiveOutput({
           </button>
           <button
             type="button"
-            onClick={() => setFilterTab('warnings')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setFilterTab('warnings');
+            }}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5 ${
               filterTab === 'warnings'
                 ? 'bg-yellow-600 text-white'
@@ -359,7 +370,10 @@ export default function LiveOutput({
           </button>
           <button
             type="button"
-            onClick={() => setFilterTab('errors')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setFilterTab('errors');
+            }}
             className={`px-3 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5 ${
               filterTab === 'errors'
                 ? 'bg-red-600 text-white'
@@ -439,7 +453,10 @@ export default function LiveOutput({
                                 className="mt-2"
                                 open={event.type === 'execution_complete'}
                               >
-                                <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                                <summary
+                                  className="text-xs text-gray-400 cursor-pointer hover:text-gray-300"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   Additional Data
                                 </summary>
                                 <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
@@ -555,7 +572,10 @@ export default function LiveOutput({
                                         'execution_complete'
                                       }
                                     >
-                                      <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                                      <summary
+                                        className="text-xs text-gray-400 cursor-pointer hover:text-gray-300"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
                                         Additional Data
                                       </summary>
                                       <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
@@ -603,7 +623,10 @@ export default function LiveOutput({
                   <p className="text-sm mb-4">{historyError.message}</p>
                   <button
                     type="button"
-                    onClick={() => refetchHistory()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      refetchHistory();
+                    }}
                     className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
                   >
                     Retry
@@ -689,7 +712,10 @@ export default function LiveOutput({
                           className="mb-3"
                           open={execution.status === 'success'}
                         >
-                          <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2">
+                          <summary
+                            className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Execution Payload
                           </summary>
                           <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
@@ -703,7 +729,10 @@ export default function LiveOutput({
                     {/* Result */}
                     {execution.result && (
                       <details className="mb-3">
-                        <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2">
+                        <summary
+                          className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           Execution Result
                         </summary>
                         <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
