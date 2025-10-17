@@ -198,7 +198,7 @@ export class ResendBubble<
     try {
       // Test the API key by making a simple API call
       if (!this.resend) {
-        throw new Error('Resend client not initialized');
+        this.resend = new Resend(this.chooseCredential());
       }
       await this.resend?.domains.list();
       return true;
