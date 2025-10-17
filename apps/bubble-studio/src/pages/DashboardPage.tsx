@@ -13,8 +13,10 @@ import {
   PRESET_PROMPTS,
   getTemplateCategories,
   isTemplateHidden,
+  getTemplateByIndex,
   type TemplateCategory,
 } from '../components/templates/templateLoader';
+import { trackTemplate } from '../services/analytics';
 
 // LoadingDots component using bouncing animation for code generation
 const LoadingDots: React.FC = () => {
@@ -507,6 +509,17 @@ export function DashboardPage({
                           }
                           setShowSignInModal(true);
                           return;
+                        }
+
+                        // Track template click
+                        const template = getTemplateByIndex(originalIndex);
+                        if (template) {
+                          trackTemplate({
+                            action: 'click',
+                            templateId: template.id,
+                            templateName: template.name,
+                            templateCategory: template.category,
+                          });
                         }
 
                         // Set the preset and prompt, then trigger generation

@@ -5,6 +5,7 @@ import {
 } from '../components/templates/templateLoader';
 import { toast } from 'react-toastify';
 import { TokenUsage } from '@bubblelab/shared-schemas';
+import { trackWorkflowGeneration } from '../services/analytics';
 
 // Export the generateCode function for use in other components
 export const useFlowGeneration = () => {
@@ -82,6 +83,9 @@ export const useFlowGeneration = () => {
     setOutput('');
 
     setIsStreaming(true);
+
+    // Track generation start time
+    const generationStartTime = Date.now();
 
     // Navigate to IDE page for generation process
     setCurrentPage('ide');
@@ -361,6 +365,21 @@ export const useFlowGeneration = () => {
         // Clear the generation prompt
         setGenerationPrompt('');
 
+        // Track successful workflow generation
+        const template =
+          selectedPreset !== undefined
+            ? getTemplateByIndex(selectedPreset)
+            : undefined;
+        trackWorkflowGeneration({
+          prompt: savedPrompt,
+          templateId: template?.id,
+          templateName: template?.name,
+          generatedBubbleCount: bubbleCount,
+          generatedCodeLength: generatedResult.generatedCode.length,
+          generationDuration: Date.now() - generationStartTime,
+          success: true,
+        });
+
         // Auto-create the flow after successful code generation
         if (onCreateFlowFromGeneration) {
           await onCreateFlowFromGeneration(generatedResult.generatedCode, {
@@ -375,6 +394,22 @@ export const useFlowGeneration = () => {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       setOutput((prev) => prev + `\nGeneration Error: ${errorMessage}`);
+
+      // Track failed workflow generation
+      const template =
+        selectedPreset !== undefined
+          ? getTemplateByIndex(selectedPreset)
+          : undefined;
+      trackWorkflowGeneration({
+        prompt: savedPrompt,
+        templateId: template?.id,
+        templateName: template?.name,
+        generatedBubbleCount: 0,
+        generatedCodeLength: 0,
+        generationDuration: Date.now() - generationStartTime,
+        success: false,
+        errorMessage: errorMessage,
+      });
     } finally {
       // Always clear streaming state and generation info
       setIsStreaming(false);

@@ -21,6 +21,7 @@ import { usePearl } from '../hooks/usePearl';
 import { toast } from 'react-toastify';
 import { findLogoForBubble, INTEGRATIONS } from '../lib/integrations';
 import { type AvailableModel } from '@bubblelab/shared-schemas';
+import { trackAIAssistant } from '../services/analytics';
 
 /**
  * Bubble definition from bubbles.json
@@ -736,6 +737,7 @@ function PearlChat() {
             resultType: result.type,
             timestamp: new Date(),
           };
+          trackAIAssistant({ action: 'receive_response' });
           setMessages((prev) => [...prev, assistantMessage]);
         },
         onError: (error) => {
@@ -757,6 +759,7 @@ function PearlChat() {
 
   const handleReplace = (code: string) => {
     replaceAllEditorContent(code);
+    trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');
     closeSidePanel();
   };
