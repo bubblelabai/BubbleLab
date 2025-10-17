@@ -131,6 +131,39 @@ export default function LiveOutput({
     });
   };
 
+  // Function to syntax highlight JSON
+  const syntaxHighlightJson = (json: string) => {
+    // Replace special characters and add syntax highlighting
+    const highlighted = json.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+      (match) => {
+        let cls = 'text-orange-300'; // numbers
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'text-purple-300'; // keys
+            return `<span class="${cls}">${match}</span>`;
+          } else {
+            cls = 'text-green-300'; // string values
+            return `<span class="${cls}">${match}</span>`;
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'text-blue-400'; // booleans
+        } else if (/null/.test(match)) {
+          cls = 'text-red-300'; // null
+        }
+        return `<span class="${cls}">${match}</span>`;
+      }
+    );
+    return highlighted;
+  };
+
+  // Render syntax highlighted JSON
+  const renderJson = (data: unknown) => {
+    const jsonString = JSON.stringify(data, null, 2);
+    const highlighted = syntaxHighlightJson(jsonString);
+    return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+  };
+
   const getEventIcon = (event: StreamingLogEvent) => {
     switch (event.type) {
       case 'bubble_start':
@@ -454,19 +487,13 @@ export default function LiveOutput({
                                 open={event.type === 'execution_complete'}
                               >
                                 <summary
-                                  className="text-xs text-gray-400 cursor-pointer hover:text-gray-300"
+                                  className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   Additional Data
                                 </summary>
-                                <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
-                                  {makeLinksClickable(
-                                    JSON.stringify(
-                                      event.additionalData,
-                                      null,
-                                      2
-                                    )
-                                  )}
+                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                  {renderJson(event.additionalData)}
                                 </pre>
                               </details>
                             )}
@@ -573,18 +600,14 @@ export default function LiveOutput({
                                       }
                                     >
                                       <summary
-                                        className="text-xs text-gray-400 cursor-pointer hover:text-gray-300"
+                                        className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         Additional Data
                                       </summary>
-                                      <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
-                                        {makeLinksClickable(
-                                          JSON.stringify(
-                                            selectedEvent.additionalData,
-                                            null,
-                                            2
-                                          )
+                                      <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                        {renderJson(
+                                          selectedEvent.additionalData
                                         )}
                                       </pre>
                                     </details>
@@ -713,15 +736,13 @@ export default function LiveOutput({
                           open={execution.status === 'success'}
                         >
                           <summary
-                            className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2"
+                            className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
                             onClick={(e) => e.stopPropagation()}
                           >
                             Execution Payload
                           </summary>
-                          <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
-                            {makeLinksClickable(
-                              JSON.stringify(execution.payload, null, 2)
-                            )}
+                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                            {renderJson(execution.payload)}
                           </pre>
                         </details>
                       )}
@@ -730,15 +751,13 @@ export default function LiveOutput({
                     {execution.result && (
                       <details className="mb-3">
                         <summary
-                          className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2"
+                          className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Execution Result
                         </summary>
-                        <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
-                          {makeLinksClickable(
-                            JSON.stringify(execution.result, null, 2)
-                          )}
+                        <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                          {renderJson(execution.result)}
                         </pre>
                       </details>
                     )}

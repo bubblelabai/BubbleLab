@@ -19,6 +19,12 @@
   font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
 }
 
+/* JSON output code font */
+.json-output,
+.json-output * {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
