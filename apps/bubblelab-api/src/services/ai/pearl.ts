@@ -94,6 +94,8 @@ CRITICAL CODE GENERATION RULES:
 7. When you generate code (type: "code"), you MUST immediately call the validation tool
 8. The validation tool will validate your complete workflow code
 9. If validation fails, fix the code and try again until validation passes
+10. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
+
 
 For input schema, ie. the interface passed to the handle method. Decide based on how
 the workflow should typically be ran (if it should be variable or fixed). If all

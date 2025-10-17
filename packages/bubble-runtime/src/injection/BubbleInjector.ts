@@ -369,8 +369,6 @@ export class BubbleInjector {
     }
 
     const finalScript = lines.join('\n');
-    console.log('Final script done!!!:', finalScript);
-
     this.bubbleScript.currentBubbleScript = finalScript;
     this.bubbleScript.reparseAST();
     return finalScript;
