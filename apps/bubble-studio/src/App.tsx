@@ -20,7 +20,7 @@ import { BubbleSidePanel } from './components/BubbleSidePanel';
 import { CredentialsPage } from './pages/CredentialsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 import { DashboardPage } from './pages/DashboardPage';
-import LiveOutput from './components/LiveOutput';
+import LiveOutput from './components/execution_logs/LiveOutput';
 import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
 import { Sidebar } from './components/Sidebar';

@@ -12,7 +12,8 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/solid';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
-import { useExecutionHistory } from '../hooks/useExecutionHistory';
+import { useExecutionHistory } from '../../hooks/useExecutionHistory';
+import AllEventsView from './AllEventsView';
 
 interface LiveOutputProps {
   isExecuting?: boolean;
@@ -416,7 +417,7 @@ export default function LiveOutput({
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto thin-scrollbar">
         {activeTab === 'live' ? (
-          <div className="p-4 space-y-2">
+          <div className="h-full">
             {displayEvents.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500">
                 <div className="text-center">
@@ -426,8 +427,20 @@ export default function LiveOutput({
                   </p>
                 </div>
               </div>
+            ) : filterTab === 'all' ? (
+              /* Sidebar layout for All Events */
+              <AllEventsView
+                orderedItems={orderedItems}
+                currentLine={currentLine}
+                getEventIcon={getEventIcon}
+                getEventColor={getEventColor}
+                formatTimestamp={formatTimestamp}
+                makeLinksClickable={makeLinksClickable}
+                renderJson={renderJson}
+              />
             ) : (
-              <>
+              /* Vertical layout for Warnings and Errors tabs */
+              <div className="p-4 space-y-2">
                 {orderedItems.map((item, index) => {
                   if (item.kind === 'global') {
                     const event = item.event;
@@ -476,7 +489,7 @@ export default function LiveOutput({
                                 >
                                   Additional Data
                                 </summary>
-                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                                   {renderJson(event.additionalData)}
                                 </pre>
                               </details>
@@ -589,7 +602,7 @@ export default function LiveOutput({
                                       >
                                         Additional Data
                                       </summary>
-                                      <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                      <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                                         {renderJson(
                                           selectedEvent.additionalData
                                         )}
@@ -608,9 +621,9 @@ export default function LiveOutput({
                     );
                   }
                 })}
-              </>
+                <div ref={eventsEndRef} />
+              </div>
             )}
-            <div ref={eventsEndRef} />
           </div>
         ) : (
           /* History Tab */
@@ -725,7 +738,7 @@ export default function LiveOutput({
                           >
                             Execution Payload
                           </summary>
-                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                             {renderJson(execution.payload)}
                           </pre>
                         </details>
