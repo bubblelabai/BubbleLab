@@ -340,22 +340,6 @@ export default function LiveOutput({
               {formatMemoryUsage(executionStats.memoryUsage)}
             </span>
           </div>
-          <div className="text-gray-400">
-            Lines:{' '}
-            <span className="text-white">{executionStats.linesExecuted}</span>
-          </div>
-          <div className="text-gray-400">
-            Bubbles:{' '}
-            <span className="text-white">
-              {executionStats.bubblesProcessed}
-            </span>
-          </div>
-          {currentLine && (
-            <div className="text-gray-400">
-              Current Line:{' '}
-              <span className="text-yellow-400 font-mono">#{currentLine}</span>
-            </div>
-          )}
         </div>
       )}
 
