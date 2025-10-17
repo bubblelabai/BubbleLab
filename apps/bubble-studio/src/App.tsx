@@ -46,19 +46,8 @@ import { API_BASE_URL } from './env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfoInferred as ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useSubscription } from './hooks/useSubscription';
-import {
-  trackWorkflowExecution,
-  trackCodeEdit,
-  trackAIAssistant,
-} from './services/analytics';
-import { useAnalyticsIdentity, useExecutionTimer } from './hooks/useAnalytics';
 
 function App() {
-  // Initialize analytics identity tracking
-  useAnalyticsIdentity();
-
-  // Initialize execution timer for analytics
-  const executionTimer = useExecutionTimer();
   // Check if this is an OAuth callback
   const urlParams = new URLSearchParams(window.location.search);
   const isOAuthCallback =
@@ -188,39 +177,12 @@ function App() {
       // Refetch execution history to enable Export button
       // Refetech subscription to update token usage
       refetchSubscriptionStatus();
-
-      // Track successful workflow execution
-      if (currentFlow) {
-        trackWorkflowExecution({
-          flowId: currentFlow.id,
-          flowName: currentFlow.name,
-          bubbleCount: Object.keys(currentFlow.bubbleParameters || {}).length,
-          hasInputSchema: !!currentFlow.inputSchema,
-          executionDuration: executionTimer.getElapsedTime(),
-          success: true,
-        });
-        executionTimer.reset();
-      }
     },
     onError: (error: string, isFatal?: boolean, errorVariableId?: number) => {
       setIsRunning(false);
       setOutput((prev) => prev + `\n❌ Execution failed: ${error}`);
       // Clear visual indicator when execution fails
       setHasNewOutputEvents(false);
-
-      // Track failed workflow execution
-      if (currentFlow) {
-        trackWorkflowExecution({
-          flowId: currentFlow.id,
-          flowName: currentFlow.name,
-          bubbleCount: Object.keys(currentFlow.bubbleParameters || {}).length,
-          hasInputSchema: !!currentFlow.inputSchema,
-          executionDuration: executionTimer.getElapsedTime(),
-          success: false,
-          errorMessage: error,
-        });
-        executionTimer.reset();
-      }
 
       // If this is a fatal error, mark the bubble with error
       if (isFatal) {
@@ -529,9 +491,6 @@ function App() {
     setBubbleWithError(null);
     lastExecutingBubbleRef.current = null;
 
-    // Start execution timer for analytics
-    executionTimer.start();
-
     try {
       // Prepare execution payload
       const payload = schemaInputs || {};
@@ -717,15 +676,6 @@ function App() {
           }
         );
 
-        // Track successful code validation
-        trackCodeEdit({
-          action: 'validate',
-          flowId: currentFlow?.id,
-          codeLength: code.length,
-          bubbleCount: bubbleCount,
-          validationSuccess: true,
-        });
-
         // Show detailed info in a separate toast
         if (result.bubbles && Object.keys(result.bubbles).length > 0) {
           const bubbleDetails = Object.values(result.bubbles)
@@ -768,15 +718,6 @@ function App() {
             autoClose: 5000,
           }
         );
-
-        // Track failed code validation
-        trackCodeEdit({
-          action: 'validate',
-          flowId: currentFlow?.id,
-          codeLength: code.length,
-          validationSuccess: false,
-          errorCount: errorCount,
-        });
 
         // Show detailed errors in a separate toast
         if (result.errors && result.errors.length > 0) {
@@ -1326,9 +1267,6 @@ function App() {
                       type="button"
                       onClick={() => {
                         openPearlChat();
-                        setShowEditor(true);
-                        // Track AI Assistant opening
-                        trackAIAssistant({ action: 'open' });
                       }}
                       className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                     >
@@ -1851,9 +1789,9 @@ function App() {
               </PanelGroup>
             </Panel>
           </PanelGroup>
-          {/* Bottom-right floating drawer for Live Output */}
+          {/* Bottom floating drawer for Live Output - spans full width */}
           {isOutputCollapsed ? (
-            <div className="absolute bottom-0 right-4 z-40 w-[min(92vw,800px)]">
+            <div className="absolute bottom-0 left-0 right-0 z-40 px-4">
               <button
                 onClick={handleOpenOutputPanel}
                 className="w-full border border-b-0 px-4 py-4 text-sm font-medium rounded-t-md shadow-lg flex items-center justify-between transition-all duration-200 bg-[#0f1115] border-[#30363d] text-gray-300 hover:text-gray-200 hover:bg-[#161b22]"
@@ -1873,7 +1811,7 @@ function App() {
               </button>
             </div>
           ) : (
-            <div className="absolute bottom-0 right-4 z-40 w-[min(92vw,800px)]">
+            <div className="absolute bottom-0 left-0 right-0 z-40 px-4">
               <div className="h-[55vh] min-h-[260px] bg-[#0f1115] border border-[#30363d] rounded-t-lg shadow-2xl overflow-hidden transition-transform duration-300 ease-out translate-y-0">
                 <LiveOutput
                   flowId={currentFlow?.id}
