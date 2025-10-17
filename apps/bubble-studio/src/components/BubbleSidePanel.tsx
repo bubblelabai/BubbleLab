@@ -400,7 +400,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Fixed model - users cannot change this currently
-  const selectedModel: AvailableModel = 'openai/gpt-5';
+  const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get logo for the bubble
