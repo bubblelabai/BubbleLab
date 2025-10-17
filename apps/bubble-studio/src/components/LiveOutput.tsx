@@ -442,7 +442,7 @@ export default function LiveOutput({
                                 <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
                                   Additional Data
                                 </summary>
-                                <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-auto">
+                                <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
                                   {makeLinksClickable(
                                     JSON.stringify(
                                       event.additionalData,
@@ -558,7 +558,7 @@ export default function LiveOutput({
                                       <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
                                         Additional Data
                                       </summary>
-                                      <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-auto">
+                                      <pre className="text-xs text-gray-400 mt-1 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
                                         {makeLinksClickable(
                                           JSON.stringify(
                                             selectedEvent.additionalData,
@@ -692,7 +692,7 @@ export default function LiveOutput({
                           <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2">
                             Execution Payload
                           </summary>
-                          <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-auto">
+                          <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
                             {makeLinksClickable(
                               JSON.stringify(execution.payload, null, 2)
                             )}
@@ -706,7 +706,7 @@ export default function LiveOutput({
                         <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300 mb-2">
                           Execution Result
                         </summary>
-                        <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-auto">
+                        <pre className="text-xs text-gray-400 p-2 bg-[#0f1115] rounded overflow-x-hidden whitespace-pre-wrap break-words">
                           {makeLinksClickable(
                             JSON.stringify(execution.result, null, 2)
                           )}
