@@ -22,4 +22,12 @@ export const SHOW_LEGACY_PARAMS: boolean =
 export const DISABLE_AUTH: boolean =
   import.meta.env.VITE_DISABLE_AUTH === 'true';
 
+// PostHog Analytics Configuration
+export const POSTHOG_API_KEY: string | undefined = import.meta.env
+  .VITE_POSTHOG_API_KEY;
+export const POSTHOG_HOST: string =
+  import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
+export const ANALYTICS_ENABLED: boolean =
+  import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'; // Enabled by default unless explicitly disabled
+
 console.log('DISABLE_AUTH', DISABLE_AUTH);

@@ -30,7 +30,7 @@ const WebSearchToolParamsSchema = z.object({
   limit: z
     .number()
     .min(1, 'Minimum number of search results to return is 1')
-    .max(4, 'Maximum number of search results to return is 4')
+    .max(5, 'Maximum number of search results to return is 5')
     .default(3)
     .describe('Maximum number of search results to return'),
   location: z
