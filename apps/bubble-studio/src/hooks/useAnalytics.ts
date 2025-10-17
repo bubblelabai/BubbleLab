@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser } from './useUser';
 import { useAuth } from './useAuth';
 import { analytics } from '../services/analytics';
 import { DISABLE_AUTH } from '../env';
@@ -51,11 +51,17 @@ export function useAnalyticsIdentity(): void {
       identifiedRef.current = true;
     } else if (!DISABLE_AUTH && isSignedIn && user && !identifiedRef.current) {
       // Cloud mode: identify with Clerk user
+      const email =
+        'primaryEmailAddress' in user
+          ? user.primaryEmailAddress?.emailAddress
+          : user.emailAddresses?.[0]?.emailAddress;
+      const username = 'username' in user ? user.username : user.fullName;
+
       analytics.identify(user.id, {
-        email: user.primaryEmailAddress?.emailAddress,
+        email,
         firstName: user.firstName,
         lastName: user.lastName,
-        username: user.username,
+        username,
         mode: 'cloud',
         deployment_type: 'cloud',
       });

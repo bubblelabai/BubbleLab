@@ -147,21 +147,37 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
                   <input
                     type={isNumber ? 'number' : 'text'}
                     value={
-                      typeof currentValue === 'string' ||
-                      typeof currentValue === 'number'
-                        ? currentValue
-                        : ''
-                    }
-                    onChange={(e) =>
-                      onExecutionInputChange(
-                        field.name,
-                        isNumber
-                          ? e.target.value
-                            ? Number(e.target.value)
+                      field.type === 'array'
+                        ? Array.isArray(currentValue)
+                          ? JSON.stringify(currentValue)
+                          : typeof currentValue === 'string'
+                            ? currentValue
                             : ''
-                          : e.target.value
-                      )
+                        : typeof currentValue === 'string' ||
+                            typeof currentValue === 'number'
+                          ? currentValue
+                          : ''
                     }
+                    onChange={(e) => {
+                      if (field.type === 'array') {
+                        // For array types, try to parse the JSON string
+                        try {
+                          const parsedValue = JSON.parse(e.target.value);
+                          onExecutionInputChange(field.name, parsedValue);
+                        } catch {
+                          // If parsing fails, store as string temporarily
+                          // This allows users to type partial JSON
+                          onExecutionInputChange(field.name, e.target.value);
+                        }
+                      } else if (isNumber) {
+                        onExecutionInputChange(
+                          field.name,
+                          e.target.value ? Number(e.target.value) : ''
+                        );
+                      } else {
+                        onExecutionInputChange(field.name, e.target.value);
+                      }
+                    }}
                     placeholder={
                       field.type === 'array'
                         ? Array.isArray(field.default)
