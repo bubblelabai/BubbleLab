@@ -489,7 +489,7 @@ export default function LiveOutput({
                                 >
                                   Additional Data
                                 </summary>
-                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                                   {renderJson(event.additionalData)}
                                 </pre>
                               </details>
@@ -602,7 +602,7 @@ export default function LiveOutput({
                                       >
                                         Additional Data
                                       </summary>
-                                      <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                      <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                                         {renderJson(
                                           selectedEvent.additionalData
                                         )}
@@ -738,7 +738,7 @@ export default function LiveOutput({
                           >
                             Execution Payload
                           </summary>
-                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                             {renderJson(execution.payload)}
                           </pre>
                         </details>

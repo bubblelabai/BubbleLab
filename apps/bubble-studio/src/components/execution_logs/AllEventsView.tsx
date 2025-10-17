@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
+import { findLogoForBubble } from '../../lib/integrations';
 
 interface AllEventsViewProps {
   orderedItems: Array<
@@ -13,11 +14,11 @@ interface AllEventsViewProps {
     | { kind: 'global'; event: StreamingLogEvent; firstTs: number }
   >;
   currentLine: number | null;
-  getEventIcon: (event: StreamingLogEvent) => JSX.Element;
+  getEventIcon: (event: StreamingLogEvent) => React.ReactElement;
   getEventColor: (event: StreamingLogEvent) => string;
   formatTimestamp: (timestamp: string) => string;
-  makeLinksClickable: (text: string | null) => (string | JSX.Element)[];
-  renderJson: (data: unknown) => JSX.Element;
+  makeLinksClickable: (text: string | null) => (string | React.ReactElement)[];
+  renderJson: (data: unknown) => React.ReactElement;
 }
 
 export default function AllEventsView({
@@ -75,6 +76,7 @@ export default function AllEventsView({
             } else {
               // Bubble group
               const varId = item.name;
+              const logo = findLogoForBubble({ bubbleName: varId });
               return (
                 <button
                   key={`bubble-${varId}`}
@@ -87,11 +89,20 @@ export default function AllEventsView({
                 >
                   <div className="flex items-center gap-2">
                     <div className="flex-shrink-0">
-                      <PlayIcon className="h-4 w-4 text-blue-400" />
+                      {logo ? (
+                        <img
+                          src={logo.file}
+                          alt={`${logo.name} logo`}
+                          className="h-4 w-4 opacity-80"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <PlayIcon className="h-4 w-4 text-blue-400" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-gray-200 truncate">
-                        bubble: <span className="text-blue-300">{varId}</span>
+                        Bubble: <span className="text-blue-300">{varId}</span>
                       </div>
                       <div className="text-xs text-gray-500">
                         {item.events.length} event
@@ -158,7 +169,7 @@ export default function AllEventsView({
                           >
                             Additional Data
                           </summary>
-                          <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                          <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                             {renderJson(event.additionalData)}
                           </pre>
                         </details>
@@ -179,7 +190,7 @@ export default function AllEventsView({
                 <div className="rounded-lg border border-[#30363d] bg-[#0f1115]/60">
                   <div className="flex items-center gap-3 px-3 py-2 border-b border-[#30363d]">
                     <div className="text-sm text-gray-200 font-mono">
-                      bubble: <span className="text-blue-300">{varId}</span>
+                      Bubble: <span className="text-blue-300">{varId}</span>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       <label className="text-xs text-gray-400">Output</label>
@@ -261,7 +272,7 @@ export default function AllEventsView({
                                 >
                                   Additional Data
                                 </summary>
-                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
                                   {renderJson(selectedEvent.additionalData)}
                                 </pre>
                               </details>
