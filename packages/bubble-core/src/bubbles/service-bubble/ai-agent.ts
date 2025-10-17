@@ -94,7 +94,7 @@ const ModelConfigSchema = z.object({
     .optional()
     .default(40000)
     .describe(
-      'Maximum number of tokens to generate in response, keep at 20000 or higher for best results'
+      'Maximum number of tokens to generate in response, keep at default of 40000 unless the response is expected to be certain length'
     ),
   jsonMode: z
     .boolean()
