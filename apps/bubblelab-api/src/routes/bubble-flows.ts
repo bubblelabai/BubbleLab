@@ -20,7 +20,7 @@ import {
   type ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/bubble-core';
 import {
   BubbleFlowGeneratorWorkflow,
@@ -95,6 +95,23 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
     }),
   ]);
 
+  // Get execution counts for all flows
+  const flowIds = flows.map((flow) => flow.id);
+  const executionCounts = await Promise.all(
+    flowIds.map(async (flowId) => {
+      const result = await db
+        .select({ count: count() })
+        .from(bubbleFlowExecutions)
+        .where(eq(bubbleFlowExecutions.bubbleFlowId, flowId));
+      return { flowId, count: result[0]?.count || 0 };
+    })
+  );
+
+  // Create a map for quick lookup
+  const executionCountMap = new Map(
+    executionCounts.map((item) => [item.flowId, item.count])
+  );
+
   const bubbleFlowsData = flows.map((flow) => ({
     id: flow.id,
     name: flow.name,
@@ -103,6 +120,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
     isActive: flow.webhooks[0]?.isActive ?? false,
     webhookExecutionCount: flow.webhookExecutionCount,
     webhookFailureCount: flow.webhookFailureCount,
+    executionCount: executionCountMap.get(flow.id) || 0,
     createdAt: flow.createdAt.toISOString(),
     updatedAt: flow.updatedAt.toISOString(),
   }));

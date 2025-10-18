@@ -92,6 +92,12 @@ export const HomePage: React.FC<HomePageProps> = ({
                       )}
                     </h3>
 
+                    {/* Execution Count */}
+                    <div className="text-xs text-gray-400 mb-1">
+                      {flow.executionCount || 0}{' '}
+                      {flow.executionCount === 1 ? 'execution' : 'executions'}
+                    </div>
+
                     {/* Created Date */}
                     <div className="text-xs text-gray-500">
                       {new Date(flow.createdAt)

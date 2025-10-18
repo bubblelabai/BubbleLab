@@ -194,6 +194,9 @@ export const bubbleFlowListItemSchema = z.object({
   webhookFailureCount: z
     .number()
     .openapi({ description: 'Webhook failure count' }),
+  executionCount: z
+    .number()
+    .openapi({ description: 'Total number of executions in history' }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
 });
