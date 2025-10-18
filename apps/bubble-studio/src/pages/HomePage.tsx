@@ -1,6 +1,8 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
+import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
+import { SignedIn } from '../components/AuthComponents';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -30,14 +32,24 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            My Bubble Flows
-          </h1>
-          <p className="text-gray-400 text-sm">
+          <h1 className="text-3xl font-bold text-white mb-2">Overview</h1>
+          <p className="text-gray-400 text-sm mb-4">
             {isLoading
               ? 'Loading...'
               : `${flows.length} ${flows.length === 1 ? 'flow' : 'flows'} total`}
           </p>
+
+          {/* Token Usage Display */}
+          <SignedIn>
+            <div className="w-64">
+              <TokenUsageDisplay isOpen={true} />
+            </div>
+          </SignedIn>
+        </div>
+
+        {/* Flows Section */}
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-white">My Bubble Flows</h2>
         </div>
 
         {/* Grid of Flows */}
@@ -59,7 +71,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {flows.map((flow) => {
               const isRun = false; // TODO: Determine run status from server data
               return (
@@ -81,7 +93,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </h3>
 
                     {/* Created Date */}
-                    <div className="text-xs text-gray-500 mb-4">
+                    <div className="text-xs text-gray-500">
                       {new Date(flow.createdAt)
                         .toLocaleString(undefined, {
                           year: 'numeric',
@@ -92,11 +104,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                         })
                         .replace(/, (\d{4})/g, ' $1')}
                     </div>
-
-                    {/* Flow Description or Placeholder */}
-                    <p className="text-xs text-gray-400 line-clamp-2">
-                      {flow.description || 'No description available'}
-                    </p>
                   </div>
 
                   {/* Delete Button - appears on hover */}

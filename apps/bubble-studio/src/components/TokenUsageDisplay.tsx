@@ -1,6 +1,5 @@
 import React from 'react';
 import { useSubscription } from '../hooks/useSubscription';
-import { Sparkles } from 'lucide-react';
 
 interface TokenUsageDisplayProps {
   isOpen: boolean;
@@ -38,20 +37,15 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
     <div className="px-2 mb-2">
       <div className="relative group">
         <div
-          className={`w-full flex items-center rounded-lg bg-gradient-to-r from-purple-600/10 to-blue-600/10 border border-purple-600/20 hover:border-purple-600/40 transition-colors ${
+          className={`w-full flex items-center rounded-lg bg-[#161b22] border border-[#30363d] hover:border-purple-600/40 transition-colors ${
             isOpen ? 'p-3' : 'justify-center p-2'
           }`}
         >
-          {/* Icon */}
-          <span className={`flex-none ${isOpen ? 'mr-3' : ''}`}>
-            <Sparkles className="w-5 h-5 text-purple-400" />
-          </span>
-
           {/* Token usage details (shown when expanded) */}
           {isOpen && (
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-400 mb-1">
-                Token Usage This Month
+                Monthly Token Usage
               </div>
               <div className="text-lg font-semibold text-white">
                 {formatTokens(totalTokens)}

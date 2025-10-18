@@ -1,7 +1,6 @@
 import React from 'react';
 import { UserButton } from '@clerk/clerk-react';
 import { Plus, KeyRound, PanelLeft, Home, User } from 'lucide-react';
-import { TokenUsageDisplay } from './TokenUsageDisplay';
 import { useUser } from '../hooks/useUser';
 import { SignedIn } from './AuthComponents';
 import { DISABLE_AUTH } from '../env';
@@ -174,11 +173,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Spacer to push bottom content down */}
         <div className="flex-1" />
-
-        {/* Token usage display above profile */}
-        <SignedIn>
-          <TokenUsageDisplay isOpen={isOpen} />
-        </SignedIn>
 
         {/* Profile button at sidebar bottom */}
         <div className="mb-3">

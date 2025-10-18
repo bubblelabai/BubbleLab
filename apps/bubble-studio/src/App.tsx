@@ -124,7 +124,7 @@ function App() {
       setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
     } else {
       setSelectedFlow(null);
-      setCurrentPage('home');
+      setCurrentPage('prompt');
     }
   }, [bubbleFlowList]);
 
