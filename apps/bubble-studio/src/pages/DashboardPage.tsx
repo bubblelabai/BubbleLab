@@ -192,10 +192,7 @@ export function DashboardPage({
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={onSidebarToggle}
-        selectedFlowId={selectedFlow}
         onPageChange={handlePageChange}
-        onFlowSelect={handleFlowSelect}
-        onFlowDelete={onFlowDelete}
       />
 
       <div
