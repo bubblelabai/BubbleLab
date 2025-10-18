@@ -2,16 +2,16 @@ import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 
-export interface MyFlowsPageProps {
+export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
   onFlowDelete: (flowId: number, event: React.MouseEvent) => void;
 }
 
-export const MyFlowsPage: React.FC<MyFlowsPageProps> = ({
+export const HomePage: React.FC<HomePageProps> = ({
   onFlowSelect,
   onFlowDelete,
 }) => {
-  const { data: bubbleFlowListResponse } = useBubbleFlowList();
+  const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
 
   const flows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -22,8 +22,11 @@ export const MyFlowsPage: React.FC<MyFlowsPageProps> = ({
     onFlowDelete(flowId, event);
   };
 
+  // Show loading state if data hasn't loaded yet OR if actively loading
+  const isLoading = loading || bubbleFlowListResponse === undefined;
+
   return (
-    <div className="h-full bg-[#0f1115] overflow-auto">
+    <div className="h-full bg-[#0a0a0a] overflow-auto">
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">
@@ -31,12 +34,19 @@ export const MyFlowsPage: React.FC<MyFlowsPageProps> = ({
             My Bubble Flows
           </h1>
           <p className="text-gray-400 text-sm">
-            {flows.length} {flows.length === 1 ? 'flow' : 'flows'} total
+            {isLoading
+              ? 'Loading...'
+              : `${flows.length} ${flows.length === 1 ? 'flow' : 'flows'} total`}
           </p>
         </div>
 
         {/* Grid of Flows */}
-        {flows.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="w-16 h-16 border-4 border-purple-600/30 border-t-purple-600 rounded-full animate-spin mb-6"></div>
+            <p className="text-gray-400 text-sm">Loading your flows...</p>
+          </div>
+        ) : flows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24">
             <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center mb-6">
               <span className="text-4xl">💫</span>

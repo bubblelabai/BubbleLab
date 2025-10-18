@@ -20,7 +20,7 @@ import { BubbleSidePanel } from './components/BubbleSidePanel';
 import { CredentialsPage } from './pages/CredentialsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 import { DashboardPage } from './pages/DashboardPage';
-import { MyFlowsPage } from './pages/MyFlowsPage';
+import { HomePage } from './pages/HomePage';
 import LiveOutput from './components/execution_logs/LiveOutput';
 import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
@@ -124,7 +124,7 @@ function App() {
       setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
     } else {
       setSelectedFlow(null);
-      setCurrentPage('prompt');
+      setCurrentPage('home');
     }
   }, [bubbleFlowList]);
 
@@ -1145,7 +1145,7 @@ function App() {
           className={`h-screen flex flex-col bg-[#1a1a1a] text-gray-100 ${isSidebarOpen ? 'pl-56' : 'pl-14'}`}
         >
           <div className="flex-1 min-h-0">
-            <MyFlowsPage
+            <HomePage
               onFlowSelect={handleSidebarFlowSelect}
               onFlowDelete={handleSidebarFlowDelete}
             />
