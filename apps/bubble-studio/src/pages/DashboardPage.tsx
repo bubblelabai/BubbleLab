@@ -42,7 +42,7 @@ interface DashboardPageProps {
   isSidebarOpen: boolean;
   onSidebarToggle: () => void;
   onPageChange: (
-    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary'
+    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
   ) => void;
   selectedFlow: number | null;
   onFlowSelect: (flowId: number) => void;
@@ -156,7 +156,7 @@ export function DashboardPage({
 
   // Wrapper function to check authentication before navigation
   const handlePageChange = (
-    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary'
+    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
   ) => {
     // If trying to navigate away from dashboard and not signed in, show modal
     if (page !== 'prompt' && !isSignedIn) {

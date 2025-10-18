@@ -64,6 +64,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           isActive: newFlow.webhookActive,
           webhookExecutionCount: 0,
           webhookFailureCount: 0,
+          executionCount: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -121,8 +122,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 eventType: variables.eventType,
                 isActive: variables.webhookActive,
                 webhookExecutionCount: 0,
-                prompt: variables.prompt,
                 webhookFailureCount: 0,
+                executionCount: 0,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };
