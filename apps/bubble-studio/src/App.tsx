@@ -9,7 +9,6 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   Play,
-  Bot,
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -59,7 +58,6 @@ function App() {
     'Ready to code! Try the examples above to test TypeScript IntelliSense.'
   );
   const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
-  const openPearlChat = useEditorStore((state) => state.openPearlChat);
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
   const [code, setCode] = useState<string>('');
   const {
@@ -1168,9 +1166,6 @@ function App() {
         isSidebarOpen={isSidebarOpen}
         onSidebarToggle={() => setIsSidebarOpen((prev) => !prev)}
         onPageChange={handleSidebarPageChange}
-        selectedFlow={selectedFlow}
-        onFlowSelect={handleSidebarFlowSelect}
-        onFlowDelete={handleSidebarFlowDelete}
       />
     );
   }
