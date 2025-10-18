@@ -32,6 +32,7 @@ import {
   executeBubbleFlowStreamRoute,
   getBubbleFlowRoute,
   updateBubbleFlowRoute,
+  updateBubbleFlowNameRoute,
   listBubbleFlowsRoute,
   activateBubbleFlowRoute,
   deleteBubbleFlowRoute,
@@ -522,6 +523,51 @@ app.openapi(updateBubbleFlowRoute, async (c) => {
     {
       message: 'BubbleFlow parameters updated successfully',
       bubbleParameters: newParams,
+    },
+    200
+  );
+});
+
+app.openapi(updateBubbleFlowNameRoute, async (c) => {
+  const userId = getUserId(c);
+  const id = parseInt(c.req.param('id'));
+  const { name } = c.req.valid('json');
+
+  if (isNaN(id)) {
+    return c.json(
+      {
+        error: 'Invalid ID format',
+      },
+      400
+    );
+  }
+
+  // Get existing flow (only if it belongs to the user)
+  const existingFlow = await db.query.bubbleFlows.findFirst({
+    where: and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId)),
+  });
+
+  if (!existingFlow) {
+    return c.json(
+      {
+        error: 'BubbleFlow not found',
+      },
+      404
+    );
+  }
+
+  // Update the flow name
+  await db
+    .update(bubbleFlows)
+    .set({
+      name: name,
+      updatedAt: new Date(),
+    })
+    .where(eq(bubbleFlows.id, id));
+
+  return c.json(
+    {
+      message: 'BubbleFlow name updated successfully',
     },
     200
   );

@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, MoreHorizontal } from 'lucide-react';
+import { Trash2, MoreHorizontal, Edit2, Check, X } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
+import { bubbleFlowApi } from '../services/bubbleFlowApi';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -18,7 +20,11 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
+  const [newFlowName, setNewFlowName] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const flows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -41,6 +47,48 @@ export const HomePage: React.FC<HomePageProps> = ({
     setOpenMenuId(openMenuId === flowId ? null : flowId);
   };
 
+  const handleRenameClick = (
+    flowId: number,
+    currentName: string,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+    setRenamingFlowId(flowId);
+    setNewFlowName(currentName);
+    setOpenMenuId(null);
+  };
+
+  const handleRenameSubmit = async (flowId: number) => {
+    if (!newFlowName.trim()) {
+      return;
+    }
+
+    try {
+      await bubbleFlowApi.updateBubbleFlowName(flowId, newFlowName.trim());
+
+      // Invalidate and refetch the flow list
+      queryClient.invalidateQueries({ queryKey: ['bubbleFlowList'] });
+
+      setRenamingFlowId(null);
+      setNewFlowName('');
+    } catch (error) {
+      console.error('Failed to rename flow:', error);
+    }
+  };
+
+  const handleRenameCancel = () => {
+    setRenamingFlowId(null);
+    setNewFlowName('');
+  };
+
+  const handleRenameKeyDown = (event: React.KeyboardEvent, flowId: number) => {
+    if (event.key === 'Enter') {
+      handleRenameSubmit(flowId);
+    } else if (event.key === 'Escape') {
+      handleRenameCancel();
+    }
+  };
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -52,6 +100,14 @@ export const HomePage: React.FC<HomePageProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Focus input when entering rename mode
+  useEffect(() => {
+    if (renamingFlowId !== null && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renamingFlowId]);
 
   // Show loading state if data hasn't loaded yet OR if actively loading
   const isLoading = loading || bubbleFlowListResponse === undefined;
@@ -178,14 +234,50 @@ export const HomePage: React.FC<HomePageProps> = ({
                     )}
 
                     {/* Flow Name */}
-                    <h3 className="text-base font-semibold text-gray-100 mb-2 truncate">
-                      {flow.name || 'Untitled Flow'}
-                      {isRun && (
-                        <span className="ml-1 text-xs text-gray-500">
-                          (run)
-                        </span>
-                      )}
-                    </h3>
+                    {renamingFlowId === flow.id ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          value={newFlowName}
+                          onChange={(e) => setNewFlowName(e.target.value)}
+                          onKeyDown={(e) => handleRenameKeyDown(e, flow.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-purple-600 rounded focus:outline-none focus:ring-2 focus:ring-purple-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameSubmit(flow.id);
+                          }}
+                          className="p-1 rounded hover:bg-green-600/20 text-green-400"
+                          title="Confirm"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRenameCancel();
+                          }}
+                          className="p-1 rounded hover:bg-red-600/20 text-red-400"
+                          title="Cancel"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <h3 className="text-base font-semibold text-gray-100 mb-2 truncate">
+                        {flow.name || 'Untitled Flow'}
+                        {isRun && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            (run)
+                          </span>
+                        )}
+                      </h3>
+                    )}
 
                     {/* Execution Count */}
                     <div className="text-xs text-gray-400 mb-2">
@@ -224,6 +316,16 @@ export const HomePage: React.FC<HomePageProps> = ({
                     {/* Dropdown Menu */}
                     {openMenuId === flow.id && (
                       <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
+                        <button
+                          type="button"
+                          onClick={(e) =>
+                            handleRenameClick(flow.id, flow.name, e)
+                          }
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-purple-600/20 hover:text-purple-400 flex items-center gap-2 transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          Rename Flow
+                        </button>
                         <button
                           type="button"
                           onClick={(e) => handleDeleteClick(flow.id, e)}

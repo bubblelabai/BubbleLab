@@ -61,6 +61,16 @@ export const updateBubbleFlowParametersSchema = z
   })
   .openapi('UpdateBubbleFlowParametersRequest');
 
+// PATCH /bubble-flow/:id/name - Update BubbleFlow name schema
+export const updateBubbleFlowNameSchema = z
+  .object({
+    name: z.string().min(1).max(100).openapi({
+      description: 'New name for the BubbleFlow',
+      example: 'My Updated Flow',
+    }),
+  })
+  .openapi('UpdateBubbleFlowNameRequest');
+
 // ============================================================================
 // RESPONSE SCHEMAS (Output Types)
 // ============================================================================
@@ -249,6 +259,9 @@ export type ExecuteBubbleFlowRequest = z.infer<typeof executeBubbleFlowSchema>;
 
 export type UpdateBubbleFlowParametersRequest = z.infer<
   typeof updateBubbleFlowParametersSchema
+>;
+export type UpdateBubbleFlowNameRequest = z.infer<
+  typeof updateBubbleFlowNameSchema
 >;
 export type BubbleFlowDetailsResponse = z.infer<
   typeof bubbleFlowDetailsResponseSchema

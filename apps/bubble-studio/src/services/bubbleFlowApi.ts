@@ -17,6 +17,19 @@ export const bubbleFlowApi = {
   },
 
   /**
+   * Update bubble flow name
+   * Uses the shared schema: PATCH /bubble-flow/:id/name
+   */
+  updateBubbleFlowName: async (
+    flowId: number,
+    name: string
+  ): Promise<{ message: string }> => {
+    return api.patch<{ message: string }>(`/bubble-flow/${flowId}/name`, {
+      name,
+    });
+  },
+
+  /**
    * Get bubble flow details including current parameters and credential assignments
    */
   getBubbleFlowDetails: async (flowId: number) => {

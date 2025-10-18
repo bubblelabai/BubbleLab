@@ -14,6 +14,7 @@ import {
   executeBubbleFlowResponseSchema,
   bubbleFlowDetailsResponseSchema,
   updateBubbleFlowParametersSchema,
+  updateBubbleFlowNameSchema,
   bubbleFlowListResponseSchema,
   activateBubbleFlowResponseSchema,
   listBubbleFlowExecutionsResponseSchema,
@@ -636,6 +637,65 @@ export const updateBubbleFlowRoute = createRoute({
         },
       },
       description: 'Invalid ID format or validation failed',
+    },
+    404: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'BubbleFlow not found',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['BubbleFlow'],
+});
+
+// PATCH /bubble-flow/:id/name - Update bubble flow name
+export const updateBubbleFlowNameRoute = createRoute({
+  method: 'patch',
+  path: '/{id}/name',
+  request: {
+    params: z.object({
+      id: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .openapi({
+          description: 'BubbleFlow ID',
+          example: '123',
+        }),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateBubbleFlowNameSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: successMessageResponseSchema,
+        },
+      },
+      description: 'BubbleFlow name updated successfully',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid ID format or name validation failed',
     },
     404: {
       content: {
