@@ -20,6 +20,7 @@ import { BubbleSidePanel } from './components/BubbleSidePanel';
 import { CredentialsPage } from './pages/CredentialsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 import { DashboardPage } from './pages/DashboardPage';
+import { MyFlowsPage } from './pages/MyFlowsPage';
 import LiveOutput from './components/execution_logs/LiveOutput';
 import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
@@ -77,8 +78,8 @@ function App() {
   const [selectedPreset, setSelectedPreset] = useState(-1); // Default to no preset selected
   const [generationPrompt, setGenerationPrompt] = useState('');
   const [currentPage, setCurrentPage] = useState<
-    'prompt' | 'ide' | 'credentials' | 'flow-summary'
-  >('prompt');
+    'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
+  >('home');
 
   // Bubble highlighting state
   const [highlightedBubble, setHighlightedBubble] = useState<string | null>(
@@ -1076,7 +1077,7 @@ function App() {
   };
 
   const handleSidebarPageChange = (
-    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary'
+    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
   ) => {
     if (isStreaming) {
       notifyNavigationLocked();
@@ -1127,6 +1128,32 @@ function App() {
   };
 
   // Removed unused function getCredentialsForType
+
+  // Render Home page (My Flows)
+  if (currentPage === 'home') {
+    return (
+      <>
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          onPageChange={handleSidebarPageChange}
+          selectedFlowId={selectedFlow}
+          onFlowSelect={handleSidebarFlowSelect}
+          onFlowDelete={handleSidebarFlowDelete}
+        />
+        <div
+          className={`h-screen flex flex-col bg-[#1a1a1a] text-gray-100 ${isSidebarOpen ? 'pl-56' : 'pl-14'}`}
+        >
+          <div className="flex-1 min-h-0">
+            <MyFlowsPage
+              onFlowSelect={handleSidebarFlowSelect}
+              onFlowDelete={handleSidebarFlowDelete}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   // Render Dashboard page
   if (currentPage === 'prompt') {
