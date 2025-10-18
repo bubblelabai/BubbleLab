@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, MoreHorizontal, Edit2, Check } from 'lucide-react';
+import { Trash2, MoreHorizontal, Edit2, Check, Search } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
@@ -22,16 +22,23 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
   const [newFlowName, setNewFlowName] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
-  const flows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
+  const allFlows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  // Filter flows based on search query
+  const flows = allFlows.filter((flow) => {
+    if (!searchQuery.trim()) return true;
+    return flow.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
   // Calculate total executions across all flows
-  const totalExecutions = flows.reduce(
+  const totalExecutions = allFlows.reduce(
     (sum, flow) => sum + (flow.executionCount || 0),
     0
   );
@@ -131,7 +138,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-400 mb-1">Total Flows</div>
                   <div className="text-lg font-semibold text-white">
-                    {isLoading ? '...' : flows.length}
+                    {isLoading ? '...' : allFlows.length}
                   </div>
                 </div>
               </div>
@@ -161,8 +168,24 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         {/* Flows Section */}
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-white">My Bubble Flows</h2>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-white mb-4">
+            My Bubble Flows
+          </h2>
+
+          {/* Search Bar */}
+          <div className="relative max-w-2xl">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-500" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search flows..."
+              className="w-full pl-10 pr-4 py-2.5 bg-[#161b22] border border-[#30363d] text-gray-100 text-sm rounded-lg focus:outline-none focus:border-gray-400 placeholder-gray-500 transition-all duration-200"
+            />
+          </div>
         </div>
 
         {/* Grid of Flows */}
@@ -173,15 +196,35 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         ) : flows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center mb-6">
-              <span className="text-4xl">💫</span>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-300 mb-2">
-              No flows yet
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Create your first flow to get started
-            </p>
+            {searchQuery ? (
+              <>
+                <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                  No flows found
+                </h2>
+                <p className="text-gray-500 text-sm mb-4">
+                  No flows match "{searchQuery}"
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-4 py-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  Clear search
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center mb-6">
+                  <span className="text-4xl">💫</span>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-300 mb-2">
+                  No flows yet
+                </h2>
+                <p className="text-gray-500 text-sm">
+                  Create your first flow to get started
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
