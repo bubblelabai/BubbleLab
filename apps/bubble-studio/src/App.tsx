@@ -117,15 +117,26 @@ function App() {
     }
   }, [isRunning, showEditor]);
 
-  //If bubbleflowlist changes, set the selected flow to the first flow
+  //If bubbleflowlist changes, set the selected flow to the first flow (only if no flow is selected)
   useEffect(() => {
     if (bubbleFlowList && bubbleFlowList.bubbleFlows.length > 0) {
-      setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
+      // Only auto-select if no flow is currently selected
+      if (selectedFlow === null) {
+        setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
+      } else {
+        // If the currently selected flow no longer exists in the list, select the first one
+        const flowStillExists = bubbleFlowList.bubbleFlows.some(
+          (flow) => flow.id === selectedFlow
+        );
+        if (!flowStillExists) {
+          setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
+        }
+      }
     } else {
       setSelectedFlow(null);
       setCurrentPage('prompt');
     }
-  }, [bubbleFlowList]);
+  }, [bubbleFlowList, selectedFlow]);
 
   // Auto-close sidebar when flow is running
   useEffect(() => {
@@ -561,7 +572,7 @@ function App() {
         name: getFlowNameFromCode(codeToUse),
         description: 'Created from AI Generated Code',
         code: codeToUse,
-        prompt: generationPrompt,
+        prompt: metadata?.prompt || generationPrompt,
         eventType: 'webhook/http',
         webhookActive: false,
       });
@@ -572,12 +583,6 @@ function App() {
       );
 
       const bubbleFlowId = createResult.id;
-      const bubbleParameters = createResult.bubbleParameters || {};
-
-      // Update current bubble parameters for visualization
-      updateCurrentBubbleParameters(
-        bubbleParameters as Record<string, ParsedBubbleWithInfo>
-      );
 
       // Auto-select the newly created flow - this will now use the cached optimistic data
       setSelectedFlow(bubbleFlowId);
