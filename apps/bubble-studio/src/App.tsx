@@ -1138,9 +1138,6 @@ function App() {
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
           onPageChange={handleSidebarPageChange}
-          selectedFlowId={selectedFlow}
-          onFlowSelect={handleSidebarFlowSelect}
-          onFlowDelete={handleSidebarFlowDelete}
         />
         <div
           className={`h-screen flex flex-col bg-[#1a1a1a] text-gray-100 ${isSidebarOpen ? 'pl-56' : 'pl-14'}`}
@@ -1186,9 +1183,6 @@ function App() {
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
           onPageChange={handleSidebarPageChange}
-          selectedFlowId={selectedFlow}
-          onFlowSelect={handleSidebarFlowSelect}
-          onFlowDelete={handleSidebarFlowDelete}
         />
         <div
           className={`h-screen flex flex-col bg-[#1a1a1a] text-gray-100 ${isSidebarOpen ? 'pl-56' : 'pl-14'}`}
@@ -1207,12 +1201,9 @@ function App() {
     <>
       {/* Left Sidebar - Always render */}
       <Sidebar
-        selectedFlowId={selectedFlow}
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((prev) => !prev)}
         onPageChange={handleSidebarPageChange}
-        onFlowSelect={handleSidebarFlowSelect}
-        onFlowDelete={handleSidebarFlowDelete}
       />
 
       <div

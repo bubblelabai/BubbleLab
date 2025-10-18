@@ -11,18 +11,12 @@ export interface SidebarProps {
   onPageChange: (
     page: 'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
   ) => void;
-  selectedFlowId: number | null;
-  onFlowSelect: (flowId: number) => void;
-  onFlowDelete: (flowId: number, event: React.MouseEvent) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onToggle,
   onPageChange,
-  selectedFlowId: _selectedFlowId,
-  onFlowSelect: _onFlowSelect,
-  onFlowDelete: _onFlowDelete,
 }) => {
   const { user } = useUser();
 
