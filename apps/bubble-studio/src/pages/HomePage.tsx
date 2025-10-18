@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, MoreHorizontal, Edit2, Check, X } from 'lucide-react';
+import { Trash2, MoreHorizontal, Edit2, Check } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
@@ -66,8 +66,9 @@ export const HomePage: React.FC<HomePageProps> = ({
     try {
       await bubbleFlowApi.updateBubbleFlowName(flowId, newFlowName.trim());
 
-      // Invalidate and refetch the flow list
+      // Invalidate and refetch both the flow list and the individual flow details
       queryClient.invalidateQueries({ queryKey: ['bubbleFlowList'] });
+      queryClient.invalidateQueries({ queryKey: ['bubbleFlow', flowId] });
 
       setRenamingFlowId(null);
       setNewFlowName('');
@@ -76,16 +77,9 @@ export const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
-  const handleRenameCancel = () => {
-    setRenamingFlowId(null);
-    setNewFlowName('');
-  };
-
   const handleRenameKeyDown = (event: React.KeyboardEvent, flowId: number) => {
     if (event.key === 'Enter') {
       handleRenameSubmit(flowId);
-    } else if (event.key === 'Escape') {
-      handleRenameCancel();
     }
   };
 
@@ -243,7 +237,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                           onChange={(e) => setNewFlowName(e.target.value)}
                           onKeyDown={(e) => handleRenameKeyDown(e, flow.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-purple-600 rounded focus:outline-none focus:ring-2 focus:ring-purple-600"
+                          className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
                         />
                         <button
                           type="button"
@@ -251,21 +245,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                             e.stopPropagation();
                             handleRenameSubmit(flow.id);
                           }}
-                          className="p-1 rounded hover:bg-green-600/20 text-green-400"
+                          className="p-1 rounded hover:bg-gray-700/50 text-gray-300"
                           title="Confirm"
                         >
                           <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRenameCancel();
-                          }}
-                          className="p-1 rounded hover:bg-red-600/20 text-red-400"
-                          title="Cancel"
-                        >
-                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
