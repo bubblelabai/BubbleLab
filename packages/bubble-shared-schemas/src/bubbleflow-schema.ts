@@ -197,6 +197,15 @@ export const bubbleFlowListItemSchema = z.object({
   executionCount: z
     .number()
     .openapi({ description: 'Total number of executions in history' }),
+  bubbles: z
+    .array(
+      z.object({
+        bubbleName: z.string().openapi({ description: 'Bubble name' }),
+        className: z.string().openapi({ description: 'Bubble class name' }),
+      })
+    )
+    .optional()
+    .openapi({ description: 'List of bubbles used in this flow' }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
 });

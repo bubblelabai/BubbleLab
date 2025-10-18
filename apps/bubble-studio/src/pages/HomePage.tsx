@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
+import { findLogoForBubble } from '../lib/integrations';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -82,6 +83,38 @@ export const HomePage: React.FC<HomePageProps> = ({
                 >
                   {/* Card Content */}
                   <div className="p-5">
+                    {/* Bubble Logos */}
+                    {flow.bubbles && flow.bubbles.length > 0 && (
+                      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                        {flow.bubbles
+                          .map((bubble) => {
+                            const logo = findLogoForBubble({
+                              bubbleName: bubble.bubbleName,
+                              className: bubble.className,
+                            });
+                            return logo ? { ...bubble, logo } : null;
+                          })
+                          .filter(
+                            (item, index, self) =>
+                              item &&
+                              self.findIndex(
+                                (t) => t && t.logo.file === item.logo.file
+                              ) === index
+                          )
+                          .map((item, idx) =>
+                            item ? (
+                              <img
+                                key={idx}
+                                src={item.logo.file}
+                                alt={item.logo.name}
+                                className="h-4 w-4 opacity-70"
+                                title={item.logo.name}
+                              />
+                            ) : null
+                          )}
+                      </div>
+                    )}
+
                     {/* Flow Name */}
                     <h3 className="text-base font-semibold text-gray-100 mb-2 truncate">
                       {flow.name || 'Untitled Flow'}
@@ -93,7 +126,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </h3>
 
                     {/* Execution Count */}
-                    <div className="text-xs text-gray-400 mb-1">
+                    <div className="text-xs text-gray-400 mb-2">
                       {flow.executionCount || 0}{' '}
                       {flow.executionCount === 1 ? 'execution' : 'executions'}
                     </div>

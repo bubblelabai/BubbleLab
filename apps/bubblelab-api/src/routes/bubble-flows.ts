@@ -78,6 +78,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
         createdAt: true,
         updatedAt: true,
         originalCode: true,
+        bubbleParameters: true,
       },
       with: {
         webhooks: {
@@ -112,18 +113,33 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
     executionCounts.map((item) => [item.flowId, item.count])
   );
 
-  const bubbleFlowsData = flows.map((flow) => ({
-    id: flow.id,
-    name: flow.name,
-    description: flow.description || undefined,
-    eventType: flow.eventType,
-    isActive: flow.webhooks[0]?.isActive ?? false,
-    webhookExecutionCount: flow.webhookExecutionCount,
-    webhookFailureCount: flow.webhookFailureCount,
-    executionCount: executionCountMap.get(flow.id) || 0,
-    createdAt: flow.createdAt.toISOString(),
-    updatedAt: flow.updatedAt.toISOString(),
-  }));
+  const bubbleFlowsData = flows.map((flow) => {
+    // Extract bubble information from bubbleParameters
+    const bubbleParameters = flow.bubbleParameters as Record<
+      string,
+      ParsedBubbleWithInfo
+    > | null;
+    const bubbles = bubbleParameters
+      ? Object.values(bubbleParameters).map((bubble) => ({
+          bubbleName: bubble.bubbleName,
+          className: bubble.className,
+        }))
+      : [];
+
+    return {
+      id: flow.id,
+      name: flow.name,
+      description: flow.description || undefined,
+      eventType: flow.eventType,
+      isActive: flow.webhooks[0]?.isActive ?? false,
+      webhookExecutionCount: flow.webhookExecutionCount,
+      webhookFailureCount: flow.webhookFailureCount,
+      executionCount: executionCountMap.get(flow.id) || 0,
+      bubbles,
+      createdAt: flow.createdAt.toISOString(),
+      updatedAt: flow.updatedAt.toISOString(),
+    };
+  });
 
   const response = {
     bubbleFlows: bubbleFlowsData,
