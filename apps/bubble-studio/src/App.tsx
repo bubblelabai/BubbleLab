@@ -60,6 +60,7 @@ function App() {
   );
   const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
   const openPearlChat = useEditorStore((state) => state.openPearlChat);
+  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
   const [code, setCode] = useState<string>('');
   const {
     data: currentFlow,
@@ -1291,7 +1292,7 @@ function App() {
               <SignedIn>
                 {!isStreaming && (
                   <>
-                    <button
+                    {/* <button
                       type="button"
                       onClick={() => {
                         openPearlChat();
@@ -1300,11 +1301,16 @@ function App() {
                     >
                       <Bot className="w-3 h-3" />
                       AI Assistant
-                    </button>
+                    </button> */}
 
                     <button
                       type="button"
-                      onClick={() => setShowEditor(!showEditor)}
+                      onClick={() => {
+                        setShowEditor(!showEditor);
+                        if (showEditor) {
+                          closeSidePanel();
+                        }
+                      }}
                       className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                     >
                       <Code className="w-3 h-3" />
