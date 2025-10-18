@@ -1166,6 +1166,9 @@ function App() {
         isSidebarOpen={isSidebarOpen}
         onSidebarToggle={() => setIsSidebarOpen((prev) => !prev)}
         onPageChange={handleSidebarPageChange}
+        selectedFlow={selectedFlow}
+        onFlowSelect={handleSidebarFlowSelect}
+        onFlowDelete={handleSidebarFlowDelete}
       />
     );
   }

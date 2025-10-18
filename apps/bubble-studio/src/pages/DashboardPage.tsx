@@ -60,8 +60,10 @@ export function DashboardPage({
   isSidebarOpen,
   onSidebarToggle,
   onPageChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   selectedFlow,
   onFlowSelect,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFlowDelete,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
@@ -173,6 +175,7 @@ export function DashboardPage({
   };
 
   // Wrapper function to check authentication before flow selection
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleFlowSelect = (flow: number) => {
     if (!isSignedIn) {
       // Save the current prompt before showing sign-in modal
