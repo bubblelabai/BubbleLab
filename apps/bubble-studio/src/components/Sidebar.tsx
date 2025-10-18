@@ -20,9 +20,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   onToggle,
   onPageChange,
-  selectedFlowId,
-  onFlowSelect,
-  onFlowDelete,
+  selectedFlowId: _selectedFlowId,
+  onFlowSelect: _onFlowSelect,
+  onFlowDelete: _onFlowDelete,
 }) => {
   const { user } = useUser();
 

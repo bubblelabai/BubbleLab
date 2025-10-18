@@ -214,9 +214,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               </>
             ) : (
               <>
-                <div className="w-20 h-20 bg-purple-600/20 rounded-full flex items-center justify-center mb-6">
-                  <span className="text-4xl">💫</span>
-                </div>
                 <h2 className="text-xl font-semibold text-gray-300 mb-2">
                   No flows yet
                 </h2>
