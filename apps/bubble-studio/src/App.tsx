@@ -1148,6 +1148,7 @@ function App() {
             <HomePage
               onFlowSelect={handleSidebarFlowSelect}
               onFlowDelete={handleSidebarFlowDelete}
+              onNavigateToDashboard={() => setCurrentPage('prompt')}
             />
           </div>
         </div>

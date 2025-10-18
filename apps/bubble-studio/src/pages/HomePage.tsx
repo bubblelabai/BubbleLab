@@ -8,16 +8,24 @@ import { findLogoForBubble } from '../lib/integrations';
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
   onFlowDelete: (flowId: number, event: React.MouseEvent) => void;
+  onNavigateToDashboard: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   onFlowSelect,
   onFlowDelete,
+  onNavigateToDashboard,
 }) => {
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
 
   const flows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  // Calculate total executions across all flows
+  const totalExecutions = flows.reduce(
+    (sum, flow) => sum + (flow.executionCount || 0),
+    0
   );
 
   const handleDeleteClick = (flowId: number, event: React.MouseEvent) => {
@@ -33,19 +41,53 @@ export const HomePage: React.FC<HomePageProps> = ({
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Overview</h1>
-          <p className="text-gray-400 text-sm mb-4">
-            {isLoading
-              ? 'Loading...'
-              : `${flows.length} ${flows.length === 1 ? 'flow' : 'flows'} total`}
-          </p>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-3xl font-bold text-white">Overview</h1>
+            <button
+              type="button"
+              onClick={onNavigateToDashboard}
+              className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
+            >
+              <span className="text-lg leading-none">+</span>
+              <span>New Flow</span>
+            </button>
+          </div>
 
-          {/* Token Usage Display */}
-          <SignedIn>
+          {/* Stats Cards */}
+          <div className="flex gap-4 mb-2 flex-wrap">
+            {/* Flows Count Card */}
             <div className="w-64">
-              <TokenUsageDisplay isOpen={true} />
+              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-400 mb-1">Total Flows</div>
+                  <div className="text-lg font-semibold text-white">
+                    {isLoading ? '...' : flows.length}
+                  </div>
+                </div>
+              </div>
             </div>
-          </SignedIn>
+
+            {/* Total Executions Card */}
+            <div className="w-64">
+              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-400 mb-1">
+                    Total Executions
+                  </div>
+                  <div className="text-lg font-semibold text-white">
+                    {isLoading ? '...' : totalExecutions.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Token Usage Display */}
+            <SignedIn>
+              <div className="w-64">
+                <TokenUsageDisplay isOpen={true} />
+              </div>
+            </SignedIn>
+          </div>
         </div>
 
         {/* Flows Section */}
