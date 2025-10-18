@@ -20,7 +20,7 @@ import {
   type ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/bubble-core';
 import {
   BubbleFlowGeneratorWorkflow,
@@ -32,6 +32,7 @@ import {
   executeBubbleFlowStreamRoute,
   getBubbleFlowRoute,
   updateBubbleFlowRoute,
+  updateBubbleFlowNameRoute,
   listBubbleFlowsRoute,
   activateBubbleFlowRoute,
   deleteBubbleFlowRoute,
@@ -78,6 +79,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
         createdAt: true,
         updatedAt: true,
         originalCode: true,
+        bubbleParameters: true,
       },
       with: {
         webhooks: {
@@ -95,17 +97,50 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
     }),
   ]);
 
-  const bubbleFlowsData = flows.map((flow) => ({
-    id: flow.id,
-    name: flow.name,
-    description: flow.description || undefined,
-    eventType: flow.eventType,
-    isActive: flow.webhooks[0]?.isActive ?? false,
-    webhookExecutionCount: flow.webhookExecutionCount,
-    webhookFailureCount: flow.webhookFailureCount,
-    createdAt: flow.createdAt.toISOString(),
-    updatedAt: flow.updatedAt.toISOString(),
-  }));
+  // Get execution counts for all flows
+  const flowIds = flows.map((flow) => flow.id);
+  const executionCounts = await Promise.all(
+    flowIds.map(async (flowId) => {
+      const result = await db
+        .select({ count: count() })
+        .from(bubbleFlowExecutions)
+        .where(eq(bubbleFlowExecutions.bubbleFlowId, flowId));
+      return { flowId, count: result[0]?.count || 0 };
+    })
+  );
+
+  // Create a map for quick lookup
+  const executionCountMap = new Map(
+    executionCounts.map((item) => [item.flowId, item.count])
+  );
+
+  const bubbleFlowsData = flows.map((flow) => {
+    // Extract bubble information from bubbleParameters
+    const bubbleParameters = flow.bubbleParameters as Record<
+      string,
+      ParsedBubbleWithInfo
+    > | null;
+    const bubbles = bubbleParameters
+      ? Object.values(bubbleParameters).map((bubble) => ({
+          bubbleName: bubble.bubbleName,
+          className: bubble.className,
+        }))
+      : [];
+
+    return {
+      id: flow.id,
+      name: flow.name,
+      description: flow.description || undefined,
+      eventType: flow.eventType,
+      isActive: flow.webhooks[0]?.isActive ?? false,
+      webhookExecutionCount: flow.webhookExecutionCount,
+      webhookFailureCount: flow.webhookFailureCount,
+      executionCount: executionCountMap.get(flow.id) || 0,
+      bubbles,
+      createdAt: flow.createdAt.toISOString(),
+      updatedAt: flow.updatedAt.toISOString(),
+    };
+  });
 
   const response = {
     bubbleFlows: bubbleFlowsData,
@@ -488,6 +523,51 @@ app.openapi(updateBubbleFlowRoute, async (c) => {
     {
       message: 'BubbleFlow parameters updated successfully',
       bubbleParameters: newParams,
+    },
+    200
+  );
+});
+
+app.openapi(updateBubbleFlowNameRoute, async (c) => {
+  const userId = getUserId(c);
+  const id = parseInt(c.req.param('id'));
+  const { name } = c.req.valid('json');
+
+  if (isNaN(id)) {
+    return c.json(
+      {
+        error: 'Invalid ID format',
+      },
+      400
+    );
+  }
+
+  // Get existing flow (only if it belongs to the user)
+  const existingFlow = await db.query.bubbleFlows.findFirst({
+    where: and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId)),
+  });
+
+  if (!existingFlow) {
+    return c.json(
+      {
+        error: 'BubbleFlow not found',
+      },
+      404
+    );
+  }
+
+  // Update the flow name
+  await db
+    .update(bubbleFlows)
+    .set({
+      name: name,
+      updatedAt: new Date(),
+    })
+    .where(eq(bubbleFlows.id, id));
+
+  return c.json(
+    {
+      message: 'BubbleFlow name updated successfully',
     },
     200
   );

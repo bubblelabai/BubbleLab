@@ -61,6 +61,16 @@ export const updateBubbleFlowParametersSchema = z
   })
   .openapi('UpdateBubbleFlowParametersRequest');
 
+// PATCH /bubble-flow/:id/name - Update BubbleFlow name schema
+export const updateBubbleFlowNameSchema = z
+  .object({
+    name: z.string().min(1).max(100).openapi({
+      description: 'New name for the BubbleFlow',
+      example: 'My Updated Flow',
+    }),
+  })
+  .openapi('UpdateBubbleFlowNameRequest');
+
 // ============================================================================
 // RESPONSE SCHEMAS (Output Types)
 // ============================================================================
@@ -194,6 +204,18 @@ export const bubbleFlowListItemSchema = z.object({
   webhookFailureCount: z
     .number()
     .openapi({ description: 'Webhook failure count' }),
+  executionCount: z
+    .number()
+    .openapi({ description: 'Total number of executions in history' }),
+  bubbles: z
+    .array(
+      z.object({
+        bubbleName: z.string().openapi({ description: 'Bubble name' }),
+        className: z.string().openapi({ description: 'Bubble class name' }),
+      })
+    )
+    .optional()
+    .openapi({ description: 'List of bubbles used in this flow' }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
 });
@@ -237,6 +259,9 @@ export type ExecuteBubbleFlowRequest = z.infer<typeof executeBubbleFlowSchema>;
 
 export type UpdateBubbleFlowParametersRequest = z.infer<
   typeof updateBubbleFlowParametersSchema
+>;
+export type UpdateBubbleFlowNameRequest = z.infer<
+  typeof updateBubbleFlowNameSchema
 >;
 export type BubbleFlowDetailsResponse = z.infer<
   typeof bubbleFlowDetailsResponseSchema

@@ -329,7 +329,7 @@ export default function LiveOutput({
       </div>
 
       {/* Statistics - only show for live tab */}
-      {activeTab === 'live' && (isExecuting || displayEvents.length > 0) && (
+      {activeTab === 'live' && (isExecuting || events.length > 0) && (
         <div className="flex items-center gap-6 px-4 py-2 bg-[#161b22] border-b border-[#30363d] text-sm">
           <div className="text-gray-400">
             Time:{' '}
