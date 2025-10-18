@@ -44,7 +44,6 @@ import { getFlowNameFromCode } from './utils/codeParser';
 import { findBubbleByVariableId } from './utils/bubbleUtils';
 import { API_BASE_URL } from './env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import type { ParsedBubbleWithInfoInferred as ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useSubscription } from './hooks/useSubscription';
 
 function App() {
