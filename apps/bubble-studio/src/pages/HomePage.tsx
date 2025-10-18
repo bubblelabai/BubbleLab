@@ -1,5 +1,5 @@
-import React from 'react';
-import { Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Trash2, MoreHorizontal } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
@@ -17,6 +17,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateToDashboard,
 }) => {
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const flows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -30,8 +32,26 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const handleDeleteClick = (flowId: number, event: React.MouseEvent) => {
     event.stopPropagation();
+    setOpenMenuId(null);
     onFlowDelete(flowId, event);
   };
+
+  const handleMenuToggle = (flowId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpenMenuId(openMenuId === flowId ? null : flowId);
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Show loading state if data hasn't loaded yet OR if actively loading
   const isLoading = loading || bubbleFlowListResponse === undefined;
@@ -42,7 +62,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-white">Overview</h1>
+            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
             <button
               type="button"
               onClick={onNavigateToDashboard}
@@ -187,15 +207,34 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
                   </div>
 
-                  {/* Delete Button - appears on hover */}
-                  <button
-                    type="button"
-                    onClick={(e) => handleDeleteClick(flow.id, e)}
-                    className="absolute top-3 right-3 p-2 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-600/20 text-gray-400 hover:text-red-400 transition-all duration-200"
-                    aria-label="Delete flow"
+                  {/* Menu Button - always visible */}
+                  <div
+                    className="absolute top-3 right-3"
+                    ref={openMenuId === flow.id ? menuRef : null}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleMenuToggle(flow.id, e)}
+                      className="p-2 rounded-md hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
+                      aria-label="Flow options"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {openMenuId === flow.id && (
+                      <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteClick(flow.id, e)}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 flex items-center gap-2 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Flow
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Hover Effect Indicator */}
                   <div className="absolute inset-0 rounded-lg ring-1 ring-purple-600/0 group-hover:ring-purple-600/30 transition-all duration-200 pointer-events-none" />
