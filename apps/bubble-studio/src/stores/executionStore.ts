@@ -408,30 +408,59 @@ const emptyState: FlowExecutionState = {
 };
 
 /**
- * Hook to get execution state for a specific flow
+ * Hook to get execution state for a specific flow with optional selector
  *
  * Usage:
  * ```typescript
- * function FlowVisualizer({ flowId }: { flowId: number }) {
- *   const executionState = useExecutionStore(flowId);
- *   const { isRunning, highlightedBubble, setInput } = executionState;
+ * // Get full state (re-renders on ANY change)
+ * const executionState = useExecutionStore(flowId);
  *
- *   return <div>...</div>;
- * }
+ * // Get specific field (re-renders ONLY when that field changes)
+ * const isRunning = useExecutionStore(flowId, (state) => state.isRunning);
+ *
+ * // Get multiple fields (re-renders when ANY of these fields change)
+ * const { isRunning, highlightedBubble } = useExecutionStore(
+ *   flowId,
+ *   (state) => ({ isRunning: state.isRunning, highlightedBubble: state.highlightedBubble })
+ * );
  * ```
  */
-export function useExecutionStore(flowId: number | null): FlowExecutionState {
+export function useExecutionStore(flowId: number | null): FlowExecutionState;
+export function useExecutionStore<T>(
+  flowId: number | null,
+  selector: (state: FlowExecutionState) => T
+): T;
+export function useExecutionStore<T>(
+  flowId: number | null,
+  selector?: (state: FlowExecutionState) => T
+): FlowExecutionState | T {
+  // Get or create store for this flowId (or use empty store for null)
+  let store: ReturnType<typeof createExecutionStore>;
+
   if (flowId === null) {
-    return emptyState;
+    // Use empty store for null flowId
+    if (!executionStores.has(-1)) {
+      executionStores.set(-1, createExecutionStore(-1));
+    }
+    store = executionStores.get(-1)!;
+  } else {
+    // Get or create store for this flowId
+    if (!executionStores.has(flowId)) {
+      executionStores.set(flowId, createExecutionStore(flowId));
+    }
+    store = executionStores.get(flowId)!;
   }
 
-  // Get or create store for this flowId
-  if (!executionStores.has(flowId)) {
-    executionStores.set(flowId, createExecutionStore(flowId));
+  // ALWAYS call the hook - never return early before this
+  // If selector is provided, use it; otherwise subscribe to full state
+  const state = selector ? store(selector) : store();
+
+  // Return empty state data if flowId is null, but still subscribe to the store
+  if (flowId === null) {
+    return selector ? selector(emptyState) : emptyState;
   }
 
-  const store = executionStores.get(flowId)!;
-  return store();
+  return state;
 }
 
 /**

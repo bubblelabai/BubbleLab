@@ -7,7 +7,12 @@ import { create } from 'zustand';
  * Does NOT manage domain-specific state (execution, generation, editor)
  */
 
-export type CurrentPage = 'prompt' | 'ide' | 'credentials' | 'flow-summary';
+export type CurrentPage =
+  | 'prompt'
+  | 'ide'
+  | 'credentials'
+  | 'flow-summary'
+  | 'home';
 
 interface UIStore {
   // ============= Navigation State =============

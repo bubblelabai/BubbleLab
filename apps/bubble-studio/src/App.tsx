@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './components/AuthComponents';
@@ -25,7 +25,15 @@ import { FlowGeneration } from './components/FlowGeneration';
 import { useFlowGeneration } from './hooks/useFlowGeneration';
 import { Sidebar } from './components/Sidebar';
 import { Tooltip } from './components/Tooltip';
-import { useEditorStore } from './stores/editorStore';
+import {
+  useEditorStore,
+  getEditorCode,
+  setEditorCode,
+} from './stores/editorStore';
+import { useUIStore } from './stores/uiStore';
+import { useExecutionStore } from './stores/executionStore';
+import { useGenerationStore } from './stores/generationStore';
+import { useOutputStore } from './stores/outputStore';
 import { useCredentials } from './hooks/useCredentials';
 import { useClerkTokenSync } from './hooks/useClerkTokenSync';
 import { useExecutionStream } from './hooks/useExecutionStream';
@@ -54,12 +62,53 @@ function App() {
     (urlParams.has('code') && urlParams.has('state')) ||
     urlParams.has('success') ||
     urlParams.has('error');
-  const [output, setOutput] = useState(
-    'Ready to code! Try the examples above to test TypeScript IntelliSense.'
-  );
-  const [selectedFlow, setSelectedFlow] = useState<number | null>(null);
-  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
-  const [code, setCode] = useState<string>('');
+
+  // ============= Zustand Stores =============
+
+  // UI Store - Navigation and panel state
+  const {
+    selectedFlowId,
+    currentPage,
+    showEditor,
+    toggleEditor,
+    showLeftPanel,
+    isSidebarOpen,
+    isOutputCollapsed,
+    hasNewOutputEvents,
+    showExportModal,
+    showPrompt,
+    togglePrompt,
+    selectFlow,
+    navigateToPage,
+    showEditorPanel,
+    closeSidebar,
+    collapseOutput,
+    expandOutput,
+    markNewOutputEvents,
+    markOutputAsRead,
+    toggleExportModal,
+    toggleSidebar,
+  } = useUIStore();
+
+  // Output Store - Console output
+  const { output, setOutput } = useOutputStore();
+
+  // Generation Store - Flow generation state
+  const {
+    generationPrompt,
+    selectedPreset,
+    isStreaming,
+    setGenerationPrompt,
+    setSelectedPreset,
+    startStreaming,
+    stopStreaming,
+  } = useGenerationStore();
+  // Editor Store - Monaco editor
+  const { closeSidePanel, setExecutionHighlight } = useEditorStore();
+  // Per-flow Execution Store
+  const executionState = useExecutionStore(selectedFlowId);
+
+  // ============= React Query Hooks =============
   const {
     data: currentFlow,
     loading: currentFlowLoading,
@@ -67,80 +116,57 @@ function App() {
     updateRequiredCredentials: updateCurrentRequiredCredentials,
     updateInputSchema: updateCurrentInputSchema,
     updateCode: updateCurrentCode,
-  } = useBubbleFlow(selectedFlow);
+  } = useBubbleFlow(selectedFlowId);
+
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { data: bubbleFlowList } = useBubbleFlowList();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const deleteBubbleFlowMutation = useDeleteBubbleFlow();
-  const [isRunning, setIsRunning] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState(-1); // Default to no preset selected
-  const [generationPrompt, setGenerationPrompt] = useState('');
-  const [currentPage, setCurrentPage] = useState<
-    'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
-  >('home');
 
-  // Bubble highlighting state
-  const [highlightedBubble, setHighlightedBubble] = useState<string | null>(
-    null
-  );
-  const [highlightedRange, setHighlightedRange] = useState<{
-    startLine: number;
-    endLine: number;
-  } | null>(null);
-
-  // Track last executing bubble and error state
-  // Use ref for lastExecutingBubble to avoid stale closure issues
-  const lastExecutingBubbleRef = useRef<string | null>(null);
-  const [bubbleWithError, setBubbleWithError] = useState<string | null>(null);
-
-  // State for execution components on main page
-  const [executionInputs, setExecutionInputs] = useState<
-    Record<string, unknown>
-  >({});
-  const [pendingExecutionCredentials, setPendingExecutionCredentials] =
-    useState<Record<string, Record<string, number>>>({});
-
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [showLeftPanel] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // ============= Refs =============
   const navigationLockToastId = 'sidebar-navigation-lock';
-  const [showEditor, setShowEditor] = useState(false);
-  const [isOutputCollapsed, setIsOutputCollapsed] = useState(true);
-  const [hasNewOutputEvents, setHasNewOutputEvents] = useState(false);
+  const lastExecutingBubbleRef = useRef<string | null>(null);
 
+  // ============= Auto-behaviors =============
+  // TODO: replace with actual proper behavior
   // Auto-show editor when flow is running
-  useEffect(() => {
-    if (isRunning && !showEditor) {
-      setShowEditor(true);
-    }
-  }, [isRunning, showEditor]);
+  // useEffect(() => {
+  //   if (executionState.isRunning && !showEditor) {
+  //     showEditorPanel();
+  //   }
+  // }, [executionState.isRunning, showEditor, showEditorPanel]);
 
-  //If bubbleflowlist changes, set the selected flow to the first flow
-  useEffect(() => {
-    if (bubbleFlowList && bubbleFlowList.bubbleFlows.length > 0) {
-      setSelectedFlow(bubbleFlowList.bubbleFlows[0].id);
-    } else {
-      setSelectedFlow(null);
-      setCurrentPage('prompt');
-    }
-  }, [bubbleFlowList]);
+  // // If bubbleflowlist changes, set the selected flow to the first flow
+  // useEffect(() => {
+  //   if (bubbleFlowList && bubbleFlowList.bubbleFlows.length > 0) {
+  //     selectFlow(bubbleFlowList.bubbleFlows[0].id);
+  //   } else {
+  //     selectFlow(null);
+  //     navigateToPage('prompt');
+  //   }
+  // }, [bubbleFlowList, selectFlow, navigateToPage]);
 
-  // Auto-close sidebar when flow is running
-  useEffect(() => {
-    if (isRunning && isSidebarOpen) {
-      setIsSidebarOpen(false);
-    }
-  }, [isRunning, isSidebarOpen]);
+  // // Auto-close sidebar when flow is running
+  // useEffect(() => {
+  //   if (executionState.isRunning && isSidebarOpen) {
+  //     closeSidebar();
+  //   }
+  // }, [executionState.isRunning, isSidebarOpen, closeSidebar]);
 
-  // State for tracking generation info (prompt)
-  const [generationInfo, setGenerationInfo] = useState<{
-    prompt: string;
-  } | null>(null);
+  // Auto-scroll output when new content is added - MUST be called before any early returns
+  // useEffect(() => {
+  //   if (outputRef.current) {
+  //     outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  //   }
+  // }, [output]);
 
-  // State for showing/hiding the prompt
-  const [showPrompt, setShowPrompt] = useState(false);
+  // // Cleanup execution stores for deleted flows
+  // useEffect(() => {
+  //   if (bubbleFlowList) {
+  //     const activeFlowIds = bubbleFlowList.bubbleFlows.map((f) => f.id);
+  //     cleanupDeletedFlows(activeFlowIds);
+  //   }
+  // }, [bubbleFlowList]);
 
   // Ref for auto-scrolling output
   const outputRef = useRef<HTMLDivElement>(null);
@@ -156,33 +182,27 @@ function App() {
 
   // Fetch execution history to check if flow has been executed (limit to 1 for performance)
   const { data: executionHistory, refetch: refetchExecutionHistory } =
-    useExecutionHistory(selectedFlow, { limit: 50 });
-
+    useExecutionHistory(selectedFlowId, { limit: 50 });
+  // Use the FlowGeneration hook to get the generateCode function
+  const { generateCode: generateCodeFromHook } = useFlowGeneration();
   // Initialize execution stream hook
-  const executionStream = useExecutionStream({
+  const executionStream = useExecutionStream(selectedFlowId, {
     onEvent: () => {
       // Set visual indicator when new events arrive and output is collapsed
       if (isOutputCollapsed) {
-        setHasNewOutputEvents(true);
+        markNewOutputEvents();
       }
     },
     onComplete: () => {
-      setIsRunning(false);
-      setOutput((prev) => prev + '\n✅ Execution completed!');
-      // Clear visual indicator when execution completes
-      setHasNewOutputEvents(false);
-      // Mark flow as executed so export button can be enabled
-      // Clear error state on successful completion
-      setBubbleWithError(null);
-      // Refetch execution history to enable Export button
+      executionState.stopExecution();
       // Refetech subscription to update token usage
       refetchSubscriptionStatus();
     },
     onError: (error: string, isFatal?: boolean, errorVariableId?: number) => {
-      setIsRunning(false);
+      executionState.stopExecution();
       setOutput((prev) => prev + `\n❌ Execution failed: ${error}`);
       // Clear visual indicator when execution fails
-      setHasNewOutputEvents(false);
+      markOutputAsRead();
 
       // If this is a fatal error, mark the bubble with error
       if (isFatal) {
@@ -195,14 +215,14 @@ function App() {
         // First try to use the variableId from the error event
         if (errorVariableId !== undefined) {
           const bubbleId = String(errorVariableId);
-          setBubbleWithError(bubbleId);
+          executionState.setBubbleError(bubbleId);
           console.log(
             '✅ Fatal error detected with variableId, marking bubble:',
             bubbleId
           );
         } else if (lastExecutingBubbleRef.current) {
           // Fallback to last executing bubble
-          setBubbleWithError(lastExecutingBubbleRef.current);
+          executionState.setBubbleError(lastExecutingBubbleRef.current);
           console.log(
             '✅ Fatal error detected, marking last executing bubble:',
             lastExecutingBubbleRef.current
@@ -231,11 +251,11 @@ function App() {
           console.log('Tracking last executing bubble:', bubbleId);
 
           // Highlight the bubble in the flow
-          setHighlightedBubble(bubbleId);
+          executionState.highlightBubble(bubbleId);
 
           // Highlight the line range in the editor (validate line numbers)
           if (bubble.location.startLine > 0 && bubble.location.endLine > 0) {
-            setHighlightedRange({
+            setExecutionHighlight({
               startLine: bubble.location.startLine,
               endLine: bubble.location.endLine,
             });
@@ -266,32 +286,20 @@ function App() {
         );
         if (bubble) {
           const bubbleId = String(bubble.variableId);
-          // Use ref to avoid stale closures
-          lastExecutingBubbleRef.current = bubbleId;
+          executionState.setLastExecutingBubble(bubbleId);
         }
       }
       refetchExecutionHistory();
     },
     onBubbleParametersUpdate: () => {
-      // Replace the current bubble parameters with the new ones from the backend
-
-      // Clear any existing highlighting since the flow has been updated
-      setHighlightedBubble(null);
-      setHighlightedRange(null);
+      executionState.clearHighlighting();
     },
   });
-
-  // Auto-scroll output when new content is added - MUST be called before any early returns
-  useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
-  }, [output]);
 
   useEffect(() => {
     console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
     if (currentFlow) {
-      setCode(currentFlow.code);
+      setEditorCode(currentFlow.code);
       const extractedCredentials: Record<string, Record<string, number>> = {};
 
       Object.entries(currentFlow.bubbleParameters).forEach(
@@ -327,23 +335,10 @@ function App() {
 
       // Only update if there are extracted credentials and current state is empty
       if (Object.keys(extractedCredentials).length > 0) {
-        setPendingExecutionCredentials((prev) => {
-          // Only update if the current state is empty or doesn't have these bubble credentials
-          const hasExistingCredentials = Object.keys(prev).some(
-            (bubbleKey) => Object.keys(prev[bubbleKey] || {}).length > 0
-          );
-
-          if (!hasExistingCredentials) {
-            return extractedCredentials;
-          }
-          return extractedCredentials;
-        });
+        executionState.setAllCredentials(extractedCredentials);
       }
     }
   }, [currentFlow]);
-
-  // Use the FlowGeneration hook to get the generateCode function
-  const { generateCode: generateCodeFromHook } = useFlowGeneration();
 
   // OAuth completion is now handled by the individual modals/components
   // No need for global navigation since we want to stay where we were
@@ -478,17 +473,18 @@ function App() {
     schemaInputs?: Record<string, unknown>
   ) => {
     // Check if code == flow's code
-    if (code !== currentFlow?.code) {
+    if (getEditorCode() !== currentFlow?.code) {
       const isValid = await validateCode();
       if (!isValid) {
-        setIsRunning(false);
+        executionState.stopExecution();
         return;
       }
     }
     // Clear any existing visual indicator when starting execution
-    setHasNewOutputEvents(false);
+    markOutputAsRead();
     // Clear error state when starting new execution
-    setBubbleWithError(null);
+    executionState.setBubbleError(null);
+    executionState.setLastExecutingBubble(null);
     lastExecutingBubbleRef.current = null;
 
     try {
@@ -496,33 +492,32 @@ function App() {
       const payload = schemaInputs || {};
 
       // Execute with streaming using the base flow ID (backend expects the original flow ID)
-      await executionStream.executeWithStreaming(bubbleFlowId, payload);
+      await executionStream.executeWithStreaming(payload);
 
       // Create a new flow entry for this execution run
     } catch (error) {
       console.error('Error executing flow:', error);
     } finally {
-      setIsRunning(false);
     }
   };
 
   // Wrapper function that calls the hook's generateCode with proper parameters
   const generateCode = async () => {
     // Hide the sidebar so the IDE has maximum space during a new generation
-    setIsSidebarOpen(false);
+    closeSidebar();
 
     // Create a wrapper function to handle type conversion for setCurrentBubbleParameters
     const setCurrentBubbleParametersWrapper = () => {};
 
     await generateCodeFromHook(
       generationPrompt,
-      setIsStreaming,
+      startStreaming,
       setOutput,
-      setGenerationInfo,
-      setCurrentPage,
-      setCode,
+      setGenerationPrompt, // generationInfo was removed - use generationPrompt instead
+      navigateToPage,
+      setEditorCode,
       setCurrentBubbleParametersWrapper,
-      setSelectedFlow,
+      selectFlow,
       setGenerationPrompt,
       createFlowFromGeneration,
       selectedPreset
@@ -580,10 +575,10 @@ function App() {
       );
 
       // Auto-select the newly created flow - this will now use the cached optimistic data
-      setSelectedFlow(bubbleFlowId);
+      selectFlow(bubbleFlowId);
 
-      setPendingExecutionCredentials({});
-      setExecutionInputs({});
+      executionState.setAllCredentials({});
+      executionState.setInputs({});
 
       // Empty flow visualizer
       // Clear live output
@@ -624,7 +619,7 @@ function App() {
     }
 
     // Set validating state to disable Run button
-    setIsValidating(true);
+    executionState.startValidation();
 
     // Show loading toast
     const loadingToastId = toast.loading('Validating code...');
@@ -633,9 +628,9 @@ function App() {
       const result = await api.post<ValidateBubbleFlowResponse>(
         '/bubble-flow/validate',
         {
-          code: code,
+          code: getEditorCode(),
           flowId: currentFlow?.id,
-          credentials: pendingExecutionCredentials,
+          credentials: executionState.pendingCredentials,
           options: {
             includeDetails: true,
             strictMode: true,
@@ -649,7 +644,7 @@ function App() {
         result.bubbles &&
         Object.keys(result.bubbles).length > 0
       ) {
-        updateCurrentCode(code);
+        setEditorCode(getEditorCode());
         updateCurrentBubbleParameters(result.bubbles);
         updateCurrentInputSchema(result.inputSchema);
         updateCurrentRequiredCredentials(
@@ -707,7 +702,7 @@ function App() {
             },
           }
         );
-        setIsValidating(false);
+        executionState.stopValidation();
         return true;
       } else {
         // Show error toast with validation errors
@@ -734,7 +729,7 @@ function App() {
             },
           });
         }
-        setIsValidating(false);
+        executionState.stopValidation();
         return false;
       }
     } catch (error) {
@@ -747,7 +742,7 @@ function App() {
       toast.error(`Validation Error: ${errorMessage}`, {
         autoClose: 8000,
       });
-      setIsValidating(false);
+      executionState.stopValidation();
     }
     return false;
   };
@@ -866,22 +861,6 @@ function App() {
     }
   };
 
-  const selectFlow = (flowId: number | null) => {
-    // If the deleted flow is currently selected, clear the selection
-    if (selectedFlow == null) {
-      setSelectedFlow(null);
-      setCode('');
-    }
-    setSelectedFlow(flowId);
-    setCurrentPage('ide');
-    setExecutionInputs({});
-    // Reset execution state when selecting a new flow
-  };
-
-  const handleExecutionInputsChange = (newInputs: Record<string, unknown>) => {
-    setExecutionInputs(newInputs);
-  };
-
   const cleanupFlattenedKeys = (inputsState: Record<string, unknown>) => {
     // Remove any flattened keys that should be nested in arrays
     const cleanedInputs = { ...inputsState };
@@ -914,8 +893,8 @@ function App() {
 
       const isValid = requiredFields.every((fieldName: string) => {
         return (
-          executionInputs[fieldName] !== undefined &&
-          executionInputs[fieldName] !== ''
+          executionState.executionInputs[fieldName] !== undefined &&
+          executionState.executionInputs[fieldName] !== ''
         );
       });
       return isValid;
@@ -932,7 +911,10 @@ function App() {
   // Validate that all required, non-system credentials with available options are selected
   const isCredentialsSelectionValid = () => {
     console.log('currentFlow', currentFlow);
-    console.log('pendingExecutionCredentials', pendingExecutionCredentials);
+    console.log(
+      'pendingExecutionCredentials',
+      executionState.pendingCredentials
+    );
     console.log('availableCredentials', availableCredentials);
     const required = currentFlow?.requiredCredentials || {};
     const requiredEntries = Object.entries(required) as Array<
@@ -944,7 +926,8 @@ function App() {
       for (const credType of credTypes) {
         if (isSystemCredential(credType as CredentialType)) continue; // system-managed
 
-        const selectedForBubble = pendingExecutionCredentials[bubbleKey] || {};
+        const selectedForBubble =
+          executionState.pendingCredentials[bubbleKey] || {};
         const selectedId = selectedForBubble[credType];
         if (selectedId === undefined || selectedId === null) {
           return false;
@@ -959,16 +942,16 @@ function App() {
       !!currentFlow &&
       isExecutionFormValid() &&
       isCredentialsSelectionValid() &&
-      !isRunning &&
+      !executionState.isRunning &&
       !createBubbleFlowMutation.isLoading &&
-      !isValidating
+      !executionState.isValidating
     );
   };
 
   const handleExecuteFromMainPage = async () => {
     if (!currentFlow) return;
 
-    setIsRunning(true);
+    executionState.startExecution();
 
     // Gate execution if required inputs or credentials are missing
     if (!isExecutionFormValid()) {
@@ -979,12 +962,12 @@ function App() {
     if (!isCredentialsSelectionValid()) {
       toast.error('Please select all required credentials before running.');
       console.groupEnd();
-      setIsRunning(false);
+      executionState.stopExecution();
       return;
     }
 
     // Apply any pending credential changes before executing
-    const currentPendingCredentials = pendingExecutionCredentials;
+    const currentPendingCredentials = executionState.pendingCredentials;
     if (!currentFlow.id) {
       console.error('Cannot execute: No flow ID available');
       toast.error('Cannot execute: No flow ID available');
@@ -993,7 +976,7 @@ function App() {
     await updateFlowCredentials(currentFlow.id, currentPendingCredentials);
 
     // Clean up any flattened keys before executing
-    const cleanedInputs = cleanupFlattenedKeys(executionInputs);
+    const cleanedInputs = cleanupFlattenedKeys(executionState.executionInputs);
 
     // Payload size estimation
     const payloadSize = JSON.stringify(cleanedInputs).length;
@@ -1019,8 +1002,8 @@ function App() {
 
   const getRunDisabledReason = () => {
     if (!currentFlow) return 'Create or select a flow first';
-    if (isValidating) return 'Validating code...';
-    if (isRunning) return 'Execution in progress';
+    if (executionState.isValidating) return 'Validating code...';
+    if (executionState.isRunning) return 'Execution in progress';
     if (createBubbleFlowMutation.isLoading) return 'Flow creation in progress';
     if (!isExecutionFormValid()) return 'Fill all required inputs';
     if (!isCredentialsSelectionValid()) return 'Select required credentials';
@@ -1082,7 +1065,7 @@ function App() {
       notifyNavigationLocked();
       return;
     }
-    setCurrentPage(page);
+    navigateToPage(page);
   };
 
   const handleSidebarFlowSelect = (flow: number) => {
@@ -1091,6 +1074,7 @@ function App() {
       return;
     }
     selectFlow(flow);
+    navigateToPage('ide');
   };
 
   const handleSidebarFlowDelete = (flowId: number, event: React.MouseEvent) => {
@@ -1118,12 +1102,12 @@ function App() {
 
   // Handle opening the output panel and clearing the visual indicator
   const handleOpenOutputPanel = () => {
-    setIsOutputCollapsed(false);
-    setHasNewOutputEvents(false);
+    expandOutput();
+    markOutputAsRead();
   };
 
   const handleExportClick = () => {
-    setShowExportModal(true);
+    toggleExportModal();
   };
 
   // Removed unused function getCredentialsForType
@@ -1134,7 +1118,7 @@ function App() {
       <>
         <Sidebar
           isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          onToggle={toggleSidebar}
           onPageChange={handleSidebarPageChange}
         />
         <div
@@ -1144,7 +1128,7 @@ function App() {
             <HomePage
               onFlowSelect={handleSidebarFlowSelect}
               onFlowDelete={handleSidebarFlowDelete}
-              onNavigateToDashboard={() => setCurrentPage('prompt')}
+              onNavigateToDashboard={() => navigateToPage('prompt')}
             />
           </div>
         </div>
@@ -1164,9 +1148,9 @@ function App() {
         onGenerateCode={generateCode}
         // Sidebar props
         isSidebarOpen={isSidebarOpen}
-        onSidebarToggle={() => setIsSidebarOpen((prev) => !prev)}
+        onSidebarToggle={toggleSidebar}
         onPageChange={handleSidebarPageChange}
-        selectedFlow={selectedFlow}
+        selectedFlow={selectedFlowId}
         onFlowSelect={handleSidebarFlowSelect}
         onFlowDelete={handleSidebarFlowDelete}
       />
@@ -1179,7 +1163,7 @@ function App() {
       <>
         <Sidebar
           isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((prev) => !prev)}
+          onToggle={toggleSidebar}
           onPageChange={handleSidebarPageChange}
         />
         <div
@@ -1193,6 +1177,20 @@ function App() {
     );
   }
 
+  const CodeEditorPanel = (
+    <div className="h-full bg-[#1a1a1a] min-h-0">
+      <div className="h-full min-h-0">
+        <div className="h-full relative">
+          <MonacoEditor />
+          {/* Code editor overlay with line count */}
+          <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
+            {getEditorCode().split('\n').length} lines
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // Flow summary is now handled inline in the main page, no separate page needed
 
   return (
@@ -1200,7 +1198,7 @@ function App() {
       {/* Left Sidebar - Always render */}
       <Sidebar
         isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen((prev) => !prev)}
+        onToggle={toggleSidebar}
         onPageChange={handleSidebarPageChange}
       />
 
@@ -1215,10 +1213,10 @@ function App() {
                 let name = '';
                 let hasPrompt = false;
 
-                if (isStreaming && generationInfo) {
+                if (isStreaming && generationPrompt) {
                   name = 'New Flow';
                   hasPrompt = true;
-                } else if (selectedFlow) {
+                } else if (selectedFlowId) {
                   if (currentFlow) {
                     name = currentFlow.name;
                     hasPrompt = true;
@@ -1232,7 +1230,7 @@ function App() {
                   name = 'New Flow';
                   hasPrompt = true;
                 } else {
-                  name = getFlowNameFromCode(code);
+                  name = getFlowNameFromCode(getEditorCode());
                 }
 
                 if (!name) return null;
@@ -1243,7 +1241,7 @@ function App() {
                     </h2>
                     {hasPrompt && (
                       <button
-                        onClick={() => setShowPrompt(!showPrompt)}
+                        onClick={togglePrompt}
                         className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                       >
                         {showPrompt ? (
@@ -1295,7 +1293,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowEditor(!showEditor);
+                        toggleEditor();
                         if (showEditor) {
                           closeSidePanel();
                         }
@@ -1310,7 +1308,7 @@ function App() {
                       content="⚡ Run the flow at least once to enable export"
                       show={
                         (!executionHistory || executionHistory.length === 0) &&
-                        !isRunning
+                        !executionState.isRunning
                       }
                       position="bottom"
                     >
@@ -1318,7 +1316,7 @@ function App() {
                         type="button"
                         onClick={handleExportClick}
                         disabled={
-                          isRunning ||
+                          executionState.isRunning ||
                           !executionHistory ||
                           executionHistory.length === 0
                         }
@@ -1344,12 +1342,12 @@ function App() {
                             : 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-gray-400'
                         }`}
                       >
-                        {isValidating ? (
+                        {executionState.isValidating ? (
                           <>
                             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></div>
                             Validating...
                           </>
-                        ) : isRunning ? (
+                        ) : executionState.isRunning ? (
                           <>
                             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1"></div>
                             Executing...
@@ -1411,12 +1409,12 @@ function App() {
                             <div
                               key={flow.id}
                               className={`p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
-                                selectedFlow === flow.id
+                                selectedFlowId === flow.id
                                   ? 'border-blue-500 bg-blue-500/10'
                                   : 'border-[#30363d] bg-[#161b22] hover:border-[#444c56] hover:bg-[#21262d]'
                               }`}
                               onClick={() => {
-                                setSelectedFlow(flow.id);
+                                selectFlow(flow.id);
                               }}
                             >
                               <div className="flex items-start justify-between mb-2">
@@ -1440,7 +1438,7 @@ function App() {
                                     title="Delete flow"
                                     onClick={() => {
                                       // TODO: Optimistic delete the flow
-                                      if (selectedFlow === flow.id) {
+                                      if (selectedFlowId === flow.id) {
                                         selectFlow(null);
                                       }
                                     }}
@@ -1475,15 +1473,15 @@ function App() {
                       // Determine which flow info to show
                       let currentFlowInfo = null;
 
-                      if (isStreaming && generationInfo) {
+                      if (isStreaming && generationPrompt) {
                         // Show info for flow currently being generated
                         currentFlowInfo = {
                           name: 'New Flow',
-                          prompt: generationInfo.prompt,
+                          prompt: generationPrompt,
                           isFromHistory: false,
                           isGenerating: true,
                         };
-                      } else if (selectedFlow) {
+                      } else if (selectedFlowId) {
                         // Show info for selected flow from history
                         const flow = currentFlow;
                         if (flow) {
@@ -1518,7 +1516,7 @@ function App() {
                         <FlowGeneration
                           isStreaming={isStreaming}
                           output={output}
-                          isRunning={isRunning}
+                          isRunning={executionState.isRunning}
                         />
                       ) : (
                         // Normal Editor/Flow Section
@@ -1540,17 +1538,19 @@ function App() {
                                       currentFlow?.bubbleParameters || {}
                                     }
                                     onParameterChange={handleParameterChange}
-                                    highlightedBubble={highlightedBubble}
+                                    highlightedBubble={
+                                      executionState.highlightedBubble
+                                    }
                                     onHighlightChange={(bubbleKey) => {
                                       console.log(
                                         'Bubble highlight changed to:',
                                         bubbleKey
                                       );
-                                      setHighlightedBubble(bubbleKey);
+                                      executionState.highlightBubble(bubbleKey);
 
                                       // Clear code highlighting when bubble is deselected
                                       if (bubbleKey === null) {
-                                        setHighlightedRange(null);
+                                        setExecutionHighlight(null);
                                       }
                                     }}
                                     onBubbleClick={(bubbleKey, bubble) => {
@@ -1561,14 +1561,16 @@ function App() {
                                       );
 
                                       // Highlight the bubble in the flow
-                                      setHighlightedBubble(String(bubbleKey));
+                                      executionState.highlightBubble(
+                                        String(bubbleKey)
+                                      );
 
                                       // Highlight the line range in the editor (validate line numbers)
                                       if (
                                         bubble.location.startLine > 0 &&
                                         bubble.location.endLine > 0
                                       ) {
-                                        setHighlightedRange({
+                                        setExecutionHighlight({
                                           startLine: bubble.location.startLine,
                                           endLine: bubble.location.endLine,
                                         });
@@ -1586,7 +1588,7 @@ function App() {
                                     ) => {
                                       // Show the editor first
                                       if (!showEditor) {
-                                        setShowEditor(true);
+                                        showEditorPanel();
                                       }
 
                                       // Set single-line selection using the shared range highlighter
@@ -1613,7 +1615,7 @@ function App() {
                                           typeof paramLine === 'number' &&
                                           paramLine > 0
                                         ) {
-                                          setHighlightedRange({
+                                          setExecutionHighlight({
                                             startLine: paramLine,
                                             endLine: paramLine,
                                           });
@@ -1627,7 +1629,8 @@ function App() {
                                             start,
                                             bubble.location.endLine || start
                                           );
-                                          const codeLines = code.split('\n');
+                                          const codeLines =
+                                            getEditorCode().split('\n');
                                           const searchStart = Math.min(
                                             start - 1,
                                             codeLines.length - 1
@@ -1654,7 +1657,7 @@ function App() {
                                             }
                                           }
                                           if (foundLine) {
-                                            setHighlightedRange({
+                                            setExecutionHighlight({
                                               startLine: foundLine,
                                               endLine: foundLine,
                                             });
@@ -1664,7 +1667,7 @@ function App() {
                                               bubble.location.startLine > 0 &&
                                               bubble.location.endLine > 0
                                             ) {
-                                              setHighlightedRange({
+                                              setExecutionHighlight({
                                                 startLine:
                                                   bubble.location.startLine,
                                                 endLine:
@@ -1682,18 +1685,20 @@ function App() {
                                           bubble.location.startLine > 0 &&
                                           bubble.location.endLine > 0
                                         ) {
-                                          setHighlightedRange({
+                                          setExecutionHighlight({
                                             startLine:
                                               bubble.location.startLine,
                                             endLine: bubble.location.endLine,
                                           });
                                         } else {
-                                          setHighlightedRange(null);
+                                          setExecutionHighlight(null);
                                         }
                                       }
 
                                       // Keep the flow selection
-                                      setHighlightedBubble(String(bubbleKey));
+                                      executionState.highlightBubble(
+                                        String(bubbleKey)
+                                      );
                                     }}
                                     requiredCredentials={(() => {
                                       return (
@@ -1702,106 +1707,60 @@ function App() {
                                     })()}
                                     availableCredentials={availableCredentials}
                                     selectedCredentials={
-                                      pendingExecutionCredentials
+                                      executionState.pendingCredentials
                                     }
-                                    onCredentialsPendingChange={(
-                                      bubbleName,
-                                      credType,
-                                      credId
-                                    ) => {
-                                      setPendingExecutionCredentials((prev) => {
-                                        const next = { ...prev };
-                                        const required =
-                                          currentFlow?.requiredCredentials ||
-                                          {};
-
-                                        // Propagate the selection to all bubbles that require this credType
-                                        Object.entries(required).forEach(
-                                          ([bKey, types]) => {
-                                            if (
-                                              Array.isArray(types) &&
-                                              (types as string[]).includes(
-                                                credType
-                                              )
-                                            ) {
-                                              if (!next[bKey]) next[bKey] = {};
-                                              if (credId === null) {
-                                                delete next[bKey][credType];
-                                                if (
-                                                  Object.keys(next[bKey])
-                                                    .length === 0
-                                                ) {
-                                                  delete next[bKey];
-                                                }
-                                              } else {
-                                                next[bKey][credType] = credId;
-                                              }
-                                            }
-                                          }
-                                        );
-
-                                        return next;
-                                      });
-                                    }}
                                     flowName={
                                       currentFlow?.name ||
-                                      getFlowNameFromCode(code)
+                                      getFlowNameFromCode(getEditorCode())
                                     }
                                     inputsSchema={JSON.stringify(
                                       currentFlow?.inputSchema ||
-                                        extractInputSchemaFromCode(code)
+                                        extractInputSchemaFromCode(
+                                          getEditorCode()
+                                        )
                                     )}
-                                    onInputsChange={handleExecutionInputsChange}
+                                    onInputsChange={() => {
+                                      //executionState.setInputs
+                                    }}
                                     onExecute={handleExecuteFromMainPage}
-                                    isExecuting={isRunning}
+                                    isExecuting={executionState.isRunning}
                                     isFormValid={isExecutionFormValid()}
-                                    executionInputs={executionInputs}
+                                    executionInputs={
+                                      executionState.executionInputs
+                                    }
                                     onExecutionInputChange={(field, value) => {
-                                      setExecutionInputs((prev) => ({
-                                        ...prev,
-                                        [field]: value,
-                                      }));
+                                      executionState.setInput(field, value);
                                     }}
                                     isLoading={
                                       createBubbleFlowMutation.isLoading ||
                                       currentFlowLoading
                                     }
                                     onValidate={validateCode}
-                                    isRunning={isRunning}
-                                    bubbleWithError={bubbleWithError}
+                                    isRunning={executionState.isRunning}
+                                    bubbleWithError={
+                                      executionState.bubbleWithError
+                                    }
                                   />
                                 </div>
                               </div>
                             </div>
                           </Panel>
 
-                          {showEditor && (
-                            <>
+                          <>
+                            {showEditor && (
                               <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
+                            )}
 
-                              {/* Editor Panel */}
-                              <Panel defaultSize={50} minSize={30}>
-                                <div className="h-full bg-[#1a1a1a] min-h-0">
-                                  <div className="h-full min-h-0">
-                                    <div className="h-full relative">
-                                      <MonacoEditor
-                                        value={code || currentFlow?.code}
-                                        onChange={(value) => {
-                                          setCode(value);
-                                        }}
-                                        language="typescript"
-                                        highlightedRange={highlightedRange}
-                                      />
-                                      {/* Code editor overlay with line count */}
-                                      <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
-                                        {code.split('\n').length} lines
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </Panel>
-                            </>
-                          )}
+                            {/* Editor Panel - always mounted but hidden when showEditor is false */}
+                            <Panel
+                              defaultSize={showEditor ? 20 : 0}
+                              minSize={showEditor ? 30 : 0}
+                              maxSize={showEditor ? 100 : 0}
+                              className={showEditor ? '' : 'hidden'}
+                            >
+                              {CodeEditorPanel}
+                            </Panel>
+                          </>
                         </PanelGroup>
                       )}
                     </div>
@@ -1839,11 +1798,11 @@ function App() {
                 <LiveOutput
                   flowId={currentFlow?.id}
                   isExecuting={executionStream.state.isExecuting}
-                  onExecutionStateChange={setIsRunning}
+                  onExecutionStateChange={executionState.startExecution}
                   events={executionStream.state.events}
                   currentLine={executionStream.state.currentLine}
                   executionStats={executionStream.getExecutionStats()}
-                  onToggleCollapse={() => setIsOutputCollapsed(true)}
+                  onToggleCollapse={collapseOutput}
                 />
               </div>
             </div>
@@ -1854,15 +1813,15 @@ function App() {
       {/* Export Modal */}
       <ExportModal
         isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        code={code}
+        onClose={toggleExportModal}
+        code={getEditorCode()}
         flowName={(() => {
           // Get flow name from selected flow or generate from code
-          if (selectedFlow) {
+          if (selectedFlowId) {
             const flow = currentFlow;
             if (flow) return flow.name;
           }
-          return getFlowNameFromCode(code);
+          return getFlowNameFromCode(getEditorCode());
         })()}
         flowId={currentFlow?.id}
         inputsSchema={JSON.stringify(currentFlow?.inputSchema)}

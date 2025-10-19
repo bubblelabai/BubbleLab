@@ -4,23 +4,10 @@ import * as monaco from 'monaco-editor';
 import { Bot } from 'lucide-react';
 import { useEditorStore } from '../stores/editorStore';
 import { setConfiguredMonaco } from '../utils/editorContext';
+import { useUIStore } from '../stores/uiStore';
+import { useBubbleFlow } from '../hooks/useBubbleFlow';
 
-interface MonacoEditorProps {
-  value?: string;
-  onChange: (value: string) => void;
-  language?: string;
-  className?: string;
-  // Highlight props
-  highlightedRange?: { startLine: number; endLine: number } | null;
-}
-
-export function MonacoEditor({
-  value = '',
-  onChange,
-  language = 'typescript',
-  className = '',
-  highlightedRange,
-}: MonacoEditorProps) {
+export function MonacoEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const rangeDecorationRef = useRef<string[]>([]);
@@ -31,11 +18,17 @@ export function MonacoEditor({
   const setSelectedRange = useEditorStore((state) => state.setSelectedRange);
   const openSidePanel = useEditorStore((state) => state.openSidePanel);
   const openPearlChat = useEditorStore((state) => state.openPearlChat);
-
+  const executionHighlightRange = useEditorStore(
+    (state) => state.executionHighlightRange
+  );
+  const selectedFlowId = useUIStore((state) => state.selectedFlowId);
+  const { data: selectedFlow } = useBubbleFlow(selectedFlowId);
+  const showEditor = useUIStore((state) => state.showEditor);
   const handleEditorDidMount = async (
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
   ) => {
+    console.log('Editor mounted');
     editorRef.current = editor;
 
     // Store the configured Monaco instance for TypeScript worker access
@@ -288,7 +281,7 @@ ${cleanedTypes.replace(/^/gm, '  ')}
 
   // Effect to handle highlighting (single tool): use highlightedRange, including single-line where start=end
   useEffect(() => {
-    if (!editorRef.current || !highlightedRange || isLoading) {
+    if (!editorRef.current || !executionHighlightRange || isLoading) {
       return;
     }
 
@@ -299,20 +292,26 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     }
 
     // Validate line numbers (Monaco requires >= 1)
-    if (highlightedRange.startLine < 1 || highlightedRange.endLine < 1) {
-      console.warn('Invalid line numbers for highlighting:', highlightedRange);
+    if (
+      executionHighlightRange.startLine < 1 ||
+      executionHighlightRange.endLine < 1
+    ) {
+      console.warn(
+        'Invalid line numbers for highlighting:',
+        executionHighlightRange
+      );
       return;
     }
 
     // Check if line numbers are within document bounds
     const lineCount = model.getLineCount();
     if (
-      highlightedRange.startLine > lineCount ||
-      highlightedRange.endLine > lineCount
+      executionHighlightRange.startLine > lineCount ||
+      executionHighlightRange.endLine > lineCount
     ) {
       console.warn(
         'Line numbers exceed document length:',
-        highlightedRange,
+        executionHighlightRange,
         'Document has',
         lineCount,
         'lines'
@@ -320,7 +319,7 @@ ${cleanedTypes.replace(/^/gm, '  ')}
       return;
     }
 
-    console.log('Applying range highlight:', highlightedRange);
+    console.log('Applying range highlight:', executionHighlightRange);
 
     // Clear previous decorations
     if (rangeDecorationRef.current.length > 0) {
@@ -330,14 +329,14 @@ ${cleanedTypes.replace(/^/gm, '  ')}
 
     // Create decoration for highlighted range (or single line when start=end)
     const range = {
-      startLineNumber: highlightedRange.startLine,
-      endLineNumber: highlightedRange.endLine,
+      startLineNumber: executionHighlightRange.startLine,
+      endLineNumber: executionHighlightRange.endLine,
       startColumn: 1,
-      endColumn: model.getLineMaxColumn(highlightedRange.endLine),
+      endColumn: model.getLineMaxColumn(executionHighlightRange.endLine),
     };
 
     const isSingleLine =
-      highlightedRange.startLine === highlightedRange.endLine;
+      executionHighlightRange.startLine === executionHighlightRange.endLine;
     const decoration = {
       range: range,
       options: {
@@ -366,27 +365,21 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     console.log('Applied range decorations:', newDecorations);
 
     // Auto-scroll to highlight
-    console.log('Auto-scrolling to highlight:', highlightedRange);
+    console.log('Auto-scrolling to highlight:', executionHighlightRange);
     editor.revealRangeInCenter(range);
-  }, [highlightedRange, isLoading]);
+  }, [executionHighlightRange, isLoading]);
 
   // Effect to clear highlighting when highlightedRange becomes null
   useEffect(() => {
     if (
-      highlightedRange === null &&
+      executionHighlightRange === null &&
       editorRef.current &&
       rangeDecorationRef.current.length > 0
     ) {
       editorRef.current.deltaDecorations(rangeDecorationRef.current, []);
       rangeDecorationRef.current = [];
     }
-  }, [highlightedRange]);
-
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined) {
-      onChange(value);
-    }
-  };
+  }, [executionHighlightRange]);
 
   const handleAddBubble = () => {
     // Open side panel at current cursor position
@@ -394,7 +387,7 @@ ${cleanedTypes.replace(/^/gm, '  ')}
   };
 
   return (
-    <div className={`relative monaco-editor-container ${className}`}>
+    <div className="relative monaco-editor-container">
       {isLoading && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-10">
           <div className="text-blue-400 text-sm flex items-center gap-2">
@@ -421,11 +414,10 @@ ${cleanedTypes.replace(/^/gm, '  ')}
       {/* @ts-expect-error - React 19 compatibility issue with Monaco Editor */}
       <Editor
         {...{
+          defaultValue: selectedFlow?.code,
           width: '100%',
-          language,
+          language: 'typescript',
           theme: 'vs-dark',
-          value,
-          onChange: handleEditorChange,
           onMount: handleEditorDidMount,
           path: 'file:///main.ts',
           options: {

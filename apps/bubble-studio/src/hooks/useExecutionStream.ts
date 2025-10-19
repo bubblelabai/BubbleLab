@@ -1,7 +1,11 @@
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '../lib/api';
+import { useExecutionStore } from '../stores/executionStore';
 
+/**
+ * Hook options for execution streaming
+ */
 interface UseExecutionStreamOptions {
   onEvent?: (event: StreamingLogEvent) => void;
   onError?: (
@@ -17,47 +21,53 @@ interface UseExecutionStreamOptions {
   ) => void;
 }
 
-interface ExecutionStreamState {
-  isExecuting: boolean;
-  isConnected: boolean;
-  error: string | null;
-  events: StreamingLogEvent[];
-  currentLine: number | null;
-}
+/**
+ * Flow-scoped execution streaming hook
+ *
+ * Syncs streaming events to the ExecutionStore for the given flowId
+ *
+ * @param flowId - The flow to execute
+ * @param options - Callbacks for handling events
+ *
+ * @example
+ * const { executeWithStreaming, stopExecution } = useExecutionStream(flowId, {
+ *   onComplete: () => toast.success('Done!'),
+ *   onError: (error) => toast.error(error),
+ * });
+ *
+ * await executeWithStreaming(executionInputs);
+ */
+export function useExecutionStream(
+  flowId: number | null,
+  options: UseExecutionStreamOptions = {}
+) {
+  const executionState = useExecutionStore(flowId);
 
-export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
-  const [state, setState] = useState<ExecutionStreamState>({
-    isExecuting: false,
-    isConnected: false,
-    error: null,
-    events: [],
-    currentLine: null,
-  });
-
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Cleanup on unmount or flowId change
+  useEffect(() => {
+    return () => {
+      if (flowId) {
+        executionState.stopExecution();
+      }
+    };
+  }, [flowId]);
 
   const executeWithStreaming = useCallback(
-    async (bubbleFlowId: number, payload: Record<string, unknown> = {}) => {
-      // Cleanup any existing stream
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+    async (payload: Record<string, unknown> = {}) => {
+      if (!flowId) {
+        console.error('[useExecutionStream] Cannot execute: flowId is null');
+        return;
       }
 
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
+      // Start execution in store
+      executionState.startExecution();
 
-      setState((prev) => ({
-        ...prev,
-        isExecuting: true,
-        isConnected: false,
-        error: null,
-        events: [],
-        currentLine: null,
-      }));
+      const abortController = new AbortController();
+      executionState.setAbortController(abortController);
 
       try {
         const response = await api.postStream(
-          `/bubble-flow/${bubbleFlowId}/execute-stream`,
+          `/bubble-flow/${flowId}/execute-stream`,
           payload
         );
 
@@ -69,7 +79,7 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
           throw new Error('No response body for streaming');
         }
 
-        setState((prev) => ({ ...prev, isConnected: true }));
+        executionState.setConnected(true);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -85,12 +95,11 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
           try {
             const eventData: StreamingLogEvent = JSON.parse(dataStr);
 
-            setState((prev) => ({
-              ...prev,
-              events: [...prev.events, eventData],
-              currentLine: eventData.lineNumber || prev.currentLine,
-            }));
+            // Update store with event
+            executionState.addEvent(eventData);
+            executionState.setCurrentLine(eventData.lineNumber || null);
 
+            // Trigger callback
             options.onEvent?.(eventData);
 
             if (eventData.type === 'bubble_execution') {
@@ -109,34 +118,21 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
             }
 
             if (eventData.type === 'execution_complete') {
-              setState((prev) => ({
-                ...prev,
-                isExecuting: false,
-                currentLine: null,
-              }));
+              executionState.stopExecution();
               options.onComplete?.();
               return true;
             }
 
             if (eventData.type === 'stream_complete') {
-              setState((prev) => ({
-                ...prev,
-                isExecuting: false,
-                isConnected: false,
-                currentLine: null,
-              }));
+              executionState.stopExecution();
               options.onComplete?.();
               return true;
             }
 
             // Handle fatal errors - these should stop the stream
             if (eventData.type === 'fatal') {
-              setState((prev) => ({
-                ...prev,
-                error: eventData.message,
-                isExecuting: false,
-                currentLine: null,
-              }));
+              executionState.setError(eventData.message);
+              executionState.stopExecution();
               // Pass the variableId from the fatal event if available
               options.onError?.(eventData.message, true, eventData.variableId);
               return true;
@@ -145,12 +141,7 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
             // Handle non-fatal errors - log them but DO NOT stop execution
             // Individual bubble failures should not halt the entire flow
             if (eventData.type === 'error') {
-              setState((prev) => ({
-                ...prev,
-                error: eventData.message,
-                // Keep execution running - errors are just logged
-              }));
-
+              executionState.setError(eventData.message);
               options.onError?.(eventData.message, false);
 
               // Don't stop the stream - continue processing events
@@ -210,54 +201,30 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
         if (!abortController.signal.aborted) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
-          setState((prev) => ({
-            ...prev,
-            error: errorMessage,
-            isExecuting: false,
-            isConnected: false,
-            currentLine: null,
-          }));
+          executionState.setError(errorMessage);
+          executionState.stopExecution();
           // Catch errors are treated as fatal
           options.onError?.(errorMessage, true);
         }
       } finally {
         if (!abortController.signal.aborted) {
-          setState((prev) => ({
-            ...prev,
-            isExecuting: false,
-            isConnected: false,
-          }));
+          executionState.stopExecution();
         }
       }
     },
-    [options]
+    [flowId, executionState, options]
   );
 
   const stopExecution = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      isExecuting: false,
-      isConnected: false,
-      currentLine: null,
-    }));
-  }, []);
+    executionState.stopExecution();
+  }, [executionState]);
 
   const clearEvents = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      events: [],
-      error: null,
-      currentLine: null,
-    }));
-  }, []);
+    executionState.clearEvents();
+  }, [executionState]);
 
   const getExecutionStats = useCallback(() => {
-    const { events } = state;
+    const { events } = executionState;
 
     let totalTime = 0;
     let memoryUsage = 0;
@@ -289,10 +256,17 @@ export function useExecutionStream(options: UseExecutionStreamOptions = {}) {
       linesExecuted,
       bubblesProcessed,
     };
-  }, [state.events]);
+  }, [executionState.events]);
 
   return {
-    state,
+    // Return state from store (not local state)
+    state: {
+      isExecuting: executionState.isRunning,
+      isConnected: executionState.isConnected,
+      error: executionState.error,
+      events: executionState.events,
+      currentLine: executionState.currentLine,
+    },
     executeWithStreaming,
     stopExecution,
     clearEvents,

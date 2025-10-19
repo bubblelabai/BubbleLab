@@ -13,7 +13,7 @@ export const useFlowGeneration = () => {
     generationPrompt: string,
     setIsStreaming: (streaming: boolean) => void,
     setOutput: (output: string | ((prev: string) => string)) => void,
-    setGenerationInfo: (info: { prompt: string } | null) => void,
+    setGenerationInfo: (prompt: string) => void,
     setCurrentPage: (
       page: 'prompt' | 'ide' | 'credentials' | 'flow-summary'
     ) => void,
@@ -41,9 +41,7 @@ export const useFlowGeneration = () => {
 
         if (templateResult) {
           // Set generation info immediately
-          setGenerationInfo({
-            prompt: generationPrompt.trim(),
-          });
+          setGenerationInfo(generationPrompt.trim());
 
           // Navigate to IDE page immediately (no loading UI)
           setCurrentPage('ide');
@@ -75,9 +73,7 @@ export const useFlowGeneration = () => {
     const savedPrompt = generationPrompt.trim();
 
     // Set generation info immediately
-    setGenerationInfo({
-      prompt: savedPrompt,
-    });
+    setGenerationInfo(savedPrompt);
 
     // Clear previous output before starting new generation
     setOutput('');
@@ -413,7 +409,7 @@ export const useFlowGeneration = () => {
     } finally {
       // Always clear streaming state and generation info
       setIsStreaming(false);
-      setGenerationInfo(null);
+      setGenerationInfo('');
     }
   };
 
