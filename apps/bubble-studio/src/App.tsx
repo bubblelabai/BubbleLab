@@ -9,6 +9,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   Play,
+  Bot,
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -104,7 +105,8 @@ function App() {
     stopStreaming,
   } = useGenerationStore();
   // Editor Store - Monaco editor
-  const { closeSidePanel, setExecutionHighlight } = useEditorStore();
+  const { closeSidePanel, setExecutionHighlight, openPearlChat } =
+    useEditorStore();
   // Per-flow Execution Store
   const executionState = useExecutionStore(selectedFlowId);
 
@@ -473,6 +475,8 @@ function App() {
     schemaInputs?: Record<string, unknown>
   ) => {
     // Check if code == flow's code
+
+    console.log('executeWithLiveStreaming', getEditorCode());
     if (getEditorCode() !== currentFlow?.code) {
       const isValid = await validateCode();
       if (!isValid) {
@@ -1279,7 +1283,7 @@ function App() {
               <SignedIn>
                 {!isStreaming && (
                   <>
-                    {/* <button
+                    <button
                       type="button"
                       onClick={() => {
                         openPearlChat();
@@ -1288,7 +1292,7 @@ function App() {
                     >
                       <Bot className="w-3 h-3" />
                       AI Assistant
-                    </button> */}
+                    </button>
 
                     <button
                       type="button"

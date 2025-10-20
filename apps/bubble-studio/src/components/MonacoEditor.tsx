@@ -23,7 +23,6 @@ export function MonacoEditor() {
   );
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const { data: selectedFlow } = useBubbleFlow(selectedFlowId);
-  const showEditor = useUIStore((state) => state.showEditor);
   const handleEditorDidMount = async (
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
