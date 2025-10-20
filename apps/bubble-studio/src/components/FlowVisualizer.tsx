@@ -73,6 +73,8 @@ interface FlowVisualizerProps {
   isRunning?: boolean;
   // Error state
   bubbleWithError?: string | null;
+  // Completion state
+  completedBubbles?: Record<string, number>;
 }
 
 const nodeTypes = {
@@ -133,6 +135,7 @@ function FlowVisualizerInner({
   onValidate,
   isRunning,
   bubbleWithError,
+  completedBubbles = {},
 }: FlowVisualizerProps) {
   const { fitView, getViewport, setViewport } = useReactFlow();
 
@@ -574,6 +577,9 @@ function FlowVisualizerInner({
         );
       }
 
+      const isCompletedState = nodeId in completedBubbles;
+      const executionTimeMs = completedBubbles[nodeId];
+
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
@@ -624,6 +630,9 @@ function FlowVisualizerInner({
           },
           // Error state
           hasError: hasErrorState,
+          // Completion state
+          isCompleted: isCompletedState,
+          executionTimeMs: executionTimeMs,
         },
       };
       nodes.push(node);
@@ -747,6 +756,7 @@ function FlowVisualizerInner({
     createNodesFromDependencyGraph,
     toggleRootVisibility,
     bubbleWithError,
+    completedBubbles,
   ]);
 
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(initialNodes);

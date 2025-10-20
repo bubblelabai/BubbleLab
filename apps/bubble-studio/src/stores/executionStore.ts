@@ -41,6 +41,12 @@ export interface FlowExecutionState {
    */
   lastExecutingBubble: string | null;
 
+  /**
+   * Bubbles that have completed execution with their execution times (in ms)
+   * Key: bubbleKey (variableId), Value: execution time in milliseconds
+   */
+  completedBubbles: Record<string, number>;
+
   // ============= Execution Data =============
 
   /**
@@ -125,6 +131,11 @@ export interface FlowExecutionState {
    * Track the last executing bubble
    */
   setLastExecutingBubble: (bubbleKey: string | null) => void;
+
+  /**
+   * Mark a bubble as completed with execution time
+   */
+  setBubbleCompleted: (bubbleKey: string, executionTimeMs: number) => void;
 
   /**
    * Clear all highlighting
@@ -216,6 +227,7 @@ function createExecutionStore(flowId: number) {
     highlightedBubble: null,
     bubbleWithError: null,
     lastExecutingBubble: null,
+    completedBubbles: {},
     executionInputs: {},
     pendingCredentials: {},
     isConnected: false,
@@ -231,6 +243,7 @@ function createExecutionStore(flowId: number) {
         error: null,
         events: [],
         bubbleWithError: null,
+        completedBubbles: {},
       }),
 
     stopExecution: () => {
@@ -260,6 +273,14 @@ function createExecutionStore(flowId: number) {
 
     setLastExecutingBubble: (bubbleKey) =>
       set({ lastExecutingBubble: bubbleKey }),
+
+    setBubbleCompleted: (bubbleKey, executionTimeMs) =>
+      set((state) => ({
+        completedBubbles: {
+          ...state.completedBubbles,
+          [bubbleKey]: executionTimeMs,
+        },
+      })),
 
     clearHighlighting: () =>
       set({
@@ -339,6 +360,7 @@ function createExecutionStore(flowId: number) {
         highlightedBubble: null,
         bubbleWithError: null,
         lastExecutingBubble: null,
+        completedBubbles: {},
         executionInputs: {},
         pendingCredentials: {},
         isConnected: false,
@@ -355,6 +377,7 @@ function createExecutionStore(flowId: number) {
         highlightedBubble: null,
         bubbleWithError: null,
         lastExecutingBubble: null,
+        completedBubbles: {},
         isConnected: false,
         error: null,
         events: [],
@@ -377,6 +400,7 @@ const emptyState: FlowExecutionState = {
   highlightedBubble: null,
   bubbleWithError: null,
   lastExecutingBubble: null,
+  completedBubbles: {},
   executionInputs: {},
   pendingCredentials: {},
   isConnected: false,
@@ -392,6 +416,7 @@ const emptyState: FlowExecutionState = {
   highlightBubble: () => {},
   setBubbleError: () => {},
   setLastExecutingBubble: () => {},
+  setBubbleCompleted: () => {},
   clearHighlighting: () => {},
   setInput: () => {},
   setInputs: () => {},

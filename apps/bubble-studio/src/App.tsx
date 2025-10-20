@@ -273,8 +273,7 @@ function App() {
     onBubbleExecutionComplete: (event) => {
       console.log('Bubble execution complete event:', event);
 
-      // Also track the last executing bubble on completion
-      // This ensures we have the bubble ID even if only completion events fire
+      // Track completion with execution time
       if (event.variableId) {
         const bubble = findBubbleByVariableId(
           currentFlow?.bubbleParameters || {},
@@ -283,6 +282,17 @@ function App() {
         if (bubble) {
           const bubbleId = String(bubble.variableId);
           executionState.setLastExecutingBubble(bubbleId);
+
+          // Mark bubble as completed with execution time
+          const executionTimeMs = event.executionTime ?? 0;
+          executionState.setBubbleCompleted(bubbleId, executionTimeMs);
+          console.log(
+            '✅ Bubble completed:',
+            bubbleId,
+            'in',
+            executionTimeMs,
+            'ms'
+          );
         }
       }
       refetchExecutionHistory();
@@ -1375,6 +1385,9 @@ function App() {
                                     isRunning={executionState.isRunning}
                                     bubbleWithError={
                                       executionState.bubbleWithError
+                                    }
+                                    completedBubbles={
+                                      executionState.completedBubbles
                                     }
                                   />
                                 </div>
