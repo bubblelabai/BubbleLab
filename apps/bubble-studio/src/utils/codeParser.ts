@@ -55,3 +55,24 @@ export function getFlowNameFromCode(code: string): string {
   const className = extractClassName(code);
   return className || generateDefaultFlowName();
 }
+
+export function cleanupFlattenedKeys(
+  inputsState: Record<string, unknown>
+): Record<string, unknown> {
+  // Remove any flattened keys that should be nested in arrays
+  const cleanedInputs = { ...inputsState };
+  const keysToRemove: string[] = [];
+
+  Object.keys(cleanedInputs).forEach((key) => {
+    // Check if this key looks like a flattened array property (e.g., "images[0].data")
+    if (key.includes('[') && key.includes(']')) {
+      keysToRemove.push(key);
+    }
+  });
+
+  keysToRemove.forEach((key) => {
+    delete cleanedInputs[key];
+  });
+
+  return cleanedInputs;
+}

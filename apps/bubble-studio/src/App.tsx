@@ -13,48 +13,50 @@ import {
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { MonacoEditor } from './components/MonacoEditor';
-import { ExportModal } from './components/ExportModal';
-import FlowVisualizer from './components/FlowVisualizer';
-import { BubbleSidePanel } from './components/BubbleSidePanel';
-import { CredentialsPage } from './pages/CredentialsPage';
-import { OAuthCallback } from './components/OAuthCallback';
-import { DashboardPage } from './pages/DashboardPage';
-import { HomePage } from './pages/HomePage';
-import LiveOutput from './components/execution_logs/LiveOutput';
-import { FlowGeneration } from './components/FlowGeneration';
-import { useFlowGeneration } from './hooks/useFlowGeneration';
-import { Sidebar } from './components/Sidebar';
-import { Tooltip } from './components/Tooltip';
+import { MonacoEditor } from '@/components/MonacoEditor';
+import { ExportModal } from '@/components/ExportModal';
+import FlowVisualizer from '@/components/FlowVisualizer';
+import { BubbleSidePanel } from '@/components/BubbleSidePanel';
+import { CredentialsPage } from '@/pages/CredentialsPage';
+import { OAuthCallback } from '@/components/OAuthCallback';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { HomePage } from '@/pages/HomePage';
+import LiveOutput from '@/components/execution_logs/LiveOutput';
+import { FlowGeneration } from '@/components/FlowGeneration';
+import { useFlowGeneration } from '@/hooks/useFlowGeneration';
+import { Sidebar } from '@/components/Sidebar';
+import { Tooltip } from '@/components/Tooltip';
 import {
   useEditorStore,
   getEditorCode,
   setEditorCode,
-} from './stores/editorStore';
-import { useUIStore } from './stores/uiStore';
-import { useExecutionStore } from './stores/executionStore';
-import { useGenerationStore } from './stores/generationStore';
-import { useOutputStore } from './stores/outputStore';
-import { useCredentials } from './hooks/useCredentials';
-import { useClerkTokenSync } from './hooks/useClerkTokenSync';
-import { useExecutionStream } from './hooks/useExecutionStream';
-import { useBubbleFlow } from './hooks/useBubbleFlow';
-import { useBubbleFlowList } from './hooks/useBubbleFlowList';
-import { useCreateBubbleFlow } from './hooks/useCreateBubbleFlow';
-import { useDeleteBubbleFlow } from './hooks/useDeleteBubbleFlow';
-import { useExecutionHistory } from './hooks/useExecutionHistory';
-import { api } from './lib/api';
+} from '@/stores/editorStore';
+import { useUIStore } from '@/stores/uiStore';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useGenerationStore } from '@/stores/generationStore';
+import { useOutputStore } from '@/stores/outputStore';
+import { useCredentials } from '@/hooks/useCredentials';
+import { useClerkTokenSync } from '@/hooks/useClerkTokenSync';
+import { useExecutionStream } from '@/hooks/useExecutionStream';
+import { useBubbleFlow } from '@/hooks/useBubbleFlow';
+import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
+import { useCreateBubbleFlow } from '@/hooks/useCreateBubbleFlow';
+import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
+import { useExecutionHistory } from '@/hooks/useExecutionHistory';
+import { api } from '@/lib/api';
 import type {
   BubbleFlowDetailsResponse,
-  ValidateBubbleFlowResponse,
   CredentialType,
 } from '@bubblelab/shared-schemas';
-import { getFlowNameFromCode } from './utils/codeParser';
-import { findBubbleByVariableId } from './utils/bubbleUtils';
-import { API_BASE_URL } from './env';
+import { getFlowNameFromCode } from '@/utils/codeParser';
+import { findBubbleByVariableId } from '@/utils/bubbleUtils';
+import { API_BASE_URL } from '@/env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import { useSubscription } from './hooks/useSubscription';
-import { useValidateCode } from './hooks/useValidateCode';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useValidateCode } from '@/hooks/useValidateCode';
+import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
+import { cleanupFlattenedKeys } from '@/utils/codeParser';
+
 function App() {
   // Check if this is an OAuth callback
   const urlParams = new URLSearchParams(window.location.search);
@@ -515,138 +517,6 @@ function App() {
     await generateCodeFromHook(generationPrompt, selectedPreset);
   };
 
-  // Helper function to extract input schema from code [that is pasted in]
-  const extractInputSchemaFromCode = (code: string): string => {
-    try {
-      // Look for interface that extends WebhookEvent (common pattern)
-      const webhookInterfaceMatch = code.match(
-        /export\s+interface\s+(\w+)\s+extends\s+WebhookEvent\s*\{([^}]+)\}/
-      );
-
-      if (webhookInterfaceMatch) {
-        const interfaceName = webhookInterfaceMatch[1];
-        const interfaceBody = webhookInterfaceMatch[2];
-
-        // Parse the interface properties
-        const properties: Record<
-          string,
-          { type: string; description: string; items?: { type: string } }
-        > = {};
-        const required: string[] = [];
-
-        // Split by semicolon or newline and parse each property
-        const propertyLines = interfaceBody
-          .split(/[;\n]/)
-          .filter((line) => line.trim());
-
-        for (const line of propertyLines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-
-          // Match property: type pattern, handling optional properties
-          const propertyMatch = trimmed.match(/(\w+)(\??):\s*([^;]+)/);
-          if (propertyMatch) {
-            const [, propertyName, optional, propertyType] = propertyMatch;
-            const isOptional = optional === '?';
-
-            // Convert TypeScript types to JSON Schema types
-            let jsonType = 'string';
-            let description = '';
-
-            if (propertyType.includes('number')) {
-              jsonType = 'number';
-            } else if (propertyType.includes('boolean')) {
-              jsonType = 'boolean';
-            } else if (propertyType.includes('string[]')) {
-              jsonType = 'array';
-              properties[propertyName] = {
-                type: 'array',
-                items: { type: 'string' },
-                description: `Array of strings for ${propertyName}`,
-              };
-              if (!isOptional) required.push(propertyName);
-              continue;
-            } else if (propertyType.includes('[]')) {
-              jsonType = 'array';
-            }
-
-            // Extract comments for description
-            const commentMatch = trimmed.match(/\/\/\s*(.+)$/);
-            if (commentMatch) {
-              description = commentMatch[1];
-            } else {
-              // Generate description based on property name
-              description = `${propertyName
-                .replace(/([A-Z])/g, ' $1')
-                .toLowerCase()
-                .trim()}`;
-            }
-
-            properties[propertyName] = {
-              type: jsonType,
-              description: description,
-            };
-
-            if (!isOptional) {
-              required.push(propertyName);
-            }
-          }
-        }
-
-        // Create JSON schema
-        const schema = {
-          type: 'object',
-          properties,
-          required,
-          title: interfaceName,
-        };
-
-        return JSON.stringify(schema, null, 2);
-      }
-
-      // Fallback: look for any interface with webhook-like properties
-      const anyInterfaceMatch = code.match(
-        /export\s+interface\s+(\w+)\s*\{([^}]+)\}/
-      );
-      if (anyInterfaceMatch) {
-        return `{
-  "type": "object",
-  "properties": {
-    "message": {
-      "type": "string",
-      "description": "Input message or data"
-    }
-  },
-  "required": ["message"],
-  "title": "CustomInput"
-}`;
-      }
-
-      return '';
-    } catch (error) {
-      console.warn('Failed to extract input schema from code:', error);
-      return '';
-    }
-  };
-
-  const cleanupFlattenedKeys = (inputsState: Record<string, unknown>) => {
-    // Remove any flattened keys that should be nested in arrays
-    const cleanedInputs = { ...inputsState };
-    const keysToRemove: string[] = [];
-
-    Object.keys(cleanedInputs).forEach((key) => {
-      // Check if this key looks like a flattened array property (e.g., "images[0].data")
-      if (key.includes('[') && key.includes(']')) {
-        keysToRemove.push(key);
-      }
-    });
-
-    keysToRemove.forEach((key) => {
-      delete cleanedInputs[key];
-    });
-
-    return cleanedInputs;
-  };
   const isExecutionFormValid = () => {
     if (!currentFlow) return false;
     try {
