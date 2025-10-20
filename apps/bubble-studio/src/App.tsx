@@ -53,10 +53,8 @@ import { getFlowNameFromCode } from './utils/codeParser';
 import { findBubbleByVariableId } from './utils/bubbleUtils';
 import { API_BASE_URL } from './env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import type { ParsedBubbleWithInfoInferred as ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useSubscription } from './hooks/useSubscription';
 import { useValidateCode } from './hooks/useValidateCode';
-
 function App() {
   // Check if this is an OAuth callback
   const urlParams = new URLSearchParams(window.location.search);
@@ -514,110 +512,7 @@ function App() {
     // Hide the sidebar so the IDE has maximum space during a new generation
     closeSidebar();
 
-    // Create a wrapper function to handle type conversion for setCurrentBubbleParameters
-    const setCurrentBubbleParametersWrapper = () => {};
-
-    await generateCodeFromHook(
-      generationPrompt,
-      startStreaming,
-      setOutput,
-      setGenerationPrompt, // generationInfo was removed - use generationPrompt instead
-      navigateToPage,
-      setEditorCode,
-      setCurrentBubbleParametersWrapper,
-      selectFlow,
-      setGenerationPrompt,
-      createFlowFromGeneration,
-      selectedPreset
-    );
-
-    //TODO: Optmistic update to add new flow to the list
-  };
-
-  const createFlowFromGeneration = async (
-    generatedCode?: string,
-    metadata?: { inputsSchema?: string; prompt?: string }
-  ) => {
-    const codeToUse = generatedCode;
-    console.log('🚀 [createFlowFromGeneration] Starting flow creation...');
-
-    if (!codeToUse || codeToUse.trim() === '') {
-      console.error('❌ [createFlowFromGeneration] No code to create flow');
-      setOutput((prev) => prev + '\n❌ No code to create flow');
-      return;
-    }
-
-    try {
-      console.log(
-        '📡 [createFlowFromGeneration] Using mutation hook to create BubbleFlow...'
-      );
-
-      console.log('📡 [createFlowFromGeneration] Metadata:', metadata);
-      console.log(
-        '📡 [createFlowFromGeneration] Generation Prompt:',
-        generationPrompt
-      );
-
-      // Create the BubbleFlow using the mutation hook
-      // The mutation will optimistically update both the flow list and individual flow cache
-      const createResult = await createBubbleFlowMutation.mutateAsync({
-        name: getFlowNameFromCode(codeToUse),
-        description: 'Created from AI Generated Code',
-        code: codeToUse,
-        prompt: generationPrompt,
-        eventType: 'webhook/http',
-        webhookActive: false,
-      });
-
-      console.log(
-        '📥 [createFlowFromGeneration] Flow created successfully with ID:',
-        createResult.id
-      );
-
-      const bubbleFlowId = createResult.id;
-      const bubbleParameters = createResult.bubbleParameters || {};
-
-      // Update current bubble parameters for visualization
-      updateCurrentBubbleParameters(
-        bubbleParameters as Record<string, ParsedBubbleWithInfo>
-      );
-
-      // Auto-select the newly created flow - this will now use the cached optimistic data
-      selectFlow(bubbleFlowId);
-
-      executionState.setAllCredentials({});
-      executionState.setInputs({});
-
-      // Empty flow visualizer
-      // Clear live output
-      setOutput('');
-
-      // Flow diagram will now be visible alongside the editor
-      const successMessage = `\n✅ Flow "${getFlowNameFromCode(codeToUse)}" created and selected!\n🎯 Flow diagram is now visible alongside the editor!\n🚀 Execute Flow section is ready - configure credentials and run!`;
-
-      setOutput((prev) => prev + successMessage);
-
-      console.log(
-        '✅ [createFlowFromGeneration] Flow creation completed successfully'
-      );
-
-      // Refetch subscription to update token usage after generation
-      refetchSubscriptionStatus();
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      console.error(
-        '❌ [createFlowFromGeneration] Error creating flow:',
-        error
-      );
-      console.error('❌ [createFlowFromGeneration] Error details:', {
-        message: errorMessage,
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        error: error,
-      });
-
-      setOutput((prev) => prev + `\n❌ Failed to create flow: ${errorMessage}`);
-    }
+    await generateCodeFromHook(generationPrompt, selectedPreset);
   };
 
   // Helper function to extract input schema from code [that is pasted in]
@@ -987,6 +882,7 @@ function App() {
 
   // Render Home page (My Flows)
   if (currentPage === 'home') {
+    console.log('🚀 [HomePage] Rendering HomePage');
     return (
       <>
         <Sidebar
@@ -1011,6 +907,7 @@ function App() {
 
   // Render Dashboard page
   if (currentPage === 'prompt') {
+    console.log('🚀 [DashboardPage] Rendering DashboardPage');
     return (
       <DashboardPage
         isStreaming={isStreaming}
@@ -1032,6 +929,7 @@ function App() {
 
   // Render Credentials page
   if (currentPage === 'credentials') {
+    console.log('🚀 [CredentialsPage] Rendering CredentialsPage');
     return (
       <>
         <Sidebar
@@ -1066,6 +964,7 @@ function App() {
 
   // Flow summary is now handled inline in the main page, no separate page needed
 
+  console.log('🚀 [App] Rendering App');
   return (
     <>
       {/* Left Sidebar - Always render */}

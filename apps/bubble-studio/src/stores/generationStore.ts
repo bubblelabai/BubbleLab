@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-
+import { useUIStore } from '@/stores/uiStore';
 /**
  * Generation Store - Flow Generation State
  *
@@ -54,6 +54,18 @@ interface GenerationStore {
   stopStreaming: () => void;
 
   /**
+   * Start generation flow - combines startStreaming + navigate to IDE
+   * Use this instead of startStreaming() to ensure consistent state
+   */
+  startGenerationFlow: () => void;
+
+  /**
+   * Stop generation flow - only stops streaming, doesn't navigate away
+   * User might want to stay on IDE page after generation completes
+   */
+  stopGenerationFlow: () => void;
+
+  /**
    * Clear the prompt (after successful generation)
    */
   clearPrompt: () => void;
@@ -69,15 +81,15 @@ interface GenerationStore {
  *
  * Usage example:
  * ```typescript
- * const { generationPrompt, setGenerationPrompt, startStreaming } = useGenerationStore();
+ * const { generationPrompt, setGenerationPrompt, startGenerationFlow, stopGenerationFlow } = useGenerationStore();
  *
  * // User types prompt
  * setGenerationPrompt('Create a Slack notification flow');
  *
- * // Start generation
- * startStreaming();
+ * // Start generation (automatically navigates to IDE)
+ * startGenerationFlow();
  * await generateCode(generationPrompt);
- * stopStreaming();
+ * stopGenerationFlow();
  * ```
  */
 export const useGenerationStore = create<GenerationStore>((set) => ({
@@ -94,6 +106,14 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
   startStreaming: () => set({ isStreaming: true }),
 
   stopStreaming: () => set({ isStreaming: false }),
+
+  startGenerationFlow: () => {
+    set({ isStreaming: true });
+    // Import dynamically to avoid circular dependency
+    useUIStore.getState().navigateToPage('ide');
+  },
+
+  stopGenerationFlow: () => set({ isStreaming: false }),
 
   clearPrompt: () => set({ generationPrompt: '' }),
 

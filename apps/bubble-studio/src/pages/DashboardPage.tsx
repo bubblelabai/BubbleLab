@@ -174,21 +174,6 @@ export function DashboardPage({
     onPageChange(page);
   };
 
-  // Wrapper function to check authentication before flow selection
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleFlowSelect = (flow: number) => {
-    if (!isSignedIn) {
-      // Save the current prompt before showing sign-in modal
-      if (generationPrompt.trim()) {
-        setSavedPrompt(generationPrompt);
-        localStorage.setItem('savedPrompt', generationPrompt);
-      }
-      setShowSignInModal(true);
-      return;
-    }
-    onFlowSelect(flow);
-  };
-
   return (
     <>
       {/* Sidebar */}

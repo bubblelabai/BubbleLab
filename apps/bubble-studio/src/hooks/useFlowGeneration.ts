@@ -1,37 +1,135 @@
-import { api } from '../lib/api';
+import { api } from '@/lib/api';
 import {
   getTemplateByIndex,
   hasTemplate,
-} from '../components/templates/templateLoader';
+} from '@/components/templates/templateLoader';
 import { toast } from 'react-toastify';
 import { TokenUsage } from '@bubblelab/shared-schemas';
-import { trackWorkflowGeneration } from '../services/analytics';
+import { trackWorkflowGeneration } from '@/services/analytics';
+import { useGenerationStore } from '@/stores/generationStore';
+import { useOutputStore } from '@/stores/outputStore';
+import { getFlowNameFromCode } from '@/utils/codeParser';
+import { useCreateBubbleFlow } from '@/hooks/useCreateBubbleFlow';
+import { useBubbleFlow } from '@/hooks/useBubbleFlow';
+import { useUIStore } from '@/stores/uiStore';
+import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useSubscription } from '@/hooks/useSubscription';
 
 // Export the generateCode function for use in other components
 export const useFlowGeneration = () => {
+  const { setOutput } = useOutputStore();
+  const {
+    selectedFlowId: currentFlowId,
+    selectFlow,
+    navigateToPage,
+    showEditorPanel,
+  } = useUIStore();
+  const {
+    startGenerationFlow,
+    stopGenerationFlow,
+    setGenerationPrompt,
+    generationPrompt,
+  } = useGenerationStore();
+  const createBubbleFlowMutation = useCreateBubbleFlow();
+  const executionState = useExecutionStore(currentFlowId);
+  const { updateBubbleParameters: updateCurrentBubbleParameters } =
+    useBubbleFlow(currentFlowId);
+  const { refetch: refetchSubscriptionStatus } = useSubscription();
+  const createFlowFromGeneration = async (
+    generatedCode?: string,
+    metadata?: { inputsSchema?: string; prompt?: string }
+  ) => {
+    const codeToUse = generatedCode;
+    console.log('🚀 [createFlowFromGeneration] Starting flow creation...');
+
+    if (!codeToUse || codeToUse.trim() === '') {
+      console.error('❌ [createFlowFromGeneration] No code to create flow');
+      setOutput((prev) => prev + '\n❌ No code to create flow');
+      return;
+    }
+
+    try {
+      setOutput('Creating flow...');
+
+      // Create the BubbleFlow using the mutation hook
+      // The mutation will optimistically update both the flow list and individual flow cache
+      const createResult = await createBubbleFlowMutation.mutateAsync({
+        name: getFlowNameFromCode(codeToUse),
+        description: 'Created from AI Generated Code',
+        code: codeToUse,
+        prompt: generationPrompt,
+        eventType: 'webhook/http',
+        webhookActive: false,
+      });
+
+      console.log(
+        '📥 [createFlowFromGeneration] Flow created successfully with ID:',
+        createResult.id
+      );
+
+      const bubbleFlowId = createResult.id;
+      const bubbleParameters = createResult.bubbleParameters || {};
+
+      // Update current bubble parameters for visualization
+      updateCurrentBubbleParameters(
+        bubbleParameters as Record<string, ParsedBubbleWithInfo>
+      );
+
+      // Auto-select the newly created flow - this will now use the cached optimistic data
+      selectFlow(bubbleFlowId);
+
+      // Navigate to IDE to show the newly created flow
+      navigateToPage('ide');
+
+      stopGenerationFlow();
+
+      // Ensure editor is visible to show the generated code
+      showEditorPanel();
+
+      executionState.setAllCredentials({});
+      executionState.setInputs({});
+
+      // Empty flow visualizer
+      // Clear live output
+      setOutput('');
+
+      // Flow diagram will now be visible alongside the editor
+      const successMessage = `\n✅ Flow "${getFlowNameFromCode(codeToUse)}" created and selected!\n🎯 Flow diagram is now visible alongside the editor!\n🚀 Execute Flow section is ready - configure credentials and run!`;
+
+      setOutput((prev) => prev + successMessage);
+
+      console.log(
+        '✅ [createFlowFromGeneration] Flow creation completed successfully'
+      );
+
+      // Refetch subscription to update token usage after generation
+      refetchSubscriptionStatus();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.error(
+        '❌ [createFlowFromGeneration] Error creating flow:',
+        error
+      );
+      console.error('❌ [createFlowFromGeneration] Error details:', {
+        message: errorMessage,
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        error: error,
+      });
+
+      setOutput((prev) => prev + `\n❌ Failed to create flow: ${errorMessage}`);
+    }
+  };
   const generateCode = async (
     generationPrompt: string,
-    setIsStreaming: (streaming: boolean) => void,
-    setOutput: (output: string | ((prev: string) => string)) => void,
-    setGenerationInfo: (prompt: string) => void,
-    setCurrentPage: (
-      page: 'prompt' | 'ide' | 'credentials' | 'flow-summary'
-    ) => void,
-    setCode: (code: string) => void,
-    setCurrentBubbleParameters: (params: Record<string, unknown>) => void,
-    setSelectedFlow: (flowId: number) => void,
-    setGenerationPrompt: (prompt: string) => void,
-    onCreateFlowFromGeneration?: (
-      generatedCode?: string,
-      metadata?: { inputsSchema?: string; prompt?: string }
-    ) => Promise<void>,
     selectedPreset?: number
   ) => {
     if (!generationPrompt || generationPrompt.trim() === '') {
       setOutput('Please enter a prompt for code generation');
       return;
     }
-
+    startGenerationFlow();
     // Check if this is a preset template that should skip flow generation
     if (selectedPreset !== undefined && hasTemplate(selectedPreset)) {
       try {
@@ -41,21 +139,11 @@ export const useFlowGeneration = () => {
 
         if (templateResult) {
           // Set generation info immediately
-          setGenerationInfo(generationPrompt.trim());
-
-          // Navigate to IDE page immediately (no loading UI)
-          setCurrentPage('ide');
-
-          // Set the template code directly (no streaming, no loading messages)
-          setCode(templateResult.code);
-
+          setGenerationPrompt(generationPrompt.trim());
           // Create flow from template immediately
-          if (onCreateFlowFromGeneration) {
-            await onCreateFlowFromGeneration(templateResult.code, {
-              prompt: generationPrompt.trim(),
-            });
-          }
-
+          await createFlowFromGeneration(templateResult.code, {
+            prompt: generationPrompt.trim(),
+          });
           // No output messages, no streaming state - just go straight to the code
           return;
         }
@@ -64,7 +152,7 @@ export const useFlowGeneration = () => {
         setOutput(
           `Error loading template: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
-        setIsStreaming(false);
+        stopGenerationFlow();
         return;
       }
     }
@@ -73,18 +161,13 @@ export const useFlowGeneration = () => {
     const savedPrompt = generationPrompt.trim();
 
     // Set generation info immediately
-    setGenerationInfo(savedPrompt);
+    setGenerationPrompt(savedPrompt);
 
     // Clear previous output before starting new generation
     setOutput('');
 
-    setIsStreaming(true);
-
     // Track generation start time
     const generationStartTime = Date.now();
-
-    // Navigate to IDE page for generation process
-    setCurrentPage('ide');
 
     // Variables to capture summary and inputsSchema - using generatedResult instead of local variables
 
@@ -131,7 +214,7 @@ export const useFlowGeneration = () => {
 
               switch (eventData.type) {
                 case 'start':
-                  setIsStreaming(true);
+                  // Already started via startGenerationFlow() above
                   break;
 
                 case 'llm_start':
@@ -303,16 +386,16 @@ export const useFlowGeneration = () => {
 
                 case 'stream_complete':
                   setOutput((prev) => prev + `Finalizing results...\n`);
-                  setIsStreaming(false);
+                  stopGenerationFlow();
                   break;
 
                 case 'error':
                   setOutput((prev) => prev + `\nError: ${eventData.error}\n`);
-                  setIsStreaming(false);
+                  stopGenerationFlow();
                   break;
 
                 case 'complete':
-                  setIsStreaming(false);
+                  stopGenerationFlow();
                   break;
               }
             } catch (parseError) {
@@ -326,11 +409,6 @@ export const useFlowGeneration = () => {
       console.log('[DEBUG] Full generatedResult:', generatedResult);
       if (generatedResult.success && generatedResult.generatedCode) {
         // Set the generated code in the editor
-
-        // Update bubble parameters for visualization
-        if (generatedResult.bubbleParameters) {
-          setCurrentBubbleParameters(generatedResult.bubbleParameters);
-        }
 
         // Show summary without the actual code
         const bubbleCount = generatedResult.bubbleParameters
@@ -377,12 +455,10 @@ export const useFlowGeneration = () => {
         });
 
         // Auto-create the flow after successful code generation
-        if (onCreateFlowFromGeneration) {
-          await onCreateFlowFromGeneration(generatedResult.generatedCode, {
-            inputsSchema: generatedResult.inputsSchema || '',
-            prompt: savedPrompt,
-          });
-        }
+        await createFlowFromGeneration(generatedResult.generatedCode, {
+          inputsSchema: generatedResult.inputsSchema || '',
+          prompt: savedPrompt,
+        });
       } else if (generatedResult.error) {
         throw new Error(generatedResult.error);
       }
@@ -408,10 +484,9 @@ export const useFlowGeneration = () => {
       });
     } finally {
       // Always clear streaming state and generation info
-      setIsStreaming(false);
-      setGenerationInfo('');
+      stopGenerationFlow();
+      setGenerationPrompt('');
     }
   };
-
   return { generateCode };
 };
