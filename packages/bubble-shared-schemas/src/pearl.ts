@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AvailableModels } from './ai-models.js';
 import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema.js';
+import { CredentialType } from './types.js';
 
 // Reuse the ConversationMessageSchema from milk-tea to avoid duplication
 const ConversationMessageSchema = z.object({
@@ -75,6 +76,13 @@ export const PearlResponseSchema = z.object({
     .optional()
     .describe(
       'Input schema for the generated workflow (only present when type is "code")'
+    ),
+
+  requiredCredentials: z
+    .record(z.string(), z.array(z.nativeEnum(CredentialType)))
+    .optional()
+    .describe(
+      'Required credentials for the bubbles in the workflow (only present when type is "code")'
     ),
 
   success: z.boolean().describe('Whether the operation completed successfully'),

@@ -55,6 +55,7 @@ import { API_BASE_URL } from './env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfoInferred as ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useSubscription } from './hooks/useSubscription';
+import { useValidateCode } from './hooks/useValidateCode';
 
 function App() {
   // Check if this is an OAuth callback
@@ -119,6 +120,7 @@ function App() {
     updateInputSchema: updateCurrentInputSchema,
     updateCode: updateCurrentCode,
   } = useBubbleFlow(selectedFlowId);
+  const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
 
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { data: bubbleFlowList } = useBubbleFlowList();
@@ -475,10 +477,12 @@ function App() {
     schemaInputs?: Record<string, unknown>
   ) => {
     // Check if code == flow's code
-
-    console.log('executeWithLiveStreaming', getEditorCode());
     if (getEditorCode() !== currentFlow?.code) {
-      const isValid = await validateCode();
+      const isValid = await validateCodeMutation.mutateAsync({
+        code: getEditorCode(),
+        flowId: bubbleFlowId,
+        credentials: credentials,
+      });
       if (!isValid) {
         executionState.stopExecution();
         return;
@@ -614,141 +618,6 @@ function App() {
 
       setOutput((prev) => prev + `\n❌ Failed to create flow: ${errorMessage}`);
     }
-  };
-
-  const validateCode = async (): Promise<boolean> => {
-    if (!currentFlow?.code || currentFlow.code.trim() === '') {
-      toast.error('No code to validate');
-      return false;
-    }
-
-    // Set validating state to disable Run button
-    executionState.startValidation();
-
-    // Show loading toast
-    const loadingToastId = toast.loading('Validating code...');
-
-    try {
-      const result = await api.post<ValidateBubbleFlowResponse>(
-        '/bubble-flow/validate',
-        {
-          code: getEditorCode(),
-          flowId: currentFlow?.id,
-          credentials: executionState.pendingCredentials,
-          options: {
-            includeDetails: true,
-            strictMode: true,
-          },
-        }
-      );
-
-      // Update visualizer with bubbles from validation (using new Record<number, ParsedBubbleWithInfo> format)
-      if (
-        result.valid &&
-        result.bubbles &&
-        Object.keys(result.bubbles).length > 0
-      ) {
-        setEditorCode(getEditorCode());
-        updateCurrentBubbleParameters(result.bubbles);
-        updateCurrentInputSchema(result.inputSchema);
-        updateCurrentRequiredCredentials(
-          result.requiredCredentials as Record<string, CredentialType[]>
-        );
-      }
-
-      // Capture and store inputSchema from validation response
-      if (result.inputSchema) {
-        const inputSchemaString = JSON.stringify(result.inputSchema);
-        console.log('[validateCode] Captured inputSchema:', inputSchemaString);
-      }
-
-      // Dismiss loading toast
-      toast.dismiss(loadingToastId);
-
-      if (result.valid) {
-        // Show success toast with bubble count
-        const bubbleCount = result.bubbleCount || 0;
-        toast.success(
-          `✅ Code validation successful! Found ${bubbleCount} bubble${bubbleCount !== 1 ? 's' : ''}.`,
-          {
-            autoClose: 3000,
-          }
-        );
-
-        // Show detailed info in a separate toast
-        if (result.bubbles && Object.keys(result.bubbles).length > 0) {
-          const bubbleDetails = Object.values(result.bubbles)
-            .map(
-              (bubble, index) =>
-                `${index + 1}. ${bubble.variableName} (${bubble.bubbleName})`
-            )
-            .join('\n');
-
-          toast.info(`Bubbles found:\n${bubbleDetails}`, {
-            autoClose: 8000,
-            style: {
-              whiteSpace: 'pre-line',
-              fontSize: '12px',
-            },
-          });
-        }
-
-        // Show metadata toast
-        toast.info(
-          `Validation completed at ${new Date(result.metadata.validatedAt).toLocaleTimeString()}\n` +
-            `Code: ${result.metadata.codeLength} characters\n` +
-            `Strict mode: ${result.metadata.strictMode ? 'Yes' : 'No'}`,
-          {
-            autoClose: 5000,
-            style: {
-              whiteSpace: 'pre-line',
-              fontSize: '12px',
-            },
-          }
-        );
-        executionState.stopValidation();
-        return true;
-      } else {
-        // Show error toast with validation errors
-        const errorCount = result.errors?.length || 0;
-        toast.error(
-          `❌ Code validation failed with ${errorCount} error${errorCount !== 1 ? 's' : ''}`,
-          {
-            autoClose: 5000,
-          }
-        );
-
-        // Show detailed errors in a separate toast
-        if (result.errors && result.errors.length > 0) {
-          const errorDetails = result.errors
-            .map((error, index) => `${index + 1}. ${error}`)
-            .join('\n');
-
-          toast.error(`Validation errors:\n${errorDetails}`, {
-            autoClose: 10000,
-            style: {
-              whiteSpace: 'pre-line',
-              fontSize: '12px',
-              maxWidth: '400px',
-            },
-          });
-        }
-        executionState.stopValidation();
-        return false;
-      }
-    } catch (error) {
-      // Dismiss loading toast
-      toast.dismiss(loadingToastId);
-
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
-      toast.error(`Validation Error: ${errorMessage}`, {
-        autoClose: 8000,
-      });
-      executionState.stopValidation();
-    }
-    return false;
   };
 
   // Helper function to extract input schema from code [that is pasted in]
@@ -1739,7 +1608,14 @@ function App() {
                                       createBubbleFlowMutation.isLoading ||
                                       currentFlowLoading
                                     }
-                                    onValidate={validateCode}
+                                    onValidate={() =>
+                                      validateCodeMutation.mutateAsync({
+                                        code: getEditorCode(),
+                                        flowId: selectedFlowId!,
+                                        credentials:
+                                          executionState.pendingCredentials,
+                                      })
+                                    }
                                     isRunning={executionState.isRunning}
                                     bubbleWithError={
                                       executionState.bubbleWithError

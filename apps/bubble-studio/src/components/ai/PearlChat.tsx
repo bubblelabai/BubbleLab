@@ -18,7 +18,8 @@ import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
-
+import { useValidateCode } from '../../hooks/useValidateCode';
+import { useExecutionStore } from '../../stores/executionStore';
 export function PearlChat() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -27,10 +28,19 @@ export function PearlChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
-  const { updateBubbleParameters, updateCode } = useBubbleFlow(selectedFlowId);
-
+  const {
+    updateBubbleParameters,
+    updateCode,
+    updateInputSchema,
+    updateRequiredCredentials,
+  } = useBubbleFlow(selectedFlowId);
+  const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
   // General chat mutation
   const pearlChat = usePearl();
+  const pendingCredentials = useExecutionStore(
+    selectedFlowId,
+    (state) => state.pendingCredentials
+  );
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -108,16 +118,28 @@ export function PearlChat() {
     console.log('handleReplace', code);
     trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');
-    // Replace the bubble parameters if available
+
+    // Update all workflow data from Pearl response
     if (pearlChat.data?.bubbleParameters) {
-      toast.success(
-        'Updating bubble parameters',
-        pearlChat.data.bubbleParameters
-      );
-      updateBubbleParameters(pearlChat.data.bubbleParameters);
-      if (pearlChat.data.snippet) {
-        updateCode(pearlChat.data.snippet);
-      }
+      // updateBubbleParameters(pearlChat.data.bubbleParameters);
+
+      // if (pearlChat.data.snippet) {
+      //   updateCode(pearlChat.data.snippet);
+      // }
+
+      // if (pearlChat.data.inputSchema) {
+      //   updateInputSchema(pearlChat.data.inputSchema);
+      // }
+
+      // if (pearlChat.data.requiredCredentials) {
+      //   updateRequiredCredentials(pearlChat.data.requiredCredentials);
+      // }
+      validateCodeMutation.mutateAsync({
+        code: pearlChat.data.snippet!,
+        flowId: selectedFlowId!,
+        credentials: pendingCredentials,
+      });
+      toast.success('Bubble parameters, input schema, and credentials updated');
     } else {
       toast.error('No bubble parameters found');
     }
