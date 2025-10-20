@@ -99,11 +99,9 @@ function App() {
   const {
     generationPrompt,
     selectedPreset,
-    isStreaming,
     setGenerationPrompt,
+    isStreaming,
     setSelectedPreset,
-    startStreaming,
-    stopStreaming,
   } = useGenerationStore();
   // Editor Store - Monaco editor
   const { closeSidePanel, setExecutionHighlight, openPearlChat } =
@@ -112,14 +110,8 @@ function App() {
   const executionState = useExecutionStore(selectedFlowId);
 
   // ============= React Query Hooks =============
-  const {
-    data: currentFlow,
-    loading: currentFlowLoading,
-    updateBubbleParameters: updateCurrentBubbleParameters,
-    updateRequiredCredentials: updateCurrentRequiredCredentials,
-    updateInputSchema: updateCurrentInputSchema,
-    updateCode: updateCurrentCode,
-  } = useBubbleFlow(selectedFlowId);
+  const { data: currentFlow, loading: currentFlowLoading } =
+    useBubbleFlow(selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
 
   const { refetch: refetchSubscriptionStatus } = useSubscription();
@@ -173,7 +165,7 @@ function App() {
   // }, [bubbleFlowList]);
 
   // Ref for auto-scrolling output
-  const outputRef = useRef<HTMLDivElement>(null);
+  // const outputRef = useRef<HTMLDivElement>(null);
 
   const API_BASE_URL_LOCAL = API_BASE_URL;
 
@@ -506,6 +498,7 @@ function App() {
     } catch (error) {
       console.error('Error executing flow:', error);
     } finally {
+      // Cleanup or final actions can go here
     }
   };
 
@@ -548,12 +541,6 @@ function App() {
   };
   // Validate that all required, non-system credentials with available options are selected
   const isCredentialsSelectionValid = () => {
-    console.log('currentFlow', currentFlow);
-    console.log(
-      'pendingExecutionCredentials',
-      executionState.pendingCredentials
-    );
-    console.log('availableCredentials', availableCredentials);
     const required = currentFlow?.requiredCredentials || {};
     const requiredEntries = Object.entries(required) as Array<
       [string, string[]]

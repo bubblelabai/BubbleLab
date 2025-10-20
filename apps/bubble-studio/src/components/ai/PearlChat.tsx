@@ -17,7 +17,6 @@ import { INTEGRATIONS } from '../../lib/integrations';
 import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
-import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
 export function PearlChat() {
@@ -28,12 +27,12 @@ export function PearlChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
-  const {
-    updateBubbleParameters,
-    updateCode,
-    updateInputSchema,
-    updateRequiredCredentials,
-  } = useBubbleFlow(selectedFlowId);
+  // const {
+  //   updateBubbleParameters,
+  //   updateCode,
+  //   updateInputSchema,
+  //   updateRequiredCredentials,
+  // } = useBubbleFlow(selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
   // General chat mutation
   const pearlChat = usePearl();

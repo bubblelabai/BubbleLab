@@ -16,9 +16,8 @@ import {
   insertCodeAtTargetLine,
 } from '../stores/editorStore';
 import { useMilkTea } from '../hooks/useMilkTea';
-import { usePearl } from '../hooks/usePearl';
 import { toast } from 'react-toastify';
-import { findLogoForBubble, INTEGRATIONS } from '../lib/integrations';
+import { findLogoForBubble } from '../lib/integrations';
 import { type AvailableModel } from '@bubblelab/shared-schemas';
 import { PearlChat } from './ai/PearlChat';
 import { type ChatMessage } from './ai/type';

@@ -5,7 +5,6 @@ import type {
   ValidateBubbleFlowResponse,
   CredentialType,
 } from '@bubblelab/shared-schemas';
-import { getEditorCode, setEditorCode } from '../stores/editorStore';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from './useBubbleFlow';
 
@@ -22,10 +21,11 @@ interface ValidateCodeOptions {
 export function useValidateCode({ flowId }: ValidateCodeOptions) {
   const executionState = useExecutionStore(flowId);
   const {
-    data: currentFlow,
+    // data: currentFlow,
     updateBubbleParameters,
     updateInputSchema,
     updateRequiredCredentials,
+    updateCode,
   } = useBubbleFlow(flowId);
 
   return useMutation({
@@ -40,9 +40,13 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         },
       });
     },
-    onMutate: () => {
+    onMutate: (variables) => {
       // Set validating state to disable Run button
       executionState.startValidation();
+
+      // Optimistically update code in React Query cache
+      // This prevents App.tsx useEffect from overriding editor with stale code
+      updateCode(variables.code);
 
       // Show loading toast
       const loadingToastId = toast.loading('Validating code...');
@@ -60,7 +64,8 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         result.bubbles &&
         Object.keys(result.bubbles).length > 0
       ) {
-        setEditorCode(getEditorCode());
+        // Code was already optimistically updated in onMutate
+        // Now update the validation results (bubbles, schema, credentials)
         updateBubbleParameters(result.bubbles);
         updateInputSchema(result.inputSchema);
         updateRequiredCredentials(

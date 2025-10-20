@@ -62,6 +62,7 @@ export function DashboardPage({
   onPageChange,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   selectedFlow,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFlowSelect,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFlowDelete,

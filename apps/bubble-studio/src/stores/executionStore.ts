@@ -285,7 +285,7 @@ function createExecutionStore(flowId: number) {
 
         // If credId is null, remove the credential
         if (credId === null) {
-          const { [credType]: _, ...rest } = bubbleCredentials;
+          const { [credType]: removed, ...rest } = bubbleCredentials;
           return {
             pendingCredentials: {
               ...state.pendingCredentials,
