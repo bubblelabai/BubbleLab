@@ -220,6 +220,7 @@ export interface FlowExecutionState {
 
 // Factory function to create a store for a specific flow
 function createExecutionStore(flowId: number) {
+  console.debug('Creating execution store for flow:', flowId);
   return create<FlowExecutionState>((set, get) => ({
     // Initial state
     isRunning: false,
@@ -306,7 +307,11 @@ function createExecutionStore(flowId: number) {
 
         // If credId is null, remove the credential
         if (credId === null) {
-          const { [credType]: removed, ...rest } = bubbleCredentials;
+          const rest = Object.fromEntries(
+            Object.entries(bubbleCredentials).filter(
+              ([key]) => key !== credType
+            )
+          );
           return {
             pendingCredentials: {
               ...state.pendingCredentials,
