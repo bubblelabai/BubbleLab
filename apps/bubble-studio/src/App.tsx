@@ -52,10 +52,9 @@ import { getFlowNameFromCode } from '@/utils/codeParser';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { API_BASE_URL } from '@/env';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useValidateCode } from '@/hooks/useValidateCode';
-import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
+import { useSubscription } from './hooks/useSubscription';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
+import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
 
 function App() {
   // Check if this is an OAuth callback
