@@ -17,6 +17,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'CLOUDFLARE_R2_ACCESS_KEY',
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'CLOUDFLARE_R2_SECRET_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'CLOUDFLARE_R2_ACCOUNT_ID',
+  [CredentialType.APIFY_CRED]: 'APIFY_API_TOKEN',
   [CredentialType.GOOGLE_DRIVE_CRED]: '',
   [CredentialType.GMAIL_CRED]: '',
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
@@ -35,6 +36,8 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
   CredentialType.CLOUDFLARE_R2_SECRET_KEY,
   CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+  // Scraping credentials
+  CredentialType.APIFY_CRED,
 ]);
 
 /**
@@ -224,6 +227,8 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   gmail: [CredentialType.GMAIL_CRED],
   'google-sheets': [CredentialType.GOOGLE_SHEETS_CRED],
   'google-calendar': [CredentialType.GOOGLE_CALENDAR_CRED],
+  apify: [CredentialType.APIFY_CRED],
+  'instagram-tool': [CredentialType.APIFY_CRED],
 };
 
 // POST /credentials - Create credential schema

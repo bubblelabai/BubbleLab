@@ -38,6 +38,11 @@ export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
 export { GmailBubble } from './bubbles/service-bubble/gmail.js';
 export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
+export { ApifyBubble } from './bubbles/service-bubble/apify.js';
+export type {
+  ApifyParamsInput,
+  InstagramScraperInput,
+} from './bubbles/service-bubble/apify.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
@@ -60,6 +65,11 @@ export { WebCrawlTool } from './bubbles/tool-bubble/web-crawl-tool.js';
 export { WebExtractTool } from './bubbles/tool-bubble/web-extract-tool.js';
 export { ResearchAgentTool } from './bubbles/tool-bubble/research-agent-tool.js';
 export { RedditScrapeTool } from './bubbles/tool-bubble/reddit-scrape-tool.js';
+export { InstagramTool } from './bubbles/tool-bubble/instagram-tool.js';
+export type {
+  InstagramPost,
+  InstagramProfile,
+} from './bubbles/tool-bubble/instagram-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {
