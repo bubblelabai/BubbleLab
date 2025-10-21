@@ -148,6 +148,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.GOOGLE_GEMINI_CRED,
     CredentialType.ANTHROPIC_CRED,
     CredentialType.FIRECRAWL_API_KEY,
+    CredentialType.OPENROUTER_CRED,
   ],
   postgresql: [CredentialType.DATABASE_CRED],
   slack: [CredentialType.SLACK_CRED],

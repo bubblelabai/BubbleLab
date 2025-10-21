@@ -170,6 +170,7 @@ export async function runPearl(
           errors: string[];
           bubbleParameters: Record<number, ParsedBubbleWithInfo>;
           inputSchema: Record<string, unknown>;
+          requiredCredentials?: Record<string, CredentialType[]>;
         }
       | undefined;
 
@@ -224,6 +225,7 @@ export async function runPearl(
               errors: validationResult.errors || [],
               bubbleParameters: validationResult.bubbleParameters || [],
               inputSchema: validationResult.inputSchema || {},
+              requiredCredentials: validationResult.requiredCredentials,
             };
 
             // Extract message from AI
@@ -385,6 +387,7 @@ export async function runPearl(
           snippet: agentOutput.snippet,
           bubbleParameters: savedValidationResult?.bubbleParameters,
           inputSchema: savedValidationResult?.inputSchema,
+          requiredCredentials: savedValidationResult?.requiredCredentials,
           success: true,
         };
       } else if (agentOutput.type === 'question') {

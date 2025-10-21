@@ -262,3 +262,117 @@ export function bubbleReferencesSchemaFields(
 
   return false;
 }
+
+// Helper function to extract input schema from code [that is pasted in]
+export function extractInputSchemaFromCode(code: string): string {
+  try {
+    // Look for interface that extends WebhookEvent (common pattern)
+    const webhookInterfaceMatch = code.match(
+      /export\s+interface\s+(\w+)\s+extends\s+WebhookEvent\s*\{([^}]+)\}/
+    );
+
+    if (webhookInterfaceMatch) {
+      const interfaceName = webhookInterfaceMatch[1];
+      const interfaceBody = webhookInterfaceMatch[2];
+
+      // Parse the interface properties
+      const properties: Record<
+        string,
+        { type: string; description: string; items?: { type: string } }
+      > = {};
+      const required: string[] = [];
+
+      // Split by semicolon or newline and parse each property
+      const propertyLines = interfaceBody
+        .split(/[;\n]/)
+        .filter((line) => line.trim());
+
+      for (const line of propertyLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Match property: type pattern, handling optional properties
+        const propertyMatch = trimmed.match(/(\w+)(\??):\s*([^;]+)/);
+        if (propertyMatch) {
+          const [, propertyName, optional, propertyType] = propertyMatch;
+          const isOptional = optional === '?';
+
+          // Convert TypeScript types to JSON Schema types
+          let jsonType = 'string';
+          let description = '';
+
+          if (propertyType.includes('number')) {
+            jsonType = 'number';
+          } else if (propertyType.includes('boolean')) {
+            jsonType = 'boolean';
+          } else if (propertyType.includes('string[]')) {
+            jsonType = 'array';
+            properties[propertyName] = {
+              type: 'array',
+              items: { type: 'string' },
+              description: `Array of strings for ${propertyName}`,
+            };
+            if (!isOptional) required.push(propertyName);
+            continue;
+          } else if (propertyType.includes('[]')) {
+            jsonType = 'array';
+          }
+
+          // Extract comments for description
+          const commentMatch = trimmed.match(/\/\/\s*(.+)$/);
+          if (commentMatch) {
+            description = commentMatch[1];
+          } else {
+            // Generate description based on property name
+            description = `${propertyName
+              .replace(/([A-Z])/g, ' $1')
+              .toLowerCase()
+              .trim()}`;
+          }
+
+          properties[propertyName] = {
+            type: jsonType,
+            description: description,
+          };
+
+          if (!isOptional) {
+            required.push(propertyName);
+          }
+        }
+      }
+
+      // Create JSON schema
+      const schema = {
+        type: 'object',
+        properties,
+        required,
+        title: interfaceName,
+      };
+
+      return JSON.stringify(schema, null, 2);
+    }
+
+    // Fallback: look for any interface with webhook-like properties
+    const anyInterfaceMatch = code.match(
+      /export\s+interface\s+(\w+)\s*\{([^}]+)\}/
+    );
+    if (anyInterfaceMatch) {
+      return `{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Input message or data"
+    }
+  },
+  "required": ["message"],
+  "title": "CustomInput"
+}`;
+    }
+
+    return '';
+  } catch (error) {
+    console.warn('Failed to extract input schema from code:', error);
+    return '';
+  }
+}

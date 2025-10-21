@@ -145,7 +145,7 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     if (!flowId) {
       throw new Error('Flow ID is required for backend synchronization');
     }
-  }, [flowId, queryClient]);
+  }, [flowId]);
 
   return {
     data: query.data,

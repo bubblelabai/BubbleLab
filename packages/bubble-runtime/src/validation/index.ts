@@ -1,4 +1,7 @@
-import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+import type {
+  ParsedBubbleWithInfo,
+  CredentialType,
+} from '@bubblelab/shared-schemas';
 import { validateScript } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
 import { BubbleFactory } from '@bubblelab/bubble-core';
@@ -11,6 +14,7 @@ export interface ValidationResult {
 export interface ValidationAndExtractionResult extends ValidationResult {
   bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
   inputSchema?: Record<string, unknown>;
+  requiredCredentials?: Record<string, CredentialType[]>;
 }
 
 /**
@@ -76,11 +80,30 @@ export async function validateAndExtract(
   // If validation passes, extract bubble parameters
   try {
     const script = new BubbleScript(code, bubbleFactory);
+    const bubbleParameters = script.getParsedBubbles();
+
+    // Extract required credentials from bubble parameters
+    const requiredCredentials: Record<string, CredentialType[]> = {};
+
+    const { BubbleInjector } = await import('../injection/BubbleInjector.js');
+    const injector = new BubbleInjector(script);
+    const credentials = injector.findCredentials(bubbleParameters);
+
+    for (const [varId, credentialTypes] of Object.entries(credentials)) {
+      const bubble = bubbleParameters[Number(varId)];
+      if (bubble && credentialTypes.length > 0) {
+        requiredCredentials[bubble.bubbleName] = credentialTypes;
+      }
+    }
 
     return {
       ...validationResult,
-      bubbleParameters: script.getParsedBubbles(),
+      bubbleParameters,
       inputSchema: script.getPayloadJsonSchema() || {},
+      requiredCredentials:
+        Object.keys(requiredCredentials).length > 0
+          ? requiredCredentials
+          : undefined,
     };
   } catch (error) {
     const errorMessage =

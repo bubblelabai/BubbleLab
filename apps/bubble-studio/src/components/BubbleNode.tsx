@@ -41,6 +41,9 @@ interface BubbleNodeData {
   onToggleSubBubbles?: () => void;
   // Error state
   hasError?: boolean;
+  // Completion state
+  isCompleted?: boolean;
+  executionTimeMs?: number;
 }
 
 interface BubbleNodeProps {
@@ -62,6 +65,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
     areSubBubblesVisible = false,
     onToggleSubBubbles,
     hasError = false,
+    isCompleted = false,
+    executionTimeMs,
   } = data;
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -140,9 +145,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
       } ${
         hasError
           ? 'border-red-500 shadow-red-500/50 shadow-2xl ring-2 ring-red-500/50 bg-red-900/20'
-          : isHighlighted
-            ? 'border-purple-400 shadow-purple-500/50 shadow-2xl ring-2 ring-purple-400/50 bg-purple-900/20'
-            : 'border-neutral-600'
+          : isCompleted
+            ? 'border-green-500 shadow-green-500/50 shadow-xl ring-2 ring-green-500/50 bg-green-900/20'
+            : isHighlighted
+              ? 'border-purple-400 shadow-purple-500/50 shadow-2xl ring-2 ring-purple-400/50 bg-purple-900/20'
+              : 'border-neutral-600'
       }`}
       onClick={handleClick}
     >
@@ -151,28 +158,28 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="target"
         position={Position.Left}
         id="left"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
         style={{ left: -6 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
         style={{ right: -6 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
         style={{ bottom: -6 }}
       />
       <Handle
         type="target"
         position={Position.Top}
         id="top"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
         style={{ top: -6 }}
       />
 
@@ -181,6 +188,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
         {(hasError ||
+          isCompleted ||
           hasMissingRequirements ||
           bubble.parameters.length > 0) && (
           <div className="absolute top-4 right-4 flex items-center gap-2">
@@ -195,7 +203,18 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 </div>
               </div>
             )}
-            {!hasError && hasMissingRequirements && (
+            {!hasError && isCompleted && executionTimeMs !== undefined && (
+              <div className="flex-shrink-0">
+                <div
+                  title={`Completed in ${executionTimeMs}ms`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-600/40"
+                >
+                  <span>✓</span>
+                  <span>{executionTimeMs}ms</span>
+                </div>
+              </div>
+            )}
+            {!hasError && !isCompleted && hasMissingRequirements && (
               <div className="flex-shrink-0">
                 <div
                   title="Missing credentials"

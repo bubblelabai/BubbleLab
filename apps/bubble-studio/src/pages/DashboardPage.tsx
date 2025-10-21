@@ -62,6 +62,7 @@ export function DashboardPage({
   onPageChange,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   selectedFlow,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFlowSelect,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onFlowDelete,
@@ -172,21 +173,6 @@ export function DashboardPage({
     }
     // If signed in or staying on dashboard, allow navigation
     onPageChange(page);
-  };
-
-  // Wrapper function to check authentication before flow selection
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleFlowSelect = (flow: number) => {
-    if (!isSignedIn) {
-      // Save the current prompt before showing sign-in modal
-      if (generationPrompt.trim()) {
-        setSavedPrompt(generationPrompt);
-        localStorage.setItem('savedPrompt', generationPrompt);
-      }
-      setShowSignInModal(true);
-      return;
-    }
-    onFlowSelect(flow);
   };
 
   return (

@@ -334,7 +334,7 @@ describe('BubbleInjector.findCredentials()', () => {
       expect(credentials[8]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
       expect(credentials[8]).toContain(CredentialType.ANTHROPIC_CRED);
       expect(credentials[8]).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials[8]).toHaveLength(4); // All AI agent credentials
+      expect(credentials[8]).toHaveLength(5); // All AI agent credentials
 
       // Should have 3 different bubble IDs with credentials
       expect(Object.keys(credentials)).toHaveLength(3);

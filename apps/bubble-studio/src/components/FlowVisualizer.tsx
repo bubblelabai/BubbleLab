@@ -21,6 +21,8 @@ import type {
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
+import { useExecutionStore } from '../stores/executionStore';
+import { useUIStore } from '../stores/uiStore';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -71,6 +73,8 @@ interface FlowVisualizerProps {
   isRunning?: boolean;
   // Error state
   bubbleWithError?: string | null;
+  // Completion state
+  completedBubbles?: Record<string, number>;
 }
 
 const nodeTypes = {
@@ -131,8 +135,15 @@ function FlowVisualizerInner({
   onValidate,
   isRunning,
   bubbleWithError,
+  completedBubbles = {},
 }: FlowVisualizerProps) {
   const { fitView, getViewport, setViewport } = useReactFlow();
+
+  const selectedFlowId = useUIStore((state) => state.selectedFlowId);
+  const setCredential = useExecutionStore(
+    selectedFlowId,
+    (state) => state.setCredential
+  );
 
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
@@ -566,6 +577,9 @@ function FlowVisualizerInner({
         );
       }
 
+      const isCompletedState = nodeId in completedBubbles;
+      const executionTimeMs = completedBubbles[nodeId];
+
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
@@ -608,16 +622,17 @@ function FlowVisualizerInner({
           selectedBubbleCredentials: selectedCredentials
             ? selectedCredentials[credentialsKeyForBubble] || {}
             : {},
-          onCredentialSelectionChange: onCredentialsPendingChange
-            ? (credType: string, credId: number | null) =>
-                onCredentialsPendingChange(
-                  credentialsKeyForBubble,
-                  credType,
-                  credId
-                )
-            : undefined,
+          onCredentialSelectionChange: (
+            credType: string,
+            credId: number | null
+          ) => {
+            setCredential(String(bubble.variableId), credType, credId);
+          },
           // Error state
           hasError: hasErrorState,
+          // Completion state
+          isCompleted: isCompletedState,
+          executionTimeMs: executionTimeMs,
         },
       };
       nodes.push(node);
@@ -741,6 +756,7 @@ function FlowVisualizerInner({
     createNodesFromDependencyGraph,
     toggleRootVisibility,
     bubbleWithError,
+    completedBubbles,
   ]);
 
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(initialNodes);

@@ -38,6 +38,14 @@ export interface SelectedRange {
 }
 
 /**
+ * Execution highlight range (line-based only, for highlighting during execution)
+ */
+export interface ExecutionHighlightRange {
+  startLine: number;
+  endLine: number;
+}
+
+/**
  * Side panel modes
  */
 export type SidePanelMode = 'closed' | 'bubbleList' | 'milktea' | 'pearl';
@@ -65,6 +73,12 @@ interface EditorState {
    * Null if no selection exists
    */
   selectedRange: SelectedRange | null;
+
+  /**
+   * Execution highlight range (for highlighting code during execution)
+   * Different from selectedRange - this is for visual feedback during flow execution
+   */
+  executionHighlightRange: ExecutionHighlightRange | null;
 
   // ============= Side Panel UI State =============
 
@@ -112,6 +126,16 @@ interface EditorState {
   setSelectedRange: (range: SelectedRange | null) => void;
 
   /**
+   * Set execution highlight range (for visual feedback during execution)
+   */
+  setExecutionHighlight: (range: ExecutionHighlightRange | null) => void;
+
+  /**
+   * Clear execution highlight
+   */
+  clearExecutionHighlight: () => void;
+
+  /**
    * Open the side panel in bubble list mode at specified line
    * @param line - Line number where bubble will be inserted
    */
@@ -157,6 +181,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   editorInstance: null,
   cursorPosition: null,
   selectedRange: null,
+  executionHighlightRange: null,
   sidePanelMode: 'closed',
   selectedBubbleName: null,
   targetInsertLine: null,
@@ -167,6 +192,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   setCursorPosition: (position) => set({ cursorPosition: position }),
 
   setSelectedRange: (range) => set({ selectedRange: range }),
+
+  setExecutionHighlight: (range) => set({ executionHighlightRange: range }),
+
+  clearExecutionHighlight: () => set({ executionHighlightRange: null }),
 
   openSidePanel: (line) =>
     set({
@@ -439,4 +468,66 @@ export function replaceAllEditorContent(code: string): void {
   editorInstance.setPosition(newPosition);
   editorInstance.revealLineInCenter(1);
   editorInstance.focus();
+}
+
+// ============= Code Helper Functions =============
+// Monaco's model is the source of truth for code
+// These helpers make it easy to read/write code without prop drilling
+
+/**
+ * Get the current code from Monaco editor
+ *
+ * @returns The current code string, or empty string if editor not ready
+ *
+ * @example
+ * const code = getEditorCode();
+ * await api.post('/validate', { code });
+ */
+export function getEditorCode(): string {
+  const { editorInstance } = useEditorStore.getState();
+  if (!editorInstance) {
+    console.warn(
+      '[EditorStore] Cannot get code: editor instance not available'
+    );
+    return '';
+  }
+
+  const model = editorInstance.getModel();
+  if (!model) {
+    console.warn('[EditorStore] Cannot get code: model not available');
+    return '';
+  }
+
+  return model.getValue();
+}
+
+/**
+ * Set code in the Monaco editor
+ *
+ * @param code - The code to set
+ *
+ * @example
+ * // Load flow code
+ * setEditorCode(currentFlow.code);
+ *
+ * // Set generated code
+ * setEditorCode(generatedResult.code);
+ */
+export function setEditorCode(code: string): void {
+  const { editorInstance } = useEditorStore.getState();
+  if (!editorInstance) {
+    console.warn(
+      '[EditorStore] Cannot set code: editor instance not available'
+    );
+    return;
+  }
+
+  const model = editorInstance.getModel();
+  if (!model) {
+    console.warn('[EditorStore] Cannot set code: model not available');
+    return;
+  }
+
+  model.setValue(code);
+  console.log('[EditorStore] Code set:', code.length, 'characters');
 }
