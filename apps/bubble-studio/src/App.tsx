@@ -55,6 +55,7 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useSubscription } from './hooks/useSubscription';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
 import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
+import { useValidateCode } from '@/hooks/useValidateCode';
 
 function App() {
   // Check if this is an OAuth callback
