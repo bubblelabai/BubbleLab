@@ -25,6 +25,7 @@ import { useCredentials } from '../hooks/useCredentials';
 import { useUIStore } from '../stores/uiStore';
 import { useEditorStore } from '../stores/editorStore';
 import { API_BASE_URL } from '../env';
+import CronScheduleNode from './CronScheduleNode';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -37,6 +38,7 @@ interface FlowVisualizerProps {
 const nodeTypes = {
   bubbleNode: BubbleNode,
   inputSchemaNode: InputSchemaNode,
+  cronScheduleNode: CronScheduleNode,
 };
 
 const proOptions = { hideAttribution: true };
@@ -106,6 +108,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // Local UI state for expanded/collapsed nodes
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
+
+  const eventType = currentFlow.data?.eventType
+  const entryNodeId = eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
+  
 
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
@@ -428,35 +434,71 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       }
     })();
 
-    // Create InputSchemaNode if needed
-    if (parsedFields.length > 0 && flowName) {
-      const inputSchemaNode: Node = {
-        id: 'input-schema-node',
-        type: 'inputSchemaNode',
-        position: {
-          x: startX - 450,
-          y: baseY,
-        },
-        origin: [0, 0.5] as [number, number],
-        data: {
-          flowName: flowName,
-          schemaFields: parsedFields,
-          executionInputs: executionInputs || {},
-          onExecutionInputChange: (fieldName: string, value: unknown) => {
-            setInput(fieldName, value);
+    // Create entry node based on event type
+    if (flowName) {
+      if (eventType === 'schedule/cron') {
+        // Create CronScheduleNode for cron events
+        const cronScheduleNode: Node = {
+          id: 'cron-schedule-node',
+          type: 'cronScheduleNode',
+          position: {
+            x: startX - 450,
+            y: baseY,
           },
-          onExecuteFlow: async () => {
-            await runFlow({
-              validateCode: true,
-              updateCredentials: true,
-              inputs: executionInputs || {},
-            });
+          origin: [0, 0.5] as [number, number],
+          data: {
+            flowName: flowName,
+            cronSchedule: '0 0 * * *', // Default daily at midnight
+            isActive: true,
+            onCronScheduleChange: (newSchedule: string) => {
+              // TODO: Implement cron schedule update logic
+              console.log('Cron schedule changed to:', newSchedule);
+            },
+            onActiveToggle: (isActive: boolean) => {
+              // TODO: Implement active toggle logic
+              console.log('Cron schedule active:', isActive);
+            },
+            onExecuteFlow: async () => {
+              await runFlow({
+                validateCode: true,
+                updateCredentials: true,
+                inputs: executionInputs || {},
+              });
+            },
+            isExecuting: isExecuting,
           },
-          isExecuting: isExecuting,
-          isFormValid: true,
-        },
-      };
-      nodes.push(inputSchemaNode);
+        };
+        nodes.push(cronScheduleNode);
+      } else if (parsedFields.length > 0) {
+        // Create InputSchemaNode for regular flows with input schema
+        const inputSchemaNode: Node = {
+          id: 'input-schema-node',
+          type: 'inputSchemaNode',
+          position: {
+            x: startX - 450,
+            y: baseY,
+          },
+          origin: [0, 0.5] as [number, number],
+          data: {
+            flowName: flowName,
+            schemaFields: parsedFields,
+            executionInputs: executionInputs || {},
+            onExecutionInputChange: (fieldName: string, value: unknown) => {
+              setInput(fieldName, value);
+            },
+            onExecuteFlow: async () => {
+              await runFlow({
+                validateCode: true,
+                updateCredentials: true,
+                inputs: executionInputs || {},
+              });
+            },
+            isExecuting: isExecuting,
+            isFormValid: true,
+          },
+        };
+        nodes.push(inputSchemaNode);
+      }
     }
 
     // Create nodes for each bubble
@@ -601,25 +643,24 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       .filter((bubble) => bubble.startLine > 0)
       .sort((a, b) => a.startLine - b.startLine);
 
-    // Connect InputSchemaNode to first bubble
+    // Connect entry node to first bubble
     if (
-      parsedFields.length > 0 &&
       flowName &&
       mainBubbles.length > 0 &&
-      nodes.some((n) => n.id === 'input-schema-node')
+      nodes.some((n) => n.id === entryNodeId)
     ) {
       const firstBubbleId = mainBubbles[0].nodeId;
       if (nodes.some((n) => n.id === firstBubbleId)) {
         edges.push({
-          id: 'input-schema-to-first-bubble',
-          source: 'input-schema-node',
+          id: `${entryNodeId}-to-first-bubble`,
+          source: entryNodeId,
           target: firstBubbleId,
           sourceHandle: 'right',
           targetHandle: 'left',
           type: 'straight',
           animated: true,
           style: {
-            stroke: '#60a5fa',
+            stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
             strokeWidth: 2,
             strokeDasharray: '5,5',
           },

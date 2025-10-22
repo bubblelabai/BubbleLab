@@ -210,6 +210,14 @@ export const validateBubbleFlowCodeSchema = z.object({
 });
 
 export const validateBubbleFlowCodeResponseSchema = z.object({
+  eventType: z.string().min(1).openapi({
+    description: 'Event type this BubbleFlow responds to',
+    example: 'webhook/http',
+  }),
+  webhookPath: z.string().min(1).openapi({
+    description: 'Custom webhook path (auto-generated if not provided)',
+    example: 'my-webhook',
+  }),
   valid: z.boolean().openapi({
     description: 'Whether the code is valid',
   }),

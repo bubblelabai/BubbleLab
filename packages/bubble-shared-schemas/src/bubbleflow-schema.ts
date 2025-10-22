@@ -111,6 +111,10 @@ export const createBubbleFlowResponseSchema = z
           'ai-analysis': [CredentialType.GOOGLE_GEMINI_CRED],
         },
       }),
+    eventType: z.string().min(1).openapi({
+      description: 'Event type this BubbleFlow responds to',
+      example: 'webhook/http',
+    }),
     webhook: z
       .object({
         id: z.number().openapi({ description: 'Webhook ID', example: 456 }),

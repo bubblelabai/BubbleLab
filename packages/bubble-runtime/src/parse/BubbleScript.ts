@@ -605,38 +605,6 @@ export class BubbleScript {
   public getPayloadJsonSchema(): Record<string, unknown> | null {
     const bubbleParser = new BubbleParser(this.currentBubbleScript);
     const schema = bubbleParser.getPayloadJsonSchema(this.ast);
-
-    // If this is a cron trigger and we have a cronSchedule, append/update cron property
-    if (
-      this.trigger?.type === 'schedule/cron' &&
-      this.trigger.cronSchedule &&
-      schema
-    ) {
-      const typedSchema = schema as {
-        properties?: Record<string, unknown>;
-        required?: string[];
-      };
-
-      // Ensure properties object exists
-      if (!typedSchema.properties) {
-        typedSchema.properties = {};
-      }
-
-      // Add or update the cron property with the extracted cronSchedule as default
-      typedSchema.properties.cron = {
-        type: 'string',
-        default: this.trigger.cronSchedule,
-      };
-
-      // Add 'cron' to required fields if not already present
-      if (!typedSchema.required) {
-        typedSchema.required = [];
-      }
-      if (!typedSchema.required.includes('cron')) {
-        typedSchema.required.push('cron');
-      }
-    }
-
     return schema;
   }
 

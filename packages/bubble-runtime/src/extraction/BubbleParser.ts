@@ -751,6 +751,7 @@ export class BubbleParser {
   }
 
   // Minimal mapping for known trigger event keys to JSON Schema shapes
+  // Used for the input schema in the BubbleFlow editor if defined as BubbleTriggerEventRegistry[eventType]
   private eventKeyToSchema(
     eventKey: keyof BubbleTriggerEventRegistry
   ): Record<string, unknown> | null {
@@ -790,9 +791,8 @@ export class BubbleParser {
       return {
         type: 'object',
         properties: {
-          cron: { type: 'string' },
+          body: { type: 'object' },
         },
-        required: ['cron'],
       };
     }
     if (eventKey === 'slack/message_received') {

@@ -182,19 +182,6 @@ app.openapi(createBubbleFlowRoute, async (c) => {
   // Process and transpile the code for execution
   const processedCode = processUserCode(data.code);
 
-  console.debug('Inserting data:', {
-    name: data.name,
-    description: data.description,
-    code: processedCode.substring(0, 50) + '...',
-    originalCode: data.code.substring(0, 50) + '...',
-    bubbleParameters: validationResult.bubbleParameters
-      ? Object.keys(validationResult.bubbleParameters).length + ' bubbles'
-      : 'none',
-    eventType: data.eventType,
-    inputSchema: validationResult.inputSchema || {},
-    webhookPath: data.webhookPath,
-    webhookActive: data.webhookActive,
-  });
 
   const userId = getUserId(c);
   const [inserted] = await db
@@ -208,7 +195,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
       originalCode: data.code,
       bubbleParameters: validationResult.bubbleParameters || {},
       inputSchema: validationResult.inputSchema || {},
-      eventType: data.eventType,
+      eventType: validationResult.eventType,
     })
     .returning({ id: bubbleFlows.id });
 
@@ -222,6 +209,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
     message: 'BubbleFlow created successfully',
     inputSchema: validationResult.inputSchema || {},
     bubbleParameters: validationResult.bubbleParameters || {},
+    eventType: validationResult.eventType,
     requiredCredentials,
   };
 
@@ -738,6 +726,13 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
     if (flowId) {
       existingFlow = await db.query.bubbleFlows.findFirst({
         where: and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)),
+        with: {
+          webhooks: {
+            columns: {
+              path: true,
+            },
+          },
+        },
       });
 
       if (!existingFlow) {
@@ -777,6 +772,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           originalCode: code,
           bubbleParameters: finalBubbleParameters,
           inputSchema: result.inputSchema || {},
+          eventType: result.eventType,
           updatedAt: new Date(),
         })
         .where(eq(bubbleFlows.id, flowId));
@@ -792,6 +788,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           success: true,
           inputSchema: result.inputSchema || {},
           bubbles: result.bubbleParameters,
+          eventType: result.eventType || 'webhook/http',
+          webhookPath: getWebhookUrl(userId, existingFlow?.webhooks?.[0]?.path || ''),
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
@@ -813,6 +811,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           valid: false,
           success: false,
           inputSchema: result.inputSchema || {},
+          eventType: result.eventType || 'webhook/http',
+          webhookPath: getWebhookUrl(userId, existingFlow?.webhooks?.[0]?.path || ''),
           error: result.errors?.join('; ') || 'Validation failed',
           errors: [result.errors?.join('; ') || 'Validation failed'],
           metadata: {
