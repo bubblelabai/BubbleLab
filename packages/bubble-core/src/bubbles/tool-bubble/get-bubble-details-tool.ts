@@ -709,6 +709,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
       return '{}';
     } else if (def.typeName === 'ZodOptional') {
       return this.generateExampleValue(def.innerType);
+    } else if (def.typeName === 'ZodNullable') {
+      return this.generateExampleValue(def.innerType);
     } else if (def.typeName === 'ZodDefault') {
       // For defaults, show the example structure of the inner type if it's complex, otherwise show default
       const innerExample = this.generateExampleValue(def.innerType);

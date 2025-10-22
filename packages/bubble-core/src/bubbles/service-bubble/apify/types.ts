@@ -2,7 +2,7 @@
 // TYPE DEFINITIONS
 // ============================================================================
 
-import { APIFY_ACTOR_SCHEMAS } from './api-scraper.schema.js';
+import { APIFY_ACTOR_SCHEMAS } from './apify-scraper.schema.js';
 import { z } from 'zod';
 
 export type ActorId = keyof typeof APIFY_ACTOR_SCHEMAS;

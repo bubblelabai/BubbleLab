@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import type { ActorId, ActorOutput, ActorInput } from './types.ts';
+import type { ActorId, ActorOutput, ActorInput } from './types.js';
 
 /**
  * Generic Apify Bubble - Works with ANY Apify Actor

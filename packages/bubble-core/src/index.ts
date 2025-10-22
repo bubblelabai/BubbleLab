@@ -43,6 +43,16 @@ export type {
   ApifyParamsInput,
   ApifyActorInput,
 } from './bubbles/service-bubble/apify/apify.js';
+// Export Apify actor type helpers for type-safe actor usage
+// Note: APIFY_ACTOR_SCHEMAS is not exported to avoid bloating the bundle
+// with Zod runtime schemas. Use the type helpers instead.
+export type {
+  ActorId,
+  ActorInput,
+  ActorOutput,
+  ActorSchema,
+} from './bubbles/service-bubble/apify/types.js';
+export type { APIFY_ACTOR_SCHEMAS } from './bubbles/service-bubble/apify/apify-scraper.schema.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
