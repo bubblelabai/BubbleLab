@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { ServiceBubble } from '../../types/service-bubble-class.js';
-import type { BubbleContext } from '../../types/bubble.js';
+import { ServiceBubble } from '../../../types/service-bubble-class.js';
+import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import type { ActorId, ActorOutput, ActorInput } from './types.ts';
 
 /**
  * Generic Apify Bubble - Works with ANY Apify Actor
@@ -78,6 +79,29 @@ export type ApifyActorInput = Record<string, unknown>;
 type ApifyParams = z.output<typeof ApifyParamsSchema>;
 type ApifyResult = z.output<typeof ApifyResultSchema>;
 
+// Conditional input type based on whether actor ID is in the registry
+type TypedApifyInput<T extends string> = T extends ActorId
+  ? ActorInput<T>
+  : Record<string, unknown>;
+
+// Conditional result type based on whether actor ID is in the registry
+type TypedApifyResult<T extends string> = T extends ActorId
+  ? Omit<ApifyResult, 'items'> & { items?: ActorOutput<T>[] }
+  : ApifyResult;
+
+// Conditional params type that types the input field
+type TypedApifyParams<T extends string> = Omit<ApifyParams, 'input'> & {
+  input: TypedApifyInput<T>;
+};
+
+// Conditional params input type for constructor
+export type TypedApifyParamsInput<T extends string> = Omit<
+  ApifyParamsInput,
+  'input'
+> & {
+  input: TypedApifyInput<T>;
+};
+
 // Apify API types
 interface ApifyRunResponse {
   data: {
@@ -87,7 +111,10 @@ interface ApifyRunResponse {
   };
 }
 
-export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
+export class ApifyBubble<T extends string = string> extends ServiceBubble<
+  TypedApifyParams<T>,
+  TypedApifyResult<T>
+> {
   static readonly service = 'apify';
   static readonly authType = 'apikey' as const;
   static readonly bubbleName = 'apify';
@@ -98,10 +125,10 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
     'Run any Apify actor for web scraping and automation';
   static readonly longDescription = `
     Universal integration with Apify platform for running any Apify actor.
-    
+
     This is a generic service bubble that can execute any Apify actor with any input.
     Actor-specific logic and data transformation should be handled by Tool Bubbles.
-    
+
     Supported Actors (examples):
     - apify/instagram-scraper - Instagram posts, profiles, hashtags
     - apify/reddit-scraper - Reddit posts, comments, subreddits
@@ -109,42 +136,33 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
     - apify/web-scraper - Generic web scraping
     - apify/google-search-scraper - Google search results
     - And any other Apify actor available in the marketplace
-    
+
     Features:
     - Asynchronous actor execution with optional wait for completion
     - Automatic result fetching from datasets
     - Generic result handling (works with any actor output)
     - Configurable limits and timeouts
     - Direct access to Apify console for monitoring
-    
+
     Use cases:
     - Social media scraping (Instagram, Reddit, LinkedIn, etc.)
     - Web scraping and data extraction
     - Search engine result scraping
     - E-commerce data collection
     - Market research and competitor analysis
-    
+
     Architecture:
     - Service Bubble (this): Generic Apify API integration
     - Tool Bubbles (e.g. InstagramTool): Domain-specific data transformation
-    
+
     Security:
     - API key authentication (APIFY_CRED)
     - Secure credential injection at runtime
   `;
   static readonly alias = 'scrape';
 
-  constructor(
-    params: ApifyParamsInput = {
-      actorId: 'apify/web-scraper',
-      input: {
-        startUrls: [{ url: 'https://example.com' }],
-        maxRequestsPerCrawl: 10,
-      },
-    },
-    context?: BubbleContext
-  ) {
-    super(params, context);
+  constructor(params: TypedApifyParamsInput<T>, context?: BubbleContext) {
+    super(params as TypedApifyParams<T>, context);
   }
 
   protected chooseCredential(): string | undefined {
@@ -175,7 +193,9 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
     }
   }
 
-  protected async performAction(context?: BubbleContext): Promise<ApifyResult> {
+  protected async performAction(
+    context?: BubbleContext
+  ): Promise<TypedApifyResult<T>> {
     void context;
 
     const apiToken = this.chooseCredential();
@@ -186,7 +206,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
         consoleUrl: '',
         success: false,
         error: 'Apify API token is required but was not provided',
-      };
+      } as TypedApifyResult<T>;
     }
 
     try {
@@ -202,7 +222,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
           consoleUrl: '',
           success: false,
           error: 'Failed to start actor run - no run ID returned',
-        };
+        } as TypedApifyResult<T>;
       }
 
       const runId = runResponse.data.id;
@@ -217,7 +237,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
           consoleUrl,
           success: true,
           error: '',
-        };
+        } as TypedApifyResult<T>;
       }
 
       // Wait for actor to finish
@@ -235,7 +255,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
           consoleUrl,
           success: false,
           error: `Actor run ${finalStatus.status.toLowerCase()}: ${finalStatus.status}`,
-        };
+        } as TypedApifyResult<T>;
       }
 
       // Fetch results from dataset
@@ -260,7 +280,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
         consoleUrl,
         success: true,
         error: '',
-      };
+      } as TypedApifyResult<T>;
     } catch (error) {
       return {
         runId: '',
@@ -269,7 +289,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
         success: false,
         error:
           error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+      } as TypedApifyResult<T>;
     }
   }
 

@@ -222,6 +222,9 @@ export class GetBubbleDetailsTool extends ToolBubble<
     } else if (def.typeName === 'ZodOptional') {
       const innerType = this.generateTypeInfo(def.innerType);
       return innerType ? `${innerType} | undefined` : 'unknown | undefined';
+    } else if (def.typeName === 'ZodNullable') {
+      const innerType = this.generateTypeInfo(def.innerType);
+      return innerType ? `${innerType} | null` : 'unknown | null';
     } else if (def.typeName === 'ZodDefault') {
       return this.generateTypeInfo(def.innerType);
     } else if (def.typeName === 'ZodEnum') {

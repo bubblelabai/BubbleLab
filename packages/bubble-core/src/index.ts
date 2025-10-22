@@ -38,11 +38,11 @@ export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
 export { GmailBubble } from './bubbles/service-bubble/gmail.js';
 export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
-export { ApifyBubble } from './bubbles/service-bubble/apify.js';
+export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,
-} from './bubbles/service-bubble/apify.js';
+} from './bubbles/service-bubble/apify/apify.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';

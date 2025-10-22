@@ -753,14 +753,6 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 
     // Create a new BubbleFlowValidationTool instance
     console.log('Starting bubble factory....');
-    console.log(
-      'Bubble factory:',
-      JSON.stringify(
-        bubbleFactory.getDetailedDependencies('slack-data-assistant'),
-        null,
-        2
-      )
-    );
     const result = await validateAndExtract(code, bubbleFactory);
 
     // If validation is successful and flowId is provided, update the flow

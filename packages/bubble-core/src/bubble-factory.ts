@@ -175,7 +175,7 @@ export class BubbleFactory {
     const { GoogleCalendarBubble } = await import(
       './bubbles/service-bubble/google-calendar.js'
     );
-    const { ApifyBubble } = await import('./bubbles/service-bubble/apify.js');
+    const { ApifyBubble } = await import('./bubbles/service-bubble/apify');
     const { BubbleFlowGeneratorWorkflow } = await import(
       './bubbles/workflow-bubble/bubbleflow-generator.workflow.js'
     );

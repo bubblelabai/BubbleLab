@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
-import { ApifyBubble } from '../service-bubble/apify.js';
+import { ApifyBubble } from '../service-bubble/apify/apify.js';
+import type { ActorOutput } from '../service-bubble/apify/types.js';
 
 // Unified Instagram data types (service-agnostic)
 const InstagramPostSchema = z.object({
@@ -215,7 +216,7 @@ export class InstagramTool extends ToolBubble<
     limit: number
   ): Promise<InstagramToolResult> {
     // Always use 'details' to get both profile information AND posts
-    const apifyBubble = new ApifyBubble(
+    const apifyBubble = new ApifyBubble<'apify/instagram-scraper'>(
       {
         actorId: 'apify/instagram-scraper',
         input: {
@@ -245,6 +246,7 @@ export class InstagramTool extends ToolBubble<
       };
     }
 
+    // Now items is automatically typed as InstagramPost[] - no casting needed!
     const items = apifyResult.data.items || [];
 
     // Extract posts from the results
@@ -292,13 +294,15 @@ export class InstagramTool extends ToolBubble<
    * Extract posts from Apify results
    * Handles both 'details' and 'posts' resultsType formats
    */
-  private extractPosts(items: unknown[]): InstagramPost[] {
+  private extractPosts(
+    items: ActorOutput<'apify/instagram-scraper'>[]
+  ): InstagramPost[] {
     const posts: InstagramPost[] = [];
 
     for (const item of items) {
       if (typeof item !== 'object' || item === null) continue;
 
-      const anyItem = item as any;
+      const anyItem = item;
 
       // Check if this item has posts nested (details format)
       if (anyItem.latestPosts && Array.isArray(anyItem.latestPosts)) {
@@ -316,19 +320,6 @@ export class InstagramTool extends ToolBubble<
             hashtags: post.hashtags || null,
           });
         }
-      } else if (anyItem.url || anyItem.shortCode) {
-        // Format from 'posts' resultsType - each item is a post
-        posts.push({
-          url: anyItem.url || null,
-          caption: anyItem.caption || null,
-          likesCount: anyItem.likesCount || null,
-          commentsCount: anyItem.commentsCount || null,
-          ownerUsername: anyItem.ownerUsername || null,
-          timestamp: anyItem.timestamp || null,
-          type: this.normalizePostType(anyItem.type),
-          displayUrl: anyItem.displayUrl || null,
-          hashtags: anyItem.hashtags || null,
-        });
       }
     }
 
@@ -339,27 +330,27 @@ export class InstagramTool extends ToolBubble<
    * Extract profile information from Apify results
    * Handles the 'details' resultsType format
    */
-  private extractProfileInfo(items: unknown[]): InstagramProfile[] {
+  private extractProfileInfo(
+    items: ActorOutput<'apify/instagram-scraper'>[]
+  ): InstagramProfile[] {
     const profiles: InstagramProfile[] = [];
 
     for (const item of items) {
       if (typeof item !== 'object' || item === null) continue;
 
-      const anyItem = item as any;
+      const anyItem = item;
 
       // Check if this item has profile-level information (details format)
       if (anyItem.username) {
         profiles.push({
-          username: anyItem.username || null,
-          fullName: anyItem.fullName || null,
-          bio: anyItem.biography || anyItem.bio || null,
-          followersCount: anyItem.followersCount || null,
-          followingCount:
-            anyItem.followsCount || anyItem.followingCount || null,
+          username: anyItem.username || '',
+          fullName: anyItem.fullName || '',
+          bio: anyItem.biography || '',
+          followersCount: anyItem.followersCount || 0,
+          followingCount: anyItem.followsCount || 0,
           postsCount: anyItem.postsCount || null,
-          isVerified: anyItem.verified || anyItem.isVerified || false,
-          profilePicUrl:
-            anyItem.profilePicUrl || anyItem.profilePicture || null,
+          isVerified: anyItem.verified || false,
+          profilePicUrl: anyItem.profilePicUrl || '',
         });
       }
     }
