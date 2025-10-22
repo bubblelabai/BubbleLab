@@ -138,17 +138,17 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border shadow-lg overflow-hidden transition-all duration-300 ${
+      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 ${
         isSubBubble
           ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
           : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
       } ${
         hasError
-          ? 'border-red-500 shadow-red-500/50 shadow-2xl ring-2 ring-red-500/50 bg-red-900/20'
+          ? 'border-red-500 bg-red-900/20'
           : isCompleted
-            ? 'border-green-500 shadow-green-500/50 shadow-xl ring-2 ring-green-500/50 bg-green-900/20'
+            ? 'border-green-500 bg-green-900/20'
             : isHighlighted
-              ? 'border-purple-400 shadow-purple-500/50 shadow-2xl ring-2 ring-purple-400/50 bg-purple-900/20'
+              ? 'border-purple-400 bg-purple-900/20'
               : 'border-neutral-600'
       }`}
       onClick={handleClick}
@@ -207,7 +207,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
               <div className="flex-shrink-0">
                 <div
                   title={`Completed in ${executionTimeMs}ms`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-300 border border-green-600/40"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-600 text-white"
                 >
                   <span>✓</span>
                   <span>{executionTimeMs}ms</span>

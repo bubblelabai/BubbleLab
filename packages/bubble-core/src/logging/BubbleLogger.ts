@@ -74,6 +74,8 @@ export class BubbleLogger {
     string,
     Omit<TokenUsage, 'modelName'>
   > = new Map();
+  // Track individual bubble execution times
+  private bubbleStartTimes: Map<number, number> = new Map();
 
   constructor(
     private flowName: string,
@@ -189,6 +191,9 @@ export class BubbleLogger {
     variableName: string,
     parameters?: Record<string, unknown>
   ): string {
+    // Track start time for this bubble
+    this.bubbleStartTimes.set(variableId, Date.now());
+
     // Try to find the message from the parameters
     const message = (parameters as Record<string, unknown>)?.message as string;
     const messagePreview = message ? message.substring(0, 200) : '';
@@ -212,14 +217,21 @@ export class BubbleLogger {
     variableName: string,
     result?: unknown
   ): string {
-    const logMessage = `Bubble execution completed: ${bubbleName} ${result && typeof result === 'object' && 'data' in result ? ` - Result: ${JSON.stringify(result.data).substring(0, 200)}` : ''}`;
+    // Calculate individual bubble execution time
+    const individualExecutionTime = this.getBubbleExecutionTime(variableId);
+
+    const logMessage = `Bubble execution completed: ${bubbleName} in ${individualExecutionTime}ms ${result && typeof result === 'object' && 'data' in result ? ` - Result: ${JSON.stringify(result.data).substring(0, 200)}` : ''}`;
     this.log(LogLevel.DEBUG, logMessage, {
       variableId,
       bubbleName,
       variableName,
       operationType: 'bubble_execution_complete',
-      additionalData: { result },
+      additionalData: { result, executionTime: individualExecutionTime },
     });
+
+    // Clean up the start time for this bubble
+    this.bubbleStartTimes.delete(variableId);
+
     return logMessage;
   }
 
@@ -733,5 +745,13 @@ export class BubbleLogger {
     );
 
     return [headerRow, separator, ...dataRows].join('\n');
+  }
+
+  /**
+   * Get individual bubble execution time for a specific variable ID
+   */
+  protected getBubbleExecutionTime(variableId: number): number {
+    const bubbleStartTime = this.bubbleStartTimes.get(variableId);
+    return bubbleStartTime ? Date.now() - bubbleStartTime : 0;
   }
 }
