@@ -43,6 +43,27 @@ async function testInstagramTool() {
   console.log('- Total Posts:', result1.data.totalPosts);
   console.log('- Scraped Profiles:', result1.data.scrapedProfiles);
 
+  // Profile information is always available now!
+  if (
+    result1.data.success &&
+    result1.data.profiles &&
+    result1.data.profiles.length > 0
+  ) {
+    console.log('\n👤 Profile Information:');
+    const profile = result1.data.profiles[0];
+    console.log('  Username:', profile.username);
+    console.log('  Full Name:', profile.fullName);
+    console.log(
+      '  Bio:',
+      profile.bio?.substring(0, 80) +
+        (profile.bio && profile.bio.length > 80 ? '...' : '')
+    );
+    console.log('  Followers:', profile.followersCount);
+    console.log('  Following:', profile.followingCount);
+    console.log('  Posts Count:', profile.postsCount);
+    console.log('  Verified:', profile.isVerified);
+  }
+
   if (result1.data.success && result1.data.posts.length > 0) {
     console.log('\n📸 Sample Post:');
     const post = result1.data.posts[0];
@@ -99,6 +120,7 @@ async function testInstagramTool() {
   console.log('  ✓ Accepts @username, username, or full URLs');
   console.log('  ✓ Uniform data format regardless of service');
   console.log('  ✓ Service-agnostic (currently Apify, future: any service)');
+  console.log('  ✓ Always returns both profile and post information');
 }
 
 testInstagramTool().catch((error) => {

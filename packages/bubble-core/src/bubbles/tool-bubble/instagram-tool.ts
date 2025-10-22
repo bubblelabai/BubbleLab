@@ -46,11 +46,6 @@ const InstagramToolParamsSchema = z.object({
     .default(20)
     .optional()
     .describe('Maximum number of posts to fetch per profile (default: 20)'),
-  includeProfileInfo: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Include profile information (bio, followers, etc.)'),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -64,8 +59,7 @@ const InstagramToolResultSchema = z.object({
     .describe('Array of Instagram posts from all profiles'),
   profiles: z
     .array(InstagramProfileSchema)
-    .optional()
-    .describe('Profile information (if includeProfileInfo is true)'),
+    .describe('Profile information for each scraped profile'),
   totalPosts: z.number().describe('Total number of posts scraped'),
   scrapedProfiles: z
     .array(z.string())
@@ -153,7 +147,8 @@ export class InstagramTool extends ToolBubble<
   }
 
   async performAction(): Promise<InstagramToolResult> {
-    if (!this.params?.credentials?.[CredentialType.APIFY_CRED]) {
+    const credentials = this.params?.credentials;
+    if (!credentials || !credentials[CredentialType.APIFY_CRED]) {
       return {
         posts: [],
         profiles: [],
@@ -172,8 +167,7 @@ export class InstagramTool extends ToolBubble<
       // Use Apify service (future: could route to different services)
       const result = await this.scrapeWithApify(
         instagramUrls,
-        this.params.limit || 20,
-        this.params.includeProfileInfo || false
+        this.params.limit || 20
       );
 
       return result;
@@ -214,19 +208,19 @@ export class InstagramTool extends ToolBubble<
   /**
    * Scrape using Apify service
    * This is the current implementation - future versions could add other services
+   * Always fetches both profile details and posts for maximum flexibility
    */
   private async scrapeWithApify(
     urls: string[],
-    limit: number,
-    includeProfileInfo: boolean
+    limit: number
   ): Promise<InstagramToolResult> {
-    // Use Apify bubble for scraping
+    // Always use 'details' to get both profile information AND posts
     const apifyBubble = new ApifyBubble(
       {
         actorId: 'apify/instagram-scraper',
         input: {
           directUrls: urls,
-          resultsType: includeProfileInfo ? 'details' : 'posts',
+          resultsType: 'details', // Always fetch full details (profile + posts)
           resultsLimit: limit,
         },
         waitForFinish: true,
@@ -251,23 +245,13 @@ export class InstagramTool extends ToolBubble<
       };
     }
 
-    // Transform Apify data to unified format
-    const posts = (apifyResult.data.items || []).map((item) => ({
-      url: item.url || null,
-      caption: item.caption || null,
-      likesCount: item.likesCount || null,
-      commentsCount: item.commentsCount || null,
-      ownerUsername: item.ownerUsername || null,
-      timestamp: item.timestamp || null,
-      type: this.normalizePostType(item.type),
-      displayUrl: item.displayUrl || null,
-      hashtags: item.hashtags || null,
-    }));
+    const items = apifyResult.data.items || [];
 
-    // If profile info was requested, extract it
-    const profiles = includeProfileInfo
-      ? this.extractProfileInfo(apifyResult.data.items || [])
-      : undefined;
+    // Extract posts from the results
+    const posts = this.extractPosts(items);
+
+    // Extract profile information from the results
+    const profiles = this.extractProfileInfo(items);
 
     return {
       posts,
@@ -305,38 +289,81 @@ export class InstagramTool extends ToolBubble<
   }
 
   /**
-   * Extract profile information from Apify results
-   * Future: This could be enhanced with dedicated profile scraping
+   * Extract posts from Apify results
+   * Handles both 'details' and 'posts' resultsType formats
    */
-  private extractProfileInfo(items: unknown[]): InstagramProfile[] {
-    // For now, extract basic info from posts
-    // Future: Add dedicated profile scraping
-    const profileMap = new Map<string, InstagramProfile>();
+  private extractPosts(items: unknown[]): InstagramPost[] {
+    const posts: InstagramPost[] = [];
 
     for (const item of items) {
-      // Type guard to ensure item is an object with ownerUsername
-      if (
-        typeof item === 'object' &&
-        item !== null &&
-        'ownerUsername' in item &&
-        typeof (item as { ownerUsername: unknown }).ownerUsername === 'string'
-      ) {
-        const username = (item as { ownerUsername: string }).ownerUsername;
-        if (!profileMap.has(username)) {
-          profileMap.set(username, {
-            username,
-            fullName: null,
-            bio: null,
-            followersCount: null,
-            followingCount: null,
-            postsCount: null,
-            isVerified: null,
-            profilePicUrl: null,
+      if (typeof item !== 'object' || item === null) continue;
+
+      const anyItem = item as any;
+
+      // Check if this item has posts nested (details format)
+      if (anyItem.latestPosts && Array.isArray(anyItem.latestPosts)) {
+        // Format from 'details' resultsType - posts are nested
+        for (const post of anyItem.latestPosts) {
+          posts.push({
+            url: post.url || null,
+            caption: post.caption || null,
+            likesCount: post.likesCount || null,
+            commentsCount: post.commentsCount || null,
+            ownerUsername: anyItem.username || post.ownerUsername || null,
+            timestamp: post.timestamp || null,
+            type: this.normalizePostType(post.type),
+            displayUrl: post.displayUrl || null,
+            hashtags: post.hashtags || null,
           });
         }
+      } else if (anyItem.url || anyItem.shortCode) {
+        // Format from 'posts' resultsType - each item is a post
+        posts.push({
+          url: anyItem.url || null,
+          caption: anyItem.caption || null,
+          likesCount: anyItem.likesCount || null,
+          commentsCount: anyItem.commentsCount || null,
+          ownerUsername: anyItem.ownerUsername || null,
+          timestamp: anyItem.timestamp || null,
+          type: this.normalizePostType(anyItem.type),
+          displayUrl: anyItem.displayUrl || null,
+          hashtags: anyItem.hashtags || null,
+        });
       }
     }
 
-    return Array.from(profileMap.values());
+    return posts;
+  }
+
+  /**
+   * Extract profile information from Apify results
+   * Handles the 'details' resultsType format
+   */
+  private extractProfileInfo(items: unknown[]): InstagramProfile[] {
+    const profiles: InstagramProfile[] = [];
+
+    for (const item of items) {
+      if (typeof item !== 'object' || item === null) continue;
+
+      const anyItem = item as any;
+
+      // Check if this item has profile-level information (details format)
+      if (anyItem.username) {
+        profiles.push({
+          username: anyItem.username || null,
+          fullName: anyItem.fullName || null,
+          bio: anyItem.biography || anyItem.bio || null,
+          followersCount: anyItem.followersCount || null,
+          followingCount:
+            anyItem.followsCount || anyItem.followingCount || null,
+          postsCount: anyItem.postsCount || null,
+          isVerified: anyItem.verified || anyItem.isVerified || false,
+          profilePicUrl:
+            anyItem.profilePicUrl || anyItem.profilePicture || null,
+        });
+      }
+    }
+
+    return profiles;
   }
 }
