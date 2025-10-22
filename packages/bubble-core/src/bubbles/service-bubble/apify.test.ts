@@ -116,9 +116,9 @@ describe('ApifyBubble', () => {
   describe('Credential Selection', () => {
     it('should return undefined when no credentials provided', () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
+          startUrls: [{ url: 'https://example.com' }],
         },
       };
 
@@ -129,9 +129,9 @@ describe('ApifyBubble', () => {
 
     it('should select APIFY_CRED when provided', () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
+          startUrls: [{ url: 'https://example.com' }],
         },
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-apify-token',
