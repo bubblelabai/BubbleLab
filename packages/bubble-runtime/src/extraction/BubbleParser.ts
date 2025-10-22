@@ -786,7 +786,7 @@ export class BubbleParser {
         required: ['email'],
       };
     }
-    if (eventKey === 'schedule/cron/daily') {
+    if (eventKey === 'schedule/cron') {
       return {
         type: 'object',
         properties: {

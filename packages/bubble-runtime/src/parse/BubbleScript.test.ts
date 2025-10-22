@@ -4,6 +4,10 @@ import { getFixture } from '../../tests/fixtures';
 import { BubbleFactory } from '@bubblelab/bubble-core';
 import { MockDataGenerator } from '@bubblelab/shared-schemas';
 import { buildParametersObject } from '../utils/parameter-formatter';
+import {
+  validateCronExpression,
+  describeCronExpression,
+} from '@bubblelab/shared-schemas';
 
 describe('BubbleAnalyzer', () => {
   let analyzer: BubbleScript;
@@ -376,6 +380,35 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
     });
   });
 
+  describe('should parse bubbles from cron schedule trigger correctly', () => {
+    it('should parse bubbles from cron schedule trigger correctly', () => {
+      const cronTestScript = getFixture('cron-test');
+      const analyzer = new BubbleScript(cronTestScript, bubbleFactory);
+      const triggerEventType = analyzer.getBubbleTriggerEventType();
+      expect(triggerEventType).toStrictEqual({
+        type: 'schedule/cron',
+        cronSchedule: '0 0 * * *',
+      });
+      const payloadJsonSchema = analyzer.getPayloadJsonSchema();
+      expect(payloadJsonSchema).toBeDefined();
+      expect(payloadJsonSchema).toEqual({
+        type: 'object',
+        properties: {
+          cron: { type: 'string', default: '0 0 * * *' },
+          message: { type: 'string' },
+          name: { type: 'string' },
+        },
+        required: ['name', 'message', 'cron'],
+      });
+      // Succesfully validates cron
+      const currentCron = (payloadJsonSchema?.properties as Record<string, any>)
+        ?.cron?.default as string;
+      const cronValidation = validateCronExpression(currentCron as string);
+      expect(cronValidation.valid).toBe(true);
+      const cronDescription = describeCronExpression(currentCron as string);
+      expect(cronDescription).toBe('Daily at midnight');
+    });
+  });
   describe('should get payload zod schema string', () => {
     it('should get payload zod schema string from image generation flow script', () => {
       const imageGenerationFlowScript = getFixture('image-generation-flow');

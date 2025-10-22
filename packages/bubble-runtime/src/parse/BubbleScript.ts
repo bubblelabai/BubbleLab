@@ -29,7 +29,10 @@ export class BubbleScript {
   private bubbleScript: string;
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
-  public triggerEventType: keyof BubbleTriggerEventRegistry;
+  public trigger: {
+    type: keyof BubbleTriggerEventRegistry;
+    cronSchedule?: string;
+  };
 
   /**
    * Reparse the AST and bubbles after the script has been modified
@@ -65,8 +68,7 @@ export class BubbleScript {
     );
 
     this.parsedBubbles = parseResult.bubbles;
-    this.triggerEventType =
-      this.getBubbleTriggerEventType() as keyof BubbleTriggerEventRegistry;
+    this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
   constructor(bubbleScript: string, bubbleFactory: BubbleFactory) {
@@ -104,8 +106,7 @@ export class BubbleScript {
     this.parsedBubbles = parseResult.bubbles;
     this.originalParsedBubbles = parseResult.bubbles;
     this.handleMethodLocation = parseResult.handleMethodLocation;
-    this.triggerEventType =
-      this.getBubbleTriggerEventType() as keyof BubbleTriggerEventRegistry;
+    this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
   // getter for bubblescript (computed property)
@@ -603,7 +604,40 @@ export class BubbleScript {
    */
   public getPayloadJsonSchema(): Record<string, unknown> | null {
     const bubbleParser = new BubbleParser(this.currentBubbleScript);
-    return bubbleParser.getPayloadJsonSchema(this.ast);
+    const schema = bubbleParser.getPayloadJsonSchema(this.ast);
+
+    // If this is a cron trigger and we have a cronSchedule, append/update cron property
+    if (
+      this.trigger?.type === 'schedule/cron' &&
+      this.trigger.cronSchedule &&
+      schema
+    ) {
+      const typedSchema = schema as {
+        properties?: Record<string, unknown>;
+        required?: string[];
+      };
+
+      // Ensure properties object exists
+      if (!typedSchema.properties) {
+        typedSchema.properties = {};
+      }
+
+      // Add or update the cron property with the extracted cronSchedule as default
+      typedSchema.properties.cron = {
+        type: 'string',
+        default: this.trigger.cronSchedule,
+      };
+
+      // Add 'cron' to required fields if not already present
+      if (!typedSchema.required) {
+        typedSchema.required = [];
+      }
+      if (!typedSchema.required.includes('cron')) {
+        typedSchema.required.push('cron');
+      }
+    }
+
+    return schema;
   }
 
   /**
@@ -611,14 +645,20 @@ export class BubbleScript {
    * Example: class X extends BubbleFlow<'slack/bot_mentioned'> {}
    * Returns the string key (e.g., 'slack/bot_mentioned') or null if not found.
    */
-  public getBubbleTriggerEventType(): string | null {
+  public getBubbleTriggerEventType(): {
+    type: keyof BubbleTriggerEventRegistry;
+    cronSchedule?: string;
+  } | null {
     for (const stmt of this.ast.body) {
-      const tryClass = (cls: TSESTree.ClassDeclaration | null | undefined) => {
+      const tryClass = (
+        cls: TSESTree.ClassDeclaration | null | undefined
+      ): { type: string; cronSchedule?: string } | null => {
         if (!cls) return null;
         const superClass = cls.superClass;
         if (!superClass || superClass.type !== 'Identifier') return null;
         if (superClass.name !== 'BubbleFlow') return null;
-        // typescript-estree attaches generic params to superTypeParameters
+
+        // Extract the event type from generic parameter
         const params = (
           cls as unknown as {
             superTypeParameters?: TSESTree.TSTypeParameterInstantiation | null;
@@ -626,35 +666,88 @@ export class BubbleScript {
         ).superTypeParameters;
         const firstParam = params?.params?.[0];
         if (!firstParam) return null;
+
+        let eventType: string | null = null;
         if (
           firstParam.type === 'TSLiteralType' &&
           firstParam.literal.type === 'Literal'
         ) {
           const v = firstParam.literal.value;
-          return typeof v === 'string' ? v : null;
+          eventType = typeof v === 'string' ? v : null;
         }
-        return null;
+
+        if (!eventType) return null;
+
+        // Extract cronSchedule if this is a schedule/cron event
+        let cronSchedule: string | undefined = undefined;
+        if (eventType === 'schedule/cron') {
+          // Look for cronSchedule property in the class body
+          for (const member of cls.body.body) {
+            if (
+              member.type === 'PropertyDefinition' &&
+              member.key.type === 'Identifier' &&
+              member.key.name === 'cronSchedule'
+            ) {
+              // Extract the string literal value
+              if (
+                member.value &&
+                member.value.type === 'Literal' &&
+                typeof member.value.value === 'string'
+              ) {
+                cronSchedule = member.value.value;
+                break;
+              }
+            }
+          }
+        }
+
+        return { type: eventType, cronSchedule };
       };
 
       if (stmt.type === 'ClassDeclaration') {
-        const val = tryClass(stmt);
-        if (val) return val;
+        const result = tryClass(stmt);
+        if (result) {
+          return {
+            type: result.type as keyof BubbleTriggerEventRegistry,
+            cronSchedule: result.cronSchedule,
+          };
+        }
       }
       if (
         stmt.type === 'ExportNamedDeclaration' &&
         stmt.declaration?.type === 'ClassDeclaration'
       ) {
-        const val = tryClass(stmt.declaration);
-        if (val) return val;
+        const result = tryClass(stmt.declaration);
+        if (result) {
+          return {
+            type: result.type as keyof BubbleTriggerEventRegistry,
+            cronSchedule: result.cronSchedule,
+          };
+        }
       }
     }
+
     // Fallback: simple regex over the source to catch extends BubbleFlow<'event/key'>
     const match = this.currentBubbleScript.match(
       /extends\s+BubbleFlow\s*<\s*(['"`])([^'"`]+)\1\s*>/m
     );
     if (match && typeof match[2] === 'string') {
-      return match[2];
+      const eventType = match[2] as keyof BubbleTriggerEventRegistry;
+
+      // Try to extract cronSchedule via regex if it's a cron event
+      let cronSchedule: string | undefined = undefined;
+      if (eventType === 'schedule/cron') {
+        const cronMatch = this.currentBubbleScript.match(
+          /readonly\s+cronSchedule\s*=\s*['"`]([^'"`]+)['"`]/
+        );
+        if (cronMatch) {
+          cronSchedule = cronMatch[1];
+        }
+      }
+
+      return { type: eventType, cronSchedule };
     }
+
     return null;
   }
 }

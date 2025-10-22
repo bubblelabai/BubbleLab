@@ -30,6 +30,7 @@ export const fixtures = {
   'hello-world-multi-line-para': '',
   'para-with-comment': '',
   yfinance: '',
+  'cron-test': '',
   'techweek-scrape': '',
   'starter-flow': '',
   'emails-complex': '',
