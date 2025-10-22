@@ -157,7 +157,7 @@ export class InstagramTool<
   static readonly schema = InstagramToolParamsSchema;
   static readonly resultSchema = InstagramToolResultSchema;
   static readonly shortDescription =
-    'Scrape Instagram profiles and posts with a simple, unified interface';
+    'Scrape Instagram profiles and posts with a simple, unified interface. Works with individual user profiles and hashtags.';
   static readonly longDescription = `
     Universal Instagram scraping tool that provides a simple, opinionated interface for extracting Instagram data.
     

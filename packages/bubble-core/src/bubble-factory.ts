@@ -619,6 +619,7 @@ import {
   // Specialized Tool Bubbles
   ResearchAgentTool,
   RedditScrapeTool,
+  InstagramTool,
     
   // Types and utilities
   BubbleFactory,
