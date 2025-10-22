@@ -171,8 +171,21 @@ function extractFromNewExpression(
           const name = prop.name.text;
           const value = extractParameterValue(prop.name, sourceFile);
           parameters.push({ name, ...value });
+        } else if (ts.isSpreadAssignment(prop)) {
+          // Spread properties like {...params}
+          const spreadExpr = prop.expression;
+          const value = extractParameterValue(spreadExpr, sourceFile);
+          const spreadName = ts.isIdentifier(spreadExpr)
+            ? spreadExpr.text
+            : 'spread';
+          parameters.push({ name: spreadName, ...value });
         }
       }
+    } else {
+      // Handle single variable parameter (e.g., new GoogleDriveBubble(config))
+      const value = extractParameterValue(firstArg, sourceFile);
+      const argName = ts.isIdentifier(firstArg) ? firstArg.text : 'arg0';
+      parameters.push({ name: argName, ...value });
     }
   }
 
