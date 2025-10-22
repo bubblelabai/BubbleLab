@@ -64,12 +64,6 @@ interface UIStore {
 
   // ============= Visual Indicators =============
 
-  /**
-   * Whether there are new output events (visual indicator)
-   * Used to show a badge when output is collapsed
-   */
-  hasNewOutputEvents: boolean;
-
   // ============= Actions =============
 
   /**
@@ -141,16 +135,6 @@ interface UIStore {
    * Toggle prompt display
    */
   togglePrompt: () => void;
-
-  /**
-   * Mark output as read (clear new events indicator)
-   */
-  markOutputAsRead: () => void;
-
-  /**
-   * Mark that new output events have arrived
-   */
-  markNewOutputEvents: () => void;
 }
 
 /**
@@ -172,7 +156,6 @@ export const useUIStore = create<UIStore>((set) => ({
   isOutputCollapsed: true,
   showExportModal: false,
   showPrompt: false,
-  hasNewOutputEvents: false,
 
   // Actions
   navigateToPage: (page) => set({ currentPage: page }),
@@ -192,11 +175,9 @@ export const useUIStore = create<UIStore>((set) => ({
 
   closeSidebar: () => set({ isSidebarOpen: false }),
 
-  collapseOutput: () =>
-    set({ isOutputCollapsed: true, hasNewOutputEvents: false }),
+  collapseOutput: () => set({ isOutputCollapsed: true }),
 
-  expandOutput: () =>
-    set({ isOutputCollapsed: false, hasNewOutputEvents: false }),
+  expandOutput: () => set({ isOutputCollapsed: false }),
 
   toggleExportModal: () =>
     set((state) => ({ showExportModal: !state.showExportModal })),
@@ -206,10 +187,6 @@ export const useUIStore = create<UIStore>((set) => ({
   closeExportModal: () => set({ showExportModal: false }),
 
   togglePrompt: () => set((state) => ({ showPrompt: !state.showPrompt })),
-
-  markOutputAsRead: () => set({ hasNewOutputEvents: false }),
-
-  markNewOutputEvents: () => set({ hasNewOutputEvents: true }),
 }));
 
 // ============= Derived Selectors =============
