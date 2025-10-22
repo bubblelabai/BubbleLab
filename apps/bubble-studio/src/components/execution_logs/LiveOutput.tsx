@@ -13,11 +13,10 @@ import {
 } from '@heroicons/react/24/solid';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
+import { useExecutionStore } from '../../stores/executionStore';
 import AllEventsView from './AllEventsView';
 
 interface LiveOutputProps {
-  isExecuting?: boolean;
-  onExecutionStateChange?: (isExecuting: boolean) => void;
   events?: StreamingLogEvent[];
   currentLine?: number | null;
   executionStats?: {
@@ -31,7 +30,6 @@ interface LiveOutputProps {
 }
 
 export default function LiveOutput({
-  isExecuting = false,
   events: propsEvents = [],
   currentLine: propsCurrentLine = null,
   executionStats: propsExecutionStats,
@@ -47,6 +45,13 @@ export default function LiveOutput({
   const [activeTab, setActiveTab] = useState<'live' | 'history'>('live');
   const [filterTab, setFilterTab] = useState<'all' | 'warnings' | 'errors'>(
     'all'
+  );
+
+  // Get execution state from store - this is the source of truth
+  // Use selector to ensure component re-renders when isRunning changes
+  const isCurrentlyExecuting = useExecutionStore(
+    flowId,
+    (state) => state.isRunning
   );
 
   // Fetch execution history using React Query
@@ -329,7 +334,7 @@ export default function LiveOutput({
       </div>
 
       {/* Statistics - only show for live tab */}
-      {activeTab === 'live' && (isExecuting || events.length > 0) && (
+      {activeTab === 'live' && (isCurrentlyExecuting || events.length > 0) && (
         <div className="flex items-center gap-6 px-4 py-2 bg-[#161b22] border-b border-[#30363d] text-sm">
           <div className="text-gray-400">
             Time:{' '}
@@ -345,7 +350,7 @@ export default function LiveOutput({
       )}
 
       {/* Filter Tabs - only show for live tab */}
-      {activeTab === 'live' && (isExecuting || events.length > 0) && (
+      {activeTab === 'live' && (isCurrentlyExecuting || events.length > 0) && (
         <div className="flex items-center gap-2 px-4 py-2 bg-[#0f1115] border-b border-[#30363d]">
           <button
             type="button"
@@ -675,7 +680,9 @@ export default function LiveOutput({
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="flex-shrink-0">
-                          {execution.status === 'success' ? (
+                          {isCurrentlyExecuting ? (
+                            <div className="h-5 w-5 bg-red-500 rounded-full animate-pulse"></div>
+                          ) : execution.status === 'success' ? (
                             <CheckCircleIcon className="h-5 w-5 text-green-400" />
                           ) : execution.status === 'error' ? (
                             <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
@@ -690,14 +697,18 @@ export default function LiveOutput({
                             </span>
                             <span
                               className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                execution.status === 'success'
-                                  ? 'bg-green-900/30 text-green-300'
-                                  : execution.status === 'error'
-                                    ? 'bg-red-900/30 text-red-300'
-                                    : 'bg-yellow-900/30 text-yellow-300'
+                                isCurrentlyExecuting
+                                  ? 'bg-red-900/30 text-red-300'
+                                  : execution.status === 'success'
+                                    ? 'bg-green-900/30 text-green-300'
+                                    : execution.status === 'error'
+                                      ? 'bg-red-900/30 text-red-300'
+                                      : 'bg-yellow-900/30 text-yellow-300'
                               }`}
                             >
-                              {execution.status}
+                              {isCurrentlyExecuting
+                                ? 'executing'
+                                : execution.status}
                             </span>
                           </div>
                           <div className="text-xs text-gray-500 mt-1">

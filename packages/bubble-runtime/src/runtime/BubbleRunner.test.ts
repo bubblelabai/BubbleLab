@@ -190,6 +190,23 @@ describe('BubbleRunner correctly runs and plans', () => {
   });
 
   describe('Execution With Edge Cases', () => {
+    it('should execute a flow with a parameter as a variable', async () => {
+      const testScript = getFixture('param-as-var');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      let result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success || result.error?.includes('credentials')).toBe(
+        true
+      );
+      // Inject credentials
+      const bubbles = runner.getParsedBubbles();
+      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success || result.error?.includes('credentials')).toBe(
+        true
+      );
+    });
     it('should execute a webhook flow', async () => {
       const testWebhookScript = getFixture('test-webhook');
       const runner = new BubbleRunner(testWebhookScript, bubbleFactory);

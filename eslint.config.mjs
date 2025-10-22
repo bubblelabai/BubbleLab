@@ -27,6 +27,7 @@ export default [
       '**/out/**',
       '**/external/**',
       '**/public/**',
+      '**/tests/fixtures/**',
     ],
   },
 ];

@@ -34,6 +34,7 @@ export const fixtures = {
   'starter-flow': '',
   'emails-complex': '',
   'content-creation': '',
+  'param-as-var': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
@@ -66,6 +67,7 @@ export function getUserCredential(): Partial<Record<CredentialType, string>> {
     [CredentialType.SLACK_CRED]: 'test-slack-key',
     [CredentialType.RESEND_CRED]: 'test-resend-key',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'test-google-sheets-key',
+    [CredentialType.GOOGLE_DRIVE_CRED]: 'test-google-drive-key',
   };
 }
 

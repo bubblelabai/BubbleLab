@@ -76,7 +76,6 @@ function App() {
     showLeftPanel,
     isSidebarOpen,
     isOutputCollapsed,
-    hasNewOutputEvents,
     showExportModal,
     showPrompt,
     togglePrompt,
@@ -86,8 +85,6 @@ function App() {
     closeSidebar,
     collapseOutput,
     expandOutput,
-    markNewOutputEvents,
-    markOutputAsRead,
     toggleExportModal,
     toggleSidebar,
   } = useUIStore();
@@ -184,10 +181,7 @@ function App() {
   // Initialize execution stream hook
   const executionStream = useExecutionStream(selectedFlowId, {
     onEvent: () => {
-      // Set visual indicator when new events arrive and output is collapsed
-      if (isOutputCollapsed) {
-        markNewOutputEvents();
-      }
+      // Events are handled by the execution store
     },
     onComplete: () => {
       executionState.stopExecution();
@@ -197,8 +191,6 @@ function App() {
     onError: (error: string, isFatal?: boolean, errorVariableId?: number) => {
       executionState.stopExecution();
       setOutput((prev) => prev + `\n❌ Execution failed: ${error}`);
-      // Clear visual indicator when execution fails
-      markOutputAsRead();
 
       // If this is a fatal error, mark the bubble with error
       if (isFatal) {
@@ -490,8 +482,6 @@ function App() {
         return;
       }
     }
-    // Clear any existing visual indicator when starting execution
-    markOutputAsRead();
     // Clear error state when starting new execution
     executionState.setBubbleError(null);
     executionState.setLastExecutingBubble(null);
@@ -738,7 +728,6 @@ function App() {
   // Handle opening the output panel and clearing the visual indicator
   const handleOpenOutputPanel = () => {
     expandOutput();
-    markOutputAsRead();
   };
 
   const handleExportClick = () => {
@@ -831,7 +820,6 @@ function App() {
 
   // Flow summary is now handled inline in the main page, no separate page needed
 
-  console.log('🚀 [App] Rendering App');
   return (
     <>
       {/* Left Sidebar - Always render */}
@@ -1426,15 +1414,11 @@ function App() {
               <button
                 onClick={handleOpenOutputPanel}
                 className="w-full border border-b-0 px-4 py-4 text-sm font-medium rounded-t-md shadow-lg flex items-center justify-between transition-all duration-200 bg-[#0f1115] border-[#30363d] text-gray-300 hover:text-gray-200 hover:bg-[#161b22]"
-                title={
-                  hasNewOutputEvents
-                    ? 'Show Live Execution Output - New events available!'
-                    : 'Show Live Execution Output'
-                }
+                title="Show Live Execution Output"
               >
                 <div className="flex items-center gap-2">
                   <span>Live Execution Output</span>
-                  {hasNewOutputEvents && (
+                  {executionState.isRunning && (
                     <div className="w-2 h-2 bg-pink-400 rounded-full animate-ping"></div>
                   )}
                 </div>
@@ -1446,8 +1430,6 @@ function App() {
               <div className="h-[55vh] min-h-[260px] bg-[#0f1115] border border-[#30363d] rounded-t-lg shadow-2xl overflow-hidden transition-transform duration-300 ease-out translate-y-0">
                 <LiveOutput
                   flowId={currentFlow?.id}
-                  isExecuting={executionStream.state.isExecuting}
-                  onExecutionStateChange={executionState.startExecution}
                   events={executionStream.state.events}
                   currentLine={executionStream.state.currentLine}
                   executionStats={executionStream.getExecutionStats()}

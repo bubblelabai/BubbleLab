@@ -1354,9 +1354,50 @@ export class BubbleParser {
               });
             }
           } else if (prop.type === 'SpreadElement') {
-            // Handle spread properties if needed
+            // Capture spread elements like {...params} as a variable parameter
+            const spreadArg = prop.argument as TSESTree.Expression;
+            const value = this.extractParameterValue(spreadArg);
+
+            const location = spreadArg.loc
+              ? {
+                  startLine: spreadArg.loc.start.line,
+                  startCol: spreadArg.loc.start.column,
+                  endLine: spreadArg.loc.end.line,
+                  endCol: spreadArg.loc.end.column,
+                }
+              : undefined;
+
+            // If the spread is an identifier, use its name as the parameter name; otherwise use a generic name
+            const spreadName =
+              spreadArg.type === 'Identifier' ? spreadArg.name : 'spread';
+
+            parameters.push({
+              name: spreadName,
+              ...value,
+              location,
+            });
           }
         }
+      } else {
+        // Handle single variable parameter (e.g., new GoogleDriveBubble(config))
+        const expr = firstArg as TSESTree.Expression;
+        const value = this.extractParameterValue(expr);
+        const location = expr.loc
+          ? {
+              startLine: expr.loc.start.line,
+              startCol: expr.loc.start.column,
+              endLine: expr.loc.end.line,
+              endCol: expr.loc.end.column,
+            }
+          : undefined;
+
+        const argName = expr.type === 'Identifier' ? expr.name : 'arg0';
+
+        parameters.push({
+          name: argName,
+          ...value,
+          location,
+        });
       }
     }
 

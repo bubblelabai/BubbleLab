@@ -127,6 +127,10 @@ export class StreamingBubbleLogger extends BubbleLogger {
     variableName: string,
     result?: unknown
   ): string {
+    // Get individual bubble execution time BEFORE calling parent method
+    // (parent method will clean up the start time)
+    const individualExecutionTime = this.getBubbleExecutionTime(variableId);
+
     // Call parent method and use the returned message
     const logMessage = super.logBubbleExecutionComplete(
       variableId,
@@ -143,7 +147,7 @@ export class StreamingBubbleLogger extends BubbleLogger {
       bubbleName,
       variableName,
       additionalData: { result, variableId },
-      executionTime: this.getCurrentExecutionTime(),
+      executionTime: individualExecutionTime,
       memoryUsage: this.getCurrentMemoryUsage(),
     });
 

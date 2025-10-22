@@ -21,6 +21,58 @@ export function buildParametersObject(
     return '{}';
   }
 
+  // Handle single variable parameter case (e.g., new GoogleDriveBubble(params))
+  if (parameters.length === 1 && parameters[0].type === 'variable') {
+    const paramValue = formatParameterValue(
+      parameters[0].value,
+      parameters[0].type
+    );
+
+    if (includeLoggerConfig) {
+      const depGraphPart =
+        dependencyGraphLiteral && dependencyGraphLiteral.length > 0
+          ? `, dependencyGraph: ${dependencyGraphLiteral}`
+          : '';
+      const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
+      return `${paramValue}, {logger: this.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+    }
+
+    return paramValue;
+  }
+
+  // Handle single variable parameter + credentials case (e.g., new GoogleDriveBubble(params) with injected credentials)
+  if (
+    parameters.length === 2 &&
+    parameters.some((p) => p.type === 'variable') &&
+    parameters.some((p) => p.name === 'credentials' && p.type === 'object')
+  ) {
+    const paramsParam = parameters.find((p) => p.type === 'variable');
+    const credentialsParam = parameters.find(
+      (p) => p.name === 'credentials' && p.type === 'object'
+    );
+    if (paramsParam && credentialsParam) {
+      const paramsValue = formatParameterValue(
+        paramsParam.value,
+        paramsParam.type
+      );
+      const credentialsValue = formatParameterValue(
+        credentialsParam.value,
+        credentialsParam.type
+      );
+
+      if (includeLoggerConfig) {
+        const depGraphPart =
+          dependencyGraphLiteral && dependencyGraphLiteral.length > 0
+            ? `, dependencyGraph: ${dependencyGraphLiteral}`
+            : '';
+        const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
+        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: this.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+      }
+
+      return `{...${paramsValue}, credentials: ${credentialsValue}}`;
+    }
+  }
+
   const paramEntries = parameters.map((param) => {
     const value = formatParameterValue(param.value, param.type);
     return `${param.name}: ${value}`;
