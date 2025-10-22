@@ -6,77 +6,95 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 /**
  * Unit tests for Apify Service Bubble
  *
- * Tests the SERVICE LAYER - direct Apify API integration
+ * Tests the SERVICE LAYER - generic Apify API integration that works with ANY actor
  * For TOOL LAYER tests (high-level interface), see:
- * - manual-tests/test-instagram-tool.ts
+ * - manual-tests/test-instagram-tool.ts (Instagram-specific)
  */
 describe('ApifyBubble', () => {
   describe('Schema Validation', () => {
-    it('should validate Instagram scraper parameters', () => {
+    it('should validate generic actor parameters (Instagram scraper example)', () => {
       const params: ApifyParamsInput = {
         actorId: 'apify/instagram-scraper',
         input: {
           directUrls: ['https://www.instagram.com/humansofny/'],
           resultsType: 'posts',
           resultsLimit: 200,
-          searchType: 'hashtag',
-          searchLimit: 1,
         },
         waitForFinish: true,
       };
 
       const bubble = new ApifyBubble(params);
-      expect(bubble.params.actorId).toBe('apify/instagram-scraper');
-      expect(bubble.params.input.directUrls).toHaveLength(1);
+      expect((bubble as any).params.actorId).toBe('apify/instagram-scraper');
+      expect(((bubble as any).params.input as any).directUrls).toHaveLength(1);
     });
 
-    it('should apply default values', () => {
+    it('should validate generic actor parameters (web scraper example)', () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/explore/'],
+          startUrls: [{ url: 'https://example.com' }],
+          maxRequestsPerCrawl: 100,
+        },
+        waitForFinish: true,
+      };
+
+      const bubble = new ApifyBubble(params);
+      expect((bubble as any).params.actorId).toBe('apify/web-scraper');
+      expect(((bubble as any).params.input as any).startUrls).toHaveLength(1);
+    });
+
+    it('should accept any actor ID string', () => {
+      const params: ApifyParamsInput = {
+        actorId: 'custom/my-scraper',
+        input: {
+          anyField: 'anyValue',
+          nestedData: {
+            foo: 'bar',
+          },
         },
       };
 
       const bubble = new ApifyBubble(params);
-      expect(bubble.params.input.resultsType).toBe('posts');
-      expect(bubble.params.input.resultsLimit).toBe(200);
-      expect(bubble.params.waitForFinish).toBe(true);
-      expect(bubble.params.timeout).toBe(120000);
+      expect((bubble as any).params.actorId).toBe('custom/my-scraper');
+      expect(((bubble as any).params.input as any).anyField).toBe('anyValue');
     });
 
-    it('should reject invalid URLs', () => {
-      const params = {
-        actorId: 'apify/instagram-scraper',
+    it('should apply default values', () => {
+      const params: ApifyParamsInput = {
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['not-a-valid-url'],
+          startUrls: [{ url: 'https://example.com' }],
         },
       };
 
-      expect(() => new ApifyBubble(params as ApifyParamsInput)).toThrow();
+      const bubble = new ApifyBubble(params);
+      expect((bubble as any).params.waitForFinish).toBe(true);
+      expect((bubble as any).params.timeout).toBe(120000);
     });
 
-    it('should reject empty directUrls array', () => {
-      const params = {
-        actorId: 'apify/instagram-scraper',
+    it('should accept arbitrary input structure', () => {
+      const params: ApifyParamsInput = {
+        actorId: 'apify/reddit-scraper',
         input: {
-          directUrls: [],
+          subreddits: ['javascript', 'webdev'],
+          maxPosts: 50,
+          includeComments: true,
+          nested: {
+            deeply: {
+              structured: {
+                data: [1, 2, 3],
+              },
+            },
+          },
         },
       };
 
-      expect(() => new ApifyBubble(params as ApifyParamsInput)).toThrow();
-    });
-
-    it('should validate resultsLimit range', () => {
-      const params = {
-        actorId: 'apify/instagram-scraper',
-        input: {
-          directUrls: ['https://www.instagram.com/explore/'],
-          resultsLimit: 1001, // Over the limit
-        },
-      };
-
-      expect(() => new ApifyBubble(params as ApifyParamsInput)).toThrow();
+      const bubble = new ApifyBubble(params);
+      expect((bubble as any).params.actorId).toBe('apify/reddit-scraper');
+      expect(((bubble as any).params.input as any).subreddits).toEqual([
+        'javascript',
+        'webdev',
+      ]);
     });
   });
 
@@ -129,11 +147,10 @@ describe('ApifyBubble', () => {
   describe('Integration Test', () => {
     it('should fail when no API token is provided', async () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
-          resultsType: 'posts',
-          resultsLimit: 10,
+          startUrls: [{ url: 'https://example.com' }],
+          maxRequestsPerCrawl: 10,
         },
         waitForFinish: false,
       };
@@ -147,7 +164,7 @@ describe('ApifyBubble', () => {
 
     // This test requires a real APIFY_API_TOKEN in environment
     // Skip it if no token is available
-    it.skip('should scrape Instagram with real credentials', async () => {
+    it.skip('should run any Apify actor with real credentials (web scraper example)', async () => {
       const apiToken = process.env.APIFY_API_TOKEN;
 
       if (!apiToken || apiToken.startsWith('test-')) {
@@ -156,11 +173,10 @@ describe('ApifyBubble', () => {
       }
 
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
-          resultsType: 'posts',
-          resultsLimit: 5,
+          startUrls: [{ url: 'https://example.com' }],
+          maxRequestsPerCrawl: 5,
         },
         waitForFinish: true,
         timeout: 120000,
@@ -184,9 +200,9 @@ describe('ApifyBubble', () => {
   describe('Error Handling', () => {
     it('should handle missing credentials gracefully', async () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
+          startUrls: [{ url: 'https://example.com' }],
         },
       };
 
@@ -199,9 +215,9 @@ describe('ApifyBubble', () => {
 
     it('should return error structure on failure', async () => {
       const params: ApifyParamsInput = {
-        actorId: 'apify/instagram-scraper',
+        actorId: 'apify/web-scraper',
         input: {
-          directUrls: ['https://www.instagram.com/humansofny/'],
+          startUrls: [{ url: 'https://example.com' }],
         },
         credentials: {
           [CredentialType.APIFY_CRED]: 'invalid-token',

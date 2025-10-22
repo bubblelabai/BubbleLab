@@ -41,7 +41,7 @@ export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.j
 export { ApifyBubble } from './bubbles/service-bubble/apify.js';
 export type {
   ApifyParamsInput,
-  InstagramScraperInput,
+  ApifyActorInput,
 } from './bubbles/service-bubble/apify.js';
 
 // Export workflow bubbles

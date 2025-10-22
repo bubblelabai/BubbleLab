@@ -3,53 +3,30 @@ import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
-// Define supported actor types as an enum
-const ApifyActorTypeSchema = z.enum(['apify/instagram-scraper']);
-
-// Instagram scraper result types
-const InstagramResultTypeSchema = z.enum(['posts', 'details', 'comments']);
-
-// Instagram search types
-const InstagramSearchTypeSchema = z.enum(['hashtag', 'user', 'place']);
-
-// Schema for Instagram scraper input
-const InstagramScraperInputSchema = z.object({
-  directUrls: z
-    .array(z.string().url('Must be a valid Instagram URL'))
-    .min(1, 'At least one Instagram URL is required')
-    .describe('Array of Instagram URLs to scrape (profiles, posts, etc.)'),
-  resultsType: InstagramResultTypeSchema.optional()
-    .default('posts')
-    .describe(
-      'Type of results to fetch: posts, details (profile info), or comments'
-    ),
-  resultsLimit: z
-    .number()
-    .min(1)
-    .max(1000)
-    .optional()
-    .default(200)
-    .describe('Maximum number of results to fetch (1-1000)'),
-  searchType: InstagramSearchTypeSchema.optional()
-    .default('hashtag')
-    .describe('Type of search: hashtag, user, or place'),
-  searchLimit: z
-    .number()
-    .min(1)
-    .max(100)
-    .optional()
-    .default(1)
-    .describe('Maximum number of search results (1-100)'),
-});
+/**
+ * Generic Apify Bubble - Works with ANY Apify Actor
+ *
+ * This is a universal service bubble that can run any Apify actor.
+ * Actor-specific logic and data transformation should be handled by Tool Bubbles.
+ *
+ * Examples:
+ * - InstagramTool uses this to run 'apify/instagram-scraper'
+ * - RedditTool could use this to run 'apify/reddit-scraper'
+ * - LinkedInTool could use this to run 'apify/linkedin-scraper'
+ */
 
 // Define the parameters schema for Apify operations
 const ApifyParamsSchema = z.object({
-  actorId: ApifyActorTypeSchema.describe(
-    'The Apify actor to run (currently supports: apify/instagram-scraper)'
-  ),
-  input: InstagramScraperInputSchema.describe(
-    'Input parameters for the Instagram scraper'
-  ),
+  actorId: z
+    .string()
+    .describe(
+      'The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc.'
+    ),
+  input: z
+    .record(z.unknown())
+    .describe(
+      'Input parameters for the actor. Structure depends on the specific actor being used.'
+    ),
   waitForFinish: z
     .boolean()
     .optional()
@@ -72,49 +49,7 @@ const ApifyParamsSchema = z.object({
     ),
 });
 
-// Instagram post data schema
-const InstagramPostSchema = z
-  .object({
-    id: z.string().optional().nullable().describe('Post ID'),
-    type: z
-      .string()
-      .optional()
-      .nullable()
-      .describe('Post type (image, video, carousel)'),
-    shortCode: z.string().optional().nullable().describe('Instagram shortcode'),
-    caption: z.string().optional().nullable().describe('Post caption text'),
-    hashtags: z
-      .array(z.string())
-      .optional()
-      .nullable()
-      .describe('Hashtags used in post'),
-    mentions: z
-      .array(z.string())
-      .optional()
-      .nullable()
-      .describe('User mentions in post'),
-    url: z.string().optional().nullable().describe('Post URL'),
-    commentsCount: z
-      .number()
-      .optional()
-      .nullable()
-      .describe('Number of comments'),
-    likesCount: z.number().optional().nullable().describe('Number of likes'),
-    timestamp: z.string().optional().nullable().describe('Post timestamp'),
-    ownerUsername: z
-      .string()
-      .optional()
-      .nullable()
-      .describe('Post owner username'),
-    ownerId: z.string().optional().nullable().describe('Post owner ID'),
-    displayUrl: z.string().optional().nullable().describe('Display image URL'),
-    images: z.array(z.string()).optional().nullable().describe('Post images'),
-    alt: z.string().optional().nullable().describe('Alt text'),
-  })
-  .passthrough()
-  .describe('Instagram post data');
-
-// Result schema for Apify operations
+// Result schema for Apify operations (generic for any actor)
 const ApifyResultSchema = z.object({
   runId: z.string().describe('Apify actor run ID'),
   status: z
@@ -125,9 +60,11 @@ const ApifyResultSchema = z.object({
     .optional()
     .describe('Dataset ID where results are stored'),
   items: z
-    .array(InstagramPostSchema)
+    .array(z.unknown())
     .optional()
-    .describe('Array of scraped items (if waitForFinish is true)'),
+    .describe(
+      'Array of scraped items (if waitForFinish is true). Structure depends on the actor.'
+    ),
   itemsCount: z.number().optional().describe('Total number of items scraped'),
   consoleUrl: z.string().describe('URL to view the actor run in Apify console'),
   success: z.boolean().describe('Whether the operation was successful'),
@@ -136,8 +73,7 @@ const ApifyResultSchema = z.object({
 
 // Export types
 export type ApifyParamsInput = z.input<typeof ApifyParamsSchema>;
-export type InstagramScraperInput = z.input<typeof InstagramScraperInputSchema>;
-export type InstagramPost = z.output<typeof InstagramPostSchema>;
+export type ApifyActorInput = Record<string, unknown>;
 
 type ApifyParams = z.output<typeof ApifyParamsSchema>;
 type ApifyResult = z.output<typeof ApifyResultSchema>;
@@ -159,40 +95,51 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
   static readonly schema = ApifyParamsSchema;
   static readonly resultSchema = ApifyResultSchema;
   static readonly shortDescription =
-    'Run Apify actors for web scraping (Instagram scraper)';
+    'Run any Apify actor for web scraping and automation';
   static readonly longDescription = `
-    Integration with Apify platform for running web scraping actors.
+    Universal integration with Apify platform for running any Apify actor.
     
-    Currently supports:
-    - Instagram scraper (apify/instagram-scraper) - Scrape Instagram posts, profiles, hashtags, and comments
+    This is a generic service bubble that can execute any Apify actor with any input.
+    Actor-specific logic and data transformation should be handled by Tool Bubbles.
+    
+    Supported Actors (examples):
+    - apify/instagram-scraper - Instagram posts, profiles, hashtags
+    - apify/reddit-scraper - Reddit posts, comments, subreddits
+    - apify/linkedin-scraper - LinkedIn profiles, companies, jobs
+    - apify/web-scraper - Generic web scraping
+    - apify/google-search-scraper - Google search results
+    - And any other Apify actor available in the marketplace
     
     Features:
     - Asynchronous actor execution with optional wait for completion
     - Automatic result fetching from datasets
-    - Support for Instagram profiles, hashtags, and posts
+    - Generic result handling (works with any actor output)
     - Configurable limits and timeouts
     - Direct access to Apify console for monitoring
     
     Use cases:
-    - Social media monitoring and analytics
-    - Content aggregation from Instagram
-    - Influencer analysis
-    - Hashtag trend tracking
-    - Competitor research
+    - Social media scraping (Instagram, Reddit, LinkedIn, etc.)
+    - Web scraping and data extraction
+    - Search engine result scraping
+    - E-commerce data collection
+    - Market research and competitor analysis
+    
+    Architecture:
+    - Service Bubble (this): Generic Apify API integration
+    - Tool Bubbles (e.g. InstagramTool): Domain-specific data transformation
     
     Security:
-    - API key authentication
+    - API key authentication (APIFY_CRED)
     - Secure credential injection at runtime
   `;
   static readonly alias = 'scrape';
 
   constructor(
     params: ApifyParamsInput = {
-      actorId: 'apify/instagram-scraper',
+      actorId: 'apify/web-scraper',
       input: {
-        directUrls: ['https://www.instagram.com/explore/'],
-        resultsType: 'posts',
-        resultsLimit: 200,
+        startUrls: [{ url: 'https://example.com' }],
+        maxRequestsPerCrawl: 10,
       },
     },
     context?: BubbleContext
@@ -292,7 +239,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
       }
 
       // Fetch results from dataset
-      const items: InstagramPost[] = [];
+      const items: unknown[] = [];
       let itemsCount = 0;
 
       if (finalStatus.defaultDatasetId) {
@@ -300,7 +247,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
           apiToken,
           finalStatus.defaultDatasetId
         );
-        items.push(...(datasetItems as InstagramPost[]));
+        items.push(...datasetItems);
         itemsCount = items.length;
       }
 
@@ -329,7 +276,7 @@ export class ApifyBubble extends ServiceBubble<ApifyParams, ApifyResult> {
   private async startActorRun(
     apiToken: string,
     actorId: string,
-    input: z.infer<typeof InstagramScraperInputSchema>
+    input: Record<string, unknown>
   ): Promise<ApifyRunResponse> {
     // Replace '/' with '~' in actor ID for API endpoint
     const apiActorId = actorId.replace('/', '~');
