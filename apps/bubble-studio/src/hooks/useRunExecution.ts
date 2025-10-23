@@ -130,11 +130,11 @@ export function useRunExecution(
                   // Track this as the last executing bubble in the store
                   executionState.setLastExecutingBubble(bubbleId);
 
+                  // Mark bubble as running
+                  executionState.setBubbleRunning(bubbleId);
+
                   // Read directly from store to verify it was set
                   getExecutionStore(flowId);
-
-                  // Highlight the bubble in the flow
-                  executionState.highlightBubble(bubbleId);
 
                   // Highlight the line range in the editor (validate line numbers)
                   if (

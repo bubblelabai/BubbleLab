@@ -92,6 +92,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const highlightedBubble = executionState.highlightedBubble;
   const isExecuting = executionState.isRunning;
   const bubbleWithError = executionState.bubbleWithError;
+  const runningBubbles = executionState.runningBubbles;
   const completedBubbles = executionState.completedBubbles;
   const executionInputs = executionState.executionInputs;
   const pendingCredentials = executionState.pendingCredentials;
@@ -110,8 +111,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     () => Object.entries(bubbleParameters),
     [bubbleParameters]
   );
-
-  console.log('Completed bubbles:', completedBubbles);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
@@ -302,6 +301,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         y: baseY + verticalSpacing,
       };
 
+      // Check execution state for dependency bubble
+      const dependencyVariableId = String(dependencyNode.variableId);
+      const hasErrorState = bubbleWithError === dependencyVariableId;
+      const isCompletedState = dependencyVariableId in completedBubbles;
+      const isExecutingState = highlightedBubble === dependencyVariableId;
+      const executionStats = completedBubbles[dependencyVariableId];
+
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
@@ -315,6 +321,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           onHighlightChange: () =>
             highlightBubble(String(dependencyNode.variableId) || nodeId),
           onBubbleClick: () => {},
+          hasError: hasErrorState,
+          isCompleted: isCompletedState,
+          isExecuting: runningBubbles.has(dependencyVariableId),
+          executionStats: executionStats,
         },
       };
       nodes.push(node);
@@ -361,6 +371,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       isExecuting,
       highlightBubble,
       suppressedRootIds,
+      bubbleWithError,
+      runningBubbles,
+      completedBubbles,
     ]
   );
 
@@ -485,7 +498,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const rootSuppressed = suppressedRootIds.includes(nodeId);
       const hasErrorState = bubbleWithError === nodeId;
       const isCompletedState = nodeId in completedBubbles;
-      const executionTimeMs = completedBubbles[nodeId];
+      const executionStats = completedBubbles[nodeId];
 
       const node: Node = {
         id: nodeId,
@@ -548,7 +561,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           },
           hasError: hasErrorState,
           isCompleted: isCompletedState,
-          executionTimeMs: executionTimeMs,
+          isExecuting: runningBubbles.has(nodeId),
+          executionStats: executionStats,
         },
       };
       nodes.push(node);
