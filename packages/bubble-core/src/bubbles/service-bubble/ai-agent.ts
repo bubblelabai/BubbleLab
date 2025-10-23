@@ -24,7 +24,8 @@ import {
 } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
-import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
+import { formatFinalResponse } from '../../utils/agent-formatter.js';
+import { formatGeminiImageResponse } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 
 // Define tool hook context - provides access to messages and tool call details
@@ -282,10 +283,12 @@ type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   // Optional hooks for intercepting tool calls
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  streamingCallback?: StreamingCallback;
 };
 type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  streamingCallback?: StreamingCallback;
 };
 
 type AIAgentResult = z.output<typeof AIAgentResultSchema>;
@@ -315,6 +318,7 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
 
   constructor(
@@ -327,6 +331,7 @@ export class AIAgentBubble extends ServiceBubble<
     super(params, context);
     this.beforeToolCallHook = params.beforeToolCall;
     this.afterToolCallHook = params.afterToolCall;
+    this.streamingCallback = params.streamingCallback;
     this.factory = new BubbleFactory();
   }
 
@@ -515,117 +520,6 @@ export class AIAgentBubble extends ServiceBubble<
         return credentials[CredentialType.OPENROUTER_CRED];
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
-    }
-  }
-
-  /**
-   * Format final response with special handling for Gemini image models and JSON mode
-   */
-  private async formatFinalResponse(
-    response: string | unknown,
-    modelConfig: AIAgentParamsParsed['model'],
-    jsonMode?: boolean
-  ): Promise<{ response: string; error?: string }> {
-    let finalResponse =
-      typeof response === 'string' ? response : JSON.stringify(response);
-    // If response is an array, look for first parsable JSON in text
-
-    console.log(
-      '[AIAgent] Checking if response is an array:',
-      Array.isArray(response)
-    );
-    console.log('[AIAgent] Response:', response);
-    if (Array.isArray(response)) {
-      for (const item of response) {
-        if (
-          item &&
-          typeof item === 'object' &&
-          'type' in item &&
-          item.type === 'text'
-        ) {
-          try {
-            const result = parseJsonWithFallbacks(item.text);
-            if (result.success) {
-              return { response: result.response };
-            }
-          } catch {
-            // Continue to next item if not valid JSON
-            continue;
-          }
-        }
-      }
-    }
-
-    // Special handling for Gemini image models that return images in inlineData format
-    if (
-      modelConfig.model.includes('gemini') &&
-      modelConfig.model.includes('image')
-    ) {
-      finalResponse = this.formatGeminiImageResponse(finalResponse);
-    } else if (jsonMode && typeof finalResponse === 'string') {
-      // Handle JSON mode: use the improved utility function
-      const result = parseJsonWithFallbacks(finalResponse);
-
-      if (!result.success) {
-        return {
-          response: result.response,
-          error: `${this.params.name || 'AI Agent'} failed to generate valid JSON. Post-processing attempted but JSON is still malformed. Original response: ${finalResponse}`,
-        };
-      }
-
-      return { response: result.response };
-    }
-
-    console.log('[AIAgent] Final response:', finalResponse);
-
-    return { response: finalResponse };
-  }
-
-  /**
-   * Convert Gemini's inlineData format to LangChain-compatible data URI format
-   */
-  private formatGeminiImageResponse(response: string | unknown): string {
-    if (typeof response !== 'string') {
-      return String(response);
-    }
-
-    try {
-      console.log('[AIAgent] Formatting Gemini image response...');
-      // Look for Gemini's inlineData format in the response
-      const inlineDataRegex =
-        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"\s*\}\s*\}/;
-
-      const match = response.match(inlineDataRegex);
-
-      if (match) {
-        const [, mimeType, data] = match;
-        const dataUri = `data:${mimeType};base64,${data}`;
-        console.log(
-          `[AIAgent] Extracted first data URI from Gemini inlineData: ${mimeType}`
-        );
-        return dataUri;
-      }
-
-      // Also check for the more complex format with text
-      const complexInlineDataRegex =
-        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"/;
-
-      const complexMatch = response.match(complexInlineDataRegex);
-
-      if (complexMatch) {
-        const [, mimeType, data] = complexMatch;
-        const dataUri = `data:${mimeType};base64,${data}`;
-        console.log(
-          `[AIAgent] Extracted first data URI from complex Gemini inlineData: ${mimeType}`
-        );
-        return dataUri;
-      }
-
-      // If no inlineData found, return original response
-      return response;
-    } catch (error) {
-      console.warn('[AIAgent] Error formatting Gemini image response:', error);
-      return response;
     }
   }
 
@@ -1173,9 +1067,9 @@ export class AIAgentBubble extends ServiceBubble<
       const response = finalMessage?.content || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await this.formatFinalResponse(
+      const formattedResult = await formatFinalResponse(
         response,
-        this.params.model,
+        this.params.model.model,
         jsonMode
       );
 
@@ -1500,9 +1394,9 @@ export class AIAgentBubble extends ServiceBubble<
       const accumulatedResponse = accumulatedContent || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await this.formatFinalResponse(
+      const formattedResult = await formatFinalResponse(
         accumulatedResponse,
-        this.params.model,
+        this.params.model.model,
         jsonMode
       );
 
