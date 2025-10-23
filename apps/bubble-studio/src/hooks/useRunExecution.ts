@@ -63,7 +63,9 @@ export function useRunExecution(
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
-  const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId);
+  const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId, {
+    limit: 50,
+  });
   const { setExecutionHighlight } = useEditorStore();
 
   // Execute with streaming - merged from useExecutionStream
@@ -166,7 +168,6 @@ export function useRunExecution(
                   console.log('Bubble completed:', bubbleId, executionTimeMs);
                 }
               }
-              refetchExecutionHistory();
               options.onBubbleExecutionComplete?.(eventData);
             }
 
@@ -181,15 +182,11 @@ export function useRunExecution(
             if (eventData.type === 'execution_complete') {
               executionState.stopExecution();
               options.onComplete?.();
-              refetchSubscriptionStatus();
-              refetchExecutionHistory();
               return true;
             }
 
             if (eventData.type === 'stream_complete') {
               executionState.stopExecution();
-              refetchSubscriptionStatus();
-              refetchExecutionHistory();
               options.onComplete?.();
               return true;
             }
@@ -366,6 +363,8 @@ export function useRunExecution(
 
         // 7. Execute with streaming
         await executeWithStreaming(cleanedInputs);
+        refetchSubscriptionStatus();
+        refetchExecutionHistory();
       } catch (error) {
         console.error('Error executing flow:', error);
         const errorMessage =
