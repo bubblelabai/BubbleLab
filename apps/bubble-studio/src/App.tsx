@@ -553,9 +553,6 @@ function App() {
                       type="button"
                       onClick={() => {
                         toggleEditor();
-                        if (showEditor) {
-                          closeSidePanel();
-                        }
                       }}
                       className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                     >
@@ -818,7 +815,11 @@ function App() {
                               defaultSize={showEditor ? 20 : 0}
                               minSize={showEditor ? 30 : 0}
                               maxSize={showEditor ? 100 : 0}
-                              className={showEditor ? '' : 'hidden'}
+                              style={{
+                                visibility: showEditor ? 'visible' : 'hidden',
+                                opacity: showEditor ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in-out',
+                              }}
                             >
                               {CodeEditorPanel}
                             </Panel>

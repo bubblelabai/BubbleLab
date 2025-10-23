@@ -365,7 +365,9 @@ ${cleanedTypes.replace(/^/gm, '  ')}
 
     // Auto-scroll to highlight
     console.log('Auto-scrolling to highlight:', executionHighlightRange);
-    editor.revealRangeInCenter(range);
+    setTimeout(() => {
+      editor.revealRangeInCenter(range);
+    }, 100);
   }, [executionHighlightRange, isLoading]);
 
   // Effect to clear highlighting when highlightedRange becomes null

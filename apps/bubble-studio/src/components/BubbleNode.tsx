@@ -12,14 +12,10 @@ import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '../lib/integrations';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 
-// Keep backward compatibility
-type ParsedBubble = ParsedBubbleWithInfo;
-
 interface BubbleNodeData {
-  bubble: ParsedBubble;
+  bubble: ParsedBubbleWithInfo;
   bubbleKey: string | number;
   onParameterChange?: (paramName: string, newValue: unknown) => void;
   isHighlighted?: boolean;

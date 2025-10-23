@@ -24,6 +24,8 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useCredentials } from '../hooks/useCredentials';
+import { useUIStore } from '../stores/uiStore';
+import { useEditorStore } from '../stores/editorStore';
 import { API_BASE_URL } from '../env';
 
 // Keep backward compatibility - use the shared schema type
@@ -76,6 +78,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const currentFlow = useBubbleFlow(flowId);
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
+  const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
+  const { setExecutionHighlight } = useEditorStore();
 
   // Initialize execution hook
   const { runFlow } = useRunExecution(flowId);
@@ -313,9 +317,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             highlightedBubble === String(dependencyNode.variableId),
           onHighlightChange: () =>
             highlightBubble(String(dependencyNode.variableId) || nodeId),
-          onBubbleClick: () => {
-            // Handle bubble click
-          },
+          onBubbleClick: () => {},
         },
       };
       nodes.push(node);
@@ -500,8 +502,28 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           onHighlightChange: () => highlightBubble(key),
           onBubbleClick: () => {
             highlightBubble(String(key));
+            showEditorPanel();
+            setExecutionHighlight({
+              startLine: bubble.location.startLine,
+              endLine: bubble.location.endLine,
+            });
           },
-          onParamEditInCode: undefined,
+          onParamEditInCode: (paramName: string) => {
+            // Find the parameter in the bubble's parameters
+            const param = bubble.parameters.find((p) => p.name === paramName);
+            if (param && param.location) {
+              // Open editor if not visible
+              if (!showEditor) {
+                showEditorPanel();
+              }
+
+              // Highlight the parameter's location in the editor
+              setExecutionHighlight({
+                startLine: param.location.startLine,
+                endLine: param.location.endLine,
+              });
+            }
+          },
           hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
           areSubBubblesVisible:
             isExecuting || (rootExpanded && !rootSuppressed),
@@ -737,6 +759,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onConnect={onConnect}
         onPaneClick={() => {
           highlightBubble(null);
+          hideEditorPanel();
         }}
         proOptions={proOptions}
         minZoom={0.1}
