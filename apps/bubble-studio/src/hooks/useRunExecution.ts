@@ -4,7 +4,7 @@ import { useExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
-import { getEditorCode } from '@/stores/editorStore';
+import { getEditorCode, useEditorStore } from '@/stores/editorStore';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type {
@@ -43,9 +43,6 @@ interface UseRunExecutionOptions {
   onBubbleExecution?: (event: StreamingLogEvent) => void;
   onBubbleExecutionComplete?: (event: StreamingLogEvent) => void;
   onBubbleParametersUpdate?: () => void;
-  setExecutionHighlight?: (
-    range: { startLine: number; endLine: number } | null
-  ) => void;
 }
 
 /**
@@ -67,6 +64,7 @@ export function useRunExecution(
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId);
+  const { setExecutionHighlight } = useEditorStore();
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -137,7 +135,7 @@ export function useRunExecution(
                     bubble.location.startLine > 0 &&
                     bubble.location.endLine > 0
                   ) {
-                    options.setExecutionHighlight?.({
+                    setExecutionHighlight({
                       startLine: bubble.location.startLine,
                       endLine: bubble.location.endLine,
                     });

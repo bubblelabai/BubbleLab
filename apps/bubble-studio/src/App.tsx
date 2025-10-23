@@ -102,8 +102,7 @@ function App() {
     setSelectedPreset,
   } = useGenerationStore();
   // Editor Store - Monaco editor
-  const { closeSidePanel, setExecutionHighlight, openPearlChat } =
-    useEditorStore();
+  const { closeSidePanel, openPearlChat } = useEditorStore();
   // Per-flow Execution Store
   const executionState = useExecutionStore(selectedFlowId);
 
