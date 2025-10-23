@@ -8,9 +8,9 @@ import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
  * Uses factory pattern - call useExecutionStore(flowId) to get state for that flow
  *
  * Separation:
- * - This store: Local execution UI state (highlighting, inputs, credentials)
+ * - This store: Local execution UI state (highlighting, inputs, credentials, events)
  * - React Query: Server state (execution history, results)
- * - useExecutionStream hook: Streaming logic (syncs to this store)
+ * - useRunExecution hook: Orchestrates validation, updates, and streaming execution
  */
 
 export interface FlowExecutionState {
@@ -216,6 +216,16 @@ export interface FlowExecutionState {
    * Reset only execution runtime state (keep inputs/credentials)
    */
   resetExecution: () => void;
+
+  /**
+   * Get execution statistics from events
+   */
+  getExecutionStats: () => {
+    totalTime: number;
+    memoryUsage: number;
+    linesExecuted: number;
+    bubblesProcessed: number;
+  };
 }
 
 // Factory function to create a store for a specific flow
@@ -389,6 +399,41 @@ function createExecutionStore(flowId: number) {
         currentLine: null,
         abortController: null,
       }),
+
+    getExecutionStats: () => {
+      const { events } = get();
+
+      let totalTime = 0;
+      let memoryUsage = 0;
+      let linesExecuted = 0;
+      let bubblesProcessed = 0;
+
+      for (const event of events) {
+        if (event.executionTime) {
+          totalTime = Math.max(totalTime, event.executionTime);
+        }
+        if (event.memoryUsage) {
+          memoryUsage = Math.max(memoryUsage, event.memoryUsage);
+        }
+        if (event.type === 'log_line') {
+          linesExecuted++;
+        }
+        if (
+          event.type === 'bubble_complete' ||
+          event.type === 'bubble_execution' ||
+          event.type === 'bubble_execution_complete'
+        ) {
+          bubblesProcessed++;
+        }
+      }
+
+      return {
+        totalTime,
+        memoryUsage,
+        linesExecuted,
+        bubblesProcessed,
+      };
+    },
   }));
 }
 
@@ -435,6 +480,12 @@ const emptyState: FlowExecutionState = {
   clearEvents: () => {},
   reset: () => {},
   resetExecution: () => {},
+  getExecutionStats: () => ({
+    totalTime: 0,
+    memoryUsage: 0,
+    linesExecuted: 0,
+    bubblesProcessed: 0,
+  }),
 };
 
 /**

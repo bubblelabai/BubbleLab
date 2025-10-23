@@ -14,6 +14,7 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
+import { useRunExecution } from '@/hooks/useRunExecution';
 import type {
   CredentialType,
   DependencyGraphNode,
@@ -76,6 +77,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
 
+  // Initialize execution hook
+  const { runFlow } = useRunExecution(flowId);
+
   // Extract stable methods from execution state
   const highlightBubble = executionState.highlightBubble;
   const setCredential = executionState.setCredential;
@@ -104,6 +108,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     () => Object.entries(bubbleParameters),
     [bubbleParameters]
   );
+
+  console.log('Completed bubbles:', completedBubbles);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
@@ -422,8 +428,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           onExecutionInputChange: (fieldName: string, value: unknown) => {
             setInput(fieldName, value);
           },
-          onExecuteFlow: () => {
-            // Handle execute
+          onExecuteFlow: async () => {
+            await runFlow({
+              validateCode: true,
+              updateCredentials: true,
+              inputs: executionInputs || {},
+            });
           },
           isExecuting: isExecuting,
           isFormValid: true,

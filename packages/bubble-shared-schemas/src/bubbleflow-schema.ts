@@ -260,6 +260,9 @@ export type ExecuteBubbleFlowRequest = z.infer<typeof executeBubbleFlowSchema>;
 export type UpdateBubbleFlowParametersRequest = z.infer<
   typeof updateBubbleFlowParametersSchema
 >;
+export type UpdateBubbleFlowParametersResponse = z.infer<
+  typeof updateBubbleFlowParametersSchema
+>;
 export type UpdateBubbleFlowNameRequest = z.infer<
   typeof updateBubbleFlowNameSchema
 >;
