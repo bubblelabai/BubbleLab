@@ -629,6 +629,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     setInput,
   ]);
 
+  // Auto-fit view when nodes load or change
+  useEffect(() => {
+    if (initialNodes.length > 0) {
+      // Small delay to ensure nodes are rendered before fitting
+      const timer = setTimeout(() => {
+        fitView({
+          padding: 0.2, // 20% padding around nodes
+          duration: 300, // Smooth animation
+          maxZoom: 1.0, // Don't zoom in too much
+        });
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [initialNodes.length, flowId, fitView]);
+
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {
   //   logBubbleDebugInfo(flowId, bubbleParameters, executionState, currentFlow, flowNodes);
