@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { useExecutionStore } from '@/stores/executionStore';
+import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
@@ -127,6 +127,9 @@ export function useRunExecution(
                   // Track this as the last executing bubble in the store
                   executionState.setLastExecutingBubble(bubbleId);
 
+                  // Read directly from store to verify it was set
+                  const storeState = getExecutionStore(flowId);
+
                   // Highlight the bubble in the flow
                   executionState.highlightBubble(bubbleId);
 
@@ -200,23 +203,18 @@ export function useRunExecution(
               if (eventData.variableId !== undefined) {
                 const bubbleId = String(eventData.variableId);
                 executionState.setBubbleError(bubbleId);
-                console.log(
-                  '✅ Fatal error detected with variableId, marking bubble:',
-                  bubbleId
-                );
-              } else if (executionState.lastExecutingBubble) {
-                // Fallback to last executing bubble from store
-                executionState.setBubbleError(
-                  executionState.lastExecutingBubble
-                );
-                console.log(
-                  '✅ Fatal error detected, marking last executing bubble:',
-                  executionState.lastExecutingBubble
-                );
               } else {
-                console.warn(
-                  '❌ Fatal error occurred but no bubble ID available'
-                );
+                // Fallback to last executing bubble from store
+                const storeState = getExecutionStore(flowId);
+                const lastExecutingBubble = storeState.lastExecutingBubble;
+
+                if (lastExecutingBubble) {
+                  executionState.setBubbleError(lastExecutingBubble);
+                } else {
+                  console.warn(
+                    '❌ Fatal error occurred but no bubble ID available'
+                  );
+                }
               }
 
               options.onError?.(eventData.message, true, eventData.variableId);
