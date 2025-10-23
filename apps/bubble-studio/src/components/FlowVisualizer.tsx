@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -32,7 +32,7 @@ import { API_BASE_URL } from '../env';
 type ParsedBubble = ParsedBubbleWithInfo;
 
 interface FlowVisualizerProps {
-  flowId: number | null;
+  flowId: number;
   onValidate?: () => void;
 }
 
@@ -105,8 +105,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const isLoading = currentFlow.loading;
 
   // Local UI state for expanded/collapsed nodes
-  const expandedRootIdsRef = useRef<string[]>([]);
-  const suppressedRootIdsRef = useRef<string[]>([]);
+  const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
+  const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
@@ -128,9 +128,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           allRoots.push(nodeId);
         }
       });
-      expandedRootIdsRef.current = allRoots;
+      setExpandedRootIds(allRoots);
     } else {
-      expandedRootIdsRef.current = [];
+      setExpandedRootIds([]);
     }
   }, [isExecuting, bubbleEntries]);
 
@@ -217,25 +217,25 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     return visible;
   }, [highlightedBubble, dependencyParentMap, dependencyCanonicalIdMap]);
 
-  const toggleRootVisibility = useCallback((nodeId: string) => {
-    const isExpanded = expandedRootIdsRef.current.includes(nodeId);
-    if (isExpanded) {
-      expandedRootIdsRef.current = expandedRootIdsRef.current.filter(
-        (id: string) => id !== nodeId
-      );
-      if (!suppressedRootIdsRef.current.includes(nodeId)) {
-        suppressedRootIdsRef.current = [
-          ...suppressedRootIdsRef.current,
-          nodeId,
-        ];
+  const toggleRootVisibility = useCallback(
+    (nodeId: string) => {
+      const isExpanded = expandedRootIds.includes(nodeId);
+      if (isExpanded) {
+        setExpandedRootIds((prev: string[]) =>
+          prev.filter((id: string) => id !== nodeId)
+        );
+        if (!suppressedRootIds.includes(nodeId)) {
+          setSuppressedRootIds((prev: string[]) => [...prev, nodeId]);
+        }
+      } else {
+        setExpandedRootIds((prev: string[]) => [...prev, nodeId]);
+        setSuppressedRootIds((prev: string[]) =>
+          prev.filter((id: string) => id !== nodeId)
+        );
       }
-    } else {
-      expandedRootIdsRef.current = [...expandedRootIdsRef.current, nodeId];
-      suppressedRootIdsRef.current = suppressedRootIdsRef.current.filter(
-        (id: string) => id !== nodeId
-      );
-    }
-  }, []);
+    },
+    [expandedRootIds, suppressedRootIds]
+  );
 
   // Helper function to create nodes from dependency graph
   const createNodesFromDependencyGraph = useCallback(
@@ -282,7 +282,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       );
 
       const isNodeAutoVisible = autoVisibleNodes.has(nodeId);
-      const isRootSuppressed = suppressedRootIdsRef.current.includes(rootId);
+      const isRootSuppressed = suppressedRootIds.includes(rootId);
       const shouldRender =
         isExecuting ||
         ((rootExpanded || (isExecuting && isNodeAutoVisible)) &&
@@ -358,7 +358,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         );
       });
     },
-    [highlightedBubble, autoVisibleNodes, isExecuting, highlightBubble]
+    [
+      highlightedBubble,
+      autoVisibleNodes,
+      isExecuting,
+      highlightBubble,
+      suppressedRootIds,
+    ]
   );
 
   // Convert bubbles to React Flow nodes and edges
@@ -478,8 +484,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return selectedId === undefined || selectedId === null;
       });
 
-      const rootExpanded = expandedRootIdsRef.current.includes(nodeId);
-      const rootSuppressed = suppressedRootIdsRef.current.includes(nodeId);
+      const rootExpanded = expandedRootIds.includes(nodeId);
+      const rootSuppressed = suppressedRootIds.includes(nodeId);
       const hasErrorState = bubbleWithError === nodeId;
       const isCompletedState = nodeId in completedBubbles;
       const executionTimeMs = completedBubbles[nodeId];
@@ -659,6 +665,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     highlightBubble,
     setCredential,
     setInput,
+    expandedRootIds,
+    suppressedRootIds,
   ]);
 
   // Auto-fit view when nodes load or change

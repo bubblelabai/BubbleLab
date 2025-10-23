@@ -103,7 +103,7 @@ function App() {
   } = useGenerationStore();
   // Editor Store - Monaco editor
   const { closeSidePanel, openPearlChat } = useEditorStore();
-  // Per-flow Execution Store
+  // Per-flow Execution Store - always call the hook
   const executionState = useExecutionStore(selectedFlowId);
 
   // ============= React Query Hooks =============
@@ -789,17 +789,31 @@ function App() {
                             <div className="h-full bg-[#1a1a1a] min-h-0">
                               <div className="h-full min-h-0">
                                 <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
-                                  <FlowVisualizer
-                                    flowId={selectedFlowId}
-                                    onValidate={() =>
-                                      validateCodeMutation.mutateAsync({
-                                        code: getEditorCode(),
-                                        flowId: selectedFlowId!,
-                                        credentials:
-                                          executionState.pendingCredentials,
-                                      })
-                                    }
-                                  />
+                                  {selectedFlowId ? (
+                                    <FlowVisualizer
+                                      flowId={selectedFlowId}
+                                      onValidate={() =>
+                                        validateCodeMutation.mutateAsync({
+                                          code: getEditorCode(),
+                                          flowId: selectedFlowId,
+                                          credentials:
+                                            executionState.pendingCredentials,
+                                        })
+                                      }
+                                    />
+                                  ) : (
+                                    <div className="h-full flex items-center justify-center">
+                                      <div className="text-center">
+                                        <p className="text-gray-400 text-lg mb-2">
+                                          No flow selected
+                                        </p>
+                                        <p className="text-gray-500 text-sm">
+                                          Please select a flow from the sidebar
+                                          to view its visualization
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -878,6 +892,7 @@ function App() {
             const flow = currentFlow;
             if (flow) return flow.name;
           }
+
           return getFlowNameFromCode(getEditorCode());
         })()}
         flowId={currentFlow?.id}

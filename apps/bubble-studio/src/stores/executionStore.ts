@@ -572,25 +572,18 @@ export function getActiveExecutionFlows(): number[] {
  * Get the store instance for a specific flowId
  * This allows direct access to the store's getState() method
  */
-export function getExecutionStoreInstance(flowId: number | null) {
-  if (flowId === null) {
-    if (!executionStores.has(-1)) {
-      executionStores.set(-1, createExecutionStore(-1));
-    }
-    return executionStores.get(-1)!;
-  } else {
-    if (!executionStores.has(flowId)) {
-      executionStores.set(flowId, createExecutionStore(flowId));
-    }
-    return executionStores.get(flowId)!;
+export function getExecutionStoreInstance(flowId: number) {
+  if (!executionStores.has(flowId)) {
+    executionStores.set(flowId, createExecutionStore(flowId));
   }
+  return executionStores.get(flowId)!;
 }
 
 /**
  * Get execution store state directly for a specific flowId
  * This provides a clean interface for accessing store state without React hooks
  */
-export function getExecutionStore(flowId: number | null): FlowExecutionState {
+export function getExecutionStore(flowId: number): FlowExecutionState {
   const storeInstance = getExecutionStoreInstance(flowId);
   return storeInstance.getState();
 }
