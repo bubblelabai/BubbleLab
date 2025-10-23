@@ -10,6 +10,10 @@ import {
   LinkedInProfilePostsInputSchema,
   LinkedInProfilePostsOutputSchema,
 } from './actors/linkedin-profile-posts.js';
+import {
+  LinkedInPostsSearchInputSchema,
+  LinkedInPostsSearchOutputSchema,
+} from './actors/linkedin-posts-search.js';
 
 // ============================================================================
 // ACTOR REGISTRY
@@ -35,6 +39,14 @@ export const APIFY_ACTOR_SCHEMAS = {
     output: LinkedInProfilePostsOutputSchema,
     description: 'Scrape LinkedIn profile posts and activity',
     documentation: 'https://apify.com/apimaestro/linkedin-profile-posts',
+    category: 'social-media',
+  },
+  'apimaestro/linkedin-posts-search-scraper-no-cookies': {
+    input: LinkedInPostsSearchInputSchema,
+    output: LinkedInPostsSearchOutputSchema,
+    description: 'Search LinkedIn posts by keyword without login',
+    documentation:
+      'https://apify.com/apimaestro/linkedin-posts-search-scraper-no-cookies',
     category: 'social-media',
   },
 };
