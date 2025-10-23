@@ -12,14 +12,12 @@ import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '../lib/integrations';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
-
-// Keep backward compatibility
-type ParsedBubble = ParsedBubbleWithInfo;
+import BubbleExecutionBadge from './BubbleExecutionBadge';
+import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
 
 interface BubbleNodeData {
-  bubble: ParsedBubble;
+  bubble: ParsedBubbleWithInfo;
   bubbleKey: string | number;
   onParameterChange?: (paramName: string, newValue: unknown) => void;
   isHighlighted?: boolean;
@@ -43,7 +41,9 @@ interface BubbleNodeData {
   hasError?: boolean;
   // Completion state
   isCompleted?: boolean;
-  executionTimeMs?: number;
+  // Execution state
+  isExecuting?: boolean;
+  executionStats?: { totalTime: number; count: number };
 }
 
 interface BubbleNodeProps {
@@ -66,7 +66,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onToggleSubBubbles,
     hasError = false,
     isCompleted = false,
-    executionTimeMs,
+    isExecuting = false,
+    executionStats,
   } = data;
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -143,13 +144,15 @@ function BubbleNode({ data }: BubbleNodeProps) {
           ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
           : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
       } ${
-        hasError
-          ? 'border-red-500 bg-red-900/20'
-          : isCompleted
-            ? 'border-green-500 bg-green-900/20'
-            : isHighlighted
-              ? 'border-purple-400 bg-purple-900/20'
-              : 'border-neutral-600'
+        isExecuting
+          ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`
+          : hasError
+            ? `${BUBBLE_COLORS.ERROR.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.ERROR.background}`
+            : isCompleted
+              ? `${BUBBLE_COLORS.COMPLETED.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.COMPLETED.background}`
+              : isHighlighted
+                ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+                : BUBBLE_COLORS.DEFAULT.border
       }`}
       onClick={handleClick}
     >
@@ -158,28 +161,28 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="target"
         position={Position.Left}
         id="left"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ left: -6 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ right: -6 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ bottom: -6 }}
       />
       <Handle
         type="target"
         position={Position.Top}
         id="top"
-        className={`w-3 h-3 ${hasError ? 'bg-red-500' : isCompleted ? 'bg-green-500' : isHighlighted ? 'bg-purple-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ top: -6 }}
       />
 
@@ -189,36 +192,21 @@ function BubbleNode({ data }: BubbleNodeProps) {
       >
         {(hasError ||
           isCompleted ||
+          isExecuting ||
           hasMissingRequirements ||
           bubble.parameters.length > 0) && (
           <div className="absolute top-4 right-4 flex items-center gap-2">
-            {hasError && (
-              <div className="flex-shrink-0">
-                <div
-                  title="Execution failed at this bubble"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-600/40"
-                >
-                  <span>❌</span>
-                  <span>Error</span>
-                </div>
-              </div>
-            )}
-            {!hasError && isCompleted && executionTimeMs !== undefined && (
-              <div className="flex-shrink-0">
-                <div
-                  title={`Completed in ${executionTimeMs}ms`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-600 text-white"
-                >
-                  <span>✓</span>
-                  <span>{executionTimeMs}ms</span>
-                </div>
-              </div>
-            )}
-            {!hasError && !isCompleted && hasMissingRequirements && (
+            <BubbleExecutionBadge
+              hasError={hasError}
+              isCompleted={isCompleted}
+              isExecuting={isExecuting}
+              executionStats={executionStats}
+            />
+            {!hasError && !isExecuting && hasMissingRequirements && (
               <div className="flex-shrink-0">
                 <div
                   title="Missing credentials"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-600/40"
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
                 >
                   <span>⚠️</span>
                   <span>Missing</span>

@@ -162,9 +162,23 @@ export const useUIStore = create<UIStore>((set) => ({
 
   selectFlow: (flowId) => set({ selectedFlowId: flowId }),
 
-  toggleEditor: () => set((state) => ({ showEditor: !state.showEditor })),
+  // If sidebar is open AND trying to open editor, close sidebar
+  toggleEditor: () =>
+    set((state) => {
+      if (state.isSidebarOpen && !state.showEditor) {
+        return { showEditor: !state.showEditor, isSidebarOpen: false };
+      }
+      return { showEditor: !state.showEditor };
+    }),
 
-  showEditorPanel: () => set({ showEditor: true }),
+  // Show editor panel and close sidebar if it's open
+  showEditorPanel: () =>
+    set((state) => {
+      if (state.isSidebarOpen) {
+        return { showEditor: true, isSidebarOpen: false };
+      }
+      return { showEditor: true };
+    }),
 
   hideEditorPanel: () => set({ showEditor: false }),
 

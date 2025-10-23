@@ -1,7 +1,10 @@
 /**
  * Utility functions for working with bubble data and React Flow state
  */
-import type { DependencyGraphNode } from '@bubblelab/shared-schemas';
+import type {
+  BubbleName,
+  DependencyGraphNode,
+} from '@bubblelab/shared-schemas';
 
 export interface BubbleLocation {
   startLine: number;
@@ -13,7 +16,7 @@ export interface BubbleLocation {
 export interface BubbleInfo {
   variableId: number;
   variableName: string;
-  bubbleName: string;
+  bubbleName: BubbleName;
   className: string;
   location: BubbleLocation;
   parameters: Array<{

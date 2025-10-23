@@ -75,8 +75,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
 
       // Capture and store inputSchema from validation response
       if (result.inputSchema) {
-        const inputSchemaString = JSON.stringify(result.inputSchema);
-        console.log('[validateCode] Captured inputSchema:', inputSchemaString);
+        // Schema captured and stored
       }
 
       if (result.valid) {

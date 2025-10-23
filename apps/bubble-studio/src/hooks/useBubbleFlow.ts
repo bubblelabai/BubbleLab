@@ -30,11 +30,9 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
         throw new Error('Flow ID is required');
       }
 
-      console.log(`[useBubbleFlow] Fetching flow data for ID: ${flowId}`);
       const response = await api.get<BubbleFlowDetailsResponse>(
         `/bubble-flow/${flowId}`
       );
-      console.log('[useBubbleFlow] Flow data received:', response);
       return response;
     },
     enabled: !!flowId,
@@ -47,10 +45,6 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
       if (!flowId) return;
 
       queryClient.setQueryData(['bubbleFlow', flowId], data);
-      console.log(
-        `[useBubbleFlow] Optimistic data set for flow ID: ${flowId}`,
-        data
-      );
     },
     [queryClient, flowId]
   );
@@ -70,10 +64,6 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
           };
         }
       );
-      console.log(
-        `[useBubbleFlow] Input schema updated optimistically for flow ID: ${flowId}`,
-        inputSchema
-      );
     },
     [queryClient, flowId]
   );
@@ -91,9 +81,6 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
             code,
           };
         }
-      );
-      console.log(
-        `[useBubbleFlow] Code updated optimistically for flow ID: ${flowId}`
       );
     },
     [queryClient, flowId]
@@ -133,10 +120,6 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
       };
 
       queryClient.setQueryData(['bubbleFlow', flowId], updatedData);
-      console.log(
-        `[useBubbleFlow] Bubble parameters updated optimistically for flow ID: ${flowId}`,
-        bubbleParameters
-      );
     },
     [queryClient, flowId]
   );

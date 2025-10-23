@@ -8,9 +8,9 @@ import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
  * Uses factory pattern - call useExecutionStore(flowId) to get state for that flow
  *
  * Separation:
- * - This store: Local execution UI state (highlighting, inputs, credentials)
+ * - This store: Local execution UI state (highlighting, inputs, credentials, events)
  * - React Query: Server state (execution history, results)
- * - useExecutionStream hook: Streaming logic (syncs to this store)
+ * - useRunExecution hook: Orchestrates validation, updates, and streaming execution
  */
 
 export interface FlowExecutionState {
@@ -42,10 +42,16 @@ export interface FlowExecutionState {
   lastExecutingBubble: string | null;
 
   /**
-   * Bubbles that have completed execution with their execution times (in ms)
-   * Key: bubbleKey (variableId), Value: execution time in milliseconds
+   * Bubbles that are currently running/executing
+   * Set of bubble keys (variableIds) that are actively executing
    */
-  completedBubbles: Record<string, number>;
+  runningBubbles: Set<string>;
+
+  /**
+   * Bubbles that have completed execution with their execution statistics
+   * Key: bubbleKey (variableId), Value: execution statistics
+   */
+  completedBubbles: Record<string, { totalTime: number; count: number }>;
 
   // ============= Execution Data =============
 
@@ -133,7 +139,17 @@ export interface FlowExecutionState {
   setLastExecutingBubble: (bubbleKey: string | null) => void;
 
   /**
-   * Mark a bubble as completed with execution time
+   * Mark a bubble as currently running
+   */
+  setBubbleRunning: (bubbleKey: string) => void;
+
+  /**
+   * Mark a bubble as no longer running
+   */
+  setBubbleStopped: (bubbleKey: string) => void;
+
+  /**
+   * Mark a bubble as completed with execution time (accumulates multiple executions)
    */
   setBubbleCompleted: (bubbleKey: string, executionTimeMs: number) => void;
 
@@ -216,6 +232,16 @@ export interface FlowExecutionState {
    * Reset only execution runtime state (keep inputs/credentials)
    */
   resetExecution: () => void;
+
+  /**
+   * Get execution statistics from events
+   */
+  getExecutionStats: () => {
+    totalTime: number;
+    memoryUsage: number;
+    linesExecuted: number;
+    bubblesProcessed: number;
+  };
 }
 
 // Factory function to create a store for a specific flow
@@ -228,6 +254,7 @@ function createExecutionStore(flowId: number) {
     highlightedBubble: null,
     bubbleWithError: null,
     lastExecutingBubble: null,
+    runningBubbles: new Set<string>(),
     completedBubbles: {},
     executionInputs: {},
     pendingCredentials: {},
@@ -244,6 +271,7 @@ function createExecutionStore(flowId: number) {
         error: null,
         events: [],
         bubbleWithError: null,
+        runningBubbles: new Set<string>(),
         completedBubbles: {},
       }),
 
@@ -275,13 +303,37 @@ function createExecutionStore(flowId: number) {
     setLastExecutingBubble: (bubbleKey) =>
       set({ lastExecutingBubble: bubbleKey }),
 
-    setBubbleCompleted: (bubbleKey, executionTimeMs) =>
+    setBubbleRunning: (bubbleKey) =>
       set((state) => ({
-        completedBubbles: {
-          ...state.completedBubbles,
-          [bubbleKey]: executionTimeMs,
-        },
+        runningBubbles: new Set([...state.runningBubbles, bubbleKey]),
       })),
+
+    setBubbleStopped: (bubbleKey) =>
+      set((state) => {
+        const newRunningBubbles = new Set(state.runningBubbles);
+        newRunningBubbles.delete(bubbleKey);
+        return { runningBubbles: newRunningBubbles };
+      }),
+
+    setBubbleCompleted: (bubbleKey, executionTimeMs) =>
+      set((state) => {
+        const existing = state.completedBubbles[bubbleKey];
+        return {
+          completedBubbles: {
+            ...state.completedBubbles,
+            [bubbleKey]: {
+              totalTime: (existing?.totalTime || 0) + executionTimeMs,
+              count: (existing?.count || 0) + 1,
+            },
+          },
+          // Remove from running bubbles when completed
+          runningBubbles: (() => {
+            const newRunningBubbles = new Set(state.runningBubbles);
+            newRunningBubbles.delete(bubbleKey);
+            return newRunningBubbles;
+          })(),
+        };
+      }),
 
     clearHighlighting: () =>
       set({
@@ -389,6 +441,41 @@ function createExecutionStore(flowId: number) {
         currentLine: null,
         abortController: null,
       }),
+
+    getExecutionStats: () => {
+      const { events } = get();
+
+      let totalTime = 0;
+      let memoryUsage = 0;
+      let linesExecuted = 0;
+      let bubblesProcessed = 0;
+
+      for (const event of events) {
+        if (event.executionTime) {
+          totalTime = Math.max(totalTime, event.executionTime);
+        }
+        if (event.memoryUsage) {
+          memoryUsage = Math.max(memoryUsage, event.memoryUsage);
+        }
+        if (event.type === 'log_line') {
+          linesExecuted++;
+        }
+        if (
+          event.type === 'bubble_complete' ||
+          event.type === 'bubble_execution' ||
+          event.type === 'bubble_execution_complete'
+        ) {
+          bubblesProcessed++;
+        }
+      }
+
+      return {
+        totalTime,
+        memoryUsage,
+        linesExecuted,
+        bubblesProcessed,
+      };
+    },
   }));
 }
 
@@ -405,6 +492,7 @@ const emptyState: FlowExecutionState = {
   highlightedBubble: null,
   bubbleWithError: null,
   lastExecutingBubble: null,
+  runningBubbles: new Set<string>(),
   completedBubbles: {},
   executionInputs: {},
   pendingCredentials: {},
@@ -421,6 +509,8 @@ const emptyState: FlowExecutionState = {
   highlightBubble: () => {},
   setBubbleError: () => {},
   setLastExecutingBubble: () => {},
+  setBubbleRunning: () => {},
+  setBubbleStopped: () => {},
   setBubbleCompleted: () => {},
   clearHighlighting: () => {},
   setInput: () => {},
@@ -435,6 +525,12 @@ const emptyState: FlowExecutionState = {
   clearEvents: () => {},
   reset: () => {},
   resetExecution: () => {},
+  getExecutionStats: () => ({
+    totalTime: 0,
+    memoryUsage: 0,
+    linesExecuted: 0,
+    bubblesProcessed: 0,
+  }),
 };
 
 /**
@@ -515,6 +611,26 @@ export function cleanupExecutionStore(flowId: number): void {
  */
 export function getActiveExecutionFlows(): number[] {
   return Array.from(executionStores.keys());
+}
+
+/**
+ * Get the store instance for a specific flowId
+ * This allows direct access to the store's getState() method
+ */
+export function getExecutionStoreInstance(flowId: number) {
+  if (!executionStores.has(flowId)) {
+    executionStores.set(flowId, createExecutionStore(flowId));
+  }
+  return executionStores.get(flowId)!;
+}
+
+/**
+ * Get execution store state directly for a specific flowId
+ * This provides a clean interface for accessing store state without React hooks
+ */
+export function getExecutionStore(flowId: number): FlowExecutionState {
+  const storeInstance = getExecutionStoreInstance(flowId);
+  return storeInstance.getState();
 }
 
 /**

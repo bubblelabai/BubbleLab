@@ -1,11 +1,9 @@
-import { useMemo, useCallback, useEffect, useState, useRef } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Controls,
   Background,
   BackgroundVariant,
-  useNodesState,
-  useEdgesState,
   useReactFlow,
   ReactFlowProvider,
 } from '@xyflow/react';
@@ -14,67 +12,26 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
+import { useRunExecution } from '@/hooks/useRunExecution';
 import type {
   CredentialType,
-  CredentialResponse,
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
+import { useBubbleFlow } from '../hooks/useBubbleFlow';
+import { useCredentials } from '../hooks/useCredentials';
 import { useUIStore } from '../stores/uiStore';
+import { useEditorStore } from '../stores/editorStore';
+import { API_BASE_URL } from '../env';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
 
 interface FlowVisualizerProps {
-  bubbleParameters: Record<string | number, ParsedBubbleWithInfo>;
-  onParameterChange?: (
-    bubbleKey: string | number,
-    paramName: string,
-    newValue: unknown
-  ) => void;
-  // Highlighting props
-  highlightedBubble?: string | null;
-  onHighlightChange?: (bubbleKey: string | null) => void;
-  onBubbleClick?: (
-    bubbleKey: string | number,
-    bubble: ParsedBubbleWithInfo
-  ) => void;
-  // Request editing a parameter in code (show code + highlight specific line)
-  onParamEditInCode?: (
-    bubbleKey: string | number,
-    bubble: ParsedBubbleWithInfo,
-    paramName: string
-  ) => void;
-  // Credentials props
-  requiredCredentials?: Record<string, string[]>;
-  availableCredentials?: CredentialResponse[];
-  selectedCredentials?: Record<string, Record<string, number>>;
-  onCredentialsPendingChange?: (
-    bubbleName: string,
-    credType: string,
-    credId: number | null
-  ) => void;
-  // Flow inputs/execute props (shown on entry bubble)
-  flowName?: string;
-  inputsSchema?: string;
-  onInputsChange?: (inputs: Record<string, unknown>) => void;
-  onExecute?: () => void;
-  isExecuting?: boolean;
-  isFormValid?: boolean;
-  // Flow input values and per-field update
-  executionInputs?: Record<string, unknown>;
-  onExecutionInputChange?: (fieldName: string, value: unknown) => void;
-  // Loading state (flow creation or fetching flow details)
-  isLoading?: boolean;
-  // Validate button props
+  flowId: number;
   onValidate?: () => void;
-  isRunning?: boolean;
-  // Error state
-  bubbleWithError?: string | null;
-  // Completion state
-  completedBubbles?: Record<string, number>;
 }
 
 const nodeTypes = {
@@ -112,48 +69,50 @@ function generateDependencyNodeId(
 }
 
 // Inner component that has access to ReactFlow instance
-function FlowVisualizerInner({
-  bubbleParameters,
-  onParameterChange,
-  highlightedBubble,
-  onHighlightChange,
-  onBubbleClick,
-  onParamEditInCode,
-  requiredCredentials,
-  availableCredentials,
-  selectedCredentials,
-  onCredentialsPendingChange,
-  flowName,
-  inputsSchema,
-  onInputsChange,
-  onExecute,
-  isExecuting,
-  isFormValid,
-  executionInputs,
-  onExecutionInputChange,
-  isLoading,
-  onValidate,
-  isRunning,
-  bubbleWithError,
-  completedBubbles = {},
-}: FlowVisualizerProps) {
-  const { fitView, getViewport, setViewport } = useReactFlow();
+function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
+  const { fitView } = useReactFlow();
 
-  const selectedFlowId = useUIStore((state) => state.selectedFlowId);
-  const setCredential = useExecutionStore(
-    selectedFlowId,
-    (state) => state.setCredential
-  );
+  // Get all data from global stores
+  const currentFlow = useBubbleFlow(flowId);
+  const executionState = useExecutionStore(flowId);
+  const { data: availableCredentials } = useCredentials(API_BASE_URL);
+  const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
+  const { setExecutionHighlight } = useEditorStore();
+
+  // Initialize execution hook
+  const { runFlow } = useRunExecution(flowId);
+
+  // Extract stable methods from execution state
+  const highlightBubble = executionState.highlightBubble;
+  const setCredential = executionState.setCredential;
+  const setInput = executionState.setInput;
+
+  // Derive all state from global stores
+  const bubbleParameters = currentFlow.data?.bubbleParameters || {};
+  const highlightedBubble = executionState.highlightedBubble;
+  const isExecuting = executionState.isRunning;
+  const bubbleWithError = executionState.bubbleWithError;
+  const runningBubbles = executionState.runningBubbles;
+  const completedBubbles = executionState.completedBubbles;
+  const executionInputs = executionState.executionInputs;
+  const pendingCredentials = executionState.pendingCredentials;
+  const requiredCredentials = currentFlow.data?.requiredCredentials || {};
+  const flowName = currentFlow.data?.name;
+  const inputsSchema = currentFlow.data?.inputSchema
+    ? JSON.stringify(currentFlow.data.inputSchema)
+    : undefined;
+  const isLoading = currentFlow.loading;
+
+  // Local UI state for expanded/collapsed nodes
+  const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
+  const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
     [bubbleParameters]
   );
 
-  const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
-  const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
-
-  // When execution starts, expand all roots with dependencies; when it stops, collapse all
+  // Auto-expand roots when execution starts
   useEffect(() => {
     if (isExecuting) {
       const allRoots: string[] = [];
@@ -255,56 +214,27 @@ function FlowVisualizerInner({
     return visible;
   }, [highlightedBubble, dependencyParentMap, dependencyCanonicalIdMap]);
 
-  const toggleRootVisibility = useCallback((nodeId: string) => {
-    setExpandedRootIds((prev) => {
-      const isExpanded = prev.includes(nodeId);
-      const next = isExpanded
-        ? prev.filter((id) => id !== nodeId)
-        : [...prev, nodeId];
-      // Manage suppression so Hide acts as a master control
-      setSuppressedRootIds((suppressed) => {
-        if (isExpanded) {
-          // User clicked Hide -> suppress auto-visibility for this root
-          return suppressed.includes(nodeId)
-            ? suppressed
-            : [...suppressed, nodeId];
+  const toggleRootVisibility = useCallback(
+    (nodeId: string) => {
+      const isExpanded = expandedRootIds.includes(nodeId);
+      if (isExpanded) {
+        setExpandedRootIds((prev: string[]) =>
+          prev.filter((id: string) => id !== nodeId)
+        );
+        if (!suppressedRootIds.includes(nodeId)) {
+          setSuppressedRootIds((prev: string[]) => [...prev, nodeId]);
         }
-        // User clicked Show -> remove suppression for this root
-        return suppressed.filter((id) => id !== nodeId);
-      });
-      return next;
-    });
-  }, []);
+      } else {
+        setExpandedRootIds((prev: string[]) => [...prev, nodeId]);
+        setSuppressedRootIds((prev: string[]) =>
+          prev.filter((id: string) => id !== nodeId)
+        );
+      }
+    },
+    [expandedRootIds, suppressedRootIds]
+  );
 
-  // When execution highlights any sub-bubble, auto-expand the entire root branch once,
-  // unless the user explicitly suppressed it via Hide. Only applies while executing.
-  useEffect(() => {
-    if (!isExecuting || !highlightedBubble) return;
-    let current: string | undefined =
-      dependencyCanonicalIdMap.get(highlightedBubble) || highlightedBubble;
-    const visited = new Set<string>();
-    while (current && !visited.has(current)) {
-      visited.add(current);
-      const parent = dependencyParentMap.get(current);
-      if (!parent) break;
-      current = dependencyCanonicalIdMap.get(parent) || parent;
-    }
-    const rootId = current;
-    if (!rootId) return;
-    // Respect user suppression
-    if (suppressedRootIds.includes(rootId)) return;
-    setExpandedRootIds((prev) =>
-      prev.includes(rootId) ? prev : [...prev, rootId]
-    );
-  }, [
-    highlightedBubble,
-    dependencyParentMap,
-    dependencyCanonicalIdMap,
-    suppressedRootIds,
-    isExecuting,
-  ]);
-
-  // Helper function to create nodes from dependency graph, placing dependencies BELOW their parent
+  // Helper function to create nodes from dependency graph
   const createNodesFromDependencyGraph = useCallback(
     (
       dependencyNode: DependencyGraphNode,
@@ -319,10 +249,9 @@ function FlowVisualizerInner({
       rootExpanded: boolean = false,
       rootId: string = ''
     ) => {
-      const verticalSpacing = 220; // Distance between parent and its dependency row
-      const siblingHorizontalSpacing = 200; // Space between sibling dependency nodes
+      const verticalSpacing = 220;
+      const siblingHorizontalSpacing = 200;
 
-      // Create a sub-bubble for the dependency
       const subBubble: ParsedBubble = {
         variableId: dependencyNode.variableId || -1,
         bubbleName: dependencyNode.name,
@@ -360,19 +289,23 @@ function FlowVisualizerInner({
         return;
       }
 
-      // Position relative to parent
       const parentNode =
         parentNodeId && nodes.find((n) => n.id === parentNodeId);
       const baseX = parentNode ? parentNode.position.x : 50;
       const baseY = parentNode ? parentNode.position.y : 50;
 
-      // Center siblings under the parent
       const rowWidth =
         siblingsTotal > 1 ? (siblingsTotal - 1) * siblingHorizontalSpacing : 0;
       const position = {
         x: baseX - rowWidth / 2 + siblingIndex * siblingHorizontalSpacing,
         y: baseY + verticalSpacing,
       };
+
+      // Check execution state for dependency bubble
+      const dependencyVariableId = String(dependencyNode.variableId);
+      const hasErrorState = bubbleWithError === dependencyVariableId;
+      const isCompletedState = dependencyVariableId in completedBubbles;
+      const executionStats = completedBubbles[dependencyVariableId];
 
       const node: Node = {
         id: nodeId,
@@ -381,22 +314,20 @@ function FlowVisualizerInner({
         data: {
           bubble: subBubble,
           bubbleKey: nodeId,
-          onParameterChange: undefined, // Sub-bubbles don't have editable parameters
+          onParameterChange: undefined,
           isHighlighted:
-            highlightedBubble === nodeId ||
             highlightedBubble === String(dependencyNode.variableId),
-          onHighlightChange: onHighlightChange
-            ? () =>
-                onHighlightChange(String(dependencyNode.variableId) || nodeId)
-            : undefined,
-          onBubbleClick: onBubbleClick
-            ? () => onBubbleClick(nodeId, subBubble)
-            : undefined,
+          onHighlightChange: () =>
+            highlightBubble(String(dependencyNode.variableId) || nodeId),
+          onBubbleClick: () => {},
+          hasError: hasErrorState,
+          isCompleted: isCompletedState,
+          isExecuting: runningBubbles.has(dependencyVariableId),
+          executionStats: executionStats,
         },
       };
       nodes.push(node);
 
-      // Create edge from parent to this node (ensure parent exists)
       if (parentNodeId && nodes.some((n) => n.id === parentNodeId)) {
         const isEdgeHighlighted =
           highlightedBubble === parentNodeId ||
@@ -417,7 +348,6 @@ function FlowVisualizerInner({
         });
       }
 
-      // Recursively create nodes for dependencies
       dependencyNode.dependencies?.forEach((childDep, idx, arr) => {
         createNodesFromDependencyGraph(
           childDep,
@@ -436,11 +366,13 @@ function FlowVisualizerInner({
     },
     [
       highlightedBubble,
-      onHighlightChange,
-      onBubbleClick,
       autoVisibleNodes,
-      suppressedRootIds,
       isExecuting,
+      highlightBubble,
+      suppressedRootIds,
+      bubbleWithError,
+      runningBubbles,
+      completedBubbles,
     ]
   );
 
@@ -448,9 +380,9 @@ function FlowVisualizerInner({
   const { initialNodes, initialEdges } = useMemo(() => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
-    const horizontalSpacing = 450; // Increased space between nodes horizontally
-    const baseY = 300; // Moved up to prevent top cutoff
-    const startX = 50; // Reduced left padding
+    const horizontalSpacing = 450;
+    const baseY = 300;
+    const startX = 50;
 
     // Determine entry bubble as the one with the smallest startLine
     let smallestStartLine = Number.POSITIVE_INFINITY;
@@ -463,7 +395,7 @@ function FlowVisualizerInner({
       }
     });
 
-    // Parse a minimal JSON schema to fields for inline inputs
+    // Parse input schema
     type SimpleField = {
       name: string;
       type?: string;
@@ -496,23 +428,13 @@ function FlowVisualizerInner({
       }
     })();
 
-    // Build helpers for validation mapping
-
-    // Determine which required credentials and inputs are missing per bubble
-    const requiredByKey = requiredCredentials || {};
-    const selectedByKey = selectedCredentials || {};
-
-    const isSystemCredential = (credType: CredentialType) => {
-      return SYSTEM_CREDENTIALS.has(credType);
-    };
-
-    // Create InputSchemaNode as the first node (if schema exists)
+    // Create InputSchemaNode if needed
     if (parsedFields.length > 0 && flowName) {
       const inputSchemaNode: Node = {
         id: 'input-schema-node',
         type: 'inputSchemaNode',
         position: {
-          x: startX - 450, // Position it before the first bubble
+          x: startX - 450,
           y: baseY,
         },
         origin: [0, 0.5] as [number, number],
@@ -520,10 +442,18 @@ function FlowVisualizerInner({
           flowName: flowName,
           schemaFields: parsedFields,
           executionInputs: executionInputs || {},
-          onExecutionInputChange: onExecutionInputChange || (() => {}),
-          onExecuteFlow: onExecute,
+          onExecutionInputChange: (fieldName: string, value: unknown) => {
+            setInput(fieldName, value);
+          },
+          onExecuteFlow: async () => {
+            await runFlow({
+              validateCode: true,
+              updateCredentials: true,
+              inputs: executionInputs || {},
+            });
+          },
           isExecuting: isExecuting,
-          isFormValid: isFormValid,
+          isFormValid: true,
         },
       };
       nodes.push(inputSchemaNode);
@@ -532,12 +462,10 @@ function FlowVisualizerInner({
     // Create nodes for each bubble
     bubbleEntries.forEach(([key, bubbleData], index) => {
       const bubble = bubbleData;
-
       const nodeId = bubble.variableId
         ? String(bubble.variableId)
         : String(key);
 
-      // Determine which key in requiredCredentials applies to this bubble
       const keyCandidates = [
         String(bubble.variableId),
         bubble.variableName,
@@ -546,18 +474,19 @@ function FlowVisualizerInner({
       const credentialsKeyForBubble =
         keyCandidates.find(
           (k) =>
-            k && Array.isArray((requiredByKey as Record<string, unknown>)[k])
+            k &&
+            Array.isArray((requiredCredentials as Record<string, unknown>)[k])
         ) || bubble.bubbleName;
 
-      // Determine missing credentials for this bubble
       const requiredCredTypes =
-        (requiredByKey as Record<string, string[]>)[credentialsKeyForBubble] ||
-        [];
+        (requiredCredentials as Record<string, string[]>)[
+          credentialsKeyForBubble
+        ] || [];
 
       const missingCreds = requiredCredTypes.some((credType) => {
-        if (isSystemCredential(credType as CredentialType)) return false;
+        if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
         const selected =
-          (selectedByKey as Record<string, Record<string, number>>)[
+          (pendingCredentials as Record<string, Record<string, number>>)[
             credentialsKeyForBubble
           ] || {};
         const selectedId = selected[credType];
@@ -566,61 +495,62 @@ function FlowVisualizerInner({
 
       const rootExpanded = expandedRootIds.includes(nodeId);
       const rootSuppressed = suppressedRootIds.includes(nodeId);
-
       const hasErrorState = bubbleWithError === nodeId;
-      if (hasErrorState) {
-        console.log(
-          '🔴 Setting error state for bubble:',
-          nodeId,
-          'bubbleWithError:',
-          bubbleWithError
-        );
-      }
-
       const isCompletedState = nodeId in completedBubbles;
-      const executionTimeMs = completedBubbles[nodeId];
+      const executionStats = completedBubbles[nodeId];
 
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
         position: {
-          x: startX + index * horizontalSpacing, // Horizontal layout: each node spaced horizontally with offset
-          y: baseY, // Fixed Y position for all nodes
+          x: startX + index * horizontalSpacing,
+          y: baseY,
         },
-        // Add origin positioning to center-align nodes vertically
         origin: [0, 0.5] as [number, number],
         data: {
           bubble,
           bubbleKey: key,
           hasMissingRequirements: missingCreds,
           hasMissingCredentials: missingCreds,
-          onParameterChange: onParameterChange
-            ? (paramName: string, newValue: unknown) =>
-                onParameterChange(key, paramName, newValue)
-            : undefined,
+          onParameterChange: undefined,
           isHighlighted: highlightedBubble === key,
-          onHighlightChange: onHighlightChange
-            ? () => onHighlightChange(key)
-            : undefined,
-          onBubbleClick: onBubbleClick
-            ? () => onBubbleClick(key, bubble)
-            : undefined,
-          onParamEditInCode: onParamEditInCode
-            ? (paramName: string) => onParamEditInCode(key, bubble, paramName)
-            : undefined,
+          onHighlightChange: () => highlightBubble(key),
+          onBubbleClick: () => {
+            highlightBubble(String(key));
+            showEditorPanel();
+            setExecutionHighlight({
+              startLine: bubble.location.startLine,
+              endLine: bubble.location.endLine,
+            });
+          },
+          onParamEditInCode: (paramName: string) => {
+            // Find the parameter in the bubble's parameters
+            const param = bubble.parameters.find((p) => p.name === paramName);
+            if (param && param.location) {
+              // Open editor if not visible
+              if (!showEditor) {
+                showEditorPanel();
+              }
+
+              // Highlight the parameter's location in the editor
+              setExecutionHighlight({
+                startLine: param.location.startLine,
+                endLine: param.location.endLine,
+              });
+            }
+          },
           hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
           areSubBubblesVisible:
             isExecuting || (rootExpanded && !rootSuppressed),
           onToggleSubBubbles: bubble.dependencyGraph?.dependencies?.length
             ? () => toggleRootVisibility(nodeId)
             : undefined,
-          // Credentials-specific data
           requiredCredentialTypes: requiredCredentials
             ? requiredCredentials[credentialsKeyForBubble] || []
             : [],
           availableCredentials: availableCredentials || [],
-          selectedBubbleCredentials: selectedCredentials
-            ? selectedCredentials[credentialsKeyForBubble] || {}
+          selectedBubbleCredentials: pendingCredentials
+            ? pendingCredentials[credentialsKeyForBubble] || {}
             : {},
           onCredentialSelectionChange: (
             credType: string,
@@ -628,16 +558,15 @@ function FlowVisualizerInner({
           ) => {
             setCredential(String(bubble.variableId), credType, credId);
           },
-          // Error state
           hasError: hasErrorState,
-          // Completion state
           isCompleted: isCompletedState,
-          executionTimeMs: executionTimeMs,
+          isExecuting: runningBubbles.has(nodeId),
+          executionStats: executionStats,
         },
       };
       nodes.push(node);
 
-      // Create sub-bubbles from dependency graph (positioned beneath parent)
+      // Create sub-bubbles from dependency graph
       if (bubble.dependencyGraph?.dependencies) {
         bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
           createNodesFromDependencyGraph(
@@ -645,8 +574,8 @@ function FlowVisualizerInner({
             bubble,
             nodes,
             edges,
-            1, // level
-            nodeId, // parentNodeId
+            1,
+            nodeId,
             idx,
             arr.length,
             `${idx}`,
@@ -657,7 +586,7 @@ function FlowVisualizerInner({
       }
     });
 
-    // Add sequential flow connections between main bubbles (based on line numbers)
+    // Add sequential flow connections
     const mainBubbles = bubbleEntries
       .map(([key, bubbleData]) => {
         const typedBubbleData = bubbleData as Partial<ParsedBubble>;
@@ -670,9 +599,9 @@ function FlowVisualizerInner({
         };
       })
       .filter((bubble) => bubble.startLine > 0)
-      .sort((a, b) => a.startLine - b.startLine); // Sort by line number
+      .sort((a, b) => a.startLine - b.startLine);
 
-    // Connect InputSchemaNode to the first bubble (if input schema node exists)
+    // Connect InputSchemaNode to first bubble
     if (
       parsedFields.length > 0 &&
       flowName &&
@@ -690,7 +619,7 @@ function FlowVisualizerInner({
           type: 'straight',
           animated: true,
           style: {
-            stroke: '#60a5fa', // Blue to match the input schema node theme
+            stroke: '#60a5fa',
             strokeWidth: 2,
             strokeDasharray: '5,5',
           },
@@ -698,12 +627,11 @@ function FlowVisualizerInner({
       }
     }
 
-    // Connect main bubbles sequentially (different color from dependency edges)
+    // Connect main bubbles sequentially
     for (let i = 0; i < mainBubbles.length - 1; i++) {
       const sourceNodeId = mainBubbles[i].nodeId;
       const targetNodeId = mainBubbles[i + 1].nodeId;
 
-      // Ensure both nodes exist
       if (
         nodes.some((n) => n.id === sourceNodeId) &&
         nodes.some((n) => n.id === targetNodeId)
@@ -716,14 +644,14 @@ function FlowVisualizerInner({
           id: `sequential-${sourceNodeId}-${targetNodeId}`,
           source: sourceNodeId,
           target: targetNodeId,
-          sourceHandle: 'right', // Connect from right side of source node
-          targetHandle: 'left', // Connect to left side of target node
-          type: 'straight', // Different type for sequential flow
-          animated: true, // Now animated like dependency edges
+          sourceHandle: 'right',
+          targetHandle: 'left',
+          type: 'straight',
+          animated: true,
           style: {
-            stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af', // Purple/gray for sequence flow
+            stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af',
             strokeWidth: isSequentialEdgeHighlighted ? 3 : 2,
-            strokeDasharray: '5,5', // Dashed line to distinguish from dependency edges
+            strokeDasharray: '5,5',
           },
         });
       }
@@ -732,252 +660,51 @@ function FlowVisualizerInner({
     return { initialNodes: nodes, initialEdges: edges };
   }, [
     bubbleEntries,
-    onParamEditInCode,
-    suppressedRootIds,
-    bubbleParameters,
-    expandedRootIds,
-    autoVisibleNodes,
-    onParameterChange,
     highlightedBubble,
-    onHighlightChange,
-    onBubbleClick,
     requiredCredentials,
     availableCredentials,
-    selectedCredentials,
-    onCredentialsPendingChange,
+    pendingCredentials,
     flowName,
     inputsSchema,
-    onInputsChange,
-    onExecute,
     isExecuting,
-    isFormValid,
     executionInputs,
-    onExecutionInputChange,
     createNodesFromDependencyGraph,
     toggleRootVisibility,
     bubbleWithError,
     completedBubbles,
+    highlightBubble,
+    setCredential,
+    setInput,
+    expandedRootIds,
+    suppressedRootIds,
   ]);
 
-  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState(initialNodes);
-  const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  // Use ref to track previous initialNodes to detect actual changes
-  const prevInitialNodesRef = useRef(initialNodes);
-
-  // Track if we've done the initial fit view - only auto-fit once per flow
-  const hasInitialFitRef = useRef(false);
-
-  // Track the set of bubble IDs to detect when we switch to a completely different flow
-  const prevBubbleIdsRef = useRef<string>(
-    Object.keys(bubbleParameters).sort().join(',')
-  );
-
-  // Update nodes when inputs that affect node rendering change, preserving user positions
+  // Auto-fit view when nodes load or change
   useEffect(() => {
-    const prevInitialNodes = prevInitialNodesRef.current;
-    const currentBubbleIds = Object.keys(bubbleParameters).sort().join(',');
-    const prevBubbleIds = prevBubbleIdsRef.current;
-
-    // Reset the fit flag if we've switched to a different flow (different set of bubbles)
-    if (currentBubbleIds !== prevBubbleIds) {
-      hasInitialFitRef.current = false;
-      prevBubbleIdsRef.current = currentBubbleIds;
-    }
-
-    // Check for structural changes (nodes added/removed or IDs changed)
-    const hasStructuralChange =
-      prevInitialNodes.length !== initialNodes.length ||
-      !prevInitialNodes.every(
-        (prevNode, index) => prevNode.id === initialNodes[index]?.id
-      );
-
-    if (hasStructuralChange) {
-      // When updating nodes, preserve existing positions where possible
-      setFlowNodes((currentNodes) => {
-        const updatedNodes = initialNodes.map((initNode) => {
-          const existingNode = currentNodes.find(
-            (node) => node.id === initNode.id
-          );
-          return existingNode
-            ? { ...initNode, position: existingNode.position }
-            : initNode;
+    if (initialNodes.length > 0) {
+      // Small delay to ensure nodes are rendered before fitting
+      const timer = setTimeout(() => {
+        fitView({
+          padding: 0.2, // 20% padding around nodes
+          duration: 300, // Smooth animation
+          maxZoom: 1.0, // Don't zoom in too much
         });
-        return updatedNodes;
-      });
-    } else {
-      // No structural change, just update node data in place to preserve positions and zoom
-      setFlowNodes((currentNodes) => {
-        return currentNodes.map((currentNode) => {
-          const updatedNode = initialNodes.find((n) => n.id === currentNode.id);
-          return updatedNode
-            ? { ...updatedNode, position: currentNode.position }
-            : currentNode;
-        });
-      });
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
+  }, [initialNodes.length, flowId, fitView]);
 
-    // Always update edges as they don't have user-modified positions
-    setFlowEdges(initialEdges);
-
-    // Auto-fit viewport on first load or when switching to a new flow (not on data-only changes)
-    if (initialNodes.length > 0 && !hasInitialFitRef.current) {
-      hasInitialFitRef.current = true;
-      setTimeout(() => {
-        // Check if InputSchemaNode exists
-        const inputSchemaNode = initialNodes.find(
-          (node) => node.id === 'input-schema-node'
-        );
-
-        // If there are more than 4 main bubbles, fit to InputSchemaNode + first 4 bubbles
-        const mainBubbleCount = bubbleEntries.length;
-        if (mainBubbleCount > 4) {
-          // Find the first 4 main bubble nodes
-          const firstFourMainBubbles = initialNodes
-            .filter((node) => {
-              // Check if this is a main bubble (not a dependency sub-bubble)
-              const bubbleKey = node.data.bubbleKey;
-              const bubbleIndex = bubbleEntries.findIndex(
-                ([key]) => String(key) === String(bubbleKey)
-              );
-              return bubbleIndex >= 0 && bubbleIndex < 4;
-            })
-            .slice(0, 4);
-
-          // Include InputSchemaNode if it exists
-          const nodesToFit = inputSchemaNode
-            ? [inputSchemaNode, ...firstFourMainBubbles]
-            : firstFourMainBubbles;
-
-          if (nodesToFit.length > 0) {
-            fitView({
-              nodes: nodesToFit,
-              padding: 0.1,
-              includeHiddenNodes: false,
-              minZoom: 0.1,
-              maxZoom: 1.5,
-            });
-          }
-        } else {
-          // Default behavior for 4 or fewer bubbles - include InputSchemaNode if exists
-          if (inputSchemaNode) {
-            // Fit to InputSchemaNode + all main bubbles
-            const mainBubbleNodes = initialNodes.filter((node) => {
-              const bubbleKey = node.data.bubbleKey;
-              return bubbleEntries.some(
-                ([key]) => String(key) === String(bubbleKey)
-              );
-            });
-            const nodesToFit = [inputSchemaNode, ...mainBubbleNodes];
-            fitView({
-              nodes: nodesToFit,
-              padding: 0.1,
-              includeHiddenNodes: false,
-              minZoom: 0.1,
-              maxZoom: 1.5,
-            });
-          } else {
-            // No InputSchemaNode, fit all nodes
-            fitView({
-              padding: 0.1,
-              includeHiddenNodes: false,
-              minZoom: 0.1,
-              maxZoom: 1.5,
-            });
-          }
-        }
-      }, 200);
-    }
-
-    // Update the ref for next comparison
-    prevInitialNodesRef.current = initialNodes;
-  }, [
-    bubbleEntries,
-    initialNodes,
-    initialEdges,
-    setFlowNodes,
-    setFlowEdges,
-    fitView,
-    isExecuting,
-  ]);
-
-  // When credential-related props change, refresh node data in place to trigger rerender
-  useEffect(() => {
-    setFlowNodes((existing) =>
-      existing.map((node) => {
-        const updated = initialNodes.find((n) => n.id === node.id);
-        return updated ? { ...node, data: updated.data } : node;
-      })
-    );
-  }, [
-    selectedCredentials,
-    requiredCredentials,
-    availableCredentials,
-    onCredentialsPendingChange,
-    initialNodes,
-    setFlowNodes,
-  ]);
-
-  // Auto-scroll to center highlighted bubble during execution
-  useEffect(() => {
-    if (highlightedBubble && isExecuting && flowNodes.length > 0) {
-      const highlightedNode = flowNodes.find(
-        (node) =>
-          node.id === highlightedBubble ||
-          node.data.bubbleKey === highlightedBubble ||
-          String(
-            (node.data as { bubble?: { variableId?: number } }).bubble
-              ?.variableId
-          ) === highlightedBubble
-      );
-
-      if (highlightedNode) {
-        // Use setTimeout to ensure the node is rendered before centering
-        setTimeout(() => {
-          try {
-            // Calculate the center position for the highlighted node
-            const nodeX = highlightedNode.position.x;
-            const nodeY = highlightedNode.position.y;
-
-            // Calculate the new viewport to center the node
-            const newX = -nodeX + window.innerWidth * 0.4; // Center horizontally with some offset
-            const newY = -nodeY + window.innerHeight * 0.4; // Center vertically with some offset
-
-            // Set the new viewport with animation
-            setViewport({ x: newX, y: newY, zoom: 0.8 }, { duration: 800 });
-
-            // Also try fitView as backup
-            setTimeout(() => {
-              fitView({
-                nodes: [highlightedNode],
-                padding: 0.2,
-                includeHiddenNodes: false,
-                minZoom: 0.3,
-                maxZoom: 1.0,
-                duration: 800,
-              });
-            }, 100);
-          } catch (error) {
-            console.error('Error in auto-scroll:', error);
-          }
-        }, 100);
-      }
-    }
-  }, [
-    highlightedBubble,
-    isExecuting,
-    flowNodes,
-    fitView,
-    getViewport,
-    setViewport,
-  ]);
+  // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
+  // useEffect(() => {
+  //   logBubbleDebugInfo(flowId, bubbleParameters, executionState, currentFlow, flowNodes);
+  // }, [flowId, bubbleParameters, executionState.isRunning, executionState.isValidating, executionState.highlightedBubble, currentFlow.data, flowNodes]);
 
   const onConnect = useCallback((params: Connection) => {
-    // Handle new connections if needed
     console.log('Connection created:', params);
   }, []);
 
-  // Show loading state when flow is being created or fetched
+  // Show loading state
   if (isLoading) {
     return (
       <div
@@ -1005,9 +732,20 @@ function FlowVisualizerInner({
       >
         <div className="text-center">
           <p className="text-gray-400 text-lg mb-2">No bubbles to display</p>
-          <p className="text-gray-500 text-sm">
-            Generate or run code to see the flow visualization
+          <p className="text-gray-500 text-sm mb-4">
+            The flow code needs to be validated to extract bubble parameters
           </p>
+          {onValidate && (
+            <button
+              type="button"
+              onClick={onValidate}
+              disabled={isExecuting}
+              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2 mx-auto"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sync with code
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1018,13 +756,12 @@ function FlowVisualizerInner({
       className="h-full overflow-hidden relative"
       style={{ backgroundColor: '#1e1e1e' }}
     >
-      {/* Sync with Code Button - Top Left */}
       {onValidate && (
         <div className="absolute top-4 left-4 z-10">
           <button
             type="button"
             onClick={onValidate}
-            disabled={isRunning}
+            disabled={isExecuting}
             className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
@@ -1034,15 +771,13 @@ function FlowVisualizerInner({
       )}
 
       <ReactFlow
-        nodes={flowNodes}
-        edges={flowEdges}
+        nodes={initialNodes}
+        edges={initialEdges}
         nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onPaneClick={() => {
-          // Deselect when clicking on empty area
-          onHighlightChange?.(null);
+          highlightBubble(null);
+          hideEditorPanel();
         }}
         proOptions={proOptions}
         minZoom={0.1}

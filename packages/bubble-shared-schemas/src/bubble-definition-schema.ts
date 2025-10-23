@@ -108,6 +108,14 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
 export const BubbleParameterTypeSchema = z.nativeEnum(BubbleParameterType);
 
 export const BubbleParameterSchema = z.object({
+  location: z.optional(
+    z.object({
+      startLine: z.number(),
+      startCol: z.number(),
+      endLine: z.number(),
+      endCol: z.number(),
+    })
+  ),
   variableId: z
     .number()
     .optional()

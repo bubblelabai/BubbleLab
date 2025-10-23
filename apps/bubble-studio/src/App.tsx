@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './components/AuthComponents';
@@ -35,27 +35,16 @@ import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
-import { useCredentials } from '@/hooks/useCredentials';
 import { useClerkTokenSync } from '@/hooks/useClerkTokenSync';
-import { useExecutionStream } from '@/hooks/useExecutionStream';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
 import { useCreateBubbleFlow } from '@/hooks/useCreateBubbleFlow';
 import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
 import { useExecutionHistory } from '@/hooks/useExecutionHistory';
-import { api } from '@/lib/api';
-import type {
-  BubbleFlowDetailsResponse,
-  CredentialType,
-} from '@bubblelab/shared-schemas';
 import { getFlowNameFromCode } from '@/utils/codeParser';
-import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { API_BASE_URL } from '@/env';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import { useSubscription } from './hooks/useSubscription';
-import { cleanupFlattenedKeys } from '@/utils/codeParser';
-import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
+import { useRunExecution } from '@/hooks/useRunExecution';
 
 function App() {
   // Check if this is an OAuth callback
@@ -81,7 +70,6 @@ function App() {
     togglePrompt,
     selectFlow,
     navigateToPage,
-    showEditorPanel,
     closeSidebar,
     collapseOutput,
     expandOutput,
@@ -101,24 +89,20 @@ function App() {
     setSelectedPreset,
   } = useGenerationStore();
   // Editor Store - Monaco editor
-  const { closeSidePanel, setExecutionHighlight, openPearlChat } =
-    useEditorStore();
-  // Per-flow Execution Store
+  const { openPearlChat } = useEditorStore();
+  // Per-flow Execution Store - always call the hook
   const executionState = useExecutionStore(selectedFlowId);
 
   // ============= React Query Hooks =============
-  const { data: currentFlow, loading: currentFlowLoading } =
-    useBubbleFlow(selectedFlowId);
+  const { data: currentFlow } = useBubbleFlow(selectedFlowId);
+  const { runFlow, isRunning, canExecute } = useRunExecution(selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
-
-  const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { data: bubbleFlowList } = useBubbleFlowList();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const deleteBubbleFlowMutation = useDeleteBubbleFlow();
 
   // ============= Refs =============
   const navigationLockToastId = 'sidebar-navigation-lock';
-  const lastExecutingBubbleRef = useRef<string | null>(null);
 
   // ============= Auto-behaviors =============
   // TODO: replace with actual proper behavior
@@ -170,129 +154,13 @@ function App() {
   useClerkTokenSync();
 
   // Use React Query for credentials fetching - MUST be called before any early returns
-  const { data: availableCredentials = [] } =
-    useCredentials(API_BASE_URL_LOCAL);
-
   // Fetch execution history to check if flow has been executed (limit to 1 for performance)
-  const { data: executionHistory, refetch: refetchExecutionHistory } =
-    useExecutionHistory(selectedFlowId, { limit: 50 });
+  const { data: executionHistory } = useExecutionHistory(selectedFlowId, {
+    limit: 50,
+  });
   // Use the FlowGeneration hook to get the generateCode function
   const { generateCode: generateCodeFromHook } = useFlowGeneration();
-  // Initialize execution stream hook
-  const executionStream = useExecutionStream(selectedFlowId, {
-    onEvent: () => {
-      // Events are handled by the execution store
-    },
-    onComplete: () => {
-      executionState.stopExecution();
-      // Refetech subscription to update token usage
-      refetchSubscriptionStatus();
-    },
-    onError: (error: string, isFatal?: boolean, errorVariableId?: number) => {
-      executionState.stopExecution();
-      setOutput((prev) => prev + `\n❌ Execution failed: ${error}`);
-
-      // If this is a fatal error, mark the bubble with error
-      if (isFatal) {
-        console.log(
-          'Fatal error received. errorVariableId:',
-          errorVariableId,
-          'lastExecutingBubble:',
-          lastExecutingBubbleRef.current
-        );
-        // First try to use the variableId from the error event
-        if (errorVariableId !== undefined) {
-          const bubbleId = String(errorVariableId);
-          executionState.setBubbleError(bubbleId);
-          console.log(
-            '✅ Fatal error detected with variableId, marking bubble:',
-            bubbleId
-          );
-        } else if (lastExecutingBubbleRef.current) {
-          // Fallback to last executing bubble
-          executionState.setBubbleError(lastExecutingBubbleRef.current);
-          console.log(
-            '✅ Fatal error detected, marking last executing bubble:',
-            lastExecutingBubbleRef.current
-          );
-        } else {
-          console.warn('❌ Fatal error occurred but no bubble ID available');
-        }
-      }
-    },
-    onBubbleExecution: (event) => {
-      console.log('Bubble execution event:', event);
-
-      // Find the bubble by variableId using the ref to get latest values
-      if (event.variableId) {
-        const bubble = findBubbleByVariableId(
-          currentFlow?.bubbleParameters || {},
-          event.variableId
-        );
-        if (bubble) {
-          console.log('Found bubble for execution:', bubble);
-
-          const bubbleId = String(bubble.variableId);
-
-          // Track this as the last executing bubble (use ref to avoid stale closures)
-          lastExecutingBubbleRef.current = bubbleId;
-          console.log('Tracking last executing bubble:', bubbleId);
-
-          // Highlight the bubble in the flow
-          executionState.highlightBubble(bubbleId);
-
-          // Highlight the line range in the editor (validate line numbers)
-          if (bubble.location.startLine > 0 && bubble.location.endLine > 0) {
-            setExecutionHighlight({
-              startLine: bubble.location.startLine,
-              endLine: bubble.location.endLine,
-            });
-          } else {
-            console.warn('Invalid line numbers for bubble:', bubble);
-          }
-
-          // Keep highlighting until manually deselected
-        } else {
-          console.warn(
-            'Bubble not found for variableId:',
-            event.variableId,
-            'Available bubbles:',
-            Object.keys(currentFlow?.bubbleParameters || {})
-          );
-        }
-      }
-    },
-    onBubbleExecutionComplete: (event) => {
-      console.log('Bubble execution complete event:', event);
-
-      // Track completion with execution time
-      if (event.variableId) {
-        const bubble = findBubbleByVariableId(
-          currentFlow?.bubbleParameters || {},
-          event.variableId
-        );
-        if (bubble) {
-          const bubbleId = String(bubble.variableId);
-          executionState.setLastExecutingBubble(bubbleId);
-
-          // Mark bubble as completed with execution time
-          const executionTimeMs = event.executionTime ?? 0;
-          executionState.setBubbleCompleted(bubbleId, executionTimeMs);
-          console.log(
-            '✅ Bubble completed:',
-            bubbleId,
-            'in',
-            executionTimeMs,
-            'ms'
-          );
-        }
-      }
-      refetchExecutionHistory();
-    },
-    onBubbleParametersUpdate: () => {
-      executionState.clearHighlighting();
-    },
-  });
+  // Initialize execution hook with all the callbacks
 
   useEffect(() => {
     console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
@@ -346,162 +214,6 @@ function App() {
     return <OAuthCallback apiBaseUrl={API_BASE_URL_LOCAL} />;
   }
 
-  const handleParameterChange = (
-    bubbleKey: string | number,
-    paramName: string,
-    newValue: unknown
-  ) => {
-    console.log(`Parameter change: ${bubbleKey}.${paramName} =`, newValue);
-
-    // // Update the current bubble parameters
-    // updateCurrentBubbleParameters(() => {
-    //   const currentBubble = prev[bubbleKey] as ParsedBubbleWithInfo;
-    //   if (!currentBubble) return prev;
-
-    //   return {
-    //     ...prev,
-    //     [bubbleKey]: {
-    //       ...currentBubble,
-    //       parameters:
-    //         currentBubble.parameters?.map((param) =>
-    //           param.name === paramName ? { ...param, value: newValue } : param
-    //         ) || [],
-    //     },
-    //   };
-    // });
-
-    // Note: Updating the actual code would require complex AST manipulation
-    // For now, we just update the visualization data
-    // In a future iteration, we could implement code regeneration based on parameter changes
-  };
-
-  const updateBubbleParameters = async (
-    bubbleFlowId: number,
-    bubbleParameters: Record<string, unknown>,
-    credentials: Record<string, Record<string, number>>
-  ) => {
-    try {
-      // Add selected credentials to each bubble's parameters
-      const updatedParameters = { ...bubbleParameters };
-
-      for (const [bubbleName, bubble] of Object.entries(updatedParameters)) {
-        if (
-          credentials[bubbleName] &&
-          Object.keys(credentials[bubbleName]).length > 0
-        ) {
-          const bubbleObj = bubble as Record<string, unknown>;
-          const params = (bubbleObj.parameters || []) as Array<
-            Record<string, unknown>
-          >;
-
-          // Remove existing credentials parameter if any
-          const filteredParams = params.filter((p) => p.name !== 'credentials');
-
-          // Add new credentials parameter with selected credential IDs
-          filteredParams.push({
-            name: 'credentials',
-            value: credentials[bubbleName],
-            type: 'object',
-          });
-
-          bubbleObj.parameters = filteredParams;
-        }
-      }
-
-      console.log(
-        'Updating bubble parameters with credentials:',
-        updatedParameters
-      );
-
-      await api.put(`/bubble-flow/${bubbleFlowId}`, {
-        bubbleParameters: updatedParameters,
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Failed to update bubble parameters:', error);
-      return false;
-    }
-  };
-
-  // Centralized function to update credentials: Always fetch fresh data from API
-  const updateFlowCredentials = async (
-    flowId: number,
-    newCredentials: Record<string, Record<string, number>>
-  ): Promise<boolean> => {
-    try {
-      console.log(
-        '[updateFlowCredentials] Updating credentials for flow:',
-        flowId,
-        newCredentials
-      );
-
-      // Fetch fresh flow data from getBubbleFlowRoute API
-      const flowData = await api.get<BubbleFlowDetailsResponse>(
-        `/bubble-flow/${flowId}`
-      );
-      console.log('[updateFlowCredentials] Fetched fresh flow data from API');
-
-      // Step 1: Update server with bubble parameters from API
-      const serverSuccess = await updateBubbleParameters(
-        flowId,
-        flowData.bubbleParameters || {},
-        newCredentials
-      );
-
-      if (!serverSuccess) {
-        console.error('[updateFlowCredentials] Failed to update server');
-        return false;
-      }
-
-      console.log('[updateFlowCredentials] Successfully updated credentials');
-      return true;
-    } catch (error) {
-      console.error(
-        '[updateFlowCredentials] Error updating credentials:',
-        error
-      );
-      return false;
-    }
-  };
-
-  const executeWithLiveStreaming = async (
-    bubbleFlowId: number,
-    credentials: Record<string, Record<string, number>>,
-    schemaInputs?: Record<string, unknown>
-  ) => {
-    // Check if code == flow's code
-    if (getEditorCode() !== currentFlow?.code) {
-      const isValid = await validateCodeMutation.mutateAsync({
-        code: getEditorCode(),
-        flowId: bubbleFlowId,
-        credentials: credentials,
-      });
-      if (!isValid) {
-        executionState.stopExecution();
-        return;
-      }
-    }
-    // Clear error state when starting new execution
-    executionState.setBubbleError(null);
-    executionState.setLastExecutingBubble(null);
-    lastExecutingBubbleRef.current = null;
-
-    try {
-      // Prepare execution payload
-      const payload = schemaInputs || {};
-
-      // Execute with streaming using the base flow ID (backend expects the original flow ID)
-      await executionStream.executeWithStreaming(payload);
-
-      // Create a new flow entry for this execution run
-    } catch (error) {
-      console.error('Error executing flow:', error);
-    } finally {
-      // Cleanup or final actions can go here
-    }
-  };
-
   // Wrapper function that calls the hook's generateCode with proper parameters
   const generateCode = async () => {
     // Hide the sidebar so the IDE has maximum space during a new generation
@@ -510,128 +222,31 @@ function App() {
     await generateCodeFromHook(generationPrompt, selectedPreset);
   };
 
-  const isExecutionFormValid = () => {
-    if (!currentFlow) return false;
-    try {
-      // Only require fields that actually map to bubble parameters
-      let schema = currentFlow.inputSchema!;
-      if (typeof schema === 'string') {
-        schema = JSON.parse(schema);
-      }
-      const requiredFields: string[] = Array.isArray(schema.required)
-        ? schema.required
-        : [];
-
-      const isValid = requiredFields.every((fieldName: string) => {
-        return (
-          executionState.executionInputs[fieldName] !== undefined &&
-          executionState.executionInputs[fieldName] !== ''
-        );
-      });
-      return isValid;
-    } catch {
-      // If schema parsing fails, assume form is valid
-      return true;
-    }
-  };
-
-  // Determine if a credential type is system-managed (no user selection required)
-  const isSystemCredential = (credType: CredentialType) => {
-    return SYSTEM_CREDENTIALS.has(credType);
-  };
-  // Validate that all required, non-system credentials with available options are selected
-  const isCredentialsSelectionValid = () => {
-    const required = currentFlow?.requiredCredentials || {};
-    const requiredEntries = Object.entries(required) as Array<
-      [string, string[]]
-    >;
-    if (requiredEntries.length === 0) return true;
-
-    for (const [bubbleKey, credTypes] of requiredEntries) {
-      for (const credType of credTypes) {
-        if (isSystemCredential(credType as CredentialType)) continue; // system-managed
-
-        const selectedForBubble =
-          executionState.pendingCredentials[bubbleKey] || {};
-        const selectedId = selectedForBubble[credType];
-        if (selectedId === undefined || selectedId === null) {
-          return false;
-        }
-      }
-    }
-    return true;
-  };
-
   const isRunnable = () => {
-    return (
-      !!currentFlow &&
-      isExecutionFormValid() &&
-      isCredentialsSelectionValid() &&
-      !executionState.isRunning &&
-      !createBubbleFlowMutation.isLoading &&
-      !executionState.isValidating
-    );
+    if (!currentFlow) return false;
+    const { isValid } = canExecute();
+    return isValid && !createBubbleFlowMutation.isLoading && !isRunning;
   };
 
   const handleExecuteFromMainPage = async () => {
-    if (!currentFlow) return;
-
-    executionState.startExecution();
-
-    // Gate execution if required inputs or credentials are missing
-    if (!isExecutionFormValid()) {
-      toast.error('Please fill all required inputs before running.');
-      console.groupEnd();
-      return;
-    }
-    if (!isCredentialsSelectionValid()) {
-      toast.error('Please select all required credentials before running.');
-      console.groupEnd();
-      executionState.stopExecution();
-      return;
-    }
-
-    // Apply any pending credential changes before executing
-    const currentPendingCredentials = executionState.pendingCredentials;
-    if (!currentFlow.id) {
-      console.error('Cannot execute: No flow ID available');
-      toast.error('Cannot execute: No flow ID available');
-      return;
-    }
-    await updateFlowCredentials(currentFlow.id, currentPendingCredentials);
-
-    // Clean up any flattened keys before executing
-    const cleanedInputs = cleanupFlattenedKeys(executionState.executionInputs);
-
-    // Payload size estimation
-    const payloadSize = JSON.stringify(cleanedInputs).length;
-    console.log(
-      `📏 Payload size: ${payloadSize} characters (${(payloadSize / 1024).toFixed(2)} KB)`
-    );
-
-    console.groupEnd();
-
-    // Always use Live Execution for flow execution, regardless of current tab
-    if (typeof currentFlow.id !== 'number') {
-      console.error('Invalid flow id for execution:', currentFlow.id);
-      toast.error('Cannot execute: Invalid flow ID.');
-      return;
-    }
-
-    await executeWithLiveStreaming(
-      currentFlow.id,
-      currentPendingCredentials,
-      cleanedInputs
-    );
+    await runFlow({
+      validateCode: true,
+      updateCredentials: true,
+      inputs: executionState.executionInputs,
+    });
   };
 
   const getRunDisabledReason = () => {
     if (!currentFlow) return 'Create or select a flow first';
     if (executionState.isValidating) return 'Validating code...';
-    if (executionState.isRunning) return 'Execution in progress';
-    if (createBubbleFlowMutation.isLoading) return 'Flow creation in progress';
-    if (!isExecutionFormValid()) return 'Fill all required inputs';
-    if (!isCredentialsSelectionValid()) return 'Select required credentials';
+    if (isRunning) return 'Execution in progress...';
+    if (createBubbleFlowMutation.isLoading) return 'Creating flow...';
+
+    const { isValid, reasons } = canExecute();
+    if (!isValid && reasons.length > 0) {
+      return reasons[0];
+    }
+
     return '';
   };
 
@@ -921,9 +536,6 @@ function App() {
                       type="button"
                       onClick={() => {
                         toggleEditor();
-                        if (showEditor) {
-                          closeSidePanel();
-                        }
                       }}
                       className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
                     >
@@ -1160,224 +772,31 @@ function App() {
                             <div className="h-full bg-[#1a1a1a] min-h-0">
                               <div className="h-full min-h-0">
                                 <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
-                                  <FlowVisualizer
-                                    bubbleParameters={
-                                      currentFlow?.bubbleParameters || {}
-                                    }
-                                    onParameterChange={handleParameterChange}
-                                    highlightedBubble={
-                                      executionState.highlightedBubble
-                                    }
-                                    onHighlightChange={(bubbleKey) => {
-                                      console.log(
-                                        'Bubble highlight changed to:',
-                                        bubbleKey
-                                      );
-                                      executionState.highlightBubble(bubbleKey);
-
-                                      // Clear code highlighting when bubble is deselected
-                                      if (bubbleKey === null) {
-                                        setExecutionHighlight(null);
+                                  {selectedFlowId ? (
+                                    <FlowVisualizer
+                                      flowId={selectedFlowId}
+                                      onValidate={() =>
+                                        validateCodeMutation.mutateAsync({
+                                          code: getEditorCode(),
+                                          flowId: selectedFlowId,
+                                          credentials:
+                                            executionState.pendingCredentials,
+                                        })
                                       }
-                                    }}
-                                    onBubbleClick={(bubbleKey, bubble) => {
-                                      console.log(
-                                        'Bubble clicked:',
-                                        bubbleKey,
-                                        bubble
-                                      );
-
-                                      // Highlight the bubble in the flow
-                                      executionState.highlightBubble(
-                                        String(bubbleKey)
-                                      );
-
-                                      // Highlight the line range in the editor (validate line numbers)
-                                      if (
-                                        bubble.location.startLine > 0 &&
-                                        bubble.location.endLine > 0
-                                      ) {
-                                        setExecutionHighlight({
-                                          startLine: bubble.location.startLine,
-                                          endLine: bubble.location.endLine,
-                                        });
-                                      } else {
-                                        console.warn(
-                                          'Invalid line numbers for clicked bubble:',
-                                          bubble
-                                        );
-                                      }
-                                    }}
-                                    onParamEditInCode={(
-                                      bubbleKey,
-                                      bubble,
-                                      paramName
-                                    ) => {
-                                      // Show the editor first
-                                      if (!showEditor) {
-                                        showEditorPanel();
-                                      }
-
-                                      // Set single-line selection using the shared range highlighter
-                                      // We'll compute the exact line and then set start=end=that line
-
-                                      // Try to find the parameter's exact line from server-provided param location
-                                      try {
-                                        const param = (
-                                          bubble.parameters || []
-                                        ).find(
-                                          (p: { name?: string }) =>
-                                            p?.name === paramName
-                                        ) as
-                                          | ((typeof bubble.parameters)[number] & {
-                                              location?: {
-                                                startLine?: number;
-                                              };
-                                            })
-                                          | undefined;
-
-                                        const paramLine =
-                                          param?.location?.startLine;
-                                        if (
-                                          typeof paramLine === 'number' &&
-                                          paramLine > 0
-                                        ) {
-                                          setExecutionHighlight({
-                                            startLine: paramLine,
-                                            endLine: paramLine,
-                                          });
-                                        } else {
-                                          // Fallback: scan code between bubble range for the property name
-                                          const start = Math.max(
-                                            1,
-                                            bubble.location.startLine || 1
-                                          );
-                                          const end = Math.max(
-                                            start,
-                                            bubble.location.endLine || start
-                                          );
-                                          const codeLines =
-                                            getEditorCode().split('\n');
-                                          const searchStart = Math.min(
-                                            start - 1,
-                                            codeLines.length - 1
-                                          );
-                                          const searchEnd = Math.min(
-                                            end - 1,
-                                            codeLines.length - 1
-                                          );
-                                          let foundLine: number | null = null;
-                                          for (
-                                            let i = searchStart;
-                                            i <= searchEnd;
-                                            i++
-                                          ) {
-                                            const line = codeLines[i];
-                                            if (!line) continue;
-                                            // match `<paramName>:` allowing spaces and quotes
-                                            const re = new RegExp(
-                                              `(^|[,{\n\r\t\\s])${paramName}\\s*:`
-                                            );
-                                            if (re.test(line)) {
-                                              foundLine = i + 1; // 1-based
-                                              break;
-                                            }
-                                          }
-                                          if (foundLine) {
-                                            setExecutionHighlight({
-                                              startLine: foundLine,
-                                              endLine: foundLine,
-                                            });
-                                          } else {
-                                            // No specific line found; default to highlighting the bubble block
-                                            if (
-                                              bubble.location.startLine > 0 &&
-                                              bubble.location.endLine > 0
-                                            ) {
-                                              setExecutionHighlight({
-                                                startLine:
-                                                  bubble.location.startLine,
-                                                endLine:
-                                                  bubble.location.endLine,
-                                              });
-                                            }
-                                          }
-                                        }
-                                      } catch (error) {
-                                        console.warn(
-                                          'Param location resolution failed',
-                                          error
-                                        );
-                                        if (
-                                          bubble.location.startLine > 0 &&
-                                          bubble.location.endLine > 0
-                                        ) {
-                                          setExecutionHighlight({
-                                            startLine:
-                                              bubble.location.startLine,
-                                            endLine: bubble.location.endLine,
-                                          });
-                                        } else {
-                                          setExecutionHighlight(null);
-                                        }
-                                      }
-
-                                      // Keep the flow selection
-                                      executionState.highlightBubble(
-                                        String(bubbleKey)
-                                      );
-                                    }}
-                                    requiredCredentials={(() => {
-                                      return (
-                                        currentFlow?.requiredCredentials || {}
-                                      );
-                                    })()}
-                                    availableCredentials={availableCredentials}
-                                    selectedCredentials={
-                                      executionState.pendingCredentials
-                                    }
-                                    flowName={
-                                      currentFlow?.name ||
-                                      getFlowNameFromCode(getEditorCode())
-                                    }
-                                    inputsSchema={JSON.stringify(
-                                      currentFlow?.inputSchema ||
-                                        extractInputSchemaFromCode(
-                                          getEditorCode()
-                                        )
-                                    )}
-                                    onInputsChange={() => {
-                                      //executionState.setInputs
-                                    }}
-                                    onExecute={handleExecuteFromMainPage}
-                                    isExecuting={executionState.isRunning}
-                                    isFormValid={isExecutionFormValid()}
-                                    executionInputs={
-                                      executionState.executionInputs
-                                    }
-                                    onExecutionInputChange={(field, value) => {
-                                      executionState.setInput(field, value);
-                                    }}
-                                    isLoading={
-                                      createBubbleFlowMutation.isLoading ||
-                                      currentFlowLoading
-                                    }
-                                    onValidate={() =>
-                                      validateCodeMutation.mutateAsync({
-                                        code: getEditorCode(),
-                                        flowId: selectedFlowId!,
-                                        credentials:
-                                          executionState.pendingCredentials,
-                                      })
-                                    }
-                                    isRunning={executionState.isRunning}
-                                    bubbleWithError={
-                                      executionState.bubbleWithError
-                                    }
-                                    completedBubbles={
-                                      executionState.completedBubbles
-                                    }
-                                  />
+                                    />
+                                  ) : (
+                                    <div className="h-full flex items-center justify-center">
+                                      <div className="text-center">
+                                        <p className="text-gray-400 text-lg mb-2">
+                                          No flow selected
+                                        </p>
+                                        <p className="text-gray-500 text-sm">
+                                          Please select a flow from the sidebar
+                                          to view its visualization
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1393,7 +812,11 @@ function App() {
                               defaultSize={showEditor ? 20 : 0}
                               minSize={showEditor ? 30 : 0}
                               maxSize={showEditor ? 100 : 0}
-                              className={showEditor ? '' : 'hidden'}
+                              style={{
+                                visibility: showEditor ? 'visible' : 'hidden',
+                                opacity: showEditor ? 1 : 0,
+                                transition: 'opacity 0.2s ease-in-out',
+                              }}
                             >
                               {CodeEditorPanel}
                             </Panel>
@@ -1430,9 +853,9 @@ function App() {
               <div className="h-[55vh] min-h-[260px] bg-[#0f1115] border border-[#30363d] rounded-t-lg shadow-2xl overflow-hidden transition-transform duration-300 ease-out translate-y-0">
                 <LiveOutput
                   flowId={currentFlow?.id}
-                  events={executionStream.state.events}
-                  currentLine={executionStream.state.currentLine}
-                  executionStats={executionStream.getExecutionStats()}
+                  events={executionState.events}
+                  currentLine={executionState.currentLine}
+                  executionStats={executionState.getExecutionStats()}
                   onToggleCollapse={collapseOutput}
                 />
               </div>
@@ -1452,6 +875,7 @@ function App() {
             const flow = currentFlow;
             if (flow) return flow.name;
           }
+
           return getFlowNameFromCode(getEditorCode());
         })()}
         flowId={currentFlow?.id}
