@@ -80,6 +80,12 @@ export type {
   InstagramPost,
   InstagramProfile,
 } from './bubbles/tool-bubble/instagram-tool.js';
+export { LinkedInTool } from './bubbles/tool-bubble/linkedin-tool.js';
+export type {
+  LinkedInPost,
+  LinkedInAuthor,
+  LinkedInStats,
+} from './bubbles/tool-bubble/linkedin-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {
