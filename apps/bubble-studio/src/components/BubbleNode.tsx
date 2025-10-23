@@ -200,7 +200,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
               hasError={hasError}
               isCompleted={isCompleted}
               isExecuting={isExecuting}
-              isHighlighted={isHighlighted}
               executionStats={executionStats}
             />
             {!hasError && !isExecuting && hasMissingRequirements && (

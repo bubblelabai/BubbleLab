@@ -5,7 +5,6 @@ interface BubbleExecutionBadgeProps {
   hasError?: boolean;
   isCompleted?: boolean;
   isExecuting?: boolean;
-  isHighlighted?: boolean;
   executionStats?: { totalTime: number; count: number };
 }
 
@@ -13,7 +12,6 @@ function BubbleExecutionBadge({
   hasError = false,
   isCompleted = false,
   isExecuting = false,
-  isHighlighted = false,
   executionStats,
 }: BubbleExecutionBadgeProps) {
   // Don't render anything if no state to show

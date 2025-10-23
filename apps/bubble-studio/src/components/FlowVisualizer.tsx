@@ -305,7 +305,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const dependencyVariableId = String(dependencyNode.variableId);
       const hasErrorState = bubbleWithError === dependencyVariableId;
       const isCompletedState = dependencyVariableId in completedBubbles;
-      const isExecutingState = highlightedBubble === dependencyVariableId;
       const executionStats = completedBubbles[dependencyVariableId];
 
       const node: Node = {
