@@ -73,7 +73,7 @@ export function useUpdateBubbleFlow(flowId?: number | null) {
 
       return response;
     },
-    onSuccess: (response, variables) => {
+    onSuccess: (response) => {
       // Update the bubble parameters in the useBubbleFlow store with the response
       if (response && response.bubbleParameters) {
         // The response contains the updated bubble parameters from the server

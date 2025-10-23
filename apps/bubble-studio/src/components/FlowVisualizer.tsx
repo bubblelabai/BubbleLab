@@ -1,11 +1,9 @@
-import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Controls,
   Background,
   BackgroundVariant,
-  useNodesState,
-  useEdgesState,
   useReactFlow,
   ReactFlowProvider,
 } from '@xyflow/react';
@@ -72,7 +70,7 @@ function generateDependencyNodeId(
 
 // Inner component that has access to ReactFlow instance
 function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
-  const { fitView, getViewport, setViewport } = useReactFlow();
+  const { fitView } = useReactFlow();
 
   // Get all data from global stores
   const currentFlow = useBubbleFlow(flowId);
@@ -313,7 +311,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           bubbleKey: nodeId,
           onParameterChange: undefined,
           isHighlighted:
-            highlightedBubble === nodeId ||
             highlightedBubble === String(dependencyNode.variableId),
           onHighlightChange: () =>
             highlightBubble(String(dependencyNode.variableId) || nodeId),

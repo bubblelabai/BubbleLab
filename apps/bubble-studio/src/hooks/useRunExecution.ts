@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useExecutionHistory } from './useExecutionHistory';
+import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 
 interface RunExecutionOptions {
   validateCode?: boolean;
@@ -130,7 +131,7 @@ export function useRunExecution(
                   executionState.setLastExecutingBubble(bubbleId);
 
                   // Read directly from store to verify it was set
-                  const storeState = getExecutionStore(flowId);
+                  getExecutionStore(flowId);
 
                   // Highlight the bubble in the flow
                   executionState.highlightBubble(bubbleId);
@@ -330,7 +331,7 @@ export function useRunExecution(
               flowId,
               credentials: executionState.pendingCredentials,
             });
-          } catch (error) {
+          } catch {
             toast.error('Failed to update credentials');
             executionState.stopExecution();
             return;
@@ -349,7 +350,7 @@ export function useRunExecution(
               executionState.stopExecution();
               return;
             }
-          } catch (error) {
+          } catch {
             toast.error('Code validation failed');
             executionState.stopExecution();
             return;
@@ -381,10 +382,15 @@ export function useRunExecution(
       validateCodeMutation,
       updateBubbleFlowMutation,
       executeWithStreaming,
+      setExecutionHighlight,
+      refetchExecutionHistory,
+      refetchSubscriptionStatus,
     ]
   );
 
-  const validateInputs = (currentFlow: any) => {
+  const validateInputs = (
+    currentFlow: BubbleFlowDetailsResponse | undefined
+  ) => {
     const reasons: string[] = [];
 
     if (!currentFlow) {
@@ -409,7 +415,7 @@ export function useRunExecution(
           reasons.push(`Missing required input: ${fieldName}`);
         }
       });
-    } catch (error) {
+    } catch {
       // If schema parsing fails, assume valid
       return { isValid: true, reasons: [] };
     }
@@ -417,7 +423,7 @@ export function useRunExecution(
     return { isValid: reasons.length === 0, reasons };
   };
 
-  const validateCredentials = (currentFlow: any) => {
+  const validateCredentials = (currentFlow: BubbleFlowDetailsResponse) => {
     const reasons: string[] = [];
 
     if (!currentFlow) {
@@ -459,9 +465,11 @@ export function useRunExecution(
       reasons.push(...inputValidation.reasons);
     }
 
-    const credentialValidation = validateCredentials(currentFlow);
-    if (!credentialValidation.isValid) {
-      reasons.push(...credentialValidation.reasons);
+    if (currentFlow) {
+      const credentialValidation = validateCredentials(currentFlow!);
+      if (!credentialValidation.isValid) {
+        reasons.push(...credentialValidation.reasons);
+      }
     }
 
     return { isValid: reasons.length === 0, reasons };

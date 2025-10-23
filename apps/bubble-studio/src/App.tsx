@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './components/AuthComponents';
@@ -36,25 +35,14 @@ import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
-import { useCredentials } from '@/hooks/useCredentials';
 import { useClerkTokenSync } from '@/hooks/useClerkTokenSync';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
 import { useCreateBubbleFlow } from '@/hooks/useCreateBubbleFlow';
 import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
 import { useExecutionHistory } from '@/hooks/useExecutionHistory';
-import { api } from '@/lib/api';
-import type {
-  BubbleFlowDetailsResponse,
-  CredentialType,
-} from '@bubblelab/shared-schemas';
 import { getFlowNameFromCode } from '@/utils/codeParser';
-import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { API_BASE_URL } from '@/env';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import { useSubscription } from './hooks/useSubscription';
-import { cleanupFlattenedKeys } from '@/utils/codeParser';
-import { extractInputSchemaFromCode } from '@/utils/inputSchemaParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useRunExecution } from '@/hooks/useRunExecution';
 
@@ -82,7 +70,6 @@ function App() {
     togglePrompt,
     selectFlow,
     navigateToPage,
-    showEditorPanel,
     closeSidebar,
     collapseOutput,
     expandOutput,
@@ -102,14 +89,12 @@ function App() {
     setSelectedPreset,
   } = useGenerationStore();
   // Editor Store - Monaco editor
-  const { closeSidePanel, openPearlChat } = useEditorStore();
+  const { openPearlChat } = useEditorStore();
   // Per-flow Execution Store - always call the hook
   const executionState = useExecutionStore(selectedFlowId);
 
   // ============= React Query Hooks =============
-  const queryClient = useQueryClient();
-  const { data: currentFlow, loading: currentFlowLoading } =
-    useBubbleFlow(selectedFlowId);
+  const { data: currentFlow } = useBubbleFlow(selectedFlowId);
   const { runFlow, isRunning, canExecute } = useRunExecution(selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
   const { data: bubbleFlowList } = useBubbleFlowList();
@@ -169,12 +154,10 @@ function App() {
   useClerkTokenSync();
 
   // Use React Query for credentials fetching - MUST be called before any early returns
-  const { data: availableCredentials = [] } =
-    useCredentials(API_BASE_URL_LOCAL);
-
   // Fetch execution history to check if flow has been executed (limit to 1 for performance)
-  const { data: executionHistory, refetch: refetchExecutionHistory } =
-    useExecutionHistory(selectedFlowId, { limit: 50 });
+  const { data: executionHistory } = useExecutionHistory(selectedFlowId, {
+    limit: 50,
+  });
   // Use the FlowGeneration hook to get the generateCode function
   const { generateCode: generateCodeFromHook } = useFlowGeneration();
   // Initialize execution hook with all the callbacks
