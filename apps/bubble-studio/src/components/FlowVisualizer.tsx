@@ -79,7 +79,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
   const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
-  const { setExecutionHighlight } = useEditorStore();
+  const { setExecutionHighlight, updateCronSchedule } = useEditorStore();
 
   // Initialize execution hook
   const { runFlow } = useRunExecution(flowId);
@@ -453,24 +453,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             inputSchema: currentFlow.data?.inputSchema || {},
             defaultInputs: currentFlow.data?.defaultInputs || {},
             onCronScheduleChange: (newSchedule: string) => {
-              // TODO: Implement cron schedule update logic
-              console.log('Cron schedule changed to:', newSchedule);
+              updateCronSchedule(newSchedule);
             },
             onActiveToggle: async (
               isActive: boolean,
               defaultInputs?: Record<string, unknown>
-            ) => {
-              // TODO: Implement active toggle logic with validation
-              console.log(
-                'Cron schedule active:',
-                isActive,
-                'with inputs:',
-                defaultInputs
-              );
-            },
+            ) => {},
             onDefaultInputChange: (fieldName: string, value: unknown) => {
               // TODO: Implement default input change logic
-              console.log('Default input changed:', fieldName, value);
+              setInput(fieldName, value);
             },
             onExecuteFlow: async () => {
               await runFlow({

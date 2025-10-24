@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as monaco from 'monaco-editor';
+import { toast } from 'react-toastify';
 
 /**
  * Monaco Editor State Store
@@ -156,6 +157,13 @@ interface EditorState {
    * Open Pearl chat mode (general AI chat - can read/replace entire code)
    */
   openPearlChat: () => void;
+
+  /**
+   * Update cron schedule in the editor
+   * @param newSchedule - The new cron schedule expression
+   * @throws Error if readonly cronSchedule constant is not found
+   */
+  updateCronSchedule: (newSchedule: string) => void;
 }
 
 /**
@@ -224,6 +232,46 @@ export const useEditorStore = create<EditorState>((set) => ({
       selectedBubbleName: null,
       targetInsertLine: null,
     }),
+
+  updateCronSchedule: (newSchedule: string) => {
+    const { editorInstance } = useEditorStore.getState();
+    if (!editorInstance) {
+      toast.error('Editor instance not available');
+      return;
+    }
+
+    const model = editorInstance.getModel();
+    if (!model) {
+      toast.error('Editor model not available');
+      return;
+    }
+
+    const currentCode = model.getValue();
+    const lines = currentCode.split('\n');
+
+    // Look for existing readonly cronSchedule line (case-insensitive)
+    let cronScheduleLineIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].toLowerCase();
+      if (line.includes('readonly cronschedule') && line.includes('=')) {
+        cronScheduleLineIndex = i;
+        break;
+      }
+    }
+
+    if (cronScheduleLineIndex === -1) {
+      // If no existing line found, throw error as required
+      toast.error('Cron schedule not found');
+    }
+
+    // Update the cron schedule line
+    const updatedLine = `readonly cronSchedule = '${newSchedule}';`;
+    lines[cronScheduleLineIndex] = updatedLine;
+
+    // Set the updated code back to the editor
+    const updatedCode = lines.join('\n');
+    model.setValue(updatedCode);
+  },
 }));
 
 // ============= Derived Selectors =============
