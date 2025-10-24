@@ -62,11 +62,11 @@ export function extractAndStreamThinkingTokens(
 /**
  * Format final response with special handling for Gemini image models and JSON mode
  */
-export async function formatFinalResponse(
+export function formatFinalResponse(
   response: string | unknown,
   modelName: string,
   jsonMode?: boolean
-): Promise<{ response: string; error?: string }> {
+): { response: string; error?: string } {
   let finalResponse =
     typeof response === 'string' ? response : JSON.stringify(response);
   // If response is an array, look for first parsable JSON in text

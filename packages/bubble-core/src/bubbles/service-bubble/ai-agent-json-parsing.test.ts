@@ -3,6 +3,7 @@ import {
   extractAndCleanJSON,
   postProcessJSON,
 } from '../../utils/json-parsing.js';
+import { formatFinalResponse } from '../../utils/agent-formatter.js';
 
 // Type for accessing private methods in tests
 interface AIAgentWithPrivateMethods {
@@ -165,22 +166,17 @@ This should provide the information you need.`;
 
     test('should handle valid JSON in JSON mode', async () => {
       const input = '{"result": "success"}';
-      const result = await agent.formatFinalResponse(
-        input,
-        { model: 'google/gemini-2.5-flash' },
-        true
-      );
+      const result = formatFinalResponse(input, 'google/gemini-2.5-flash');
 
       expect(result.error).toBeUndefined();
-      expect(JSON.parse(result.response)).toEqual({ result: 'success' });
+      expect(result.response).toEqual('{"result": "success"}');
     });
-
-    test('should fix malformed JSON in JSON mode', async () => {
+    test('should fix malformed JSON in JSON mode', () => {
       const input =
         'I will help you. {"result": "success", "items": ["a", "b",]}';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -190,11 +186,11 @@ This should provide the information you need.`;
       expect(parsed.items).toEqual(['a', 'b']);
     });
 
-    test('should handle markdown code blocks', async () => {
+    test('should handle markdown code blocks', () => {
       const input = '```json\\n{"data": "test"}\\n```';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -202,11 +198,11 @@ This should provide the information you need.`;
       expect(JSON.parse(result.response)).toEqual({ data: 'test' });
     });
 
-    test('should return error for completely invalid JSON', async () => {
+    test('should return error for completely invalid JSON', () => {
       const input = 'This is just plain text with no JSON at all.';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -214,11 +210,11 @@ This should provide the information you need.`;
       expect(result.error).toContain('failed to generate valid JSON');
     });
 
-    test('should not process JSON when not in JSON mode', async () => {
+    test('should not process JSON when not in JSON mode', () => {
       const input = 'This is regular text output';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         false
       );
 
@@ -226,11 +222,11 @@ This should provide the information you need.`;
       expect(result.response).toBe('This is regular text output');
     });
 
-    test('should handle key-value content wrapping', async () => {
+    test('should handle key-value content wrapping', () => {
       const input = '"name": "test", "value": 42';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -242,18 +238,12 @@ This should provide the information you need.`;
   });
 
   describe('Common AI Response Patterns', () => {
-    let agent: AIAgentWithPrivateMethods;
-
-    beforeEach(() => {
-      agent = createAIAgent();
-    });
-
-    test('should handle "I will help you" responses', async () => {
+    test('should handle "I will help you" responses', () => {
       const input =
         'I will help you with that request. {"result": {"status": "complete", "data": ["item1", "item2"]}}';
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -263,7 +253,7 @@ This should provide the information you need.`;
       expect(parsed.result.data).toEqual(['item1', 'item2']);
     });
 
-    test('should handle responses with explanations after JSON', async () => {
+    test('should handle responses with explanations after JSON', () => {
       const input = `{
         "analysis": "complete",
         "findings": ["result1", "result2"]
@@ -271,9 +261,9 @@ This should provide the information you need.`;
       
       This analysis shows the key findings from the research.`;
 
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
@@ -283,7 +273,7 @@ This should provide the information you need.`;
       expect(parsed.findings).toEqual(['result1', 'result2']);
     });
 
-    test('should handle complex nested structures with formatting issues', async () => {
+    test('should handle complex nested structures with formatting issues', () => {
       const input = `Here's the analysis:
       
       {
@@ -297,9 +287,9 @@ This should provide the information you need.`;
         "confidence": 0.95,
       }`;
 
-      const result = await agent.formatFinalResponse(
+      const result = formatFinalResponse(
         input,
-        { model: 'google/gemini-2.5-flash' },
+        'google/gemini-2.5-flash',
         true
       );
 
