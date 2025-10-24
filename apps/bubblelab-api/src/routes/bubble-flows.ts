@@ -194,7 +194,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
       originalCode: data.code,
       bubbleParameters: validationResult.bubbleParameters || {},
       inputSchema: validationResult.inputSchema || {},
-      eventType: validationResult.eventType,
+      eventType: validationResult.trigger?.type || 'webhook/http',
     })
     .returning({ id: bubbleFlows.id });
 
@@ -208,7 +208,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
     message: 'BubbleFlow created successfully',
     inputSchema: validationResult.inputSchema || {},
     bubbleParameters: validationResult.bubbleParameters || {},
-    eventType: validationResult.eventType,
+    eventType: validationResult.trigger?.type || 'webhook/http',
     requiredCredentials,
   };
 
