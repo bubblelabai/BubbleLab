@@ -39,6 +39,7 @@ import webhookRoutes from './routes/webhooks.js';
 import authRoutes from './routes/auth.js';
 import subscriptionRoutes from './routes/subscription.js';
 import joinWaitlistRoutes from './routes/join-waitlist.js';
+import { startCronScheduler } from './services/cron-scheduler.js';
 import aiRoutes from './routes/ai.js';
 
 const app = new OpenAPIHono({
@@ -177,6 +178,9 @@ logMemoryUsage();
 fetch('https://api.ipify.org?format=json')
   .then((response) => response.json())
   .then((data) => console.log('Current IP:', (data as { ip: string }).ip));
+
+// Start cron scheduler (in-process)
+startCronScheduler();
 
 export default {
   port,

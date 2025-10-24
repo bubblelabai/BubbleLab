@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -119,15 +119,29 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     [bubbleParameters]
   );
 
-  // Set exection input to default inputs if a
+  // Track if we've initialized defaults for this flow to avoid loops
+  const didInitDefaultsForFlow = useRef<number | null>(null);
+
+  // Initialize execution inputs from defaults once per flow (avoid loops)
   useEffect(() => {
+    const defaults = currentFlow?.defaultInputs || {};
+    const hasDefaults = Object.keys(defaults).length > 0;
+    const hasExisting = Object.keys(executionInputs || {}).length > 0;
     if (
-      currentFlow?.defaultInputs &&
-      Object.keys(executionInputs).length === 0
+      currentFlow?.id &&
+      didInitDefaultsForFlow.current !== currentFlow.id &&
+      !hasExisting &&
+      hasDefaults
     ) {
-      executionState.setInputs(currentFlow.defaultInputs);
+      executionState.setInputs(defaults);
+      didInitDefaultsForFlow.current = currentFlow.id;
     }
-  }, [currentFlow?.defaultInputs, executionState]);
+  }, [
+    currentFlow?.id,
+    currentFlow?.defaultInputs,
+    executionInputs,
+    executionState.setInputs,
+  ]);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
