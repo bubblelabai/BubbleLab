@@ -24,7 +24,11 @@ import {
 } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
-import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
+import type { StreamingEvent } from '@bubblelab/shared-schemas';
+import {
+  extractAndStreamThinkingTokens,
+  formatFinalResponse,
+} from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 
 // Define tool hook context - provides access to messages and tool call details
@@ -43,34 +47,6 @@ export type ToolHookAfter = (
 export type ToolHookBefore = (
   context: ToolHookContext
 ) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
-
-// Define streaming event types for real-time AI agent feedback
-export type StreamingEvent =
-  | {
-      type: 'start';
-      data: { message: string; maxIterations: number; timestamp: string };
-    }
-  | { type: 'llm_start'; data: { model: string; temperature: number } }
-  | { type: 'token'; data: { content: string; messageId: string } }
-  | { type: 'llm_complete'; data: { messageId: string; totalTokens?: number } }
-  | {
-      type: 'tool_start';
-      data: { tool: string; input: unknown; callId: string };
-    }
-  | {
-      type: 'tool_complete';
-      data: { callId: string; output: unknown; duration: number };
-    }
-  | { type: 'iteration_start'; data: { iteration: number } }
-  | {
-      type: 'iteration_complete';
-      data: { iteration: number; hasToolCalls: boolean };
-    }
-  | { type: 'error'; data: { error: string; recoverable: boolean } }
-  | {
-      type: 'complete';
-      data: { result: AIAgentResult; totalDuration: number };
-    };
 
 // Type for streaming callback function
 export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;
@@ -282,10 +258,12 @@ type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   // Optional hooks for intercepting tool calls
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  streamingCallback?: StreamingCallback;
 };
 type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  streamingCallback?: StreamingCallback;
 };
 
 type AIAgentResult = z.output<typeof AIAgentResultSchema>;
@@ -315,6 +293,7 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
 
   constructor(
@@ -327,6 +306,7 @@ export class AIAgentBubble extends ServiceBubble<
     super(params, context);
     this.beforeToolCallHook = params.beforeToolCall;
     this.afterToolCallHook = params.afterToolCall;
+    this.streamingCallback = params.streamingCallback;
     this.factory = new BubbleFactory();
   }
 
@@ -518,117 +498,6 @@ export class AIAgentBubble extends ServiceBubble<
     }
   }
 
-  /**
-   * Format final response with special handling for Gemini image models and JSON mode
-   */
-  private async formatFinalResponse(
-    response: string | unknown,
-    modelConfig: AIAgentParamsParsed['model'],
-    jsonMode?: boolean
-  ): Promise<{ response: string; error?: string }> {
-    let finalResponse =
-      typeof response === 'string' ? response : JSON.stringify(response);
-    // If response is an array, look for first parsable JSON in text
-
-    console.log(
-      '[AIAgent] Checking if response is an array:',
-      Array.isArray(response)
-    );
-    console.log('[AIAgent] Response:', response);
-    if (Array.isArray(response)) {
-      for (const item of response) {
-        if (
-          item &&
-          typeof item === 'object' &&
-          'type' in item &&
-          item.type === 'text'
-        ) {
-          try {
-            const result = parseJsonWithFallbacks(item.text);
-            if (result.success) {
-              return { response: result.response };
-            }
-          } catch {
-            // Continue to next item if not valid JSON
-            continue;
-          }
-        }
-      }
-    }
-
-    // Special handling for Gemini image models that return images in inlineData format
-    if (
-      modelConfig.model.includes('gemini') &&
-      modelConfig.model.includes('image')
-    ) {
-      finalResponse = this.formatGeminiImageResponse(finalResponse);
-    } else if (jsonMode && typeof finalResponse === 'string') {
-      // Handle JSON mode: use the improved utility function
-      const result = parseJsonWithFallbacks(finalResponse);
-
-      if (!result.success) {
-        return {
-          response: result.response,
-          error: `${this.params.name || 'AI Agent'} failed to generate valid JSON. Post-processing attempted but JSON is still malformed. Original response: ${finalResponse}`,
-        };
-      }
-
-      return { response: result.response };
-    }
-
-    console.log('[AIAgent] Final response:', finalResponse);
-
-    return { response: finalResponse };
-  }
-
-  /**
-   * Convert Gemini's inlineData format to LangChain-compatible data URI format
-   */
-  private formatGeminiImageResponse(response: string | unknown): string {
-    if (typeof response !== 'string') {
-      return String(response);
-    }
-
-    try {
-      console.log('[AIAgent] Formatting Gemini image response...');
-      // Look for Gemini's inlineData format in the response
-      const inlineDataRegex =
-        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"\s*\}\s*\}/;
-
-      const match = response.match(inlineDataRegex);
-
-      if (match) {
-        const [, mimeType, data] = match;
-        const dataUri = `data:${mimeType};base64,${data}`;
-        console.log(
-          `[AIAgent] Extracted first data URI from Gemini inlineData: ${mimeType}`
-        );
-        return dataUri;
-      }
-
-      // Also check for the more complex format with text
-      const complexInlineDataRegex =
-        /\{\s*"inlineData"\s*:\s*\{\s*"mimeType"\s*:\s*"([^"]+)"\s*,\s*"data"\s*:\s*"([^"]+)"/;
-
-      const complexMatch = response.match(complexInlineDataRegex);
-
-      if (complexMatch) {
-        const [, mimeType, data] = complexMatch;
-        const dataUri = `data:${mimeType};base64,${data}`;
-        console.log(
-          `[AIAgent] Extracted first data URI from complex Gemini inlineData: ${mimeType}`
-        );
-        return dataUri;
-      }
-
-      // If no inlineData found, return original response
-      return response;
-    } catch (error) {
-      console.warn('[AIAgent] Error formatting Gemini image response:', error);
-      return response;
-    }
-  }
-
   private initializeModel(modelConfig: AIAgentParamsParsed['model']) {
     const { model, temperature, maxTokens } = modelConfig;
     const slashIndex = model.indexOf('/');
@@ -639,6 +508,9 @@ export class AIAgentBubble extends ServiceBubble<
     // This will throw immediately if credentials are missing
     const apiKey = this.chooseCredential();
 
+    // Enable streaming if streamingCallback is provided
+    const enableStreaming = !!this.streamingCallback;
+
     switch (provider) {
       case 'openai':
         return new ChatOpenAI({
@@ -646,6 +518,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          streaming: enableStreaming,
         });
       case 'google':
         return new ChatGoogleGenerativeAI({
@@ -653,6 +526,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxOutputTokens: maxTokens,
           apiKey,
+          streaming: enableStreaming,
         });
       case 'anthropic':
         return new ChatAnthropic({
@@ -660,7 +534,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           anthropicApiKey: apiKey,
           maxTokens,
-          streaming: true,
+          streaming: enableStreaming,
           apiKey,
         });
       case 'openrouter':
@@ -671,8 +545,15 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          streaming: enableStreaming,
           configuration: {
             baseURL: 'https://openrouter.ai/api/v1',
+          },
+          modelKwargs: {
+            reasoning: {
+              effort: 'medium',
+              exclude: false,
+            },
           },
         });
       default:
@@ -829,6 +710,17 @@ export class AIAgentBubble extends ServiceBubble<
           messages: currentMessages,
         });
 
+        const startTime = Date.now();
+
+        this.streamingCallback?.({
+          type: 'tool_start',
+          data: {
+            tool: toolCall.name,
+            input: toolCall.args,
+            callId: toolCall.id!,
+          },
+        });
+
         // If hook returns modified messages/toolInput, apply them
         if (hookResult_before) {
           if (hookResult_before.messages) {
@@ -870,6 +762,15 @@ export class AIAgentBubble extends ServiceBubble<
             this.shouldStopAfterTools = true;
           }
         }
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            tool: toolCall.name,
+            output: toolOutput,
+            duration: Date.now() - startTime,
+          },
+        });
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
         const errorMessage = new ToolMessage({
@@ -905,9 +806,53 @@ export class AIAgentBubble extends ServiceBubble<
       // If we have tools, bind them to the LLM
       const modelWithTools = tools.length > 0 ? llm.bindTools(tools) : llm;
 
-      const response = await modelWithTools.invoke(allMessages);
+      // Use streaming if streamingCallback is provided
+      if (this.streamingCallback) {
+        const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-      return { messages: [response] };
+        // Use invoke with callbacks for streaming
+        const response = await modelWithTools.invoke(allMessages, {
+          callbacks: [
+            {
+              handleLLMStart: async (): Promise<void> => {
+                await this.streamingCallback?.({
+                  type: 'llm_start',
+                  data: {
+                    model: this.params.model.model,
+                    temperature: this.params.model.temperature,
+                  },
+                });
+              },
+              handleLLMEnd: async (output): Promise<void> => {
+                // Extract thinking tokens from different model providers
+                const thinking = extractAndStreamThinkingTokens(output);
+                if (thinking) {
+                  await this.streamingCallback?.({
+                    type: 'think',
+                    data: {
+                      content: thinking,
+                      messageId,
+                    },
+                  });
+                }
+                await this.streamingCallback?.({
+                  type: 'llm_complete',
+                  data: {
+                    messageId,
+                    totalTokens: output.llmOutput?.usage_metadata?.total_tokens,
+                  },
+                });
+              },
+            },
+          ],
+        });
+
+        return { messages: [response] };
+      } else {
+        // Non-streaming fallback
+        const response = await modelWithTools.invoke(allMessages);
+        return { messages: [response] };
+      }
     };
 
     // Define conditional edge function
@@ -1173,9 +1118,9 @@ export class AIAgentBubble extends ServiceBubble<
       const response = finalMessage?.content || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await this.formatFinalResponse(
+      const formattedResult = await formatFinalResponse(
         response,
-        this.params.model,
+        this.params.model.model,
         jsonMode
       );
 
@@ -1461,6 +1406,7 @@ export class AIAgentBubble extends ServiceBubble<
                   type: 'tool_complete',
                   data: {
                     callId,
+                    tool: callData.name,
                     output: event.data.output,
                     duration,
                   },
@@ -1500,9 +1446,9 @@ export class AIAgentBubble extends ServiceBubble<
       const accumulatedResponse = accumulatedContent || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await this.formatFinalResponse(
+      const formattedResult = await formatFinalResponse(
         accumulatedResponse,
-        this.params.model,
+        this.params.model.model,
         jsonMode
       );
 

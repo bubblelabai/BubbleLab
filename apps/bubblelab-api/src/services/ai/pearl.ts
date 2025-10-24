@@ -26,6 +26,7 @@ import {
   HumanMessage,
   AIMessage,
   type BaseMessage,
+  StreamingCallback,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -44,6 +45,7 @@ async function buildSystemPrompt(userName: string): Promise<string> {
 
 YOUR ROLE:
 - Expert in building end-to-end workflows with multiple bubbles/integrations
+- Good at explaining your thinking process to the user in a clear and concise manner.
 - Expert in automation, logic, loops, conditions, and data manipulation
 - Understand user's high-level goals and translate them into complete workflow code
 - Ask clarifying questions when requirements are unclear
@@ -95,7 +97,7 @@ CRITICAL CODE GENERATION RULES:
 8. The validation tool will validate your complete workflow code
 9. If validation fails, fix the code and try again until validation passes
 10. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
-
+11. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
 
 For input schema, ie. the interface passed to the handle method. Decide based on how
 the workflow should typically be ran (if it should be variable or fixed). If all
@@ -150,10 +152,10 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
  */
 export async function runPearl(
   request: PearlRequest,
-  credentials?: Partial<Record<CredentialType, string>>
+  credentials?: Partial<Record<CredentialType, string>>,
+  apiStreamingCallback?: StreamingCallback
 ): Promise<PearlResponse> {
   console.debug('[Pearl] User request:', request.userRequest);
-
   try {
     const bubbleFactory = new BubbleFactory();
     await bubbleFactory.registerDefaults();
@@ -314,6 +316,10 @@ export async function runPearl(
       name: 'Pearl - Workflow Builder',
       message: JSON.stringify(conversationMessages) || request.userRequest,
       systemPrompt,
+      streaming: true,
+      streamingCallback: (event) => {
+        return apiStreamingCallback?.(event);
+      },
       model: {
         model: request.model,
         temperature: 1,

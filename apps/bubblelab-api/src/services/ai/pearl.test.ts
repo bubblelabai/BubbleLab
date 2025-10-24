@@ -188,8 +188,6 @@ describe('Pearl AI Agent', () => {
 
   it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
     const testCase = createSimpleEmailWorkflowTestCase();
-    await runTestCase(
-      createTestCase(testCase, 'openrouter/x-ai/grok-code-fast-1')
-    );
+    await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.6'));
   }, 60000);
 });
