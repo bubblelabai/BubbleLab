@@ -28,6 +28,7 @@ import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as gmailReplyTemplate from './template_codes/gmailReplyAssistant';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
+import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -141,6 +142,15 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Use ResearchAgentTool to search trending content formats from TikTok/Reels/Shorts trend sites (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, save formatted markdown report to Google Drive, then email beautiful HTML summary with top ideas and metrics.',
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
+    isPopular: true,
+  },
+  {
+    id: 'linkedin-lead-gen',
+    name: 'LinkedIn Lead Generation (LinkedIn, Email)',
+    prompt:
+      "Search LinkedIn for leads based on a given lead persona and keyword, scrape the profile and generate a report with the lead's name, headline, profile URL, username, reason for being a lead, post text, post URL, additional posts, and story analysis.",
+    code: linkedinLeadGenTemplate.templateCode,
+    category: 'Lead Generation',
     isPopular: true,
   },
 ];

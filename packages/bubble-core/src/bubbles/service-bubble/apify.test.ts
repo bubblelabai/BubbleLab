@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ApifyBubble } from './apify.js';
-import type { ApifyParamsInput } from './apify.js';
+import { ApifyBubble, TypedApifyParamsInput } from './apify/apify.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
 /**
@@ -13,7 +12,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 describe('ApifyBubble', () => {
   describe('Schema Validation', () => {
     it('should validate generic actor parameters (Instagram scraper example)', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/instagram-scraper'> = {
         actorId: 'apify/instagram-scraper',
         input: {
           directUrls: ['https://www.instagram.com/humansofny/'],
@@ -29,7 +28,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should validate generic actor parameters (web scraper example)', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -44,7 +43,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should accept any actor ID string', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<string> = {
         actorId: 'custom/my-scraper',
         input: {
           anyField: 'anyValue',
@@ -60,7 +59,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should apply default values', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -73,7 +72,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should accept arbitrary input structure', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/reddit-scraper'> = {
         actorId: 'apify/reddit-scraper',
         input: {
           subreddits: ['javascript', 'webdev'],
@@ -115,7 +114,7 @@ describe('ApifyBubble', () => {
 
   describe('Credential Selection', () => {
     it('should return undefined when no credentials provided', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -128,7 +127,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should select APIFY_CRED when provided', () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -146,7 +145,7 @@ describe('ApifyBubble', () => {
 
   describe('Integration Test', () => {
     it('should fail when no API token is provided', async () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -172,7 +171,7 @@ describe('ApifyBubble', () => {
         return;
       }
 
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -199,7 +198,7 @@ describe('ApifyBubble', () => {
 
   describe('Error Handling', () => {
     it('should handle missing credentials gracefully', async () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
@@ -214,7 +213,7 @@ describe('ApifyBubble', () => {
     });
 
     it('should return error structure on failure', async () => {
-      const params: ApifyParamsInput = {
+      const params: TypedApifyParamsInput<'apify/web-scraper'> = {
         actorId: 'apify/web-scraper',
         input: {
           startUrls: [{ url: 'https://example.com' }],
