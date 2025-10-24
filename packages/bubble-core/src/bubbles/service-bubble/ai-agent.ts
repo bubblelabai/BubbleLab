@@ -24,6 +24,7 @@ import {
 } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
+import type { StreamingEvent } from '@bubblelab/shared-schemas';
 import {
   extractAndStreamThinkingTokens,
   formatFinalResponse,
@@ -46,35 +47,6 @@ export type ToolHookAfter = (
 export type ToolHookBefore = (
   context: ToolHookContext
 ) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
-
-// Define streaming event types for real-time AI agent feedback
-export type StreamingEvent =
-  | {
-      type: 'start';
-      data: { message: string; maxIterations: number; timestamp: string };
-    }
-  | { type: 'llm_start'; data: { model: string; temperature: number } }
-  | { type: 'token'; data: { content: string; messageId: string } }
-  | { type: 'think'; data: { content: string; messageId: string } }
-  | { type: 'llm_complete'; data: { messageId: string; totalTokens?: number } }
-  | {
-      type: 'tool_start';
-      data: { tool: string; input: unknown; callId: string };
-    }
-  | {
-      type: 'tool_complete';
-      data: { callId: string; output: unknown; duration: number };
-    }
-  | { type: 'iteration_start'; data: { iteration: number } }
-  | {
-      type: 'iteration_complete';
-      data: { iteration: number; hasToolCalls: boolean };
-    }
-  | { type: 'error'; data: { error: string; recoverable: boolean } }
-  | {
-      type: 'complete';
-      data: { result: AIAgentResult; totalDuration: number };
-    };
 
 // Type for streaming callback function
 export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;

@@ -23,7 +23,6 @@ export type { BubbleTriggerEvent } from './bubble-trigger/types.js';
 export { HelloWorldBubble } from './bubbles/service-bubble/hello-world.js';
 export {
   AIAgentBubble,
-  type StreamingEvent,
   type StreamingCallback,
   type ToolHookContext,
   type ToolHookBefore,

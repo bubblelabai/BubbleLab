@@ -26,6 +26,7 @@ import {
   HumanMessage,
   AIMessage,
   type BaseMessage,
+  StreamingCallback,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -150,7 +151,8 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
  */
 export async function runPearl(
   request: PearlRequest,
-  credentials?: Partial<Record<CredentialType, string>>
+  credentials?: Partial<Record<CredentialType, string>>,
+  streamingCallback?: StreamingCallback
 ): Promise<PearlResponse> {
   console.debug('[Pearl] User request:', request.userRequest);
 
@@ -314,9 +316,7 @@ export async function runPearl(
       name: 'Pearl - Workflow Builder',
       message: JSON.stringify(conversationMessages) || request.userRequest,
       systemPrompt,
-      streamingCallback: (event) => {
-        console.log('[Pearl] Streaming event:', JSON.stringify(event));
-      },
+      streamingCallback,
       model: {
         model: request.model,
         temperature: 1,
