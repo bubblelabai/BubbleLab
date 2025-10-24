@@ -24,7 +24,7 @@ import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useCredentials } from '../hooks/useCredentials';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useUIStore } from '../stores/uiStore';
-import { useEditorStore } from '../stores/editorStore';
+import { useEditor } from '../hooks/useEditor';
 import { API_BASE_URL } from '../env';
 import CronScheduleNode from './CronScheduleNode';
 
@@ -80,7 +80,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
   const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
-  const { setExecutionHighlight, updateCronSchedule } = useEditorStore();
+  const { hasUnsavedChanges, setExecutionHighlight, updateCronSchedule } =
+    useEditor(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
 
   // Initialize execution hook
@@ -827,15 +828,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             The flow code needs to be validated to extract bubble parameters
           </p>
           {onValidate && (
-            <button
-              type="button"
-              onClick={onValidate}
-              disabled={isExecuting}
-              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2 mx-auto"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Sync with code
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onValidate}
+                disabled={isExecuting}
+                className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Sync with code
+              </button>
+              {hasUnsavedChanges && (
+                <div className="bg-orange-500/20 border border-orange-500/50 px-3 py-1 rounded-lg text-xs font-medium text-orange-300">
+                  Unsaved changes
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -848,7 +856,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       style={{ backgroundColor: '#1e1e1e' }}
     >
       {onValidate && (
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
             type="button"
             onClick={onValidate}
@@ -858,6 +866,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             <RefreshCw className="w-3 h-3" />
             Sync with code
           </button>
+          {hasUnsavedChanges && (
+            <div className="bg-orange-500/20 border border-orange-500/50 px-2 py-1 rounded text-xs font-medium text-orange-300">
+              Unsaved
+            </div>
+          )}
         </div>
       )}
 
