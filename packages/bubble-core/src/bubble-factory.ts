@@ -140,6 +140,9 @@ export class BubbleFactory {
       'slack-formatter-agent',
       'research-agent-tool',
       'reddit-scrape-tool',
+      'apify',
+      'instagram-tool',
+      'linkedin-tool',
     ];
   }
 
@@ -173,6 +176,7 @@ export class BubbleFactory {
     const { GoogleCalendarBubble } = await import(
       './bubbles/service-bubble/google-calendar.js'
     );
+    const { ApifyBubble } = await import('./bubbles/service-bubble/apify');
     const { BubbleFlowGeneratorWorkflow } = await import(
       './bubbles/workflow-bubble/bubbleflow-generator.workflow.js'
     );
@@ -216,6 +220,12 @@ export class BubbleFactory {
     const { RedditScrapeTool } = await import(
       './bubbles/tool-bubble/reddit-scrape-tool.js'
     );
+    const { InstagramTool } = await import(
+      './bubbles/tool-bubble/instagram-tool.js'
+    );
+    const { LinkedInTool } = await import(
+      './bubbles/tool-bubble/linkedin-tool.js'
+    );
     const { SlackFormatterAgentBubble } = await import(
       './bubbles/workflow-bubble/slack-formatter-agent.js'
     );
@@ -250,6 +260,7 @@ export class BubbleFactory {
       'google-calendar',
       GoogleCalendarBubble as BubbleClassWithMetadata
     );
+    this.register('apify', ApifyBubble as BubbleClassWithMetadata);
     this.register(
       'bubbleflow-generator',
       BubbleFlowGeneratorWorkflow as BubbleClassWithMetadata
@@ -314,6 +325,8 @@ export class BubbleFactory {
       'reddit-scrape-tool',
       RedditScrapeTool as BubbleClassWithMetadata
     );
+    this.register('instagram-tool', InstagramTool as BubbleClassWithMetadata);
+    this.register('linkedin-tool', LinkedInTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
 
     this.register(
@@ -606,11 +619,13 @@ import {
   GmailBubble,
   SlackFormatterAgentBubble,
   HttpBubble,
-
+  ApifyBubble,
 
   // Specialized Tool Bubbles
   ResearchAgentTool,
   RedditScrapeTool,
+  InstagramTool,
+  LinkedInTool,
     
   // Types and utilities
   BubbleFactory,

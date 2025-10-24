@@ -32,6 +32,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {},
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: {},
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: {},
+  [CredentialType.APIFY_CRED]: {},
   [CredentialType.GOOGLE_DRIVE_CRED]: {},
   [CredentialType.GMAIL_CRED]: {},
   [CredentialType.GOOGLE_SHEETS_CRED]: {},

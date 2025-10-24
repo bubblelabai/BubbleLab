@@ -135,6 +135,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       ignoreSSL: false,
     },
   },
+  [CredentialType.APIFY_CRED]: {
+    label: 'Apify',
+    description: 'API token for Apify platform (web scraping, automation)',
+    placeholder: 'apify_api_...',
+    namePlaceholder: 'My Apify API Token',
+    credentialConfigurations: {},
+  },
   [CredentialType.GOOGLE_DRIVE_CRED]: {
     label: 'Google Drive',
     description: 'OAuth connection to Google Drive for file access',
@@ -189,6 +196,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'Cloudflare',
     [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'Cloudflare',
     [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'Cloudflare',
+    [CredentialType.APIFY_CRED]: 'Apify',
     [CredentialType.GOOGLE_DRIVE_CRED]: 'Google Drive',
     [CredentialType.GMAIL_CRED]: 'Gmail',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',

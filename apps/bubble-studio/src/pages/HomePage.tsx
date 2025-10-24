@@ -271,6 +271,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     {renamingFlowId === flow.id ? (
                       <div className="flex items-center gap-2 mb-2">
                         <input
+                          title="Rename Flow"
                           ref={inputRef}
                           type="text"
                           value={newFlowName}

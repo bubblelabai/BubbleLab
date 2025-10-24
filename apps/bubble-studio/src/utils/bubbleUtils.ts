@@ -4,6 +4,7 @@
 import type {
   BubbleName,
   DependencyGraphNode,
+  StreamingLogEvent,
 } from '@bubblelab/shared-schemas';
 
 export interface BubbleLocation {
@@ -121,6 +122,36 @@ export function getBubbleLineRange(bubble: BubbleInfo): {
     startLine: bubble.location.startLine,
     endLine: bubble.location.endLine,
   };
+}
+
+/**
+ * Get the correct variable name for display in execution logs
+ * Uses bubble parameters as the authoritative source, with fallbacks
+ */
+export function getVariableNameForDisplay(
+  varId: string,
+  events: StreamingLogEvent[],
+  bubbleParameters: Record<string | number, unknown>
+): string {
+  // Try to find the bubble in bubble parameters first (authoritative source)
+  const bubble = findBubbleByVariableId(bubbleParameters, Number(varId));
+  if (bubble?.variableName) {
+    return bubble.variableName;
+  }
+
+  // Fallback to bubbleName from events (check both direct variableId and additionalData.variableId)
+  const event = events.find(
+    (e) =>
+      String(e.variableId) === varId ||
+      String((e.additionalData as { variableId?: number })?.variableId) ===
+        varId
+  );
+  if (event?.bubbleName) {
+    return event.bubbleName;
+  }
+
+  // Final fallback to varId
+  return varId;
 }
 
 /**

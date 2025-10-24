@@ -518,7 +518,7 @@ Create manual test files in `manual-tests/` directory for testing with real API 
 
 ## 🚀 **NEW BUBBLE REGISTRATION CHECKLIST**
 
-When creating a new bubble, you must update these **7 locations** for full system integration:
+When creating a new bubble, you must update these **8 locations** for full system integration:
 
 ### 1. **Credential Types** (if using new credentials)
 📍 **File:** `packages/shared-schemas/src/types.ts`
@@ -582,11 +582,22 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 📍 **File:** `packages/bubble-core/src/bubble-factory.ts`
 
 ```typescript
-// Import section
+// Import section (in registerDefaults method)
 const { YourServiceBubble } = await import('./bubbles/service-bubble/your-service.js');
 
-// Registration section
+// Registration section (in registerDefaults method)
 this.register('your-bubble-name', YourServiceBubble as BubbleClassWithMetadata);
+
+// ⚠️ IMPORTANT: Add to code generator list (for BubbleFlow generation)
+// In listBubblesForCodeGenerator() method:
+listBubblesForCodeGenerator(): BubbleName[] {
+  return [
+    'postgresql',
+    'ai-agent',
+    // ... existing bubbles
+    'your-bubble-name', // ✅ Add your bubble here!
+  ];
+}
 
 // Boilerplate template imports (for AI code generation)
 // Service Bubbles
@@ -595,7 +606,26 @@ AIAgentBubble,
 YourServiceBubble, // Add here too
 ```
 
-### 7. **Main Package Export**
+### 7. **Code Generator List** (⚠️ REQUIRED for BubbleFlow generation)
+📍 **File:** `packages/bubble-core/src/bubble-factory.ts`
+
+```typescript
+// In the listBubblesForCodeGenerator() method
+listBubblesForCodeGenerator(): BubbleName[] {
+  return [
+    'postgresql',
+    'ai-agent',
+    'slack',
+    'resend',
+    // ... other bubbles
+    'your-bubble-name', // ✅ Add your bubble here!
+  ];
+}
+```
+
+**Why this matters:** Without adding your bubble to `listBubblesForCodeGenerator()`, it won't appear in the BubbleFlow generator UI or be available when AI generates flows. Users won't be able to discover or use your bubble when building flows.
+
+### 8. **Main Package Export**
 📍 **File:** `packages/bubble-core/src/index.ts`
 
 ```typescript
@@ -624,6 +654,7 @@ After making all updates:
 - [ ] **Credentials auto-inject**: Test that credentials are automatically provided
 - [ ] **BubbleFlow works**: Create test BubbleFlow using your bubble
 - [ ] **AI agents can use**: Tool bubbles appear in AI agent tool list
+- [ ] **Available in generator**: Bubble appears in `listBubblesForCodeGenerator()` for flow building
 
 ## 🎯 **Quick Validation Test**
 
@@ -649,9 +680,10 @@ console.log('✅ Bubble created successfully');
 ## 🚨 **Common Integration Issues**
 
 1. **"Bubble not found in factory"** → Check factory registration (#6)
-2. **"Credentials not injected"** → Check system credentials (#5)
-3. **TypeScript errors** → Check type definitions (#1, #4)
-4. **Build failures** → Check all import/export statements (#6, #7)
+2. **"Bubble not visible in flow builder"** → Check `listBubblesForCodeGenerator()` (#7)
+3. **"Credentials not injected"** → Check system credentials (#5)
+4. **TypeScript errors** → Check type definitions (#1, #4)
+5. **Build failures** → Check all import/export statements (#6, #8)
 
 ---
 

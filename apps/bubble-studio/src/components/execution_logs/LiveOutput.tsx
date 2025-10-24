@@ -14,6 +14,8 @@ import {
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
 import { useExecutionStore } from '../../stores/executionStore';
+import { getVariableNameForDisplay } from '../../utils/bubbleUtils';
+import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 import AllEventsView from './AllEventsView';
 
 interface LiveOutputProps {
@@ -46,6 +48,10 @@ export default function LiveOutput({
   const [filterTab, setFilterTab] = useState<'all' | 'warnings' | 'errors'>(
     'all'
   );
+
+  // Get bubble flow data to access bubble parameters
+  const currentFlow = useBubbleFlow(flowId);
+  const bubbleParameters = currentFlow.data?.bubbleParameters || {};
 
   // Get execution state from store - this is the source of truth
   // Use selector to ensure component re-renders when isRunning changes
@@ -230,14 +236,22 @@ export default function LiveOutput({
     }
   };
 
-  // Group events by bubbleName (fallback to variableId, then 'global')
+  // Group events by variableId (fallback to bubbleName, then 'global')
   const byVariableId: Record<string, StreamingLogEvent[]> =
     displayEvents.reduce(
       (acc, ev) => {
+        // Check for variableId in multiple places:
+        // 1. Direct variableId field
+        // 2. additionalData.variableId (for info logs and other events)
+        // 3. bubbleName as fallback
+        const directVariableId = (ev as { variableId?: number }).variableId;
+        const additionalDataVariableId = (
+          ev.additionalData as { variableId?: number }
+        )?.variableId;
+        const bubbleName = (ev as { bubbleName?: string }).bubbleName;
+
         const key = String(
-          (ev as { bubbleName?: string; variableId?: number }).bubbleName ??
-            (ev as { bubbleName?: string; variableId?: number }).variableId ??
-            'global'
+          directVariableId ?? additionalDataVariableId ?? bubbleName ?? 'global'
         );
         if (!acc[key]) acc[key] = [];
         acc[key].push(ev);
@@ -442,6 +456,7 @@ export default function LiveOutput({
                 formatTimestamp={formatTimestamp}
                 makeLinksClickable={makeLinksClickable}
                 renderJson={renderJson}
+                flowId={flowId}
               />
             ) : (
               /* Vertical layout for Warnings and Errors tabs */
@@ -484,10 +499,7 @@ export default function LiveOutput({
                           </p>
                           {event.additionalData &&
                             Object.keys(event.additionalData).length > 0 && (
-                              <details
-                                className="mt-2"
-                                open={event.type === 'execution_complete'}
-                              >
+                              <details className="mt-2" open={true}>
                                 <summary
                                   className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                                   onClick={(e) => e.stopPropagation()}
@@ -519,7 +531,13 @@ export default function LiveOutput({
                         <div className="flex items-center gap-3 px-3 py-2 border-b border-[#30363d]">
                           <div className="text-sm text-gray-200 font-mono">
                             bubble:{' '}
-                            <span className="text-blue-300">{varId}</span>
+                            <span className="text-blue-300">
+                              {getVariableNameForDisplay(
+                                varId,
+                                evs,
+                                bubbleParameters
+                              )}
+                            </span>
                           </div>
                           <div className="ml-auto flex items-center gap-2">
                             <label className="text-xs text-gray-400">
@@ -594,13 +612,7 @@ export default function LiveOutput({
                                 {selectedEvent.additionalData &&
                                   Object.keys(selectedEvent.additionalData)
                                     .length > 0 && (
-                                    <details
-                                      className="mt-2"
-                                      open={
-                                        selectedEvent.type ===
-                                        'execution_complete'
-                                      }
-                                    >
+                                    <details className="mt-2" open={true}>
                                       <summary
                                         className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                                         onClick={(e) => e.stopPropagation()}

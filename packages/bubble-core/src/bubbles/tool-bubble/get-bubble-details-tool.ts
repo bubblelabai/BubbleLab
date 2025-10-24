@@ -222,6 +222,9 @@ export class GetBubbleDetailsTool extends ToolBubble<
     } else if (def.typeName === 'ZodOptional') {
       const innerType = this.generateTypeInfo(def.innerType);
       return innerType ? `${innerType} | undefined` : 'unknown | undefined';
+    } else if (def.typeName === 'ZodNullable') {
+      const innerType = this.generateTypeInfo(def.innerType);
+      return innerType ? `${innerType} | null` : 'unknown | null';
     } else if (def.typeName === 'ZodDefault') {
       return this.generateTypeInfo(def.innerType);
     } else if (def.typeName === 'ZodEnum') {
@@ -705,6 +708,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
       }
       return '{}';
     } else if (def.typeName === 'ZodOptional') {
+      return this.generateExampleValue(def.innerType);
+    } else if (def.typeName === 'ZodNullable') {
       return this.generateExampleValue(def.innerType);
     } else if (def.typeName === 'ZodDefault') {
       // For defaults, show the example structure of the inner type if it's complex, otherwise show default

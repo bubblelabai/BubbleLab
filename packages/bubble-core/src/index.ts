@@ -38,6 +38,21 @@ export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
 export { GmailBubble } from './bubbles/service-bubble/gmail.js';
 export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
+export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
+export type {
+  ApifyParamsInput,
+  ApifyActorInput,
+} from './bubbles/service-bubble/apify/apify.js';
+// Export Apify actor type helpers for type-safe actor usage
+// Note: APIFY_ACTOR_SCHEMAS is not exported to avoid bloating the bundle
+// with Zod runtime schemas. Use the type helpers instead.
+export type {
+  ActorId,
+  ActorInput,
+  ActorOutput,
+  ActorSchema,
+} from './bubbles/service-bubble/apify/types.js';
+export type { APIFY_ACTOR_SCHEMAS } from './bubbles/service-bubble/apify/apify-scraper.schema.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
@@ -60,6 +75,17 @@ export { WebCrawlTool } from './bubbles/tool-bubble/web-crawl-tool.js';
 export { WebExtractTool } from './bubbles/tool-bubble/web-extract-tool.js';
 export { ResearchAgentTool } from './bubbles/tool-bubble/research-agent-tool.js';
 export { RedditScrapeTool } from './bubbles/tool-bubble/reddit-scrape-tool.js';
+export { InstagramTool } from './bubbles/tool-bubble/instagram-tool.js';
+export type {
+  InstagramPost,
+  InstagramProfile,
+} from './bubbles/tool-bubble/instagram-tool.js';
+export { LinkedInTool } from './bubbles/tool-bubble/linkedin-tool.js';
+export type {
+  LinkedInPost,
+  LinkedInAuthor,
+  LinkedInStats,
+} from './bubbles/tool-bubble/linkedin-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {

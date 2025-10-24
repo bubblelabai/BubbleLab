@@ -216,7 +216,7 @@ export function MonacoEditor() {
 
       // Find the module declaration and remove it
       const moduleDeclarationMatch = bundledTypes.match(
-        /declare module '@nodex\/bubble-core'[\s\S]*$/
+        /declare module '@bubblelab\/bubble-core'[\s\S]*$/
       );
       const moduleDeclarationStart = moduleDeclarationMatch
         ? bundledTypes.indexOf(moduleDeclarationMatch[0])
@@ -436,7 +436,6 @@ ${cleanedTypes.replace(/^/gm, '  ')}
             folding: true,
             lineDecorationsWidth: 20,
             lineNumbersMinChars: 3,
-            renderWhitespace: 'boundary',
             cursorBlinking: 'blink',
             cursorStyle: 'line',
             contextmenu: true,

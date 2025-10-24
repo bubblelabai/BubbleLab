@@ -18,6 +18,8 @@ export enum CredentialType {
   CLOUDFLARE_R2_ACCESS_KEY = 'CLOUDFLARE_R2_ACCESS_KEY',
   CLOUDFLARE_R2_SECRET_KEY = 'CLOUDFLARE_R2_SECRET_KEY',
   CLOUDFLARE_R2_ACCOUNT_ID = 'CLOUDFLARE_R2_ACCOUNT_ID',
+  // Scraping Credentials
+  APIFY_CRED = 'APIFY_CRED',
 
   // OAuth Credentials
   GOOGLE_DRIVE_CRED = 'GOOGLE_DRIVE_CRED',
@@ -59,4 +61,7 @@ export type BubbleName =
   | 'google-drive'
   | 'gmail'
   | 'google-sheets'
-  | 'google-calendar';
+  | 'google-calendar'
+  | 'apify'
+  | 'instagram-tool'
+  | 'linkedin-tool';

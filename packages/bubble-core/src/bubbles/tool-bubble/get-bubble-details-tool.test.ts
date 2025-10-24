@@ -193,4 +193,14 @@ describe('GetBubbleDetailsTool', () => {
       expect(metadata?.shortDescription).toContain('detailed information');
     });
   });
+  describe('output schema', () => {
+    test('should show output schema structure for instagram-tool', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'instagram-tool' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).toBeDefined();
+      console.log(result.data.usageExample);
+      expect(usageExample).toContain('url: string | null');
+    });
+  });
 });

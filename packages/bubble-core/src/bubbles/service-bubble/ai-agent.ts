@@ -196,7 +196,7 @@ const AIAgentParamsSchema = z.object({
       },
     ])
     .describe(
-      'Array of pre-registered tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool). If using image models, set the tools to []'
+      'Array of pre-registered tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool, instagram-tool). If using image models, set the tools to []'
     ),
   customTools: z
     .array(CustomToolSchema)
@@ -1110,6 +1110,7 @@ export class AIAgentBubble extends ServiceBubble<
           `LLM completion: ${totalInputTokens} input + ${totalOutputTokens} output = ${totalTokensSum} total tokens`,
           {
             bubbleName: 'ai-agent',
+            variableId: this.context?.variableId,
             operationType: 'bubble_execution',
           }
         );
@@ -1350,6 +1351,7 @@ export class AIAgentBubble extends ServiceBubble<
                   `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
                   {
                     bubbleName: 'ai-agent',
+                    variableId: this.context?.variableId,
                     operationType: 'bubble_execution',
                   }
                 );

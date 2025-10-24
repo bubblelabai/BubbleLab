@@ -28,6 +28,7 @@ import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as gmailReplyTemplate from './template_codes/gmailReplyAssistant';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
+import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -61,13 +62,15 @@ export interface TemplateDefinition {
 
 export const TEMPLATES: TemplateDefinition[] = [
   {
-    id: 'techweek-calendar',
-    name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
-    prompt: `Get your personalized LA Tech Week Calendar curated to your preferences and interests, alongside the scraped event schedule!`,
-    code: techweekTemplate.templateCode,
-    category: 'Popular',
+    id: 'linkedin-lead-gen',
+    name: 'LinkedIn Lead Generation (LinkedIn, Email)',
+    prompt:
+      "Search LinkedIn for leads based on a given lead persona and keyword, scrape the profile and generate a report with the lead's name, headline, profile URL, username, reason for being a lead, post text, post URL, additional posts, and story analysis.",
+    code: linkedinLeadGenTemplate.templateCode,
+    category: 'Lead Generation',
     isPopular: true,
   },
+
   {
     id: 'reddit-lead-gen',
     name: 'Reddit Lead Generation (Firecrawl, Google Sheets)',
@@ -142,6 +145,14 @@ export const TEMPLATES: TemplateDefinition[] = [
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
     isPopular: true,
+  },
+  {
+    id: 'techweek-calendar',
+    name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
+    prompt: `Get your personalized LA Tech Week Calendar curated to your preferences and interests, alongside the scraped event schedule!`,
+    code: techweekTemplate.templateCode,
+    category: 'Popular',
+    isPopular: false,
   },
 ];
 
