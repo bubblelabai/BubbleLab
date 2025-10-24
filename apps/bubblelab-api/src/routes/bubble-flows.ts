@@ -763,16 +763,12 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
     }
 
     // Create a new BubbleFlowValidationTool instance
-    console.log('Starting bubble factory....');
     const result = await validateAndExtract(code, bubbleFactory);
 
-    // If validation is successful and flowId is provided, update the flow
-    if (result.valid && flowId && existingFlow) {
-      const processedCode = processUserCode(code);
-
+    // If validation is successful and flowId is provided, update the flow as well before returning the result
+    if (result.valid && existingFlow && flowId) {
       // Prepare bubble parameters with credentials if provided
       let finalBubbleParameters = result.bubbleParameters || {};
-
       // If credentials are provided in the request, merge them into the bubble parameters
       if (credentials && Object.keys(credentials).length > 0) {
         finalBubbleParameters = mergeCredentialsIntoBubbleParameters(
@@ -780,102 +776,23 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           credentials
         );
       }
-
+      const cronExpression = result.trigger?.cronSchedule || null;
       await db
         .update(bubbleFlows)
         .set({
-          code: processedCode,
           originalCode: code,
           bubbleParameters: finalBubbleParameters,
           inputSchema: result.inputSchema || {},
           eventType: result.trigger?.type,
           updatedAt: new Date(),
+          cron: cronExpression,
+          cronActive: activateCron,
+          defaultInputs: defaultInputs,
         })
         .where(eq(bubbleFlows.id, flowId));
-
-      console.log(`Updated BubbleFlow ${flowId} with new validation results`);
     }
 
-    // Always update cron expression from code (for lazy loading)
-    if (result.valid && flowId) {
-      const cronExpression = result.trigger?.cronSchedule || null;
-
-      // Update cron expression regardless of activation status
-      await db
-        .update(bubbleFlows)
-        .set({
-          cron: cronExpression,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)));
-    }
-
-    // Handle cron activation if requested
-    if (result.valid && flowId && activateCron !== undefined) {
-      const cronExpression = result.trigger?.cronSchedule || null;
-
-      if (activateCron === true) {
-        // Validate defaultInputs against inputSchema if provided
-        if (defaultInputs && result.inputSchema) {
-          const schema = result.inputSchema;
-          const required = schema.required || [];
-
-          // Only validate required fields that are provided
-          for (const field of required as string[]) {
-            if (field in defaultInputs && !defaultInputs[field]) {
-              return c.json(
-                {
-                  valid: false,
-                  success: false,
-                  inputSchema: result.inputSchema || {},
-                  eventType: result.trigger?.type || 'webhook/http',
-                  webhookPath: getWebhookUrl(
-                    userId,
-                    existingFlow?.webhooks?.[0]?.path || ''
-                  ),
-                  cron: cronExpression,
-                  cronActive: false,
-                  error: `Required field '${field}' is empty`,
-                  errors: [`Required field '${field}' is empty`],
-                  metadata: {
-                    validatedAt: new Date().toISOString(),
-                    codeLength: code?.length || 0,
-                    strictMode: options?.strictMode ?? true,
-                    flowUpdated: false,
-                  },
-                },
-                200
-              );
-            }
-          }
-        }
-
-        // Update flow with cron activation
-        await db
-          .update(bubbleFlows)
-          .set({
-            cronActive: true,
-            defaultInputs: defaultInputs || {},
-            updatedAt: new Date(),
-          })
-          .where(
-            and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
-          );
-      } else {
-        // Deactivate cron
-        await db
-          .update(bubbleFlows)
-          .set({
-            cronActive: false,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
-          );
-      }
-    }
-
-    // We need to extract the actual validation result from the data property
+    // Return the validation result based on if code itself is valid
     if (result.valid) {
       return c.json(
         {
@@ -889,7 +806,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
             existingFlow?.webhooks?.[0]?.path || ''
           ),
           cron: result.trigger?.cronSchedule || null,
-          cronActive: existingFlow?.cronActive || false,
+          cronActive: activateCron,
+          defaultInputs: defaultInputs,
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(

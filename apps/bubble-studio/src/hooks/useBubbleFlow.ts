@@ -10,6 +10,9 @@ interface UseBubbleFlowResult {
   refetch: () => void;
   setOptimisticData: (data: BubbleFlowDetailsResponse) => void;
   updateInputSchema: (inputSchema: Record<string, unknown>) => void;
+  updateCronActive: (cronActive: boolean) => void;
+  updateDefaultInputs: (defaultInputs: Record<string, unknown>) => void;
+  updateCronSchedule: (cronSchedule: string) => void;
   updateCode: (code: string) => void;
   updateRequiredCredentials: (
     requiredCredentials: BubbleFlowDetailsResponse['requiredCredentials']
@@ -49,6 +52,62 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     [queryClient, flowId]
   );
 
+  const updateCronActive = useCallback(
+    (cronActive: boolean) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            cronActive,
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+
+  const updateDefaultInputs = useCallback(
+    (defaultInputs: Record<string, unknown>) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            defaultInputs,
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+
+  const updateCronSchedule = useCallback(
+    (cronSchedule: string) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            cron: cronSchedule,
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
   const updateInputSchema = useCallback(
     (inputSchema: Record<string, unknown>) => {
       if (!flowId) return;
@@ -136,6 +195,9 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     error: query.error,
     refetch: query.refetch,
     setOptimisticData,
+    updateCronActive,
+    updateDefaultInputs,
+    updateCronSchedule,
     updateInputSchema,
     updateBubbleParameters,
     updateCode,

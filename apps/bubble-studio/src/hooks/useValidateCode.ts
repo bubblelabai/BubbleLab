@@ -12,6 +12,8 @@ interface ValidateCodeRequest {
   code: string;
   flowId: number;
   credentials: Record<string, Record<string, number>>;
+  defaultInputs?: Record<string, unknown>;
+  activateCron?: boolean;
 }
 
 interface ValidateCodeOptions {
@@ -26,6 +28,9 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
     updateInputSchema,
     updateRequiredCredentials,
     updateCode,
+    updateCronActive,
+    updateDefaultInputs,
+    updateCronSchedule,
   } = useBubbleFlow(flowId);
 
   return useMutation({
@@ -34,6 +39,8 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         code: request.code,
         flowId: request.flowId,
         credentials: request.credentials,
+        defaultInputs: request.defaultInputs,
+        activateCron: request.activateCron,
         options: {
           includeDetails: true,
           strictMode: true,
@@ -52,7 +59,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       const loadingToastId = toast.loading('Validating code...');
       return { loadingToastId };
     },
-    onSuccess: (result, _variables, context) => {
+    onSuccess: (result, variables, context) => {
       // Dismiss loading toast
       if (context?.loadingToastId) {
         toast.dismiss(context.loadingToastId);
@@ -68,9 +75,24 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         // Now update the validation results (bubbles, schema, credentials)
         updateBubbleParameters(result.bubbles);
         updateInputSchema(result.inputSchema);
+        updateCronSchedule(result.cron || '');
         updateRequiredCredentials(
           result.requiredCredentials as Record<string, CredentialType[]>
         );
+      }
+
+      // Handle cron activation if requested
+      if (result.valid && variables.activateCron !== undefined) {
+        // Update the flow data with the new cron status
+        updateCronActive(result.cronActive || false);
+        updateDefaultInputs(result.defaultInputs || {});
+
+        // Show success message for cron activation
+        if (result.cronActive) {
+          toast.success('Cron schedule activated successfully');
+        } else {
+          toast.success('Cron schedule deactivated');
+        }
       }
 
       // Capture and store inputSchema from validation response
@@ -79,46 +101,48 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       }
 
       if (result.valid) {
-        // Show success toast with bubble count
-        const bubbleCount = result.bubbleCount || 0;
-        toast.success(
-          `✅ Code validation successful! Found ${bubbleCount} bubble${bubbleCount !== 1 ? 's' : ''}.`,
-          {
-            autoClose: 3000,
+        // Show success toast with bubble count (only if not a cron activation)
+        if (variables.activateCron === undefined) {
+          const bubbleCount = result.bubbleCount || 0;
+          toast.success(
+            `✅ Code validation successful! Found ${bubbleCount} bubble${bubbleCount !== 1 ? 's' : ''}.`,
+            {
+              autoClose: 3000,
+            }
+          );
+
+          // Show detailed info in a separate toast
+          if (result.bubbles && Object.keys(result.bubbles).length > 0) {
+            const bubbleDetails = Object.values(result.bubbles)
+              .map(
+                (bubble, index) =>
+                  `${index + 1}. ${bubble.variableName} (${bubble.bubbleName})`
+              )
+              .join('\n');
+
+            toast.info(`Bubbles found:\n${bubbleDetails}`, {
+              autoClose: 8000,
+              style: {
+                whiteSpace: 'pre-line',
+                fontSize: '12px',
+              },
+            });
           }
-        );
 
-        // Show detailed info in a separate toast
-        if (result.bubbles && Object.keys(result.bubbles).length > 0) {
-          const bubbleDetails = Object.values(result.bubbles)
-            .map(
-              (bubble, index) =>
-                `${index + 1}. ${bubble.variableName} (${bubble.bubbleName})`
-            )
-            .join('\n');
-
-          toast.info(`Bubbles found:\n${bubbleDetails}`, {
-            autoClose: 8000,
-            style: {
-              whiteSpace: 'pre-line',
-              fontSize: '12px',
-            },
-          });
+          // Show metadata toast
+          toast.info(
+            `Validation completed at ${new Date(result.metadata.validatedAt).toLocaleTimeString()}\n` +
+              `Code: ${result.metadata.codeLength} characters\n` +
+              `Strict mode: ${result.metadata.strictMode ? 'Yes' : 'No'}`,
+            {
+              autoClose: 5000,
+              style: {
+                whiteSpace: 'pre-line',
+                fontSize: '12px',
+              },
+            }
+          );
         }
-
-        // Show metadata toast
-        toast.info(
-          `Validation completed at ${new Date(result.metadata.validatedAt).toLocaleTimeString()}\n` +
-            `Code: ${result.metadata.codeLength} characters\n` +
-            `Strict mode: ${result.metadata.strictMode ? 'Yes' : 'No'}`,
-          {
-            autoClose: 5000,
-            style: {
-              whiteSpace: 'pre-line',
-              fontSize: '12px',
-            },
-          }
-        );
         executionState.stopValidation();
       } else {
         // Show error toast with validation errors

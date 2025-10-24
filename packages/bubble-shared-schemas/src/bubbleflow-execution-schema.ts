@@ -284,6 +284,16 @@ export const validateBubbleFlowCodeResponseSchema = z.object({
     description: 'Whether cron scheduling is currently active',
     example: false,
   }),
+  defaultInputs: z
+    .record(z.unknown())
+    .optional()
+    .openapi({
+      description: 'User-filled input values for cron execution',
+      example: {
+        message: 'Hello World',
+        channel: '#general',
+      },
+    }),
   success: z.boolean(),
   error: z.string(),
 });

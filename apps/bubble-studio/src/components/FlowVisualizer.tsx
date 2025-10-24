@@ -22,6 +22,7 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useCredentials } from '../hooks/useCredentials';
+import { useValidateCode } from '../hooks/useValidateCode';
 import { useUIStore } from '../stores/uiStore';
 import { useEditorStore } from '../stores/editorStore';
 import { API_BASE_URL } from '../env';
@@ -75,11 +76,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const { fitView } = useReactFlow();
 
   // Get all data from global stores
-  const currentFlow = useBubbleFlow(flowId);
+  const { data: currentFlow, loading } = useBubbleFlow(flowId);
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
   const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
   const { setExecutionHighlight, updateCronSchedule } = useEditorStore();
+  const validateCodeMutation = useValidateCode({ flowId });
 
   // Initialize execution hook
   const { runFlow } = useRunExecution(flowId);
@@ -90,7 +92,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const setInput = executionState.setInput;
 
   // Derive all state from global stores
-  const bubbleParameters = currentFlow.data?.bubbleParameters || {};
+  const bubbleParameters = currentFlow?.bubbleParameters || {};
   const highlightedBubble = executionState.highlightedBubble;
   const isExecuting = executionState.isRunning;
   const bubbleWithError = executionState.bubbleWithError;
@@ -98,18 +100,17 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const completedBubbles = executionState.completedBubbles;
   const executionInputs = executionState.executionInputs;
   const pendingCredentials = executionState.pendingCredentials;
-  const requiredCredentials = currentFlow.data?.requiredCredentials || {};
-  const flowName = currentFlow.data?.name;
-  const inputsSchema = currentFlow.data?.inputSchema
-    ? JSON.stringify(currentFlow.data.inputSchema)
+  const requiredCredentials = currentFlow?.requiredCredentials || {};
+  const flowName = currentFlow?.name;
+  const inputsSchema = currentFlow?.inputSchema
+    ? JSON.stringify(currentFlow.inputSchema)
     : undefined;
-  const isLoading = currentFlow.loading;
 
   // Local UI state for expanded/collapsed nodes
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
-  const eventType = currentFlow.data?.eventType;
+  const eventType = currentFlow?.eventType;
   const entryNodeId =
     eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
 
@@ -117,6 +118,16 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     () => Object.entries(bubbleParameters),
     [bubbleParameters]
   );
+
+  // Set exection input to default inputs if a
+  useEffect(() => {
+    if (
+      currentFlow?.defaultInputs &&
+      Object.keys(executionInputs).length === 0
+    ) {
+      executionState.setInputs(currentFlow.defaultInputs);
+    }
+  }, [currentFlow?.defaultInputs, executionState]);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
@@ -448,29 +459,44 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           origin: [0, 0.5] as [number, number],
           data: {
             flowName: flowName,
-            cronSchedule: currentFlow.data?.cron || '0 0 * * *',
-            isActive: currentFlow.data?.cronActive || false,
-            inputSchema: currentFlow.data?.inputSchema || {},
-            defaultInputs: currentFlow.data?.defaultInputs || {},
+            cronSchedule: currentFlow?.cron || '0 0 * * *',
+            isActive: currentFlow?.cronActive || false,
+            inputSchema: currentFlow?.inputSchema || {},
+            executionInputs: currentFlow?.defaultInputs || {},
+            isPending: validateCodeMutation.isPending,
             onCronScheduleChange: (newSchedule: string) => {
+              // Update the cron schedule in the editor store
               updateCronSchedule(newSchedule);
+
+              // TODO: In the future, we might want to save this to the backend
+              // For now, it's just stored locally in the editor
             },
             onActiveToggle: async (
               isActive: boolean,
               defaultInputs?: Record<string, unknown>
-            ) => {},
+            ) => {
+              if (!currentFlow?.id) return;
+
+              await validateCodeMutation.mutateAsync({
+                code: currentFlow.code,
+                flowId: currentFlow.id,
+                credentials: pendingCredentials || {},
+                defaultInputs: defaultInputs || {},
+                activateCron: isActive,
+              });
+            },
             onDefaultInputChange: (fieldName: string, value: unknown) => {
-              // TODO: Implement default input change logic
+              // Update the input value in the execution state
               setInput(fieldName, value);
+
+              // TODO: In the future, we might want to save this to the backend
+              // For now, it's just stored locally in the execution state
             },
             onExecuteFlow: async () => {
               await runFlow({
                 validateCode: true,
                 updateCredentials: true,
-                inputs: {
-                  type: 'schedule/cron/daily',
-                  cron: currentFlow.data?.cron || '0 0 * * *',
-                },
+                inputs: executionInputs || {},
               });
             },
             isExecuting: isExecuting,
@@ -721,11 +747,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     toggleRootVisibility,
     bubbleWithError,
     completedBubbles,
+    validateCodeMutation.isPending,
     highlightBubble,
     setCredential,
     setInput,
     expandedRootIds,
     suppressedRootIds,
+    currentFlow,
   ]);
 
   // Auto-fit view when nodes load or change
@@ -754,7 +782,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   }, []);
 
   // Show loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <div
         className="h-full flex items-center justify-center"

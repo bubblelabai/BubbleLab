@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import {
   Clock,
@@ -20,8 +20,9 @@ interface CronScheduleNodeData {
   flowName: string;
   cronSchedule: string;
   isActive?: boolean;
+  isPending?: boolean;
   inputSchema?: Record<string, unknown>;
-  defaultInputs?: Record<string, unknown>;
+  executionInputs?: Record<string, unknown>;
   onCronScheduleChange?: (newSchedule: string) => void;
   onActiveToggle?: (
     isActive: boolean,
@@ -169,8 +170,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     flowName,
     cronSchedule,
     isActive = true,
+    isPending = false,
     inputSchema = {},
-    defaultInputs = {},
+    executionInputs = {},
     onCronScheduleChange,
     onActiveToggle,
     onDefaultInputChange,
@@ -180,7 +182,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [inputValues, setInputValues] =
-    useState<Record<string, unknown>>(defaultInputs);
+    useState<Record<string, unknown>>(executionInputs);
 
   // Parse input schema using the same logic as InputSchemaNode
   const schemaFields =
@@ -208,7 +210,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
         field.default === undefined
     );
 
-  const hasMissingRequired = missingRequiredFields.length > 0;
+  const hasMissingRequired =
+    missingRequiredFields.length > 0 &&
+    Object.keys(executionInputs).length == 0;
 
   // Parse initial cron schedule
   const initialState = parseCronToUI(cronSchedule);
@@ -222,6 +226,60 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     initialState.daysOfWeek
   );
   const [dayOfMonth, setDayOfMonth] = useState(initialState.dayOfMonth);
+
+  // Helper to compute cron from current state plus a partial patch
+  const computeCron = (
+    patch: Partial<{
+      frequency: FrequencyType;
+      interval: number;
+      hour: number;
+      minute: number;
+      daysOfWeek: number[];
+      dayOfMonth: number;
+    }> = {}
+  ) => {
+    return buildCronFromUI(
+      patch.frequency ?? frequency,
+      patch.interval ?? interval,
+      patch.hour ?? hour,
+      patch.minute ?? minute,
+      patch.daysOfWeek ?? daysOfWeek,
+      patch.dayOfMonth ?? dayOfMonth
+    );
+  };
+
+  // Unified state updater that also emits the new cron immediately
+  const updateCronState = (
+    patch: Partial<{
+      frequency: FrequencyType;
+      interval: number;
+      hour: number;
+      minute: number;
+      daysOfWeek: number[];
+      dayOfMonth: number;
+    }>
+  ) => {
+    if (patch.frequency !== undefined) setFrequency(patch.frequency);
+    if (patch.interval !== undefined) setInterval(patch.interval);
+    if (patch.hour !== undefined) setHour(patch.hour);
+    if (patch.minute !== undefined) setMinute(patch.minute);
+    if (patch.daysOfWeek !== undefined) setDaysOfWeek(patch.daysOfWeek);
+    if (patch.dayOfMonth !== undefined) setDayOfMonth(patch.dayOfMonth);
+
+    const newCron = computeCron(patch);
+    onCronScheduleChange?.(newCron);
+  };
+
+  // Sync local state when cronSchedule prop changes
+  useEffect(() => {
+    const newState = parseCronToUI(cronSchedule);
+    setFrequency(newState.frequency);
+    setInterval(newState.interval);
+    setHour(newState.hour);
+    setMinute(newState.minute);
+    setDaysOfWeek(newState.daysOfWeek);
+    setDayOfMonth(newState.dayOfMonth);
+  }, [cronSchedule]);
 
   // Compute current cron from state
   const currentCron = buildCronFromUI(
@@ -250,63 +308,32 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   };
 
   const handleFrequencyChange = (newFrequency: FrequencyType) => {
-    setFrequency(newFrequency);
-    const newCron = buildCronFromUI(
-      newFrequency,
-      interval,
-      hour,
-      minute,
-      daysOfWeek,
-      dayOfMonth
-    );
-    onCronScheduleChange?.(newCron);
+    updateCronState({ frequency: newFrequency });
   };
 
   const handleIntervalChange = (newInterval: number) => {
-    setInterval(newInterval);
+    updateCronState({ interval: newInterval });
   };
 
   const handleHourChange = (newHour: number) => {
-    setHour(newHour);
+    updateCronState({ hour: newHour });
   };
 
   const handleMinuteChange = (newMinute: number) => {
-    setMinute(newMinute);
+    updateCronState({ minute: newMinute });
   };
 
   const handleDayOfMonthChange = (newDay: number) => {
-    setDayOfMonth(newDay);
+    updateCronState({ dayOfMonth: newDay });
   };
 
-  // Call onCronScheduleChange when user finishes editing (on blur)
-  const handleBlur = () => {
-    const newCron = buildCronFromUI(
-      frequency,
-      interval,
-      hour,
-      minute,
-      daysOfWeek,
-      dayOfMonth
-    );
-    if (newCron !== cronSchedule) {
-      onCronScheduleChange?.(newCron);
-    }
-  };
+  // (Removed handleBlur; updates now emit immediately in handlers)
 
   const toggleDayOfWeek = (day: number) => {
     const newDaysOfWeek = daysOfWeek.includes(day)
       ? daysOfWeek.filter((d) => d !== day)
       : [...daysOfWeek, day].sort();
-    setDaysOfWeek(newDaysOfWeek);
-    const newCron = buildCronFromUI(
-      frequency,
-      interval,
-      hour,
-      minute,
-      newDaysOfWeek,
-      dayOfMonth
-    );
-    onCronScheduleChange?.(newCron);
+    updateCronState({ daysOfWeek: newDaysOfWeek });
   };
 
   return (
@@ -354,17 +381,30 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               <button
                 type="button"
                 onClick={handleActiveToggle}
+                disabled={isPending}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-all ${
-                  isActive
-                    ? 'bg-green-600/20 text-green-400 border border-green-600/50 hover:bg-green-600/30'
-                    : 'bg-neutral-700/50 text-neutral-400 border border-neutral-600 hover:bg-neutral-700'
+                  isPending
+                    ? 'bg-neutral-700/50 text-neutral-400 border border-neutral-600 cursor-not-allowed'
+                    : isActive
+                      ? 'bg-green-600/20 text-green-400 border border-green-600/50 hover:bg-green-600/30'
+                      : 'bg-neutral-700/50 text-neutral-400 border border-neutral-600 hover:bg-neutral-700'
                 }`}
-                title={isActive ? 'Schedule is active' : 'Schedule is inactive'}
+                title={
+                  isPending
+                    ? 'Updating schedule...'
+                    : isActive
+                      ? 'Schedule is active'
+                      : 'Schedule is inactive'
+                }
               >
-                <Power
-                  className={`w-3 h-3 ${isActive ? 'text-green-400' : 'text-neutral-500'}`}
-                />
-                {isActive ? 'Active' : 'Inactive'}
+                {isPending ? (
+                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Power
+                    className={`w-3 h-3 ${isActive ? 'text-green-400' : 'text-neutral-500'}`}
+                  />
+                )}
+                {isPending ? 'Updating...' : isActive ? 'Active' : 'Inactive'}
               </button>
             )}
             <button
@@ -394,7 +434,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
           {/* Cron expression display */}
           <div className="bg-neutral-900/50 rounded px-2 py-1.5 font-mono text-xs text-neutral-300 border border-neutral-700">
-            {cronSchedule}
+            {currentCron}
           </div>
 
           {/* Validation error */}
@@ -457,7 +497,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     onClick={() => {
                       const newVal = Math.max(1, interval - 1);
                       handleIntervalChange(newVal);
-                      handleBlur();
                     }}
                     disabled={isExecuting || interval <= 1}
                     aria-label="Decrease interval"
@@ -472,7 +511,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       const val = parseInt(e.target.value) || 1;
                       handleIntervalChange(val);
                     }}
-                    onBlur={handleBlur}
                     disabled={isExecuting}
                     aria-label="Interval value"
                     className="w-16 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
@@ -483,7 +521,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       const maxVal = frequency === 'minute' ? 59 : 23;
                       const newVal = Math.min(maxVal, interval + 1);
                       handleIntervalChange(newVal);
-                      handleBlur();
                     }}
                     disabled={
                       isExecuting ||
@@ -517,7 +554,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     onClick={() => {
                       const newVal = Math.max(0, hour - 1);
                       handleHourChange(newVal);
-                      handleBlur();
                     }}
                     disabled={isExecuting || hour <= 0}
                     aria-label="Decrease hour"
@@ -535,7 +571,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       );
                       handleHourChange(val);
                     }}
-                    onBlur={handleBlur}
                     disabled={isExecuting}
                     className="w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="HH"
@@ -545,7 +580,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     onClick={() => {
                       const newVal = Math.min(23, hour + 1);
                       handleHourChange(newVal);
-                      handleBlur();
                     }}
                     disabled={isExecuting || hour >= 23}
                     aria-label="Increase hour"
@@ -561,7 +595,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     onClick={() => {
                       const newVal = Math.max(0, minute - 1);
                       handleMinuteChange(newVal);
-                      handleBlur();
                     }}
                     disabled={isExecuting || minute <= 0}
                     aria-label="Decrease minute"
@@ -579,7 +612,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       );
                       handleMinuteChange(val);
                     }}
-                    onBlur={handleBlur}
                     disabled={isExecuting}
                     className="w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="MM"
@@ -589,7 +621,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     onClick={() => {
                       const newVal = Math.min(59, minute + 1);
                       handleMinuteChange(newVal);
-                      handleBlur();
                     }}
                     disabled={isExecuting || minute >= 59}
                     aria-label="Increase minute"
@@ -617,7 +648,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   onClick={() => {
                     const newVal = Math.max(0, minute - 1);
                     handleMinuteChange(newVal);
-                    handleBlur();
                   }}
                   disabled={isExecuting || minute <= 0}
                   aria-label="Decrease minute"
@@ -635,7 +665,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     );
                     handleMinuteChange(val);
                   }}
-                  onBlur={handleBlur}
                   disabled={isExecuting}
                   aria-label="Minute at which to run"
                   className="w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
@@ -645,7 +674,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   onClick={() => {
                     const newVal = Math.min(59, minute + 1);
                     handleMinuteChange(newVal);
-                    handleBlur();
                   }}
                   disabled={isExecuting || minute >= 59}
                   aria-label="Increase minute"
@@ -700,7 +728,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   onClick={() => {
                     const newVal = Math.max(1, dayOfMonth - 1);
                     handleDayOfMonthChange(newVal);
-                    handleBlur();
                   }}
                   disabled={isExecuting || dayOfMonth <= 1}
                   aria-label="Decrease day"
@@ -718,7 +745,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     );
                     handleDayOfMonthChange(val);
                   }}
-                  onBlur={handleBlur}
                   disabled={isExecuting}
                   aria-label="Day of month"
                   className="w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
@@ -728,7 +754,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   onClick={() => {
                     const newVal = Math.min(31, dayOfMonth + 1);
                     handleDayOfMonthChange(newVal);
-                    handleBlur();
                   }}
                   disabled={isExecuting || dayOfMonth >= 31}
                   aria-label="Increase day"
@@ -739,16 +764,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               </div>
             </div>
           )}
-
-          {/* Preview cron expression */}
-          <div className="pt-3 border-t border-neutral-700">
-            <div className="text-xs text-neutral-500 mb-1">
-              Cron Expression:
-            </div>
-            <div className="bg-neutral-900/50 rounded px-2 py-1.5 font-mono text-xs text-neutral-300 border border-neutral-700">
-              {currentCron}
-            </div>
-          </div>
         </div>
       )}
 
