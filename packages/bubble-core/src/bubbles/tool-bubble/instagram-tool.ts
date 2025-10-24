@@ -32,94 +32,87 @@ const InstagramProfileSchema = z.object({
   profilePicUrl: z.string().nullable().describe('Profile picture URL'),
 });
 
-// Discriminated union for tool parameters (like resend.ts)
-const InstagramToolParamsSchema = z.discriminatedUnion('operation', [
-  // Scrape profile operation
-  z.object({
-    operation: z
-      .literal('scrapeProfile')
-      .describe('Scrape Instagram profiles and their posts'),
-    profiles: z
-      .array(z.string())
-      .min(1, 'At least one Instagram username or URL is required')
-      .describe(
-        'Instagram usernames or profile URLs to scrape. Examples: ["@username", "https://www.instagram.com/username/"]'
-      ),
-    limit: z
-      .number()
-      .min(1)
-      .max(200)
-      .default(20)
-      .optional()
-      .describe('Maximum number of posts to fetch per profile (default: 20)'),
-    credentials: z
-      .record(z.nativeEnum(CredentialType), z.string())
-      .optional()
-      .describe('Required credentials (auto-injected)'),
-  }),
+// Gemini-compatible single object schema with optional fields
+const InstagramToolParamsSchema = z.object({
+  operation: z
+    .enum(['scrapeProfile', 'scrapeHashtag'])
+    .describe(
+      'Operation to perform: scrapeProfile for user profiles, scrapeHashtag for hashtag posts'
+    ),
 
-  // Scrape hashtag operation
-  z.object({
-    operation: z
-      .literal('scrapeHashtag')
-      .describe('Scrape Instagram posts by hashtag'),
-    hashtags: z
-      .array(z.string())
-      .min(1, 'At least one hashtag is required')
-      .describe(
-        'Hashtags to scrape. Examples: ["ai", "tech"] or ["https://www.instagram.com/explore/tags/ai"]'
-      ),
-    limit: z
-      .number()
-      .min(1)
-      .max(1000)
-      .default(50)
-      .optional()
-      .describe('Maximum number of posts to fetch per hashtag (default: 50)'),
-    credentials: z
-      .record(z.nativeEnum(CredentialType), z.string())
-      .optional()
-      .describe('Required credentials (auto-injected)'),
-  }),
-]);
+  // Profile scraping fields (optional)
+  profiles: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Instagram usernames or profile URLs to scrape (for scrapeProfile operation). Examples: ["@username", "https://www.instagram.com/username/"]'
+    ),
 
-// Discriminated union for result schemas
-const InstagramToolResultSchema = z.discriminatedUnion('operation', [
-  // Scrape profile result
-  z.object({
-    operation: z
-      .literal('scrapeProfile')
-      .describe('Scrape Instagram profiles and their posts'),
-    posts: z
-      .array(InstagramPostSchema)
-      .describe('Array of Instagram posts from all profiles'),
-    profiles: z
-      .array(InstagramProfileSchema)
-      .describe('Profile information for each scraped profile'),
-    totalPosts: z.number().describe('Total number of posts scraped'),
-    scrapedProfiles: z
-      .array(z.string())
-      .describe('List of profiles that were scraped'),
-    success: z.boolean().describe('Whether the operation was successful'),
-    error: z.string().describe('Error message if operation failed'),
-  }),
+  // Hashtag scraping fields (optional)
+  hashtags: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Hashtags to scrape (for scrapeHashtag operation). Examples: ["ai", "tech"] or ["https://www.instagram.com/explore/tags/ai"]'
+    ),
 
-  // Scrape hashtag result
-  z.object({
-    operation: z
-      .literal('scrapeHashtag')
-      .describe('Scrape Instagram posts by hashtag'),
-    posts: z
-      .array(InstagramPostSchema)
-      .describe('Array of Instagram posts from hashtag search'),
-    totalPosts: z.number().describe('Total number of posts scraped'),
-    scrapedHashtags: z
-      .array(z.string())
-      .describe('List of hashtags that were scraped'),
-    success: z.boolean().describe('Whether the operation was successful'),
-    error: z.string().describe('Error message if operation failed'),
-  }),
-]);
+  // Common fields
+  limit: z
+    .number()
+    .min(1)
+    .max(1000)
+    .default(20)
+    .optional()
+    .describe(
+      'Maximum number of posts to fetch (default: 20 for profiles, 50 for hashtags)'
+    ),
+
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .optional()
+    .describe('Required credentials (auto-injected)'),
+});
+
+// Gemini-compatible single result schema
+const InstagramToolResultSchema = z.object({
+  operation: z
+    .enum(['scrapeProfile', 'scrapeHashtag'])
+    .describe('Operation that was performed'),
+
+  // Posts data (always present)
+  posts: z
+    .array(InstagramPostSchema)
+    .describe('Array of Instagram posts scraped'),
+
+  // Profile data (only for scrapeProfile operation)
+  profiles: z
+    .array(InstagramProfileSchema)
+    .optional()
+    .describe(
+      'Profile information for each scraped profile (only for scrapeProfile operation)'
+    ),
+
+  // Hashtag data (only for scrapeHashtag operation)
+  scrapedHashtags: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'List of hashtags that were scraped (only for scrapeHashtag operation)'
+    ),
+
+  // Profile data (only for scrapeProfile operation)
+  scrapedProfiles: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'List of profile usernames that were scraped (only for scrapeProfile operation)'
+    ),
+
+  // Common fields
+  totalPosts: z.number().describe('Total number of posts scraped'),
+  success: z.boolean().describe('Whether the operation was successful'),
+  error: z.string().describe('Error message if operation failed'),
+});
 
 // Type definitions
 type InstagramToolParams = z.output<typeof InstagramToolParamsSchema>;
@@ -146,11 +139,9 @@ export type InstagramOperationResult<
  * Future versions can add support for other services (BrightData, custom scrapers)
  * while maintaining the same interface.
  */
-export class InstagramTool<
-  T extends InstagramToolParams = InstagramToolParams,
-> extends ToolBubble<
-  T,
-  Extract<InstagramToolResult, { operation: T['operation'] }>
+export class InstagramTool extends ToolBubble<
+  InstagramToolParams,
+  InstagramToolResult
 > {
   // Required static metadata
   static readonly bubbleName: BubbleName = 'instagram-tool';
@@ -218,15 +209,13 @@ export class InstagramTool<
       operation: 'scrapeProfile',
       profiles: ['@instagram'],
       limit: 20,
-    } as T,
+    },
     context?: BubbleContext
   ) {
     super(params, context);
   }
 
-  async performAction(): Promise<
-    Extract<InstagramToolResult, { operation: T['operation'] }>
-  > {
+  async performAction(): Promise<InstagramToolResult> {
     const credentials = this.params?.credentials;
     if (!credentials || !credentials[CredentialType.APIFY_CRED]) {
       return this.createErrorResult(
@@ -236,6 +225,25 @@ export class InstagramTool<
 
     try {
       const { operation } = this.params;
+
+      // Validate required fields based on operation
+      if (
+        operation === 'scrapeProfile' &&
+        (!this.params.profiles || this.params.profiles.length === 0)
+      ) {
+        return this.createErrorResult(
+          'Profiles array is required for scrapeProfile operation'
+        );
+      }
+
+      if (
+        operation === 'scrapeHashtag' &&
+        (!this.params.hashtags || this.params.hashtags.length === 0)
+      ) {
+        return this.createErrorResult(
+          'Hashtags array is required for scrapeHashtag operation'
+        );
+      }
 
       const result = await (async (): Promise<InstagramToolResult> => {
         switch (operation) {
@@ -248,10 +256,7 @@ export class InstagramTool<
         }
       })();
 
-      return result as Extract<
-        InstagramToolResult,
-        { operation: T['operation'] }
-      >;
+      return result;
     } catch (error) {
       return this.createErrorResult(
         error instanceof Error ? error.message : 'Unknown error occurred'
@@ -260,43 +265,31 @@ export class InstagramTool<
   }
 
   /**
-   * Create an error result based on the operation type
+   * Create an error result
    */
-  private createErrorResult(
-    errorMessage: string
-  ): Extract<InstagramToolResult, { operation: T['operation'] }> {
+  private createErrorResult(errorMessage: string): InstagramToolResult {
     const { operation } = this.params;
 
-    if (operation === 'scrapeProfile') {
-      return {
-        operation: 'scrapeProfile',
-        posts: [] as InstagramPost[],
-        profiles: [] as InstagramProfile[],
-        totalPosts: 0,
-        scrapedProfiles: [] as string[],
-        success: false,
-        error: errorMessage,
-      } as Extract<InstagramToolResult, { operation: T['operation'] }>;
-    } else {
-      return {
-        operation: 'scrapeHashtag',
-        posts: [] as InstagramPost[],
-        totalPosts: 0,
-        scrapedHashtags: [] as string[],
-        success: false,
-        error: errorMessage,
-      } as Extract<InstagramToolResult, { operation: T['operation'] }>;
-    }
+    return {
+      operation: operation || 'scrapeProfile',
+      posts: [],
+      profiles: operation === 'scrapeProfile' ? [] : undefined,
+      scrapedProfiles: operation === 'scrapeProfile' ? [] : undefined,
+      scrapedHashtags: operation === 'scrapeHashtag' ? [] : undefined,
+      totalPosts: 0,
+      success: false,
+      error: errorMessage,
+    };
   }
 
   /**
    * Handle scrapeProfile operation
    */
   private async handleScrapeProfile(
-    params: Extract<InstagramToolParams, { operation: 'scrapeProfile' }>
-  ): Promise<Extract<InstagramToolResult, { operation: 'scrapeProfile' }>> {
+    params: InstagramToolParams
+  ): Promise<InstagramToolResult> {
     // Normalize profile inputs to URLs
-    const instagramUrls = this.normalizeProfiles(params.profiles);
+    const instagramUrls = this.normalizeProfiles(params.profiles!);
 
     // Use Apify service to scrape profiles
     const result = await this.scrapeWithApifyProfiles(
@@ -306,7 +299,12 @@ export class InstagramTool<
 
     return {
       operation: 'scrapeProfile',
-      ...result,
+      posts: result.posts,
+      profiles: result.profiles,
+      scrapedProfiles: result.scrapedProfiles,
+      totalPosts: result.totalPosts,
+      success: result.success,
+      error: result.error,
     };
   }
 
@@ -314,18 +312,22 @@ export class InstagramTool<
    * Handle scrapeHashtag operation
    */
   private async handleScrapeHashtag(
-    params: Extract<InstagramToolParams, { operation: 'scrapeHashtag' }>
-  ): Promise<Extract<InstagramToolResult, { operation: 'scrapeHashtag' }>> {
+    params: InstagramToolParams
+  ): Promise<InstagramToolResult> {
     // Use Apify service to scrape hashtags
     const result = await this.scrapeWithApifyHashtags(
-      params.hashtags,
+      params.hashtags!,
       params.limit || 50,
       params.credentials
     );
 
     return {
       operation: 'scrapeHashtag',
-      ...result,
+      posts: result.posts,
+      scrapedHashtags: result.scrapedHashtags,
+      totalPosts: result.totalPosts,
+      success: result.success,
+      error: result.error,
     };
   }
 
@@ -337,12 +339,13 @@ export class InstagramTool<
     hashtags: string[],
     limit: number,
     credentials?: Record<string, string>
-  ): Promise<
-    Omit<
-      Extract<InstagramToolResult, { operation: 'scrapeHashtag' }>,
-      'operation'
-    >
-  > {
+  ): Promise<{
+    posts: InstagramPost[];
+    totalPosts: number;
+    scrapedHashtags: string[];
+    success: boolean;
+    error: string;
+  }> {
     const scrape_hashtag_apify =
       new ApifyBubble<'apify/instagram-hashtag-scraper'>(
         {
@@ -415,12 +418,14 @@ export class InstagramTool<
   private async scrapeWithApifyProfiles(
     urls: string[],
     limit: number
-  ): Promise<
-    Omit<
-      Extract<InstagramToolResult, { operation: 'scrapeProfile' }>,
-      'operation'
-    >
-  > {
+  ): Promise<{
+    posts: InstagramPost[];
+    profiles: InstagramProfile[];
+    totalPosts: number;
+    scrapedProfiles: string[];
+    success: boolean;
+    error: string;
+  }> {
     // Always use 'details' to get both profile information AND posts
     const scrape_profile_apify = new ApifyBubble<'apify/instagram-scraper'>(
       {

@@ -46,7 +46,7 @@ describe('InstagramTool', () => {
       expect(tool).toBeDefined();
     });
 
-    it('should require at least one profile', () => {
+    it('should require at least one profile', async () => {
       const params = {
         operation: 'scrapeProfile' as const,
         profiles: [],
@@ -55,19 +55,24 @@ describe('InstagramTool', () => {
         },
       };
 
-      expect(() => new InstagramTool(params as any)).toThrow();
+      const tool = new InstagramTool(params as any);
+      const result = await tool.action();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Profiles array is required');
     });
 
     it('should validate limit range for profiles', () => {
       const params = {
         operation: 'scrapeProfile' as const,
         profiles: ['test'],
-        limit: 201, // Over the limit
+        limit: 1001, // Over the limit (max is 1000)
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-token',
         },
       };
 
+      // The schema validation should still catch this during construction
       expect(() => new InstagramTool(params)).toThrow();
     });
   });
@@ -104,7 +109,7 @@ describe('InstagramTool', () => {
       expect(tool).toBeDefined();
     });
 
-    it('should require at least one hashtag', () => {
+    it('should require at least one hashtag', async () => {
       const params = {
         operation: 'scrapeHashtag' as const,
         hashtags: [],
@@ -113,7 +118,11 @@ describe('InstagramTool', () => {
         },
       };
 
-      expect(() => new InstagramTool(params as any)).toThrow();
+      const tool = new InstagramTool(params as any);
+      const result = await tool.action();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Hashtags array is required');
     });
 
     it('should validate limit range for hashtags', () => {
@@ -400,47 +409,42 @@ describe('InstagramTool', () => {
   });
 
   describe('Data Transformation', () => {
-    it('should define discriminated union result schema', () => {
+    it('should define single object result schema', () => {
       const resultSchema = InstagramTool.resultSchema;
 
-      // Should be a discriminated union
-      expect(resultSchema._def.discriminator).toBe('operation');
-      expect(resultSchema._def.options).toHaveLength(2);
+      // Should be a single object schema (not discriminated union)
+      expect(resultSchema._def.typeName).toBe('ZodObject');
+      expect(resultSchema.shape.operation).toBeDefined();
+      expect(resultSchema.shape.posts).toBeDefined();
+      expect(resultSchema.shape.totalPosts).toBeDefined();
+      expect(resultSchema.shape.success).toBeDefined();
+      expect(resultSchema.shape.error).toBeDefined();
     });
 
-    it('should define scrapeProfile result schema', () => {
+    it('should define operation field with enum values', () => {
       const resultSchema = InstagramTool.resultSchema;
-      const options = resultSchema._def.options;
+      const operationField = resultSchema.shape.operation;
 
-      // Find scrapeProfile option
-      const scrapeProfileOption = options.find(
-        (option: any) => option.shape.operation._def.value === 'scrapeProfile'
-      );
-
-      expect(scrapeProfileOption).toBeDefined();
-      expect(scrapeProfileOption?.shape.posts).toBeDefined();
-      expect((scrapeProfileOption?.shape as any).profiles).toBeDefined();
-      expect(scrapeProfileOption?.shape.totalPosts).toBeDefined();
-      expect((scrapeProfileOption?.shape as any).scrapedProfiles).toBeDefined();
-      expect(scrapeProfileOption?.shape.success).toBeDefined();
-      expect(scrapeProfileOption?.shape.error).toBeDefined();
+      expect(operationField._def.typeName).toBe('ZodEnum');
+      expect(operationField._def.values).toContain('scrapeProfile');
+      expect(operationField._def.values).toContain('scrapeHashtag');
     });
 
-    it('should define scrapeHashtag result schema', () => {
+    it('should define optional fields for different operations', () => {
       const resultSchema = InstagramTool.resultSchema;
-      const options = resultSchema._def.options;
 
-      // Find scrapeHashtag option
-      const scrapeHashtagOption = options.find(
-        (option: any) => option.shape.operation._def.value === 'scrapeHashtag'
-      );
+      // Profile-specific fields (optional)
+      expect(resultSchema.shape.profiles).toBeDefined();
+      expect(resultSchema.shape.scrapedProfiles).toBeDefined();
 
-      expect(scrapeHashtagOption).toBeDefined();
-      expect(scrapeHashtagOption?.shape.posts).toBeDefined();
-      expect(scrapeHashtagOption?.shape.totalPosts).toBeDefined();
-      expect((scrapeHashtagOption?.shape as any).scrapedHashtags).toBeDefined();
-      expect(scrapeHashtagOption?.shape.success).toBeDefined();
-      expect(scrapeHashtagOption?.shape.error).toBeDefined();
+      // Hashtag-specific fields (optional)
+      expect(resultSchema.shape.scrapedHashtags).toBeDefined();
+
+      // Common fields (required)
+      expect(resultSchema.shape.posts).toBeDefined();
+      expect(resultSchema.shape.totalPosts).toBeDefined();
+      expect(resultSchema.shape.success).toBeDefined();
+      expect(resultSchema.shape.error).toBeDefined();
     });
   });
 });

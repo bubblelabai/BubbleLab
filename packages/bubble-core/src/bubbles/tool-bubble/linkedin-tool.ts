@@ -95,120 +95,120 @@ const LinkedInPostSchema = z.object({
     .describe('Original post that was reshared'),
 });
 
-// Tool parameters schema - discriminated union for multiple operations
-const LinkedInToolParamsSchema = z.discriminatedUnion('operation', [
-  // Scrape profile posts operation
-  z.object({
-    operation: z
-      .literal('scrapePosts')
-      .describe('Scrape LinkedIn profile posts'),
-    username: z
-      .string()
-      .min(1, 'LinkedIn username is required')
-      .describe(
-        'LinkedIn username (without @). Examples: "satyanadella", "billgates"'
-      ),
-    limit: z
-      .number()
-      .min(1)
-      .max(100)
-      .default(100)
-      .optional()
-      .describe('Maximum number of posts to fetch (default: 100)'),
-    pageNumber: z
-      .number()
-      .min(1)
-      .default(1)
-      .optional()
-      .describe('Page number for pagination (default: 1)'),
-    credentials: z
-      .record(z.nativeEnum(CredentialType), z.string())
-      .optional()
-      .describe('Required credentials (auto-injected)'),
-  }),
+// Gemini-compatible single object schema with optional fields
+const LinkedInToolParamsSchema = z.object({
+  operation: z
+    .enum(['scrapePosts', 'searchPosts'])
+    .describe(
+      'Operation to perform: scrapePosts for user profiles, searchPosts for keyword search'
+    ),
 
-  // Search posts by keyword operation
-  z.object({
-    operation: z
-      .literal('searchPosts')
-      .describe('Search LinkedIn posts by keyword'),
-    keyword: z
-      .string()
-      .min(1, 'Search keyword is required')
-      .describe(
-        'Keyword or phrase to search for in LinkedIn posts. Examples: "AI", "hiring", "n8n"'
-      ),
-    sortBy: z
-      .enum(['relevance', 'date_posted'])
-      .default('relevance')
-      .optional()
-      .describe(
-        'Sort results by relevance or date posted (default: relevance)'
-      ),
-    dateFilter: z
-      .enum(['', 'past-24h', 'past-week', 'past-month'])
-      .default('')
-      .optional()
-      .describe('Filter posts by date range (default: no filter)'),
-    limit: z
-      .number()
-      .min(1)
-      .max(50)
-      .default(50)
-      .optional()
-      .describe('Maximum number of posts to fetch (1-50, default: 50)'),
-    pageNumber: z
-      .number()
-      .min(1)
-      .default(1)
-      .optional()
-      .describe('Page number for pagination (default: 1)'),
-    credentials: z
-      .record(z.nativeEnum(CredentialType), z.string())
-      .optional()
-      .describe('Required credentials (auto-injected)'),
-  }),
-]);
+  // Profile scraping fields (optional)
+  username: z
+    .string()
+    .optional()
+    .describe(
+      'LinkedIn username (for scrapePosts operation). Examples: "satyanadella", "billgates"'
+    ),
 
-// Tool result schema - discriminated union for multiple operations
-const LinkedInToolResultSchema = z.discriminatedUnion('operation', [
-  // Scrape profile posts result
-  z.object({
-    operation: z
-      .literal('scrapePosts')
-      .describe('Scrape LinkedIn profile posts'),
-    posts: z
-      .array(LinkedInPostSchema)
-      .describe('Array of LinkedIn posts from the profile'),
-    totalPosts: z.number().describe('Total number of posts scraped'),
-    username: z.string().describe('LinkedIn username that was scraped'),
-    paginationToken: z
-      .string()
-      .nullable()
-      .describe('Token for fetching next page of results'),
-    success: z.boolean().describe('Whether the operation was successful'),
-    error: z.string().describe('Error message if operation failed'),
-  }),
+  // Search fields (optional)
+  keyword: z
+    .string()
+    .optional()
+    .describe(
+      'Keyword or phrase to search for (for searchPosts operation). Examples: "AI", "hiring", "n8n"'
+    ),
 
-  // Search posts result
-  z.object({
-    operation: z
-      .literal('searchPosts')
-      .describe('Search LinkedIn posts by keyword'),
-    posts: z
-      .array(LinkedInPostSchema)
-      .describe('Array of LinkedIn posts matching search'),
-    totalPosts: z.number().describe('Total number of posts found'),
-    keyword: z.string().describe('Search keyword that was used'),
-    totalResults: z.number().nullable().describe('Total results available'),
-    hasNextPage: z
-      .boolean()
-      .nullable()
-      .describe('Whether there are more results'),
-    success: z.boolean().describe('Whether the operation was successful'),
-    error: z.string().describe('Error message if operation failed'),
-  }),
-]);
+  sortBy: z
+    .enum(['relevance', 'date_posted'])
+    .default('relevance')
+    .optional()
+    .describe(
+      'Sort results by relevance or date posted (for searchPosts operation, default: relevance)'
+    ),
+
+  dateFilter: z
+    .enum(['', 'past-24h', 'past-week', 'past-month'])
+    .default('')
+    .optional()
+    .describe(
+      'Filter posts by date range (for searchPosts operation, default: no filter)'
+    ),
+
+  // Common fields
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .default(50)
+    .optional()
+    .describe(
+      'Maximum number of posts to fetch (default: 50 for search, 100 for profiles)'
+    ),
+
+  pageNumber: z
+    .number()
+    .min(1)
+    .default(1)
+    .optional()
+    .describe('Page number for pagination (default: 1)'),
+
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .optional()
+    .describe('Required credentials (auto-injected)'),
+});
+
+// Gemini-compatible single result schema
+const LinkedInToolResultSchema = z.object({
+  operation: z
+    .enum(['scrapePosts', 'searchPosts'])
+    .describe('Operation that was performed'),
+
+  // Posts data (always present)
+  posts: z.array(LinkedInPostSchema).describe('Array of LinkedIn posts'),
+
+  // Profile data (only for scrapePosts operation)
+  username: z
+    .string()
+    .optional()
+    .describe(
+      'LinkedIn username that was scraped (only for scrapePosts operation)'
+    ),
+
+  paginationToken: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'Token for fetching next page of results (only for scrapePosts operation)'
+    ),
+
+  // Search data (only for searchPosts operation)
+  keyword: z
+    .string()
+    .optional()
+    .describe('Search keyword that was used (only for searchPosts operation)'),
+
+  totalResults: z
+    .number()
+    .nullable()
+    .optional()
+    .describe('Total results available (only for searchPosts operation)'),
+
+  hasNextPage: z
+    .boolean()
+    .nullable()
+    .optional()
+    .describe(
+      'Whether there are more results (only for searchPosts operation)'
+    ),
+
+  // Common fields
+  totalPosts: z.number().describe('Total number of posts found'),
+  success: z.boolean().describe('Whether the operation was successful'),
+  error: z.string().describe('Error message if operation failed'),
+});
 
 // Type definitions
 type LinkedInToolParams = z.output<typeof LinkedInToolParamsSchema>;
@@ -233,11 +233,9 @@ export type LinkedInStats = z.output<typeof LinkedInStatsSchema>;
  * - Pagination support
  * - Date filtering for search
  */
-export class LinkedInTool<
-  T extends LinkedInToolParams = LinkedInToolParams,
-> extends ToolBubble<
-  T,
-  Extract<LinkedInToolResult, { operation: T['operation'] }>
+export class LinkedInTool extends ToolBubble<
+  LinkedInToolParams,
+  LinkedInToolResult
 > {
   // Required static metadata
   static readonly bubbleName: BubbleName = 'linkedin-tool';
@@ -316,18 +314,35 @@ export class LinkedInTool<
     super(params, context);
   }
 
-  async performAction(): Promise<
-    Extract<LinkedInToolResult, { operation: T['operation'] }>
-  > {
+  async performAction(): Promise<LinkedInToolResult> {
     const credentials = this.params?.credentials;
     if (!credentials || !credentials[CredentialType.APIFY_CRED]) {
       return this.createErrorResult(
         'LinkedIn scraping requires authentication. Please configure APIFY_CRED.'
-      ) as Extract<LinkedInToolResult, { operation: T['operation'] }>;
+      );
     }
 
     try {
       const { operation } = this.params;
+
+      // Validate required fields based on operation
+      if (
+        operation === 'scrapePosts' &&
+        (!this.params.username || this.params.username.length === 0)
+      ) {
+        return this.createErrorResult(
+          'Username is required for scrapePosts operation'
+        );
+      }
+
+      if (
+        operation === 'searchPosts' &&
+        (!this.params.keyword || this.params.keyword.length === 0)
+      ) {
+        return this.createErrorResult(
+          'Keyword is required for searchPosts operation'
+        );
+      }
 
       const result = await (async (): Promise<LinkedInToolResult> => {
         switch (operation) {
@@ -340,66 +355,49 @@ export class LinkedInTool<
         }
       })();
 
-      return result as Extract<
-        LinkedInToolResult,
-        { operation: T['operation'] }
-      >;
+      return result;
     } catch (error) {
       return this.createErrorResult(
         error instanceof Error ? error.message : 'Unknown error occurred'
-      ) as Extract<LinkedInToolResult, { operation: T['operation'] }>;
+      );
     }
   }
 
   /**
-   * Create an error result based on operation type
+   * Create an error result
    */
   private createErrorResult(errorMessage: string): LinkedInToolResult {
     const { operation } = this.params;
 
-    if (operation === 'scrapePosts') {
-      return {
-        operation: 'scrapePosts',
-        posts: [],
-        totalPosts: 0,
-        username:
-          (
-            this.params as Extract<
-              LinkedInToolParams,
-              { operation: 'scrapePosts' }
-            >
-          ).username || '',
-        paginationToken: null,
-        success: false,
-        error: errorMessage,
-      };
-    } else {
-      return {
-        operation: 'searchPosts',
-        posts: [],
-        totalPosts: 0,
-        keyword: (this.params as any).keyword || '',
-        totalResults: null,
-        hasNextPage: null,
-        success: false,
-        error: errorMessage,
-      };
-    }
+    return {
+      operation: operation || 'scrapePosts',
+      posts: [],
+      username:
+        operation === 'scrapePosts' ? this.params.username || '' : undefined,
+      paginationToken: operation === 'scrapePosts' ? null : undefined,
+      keyword:
+        operation === 'searchPosts' ? this.params.keyword || '' : undefined,
+      totalResults: operation === 'searchPosts' ? null : undefined,
+      hasNextPage: operation === 'searchPosts' ? null : undefined,
+      totalPosts: 0,
+      success: false,
+      error: errorMessage,
+    };
   }
 
   /**
    * Handle scrapePosts operation
    */
   private async handleScrapePosts(
-    params: Extract<LinkedInToolParams, { operation: 'scrapePosts' }>
-  ): Promise<Extract<LinkedInToolResult, { operation: 'scrapePosts' }>> {
+    params: LinkedInToolParams
+  ): Promise<LinkedInToolResult> {
     // Use Apify service to scrape LinkedIn posts
     const linkedinPostScraper =
       new ApifyBubble<'apimaestro/linkedin-profile-posts'>(
         {
           actorId: 'apimaestro/linkedin-profile-posts',
           input: {
-            username: params.username,
+            username: params.username!,
             limit: params.limit || 100,
             page_number: params.pageNumber || 1,
           },
@@ -416,9 +414,9 @@ export class LinkedInTool<
       return {
         operation: 'scrapePosts',
         posts: [],
-        totalPosts: 0,
-        username: params.username,
+        username: params.username!,
         paginationToken: null,
+        totalPosts: 0,
         success: false,
         error:
           apifyResult.data.error ||
@@ -433,9 +431,9 @@ export class LinkedInTool<
       return {
         operation: 'scrapePosts',
         posts: [],
-        totalPosts: 0,
-        username: params.username,
+        username: params.username!,
         paginationToken: null,
+        totalPosts: 0,
         success: false,
         error:
           'No posts found. The profile may be private or have no public posts.',
@@ -448,9 +446,9 @@ export class LinkedInTool<
     return {
       operation: 'scrapePosts',
       posts,
-      totalPosts: posts.length,
-      username: params.username,
+      username: params.username!,
       paginationToken: null,
+      totalPosts: posts.length,
       success: true,
       error: '',
     };
@@ -592,15 +590,15 @@ export class LinkedInTool<
    * Handle searchPosts operation
    */
   private async handleSearchPosts(
-    params: Extract<LinkedInToolParams, { operation: 'searchPosts' }>
-  ): Promise<Extract<LinkedInToolResult, { operation: 'searchPosts' }>> {
+    params: LinkedInToolParams
+  ): Promise<LinkedInToolResult> {
     // Use Apify service to search LinkedIn posts
     const linkedinPostSearcher =
       new ApifyBubble<'apimaestro/linkedin-posts-search-scraper-no-cookies'>(
         {
           actorId: 'apimaestro/linkedin-posts-search-scraper-no-cookies',
           input: {
-            keyword: params.keyword,
+            keyword: params.keyword!,
             sort_type: params.sortBy || 'relevance',
             date_filter: params.dateFilter || '',
             page_number: params.pageNumber || 1,
@@ -619,10 +617,10 @@ export class LinkedInTool<
       return {
         operation: 'searchPosts',
         posts: [],
-        totalPosts: 0,
-        keyword: params.keyword,
+        keyword: params.keyword!,
         totalResults: null,
         hasNextPage: null,
+        totalPosts: 0,
         success: false,
         error:
           apifyResult.data.error ||
@@ -636,10 +634,10 @@ export class LinkedInTool<
       return {
         operation: 'searchPosts',
         posts: [],
-        totalPosts: 0,
-        keyword: params.keyword,
+        keyword: params.keyword!,
         totalResults: 0,
         hasNextPage: false,
+        totalPosts: 0,
         success: true,
         error: '',
       };
@@ -654,10 +652,10 @@ export class LinkedInTool<
     return {
       operation: 'searchPosts',
       posts,
-      totalPosts: posts.length,
-      keyword: params.keyword,
+      keyword: params.keyword!,
       totalResults: metadata?.total_count || null,
       hasNextPage: metadata?.has_next_page || null,
+      totalPosts: posts.length,
       success: true,
       error: '',
     };
