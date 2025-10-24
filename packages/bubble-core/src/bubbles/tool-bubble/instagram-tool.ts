@@ -346,12 +346,15 @@ export class InstagramTool extends ToolBubble<
     success: boolean;
     error: string;
   }> {
+    // Normalize hashtags for Apify (remove # symbol and clean format)
+    const normalizedHashtags = this.normalizeHashtags(hashtags);
+
     const scrape_hashtag_apify =
       new ApifyBubble<'apify/instagram-hashtag-scraper'>(
         {
           actorId: 'apify/instagram-hashtag-scraper',
           input: {
-            hashtags,
+            hashtags: normalizedHashtags,
             resultsLimit: limit,
           },
           waitForFinish: true,
@@ -407,6 +410,30 @@ export class InstagramTool extends ToolBubble<
 
       // Convert to profile URL
       return `https://www.instagram.com/${cleanUsername}/`;
+    });
+  }
+
+  /**
+   * Normalize hashtags for Apify actor
+   * Removes # symbol and cleans format to match Apify requirements
+   */
+  private normalizeHashtags(hashtags: string[]): string[] {
+    return hashtags.map((hashtag) => {
+      // Remove # symbol if present
+      let cleanHashtag = hashtag.startsWith('#') ? hashtag.slice(1) : hashtag;
+
+      // Remove any URL parts if it's a full Instagram hashtag URL
+      if (cleanHashtag.includes('instagram.com/explore/tags/')) {
+        cleanHashtag = cleanHashtag.split('instagram.com/explore/tags/')[1];
+        // Remove any trailing slashes or query parameters
+        cleanHashtag = cleanHashtag.split('/')[0].split('?')[0];
+      }
+
+      // Clean any remaining special characters that Apify doesn't like
+      // Keep only alphanumeric characters and underscores
+      cleanHashtag = cleanHashtag.replace(/[^a-zA-Z0-9_]/g, '');
+
+      return cleanHashtag;
     });
   }
 
