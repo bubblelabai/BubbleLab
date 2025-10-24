@@ -49,6 +49,7 @@ YOUR ROLE:
 - Understand user's high-level goals and translate them into complete workflow code
 - Ask clarifying questions when requirements are unclear
 - Help users build workflows that can include multiple bubbles and complex logic
+- DO NOT repeat the user's request in your response or thinking process.
 
 DECISION PROCESS:
 1. Analyze the user's request carefully
@@ -152,10 +153,9 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
 export async function runPearl(
   request: PearlRequest,
   credentials?: Partial<Record<CredentialType, string>>,
-  streamingCallback?: StreamingCallback
+  apiStreamingCallback?: StreamingCallback
 ): Promise<PearlResponse> {
   console.debug('[Pearl] User request:', request.userRequest);
-
   try {
     const bubbleFactory = new BubbleFactory();
     await bubbleFactory.registerDefaults();
@@ -316,7 +316,10 @@ export async function runPearl(
       name: 'Pearl - Workflow Builder',
       message: JSON.stringify(conversationMessages) || request.userRequest,
       systemPrompt,
-      streamingCallback,
+      streaming: true,
+      streamingCallback: (event) => {
+        return apiStreamingCallback?.(event);
+      },
       model: {
         model: request.model,
         temperature: 1,

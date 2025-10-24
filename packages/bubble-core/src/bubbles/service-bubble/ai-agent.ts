@@ -766,6 +766,7 @@ export class AIAgentBubble extends ServiceBubble<
           type: 'tool_complete',
           data: {
             callId: toolCall.id!,
+            tool: toolCall.name,
             output: toolOutput,
             duration: Date.now() - startTime,
           },
@@ -1405,6 +1406,7 @@ export class AIAgentBubble extends ServiceBubble<
                   type: 'tool_complete',
                   data: {
                     callId,
+                    tool: callData.name,
                     output: event.data.output,
                     duration,
                   },

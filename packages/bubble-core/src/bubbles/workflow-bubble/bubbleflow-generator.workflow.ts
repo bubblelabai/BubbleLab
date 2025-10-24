@@ -712,6 +712,7 @@ ${VALIDATION_PROCESS}`;
         type: 'tool_complete',
         data: {
           callId: 'discovery-1',
+          tool: 'bubble-discovery',
           output: {
             availableBubbles: availableBubbles.length,
             descriptions: bubbleDescriptions,
@@ -736,6 +737,7 @@ ${VALIDATION_PROCESS}`;
       await streamingCallback({
         type: 'tool_complete',
         data: {
+          tool: 'template-generation',
           callId: 'template-1',
           output: { templateGenerated: true, length: boilerplate.length },
           duration: 50,
@@ -905,6 +907,7 @@ ${VALIDATION_PROCESS}`;
         await streamingCallback({
           type: 'tool_complete',
           data: {
+            tool: 'validation-agent',
             callId: 'validation-agent-1',
             output: { success: validated },
             duration: 100,
@@ -938,6 +941,7 @@ ${VALIDATION_PROCESS}`;
             type: 'tool_complete',
             data: {
               callId: 'summary-agent-1',
+              tool: 'summary-agent',
               output: {
                 summaryGenerated: !!summary,
                 schemaGenerated: !!inputsSchema,
@@ -987,6 +991,7 @@ ${VALIDATION_PROCESS}`;
           type: 'tool_complete',
           data: {
             callId: 'summary-agent-final',
+            tool: 'summary-agent',
             output: {
               summaryGenerated: !!summary,
               schemaGenerated: !!inputsSchema,
