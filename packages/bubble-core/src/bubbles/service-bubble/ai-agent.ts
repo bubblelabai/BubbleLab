@@ -24,8 +24,10 @@ import {
 } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
-import { formatFinalResponse } from '../../utils/agent-formatter.js';
-import { formatGeminiImageResponse } from '../../utils/agent-formatter.js';
+import {
+  extractAndStreamThinkingTokens,
+  formatFinalResponse,
+} from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 
 // Define tool hook context - provides access to messages and tool call details
@@ -53,6 +55,7 @@ export type StreamingEvent =
     }
   | { type: 'llm_start'; data: { model: string; temperature: number } }
   | { type: 'token'; data: { content: string; messageId: string } }
+  | { type: 'think'; data: { content: string; messageId: string } }
   | { type: 'llm_complete'; data: { messageId: string; totalTokens?: number } }
   | {
       type: 'tool_start';
@@ -533,6 +536,9 @@ export class AIAgentBubble extends ServiceBubble<
     // This will throw immediately if credentials are missing
     const apiKey = this.chooseCredential();
 
+    // Enable streaming if streamingCallback is provided
+    const enableStreaming = !!this.streamingCallback;
+
     switch (provider) {
       case 'openai':
         return new ChatOpenAI({
@@ -540,6 +546,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          streaming: enableStreaming,
         });
       case 'google':
         return new ChatGoogleGenerativeAI({
@@ -547,6 +554,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxOutputTokens: maxTokens,
           apiKey,
+          streaming: enableStreaming,
         });
       case 'anthropic':
         return new ChatAnthropic({
@@ -554,7 +562,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           anthropicApiKey: apiKey,
           maxTokens,
-          streaming: true,
+          streaming: enableStreaming,
           apiKey,
         });
       case 'openrouter':
@@ -565,8 +573,15 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          streaming: enableStreaming,
           configuration: {
             baseURL: 'https://openrouter.ai/api/v1',
+          },
+          modelKwargs: {
+            reasoning: {
+              effort: 'medium',
+              exclude: false,
+            },
           },
         });
       default:
@@ -723,6 +738,17 @@ export class AIAgentBubble extends ServiceBubble<
           messages: currentMessages,
         });
 
+        const startTime = Date.now();
+
+        this.streamingCallback?.({
+          type: 'tool_start',
+          data: {
+            tool: toolCall.name,
+            input: toolCall.args,
+            callId: toolCall.id!,
+          },
+        });
+
         // If hook returns modified messages/toolInput, apply them
         if (hookResult_before) {
           if (hookResult_before.messages) {
@@ -764,6 +790,14 @@ export class AIAgentBubble extends ServiceBubble<
             this.shouldStopAfterTools = true;
           }
         }
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            output: toolOutput,
+            duration: Date.now() - startTime,
+          },
+        });
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
         const errorMessage = new ToolMessage({
@@ -799,9 +833,53 @@ export class AIAgentBubble extends ServiceBubble<
       // If we have tools, bind them to the LLM
       const modelWithTools = tools.length > 0 ? llm.bindTools(tools) : llm;
 
-      const response = await modelWithTools.invoke(allMessages);
+      // Use streaming if streamingCallback is provided
+      if (this.streamingCallback) {
+        const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-      return { messages: [response] };
+        // Use invoke with callbacks for streaming
+        const response = await modelWithTools.invoke(allMessages, {
+          callbacks: [
+            {
+              handleLLMStart: async (): Promise<void> => {
+                await this.streamingCallback?.({
+                  type: 'llm_start',
+                  data: {
+                    model: this.params.model.model,
+                    temperature: this.params.model.temperature,
+                  },
+                });
+              },
+              handleLLMEnd: async (output): Promise<void> => {
+                // Extract thinking tokens from different model providers
+                const thinking = extractAndStreamThinkingTokens(output);
+                if (thinking) {
+                  await this.streamingCallback?.({
+                    type: 'think',
+                    data: {
+                      content: thinking,
+                      messageId,
+                    },
+                  });
+                }
+                await this.streamingCallback?.({
+                  type: 'llm_complete',
+                  data: {
+                    messageId,
+                    totalTokens: output.llmOutput?.usage_metadata?.total_tokens,
+                  },
+                });
+              },
+            },
+          ],
+        });
+
+        return { messages: [response] };
+      } else {
+        // Non-streaming fallback
+        const response = await modelWithTools.invoke(allMessages);
+        return { messages: [response] };
+      }
     };
 
     // Define conditional edge function

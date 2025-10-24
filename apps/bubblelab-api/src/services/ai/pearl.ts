@@ -314,6 +314,9 @@ export async function runPearl(
       name: 'Pearl - Workflow Builder',
       message: JSON.stringify(conversationMessages) || request.userRequest,
       systemPrompt,
+      streamingCallback: (event) => {
+        console.log('[Pearl] Streaming event:', JSON.stringify(event));
+      },
       model: {
         model: request.model,
         temperature: 1,

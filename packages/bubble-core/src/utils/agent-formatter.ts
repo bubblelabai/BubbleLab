@@ -1,5 +1,64 @@
 import { parseJsonWithFallbacks } from './json-parsing';
+import type { LLMResult } from '@langchain/core/outputs';
+/**
+ * Extract and stream thinking tokens from different model providers
+ */
+export function extractAndStreamThinkingTokens(
+  output: LLMResult
+): string | undefined {
+  try {
+    // Cast output to any to avoid TypeScript issues
+    const outputAny = output as any;
+    // Try multiple paths to find reasoning content
+    const possiblePaths = [
+      // Path 1: Direct generations
+      outputAny.generations?.[0]?.[0]?.message?.additional_kwargs
+        ?.__raw_response,
+      // Path 2: Through kwargs
+      outputAny.generations?.[0]?.[0]?.message?.kwargs?.additional_kwargs
+        ?.__raw_response,
+      // Path 3: Direct in message
+      outputAny.generations?.[0]?.[0]?.message?.__raw_response,
+      // Path 4: Alternative structure
+      outputAny.generations?.[0]?.[0]?.additional_kwargs?.__raw_response,
+      // Path 5: Deep nested structure
+      outputAny.generations?.[0]?.[0]?.message?.additional_kwargs
+        ?.__raw_response,
+    ];
 
+    let rawResponse: any = null;
+    for (const path of possiblePaths) {
+      if (path) {
+        rawResponse = path;
+        break;
+      }
+    }
+
+    if (rawResponse) {
+      if (rawResponse.choices && Array.isArray(rawResponse.choices)) {
+        for (const choice of rawResponse.choices) {
+          if (choice.delta?.reasoning) {
+            // Stream thinking tokens for Grok models
+            return choice.delta.reasoning;
+          }
+          // Also check for reasoning in the choice itself (not just delta)
+          if (choice.reasoning) {
+            return choice.reasoning;
+          }
+        }
+      } else {
+        console.log('No choices array found in rawResponse');
+      }
+    } else {
+      console.log('No rawResponse found in any path');
+    }
+
+    return undefined;
+  } catch (error) {
+    console.warn('[AIAgent] Error extracting thinking tokens:', error);
+    return undefined;
+  }
+}
 /**
  * Format final response with special handling for Gemini image models and JSON mode
  */
