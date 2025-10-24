@@ -20,6 +20,7 @@ import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
+import ReactMarkdown from 'react-markdown';
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -543,7 +544,9 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
       return (
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="text-xs text-gray-400 mb-1">💭 Thinking Process</div>
-          <div className="whitespace-pre-wrap text-xs">{event.content}</div>
+          <div className="text-xs prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown>{event.content}</ReactMarkdown>
+          </div>
         </div>
       );
 
