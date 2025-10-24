@@ -3,6 +3,7 @@ interface SchemaField {
   type: string;
   required: boolean;
   description?: string;
+  default?: unknown;
   minItems?: number;
   maxItems?: number;
   items?: {
@@ -94,6 +95,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
       type PropertySchema = {
         type?: string;
         description?: string;
+        default?: unknown;
         minItems?: number;
         maxItems?: number;
         items?: {
@@ -121,6 +123,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
                 schema.required.includes(key)) ||
               false,
             description: value.description,
+            default: value.default,
             minItems: value.minItems,
             maxItems: value.maxItems,
             items: value.items,

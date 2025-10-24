@@ -74,7 +74,9 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
         eventType: true,
         webhookExecutionCount: true,
         webhookFailureCount: true,
+        cronActive: true,
         createdAt: true,
+        cron: true,
         updatedAt: true,
         originalCode: true,
         bubbleParameters: true,
@@ -131,6 +133,8 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
       description: flow.description || undefined,
       eventType: flow.eventType,
       isActive: flow.webhooks[0]?.isActive ?? false,
+      cronActive: flow.cronActive || false,
+      cron: flow.cron || null,
       webhookExecutionCount: flow.webhookExecutionCount,
       webhookFailureCount: flow.webhookFailureCount,
       executionCount: executionCountMap.get(flow.id) || 0,
@@ -195,6 +199,9 @@ app.openapi(createBubbleFlowRoute, async (c) => {
       bubbleParameters: validationResult.bubbleParameters || {},
       inputSchema: validationResult.inputSchema || {},
       eventType: validationResult.trigger?.type || 'webhook/http',
+      cron: validationResult.trigger?.cronSchedule || null,
+      cronActive: false,
+      defaultInputs: {},
     })
     .returning({ id: bubbleFlows.id });
 
@@ -436,6 +443,9 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     inputSchema: flow.inputSchema || {},
     metadata: flow.metadata || {},
     isActive: flow.webhooks[0]?.isActive ?? false,
+    cron: flow.cron || null,
+    cronActive: flow.cronActive || false,
+    defaultInputs: flow.defaultInputs || {},
     createdAt: flow.createdAt.toISOString(),
     updatedAt: flow.updatedAt.toISOString(),
     webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
@@ -716,7 +726,8 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
 // Validate BubbleFlow code
 app.openapi(validateBubbleFlowCodeRoute, async (c) => {
   try {
-    const { code, options, flowId, credentials } = c.req.valid('json');
+    const { code, options, flowId, credentials, defaultInputs, activateCron } =
+      c.req.valid('json');
     const userId = getUserId(c);
     const bubbleFactory = await getBubbleFactory();
 
@@ -731,6 +742,12 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
               path: true,
             },
           },
+        },
+        columns: {
+          id: true,
+          cron: true,
+          cronActive: true,
+          defaultInputs: true,
         },
       });
 
@@ -779,6 +796,85 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       console.log(`Updated BubbleFlow ${flowId} with new validation results`);
     }
 
+    // Always update cron expression from code (for lazy loading)
+    if (result.valid && flowId) {
+      const cronExpression = result.trigger?.cronSchedule || null;
+
+      // Update cron expression regardless of activation status
+      await db
+        .update(bubbleFlows)
+        .set({
+          cron: cronExpression,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)));
+    }
+
+    // Handle cron activation if requested
+    if (result.valid && flowId && activateCron !== undefined) {
+      const cronExpression = result.trigger?.cronSchedule || null;
+
+      if (activateCron === true) {
+        // Validate defaultInputs against inputSchema if provided
+        if (defaultInputs && result.inputSchema) {
+          const schema = result.inputSchema;
+          const required = schema.required || [];
+
+          // Only validate required fields that are provided
+          for (const field of required as string[]) {
+            if (field in defaultInputs && !defaultInputs[field]) {
+              return c.json(
+                {
+                  valid: false,
+                  success: false,
+                  inputSchema: result.inputSchema || {},
+                  eventType: result.trigger?.type || 'webhook/http',
+                  webhookPath: getWebhookUrl(
+                    userId,
+                    existingFlow?.webhooks?.[0]?.path || ''
+                  ),
+                  cron: cronExpression,
+                  cronActive: false,
+                  error: `Required field '${field}' is empty`,
+                  errors: [`Required field '${field}' is empty`],
+                  metadata: {
+                    validatedAt: new Date().toISOString(),
+                    codeLength: code?.length || 0,
+                    strictMode: options?.strictMode ?? true,
+                    flowUpdated: false,
+                  },
+                },
+                200
+              );
+            }
+          }
+        }
+
+        // Update flow with cron activation
+        await db
+          .update(bubbleFlows)
+          .set({
+            cronActive: true,
+            defaultInputs: defaultInputs || {},
+            updatedAt: new Date(),
+          })
+          .where(
+            and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
+          );
+      } else {
+        // Deactivate cron
+        await db
+          .update(bubbleFlows)
+          .set({
+            cronActive: false,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
+          );
+      }
+    }
+
     // We need to extract the actual validation result from the data property
     if (result.valid) {
       return c.json(
@@ -792,6 +888,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
             userId,
             existingFlow?.webhooks?.[0]?.path || ''
           ),
+          cron: result.trigger?.cronSchedule || null,
+          cronActive: existingFlow?.cronActive || false,
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
@@ -818,6 +916,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
             userId,
             existingFlow?.webhooks?.[0]?.path || ''
           ),
+          cron: result.trigger?.cronSchedule || null,
+          cronActive: existingFlow?.cronActive || false,
           error: result.errors?.join('; ') || 'Validation failed',
           errors: [result.errors?.join('; ') || 'Validation failed'],
           metadata: {

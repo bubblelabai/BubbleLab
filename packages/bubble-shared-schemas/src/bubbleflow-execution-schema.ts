@@ -207,6 +207,20 @@ export const validateBubbleFlowCodeSchema = z.object({
         },
       },
     }),
+  defaultInputs: z
+    .record(z.unknown())
+    .optional()
+    .openapi({
+      description: 'User-filled input values for cron execution',
+      example: {
+        message: 'Hello World',
+        channel: '#general',
+      },
+    }),
+  activateCron: z.boolean().optional().openapi({
+    description: 'Whether to activate/deactivate cron scheduling',
+    example: true,
+  }),
 });
 
 export const validateBubbleFlowCodeResponseSchema = z.object({
@@ -262,6 +276,14 @@ export const validateBubbleFlowCodeResponseSchema = z.object({
     .openapi({
       description: 'Validation metadata',
     }),
+  cron: z.string().nullable().optional().openapi({
+    description: 'Cron expression extracted from code',
+    example: '0 0 * * *',
+  }),
+  cronActive: z.boolean().optional().openapi({
+    description: 'Whether cron scheduling is currently active',
+    example: false,
+  }),
   success: z.boolean(),
   error: z.string(),
 });

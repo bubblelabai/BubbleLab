@@ -33,6 +33,9 @@ export const bubbleFlows = sqliteTable('bubble_flows', {
   inputSchema: text('input_schema', { mode: 'json' }), // Store input schema
   webhookExecutionCount: int('webhook_execution_count').notNull().default(0), // Track webhook executions
   webhookFailureCount: int('webhook_failure_count').notNull().default(0), // Track webhook failures
+  cron: text('cron'), // Cron expression extracted from code
+  cronActive: int('cron_active', { mode: 'boolean' }).notNull().default(false), // Whether cron scheduling is active
+  defaultInputs: text('default_inputs', { mode: 'json' }), // User-filled input values for cron execution
   createdAt: int('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -75,6 +78,7 @@ export const bubbleFlowExecutions = sqliteTable('bubble_flow_executions', {
   result: text('result', { mode: 'json' }),
   status: text('status').notNull(),
   error: text('error'),
+  code: text('code'), // Store the original code at execution time
   startedAt: int('started_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),

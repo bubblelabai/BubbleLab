@@ -154,6 +154,19 @@ export const bubbleFlowDetailsResponseSchema = z
       .record(z.string(), z.unknown())
       .optional()
       .openapi({ description: 'Input schema' }),
+    cron: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({ description: 'Cron expression' }),
+    cronActive: z
+      .boolean()
+      .optional()
+      .openapi({ description: 'Whether cron scheduling is active' }),
+    defaultInputs: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .openapi({ description: 'Default inputs for cron scheduling' }),
     isActive: z
       .boolean()
       .openapi({ description: 'Whether the BubbleFlow is active' }),

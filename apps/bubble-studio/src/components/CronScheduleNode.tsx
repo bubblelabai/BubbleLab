@@ -13,13 +13,21 @@ import {
   describeCronExpression,
   validateCronExpression,
 } from '@bubblelab/shared-schemas';
+import { parseJSONSchema } from '../utils/inputSchemaParser';
+import InputFieldsRenderer from './InputFieldsRenderer';
 
 interface CronScheduleNodeData {
   flowName: string;
   cronSchedule: string;
   isActive?: boolean;
+  inputSchema?: Record<string, unknown>;
+  defaultInputs?: Record<string, unknown>;
   onCronScheduleChange?: (newSchedule: string) => void;
-  onActiveToggle?: (isActive: boolean) => void;
+  onActiveToggle?: (
+    isActive: boolean,
+    defaultInputs?: Record<string, unknown>
+  ) => void;
+  onDefaultInputChange?: (fieldName: string, value: unknown) => void;
   onExecuteFlow?: () => void;
   isExecuting?: boolean;
 }
@@ -161,13 +169,46 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     flowName,
     cronSchedule,
     isActive = true,
+    inputSchema = {},
+    defaultInputs = {},
     onCronScheduleChange,
     onActiveToggle,
+    onDefaultInputChange,
     onExecuteFlow,
     isExecuting = false,
   } = data;
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [inputValues, setInputValues] =
+    useState<Record<string, unknown>>(defaultInputs);
+
+  // Parse input schema using the same logic as InputSchemaNode
+  const schemaFields =
+    typeof inputSchema === 'string'
+      ? parseJSONSchema(inputSchema)
+      : inputSchema.properties
+        ? Object.entries(inputSchema.properties).map(([name, schema]) => ({
+            name,
+            type: (schema as any)?.type || 'string',
+            required: Array.isArray(inputSchema.required)
+              ? inputSchema.required.includes(name)
+              : false,
+            description: (schema as any)?.description,
+            default: (schema as any)?.default,
+          }))
+        : [];
+
+  // Check if there are any required fields that are missing
+  const missingRequiredFields = schemaFields
+    .filter((field) => field.required)
+    .filter(
+      (field) =>
+        (inputValues[field.name] === undefined ||
+          inputValues[field.name] === '') &&
+        field.default === undefined
+    );
+
+  const hasMissingRequired = missingRequiredFields.length > 0;
 
   // Parse initial cron schedule
   const initialState = parseCronToUI(cronSchedule);
@@ -199,7 +240,13 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     : 'Invalid cron expression';
 
   const handleActiveToggle = () => {
-    onActiveToggle?.(!isActive);
+    onActiveToggle?.(!isActive, inputValues);
+  };
+
+  const handleInputChange = (fieldName: string, value: unknown) => {
+    const newInputValues = { ...inputValues, [fieldName]: value };
+    setInputValues(newInputValues);
+    onDefaultInputChange?.(fieldName, value);
   };
 
   const handleFrequencyChange = (newFrequency: FrequencyType) => {
@@ -269,9 +316,11 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           ? 'border-purple-400 shadow-lg shadow-purple-500/30'
           : !isActive
             ? 'border-neutral-700 opacity-75'
-            : validation.valid
-              ? 'border-neutral-600'
-              : 'border-red-500'
+            : hasMissingRequired
+              ? 'border-amber-500'
+              : validation.valid
+                ? 'border-neutral-600'
+                : 'border-red-500'
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -352,6 +401,19 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           {!validation.valid && (
             <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
               ⚠️ {validation.error}
+            </div>
+          )}
+
+          {/* Missing required fields indicator */}
+          {hasMissingRequired && !isExecuting && (
+            <div className="mt-2">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-600/40">
+                <span>⚠️</span>
+                <span>
+                  {missingRequiredFields.length} required field
+                  {missingRequiredFields.length !== 1 ? 's' : ''} missing
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -690,15 +752,32 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
         </div>
       )}
 
+      {/* Input fields section */}
+      {isExpanded && schemaFields.length > 0 && (
+        <div className="p-4 border-t border-neutral-600">
+          <div className="text-xs font-medium text-neutral-300 mb-3">
+            Default Input Values
+          </div>
+          <div className="space-y-3">
+            <InputFieldsRenderer
+              schemaFields={schemaFields}
+              inputValues={inputValues}
+              onInputChange={handleInputChange}
+              isExecuting={isExecuting}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Execute button */}
       {onExecuteFlow && (
         <div className="p-4 border-t border-neutral-600">
           <button
             type="button"
             onClick={onExecuteFlow}
-            disabled={!validation.valid || isExecuting || !isActive}
+            disabled={!validation.valid || isExecuting}
             className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              validation.valid && !isExecuting && isActive
+              validation.valid && !isExecuting
                 ? 'bg-purple-600 hover:bg-purple-500 text-white'
                 : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
             }`}
@@ -711,7 +790,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                <span>Test Schedule</span>
+                <span>Test Flow</span>
               </>
             )}
           </button>

@@ -121,6 +121,7 @@ export async function executeBubbleFlowWithTracking(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -141,6 +142,7 @@ export async function executeBubbleFlowWithTracking(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 
@@ -241,6 +243,7 @@ export async function executeBubbleFlowWithLiveStreaming(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -261,6 +264,7 @@ export async function executeBubbleFlowWithLiveStreaming(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 
@@ -377,6 +381,7 @@ export async function executeBubbleFlowWithLog(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -397,6 +402,7 @@ export async function executeBubbleFlowWithLog(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 

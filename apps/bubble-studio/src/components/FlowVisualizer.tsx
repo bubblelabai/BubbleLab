@@ -109,9 +109,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
-  const eventType = currentFlow.data?.eventType
-  const entryNodeId = eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
-  
+  const eventType = currentFlow.data?.eventType;
+  const entryNodeId =
+    eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
 
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
@@ -448,21 +448,38 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           origin: [0, 0.5] as [number, number],
           data: {
             flowName: flowName,
-            cronSchedule: '0 0 * * *', // Default daily at midnight
-            isActive: true,
+            cronSchedule: currentFlow.data?.cron || '0 0 * * *',
+            isActive: currentFlow.data?.cronActive || false,
+            inputSchema: currentFlow.data?.inputSchema || {},
+            defaultInputs: currentFlow.data?.defaultInputs || {},
             onCronScheduleChange: (newSchedule: string) => {
               // TODO: Implement cron schedule update logic
               console.log('Cron schedule changed to:', newSchedule);
             },
-            onActiveToggle: (isActive: boolean) => {
-              // TODO: Implement active toggle logic
-              console.log('Cron schedule active:', isActive);
+            onActiveToggle: async (
+              isActive: boolean,
+              defaultInputs?: Record<string, unknown>
+            ) => {
+              // TODO: Implement active toggle logic with validation
+              console.log(
+                'Cron schedule active:',
+                isActive,
+                'with inputs:',
+                defaultInputs
+              );
+            },
+            onDefaultInputChange: (fieldName: string, value: unknown) => {
+              // TODO: Implement default input change logic
+              console.log('Default input changed:', fieldName, value);
             },
             onExecuteFlow: async () => {
               await runFlow({
                 validateCode: true,
                 updateCredentials: true,
-                inputs: executionInputs || {},
+                inputs: {
+                  type: 'schedule/cron/daily',
+                  cron: currentFlow.data?.cron || '0 0 * * *',
+                },
               });
             },
             isExecuting: isExecuting,
