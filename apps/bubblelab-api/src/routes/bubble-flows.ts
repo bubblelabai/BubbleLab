@@ -7,6 +7,7 @@ import {
   bubbleFlowExecutions,
   users,
 } from '../db/schema.js';
+import { type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
@@ -22,10 +23,7 @@ import {
 import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/bubble-core';
-import {
-  BubbleFlowGeneratorWorkflow,
-  type StreamingEvent,
-} from '@bubblelab/bubble-core';
+import { BubbleFlowGeneratorWorkflow } from '@bubblelab/bubble-core';
 import {
   createBubbleFlowRoute,
   executeBubbleFlowRoute,
