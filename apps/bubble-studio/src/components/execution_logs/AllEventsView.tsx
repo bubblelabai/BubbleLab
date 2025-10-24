@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
+import { getVariableNameForDisplay } from '../../utils/bubbleUtils';
+import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 
 interface AllEventsViewProps {
   orderedItems: Array<
@@ -19,6 +21,7 @@ interface AllEventsViewProps {
   formatTimestamp: (timestamp: string) => string;
   makeLinksClickable: (text: string | null) => (string | React.ReactElement)[];
   renderJson: (data: unknown) => React.ReactElement;
+  flowId?: number | null;
 }
 
 export default function AllEventsView({
@@ -29,7 +32,12 @@ export default function AllEventsView({
   formatTimestamp,
   makeLinksClickable,
   renderJson,
+  flowId = null,
 }: AllEventsViewProps) {
+  // Get bubble flow data to access bubble parameters
+  const currentFlow = useBubbleFlow(flowId);
+  const bubbleParameters = currentFlow.data?.bubbleParameters || {};
+
   const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
   const [selectedByVar, setSelectedByVar] = useState<Record<string, number>>(
     {}
@@ -76,7 +84,9 @@ export default function AllEventsView({
             } else {
               // Bubble group
               const varId = item.name;
-              const logo = findLogoForBubble({ bubbleName: varId });
+              const bubbleName = (item.events[0] as { bubbleName?: string })
+                .bubbleName;
+              const logo = findLogoForBubble({ bubbleName: bubbleName });
               return (
                 <button
                   key={`bubble-${varId}`}
@@ -102,7 +112,14 @@ export default function AllEventsView({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-gray-200 truncate">
-                        Bubble: <span className="text-blue-300">{varId}</span>
+                        Bubble:{' '}
+                        <span className="text-blue-300">
+                          {getVariableNameForDisplay(
+                            varId,
+                            item.events,
+                            bubbleParameters
+                          )}
+                        </span>
                       </div>
                       <div className="text-xs text-gray-500">
                         {item.events.length} event
@@ -159,10 +176,7 @@ export default function AllEventsView({
                     </p>
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
-                        <details
-                          className="mt-2"
-                          open={event.type === 'execution_complete'}
-                        >
+                        <details className="mt-2" open={true}>
                           <summary
                             className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                             onClick={(e) => e.stopPropagation()}
@@ -190,7 +204,14 @@ export default function AllEventsView({
                 <div className="rounded-lg border border-[#30363d] bg-[#0f1115]/60">
                   <div className="flex items-center gap-3 px-3 py-2 border-b border-[#30363d]">
                     <div className="text-sm text-gray-200 font-mono">
-                      Bubble: <span className="text-blue-300">{varId}</span>
+                      Bubble:{' '}
+                      <span className="text-blue-300">
+                        {getVariableNameForDisplay(
+                          varId,
+                          evs,
+                          bubbleParameters
+                        )}
+                      </span>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                       <label className="text-xs text-gray-400">Output</label>
@@ -260,12 +281,7 @@ export default function AllEventsView({
                           {selectedEvent.additionalData &&
                             Object.keys(selectedEvent.additionalData).length >
                               0 && (
-                              <details
-                                className="mt-2"
-                                open={
-                                  selectedEvent.type === 'execution_complete'
-                                }
-                              >
+                              <details className="mt-2" open={true}>
                                 <summary
                                   className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
                                   onClick={(e) => e.stopPropagation()}

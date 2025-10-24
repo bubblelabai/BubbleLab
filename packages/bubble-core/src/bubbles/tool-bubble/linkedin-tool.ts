@@ -3,6 +3,7 @@ import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { ApifyBubble } from '../service-bubble/apify/apify.js';
+import type { ActorOutput } from '../service-bubble/apify/types.js';
 
 // Unified LinkedIn data types (service-agnostic)
 const LinkedInAuthorSchema = z.object({
@@ -21,6 +22,7 @@ const LinkedInStatsSchema = z.object({
   love: z.number().nullable().describe('Number of love reactions'),
   insight: z.number().nullable().describe('Number of insight reactions'),
   celebrate: z.number().nullable().describe('Number of celebrate reactions'),
+  funny: z.number().nullable().describe('Number of funny reactions'),
   comments: z.number().nullable().describe('Number of comments'),
   reposts: z.number().nullable().describe('Number of reposts'),
 });
@@ -360,7 +362,13 @@ export class LinkedInTool<
         operation: 'scrapePosts',
         posts: [],
         totalPosts: 0,
-        username: (this.params as any).username || '',
+        username:
+          (
+            this.params as Extract<
+              LinkedInToolParams,
+              { operation: 'scrapePosts' }
+            >
+          ).username || '',
         paginationToken: null,
         success: false,
         error: errorMessage,
@@ -386,22 +394,23 @@ export class LinkedInTool<
     params: Extract<LinkedInToolParams, { operation: 'scrapePosts' }>
   ): Promise<Extract<LinkedInToolResult, { operation: 'scrapePosts' }>> {
     // Use Apify service to scrape LinkedIn posts
-    const apifyBubble = new ApifyBubble<'apimaestro/linkedin-profile-posts'>(
-      {
-        actorId: 'apimaestro/linkedin-profile-posts',
-        input: {
-          username: params.username,
-          limit: params.limit || 100,
-          page_number: params.pageNumber || 1,
+    const linkedinPostScraper =
+      new ApifyBubble<'apimaestro/linkedin-profile-posts'>(
+        {
+          actorId: 'apimaestro/linkedin-profile-posts',
+          input: {
+            username: params.username,
+            limit: params.limit || 100,
+            page_number: params.pageNumber || 1,
+          },
+          waitForFinish: true,
+          timeout: 180000, // 3 minutes
+          credentials: params.credentials,
         },
-        waitForFinish: true,
-        timeout: 180000, // 3 minutes
-        credentials: params.credentials,
-      },
-      this.context
-    );
+        this.context
+      );
 
-    const apifyResult = await apifyBubble.action();
+    const apifyResult = await linkedinPostScraper.action();
 
     if (!apifyResult.data.success) {
       return {
@@ -434,20 +443,14 @@ export class LinkedInTool<
     }
 
     // Transform posts to unified format - items ARE the posts
-    const posts = this.transformPosts(items as any[]);
-
-    // Get pagination token from the first post (they all have the same token)
-    const paginationToken =
-      posts.length > 0 && items[0] && (items[0] as any).pagination_token
-        ? (items[0] as any).pagination_token
-        : null;
+    const posts = this.transformPosts(items);
 
     return {
       operation: 'scrapePosts',
       posts,
       totalPosts: posts.length,
       username: params.username,
-      paginationToken,
+      paginationToken: null,
       success: true,
       error: '',
     };
@@ -456,12 +459,15 @@ export class LinkedInTool<
   /**
    * Transform LinkedIn posts from Apify format to unified format
    */
-  private transformPosts(posts: any[]): LinkedInPost[] {
+  private transformPosts(
+    posts: ActorOutput<'apimaestro/linkedin-profile-posts'>[]
+  ): LinkedInPost[] {
     return posts.map((post) => ({
       urn:
-        typeof post.urn === 'object'
-          ? post.urn?.activity_urn || post.urn?.ugcPost_urn || null
-          : post.urn || null,
+        post.urn?.activity_urn ||
+        post.urn?.share_urn ||
+        post.urn?.ugcPost_urn ||
+        null,
       fullUrn: post.full_urn || null,
       postedAt: post.posted_at
         ? {
@@ -491,6 +497,7 @@ export class LinkedInTool<
             love: post.stats.love || null,
             insight: post.stats.insight || null,
             celebrate: post.stats.celebrate || null,
+            funny: post.stats.funny || null,
             comments: post.stats.comments || null,
             reposts: post.stats.reposts || null,
           }
@@ -563,6 +570,7 @@ export class LinkedInTool<
                   love: post.reshared_post.stats.love || null,
                   insight: post.reshared_post.stats.insight || null,
                   celebrate: post.reshared_post.stats.celebrate || null,
+                  funny: post.reshared_post.stats.funny || null,
                   comments: post.reshared_post.stats.comments || null,
                   reposts: post.reshared_post.stats.reposts || null,
                 }
@@ -587,7 +595,7 @@ export class LinkedInTool<
     params: Extract<LinkedInToolParams, { operation: 'searchPosts' }>
   ): Promise<Extract<LinkedInToolResult, { operation: 'searchPosts' }>> {
     // Use Apify service to search LinkedIn posts
-    const apifyBubble =
+    const linkedinPostSearcher =
       new ApifyBubble<'apimaestro/linkedin-posts-search-scraper-no-cookies'>(
         {
           actorId: 'apimaestro/linkedin-posts-search-scraper-no-cookies',
@@ -605,7 +613,7 @@ export class LinkedInTool<
         this.context
       );
 
-    const apifyResult = await apifyBubble.action();
+    const apifyResult = await linkedinPostSearcher.action();
 
     if (!apifyResult.data.success) {
       return {
@@ -638,10 +646,10 @@ export class LinkedInTool<
     }
 
     // Transform search results to unified format
-    const posts = this.transformSearchResults(items as any[]);
+    const posts = this.transformSearchResults(items);
 
     // Get metadata from first item (all items have the same metadata)
-    const metadata = (items[0] as any).metadata;
+    const metadata = items[0].metadata;
 
     return {
       operation: 'searchPosts',
@@ -658,7 +666,9 @@ export class LinkedInTool<
   /**
    * Transform search results to unified post format
    */
-  private transformSearchResults(items: any[]): LinkedInPost[] {
+  private transformSearchResults(
+    items: ActorOutput<'apimaestro/linkedin-posts-search-scraper-no-cookies'>[]
+  ): LinkedInPost[] {
     return items.map((item) => ({
       urn: item.activity_id || null,
       fullUrn: item.full_urn || null,
@@ -674,8 +684,8 @@ export class LinkedInTool<
       postType: item.is_reshare ? 'repost' : 'regular',
       author: item.author
         ? {
-            firstName: null,
-            lastName: null,
+            firstName: item.author.name?.split(' ')[0] || null,
+            lastName: item.author.name?.split(' ')[1] || null,
             headline: item.author.headline || null,
             username: item.author.profile_id || null,
             profileUrl: item.author.profile_url || null,
@@ -687,9 +697,16 @@ export class LinkedInTool<
             totalReactions: item.stats.total_reactions || null,
             like: this.getReactionCount(item.stats.reactions, 'LIKE'),
             support: this.getReactionCount(item.stats.reactions, 'EMPATHY'),
-            love: this.getReactionCount(item.stats.reactions, 'LOVE'),
-            insight: this.getReactionCount(item.stats.reactions, 'INTEREST'),
-            celebrate: this.getReactionCount(item.stats.reactions, 'PRAISE'),
+            love: this.getReactionCount(item.stats.reactions || [], 'LOVE'),
+            insight: this.getReactionCount(
+              item.stats.reactions || [],
+              'INTEREST'
+            ),
+            celebrate: this.getReactionCount(
+              item.stats.reactions || [],
+              'PRAISE'
+            ),
+            funny: this.getReactionCount(item.stats.reactions || [], 'FUNNY'),
             comments: item.stats.comments || null,
             reposts: item.stats.shares || null,
           }
@@ -701,7 +718,7 @@ export class LinkedInTool<
               url: item.content.article.url || null,
               title: item.content.article.title || null,
               subtitle: item.content.article.subtitle || null,
-              thumbnail: item.content.article.thumbnail_url || null,
+              thumbnail: item.content.article.thumbnail || null,
             }
           : null,
       document: null, // Search results don't include document info
@@ -713,11 +730,13 @@ export class LinkedInTool<
    * Helper to get reaction count by type from reactions array
    */
   private getReactionCount(
-    reactions: Array<{ type: string; count: number }> | undefined,
+    reactions:
+      | Array<{ type?: string | undefined; count?: number | undefined }>
+      | undefined,
     type: string
   ): number | null {
-    if (!reactions) return null;
+    if (!reactions || !reactions.length) return null;
     const reaction = reactions.find((r) => r.type === type);
-    return reaction ? reaction.count : null;
+    return reaction ? reaction.count || null : null;
   }
 }

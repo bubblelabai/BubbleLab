@@ -361,6 +361,7 @@ export class BubbleLogger {
       additionalData: {
         ...metadata?.additionalData,
         tokenUsage,
+        variableId: metadata?.variableId,
         cumulativeTokenUsage: this.getTokenUsage(), // Aggregated total
         cumulativeTokenUsageByModel: tokenUsageByModel, // Per-model breakdown
       },

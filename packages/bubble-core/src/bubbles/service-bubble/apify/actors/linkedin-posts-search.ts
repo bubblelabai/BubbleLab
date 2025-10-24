@@ -55,8 +55,14 @@ const SearchStatsSchema = z.object({
   reactions: z
     .array(
       z.object({
-        type: z.string().optional(),
-        count: z.number().optional(),
+        type: z
+          .string()
+          .optional()
+          .describe('Reaction type (LIKE, EMPATHY, etc)'),
+        count: z
+          .number()
+          .optional()
+          .describe('Number of reactions of this type'),
       })
     )
     .optional()
@@ -68,38 +74,24 @@ const SearchPostedAtSchema = z.object({
   display_text: z
     .string()
     .optional()
-    .describe('Relative time display (e.g., "3d")'),
+    .describe('Relative time display (e.g., "22m")'),
   date: z.string().optional().describe('Post date (formatted string)'),
   timestamp: z.number().optional().describe('Unix timestamp in milliseconds'),
 });
 
-// Content schema
-const SearchContentSchema = z.object({
-  type: z
+// Article schema
+const SearchArticleSchema = z.object({
+  url: z.string().nullable().optional().describe('Article URL'),
+  title: z.string().nullable().optional().describe('Article title'),
+  subtitle: z
     .string()
+    .nullable()
     .optional()
-    .describe('Content type (article, celebration, image, etc)'),
-  article: z
-    .object({
-      title: z.string().optional(),
-      subtitle: z.string().optional(),
-      url: z.string().optional(),
-      thumbnail_url: z.string().optional(),
-    })
-    .optional()
-    .describe('Article details if content type is article'),
-  celebration_type: z.string().optional().describe('Type of celebration'),
-  highlighted_message: z
-    .string()
-    .optional()
-    .describe('Highlighted message for celebrations'),
-  celebration_image_url: z
-    .string()
-    .optional()
-    .describe('Celebration image URL'),
+    .describe('Article subtitle or source'),
+  thumbnail: z.string().nullable().optional().describe('Article thumbnail URL'),
 });
 
-// Metadata schema
+// Metadata schema for pagination and search info
 const SearchMetadataSchema = z.object({
   total_count: z.number().optional().describe('Total number of results'),
   count: z.number().optional().describe('Count in current page'),
@@ -116,12 +108,43 @@ const SearchMetadataSchema = z.object({
     .describe('Whether there is a previous page'),
 });
 
+// Content schema for different post types
+const SearchContentSchema = z.object({
+  type: z
+    .string()
+    .optional()
+    .describe('Content type (article, video, image, text)'),
+  article: SearchArticleSchema.optional().describe(
+    'Article details if content type is article'
+  ),
+  url: z.string().optional().describe('Media URL for video/image content'),
+  thumbnail_url: z
+    .string()
+    .optional()
+    .describe('Thumbnail URL for media content'),
+  duration_ms: z
+    .number()
+    .optional()
+    .describe('Duration in milliseconds for video content'),
+  text: z.string().optional().describe('Text content for text posts'),
+  images: z
+    .array(
+      z.object({
+        url: z.string().optional().describe('Image URL'),
+        width: z.number().optional().describe('Image width'),
+        height: z.number().optional().describe('Image height'),
+      })
+    )
+    .optional()
+    .describe('Array of image variants'),
+});
+
 // Output schema - each item is a search result post
 export const LinkedInPostsSearchOutputSchema = z.object({
   activity_id: z.string().optional().describe('Post activity ID'),
   post_url: z.string().optional().describe('Post URL'),
   text: z.string().optional().describe('Post text content'),
-  full_urn: z.string().optional().describe('Full URN'),
+  full_urn: z.string().optional().describe('Full post URN'),
   author: SearchAuthorSchema.optional().describe('Post author information'),
   stats: SearchStatsSchema.optional().describe('Post engagement statistics'),
   posted_at: SearchPostedAtSchema.optional().describe('When post was created'),

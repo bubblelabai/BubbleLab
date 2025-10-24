@@ -26,6 +26,13 @@ export const LinkedInProfilePostsInputSchema = z.object({
     .describe('Maximum number of posts to fetch (default: 100)'),
 });
 
+// LinkedIn URN Schema
+const LinkedInURNSchema = z.object({
+  activity_urn: z.string().optional().describe('Activity URN'),
+  share_urn: z.string().nullable().optional().describe('Share URN'),
+  ugcPost_urn: z.string().nullable().optional().describe('UGC Post URN'),
+});
+
 // LinkedIn Post Author Schema
 const LinkedInAuthorSchema = z.object({
   first_name: z.string().optional().describe('Author first name'),
@@ -44,6 +51,7 @@ const LinkedInStatsSchema = z.object({
   love: z.number().optional().describe('Number of love reactions'),
   insight: z.number().optional().describe('Number of insight reactions'),
   celebrate: z.number().optional().describe('Number of celebrate reactions'),
+  funny: z.number().optional().describe('Number of funny reactions'),
   comments: z.number().optional().describe('Number of comments'),
   reposts: z.number().optional().describe('Number of reposts'),
 });
@@ -94,7 +102,7 @@ const LinkedInPostedAtSchema = z.object({
 // LinkedIn Reshared Post Schema (recursive)
 const LinkedInResharedPostSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
-    urn: z.string().optional().describe('Post URN'),
+    urn: LinkedInURNSchema.optional().describe('Post URN object'),
     posted_at: LinkedInPostedAtSchema.optional().describe(
       'When post was created'
     ),
@@ -114,7 +122,7 @@ const LinkedInResharedPostSchema: z.ZodType<any> = z.lazy(() =>
 
 // LinkedIn Post Schema
 const LinkedInPostSchema = z.object({
-  urn: z.string().optional().describe('Post URN'),
+  urn: LinkedInURNSchema.optional().describe('Post URN object'),
   full_urn: z.string().optional().describe('Full URN with prefix'),
   posted_at: LinkedInPostedAtSchema.optional().describe(
     'When post was created'
@@ -134,6 +142,10 @@ const LinkedInPostSchema = z.object({
   reshared_post: LinkedInResharedPostSchema.optional().describe(
     'Original post that was reshared'
   ),
+  pagination_token: z
+    .string()
+    .optional()
+    .describe('Pagination token for next page'),
 });
 
 // Output schema - what the actor returns (each item is a post with pagination token)
@@ -144,3 +156,4 @@ export type LinkedInPost = z.output<typeof LinkedInPostSchema>;
 export type LinkedInAuthor = z.output<typeof LinkedInAuthorSchema>;
 export type LinkedInStats = z.output<typeof LinkedInStatsSchema>;
 export type LinkedInPostedAt = z.output<typeof LinkedInPostedAtSchema>;
+export type LinkedInURN = z.output<typeof LinkedInURNSchema>;

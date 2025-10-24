@@ -1110,6 +1110,7 @@ export class AIAgentBubble extends ServiceBubble<
           `LLM completion: ${totalInputTokens} input + ${totalOutputTokens} output = ${totalTokensSum} total tokens`,
           {
             bubbleName: 'ai-agent',
+            variableId: this.context?.variableId,
             operationType: 'bubble_execution',
           }
         );
@@ -1350,6 +1351,7 @@ export class AIAgentBubble extends ServiceBubble<
                   `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
                   {
                     bubbleName: 'ai-agent',
+                    variableId: this.context?.variableId,
                     operationType: 'bubble_execution',
                   }
                 );
