@@ -1,4 +1,4 @@
-import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
+import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
 import { BubbleFlow } from '@bubblelab/bubble-core';
 
 // Import all services

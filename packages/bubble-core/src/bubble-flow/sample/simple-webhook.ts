@@ -1,4 +1,4 @@
-import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
+import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
 import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';
 
 export interface Output {

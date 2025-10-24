@@ -1,4 +1,4 @@
-import type { WebhookEvent } from '../../bubble-trigger';
+import type { WebhookEvent } from '@bubblelab/shared-schemas';
 import { BubbleFlow } from '../bubble-flow-class.js';
 // Import all services
 import * as bubbles from '@bubblelab/bubble-core';

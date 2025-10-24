@@ -22,7 +22,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
-import { isValidBubbleTriggerEvent } from '@bubblelab/bubble-core';
+import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { BubbleFlowGeneratorWorkflow } from '@bubblelab/bubble-core';
 import {
   createBubbleFlowRoute,
@@ -181,7 +181,6 @@ app.openapi(createBubbleFlowRoute, async (c) => {
 
   // Process and transpile the code for execution
   const processedCode = processUserCode(data.code);
-
 
   const userId = getUserId(c);
   const [inserted] = await db
@@ -772,7 +771,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           originalCode: code,
           bubbleParameters: finalBubbleParameters,
           inputSchema: result.inputSchema || {},
-          eventType: result.eventType,
+          eventType: result.trigger?.type,
           updatedAt: new Date(),
         })
         .where(eq(bubbleFlows.id, flowId));
@@ -788,8 +787,11 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           success: true,
           inputSchema: result.inputSchema || {},
           bubbles: result.bubbleParameters,
-          eventType: result.eventType || 'webhook/http',
-          webhookPath: getWebhookUrl(userId, existingFlow?.webhooks?.[0]?.path || ''),
+          eventType: result.trigger?.type || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
@@ -811,8 +813,11 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           valid: false,
           success: false,
           inputSchema: result.inputSchema || {},
-          eventType: result.eventType || 'webhook/http',
-          webhookPath: getWebhookUrl(userId, existingFlow?.webhooks?.[0]?.path || ''),
+          eventType: result.trigger?.type || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
           error: result.errors?.join('; ') || 'Validation failed',
           errors: [result.errors?.join('; ') || 'Validation failed'],
           metadata: {

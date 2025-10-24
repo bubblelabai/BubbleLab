@@ -6,11 +6,12 @@ import type {
   Scope,
   Variable,
 } from '@bubblelab/ts-scope-manager';
-import {
-  BubbleFactory,
+import { BubbleFactory } from '@bubblelab/bubble-core';
+import type {
+  ParsedBubbleWithInfo,
+  BubbleTrigger,
   BubbleTriggerEventRegistry,
-} from '@bubblelab/bubble-core';
-import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+} from '@bubblelab/shared-schemas';
 import { BubbleParser } from '../extraction/BubbleParser';
 
 export class BubbleScript {
@@ -29,10 +30,7 @@ export class BubbleScript {
   private bubbleScript: string;
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
-  public trigger: {
-    type: keyof BubbleTriggerEventRegistry;
-    cronSchedule?: string;
-  };
+  public trigger: BubbleTrigger;
 
   /**
    * Reparse the AST and bubbles after the script has been modified
@@ -613,14 +611,11 @@ export class BubbleScript {
    * Example: class X extends BubbleFlow<'slack/bot_mentioned'> {}
    * Returns the string key (e.g., 'slack/bot_mentioned') or null if not found.
    */
-  public getBubbleTriggerEventType(): {
-    type: keyof BubbleTriggerEventRegistry;
-    cronSchedule?: string;
-  } | null {
+  public getBubbleTriggerEventType(): BubbleTrigger | null {
     for (const stmt of this.ast.body) {
       const tryClass = (
         cls: TSESTree.ClassDeclaration | null | undefined
-      ): { type: string; cronSchedule?: string } | null => {
+      ): BubbleTrigger | null => {
         if (!cls) return null;
         const superClass = cls.superClass;
         if (!superClass || superClass.type !== 'Identifier') return null;
@@ -669,14 +664,17 @@ export class BubbleScript {
           }
         }
 
-        return { type: eventType, cronSchedule };
+        return {
+          type: eventType as keyof BubbleTriggerEventRegistry,
+          cronSchedule,
+        };
       };
 
       if (stmt.type === 'ClassDeclaration') {
         const result = tryClass(stmt);
         if (result) {
           return {
-            type: result.type as keyof BubbleTriggerEventRegistry,
+            type: result.type,
             cronSchedule: result.cronSchedule,
           };
         }
@@ -688,7 +686,7 @@ export class BubbleScript {
         const result = tryClass(stmt.declaration);
         if (result) {
           return {
-            type: result.type as keyof BubbleTriggerEventRegistry,
+            type: result.type,
             cronSchedule: result.cronSchedule,
           };
         }

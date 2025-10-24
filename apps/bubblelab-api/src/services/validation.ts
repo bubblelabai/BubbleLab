@@ -23,7 +23,7 @@ export async function validateBubbleFlow(
       errors: result.errors,
       bubbleParameters: result.bubbleParameters || {},
       inputSchema: result.inputSchema || {},
-      eventType: result.eventType || 'webhook/http',
+      eventType: result.trigger?.type || 'webhook/http',
     };
   } catch (error) {
     return {

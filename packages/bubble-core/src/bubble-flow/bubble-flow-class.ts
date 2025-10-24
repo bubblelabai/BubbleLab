@@ -1,4 +1,4 @@
-import type { BubbleTriggerEventRegistry } from '../bubble-trigger/types.js';
+import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
 import type { BubbleFlowOperationResult } from '../types/bubble.js';
 import type { BubbleLogger } from '../logging/BubbleLogger.js';
 

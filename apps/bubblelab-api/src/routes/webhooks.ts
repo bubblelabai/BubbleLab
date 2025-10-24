@@ -17,7 +17,7 @@ import type {
   SlackEventWrapper,
   SlackAppMentionEvent,
   SlackMessageEvent,
-} from '@bubblelab/bubble-core';
+} from '@bubblelab/shared-schemas';
 import {
   setupErrorHandler,
   validationErrorHook,
@@ -89,12 +89,12 @@ function transformWebhookPayload(
       };
     }
 
-    case 'schedule/cron/daily': {
+    case 'schedule/cron': {
       // For cron events, we might have cron-specific data
-      const cronBody = rawBody as { cron?: string };
+      const cronBody = rawBody;
       return {
         ...basePayload,
-        cron: cronBody.cron || '0 0 * * *', // Default to daily at midnight
+        body: cronBody as Record<string, unknown>,
       };
     }
 

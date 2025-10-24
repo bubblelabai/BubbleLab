@@ -131,7 +131,9 @@ export interface WebhookEvent extends BubbleTriggerEvent {
   body?: Record<string, unknown>;
 }
 
-export interface BubbleTriggerOptions {
+export interface BubbleTrigger {
+  type: keyof BubbleTriggerEventRegistry;
+  cronSchedule?: string;
   name?: string;
   description?: string;
   timeout?: number;

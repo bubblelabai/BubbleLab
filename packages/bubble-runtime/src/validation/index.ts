@@ -1,14 +1,12 @@
 import type {
   ParsedBubbleWithInfo,
   CredentialType,
+  BubbleTrigger,
 } from '@bubblelab/shared-schemas';
 import { validateScript } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
 import { BubbleInjector } from '../injection/BubbleInjector.js';
-import {
-  BubbleFactory,
-  BubbleTriggerEventRegistry,
-} from '@bubblelab/bubble-core';
+import { BubbleFactory } from '@bubblelab/bubble-core';
 import { validateCronExpression } from '@bubblelab/shared-schemas';
 
 export interface ValidationResult {
@@ -19,7 +17,7 @@ export interface ValidationResult {
 export interface ValidationAndExtractionResult extends ValidationResult {
   bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
   inputSchema?: Record<string, unknown>;
-  eventType?: keyof BubbleTriggerEventRegistry;
+  trigger?: BubbleTrigger;
   requiredCredentials?: Record<string, CredentialType[]>;
 }
 
@@ -114,7 +112,7 @@ export async function validateAndExtract(
       ...validationResult,
       bubbleParameters,
       inputSchema: script.getPayloadJsonSchema() || {},
-      eventType: script.getBubbleTriggerEventType()?.type,
+      trigger: script.getBubbleTriggerEventType() || undefined,
       requiredCredentials:
         Object.keys(requiredCredentials).length > 0
           ? requiredCredentials
