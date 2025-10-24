@@ -26,11 +26,7 @@ import { FlowGeneration } from '@/components/FlowGeneration';
 import { useFlowGeneration } from '@/hooks/useFlowGeneration';
 import { Sidebar } from '@/components/Sidebar';
 import { Tooltip } from '@/components/Tooltip';
-import {
-  useEditorStore,
-  getEditorCode,
-  setEditorCode,
-} from '@/stores/editorStore';
+import { useEditor } from '@/hooks/useEditor';
 import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useGenerationStore } from '@/stores/generationStore';
@@ -89,7 +85,8 @@ function App() {
     setSelectedPreset,
   } = useGenerationStore();
   // Editor Store - Monaco editor
-  const { openPearlChat } = useEditorStore();
+  const { editor } = useEditor();
+  const { openPearlChat } = useUIStore();
   // Per-flow Execution Store - always call the hook
   const executionState = useExecutionStore(selectedFlowId);
 
@@ -165,7 +162,7 @@ function App() {
   useEffect(() => {
     console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
     if (currentFlow) {
-      setEditorCode(currentFlow.code);
+      editor.setCode(currentFlow.code);
       const extractedCredentials: Record<string, Record<string, number>> = {};
 
       Object.entries(currentFlow.bubbleParameters).forEach(
@@ -426,7 +423,7 @@ function App() {
           <MonacoEditor />
           {/* Code editor overlay with line count */}
           <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
-            {getEditorCode().split('\n').length} lines
+            {editor.getCode().split('\n').length} lines
           </div>
         </div>
       </div>
@@ -472,7 +469,7 @@ function App() {
                   name = 'New Flow';
                   hasPrompt = true;
                 } else {
-                  name = getFlowNameFromCode(getEditorCode());
+                  name = getFlowNameFromCode(editor.getCode());
                 }
 
                 if (!name) return null;
@@ -777,7 +774,7 @@ function App() {
                                       flowId={selectedFlowId}
                                       onValidate={() =>
                                         validateCodeMutation.mutateAsync({
-                                          code: getEditorCode(),
+                                          code: editor.getCode(),
                                           flowId: selectedFlowId,
                                           credentials:
                                             executionState.pendingCredentials,
@@ -868,7 +865,7 @@ function App() {
       <ExportModal
         isOpen={showExportModal}
         onClose={toggleExportModal}
-        code={getEditorCode()}
+        code={editor.getCode()}
         flowName={(() => {
           // Get flow name from selected flow or generate from code
           if (selectedFlowId) {
@@ -876,7 +873,7 @@ function App() {
             if (flow) return flow.name;
           }
 
-          return getFlowNameFromCode(getEditorCode());
+          return getFlowNameFromCode(editor.getCode());
         })()}
         flowId={currentFlow?.id}
         inputsSchema={JSON.stringify(currentFlow?.inputSchema)}

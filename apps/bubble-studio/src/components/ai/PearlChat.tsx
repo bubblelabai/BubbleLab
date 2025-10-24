@@ -4,7 +4,8 @@
  *
  */
 import { useState, useEffect, useRef } from 'react';
-import { useEditorStore } from '../../stores/editorStore';
+import { useEditor } from '../../hooks/useEditor';
+import { useUIStore } from '../../stores/uiStore';
 import { usePearlStream } from '../../hooks/usePearl';
 import {
   ParsedBubbleWithInfo,
@@ -13,11 +14,9 @@ import {
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
-import { replaceAllEditorContent } from '../../stores/editorStore';
 import { INTEGRATIONS } from '../../lib/integrations';
 import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
-import { useUIStore } from '../../stores/uiStore';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
 import ReactMarkdown from 'react-markdown';
@@ -55,9 +54,10 @@ export function PearlChat() {
   // Fixed model - users cannot change this currently
   const selectedModel: AvailableModel = 'openrouter/x-ai/grok-code-fast-1';
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
+  const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
+  const { editor } = useEditor();
 
   // General chat mutation with streaming
   const pearlChat = usePearlStream();
@@ -288,7 +288,7 @@ export function PearlChat() {
   };
 
   const handleReplace = (code: string) => {
-    replaceAllEditorContent(code);
+    editor.replaceAllContent(code);
     console.log('handleReplace', code);
     trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');

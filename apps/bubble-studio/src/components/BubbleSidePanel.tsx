@@ -9,12 +9,12 @@ import {
   ArrowUp,
 } from 'lucide-react';
 import {
-  useEditorStore,
-  selectIsListView,
-  selectIsPromptView,
-  selectIsGeneralChatView,
-  insertCodeAtTargetLine,
-} from '../stores/editorStore';
+  useUIStore,
+  selectIsBubbleListOpen,
+  selectIsMilkteaPanelOpen,
+  selectIsPearlChatOpen,
+} from '../stores/uiStore';
+import { useEditor } from '../hooks/useEditor';
 import { useMilkTea } from '../hooks/useMilkTea';
 import { toast } from 'react-toastify';
 import { findLogoForBubble } from '../lib/integrations';
@@ -63,21 +63,20 @@ export function BubbleSidePanel() {
   });
   const [isResizing, setIsResizing] = useState(false);
 
-  // Store state
-  const isSidePanelOpen = useEditorStore(
-    (state) => state.sidePanelMode !== 'closed'
-  );
-  const selectedBubbleName = useEditorStore(
-    (state) => state.selectedBubbleName
-  );
-  const targetInsertLine = useEditorStore((state) => state.targetInsertLine);
-  const closeSidePanel = useEditorStore((state) => state.closeSidePanel);
-  const selectBubble = useEditorStore((state) => state.selectBubble);
+  // UI store state
+  const {
+    sidePanelMode,
+    selectedBubbleName,
+    targetInsertLine,
+    closeSidePanel,
+    selectBubble,
+    openPearlChat: openGeneralChat,
+  } = useUIStore();
 
-  const isListView = useEditorStore(selectIsListView);
-  const isPromptView = useEditorStore(selectIsPromptView);
-  const isGeneralChatView = useEditorStore(selectIsGeneralChatView);
-  const openGeneralChat = useEditorStore((state) => state.openPearlChat);
+  // Panel state selectors
+  const isListView = useUIStore(selectIsBubbleListOpen);
+  const isPromptView = useUIStore(selectIsMilkteaPanelOpen);
+  const isGeneralChatView = useUIStore(selectIsPearlChatOpen);
 
   // Load bubbles data from public/bubbles.json
   useEffect(() => {
@@ -144,7 +143,7 @@ export function BubbleSidePanel() {
     ...new Set(bubblesData?.bubbles.map((b) => b.type) || []),
   ];
 
-  if (!isSidePanelOpen) {
+  if (sidePanelMode === 'closed') {
     return null;
   }
 
@@ -159,7 +158,7 @@ export function BubbleSidePanel() {
         className="fixed inset-y-0 left-0 bg-[#1e1e1e] border-r border-gray-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
         style={{
           width: `${panelWidth}px`,
-          transform: isSidePanelOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transform: 'translateX(0)',
         }}
       >
         {/* Resize Handle */}
@@ -392,6 +391,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   // Fixed model - users cannot change this currently
   const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { editor } = useEditor();
 
   // Get logo for the bubble
   const logo = bubbleDefinition
@@ -477,7 +477,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
   };
 
   const handleInsert = (code: string) => {
-    insertCodeAtTargetLine(code, false);
+    editor.insertCodeAtLine(code, false);
     toast.success('Code inserted!');
   };
 
