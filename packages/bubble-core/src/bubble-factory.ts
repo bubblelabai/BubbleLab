@@ -674,9 +674,9 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   // Examples:
   //   '0 0 * * *'     = Daily at midnight
   //   '0 9 * * 1-5'   = Every weekday at 9am
-  //   '*\/15 * * * *' = Every 15 minutes
+  //   '*/15 * * * *' = Every 15 minutes
   //   '0 0 1 * *'     = First day of every month at midnight
-  readonly cronSchedule = '*\/3 * * * *'; // Every 3 minutes
+  readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
   async handle(payload: CustomCronPayload): Promise<Output> {
     // TODO: Implement your scheduled workflow logic here

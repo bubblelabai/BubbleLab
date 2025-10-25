@@ -143,9 +143,10 @@ function buildCronFromUI(
       return `${minute} */${interval} * * *`;
     case 'day':
       return `${minute} ${hour} * * *`;
-    case 'week':
+    case 'week': {
       const days = daysOfWeek.length > 0 ? daysOfWeek.sort().join(',') : '*';
       return `${minute} ${hour} * * ${days}`;
+    }
     case 'month':
       return `${minute} ${hour} ${dayOfMonth} * *`;
     default:
@@ -159,7 +160,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     flowName,
     cronSchedule,
     isActive = true,
-    isPending = false,
     inputSchema = {},
     executionInputs = {},
     onCronScheduleChange,
@@ -179,12 +179,14 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       : inputSchema.properties
         ? Object.entries(inputSchema.properties).map(([name, schema]) => ({
             name,
-            type: (schema as any)?.type || 'string',
+            type:
+              ((schema as Record<string, unknown>)?.type as string) || 'string',
             required: Array.isArray(inputSchema.required)
               ? inputSchema.required.includes(name)
               : false,
-            description: (schema as any)?.description,
-            default: (schema as any)?.default,
+            description: (schema as Record<string, unknown>)
+              ?.description as string,
+            default: (schema as Record<string, unknown>)?.default,
           }))
         : [];
 
