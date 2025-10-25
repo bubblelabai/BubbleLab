@@ -18,6 +18,7 @@ import {
   validationErrorHook,
 } from '../utils/error-handler.js';
 import { transformWebhookPayload } from '../utils/payload-transformer.js';
+import { getAppType } from '../middleware/auth.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -128,6 +129,7 @@ app.openapi(webhookRoute, async (c) => {
     // Execute the flow asynchronously (don't await)
     executeBubbleFlowViaWebhook(webhook.bubbleFlowId, webhookPayload, {
       userId,
+      appType: getAppType(c),
     })
       .then((result) => {
         console.log(
@@ -150,7 +152,7 @@ app.openapi(webhookRoute, async (c) => {
   const result = await executeBubbleFlowViaWebhook(
     webhook.bubbleFlowId,
     webhookPayload,
-    { userId }
+    { userId, appType: getAppType(c) }
   );
 
   // Return execution result with webhook metadata
