@@ -17,7 +17,7 @@ import {
   updateCredentialRoute,
   deleteCredentialRoute,
   getCredentialMetadataRoute,
-} from '../schemas/routes.js';
+} from '../schemas/credentials.js';
 import {
   setupErrorHandler,
   validationErrorHook,

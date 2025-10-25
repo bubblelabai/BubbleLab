@@ -11,7 +11,7 @@ import {
   oauthCallbackPostRoute,
   oauthTokenRefreshRoute,
   oauthRevokeRoute,
-} from '../schemas/routes.js';
+} from '../schemas/oauth.js';
 import { type OAuthProvider } from '@bubblelab/shared-schemas';
 
 const app = new OpenAPIHono({

@@ -516,6 +516,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           },
           origin: [0, 0.5] as [number, number],
           data: {
+            flowId: currentFlow?.id,
             flowName: flowName,
             schemaFields: parsedFields,
             executionInputs: executionInputs || {},

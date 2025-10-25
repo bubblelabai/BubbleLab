@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Play, FileInput } from 'lucide-react';
 import InputFieldsRenderer from './InputFieldsRenderer';
+import { WebhookURLDisplay } from './WebhookURLDisplay';
 
 interface SchemaField {
   name: string;
@@ -12,6 +13,7 @@ interface SchemaField {
 }
 
 interface InputSchemaNodeData {
+  flowId?: number;
   flowName: string;
   schemaFields: SchemaField[];
   executionInputs: Record<string, unknown>;
@@ -27,6 +29,7 @@ interface InputSchemaNodeProps {
 
 function InputSchemaNode({ data }: InputSchemaNodeProps) {
   const {
+    flowId,
     flowName,
     schemaFields,
     executionInputs,
@@ -68,6 +71,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         className={`w-3 h-3 ${isExecuting ? 'bg-blue-400' : 'bg-blue-400'}`}
         style={{ right: -6 }}
       />
+
+      {/* Webhook URL section */}
+      <WebhookURLDisplay flowId={flowId || null} />
 
       {/* Header */}
       <div className="p-4 border-b border-neutral-600">

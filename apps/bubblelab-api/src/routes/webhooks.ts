@@ -6,7 +6,7 @@ import {
   slackUrlVerificationSchema,
   webhookResponseSchema,
 } from '../schemas/index.js';
-import { webhookRoute, webhookStreamRoute } from '../schemas/routes.js';
+import { webhookRoute, webhookStreamRoute } from '../schemas/webhooks.js';
 import {
   executeBubbleFlowViaWebhook,
   executeBubbleFlowWithLiveStreaming,
@@ -24,13 +24,26 @@ const app = new OpenAPIHono({
 });
 setupErrorHandler(app);
 
+// Handle non-POST methods for webhook endpoint
+app.on(['GET', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], '/:userId/:path', (c) => {
+  const method = c.req.method;
+  return c.json(
+    {
+      error: 'Method not allowed',
+      details: `This webhook only accepts POST requests. Received: ${method}`,
+      hint: 'Use POST method to trigger this webhook',
+      webhookUrl: c.req.url,
+    },
+    405
+  );
+});
+
 app.openapi(webhookRoute, async (c) => {
   const userId = c.req.param('userId');
   const path = c.req.param('path');
 
   // Parse request body once
-  const requestBody =
-    c.req.method !== 'GET' ? await c.req.json().catch(() => ({})) : {};
+  const requestBody = await c.req.json().catch(() => ({}));
 
   // Check if this is a Slack URL verification request
   const urlVerification = slackUrlVerificationSchema.safeParse(requestBody);
@@ -38,17 +51,17 @@ app.openapi(webhookRoute, async (c) => {
     console.log(`🔗 Slack URL verification for webhook: ${userId}/${path}`);
 
     // Activate the webhook if it exists but isn't active
-    const webhook = await db.query.webhooks.findFirst({
+    const webhookForActivation = await db.query.webhooks.findFirst({
       where: (webhooks, { eq, and }) =>
         and(eq(webhooks.userId, userId), eq(webhooks.path, path)),
     });
 
-    if (webhook && !webhook.isActive) {
+    if (webhookForActivation && !webhookForActivation.isActive) {
       console.log(`🟢 Activating webhook: ${userId}/${path}`);
       await db
         .update(webhooks)
         .set({ isActive: true })
-        .where(eq(webhooks.id, webhook.id));
+        .where(eq(webhooks.id, webhookForActivation.id));
     }
 
     // Respond with the challenge as required by Slack

@@ -33,11 +33,12 @@ import {
   updateBubbleFlowNameRoute,
   listBubbleFlowsRoute,
   activateBubbleFlowRoute,
+  deactivateBubbleFlowRoute,
   deleteBubbleFlowRoute,
   listBubbleFlowExecutionsRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
-} from '../schemas/routes.js';
+} from '../schemas/bubble-flows.js';
 
 import { createBubbleFlowResponseSchema } from '../schemas/index.js';
 import {
@@ -624,6 +625,65 @@ app.openapi(activateBubbleFlowRoute, async (c) => {
       webhookUrl,
       message:
         'BubbleFlow activated successfully! Your Slack bot is now ready to respond to mentions.',
+    },
+    200
+  );
+});
+
+app.openapi(deactivateBubbleFlowRoute, async (c) => {
+  const userId = getUserId(c);
+  const id = parseInt(c.req.param('id'));
+
+  if (isNaN(id)) {
+    return c.json(
+      {
+        error: 'Invalid ID format',
+      },
+      400
+    );
+  }
+
+  // Get the bubble flow to ensure it exists and belongs to the user
+  const flow = await db.query.bubbleFlows.findFirst({
+    where: and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId)),
+  });
+
+  if (!flow) {
+    return c.json(
+      {
+        error: 'BubbleFlow not found',
+      },
+      404
+    );
+  }
+
+  // Find the associated webhook and deactivate it
+  const webhook = await db.query.webhooks.findFirst({
+    where: and(eq(webhooks.bubbleFlowId, id), eq(webhooks.userId, userId)),
+  });
+
+  if (!webhook) {
+    return c.json(
+      {
+        error: 'No webhook found for this BubbleFlow',
+      },
+      404
+    );
+  }
+
+  // Deactivate the webhook
+  await db
+    .update(webhooks)
+    .set({
+      isActive: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(webhooks.id, webhook.id));
+
+  return c.json(
+    {
+      success: true,
+      message: 'Webhook deactivated successfully',
     },
     200
   );
