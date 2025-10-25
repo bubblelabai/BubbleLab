@@ -345,7 +345,7 @@ export async function executeBubbleFlow(
     );
 
     // Wrap bubble core to automatically throw on bubble action failures
-    const wrappedBubbleCore = { ...bubbleCore };
+    const wrappedBubbleCore: Record<string, unknown> = { ...bubbleCore };
     Object.entries(bubbleCore).forEach(([key, BubbleClass]) => {
       if (
         BubbleClass &&
@@ -374,7 +374,7 @@ export async function executeBubbleFlow(
           }
         }
 
-        wrappedBubbleCore[key as keyof typeof bubbleCore] = WrappedBubble;
+        wrappedBubbleCore[key] = WrappedBubble;
       }
     });
 
