@@ -505,8 +505,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           },
         };
         nodes.push(cronScheduleNode);
-      } else if (parsedFields.length > 0) {
-        // Create InputSchemaNode for regular flows with input schema
+      } else {
+        // Create InputSchemaNode for regular flows (with or without input schema)
         const inputSchemaNode: Node = {
           id: 'input-schema-node',
           type: 'inputSchemaNode',
