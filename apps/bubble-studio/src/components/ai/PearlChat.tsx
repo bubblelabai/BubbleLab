@@ -309,6 +309,7 @@ export function PearlChat() {
         code: pearlChat.data.snippet!,
         flowId: selectedFlowId!,
         credentials: pendingCredentials,
+        syncInputsWithFlow: true,
       });
       toast.success('Bubble parameters, input schema, and credentials updated');
     } else {
