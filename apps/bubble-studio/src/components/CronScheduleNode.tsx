@@ -2,7 +2,15 @@ import { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Clock, Play, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
 import { validateCronExpression } from '@bubblelab/shared-schemas';
-import { cronToEnglish } from '../utils/cronUtils';
+import {
+  cronToEnglish,
+  getUserTimeZone,
+  formatTimeZoneLabel,
+  convertLocalPartsToUtcCron,
+  convertUtcCronToLocalParts,
+  getSimplifiedSchedule,
+  type CronParts,
+} from '../utils/cronUtils';
 import { parseJSONSchema } from '../utils/inputSchemaParser';
 import InputFieldsRenderer from './InputFieldsRenderer';
 import { CronToggle } from './CronToggle';
@@ -36,96 +44,6 @@ const DAYS_OF_WEEK = [
   { label: 'Fri', value: 5 },
   { label: 'Sat', value: 6 },
 ];
-
-// Helper function to parse cron into UI-friendly format
-function parseCronToUI(cronSchedule: string): {
-  frequency: FrequencyType;
-  interval: number;
-  hour: number;
-  minute: number;
-  daysOfWeek: number[];
-  dayOfMonth: number;
-} {
-  const parts = cronSchedule.split(' ');
-  if (parts.length !== 5) {
-    return {
-      frequency: 'day',
-      interval: 1,
-      hour: 0,
-      minute: 0,
-      daysOfWeek: [],
-      dayOfMonth: 1,
-    };
-  }
-
-  const [minutePart, hourPart, dayPart, , weekPart] = parts;
-
-  // Detect frequency type
-  if (minutePart.startsWith('*/')) {
-    return {
-      frequency: 'minute',
-      interval: parseInt(minutePart.slice(2)) || 1,
-      hour: 0,
-      minute: 0,
-      daysOfWeek: [],
-      dayOfMonth: 1,
-    };
-  }
-  if (hourPart.startsWith('*/') && minutePart !== '*') {
-    return {
-      frequency: 'hour',
-      interval: parseInt(hourPart.slice(2)) || 1,
-      hour: 0,
-      minute: parseInt(minutePart) || 0,
-      daysOfWeek: [],
-      dayOfMonth: 1,
-    };
-  }
-  if (weekPart !== '*') {
-    // Weekly schedule
-    const daysOfWeek = weekPart.includes(',')
-      ? weekPart.split(',').map((d) => parseInt(d))
-      : weekPart.includes('-')
-        ? Array.from(
-            {
-              length:
-                parseInt(weekPart.split('-')[1]) -
-                parseInt(weekPart.split('-')[0]) +
-                1,
-            },
-            (_, i) => parseInt(weekPart.split('-')[0]) + i
-          )
-        : [parseInt(weekPart)];
-    return {
-      frequency: 'week',
-      interval: 1,
-      hour: parseInt(hourPart) || 0,
-      minute: parseInt(minutePart) || 0,
-      daysOfWeek,
-      dayOfMonth: 1,
-    };
-  }
-  if (dayPart !== '*' && dayPart !== '1') {
-    return {
-      frequency: 'month',
-      interval: 1,
-      hour: parseInt(hourPart) || 0,
-      minute: parseInt(minutePart) || 0,
-      daysOfWeek: [],
-      dayOfMonth: parseInt(dayPart) || 1,
-    };
-  }
-
-  // Daily schedule
-  return {
-    frequency: 'day',
-    interval: 1,
-    hour: parseInt(hourPart) || 0,
-    minute: parseInt(minutePart) || 0,
-    daysOfWeek: [],
-    dayOfMonth: 1,
-  };
-}
 
 // Helper function to build cron from UI state
 function buildCronFromUI(
@@ -172,6 +90,10 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const [inputValues, setInputValues] =
     useState<Record<string, unknown>>(executionInputs);
 
+  // Get user's timezone
+  const userTimezone = getUserTimeZone();
+  const timezoneLabel = formatTimeZoneLabel(userTimezone);
+
   // Parse input schema using the same logic as InputSchemaNode
   const schemaFields =
     typeof inputSchema === 'string'
@@ -204,21 +126,29 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     missingRequiredFields.length > 0 &&
     Object.keys(executionInputs).length == 0;
 
-  // Parse initial cron schedule
-  const initialState = parseCronToUI(cronSchedule);
+  // Convert UTC cron to local time parts
+  const localConversion = convertUtcCronToLocalParts(
+    cronSchedule,
+    userTimezone
+  );
   const [frequency, setFrequency] = useState<FrequencyType>(
-    initialState.frequency
+    localConversion.parts.frequency
   );
-  const [interval, setInterval] = useState(initialState.interval);
-  const [hour, setHour] = useState(initialState.hour);
-  const [minute, setMinute] = useState(initialState.minute);
+  const [interval, setInterval] = useState(localConversion.parts.interval);
+  const [hour, setHour] = useState(localConversion.parts.hour);
+  const [minute, setMinute] = useState(localConversion.parts.minute);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(
-    initialState.daysOfWeek
+    localConversion.parts.daysOfWeek
   );
-  const [dayOfMonth, setDayOfMonth] = useState(initialState.dayOfMonth);
+  const [dayOfMonth, setDayOfMonth] = useState(
+    localConversion.parts.dayOfMonth
+  );
+  const [conversionWarning, setConversionWarning] = useState<
+    string | undefined
+  >(localConversion.warning);
 
-  // Helper to compute cron from current state plus a partial patch
-  const computeCron = (
+  // Helper to compute local cron from current state (for display)
+  const computeLocalCron = (
     patch: Partial<{
       frequency: FrequencyType;
       interval: number;
@@ -238,7 +168,29 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     );
   };
 
-  // Unified state updater that also emits the new cron immediately
+  // Helper to compute UTC cron from current state
+  const computeUtcCron = (
+    patch: Partial<{
+      frequency: FrequencyType;
+      interval: number;
+      hour: number;
+      minute: number;
+      daysOfWeek: number[];
+      dayOfMonth: number;
+    }> = {}
+  ) => {
+    const parts: CronParts = {
+      frequency: patch.frequency ?? frequency,
+      interval: patch.interval ?? interval,
+      hour: patch.hour ?? hour,
+      minute: patch.minute ?? minute,
+      daysOfWeek: patch.daysOfWeek ?? daysOfWeek,
+      dayOfMonth: patch.dayOfMonth ?? dayOfMonth,
+    };
+    return convertLocalPartsToUtcCron(parts, userTimezone);
+  };
+
+  // Unified state updater that also emits the new UTC cron immediately
   const updateCronState = (
     patch: Partial<{
       frequency: FrequencyType;
@@ -256,35 +208,47 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     if (patch.daysOfWeek !== undefined) setDaysOfWeek(patch.daysOfWeek);
     if (patch.dayOfMonth !== undefined) setDayOfMonth(patch.dayOfMonth);
 
-    const newCron = computeCron(patch);
-    onCronScheduleChange?.(newCron);
+    const utcResult = computeUtcCron(patch);
+    setConversionWarning(utcResult.warning);
+    onCronScheduleChange?.(utcResult.cron);
   };
 
   // Sync local state when cronSchedule prop changes
   useEffect(() => {
-    const newState = parseCronToUI(cronSchedule);
-    setFrequency(newState.frequency);
-    setInterval(newState.interval);
-    setHour(newState.hour);
-    setMinute(newState.minute);
-    setDaysOfWeek(newState.daysOfWeek);
-    setDayOfMonth(newState.dayOfMonth);
-  }, [cronSchedule]);
+    const localConversion = convertUtcCronToLocalParts(
+      cronSchedule,
+      userTimezone
+    );
+    setFrequency(localConversion.parts.frequency);
+    setInterval(localConversion.parts.interval);
+    setHour(localConversion.parts.hour);
+    setMinute(localConversion.parts.minute);
+    setDaysOfWeek(localConversion.parts.daysOfWeek);
+    setDayOfMonth(localConversion.parts.dayOfMonth);
+    setConversionWarning(localConversion.warning);
+  }, [cronSchedule, userTimezone]);
 
-  // Compute current cron from state
-  const currentCron = buildCronFromUI(
+  // Compute current local cron from state (for display)
+  const currentLocalCron = computeLocalCron();
+
+  // Compute current UTC cron from state (for validation and saving)
+  const utcResult = computeUtcCron();
+  const currentUtcCron = utcResult.cron;
+
+  // Parse and validate the UTC cron expression
+  const validation = validateCronExpression(currentUtcCron);
+  const cronDescription = cronToEnglish(currentLocalCron);
+  const description = cronDescription.description;
+
+  // Get simplified schedule for compact display
+  const simplifiedSchedule = getSimplifiedSchedule({
     frequency,
     interval,
     hour,
     minute,
     daysOfWeek,
-    dayOfMonth
-  );
-
-  // Parse and validate the current cron expression
-  const validation = validateCronExpression(currentCron);
-  const cronDescription = cronToEnglish(currentCron);
-  const description = cronDescription.description;
+    dayOfMonth,
+  });
 
   const handleInputChange = (fieldName: string, value: unknown) => {
     const newInputValues = { ...inputValues, [fieldName]: value };
@@ -386,19 +350,26 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
         {/* Current schedule display */}
         <div className="mt-3 space-y-2">
-          <div className="flex items-start gap-2">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex-1">
-              <div className="text-xs text-neutral-400 mb-1">Schedule:</div>
+              <div className="text-xs text-purple-400/60 mb-0.5">
+                {simplifiedSchedule}
+              </div>
               <div className="text-sm font-medium text-purple-300">
                 {description}
               </div>
             </div>
+            <div className="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 whitespace-nowrap">
+              {timezoneLabel}
+            </div>
           </div>
 
-          {/* Cron expression display */}
-          <div className="bg-neutral-900/50 rounded px-2 py-1.5 font-mono text-xs text-neutral-300 border border-neutral-700">
-            {currentCron}
-          </div>
+          {/* Conversion warning */}
+          {conversionWarning && (
+            <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
+              ⚠️ {conversionWarning}
+            </div>
+          )}
 
           {/* Validation error */}
           {!validation.valid && (

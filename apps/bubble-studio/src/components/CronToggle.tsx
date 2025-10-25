@@ -1,5 +1,9 @@
 import { Clock } from 'lucide-react';
-import { cronToEnglish } from '../utils/cronUtils';
+import {
+  getUserTimeZone,
+  convertUtcCronToLocalParts,
+  getSimplifiedSchedule,
+} from '../utils/cronUtils';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useExecutionStore } from '../stores/executionStore';
@@ -27,7 +31,18 @@ export function CronToggle({
   const cronSchedule = currentFlow?.cron;
   const cronActive = currentFlow?.cronActive;
 
-  const scheduleDescription = cronSchedule ? cronToEnglish(cronSchedule) : null;
+  // Convert UTC cron to local time for display
+  const userTimezone = getUserTimeZone();
+  const localConversion = cronSchedule
+    ? convertUtcCronToLocalParts(cronSchedule, userTimezone)
+    : null;
+
+  const scheduleDescription = localConversion
+    ? {
+        description: getSimplifiedSchedule(localConversion.parts),
+        isValid: true,
+      }
+    : null;
 
   const isPending = validateCodeMutation.isPending;
 
@@ -176,15 +191,21 @@ export function CronToggle({
         </div>
       </div>
 
-      {cronSchedule && (
-        <div className="bg-neutral-900/50 rounded px-2 py-1.5 font-mono text-xs text-neutral-300 border border-neutral-700">
-          {cronSchedule}
+      {scheduleDescription && (
+        <div className="space-y-2">
+          <div className="text-sm text-neutral-300">
+            {scheduleDescription.description}
+          </div>
+          <div className="text-xs text-neutral-500">
+            UTC cron:{' '}
+            <span className="font-mono text-neutral-400">{cronSchedule}</span>
+          </div>
         </div>
       )}
 
       {scheduleDescription && !scheduleDescription.isValid && (
         <div className="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
-          ⚠️ {scheduleDescription.error}
+          ⚠️ Invalid schedule
         </div>
       )}
     </div>

@@ -765,7 +765,12 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
-    if (flowId && options?.syncInputsWithFlow === false) {
+    if (
+      flowId &&
+      options &&
+      activateCron !== undefined &&
+      options.syncInputsWithFlow === false
+    ) {
       // Just update the activation state of the cron
       await db
         .update(bubbleFlows)
@@ -843,6 +848,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       if (defaultInputs && Object.keys(defaultInputs).length > 0) {
         updateData.defaultInputs = defaultInputs;
       }
+
+      console.log('Updating cron to ', updateData.cron);
 
       await db
         .update(bubbleFlows)

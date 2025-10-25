@@ -147,12 +147,13 @@ export class CronScheduler {
   private isCronDue(expr: string, now: Date): boolean {
     const { minute, hour, dayOfMonth, month, dayOfWeek } =
       parseCronExpression(expr);
+    // Use UTC methods to ensure cron expressions are evaluated in UTC timezone
     return (
-      this.matchesField(minute, now.getMinutes(), 0, 59) &&
-      this.matchesField(hour, now.getHours(), 0, 23) &&
-      this.matchesField(dayOfMonth, now.getDate(), 1, 31) &&
-      this.matchesField(month, now.getMonth() + 1, 1, 12) &&
-      this.matchesField(dayOfWeek, now.getDay(), 0, 6)
+      this.matchesField(minute, now.getUTCMinutes(), 0, 59) &&
+      this.matchesField(hour, now.getUTCHours(), 0, 23) &&
+      this.matchesField(dayOfMonth, now.getUTCDate(), 1, 31) &&
+      this.matchesField(month, now.getUTCMonth() + 1, 1, 12) &&
+      this.matchesField(dayOfWeek, now.getUTCDay(), 0, 6)
     );
   }
 

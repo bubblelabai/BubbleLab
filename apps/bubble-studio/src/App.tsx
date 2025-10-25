@@ -776,6 +776,7 @@ function App() {
                                         validateCodeMutation.mutateAsync({
                                           code: editor.getCode(),
                                           flowId: selectedFlowId,
+                                          syncInputsWithFlow: true,
                                           credentials:
                                             executionState.pendingCredentials,
                                         })
