@@ -12,7 +12,7 @@ import type {
  */
 export function transformWebhookPayload(
   eventType: keyof BubbleTriggerEventRegistry,
-  rawBody: unknown,
+  rawBody: Record<string, any>,
   path: string,
   method: string,
   headers: Record<string, string>
@@ -68,21 +68,24 @@ export function transformWebhookPayload(
 
     case 'schedule/cron': {
       // For cron events, we might have cron-specific data
-      const cronBody = rawBody;
-      return {
-        ...basePayload,
-        body: cronBody as Record<string, unknown>,
-      };
-    }
-
-    case 'webhook/http': {
-      // For generic webhook events, pass through the entire payload
-      return {
+      const result: BubbleTriggerEventRegistry['schedule/cron'] = {
         ...basePayload,
         method,
         headers,
-        body: rawBody as Record<string, unknown>,
+        cron: rawBody.cron,
+        ...(rawBody.body as Record<string, unknown>),
       };
+      return result;
+    }
+
+    case 'webhook/http': {
+      const result: BubbleTriggerEventRegistry['webhook/http'] = {
+        ...basePayload,
+        method,
+        headers,
+        ...(rawBody.body as Record<string, unknown>),
+      };
+      return result;
     }
 
     default:

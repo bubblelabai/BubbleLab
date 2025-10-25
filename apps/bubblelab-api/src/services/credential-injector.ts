@@ -265,7 +265,6 @@ export async function injectCredentials(
         injectedCredentials: {},
       };
     }
-    console.log(JSON.stringify(modifiedBubbles, null, 2));
     const reconstructResult = await reconstructBubbleFlow(
       originalCode,
       modifiedBubbles

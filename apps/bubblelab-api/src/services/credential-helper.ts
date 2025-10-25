@@ -87,9 +87,6 @@ export class CredentialHelper {
         let resolvedSecret: string | null = null;
 
         if (encryptedCred.isOauth) {
-          console.log(
-            `🔍 [CredentialHelper] Getting valid OAuth token for credential ${encryptedCred.id}`
-          );
           // Prefer using OAuth service to auto-refresh and return a valid token
           resolvedSecret = await oauthService.getValidToken(encryptedCred.id);
 

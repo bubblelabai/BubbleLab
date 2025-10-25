@@ -1,6 +1,14 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Clock, Play, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
+import {
+  Clock,
+  Play,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Minus,
+  Save,
+} from 'lucide-react';
 import { validateCronExpression } from '@bubblelab/shared-schemas';
 import {
   cronToEnglish,
@@ -14,6 +22,9 @@ import {
 import { parseJSONSchema } from '../utils/inputSchemaParser';
 import InputFieldsRenderer from './InputFieldsRenderer';
 import { CronToggle } from './CronToggle';
+import { useExecutionStore } from '../stores/executionStore';
+import { useValidateCode } from '../hooks/useValidateCode';
+import { useEditor } from '../hooks/useEditor';
 
 interface CronScheduleNodeData {
   flowId?: number;
@@ -90,9 +101,23 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const [inputValues, setInputValues] =
     useState<Record<string, unknown>>(executionInputs);
 
+  // Get execution store and editor for save functionality
+  const executionState = useExecutionStore(flowId || null);
+  const validateCodeMutation = useValidateCode({ flowId: flowId || null });
+  const { editor } = useEditor();
+
   // Get user's timezone
   const userTimezone = getUserTimeZone();
   const timezoneLabel = formatTimeZoneLabel(userTimezone);
+
+  // Check if there are unsaved input changes (similar to useEditor pattern)
+  const hasUnsavedInputChanges = useMemo(() => {
+    if (!flowId || Object.keys(executionInputs).length === 0) {
+      return false;
+    }
+    // Compare current inputValues with the flow's defaultInputs from executionInputs
+    return JSON.stringify(inputValues) !== JSON.stringify(executionInputs);
+  }, [inputValues, executionInputs, flowId]);
 
   // Parse input schema using the same logic as InputSchemaNode
   const schemaFields =
@@ -254,6 +279,22 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     const newInputValues = { ...inputValues, [fieldName]: value };
     setInputValues(newInputValues);
     onDefaultInputChange?.(fieldName, value);
+  };
+
+  const handleSaveInputs = async () => {
+    if (!flowId) return;
+
+    // Update execution store inputs
+    executionState.setInputs(inputValues);
+
+    // Call validation with syncInputsWithFlow to save to backend
+    await validateCodeMutation.mutateAsync({
+      code: editor.getCode(),
+      flowId,
+      syncInputsWithFlow: true,
+      credentials: executionState.pendingCredentials,
+      defaultInputs: inputValues,
+    });
   };
 
   const handleFrequencyChange = (newFrequency: FrequencyType) => {
@@ -704,8 +745,21 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       {/* Input fields section */}
       {isExpanded && schemaFields.length > 0 && (
         <div className="p-4 border-t border-neutral-600">
-          <div className="text-xs font-medium text-neutral-300 mb-3">
-            Default Input Values
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-medium text-neutral-300">
+              Default Input Values
+            </div>
+            {hasUnsavedInputChanges && flowId && (
+              <button
+                type="button"
+                onClick={handleSaveInputs}
+                disabled={validateCodeMutation.isPending}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-all bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/50 text-blue-300 hover:text-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-3 h-3" />
+                {validateCodeMutation.isPending ? 'Saving...' : 'Save'}
+              </button>
+            )}
           </div>
           <div className="space-y-3">
             <InputFieldsRenderer

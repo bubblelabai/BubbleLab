@@ -138,6 +138,8 @@ export class CronScheduler {
         {}
       );
 
+      console.log('[cron] transformedPayload', transformedPayload);
+
       executeBubbleFlowWithTracking(f.id, transformedPayload, {
         userId: f.userId,
         appType: AppType.BUBBLE_LAB,

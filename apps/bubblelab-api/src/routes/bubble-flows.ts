@@ -61,8 +61,6 @@ setupErrorHandler(app);
 
 app.openapi(listBubbleFlowsRoute, async (c) => {
   const userId = getUserId(c);
-
-  console.log('listBubbleFlowsRoute', userId);
   // Fetch both bubble flows and user data in parallel
   const [flows, userData] = await Promise.all([
     db.query.bubbleFlows.findMany({
@@ -413,7 +411,6 @@ app.openapi(getBubbleFlowRoute, async (c) => {
   >;
 
   if (!bubbleParameters || Object.keys(bubbleParameters).length === 0) {
-    console.log('Updating bubble parameters from flow code');
     //Parse parameters
     const bubbleFactory = await getBubbleFactory();
     const script = new BubbleScript(flow.originalCode!, bubbleFactory);
@@ -848,9 +845,6 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       if (defaultInputs && Object.keys(defaultInputs).length > 0) {
         updateData.defaultInputs = defaultInputs;
       }
-
-      console.log('Updating cron to ', updateData.cron);
-
       await db
         .update(bubbleFlows)
         .set(updateData)
@@ -984,9 +978,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
         if (result.generatedCode && result.generatedCode.trim()) {
           try {
-            console.log(
-              '[API] Parsing bubble parameters from generated code...'
-            );
             const validationResult = await validateBubbleFlow(
               result.generatedCode
             );
@@ -999,13 +990,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 validationResult.bubbleParameters
               );
               actualIsValid = true;
-              console.log(
-                '[API] Successfully extracted bubble parameters:',
-                Object.keys(bubbleParameters).length,
-                'bubbles'
-              );
             } else {
-              console.log('[API] Validation failed:', validationResult.errors);
               // Keep the AI's validation result if our parsing failed
               actualIsValid = result.isValid;
             }
@@ -1037,8 +1022,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }),
           event: 'generation_complete',
         });
-
-        console.log('[API] Generation complete:', bubbleParameters);
 
         // Send stream completion
         await stream.writeSSE({

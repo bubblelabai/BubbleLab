@@ -45,7 +45,6 @@ export async function executeBubbleFlowViaWebhook(
 
   // Update webhook execution counters
   if (result.success) {
-    console.log('Updating bubble flow execution status to success');
     await db
       .update(bubbleFlows)
       .set({
@@ -53,7 +52,6 @@ export async function executeBubbleFlowViaWebhook(
       })
       .where(eq(bubbleFlows.id, bubbleFlowId));
   } else {
-    console.log('Updating bubble flow execution status to error');
     await db
       .update(bubbleFlows)
       .set({
