@@ -794,6 +794,67 @@ export const activateBubbleFlowRoute = createRoute({
   tags: ['BubbleFlow'],
 });
 
+// POST /bubble-flow/:id/deactivate - Deactivate bubble flow webhook
+export const deactivateBubbleFlowRoute = createRoute({
+  method: 'post',
+  path: '/{id}/deactivate',
+  request: {
+    params: z.object({
+      id: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .openapi({
+          description: 'BubbleFlow ID',
+          example: '123',
+        }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean().openapi({
+              description: 'Whether the deactivation was successful',
+              example: true,
+            }),
+            message: z.string().openapi({
+              description: 'Success message',
+              example: 'Webhook deactivated successfully',
+            }),
+          }),
+        },
+      },
+      description: 'Webhook deactivated successfully',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid ID format',
+    },
+    404: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'BubbleFlow not found',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['BubbleFlow'],
+});
+
 // DELETE /bubble-flow/:id - Delete bubble flow
 export const deleteBubbleFlowRoute = createRoute({
   method: 'delete',
