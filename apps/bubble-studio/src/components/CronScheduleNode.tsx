@@ -152,10 +152,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     Object.keys(executionInputs).length == 0;
 
   // Convert UTC cron to local time parts
-  const localConversion = convertUtcCronToLocalParts(
-    cronSchedule,
-    userTimezone
-  );
+  const localConversion = convertUtcCronToLocalParts(cronSchedule);
   const [frequency, setFrequency] = useState<FrequencyType>(
     localConversion.parts.frequency
   );
@@ -212,7 +209,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       daysOfWeek: patch.daysOfWeek ?? daysOfWeek,
       dayOfMonth: patch.dayOfMonth ?? dayOfMonth,
     };
-    return convertLocalPartsToUtcCron(parts, userTimezone);
+    return convertLocalPartsToUtcCron(parts);
   };
 
   // Unified state updater that also emits the new UTC cron immediately
@@ -240,10 +237,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   // Sync local state when cronSchedule prop changes
   useEffect(() => {
-    const localConversion = convertUtcCronToLocalParts(
-      cronSchedule,
-      userTimezone
-    );
+    const localConversion = convertUtcCronToLocalParts(cronSchedule);
     setFrequency(localConversion.parts.frequency);
     setInterval(localConversion.parts.interval);
     setHour(localConversion.parts.hour);

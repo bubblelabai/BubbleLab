@@ -32,9 +32,8 @@ export function CronToggle({
   const cronActive = currentFlow?.cronActive;
 
   // Convert UTC cron to local time for display
-  const userTimezone = getUserTimeZone();
   const localConversion = cronSchedule
-    ? convertUtcCronToLocalParts(cronSchedule, userTimezone)
+    ? convertUtcCronToLocalParts(cronSchedule)
     : null;
 
   const scheduleDescription = localConversion
