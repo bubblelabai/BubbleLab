@@ -275,7 +275,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
-            let parsedResult = JSON.parse(validationContent);
+            const parsedResult = JSON.parse(validationContent);
             console.log(
               '[BubbleFlowGenerator] Raw validation result structure:',
               {
@@ -580,7 +580,7 @@ ${VALIDATION_PROCESS}`;
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
-            let parsedResult = JSON.parse(validationContent);
+            const parsedResult = JSON.parse(validationContent);
 
             console.log(
               '[BubbleFlowGenerator] 🔍 Validation tool output structure:',
@@ -897,7 +897,7 @@ ${VALIDATION_PROCESS}`;
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
-            let parsedResult = JSON.parse(validationContent);
+            const parsedResult = JSON.parse(validationContent);
 
             console.log(
               '[BubbleFlowGenerator] 🔍 Validation agent output structure:',
