@@ -9,66 +9,99 @@ export interface ValidationResult {
   bubbleParameters?: Record<string, ParsedBubble>;
 }
 
+// Language Service-based validator (persistent across calls for performance)
+let cachedLanguageService: ts.LanguageService | null = null;
+let cachedCompilerOptions: ts.CompilerOptions | null = null;
+const scriptVersions = new Map<string, number>();
+const scriptSnapshots = new Map<string, ts.IScriptSnapshot>();
+
+function getOrCreateLanguageService(): ts.LanguageService {
+  if (cachedLanguageService && cachedCompilerOptions) {
+    return cachedLanguageService;
+  }
+
+  // Get TypeScript compiler options (similar to bubble-core config)
+  const compilerOptions: ts.CompilerOptions = {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    allowSyntheticDefaultImports: true,
+    esModuleInterop: true,
+    strict: true,
+    noImplicitAny: true,
+    skipLibCheck: true,
+    verbatimModuleSyntax: true,
+  };
+
+  // Create Language Service Host with full file system access
+  const host: ts.LanguageServiceHost = {
+    getScriptFileNames: () => Array.from(scriptSnapshots.keys()),
+    getScriptVersion: (fileName) =>
+      scriptVersions.get(fileName)?.toString() ?? '0',
+    getScriptSnapshot: (fileName) => {
+      // First check our in-memory snapshots
+      const snapshot = scriptSnapshots.get(fileName);
+      if (snapshot) {
+        return snapshot;
+      }
+
+      // Then try to read from file system (for node_modules, etc.)
+      if (ts.sys.fileExists(fileName)) {
+        const text = ts.sys.readFile(fileName);
+        if (text !== undefined) {
+          return ts.ScriptSnapshot.fromString(text);
+        }
+      }
+
+      return undefined;
+    },
+    getCurrentDirectory: () => ts.sys.getCurrentDirectory(),
+    getCompilationSettings: () => compilerOptions,
+    getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+    fileExists: ts.sys.fileExists,
+    readFile: ts.sys.readFile,
+    readDirectory: ts.sys.readDirectory,
+    directoryExists: ts.sys.directoryExists,
+    getDirectories: ts.sys.getDirectories,
+    useCaseSensitiveFileNames: () => ts.sys.useCaseSensitiveFileNames,
+  };
+
+  cachedCompilerOptions = compilerOptions;
+  cachedLanguageService = ts.createLanguageService(
+    host,
+    ts.createDocumentRegistry()
+  );
+
+  return cachedLanguageService;
+}
+
 export async function validateBubbleFlow(
   code: string,
   bubbleFactory: BubbleFactory
 ): Promise<ValidationResult> {
   try {
     // Create a temporary file name for the validation
-    const fileName = 'temp-bubble-flow.ts';
+    const fileName = 'virtual-bubble-flow.ts';
 
-    // Get TypeScript compiler options (similar to bubble-core config)
-    const compilerOptions: ts.CompilerOptions = {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      allowSyntheticDefaultImports: true,
-      esModuleInterop: true,
-      strict: true,
-      noImplicitAny: true,
-      skipLibCheck: true,
-      verbatimModuleSyntax: true,
-      paths: {
-        '@bubblelab/bubble-core': ['../../packages/bubble-core/src'],
-      },
-      baseUrl: '.',
-    };
+    // Get or create the language service
+    const languageService = getOrCreateLanguageService();
 
-    // Create a program with the code
-    const sourceFile = ts.createSourceFile(
-      fileName,
-      code,
-      ts.ScriptTarget.ES2022,
-      true
-    );
+    // Update script version and snapshot
+    const version = (scriptVersions.get(fileName) ?? 0) + 1;
+    scriptVersions.set(fileName, version);
+    scriptSnapshots.set(fileName, ts.ScriptSnapshot.fromString(code));
 
-    // Create program
-    const host = ts.createCompilerHost(compilerOptions);
+    // Get diagnostics using Language Service
+    const syntacticDiagnostics =
+      languageService.getSyntacticDiagnostics(fileName);
+    const semanticDiagnostics =
+      languageService.getSemanticDiagnostics(fileName);
 
-    // Override getSourceFile to return our code
-    const originalGetSourceFile = host.getSourceFile;
-    host.getSourceFile = (
-      name,
-      languageVersion,
-      onError,
-      shouldCreateNewSourceFile
-    ) => {
-      if (name === fileName) {
-        return sourceFile;
-      }
-      return originalGetSourceFile.call(
-        host,
-        name,
-        languageVersion,
-        onError,
-        shouldCreateNewSourceFile
-      );
-    };
-
-    const program = ts.createProgram([fileName], compilerOptions, host);
-
-    // Get diagnostics
-    const diagnostics = ts.getPreEmitDiagnostics(program);
+    // Filter out TS6133 (unused variables) like the server does
+    const diagnostics = [
+      ...syntacticDiagnostics,
+      ...semanticDiagnostics,
+    ].filter((d) => d.code !== 6133);
 
     if (diagnostics.length > 0) {
       const errors = diagnostics.map((diagnostic) => {
@@ -93,6 +126,17 @@ export async function validateBubbleFlow(
     }
 
     // Additional validation: Check if it extends BubbleFlow
+    // Get source file from language service for AST analysis
+    const program = languageService.getProgram();
+    const sourceFile = program?.getSourceFile(fileName);
+
+    if (!sourceFile) {
+      return {
+        valid: false,
+        errors: ['Failed to get source file for validation'],
+      };
+    }
+
     const hasValidBubbleFlow = validateBubbleFlowClass(sourceFile);
     if (!hasValidBubbleFlow.valid) {
       return hasValidBubbleFlow;

@@ -47,6 +47,12 @@ export const BUBBLE_NAMES_WITH_CONTEXT_INJECTION = [
 
 // Bubble parameter from backend parser (matches backend BubbleParameter interface)
 export interface BubbleParameter {
+  location?: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
   variableId?: number;
   name: string;
   value: string | number | boolean | Record<string, unknown> | unknown[]; // Raw string representation of the value

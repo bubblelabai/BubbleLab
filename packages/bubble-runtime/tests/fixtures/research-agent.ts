@@ -28,7 +28,6 @@ import {
   // Types and utilities
   BubbleFactory,
   type BubbleClassWithMetadata,
-  type BubbleContext,
   type BubbleOperationResult,
   type BubbleTriggerEvent,
   type WebhookEvent,

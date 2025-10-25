@@ -374,7 +374,6 @@ export async function executeBubbleFlow(
           }
         }
 
-        // @ts-expect-error - Dynamic assignment of wrapped bubble class
         wrappedBubbleCore[key as keyof typeof bubbleCore] = WrappedBubble;
       }
     });

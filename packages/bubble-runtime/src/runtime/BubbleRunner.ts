@@ -394,7 +394,7 @@ export class BubbleRunner {
       try {
         await fs.mkdir(tempDir, { recursive: true });
         console.log('[BubbleRunner] Ensured tempDir exists');
-      } catch (error) {
+      } catch (error: unknown) {
         // Directory might already exist, that's okay
         console.warn('[BubbleRunner] mkdir tempDir warning:', error);
       }
@@ -502,19 +502,20 @@ export class BubbleRunner {
         summary: this.logger.getExecutionSummary(),
         data: result,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       // Enhanced error handling for bubble-specific errors
       if (error instanceof BubbleValidationError) {
+        const validationError = error as BubbleValidationError;
         this.logger?.fatal(
-          `Bubble validation failed: ${error.message}`,
-          error,
+          `Bubble validation failed: ${validationError.message}`,
+          validationError,
           {
-            variableId: error.variableId,
-            bubbleName: error.bubbleName,
+            variableId: validationError.variableId,
+            bubbleName: validationError.bubbleName,
             additionalData: {
-              validationErrors: error.validationErrors,
-              variableId: error.variableId,
-              bubbleName: error.bubbleName,
+              validationErrors: validationError.validationErrors,
+              variableId: validationError.variableId,
+              bubbleName: validationError.bubbleName,
             },
           }
         );
@@ -524,7 +525,7 @@ export class BubbleRunner {
           this.logger.logExecutionComplete(
             false,
             undefined,
-            `Bubble validation failed at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`
+            `Bubble validation failed at ${validationError.bubbleName} (variableId: ${validationError.variableId}): ${validationError.message}`
           );
         }
 
@@ -532,26 +533,31 @@ export class BubbleRunner {
           executionId: 0,
           success: false,
           summary: this.logger.getExecutionSummary()!,
-          error: `Bubble validation failed at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`,
+          error: `Bubble validation failed at ${validationError.bubbleName} (variableId: ${validationError.variableId}): ${validationError.message}`,
           data: undefined,
         };
       } else if (error instanceof BubbleExecutionError) {
-        this.logger?.fatal(`Bubble execution failed: ${error.message}`, error, {
-          variableId: error.variableId,
-          bubbleName: error.bubbleName,
-          additionalData: {
-            executionPhase: error.executionPhase,
-            variableId: error.variableId,
-            bubbleName: error.bubbleName,
-          },
-        });
+        const executionError = error as BubbleExecutionError;
+        this.logger?.fatal(
+          `Bubble execution failed: ${executionError.message}`,
+          executionError,
+          {
+            variableId: executionError.variableId,
+            bubbleName: executionError.bubbleName,
+            additionalData: {
+              executionPhase: executionError.executionPhase,
+              variableId: executionError.variableId,
+              bubbleName: executionError.bubbleName,
+            },
+          }
+        );
 
         // Log execution failure for streaming
         if (this.logger instanceof StreamingBubbleLogger) {
           this.logger.logExecutionComplete(
             false,
             undefined,
-            `Bubble execution failed at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`
+            `Bubble execution failed at ${executionError.bubbleName} (variableId: ${executionError.variableId}): ${executionError.message}`
           );
         }
 
@@ -559,26 +565,31 @@ export class BubbleRunner {
           executionId: 0,
           success: false,
           summary: this.logger.getExecutionSummary(),
-          error: `Bubble execution failed at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`,
+          error: `Bubble execution failed at ${executionError.bubbleName} (variableId: ${executionError.variableId}): ${executionError.message}`,
           data: undefined,
         };
       } else if (error instanceof BubbleError) {
         // Generic bubble error
-        this.logger?.fatal(`Bubble error: ${error.message}`, error, {
-          variableId: error.variableId,
-          bubbleName: error.bubbleName,
-          additionalData: {
-            variableId: error.variableId,
-            bubbleName: error.bubbleName,
-          },
-        });
+        const bubbleError = error as BubbleError;
+        this.logger?.fatal(
+          `Bubble error: ${bubbleError.message}`,
+          bubbleError,
+          {
+            variableId: bubbleError.variableId,
+            bubbleName: bubbleError.bubbleName,
+            additionalData: {
+              variableId: bubbleError.variableId,
+              bubbleName: bubbleError.bubbleName,
+            },
+          }
+        );
 
         // Log execution failure for streaming
         if (this.logger instanceof StreamingBubbleLogger) {
           this.logger.logExecutionComplete(
             false,
             undefined,
-            `Bubble error at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`
+            `Bubble error at ${bubbleError.bubbleName} (variableId: ${bubbleError.variableId}): ${bubbleError.message}`
           );
         }
 
@@ -586,7 +597,7 @@ export class BubbleRunner {
           executionId: 0,
           summary: this.logger.getExecutionSummary()!,
           success: false,
-          error: `Bubble error at ${error.bubbleName} (variableId: ${error.variableId}): ${error.message}`,
+          error: `Bubble error at ${bubbleError.bubbleName} (variableId: ${bubbleError.variableId}): ${bubbleError.message}`,
           data: undefined,
         };
       } else {
@@ -601,7 +612,7 @@ export class BubbleRunner {
           this.logger.logExecutionComplete(
             false,
             undefined,
-            (error as Error).message
+            error instanceof Error ? error.message : String(error)
           );
         }
 
@@ -609,7 +620,7 @@ export class BubbleRunner {
           executionId: 0,
           summary: this.logger.getExecutionSummary(),
           success: false,
-          error: (error as Error).message,
+          error: error instanceof Error ? error.message : String(error),
           data: undefined,
         };
       }
@@ -726,7 +737,7 @@ export class BubbleRunner {
         if (existsSync(packageJsonPath)) {
           return currentDir;
         }
-      } catch (error) {
+      } catch (error: unknown) {
         // Continue searching
       }
       currentDir = path.dirname(currentDir);

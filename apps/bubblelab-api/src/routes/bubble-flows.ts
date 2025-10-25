@@ -789,7 +789,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
     const bubbleFactory = await getBubbleFactory();
 
     // If flowId is provided, verify user owns the flow
-    let existingFlow = null;
+    let existingFlow;
 
     if (flowId) {
       existingFlow = await db.query.bubbleFlows.findFirst({

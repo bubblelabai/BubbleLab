@@ -144,6 +144,7 @@ const VALIDATION_PROCESS = `CRITICAL VALIDATION PROCESS:
 7. NEVER provide code that has validation errors - keep fixing until it's completely error-free
 8. IMPORTANT: Use .action() on the to call the bubble, (this is the only way to run a bubble) - NEVER use runBubble() or any other method
 
+DO NOT ADD any imports, do not add import zod.
 Only return the final TypeScript code that passes validation. No explanations or markdown formatting.`;
 
 /**
@@ -274,13 +275,33 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
+            let parsedResult = JSON.parse(validationContent);
+            console.log(
+              '[BubbleFlowGenerator] Raw validation result structure:',
+              {
+                hasData: !!parsedResult.data,
+                hasTopLevelValid: 'valid' in parsedResult,
+                hasNestedValid:
+                  parsedResult.data && 'valid' in parsedResult.data,
+              }
+            );
+
+            // Unwrap the result if it's wrapped in a data object
             const validationResult: ValidationResult =
-              JSON.parse(validationContent);
+              parsedResult.data || parsedResult;
+
             isValid = validationResult.valid === true;
             validationError =
               validationResult.error ||
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
+
+            console.log(
+              '[BubbleFlowGenerator] ✅ Validation parsed - valid:',
+              isValid,
+              'error:',
+              validationError || 'none'
+            );
           } catch (e) {
             isValid = true;
             validationError = '';
@@ -559,8 +580,24 @@ ${VALIDATION_PROCESS}`;
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
+            let parsedResult = JSON.parse(validationContent);
+
+            console.log(
+              '[BubbleFlowGenerator] 🔍 Validation tool output structure:',
+              {
+                hasData: !!parsedResult.data,
+                hasTopLevelValid: 'valid' in parsedResult,
+                hasNestedValid:
+                  parsedResult.data && 'valid' in parsedResult.data,
+                topLevelValid: parsedResult.valid,
+                nestedValid: parsedResult.data?.valid,
+              }
+            );
+
+            // Unwrap the result if it's wrapped in a data object
+            // The ToolBubble base class wraps results in { success, data, error }
             const validationResult: ValidationResult =
-              JSON.parse(validationContent);
+              parsedResult.data || parsedResult;
 
             isValid = validationResult.valid === true;
             validationError =
@@ -568,13 +605,24 @@ ${VALIDATION_PROCESS}`;
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
 
-            console.log('[BubbleFlowGenerator] Validation result from tool:', {
-              valid: isValid,
-              error: validationError,
-            });
+            console.log(
+              '[BubbleFlowGenerator] ✅ Validation result - valid:',
+              isValid,
+              'needsAgent:',
+              !isValid
+            );
+
             // If validation ran but code is still invalid, trigger validationAgent to self-heal
             if (!isValid) {
+              console.log(
+                '[BubbleFlowGenerator] ⚠️ Validation FAILED, will spawn validation agent. Errors:',
+                validationError
+              );
               needsValidationAgent = true;
+            } else {
+              console.log(
+                '[BubbleFlowGenerator] ✓ Validation PASSED, no validation agent needed'
+              );
             }
           } catch (parseError) {
             console.log(
@@ -849,21 +897,45 @@ ${VALIDATION_PROCESS}`;
               validationContent = JSON.stringify(lastToolCall.output);
             }
 
-            const validationResult: ValidationResult =
-              JSON.parse(validationContent);
+            let parsedResult = JSON.parse(validationContent);
 
             console.log(
-              '[BubbleFlowGenerator] Parsed validation result:',
-              validationResult
+              '[BubbleFlowGenerator] 🔍 Validation agent output structure:',
+              {
+                hasData: !!parsedResult.data,
+                hasTopLevelValid: 'valid' in parsedResult,
+                hasNestedValid:
+                  parsedResult.data && 'valid' in parsedResult.data,
+                topLevelValid: parsedResult.valid,
+                nestedValid: parsedResult.data?.valid,
+              }
             );
+
+            // Unwrap the result if it's wrapped in a data object
+            const validationResult: ValidationResult =
+              parsedResult.data || parsedResult;
 
             isValid = validationResult.valid === true;
             validationError =
               validationResult.error ||
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
+
+            console.log(
+              '[BubbleFlowGenerator] ✅ Validation agent result - valid:',
+              isValid
+            );
+
             if (!isValid) {
+              console.log(
+                '[BubbleFlowGenerator] ⚠️ Validation agent says INVALID, will try again. First error:',
+                validationResult.errors?.[0]?.substring(0, 100)
+              );
               needsValidationAgent = true;
+            } else {
+              console.log(
+                '[BubbleFlowGenerator] ✓ Validation agent says VALID'
+              );
             }
           } catch (parseError) {
             console.log('Failed to parse validation output:', parseError);

@@ -572,7 +572,11 @@ export class StorageBubble<
     });
 
     // Generate page image upload URLs
-    const pageUploadUrls = [];
+    const pageUploadUrls: Array<{
+      pageNumber: number;
+      uploadUrl: string;
+      fileName: string;
+    }> = [];
     for (let pageNum = 1; pageNum <= params.pageCount; pageNum++) {
       const pageFileName = `${userPrefix}${timestamp}-${pdfBaseName}_page${pageNum}.jpeg`;
 
