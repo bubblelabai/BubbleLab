@@ -473,6 +473,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           },
           origin: [0, 0.5] as [number, number],
           data: {
+            flowId: currentFlow?.id,
             flowName: flowName,
             cronSchedule: currentFlow?.cron || '0 0 * * *',
             isActive: currentFlow?.cronActive || false,
@@ -485,20 +486,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
               // TODO: In the future, we might want to save this to the backend
               // For now, it's just stored locally in the editor
-            },
-            onActiveToggle: async (
-              isActive: boolean,
-              defaultInputs?: Record<string, unknown>
-            ) => {
-              if (!currentFlow?.id) return;
-
-              await validateCodeMutation.mutateAsync({
-                code: currentFlow.code,
-                flowId: currentFlow.id,
-                credentials: pendingCredentials || {},
-                defaultInputs: defaultInputs || {},
-                activateCron: isActive,
-              });
             },
             onDefaultInputChange: (fieldName: string, value: unknown) => {
               // Update the input value in the execution state

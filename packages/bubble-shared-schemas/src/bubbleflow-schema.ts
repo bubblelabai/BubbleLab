@@ -215,6 +215,10 @@ export const bubbleFlowListItemSchema = z.object({
   isActive: z
     .boolean()
     .openapi({ description: 'Whether the BubbleFlow is active' }),
+  cronActive: z
+    .boolean()
+    .openapi({ description: 'Whether cron scheduling is active' }),
+  cronSchedule: z.string().optional().openapi({ description: 'Cron schedule' }),
   webhookExecutionCount: z
     .number()
     .openapi({ description: 'Webhook execution count' }),

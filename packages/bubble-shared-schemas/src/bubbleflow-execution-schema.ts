@@ -182,6 +182,9 @@ export const validateBubbleFlowCodeSchema = z.object({
       strictMode: z.boolean().default(true).openapi({
         description: 'Enable strict TypeScript validation',
       }),
+      syncInputsWithFlow: z.boolean().default(false).openapi({
+        description: 'Whether to sync input values with the flow',
+      }),
     })
     .optional()
     .openapi({

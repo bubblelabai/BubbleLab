@@ -134,7 +134,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
       eventType: flow.eventType,
       isActive: flow.webhooks[0]?.isActive ?? false,
       cronActive: flow.cronActive || false,
-      cron: flow.cron || null,
+      cronSchedule: flow.cron || undefined,
       webhookExecutionCount: flow.webhookExecutionCount,
       webhookFailureCount: flow.webhookFailureCount,
       executionCount: executionCountMap.get(flow.id) || 0,
@@ -733,6 +733,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 
     // If flowId is provided, verify user owns the flow
     let existingFlow = null;
+
     if (flowId) {
       existingFlow = await db.query.bubbleFlows.findFirst({
         where: and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)),
@@ -748,6 +749,8 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           cron: true,
           cronActive: true,
           defaultInputs: true,
+          bubbleParameters: true,
+          eventType: true,
         },
       });
 
@@ -762,11 +765,58 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
+    if (flowId && options?.syncInputsWithFlow === false) {
+      // Just update the activation state of the cron
+      await db
+        .update(bubbleFlows)
+        .set({
+          cronActive: activateCron,
+        })
+        .where(eq(bubbleFlows.id, flowId));
+
+      return c.json(
+        {
+          valid: true,
+          success: true,
+          cronActive: activateCron,
+          error: '',
+          errors: [],
+          inputSchema: {},
+          bubbles: {},
+          eventType: existingFlow?.eventType || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
+          cron: existingFlow?.cron || null,
+          metadata: {
+            validatedAt: new Date().toISOString(),
+            codeLength: code?.length || 0,
+            strictMode: options?.strictMode ?? true,
+            flowUpdated: flowId ? true : false,
+          },
+          defaultInputs: existingFlow?.defaultInputs || {},
+          requiredCredentials: extractRequiredCredentials(
+            existingFlow?.bubbleParameters as Record<
+              string,
+              ParsedBubbleWithInfo
+            >
+          ),
+        },
+        200
+      );
+    }
+
     // Create a new BubbleFlowValidationTool instance
     const result = await validateAndExtract(code, bubbleFactory);
 
     // If validation is successful and flowId is provided, update the flow as well before returning the result
-    if (result.valid && existingFlow && flowId) {
+    if (
+      result.valid &&
+      existingFlow &&
+      flowId &&
+      options?.syncInputsWithFlow === true
+    ) {
       // Prepare bubble parameters with credentials if provided
       let finalBubbleParameters = result.bubbleParameters || {};
       // If credentials are provided in the request, merge them into the bubble parameters
@@ -777,18 +827,26 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
         );
       }
       const cronExpression = result.trigger?.cronSchedule || null;
+
+      // Prepare update object
+      const updateData: Partial<typeof bubbleFlows.$inferSelect> = {
+        originalCode: code,
+        bubbleParameters: finalBubbleParameters,
+        inputSchema: result.inputSchema || {},
+        eventType: result.trigger?.type,
+        updatedAt: new Date(),
+        cron: cronExpression,
+        cronActive: activateCron,
+      };
+
+      // Only include defaultInputs if it's provided and not empty
+      if (defaultInputs && Object.keys(defaultInputs).length > 0) {
+        updateData.defaultInputs = defaultInputs;
+      }
+
       await db
         .update(bubbleFlows)
-        .set({
-          originalCode: code,
-          bubbleParameters: finalBubbleParameters,
-          inputSchema: result.inputSchema || {},
-          eventType: result.trigger?.type,
-          updatedAt: new Date(),
-          cron: cronExpression,
-          cronActive: activateCron,
-          defaultInputs: defaultInputs,
-        })
+        .set(updateData)
         .where(eq(bubbleFlows.id, flowId));
     }
 
@@ -807,7 +865,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           ),
           cron: result.trigger?.cronSchedule || null,
           cronActive: activateCron,
-          defaultInputs: defaultInputs,
+          defaultInputs: defaultInputs || existingFlow?.defaultInputs || {},
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(

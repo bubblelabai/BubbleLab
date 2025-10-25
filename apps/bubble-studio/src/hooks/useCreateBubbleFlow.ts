@@ -63,6 +63,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           eventType: newFlow.eventType,
           isActive: newFlow.webhookActive,
           webhookExecutionCount: 0,
+          cronActive: false,
           webhookFailureCount: 0,
           executionCount: 0,
           createdAt: new Date().toISOString(),
@@ -124,6 +125,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 webhookExecutionCount: 0,
                 webhookFailureCount: 0,
                 executionCount: 0,
+                cronActive: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };

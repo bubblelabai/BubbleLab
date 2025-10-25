@@ -14,6 +14,7 @@ interface ValidateCodeRequest {
   credentials: Record<string, Record<string, number>>;
   defaultInputs?: Record<string, unknown>;
   activateCron?: boolean;
+  syncInputsWithFlow?: boolean;
 }
 
 interface ValidateCodeOptions {
@@ -45,6 +46,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         options: {
           includeDetails: true,
           strictMode: true,
+          syncInputsWithFlow: request.syncInputsWithFlow,
         },
       });
     },
@@ -66,6 +68,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         toast.dismiss(context.loadingToastId);
       }
 
+      console.log('DONE VALIDATING1');
       // Update visualizer with bubbles from validation
       if (
         result.valid &&
@@ -83,12 +86,14 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         );
       }
 
+      if (result.defaultInputs) {
+        updateDefaultInputs(result.defaultInputs || {});
+      }
+
       // Handle cron activation if requested
-      if (result.valid && variables.activateCron !== undefined) {
+      if (variables.activateCron !== undefined) {
         // Update the flow data with the new cron status
         updateCronActive(result.cronActive || false);
-        updateDefaultInputs(result.defaultInputs || {});
-
         // Show success message for cron activation
         if (result.cronActive) {
           toast.success('Cron schedule activated successfully');
@@ -101,7 +106,6 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       if (result.inputSchema) {
         // Schema captured and stored
       }
-
       if (result.valid) {
         // Show success toast with bubble count (only if not a cron activation)
         if (variables.activateCron === undefined) {
@@ -145,6 +149,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
             }
           );
         }
+        console.log('DONE VALIDATING3');
         executionState.stopValidation();
       } else {
         // Show error toast with validation errors

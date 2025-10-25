@@ -6,6 +6,7 @@ import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
 import { bubbleFlowApi } from '../services/bubbleFlowApi';
 import { useQueryClient } from '@tanstack/react-query';
+import { CronToggle } from '../components/CronToggle';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -308,6 +309,21 @@ export const HomePage: React.FC<HomePageProps> = ({
                       {flow.executionCount || 0}{' '}
                       {flow.executionCount === 1 ? 'execution' : 'executions'}
                     </div>
+
+                    {/* Cron Toggle - if this flow has a cron schedule */}
+                    {flow.cronSchedule && (
+                      <div
+                        className="mb-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <CronToggle
+                          flowId={flow.id}
+                          compact={true}
+                          syncInputsWithFlow={false}
+                          showScheduleText={true}
+                        />
+                      </div>
+                    )}
 
                     {/* Created Date */}
                     <div className="text-xs text-gray-500">

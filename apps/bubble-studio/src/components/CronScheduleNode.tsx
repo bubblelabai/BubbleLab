@@ -1,22 +1,14 @@
 import { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import {
-  Clock,
-  Play,
-  ChevronDown,
-  ChevronUp,
-  Power,
-  Plus,
-  Minus,
-} from 'lucide-react';
-import {
-  describeCronExpression,
-  validateCronExpression,
-} from '@bubblelab/shared-schemas';
+import { Clock, Play, ChevronDown, ChevronUp, Plus, Minus } from 'lucide-react';
+import { validateCronExpression } from '@bubblelab/shared-schemas';
+import { cronToEnglish } from '../utils/cronUtils';
 import { parseJSONSchema } from '../utils/inputSchemaParser';
 import InputFieldsRenderer from './InputFieldsRenderer';
+import { CronToggle } from './CronToggle';
 
 interface CronScheduleNodeData {
+  flowId?: number;
   flowName: string;
   cronSchedule: string;
   isActive?: boolean;
@@ -24,10 +16,6 @@ interface CronScheduleNodeData {
   inputSchema?: Record<string, unknown>;
   executionInputs?: Record<string, unknown>;
   onCronScheduleChange?: (newSchedule: string) => void;
-  onActiveToggle?: (
-    isActive: boolean,
-    defaultInputs?: Record<string, unknown>
-  ) => void;
   onDefaultInputChange?: (fieldName: string, value: unknown) => void;
   onExecuteFlow?: () => void;
   isExecuting?: boolean;
@@ -167,6 +155,7 @@ function buildCronFromUI(
 
 function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const {
+    flowId,
     flowName,
     cronSchedule,
     isActive = true,
@@ -174,7 +163,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     inputSchema = {},
     executionInputs = {},
     onCronScheduleChange,
-    onActiveToggle,
     onDefaultInputChange,
     onExecuteFlow,
     isExecuting = false,
@@ -293,13 +281,8 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   // Parse and validate the current cron expression
   const validation = validateCronExpression(currentCron);
-  const description = validation.valid
-    ? describeCronExpression(currentCron)
-    : 'Invalid cron expression';
-
-  const handleActiveToggle = () => {
-    onActiveToggle?.(!isActive, inputValues);
-  };
+  const cronDescription = cronToEnglish(currentCron);
+  const description = cronDescription.description;
 
   const handleInputChange = (fieldName: string, value: unknown) => {
     const newInputValues = { ...inputValues, [fieldName]: value };
@@ -376,36 +359,14 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Active/Inactive toggle */}
-            {onActiveToggle && (
-              <button
-                type="button"
-                onClick={handleActiveToggle}
-                disabled={isPending}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-all ${
-                  isPending
-                    ? 'bg-neutral-700/50 text-neutral-400 border border-neutral-600 cursor-not-allowed'
-                    : isActive
-                      ? 'bg-green-600/20 text-green-400 border border-green-600/50 hover:bg-green-600/30'
-                      : 'bg-neutral-700/50 text-neutral-400 border border-neutral-600 hover:bg-neutral-700'
-                }`}
-                title={
-                  isPending
-                    ? 'Updating schedule...'
-                    : isActive
-                      ? 'Schedule is active'
-                      : 'Schedule is inactive'
-                }
-              >
-                {isPending ? (
-                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Power
-                    className={`w-3 h-3 ${isActive ? 'text-green-400' : 'text-neutral-500'}`}
-                  />
-                )}
-                {isPending ? 'Updating...' : isActive ? 'Active' : 'Inactive'}
-              </button>
+            {/* Active/Inactive toggle using CronToggle component */}
+            {flowId && (
+              <CronToggle
+                flowId={flowId}
+                syncInputsWithFlow={true}
+                compact={true}
+                showScheduleText={false}
+              />
             )}
             <button
               type="button"

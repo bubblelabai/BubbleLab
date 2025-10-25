@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { api } from '../lib/api';
-import type { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
+import type {
+  BubbleFlowDetailsResponse,
+  BubbleFlowListResponse,
+} from '@bubblelab/shared-schemas';
 
 interface UseBubbleFlowResult {
   data: BubbleFlowDetailsResponse | undefined;
@@ -68,6 +71,26 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
           };
         }
       );
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          console.log('Current data', JSON.stringify(currentData, null, 2));
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  cronActive: cronActive,
+                };
+              }
+              return flow;
+            }),
+          };
+        }
+      );
     },
     [queryClient, flowId]
   );
@@ -83,6 +106,25 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
           return {
             ...currentData,
             eventType,
+          };
+        }
+      );
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  eventType: eventType,
+                };
+              }
+              return flow;
+            }),
           };
         }
       );
@@ -120,6 +162,26 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
           return {
             ...currentData,
             cron: cronSchedule,
+          };
+        }
+      );
+
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  cronSchedule: cronSchedule,
+                };
+              }
+              return flow;
+            }),
           };
         }
       );
