@@ -7,6 +7,7 @@ import {
   parseCronExpression,
   validateCronExpression,
 } from '@bubblelab/shared-schemas';
+import { transformWebhookPayload } from '../utils/payload-transformer.js';
 
 export type CronSchedulerOptions = {
   maxConcurrency?: number;
@@ -125,16 +126,22 @@ export class CronScheduler {
       this.logger.debug?.(
         `[cron] Executing flow ${f.id} (inFlight=${this.inFlight}/${this.maxConcurrency})`
       );
-      executeBubbleFlowWithTracking(
-        f.id,
+      // Transform the payload using the same logic as webhooks
+      const transformedPayload = transformWebhookPayload(
+        'schedule/cron',
         {
-          type: 'schedule/cron',
-          timestamp: now.toISOString(),
-          path: '/cron',
-          body: (f.defaultInputs as Record<string, unknown>) ?? {},
+          cron: f.cron,
+          body: f.defaultInputs as Record<string, unknown>,
         },
-        { userId: f.userId, appType: AppType.BUBBLE_LAB }
-      )
+        'runDueCronFlows',
+        'POST',
+        {}
+      );
+
+      executeBubbleFlowWithTracking(f.id, transformedPayload, {
+        userId: f.userId,
+        appType: AppType.BUBBLE_LAB,
+      })
         .catch((err) => this.logger.error('[cron] exec error', f.id, err))
         .finally(() => {
           this.running.delete(f.id);
