@@ -38,33 +38,17 @@ const result = await new ResearchAgentTool({
   <dt><code>task</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The research task that requires searching the internet and gathering information</dd>
 
-<dt>
-  <code>expectedResultSchema</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>
-  JSON schema string that defines the expected structure of the research result
-</dd>
+  <dt><code>expectedResultSchema</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>JSON schema string that defines the expected structure of the research result. Out</dd>
 
-<dt>
-  <code>model</code>{' '}
-  <em>
-    'openai/gpt-5' | 'openai/gpt-5-mini' | 'openai/gpt-o4-mini' |
-    'google/gemini-2.5-pro' | 'google/gemini-2.5-flash' |
-    'google/gemini-2.5-flash-lite' | 'google/gemini-2.5-flash-image-preview'
-  </em>{' '}
-</dt>
-<dd>Model to use for the research agent (default: google/gemini-2.5-flash)</dd>
+  <dt><code>model</code> <em>'openai/gpt-5' | 'openai/gpt-5-mini' | 'openai/gpt-o4-mini' | 'openai/gpt-4o' | 'google/gemini-2.5-pro' | 'google/gemini-2.5-flash' | 'google/gemini-2.5-flash-lite' | 'google/gemini-2.5-flash-image-preview' | 'anthropic/claude-sonnet-4-5-20250929' | 'openrouter/x-ai/grok-code-fast-1' | 'openrouter/z-ai/glm-4.6'</em> </dt>
+  <dd>Model to use for the research agent (default: google/gemini-2.5-flash)</dd>
 
-<dt>
-  <code>maxTokens</code> <em>number</em>{' '}
-</dt>
-<dd>Maximum number of tokens for the research agent (default: 40000)</dd>
+  <dt><code>maxTokens</code> <em>number</em> </dt>
+  <dd>Maximum number of tokens for the research agent (default: 40000)</dd>
 
-<dt>
-  <code>maxIterations</code> <em>number</em>{' '}
-</dt>
-<dd>Maximum number of iterations for the research agent (default: 100)</dd>
+  <dt><code>maxIterations</code> <em>number</em> </dt>
+  <dd>Maximum number of iterations for the research agent (default: 100)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Required credentials</dd>
@@ -77,34 +61,20 @@ const result = await new ResearchAgentTool({
 
 <div className="schema-card">
 <dl>
-  <dt><code>result</code> <em>Record&lt;string,unknown&gt;</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>result</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The research result matching the expected JSON schema structure, parsed to object</dd>
 
-<dt>
-  <code>summary</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>1-2 sentence summary of what research was conducted and completed</dd>
+  <dt><code>summary</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>1-2 sentence summary of what research was conducted and completed</dd>
 
-<dt>
-  <code>sourcesUsed</code> <em>string[]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>
-  Array of URLs and sources that were searched and scraped during research
-</dd>
+  <dt><code>sourcesUsed</code> <em>string[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of URLs and sources that were searched and scraped during research</dd>
 
-<dt>
-  <code>iterationsUsed</code> <em>number</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Number of AI agent iterations used to complete the research</dd>
+  <dt><code>iterationsUsed</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Number of AI agent iterations used to complete the research</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the research task was completed successfully</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the research task was completed successfully</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if research failed</dd>
@@ -114,3 +84,4 @@ const result = await new ResearchAgentTool({
 
   </TabItem>
 </Tabs>
+

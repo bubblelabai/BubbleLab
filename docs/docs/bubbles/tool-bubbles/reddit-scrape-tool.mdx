@@ -32,36 +32,23 @@ const result = await new RedditScrapeTool({
   <dt><code>subreddit</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Name of the subreddit to scrape (without r/ prefix)</dd>
 
-<dt>
-  <code>limit</code> <em>number</em>{' '}
-</dt>
-<dd>Maximum number of posts to fetch (1-500, default: 25)</dd>
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Maximum number of posts to fetch (1-500, default: 25)</dd>
 
-<dt>
-  <code>sort</code> <em>'hot' | 'new' | 'top' | 'rising'</em>{' '}
-</dt>
-<dd>Sorting method for posts (default: hot)</dd>
+  <dt><code>sort</code> <em>'hot' | 'new' | 'top' | 'rising'</em> </dt>
+  <dd>Sorting method for posts (default: hot)</dd>
 
-<dt>
-  <code>timeFilter</code>{' '}
-  <em>'hour' | 'day' | 'week' | 'month' | 'year' | 'all'</em>{' '}
-</dt>
-<dd>Time filter for "top" sort (only applies when sort=top)</dd>
+  <dt><code>timeFilter</code> <em>'hour' | 'day' | 'week' | 'month' | 'year' | 'all'</em> </dt>
+  <dd>Time filter for "top" sort (only applies when sort=top)</dd>
 
-<dt>
-  <code>filterToday</code> <em>boolean</em>{' '}
-</dt>
-<dd>Filter results to only include posts from today</dd>
+  <dt><code>filterToday</code> <em>boolean</em> </dt>
+  <dd>Filter results to only include posts from today</dd>
 
-<dt>
-  <code>includeStickied</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include stickied/pinned posts in results</dd>
+  <dt><code>includeStickied</code> <em>boolean</em> </dt>
+  <dd>Include stickied/pinned posts in results</dd>
 
-<dt>
-  <code>minScore</code> <em>number</em>{' '}
-</dt>
-<dd>Minimum upvote score required for posts</dd>
+  <dt><code>minScore</code> <em>number</em> </dt>
+  <dd>Minimum upvote score required for posts</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Optional credentials for enhanced features</dd>
@@ -77,17 +64,11 @@ const result = await new RedditScrapeTool({
   <dt><code>posts</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Array of scraped Reddit posts</dd>
 
-<dt>
-  <code>metadata</code> <em>object</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Metadata about the scraping operation</dd>
+  <dt><code>metadata</code> <em>object</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Metadata about the scraping operation</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the scraping was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the scraping was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if scraping failed</dd>
@@ -97,3 +78,4 @@ const result = await new RedditScrapeTool({
 
   </TabItem>
 </Tabs>
+

@@ -42,42 +42,26 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getUploadUrl'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate presigned upload URL</dd>
 
-<dt>
-  <code>bucketName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the R2 bucket</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Original filename for the upload</dd>
+  <dt><code>fileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Original filename for the upload</dd>
 
-<dt>
-  <code>accountId</code> <em>string</em>{' '}
-</dt>
-<dd>Cloudflare Account ID - can be provided via credentials</dd>
+  <dt><code>accountId</code> <em>string</em> </dt>
+  <dd>Cloudflare Account ID - can be provided via credentials</dd>
 
-<dt>
-  <code>region</code> <em>string</em>{' '}
-</dt>
-<dd>AWS region for R2 storage (defaults to auto)</dd>
+  <dt><code>region</code> <em>string</em> </dt>
+  <dd>AWS region for R2 storage (defaults to auto)</dd>
 
-<dt>
-  <code>expirationMinutes</code> <em>number</em>{' '}
-</dt>
-<dd>URL expiration time in minutes</dd>
+  <dt><code>expirationMinutes</code> <em>number</em> </dt>
+  <dd>URL expiration time in minutes</dd>
 
-<dt>
-  <code>contentType</code> <em>string</em>{' '}
-</dt>
-<dd>Content type for uploads</dd>
+  <dt><code>contentType</code> <em>string</em> </dt>
+  <dd>Content type for uploads</dd>
 
-<dt>
-  <code>userId</code> <em>string</em>{' '}
-</dt>
-<dd>User ID for secure file isolation</dd>
+  <dt><code>userId</code> <em>string</em> </dt>
+  <dd>User ID for secure file isolation</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -93,26 +77,17 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getUploadUrl'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate presigned upload URL</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>uploadUrl</code> <em>string</em>{' '}
-</dt>
-<dd>Presigned upload URL</dd>
+  <dt><code>uploadUrl</code> <em>string</em> </dt>
+  <dd>Presigned upload URL</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-</dt>
-<dd>Secure filename generated for the upload</dd>
+  <dt><code>fileName</code> <em>string</em> </dt>
+  <dd>Secure filename generated for the upload</dd>
 
-<dt>
-  <code>contentType</code> <em>string</em>{' '}
-</dt>
-<dd>Content type of the file</dd>
+  <dt><code>contentType</code> <em>string</em> </dt>
+  <dd>Content type of the file</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -136,37 +111,23 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate presigned download URL</dd>
 
-<dt>
-  <code>bucketName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the R2 bucket</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the file to retrieve</dd>
+  <dt><code>fileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the file to retrieve</dd>
 
-<dt>
-  <code>accountId</code> <em>string</em>{' '}
-</dt>
-<dd>Cloudflare Account ID - can be provided via credentials</dd>
+  <dt><code>accountId</code> <em>string</em> </dt>
+  <dd>Cloudflare Account ID - can be provided via credentials</dd>
 
-<dt>
-  <code>region</code> <em>string</em>{' '}
-</dt>
-<dd>AWS region for R2 storage (defaults to auto)</dd>
+  <dt><code>region</code> <em>string</em> </dt>
+  <dd>AWS region for R2 storage (defaults to auto)</dd>
 
-<dt>
-  <code>expirationMinutes</code> <em>number</em>{' '}
-</dt>
-<dd>URL expiration time in minutes</dd>
+  <dt><code>expirationMinutes</code> <em>number</em> </dt>
+  <dd>URL expiration time in minutes</dd>
 
-<dt>
-  <code>userId</code> <em>string</em>{' '}
-</dt>
-<dd>User ID for secure file isolation</dd>
+  <dt><code>userId</code> <em>string</em> </dt>
+  <dd>User ID for secure file isolation</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -182,41 +143,26 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate presigned download URL</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>downloadUrl</code> <em>string</em>{' '}
-</dt>
-<dd>Presigned download URL</dd>
+  <dt><code>downloadUrl</code> <em>string</em> </dt>
+  <dd>Presigned download URL</dd>
 
-<dt>
-  <code>fileUrl</code> <em>string</em>{' '}
-</dt>
-<dd>Direct file access URL</dd>
+  <dt><code>fileUrl</code> <em>string</em> </dt>
+  <dd>Direct file access URL</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-</dt>
-<dd>Name of the file</dd>
+  <dt><code>fileName</code> <em>string</em> </dt>
+  <dd>Name of the file</dd>
 
-<dt>
-  <code>fileSize</code> <em>number</em>{' '}
-</dt>
-<dd>File size in bytes</dd>
+  <dt><code>fileSize</code> <em>number</em> </dt>
+  <dd>File size in bytes</dd>
 
-<dt>
-  <code>contentType</code> <em>string</em>{' '}
-</dt>
-<dd>Content type of the file</dd>
+  <dt><code>contentType</code> <em>string</em> </dt>
+  <dd>Content type of the file</dd>
 
-<dt>
-  <code>lastModified</code> <em>string</em>{' '}
-</dt>
-<dd>Last modified timestamp in ISO format</dd>
+  <dt><code>lastModified</code> <em>string</em> </dt>
+  <dd>Last modified timestamp in ISO format</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -240,27 +186,17 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'deleteFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Delete file from bucket</dd>
 
-<dt>
-  <code>bucketName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the R2 bucket</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the file to delete</dd>
+  <dt><code>fileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the file to delete</dd>
 
-<dt>
-  <code>accountId</code> <em>string</em>{' '}
-</dt>
-<dd>Cloudflare Account ID - can be provided via credentials</dd>
+  <dt><code>accountId</code> <em>string</em> </dt>
+  <dd>Cloudflare Account ID - can be provided via credentials</dd>
 
-<dt>
-  <code>region</code> <em>string</em>{' '}
-</dt>
-<dd>AWS region for R2 storage (defaults to auto)</dd>
+  <dt><code>region</code> <em>string</em> </dt>
+  <dd>AWS region for R2 storage (defaults to auto)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -276,21 +212,14 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'deleteFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Delete file from bucket</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-</dt>
-<dd>Name of the deleted file</dd>
+  <dt><code>fileName</code> <em>string</em> </dt>
+  <dd>Name of the deleted file</dd>
 
-<dt>
-  <code>deleted</code> <em>boolean</em>{' '}
-</dt>
-<dd>Whether the file was successfully deleted</dd>
+  <dt><code>deleted</code> <em>boolean</em> </dt>
+  <dd>Whether the file was successfully deleted</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -314,38 +243,23 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'updateFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update/replace file content</dd>
 
-<dt>
-  <code>bucketName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the R2 bucket</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the file to update</dd>
+  <dt><code>fileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the file to update</dd>
 
-<dt>
-  <code>accountId</code> <em>string</em>{' '}
-</dt>
-<dd>Cloudflare Account ID - can be provided via credentials</dd>
+  <dt><code>accountId</code> <em>string</em> </dt>
+  <dd>Cloudflare Account ID - can be provided via credentials</dd>
 
-<dt>
-  <code>region</code> <em>string</em>{' '}
-</dt>
-<dd>AWS region for R2 storage (defaults to auto)</dd>
+  <dt><code>region</code> <em>string</em> </dt>
+  <dd>AWS region for R2 storage (defaults to auto)</dd>
 
-<dt>
-  <code>contentType</code> <em>string</em>{' '}
-</dt>
-<dd>Content type for uploads</dd>
+  <dt><code>contentType</code> <em>string</em> </dt>
+  <dd>Content type for uploads</dd>
 
-<dt>
-  <code>fileContent</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Base64 encoded file content or raw text content</dd>
+  <dt><code>fileContent</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Base64 encoded file content or raw text content</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -361,26 +275,17 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'updateFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update/replace file content</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>fileName</code> <em>string</em>{' '}
-</dt>
-<dd>Name of the updated file</dd>
+  <dt><code>fileName</code> <em>string</em> </dt>
+  <dd>Name of the updated file</dd>
 
-<dt>
-  <code>updated</code> <em>boolean</em>{' '}
-</dt>
-<dd>Whether the file was successfully updated</dd>
+  <dt><code>updated</code> <em>boolean</em> </dt>
+  <dd>Whether the file was successfully updated</dd>
 
-<dt>
-  <code>contentType</code> <em>string</em>{' '}
-</dt>
-<dd>Content type of the updated file</dd>
+  <dt><code>contentType</code> <em>string</em> </dt>
+  <dd>Content type of the updated file</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -404,43 +309,26 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getMultipleUploadUrls'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate multiple presigned upload URLs for PDF + page images</dd>
 
-<dt>
-  <code>bucketName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the R2 bucket</dd>
 
-<dt>
-  <code>pdfFileName</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Original filename for the PDF</dd>
+  <dt><code>pdfFileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Original filename for the PDF</dd>
 
-<dt>
-  <code>pageCount</code> <em>number</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Number of pages to generate upload URLs for</dd>
+  <dt><code>pageCount</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Number of pages to generate upload URLs for</dd>
 
-<dt>
-  <code>accountId</code> <em>string</em>{' '}
-</dt>
-<dd>Cloudflare Account ID - can be provided via credentials</dd>
+  <dt><code>accountId</code> <em>string</em> </dt>
+  <dd>Cloudflare Account ID - can be provided via credentials</dd>
 
-<dt>
-  <code>region</code> <em>string</em>{' '}
-</dt>
-<dd>AWS region for R2 storage (defaults to auto)</dd>
+  <dt><code>region</code> <em>string</em> </dt>
+  <dd>AWS region for R2 storage (defaults to auto)</dd>
 
-<dt>
-  <code>expirationMinutes</code> <em>number</em>{' '}
-</dt>
-<dd>URL expiration time in minutes</dd>
+  <dt><code>expirationMinutes</code> <em>number</em> </dt>
+  <dd>URL expiration time in minutes</dd>
 
-<dt>
-  <code>userId</code> <em>string</em>{' '}
-</dt>
-<dd>User ID for secure file isolation</dd>
+  <dt><code>userId</code> <em>string</em> </dt>
+  <dd>User ID for secure file isolation</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -456,26 +344,17 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'getMultipleUploadUrls'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Generate multiple presigned upload URLs for PDF + page images</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>pdfUploadUrl</code> <em>string</em>{' '}
-</dt>
-<dd>Presigned upload URL for PDF</dd>
+  <dt><code>pdfUploadUrl</code> <em>string</em> </dt>
+  <dd>Presigned upload URL for PDF</dd>
 
-<dt>
-  <code>pdfFileName</code> <em>string</em>{' '}
-</dt>
-<dd>Secure filename for PDF</dd>
+  <dt><code>pdfFileName</code> <em>string</em> </dt>
+  <dd>Secure filename for PDF</dd>
 
-<dt>
-  <code>pageUploadUrls</code> <em>object[]</em>{' '}
-</dt>
-<dd>Array of upload URLs for page images</dd>
+  <dt><code>pageUploadUrls</code> <em>object[]</em> </dt>
+  <dd>Array of upload URLs for page images</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -485,3 +364,4 @@ const result = await new StorageBubble({
 
   </TabItem>
 </Tabs>
+

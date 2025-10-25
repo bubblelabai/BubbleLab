@@ -37,80 +37,41 @@ const result = await new ResendBubble({
   <dt><code>operation</code> <em>'send_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Send an email via Resend</dd>
 
-<dt>
-  <code>from</code> <em>string</em>{' '}
-</dt>
-<dd>Sender email address (defaults to Bubble Lab Team if not provided)</dd>
+  <dt><code>from</code> <em>string</em> </dt>
+  <dd>Sender email address, should not be changed from <welcome@hello.bubblelab.ai> if resend account has not been setup with domain verification</dd>
 
-<dt>
-  <code>to</code> <em>unknown</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>
-  Recipient email address(es). For multiple addresses, send as an array of
-  strings. Max 50.
-</dd>
+  <dt><code>to</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Recipient email address(es). For multiple addresses, send as an array of strings. Max 50.</dd>
 
-<dt>
-  <code>cc</code> <em>unknown</em>{' '}
-</dt>
-<dd>
-  CC email address(es). For multiple addresses, send as an array of strings.
-</dd>
+  <dt><code>cc</code> <em>unknown</em> </dt>
+  <dd>CC email address(es). For multiple addresses, send as an array of strings.</dd>
 
-<dt>
-  <code>bcc</code> <em>unknown</em>{' '}
-</dt>
-<dd>
-  BCC email address(es). For multiple addresses, send as an array of strings.
-</dd>
+  <dt><code>bcc</code> <em>unknown</em> </dt>
+  <dd>BCC email address(es). For multiple addresses, send as an array of strings.</dd>
 
-<dt>
-  <code>subject</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Email subject line</dd>
+  <dt><code>subject</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Email subject line</dd>
 
-<dt>
-  <code>text</code> <em>string</em>{' '}
-</dt>
-<dd>Plain text email content</dd>
+  <dt><code>text</code> <em>string</em> </dt>
+  <dd>Plain text email content</dd>
 
-<dt>
-  <code>html</code> <em>string</em>{' '}
-</dt>
-<dd>HTML email content</dd>
+  <dt><code>html</code> <em>string</em> </dt>
+  <dd>HTML email content</dd>
 
-<dt>
-  <code>reply_to</code> <em>unknown</em>{' '}
-</dt>
-<dd>
-  Reply-to email address(es). For multiple addresses, send as an array of
-  strings.
-</dd>
+  <dt><code>reply_to</code> <em>unknown</em> </dt>
+  <dd>Reply-to email address(es). For multiple addresses, send as an array of strings.</dd>
 
-<dt>
-  <code>scheduled_at</code> <em>string</em>{' '}
-</dt>
-<dd>
-  Schedule email to be sent later (ISO 8601 format or natural language like "in
-  1 hour")
-</dd>
+  <dt><code>scheduled_at</code> <em>string</em> </dt>
+  <dd>Schedule email to be sent later (ISO 8601 format or natural language like "in 1 hour")</dd>
 
-<dt>
-  <code>attachments</code> <em>object[]</em>{' '}
-</dt>
-<dd>Array of email attachments (max 40MB total per email)</dd>
+  <dt><code>attachments</code> <em>object[]</em> </dt>
+  <dd>Array of email attachments (max 40MB total per email)</dd>
 
-<dt>
-  <code>tags</code> <em>object[]</em>{' '}
-</dt>
-<dd>Array of email tags for tracking and analytics</dd>
+  <dt><code>tags</code> <em>object[]</em> </dt>
+  <dd>Array of email tags for tracking and analytics</dd>
 
-<dt>
-  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
-</dt>
-<dd>Custom email headers (e.g., X-Custom-Header)</dd>
+  <dt><code>headers</code> <em>Record&lt;string,string&gt;</em> </dt>
+  <dd>Custom email headers (e.g., X-Custom-Header)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -126,16 +87,11 @@ const result = await new ResendBubble({
   <dt><code>operation</code> <em>'send_email'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Send an email via Resend</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the email was sent successfully</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the email was sent successfully</dd>
 
-<dt>
-  <code>email_id</code> <em>string</em>{' '}
-</dt>
-<dd>Resend email ID if successful</dd>
+  <dt><code>email_id</code> <em>string</em> </dt>
+  <dd>Resend email ID if successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if email sending failed</dd>
@@ -159,11 +115,8 @@ const result = await new ResendBubble({
   <dt><code>operation</code> <em>'get_email_status'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Get the status of a sent email</dd>
 
-<dt>
-  <code>email_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Resend email ID to check status for</dd>
+  <dt><code>email_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Resend email ID to check status for</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -179,26 +132,17 @@ const result = await new ResendBubble({
   <dt><code>operation</code> <em>'get_email_status'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Get the status of a sent email</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the status request was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the status request was successful</dd>
 
-<dt>
-  <code>status</code> <em>string</em>{' '}
-</dt>
-<dd>Current status of the email</dd>
+  <dt><code>status</code> <em>string</em> </dt>
+  <dd>Current status of the email</dd>
 
-<dt>
-  <code>created_at</code> <em>string</em>{' '}
-</dt>
-<dd>Timestamp when the email was created</dd>
+  <dt><code>created_at</code> <em>string</em> </dt>
+  <dd>Timestamp when the email was created</dd>
 
-<dt>
-  <code>last_event</code> <em>string</em>{' '}
-</dt>
-<dd>Last event that occurred with the email</dd>
+  <dt><code>last_event</code> <em>string</em> </dt>
+  <dd>Last event that occurred with the email</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if status request failed</dd>
@@ -208,3 +152,4 @@ const result = await new ResendBubble({
 
   </TabItem>
 </Tabs>
+

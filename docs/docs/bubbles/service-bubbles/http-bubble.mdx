@@ -31,31 +31,20 @@ const result = await new HttpBubble({
   <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The URL to make the HTTP request to</dd>
 
-<dt>
-  <code>method</code>{' '}
-  <em>'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'</em>{' '}
-</dt>
-<dd>HTTP method to use (default: GET)</dd>
+  <dt><code>method</code> <em>'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'</em> </dt>
+  <dd>HTTP method to use (default: GET)</dd>
 
-<dt>
-  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
-</dt>
-<dd>HTTP headers to include in the request</dd>
+  <dt><code>headers</code> <em>Record&lt;string,string&gt;</em> </dt>
+  <dd>HTTP headers to include in the request</dd>
 
-<dt>
-  <code>body</code> <em>unknown</em>{' '}
-</dt>
-<dd>Request body (string or JSON object)</dd>
+  <dt><code>body</code> <em>unknown</em> </dt>
+  <dd>Request body (string or JSON object)</dd>
 
-<dt>
-  <code>timeout</code> <em>number</em>{' '}
-</dt>
-<dd>Request timeout in milliseconds (default: 30000, max: 120000)</dd>
+  <dt><code>timeout</code> <em>number</em> </dt>
+  <dd>Request timeout in milliseconds (default: 30000, max: 120000)</dd>
 
-<dt>
-  <code>followRedirects</code> <em>boolean</em>{' '}
-</dt>
-<dd>Whether to follow HTTP redirects (default: true)</dd>
+  <dt><code>followRedirects</code> <em>boolean</em> </dt>
+  <dd>Whether to follow HTTP redirects (default: true)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Optional credentials for authentication (injected at runtime)</dd>
@@ -71,46 +60,26 @@ const result = await new HttpBubble({
   <dt><code>status</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>HTTP status code</dd>
 
-<dt>
-  <code>statusText</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>HTTP status text</dd>
+  <dt><code>statusText</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>HTTP status text</dd>
 
-<dt>
-  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Response headers</dd>
+  <dt><code>headers</code> <em>Record&lt;string,string&gt;</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Response headers</dd>
 
-<dt>
-  <code>body</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Response body as string</dd>
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Response body as string</dd>
 
-<dt>
-  <code>json</code> <em>unknown</em>{' '}
-</dt>
-<dd>Parsed JSON response (if applicable)</dd>
+  <dt><code>json</code> <em>unknown</em> </dt>
+  <dd>Parsed JSON response (if applicable)</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the request was successful (HTTP 2xx status codes)</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the request was successful (HTTP 2xx status codes)</dd>
 
-<dt>
-  <code>error</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Error message if request failed</dd>
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if request failed</dd>
 
-<dt>
-  <code>responseTime</code> <em>number</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Response time in milliseconds</dd>
+  <dt><code>responseTime</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Response time in milliseconds</dd>
 
   <dt><code>size</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Response size in bytes</dd>
@@ -120,3 +89,4 @@ const result = await new HttpBubble({
 
   </TabItem>
 </Tabs>
+
