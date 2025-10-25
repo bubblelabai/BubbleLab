@@ -1,4 +1,4 @@
-import { createRoute, z } from '@hono/zod-openapi';
+import { createRoute } from '@hono/zod-openapi';
 import { subscriptionStatusResponseSchema } from '@bubblelab/shared-schemas';
 
 // GET /subscription/status - Get user's subscription status
