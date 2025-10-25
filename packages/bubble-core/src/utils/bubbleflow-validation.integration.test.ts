@@ -178,13 +178,13 @@ export class SyntaxErrorFlow extends BubbleFlow<'webhook/http'> {
   constructor() {
     super('syntax-error-flow', 'A flow with syntax errors');
   }
-  
+
   async handle(payload: any): Promise<any> {
     const result = new AIAgentBubble({ // Missing import
       message: 'Hello',
       model: { model: 'invalid-model' },
     }).action();
-    
+
     return { result };
   }
 }`;
@@ -195,6 +195,43 @@ export class SyntaxErrorFlow extends BubbleFlow<'webhook/http'> {
         expect(result.errors).toBeDefined();
         expect(
           result.errors!.some((error) => error.includes('AIAgentBubble'))
+        ).toBe(true);
+      });
+
+      it('should reject code with implicit any types (TS7006)', async () => {
+        const invalidCode = `
+import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';
+
+export class ImplicitAnyFlow extends BubbleFlow<'webhook/http'> {
+  constructor() {
+    super('implicit-any-flow', 'A flow with implicit any parameter');
+  }
+
+  async handle(payload: any): Promise<any> {
+    // This function has an implicit 'any' type parameter
+    const processData = (post) => {  // 'post' implicitly has 'any' type
+      return post.title;
+    };
+
+    const result = processData({ title: 'Test' });
+
+    return { result };
+  }
+}`;
+
+        const result = await validateBubbleFlow(invalidCode, bubbleFactory);
+        console.log(result);
+
+        expect(result.valid).toBe(false);
+        expect(result.errors).toBeDefined();
+        // Should catch TS7006: Parameter 'post' implicitly has an 'any' type
+        expect(
+          result.errors!.some(
+            (error) =>
+              error.includes('TS7006') ||
+              error.includes('implicitly has an') ||
+              error.includes('any')
+          )
         ).toBe(true);
       });
 
