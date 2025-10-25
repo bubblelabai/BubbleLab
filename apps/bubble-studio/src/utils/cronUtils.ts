@@ -200,10 +200,10 @@ export function getSimplifiedSchedule(parts: CronParts): string {
 /**
  * Convert local time parts to UTC cron
  */
-export function convertLocalPartsToUtcCron(
-  parts: CronParts,
-  _timezone: string
-): { cron: string; warning?: string } {
+export function convertLocalPartsToUtcCron(parts: CronParts): {
+  cron: string;
+  warning?: string;
+} {
   // For minute/hour intervals, no timezone conversion needed
   if (parts.frequency === 'minute' || parts.frequency === 'hour') {
     return { cron: buildCronFromParts(parts) };
@@ -269,10 +269,7 @@ export function convertLocalPartsToUtcCron(
 /**
  * Convert UTC cron to local time parts
  */
-export function convertUtcCronToLocalParts(
-  cron: string,
-  _timezone: string
-): ConversionResult {
+export function convertUtcCronToLocalParts(cron: string): ConversionResult {
   const utcParts = parseCronToParts(cron);
 
   // For minute/hour intervals, no conversion needed

@@ -39,6 +39,13 @@ export const PearlRequestSchema = z.object({
   model: AvailableModels.default('google/gemini-2.5-pro').describe(
     'AI model to use for Pearl agent'
   ),
+
+  additionalContext: z
+    .string()
+    .optional()
+    .describe(
+      'Additional context information like timezone, user preferences, etc.'
+    ),
 });
 
 /**

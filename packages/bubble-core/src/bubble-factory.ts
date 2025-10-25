@@ -662,6 +662,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
 // TRIGGER TYPE 2: Cron Schedule Trigger
 // For cron-based scheduled workflows, or any workflow that can be benefited from being scheduled, extend BubbleFlow with 'schedule/cron'
 // and define the cronSchedule property with a cron expression
+// Time is in utc timezone, so if you want to schedule for a specific timezone, you need to convert the timezone to utc before writing the cron expression
 /*
 export interface CustomCronPayload extends CronEvent {
   // TODO: Add your custom payload fields here

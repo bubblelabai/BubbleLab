@@ -52,6 +52,7 @@ export function usePearl() {
             ? request.availableVariables
             : codeContext?.availableVariables,
         model: request.model || 'google/gemini-2.5-pro',
+        additionalContext: request.additionalContext,
       };
 
       console.log('fullRequest', JSON.stringify(fullRequest, null, 2));
@@ -114,6 +115,7 @@ export function usePearlStream() {
             ? pearlRequest.availableVariables
             : codeContext?.availableVariables,
         model: pearlRequest.model || 'google/gemini-2.5-pro',
+        additionalContext: pearlRequest.additionalContext,
       };
 
       console.log('fullRequest', JSON.stringify(fullRequest, null, 2));

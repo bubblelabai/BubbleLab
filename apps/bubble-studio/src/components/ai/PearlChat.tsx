@@ -233,6 +233,15 @@ export function PearlChat() {
       content: msg.content,
     }));
 
+    // Get user's timezone information
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const currentTime = new Date().toLocaleString('en-US', {
+      timeZone: userTimezone,
+      dateStyle: 'full',
+      timeStyle: 'long',
+    });
+    const additionalContext = `User's timezone: ${userTimezone}\nCurrent time: ${currentTime}`;
+
     pearlChat.mutate(
       {
         userRequest: userMessage.content,
@@ -241,6 +250,7 @@ export function PearlChat() {
         availableVariables: [],
         currentCode: '',
         model: selectedModel,
+        additionalContext,
         onEvent: handleEvent,
       },
       {
