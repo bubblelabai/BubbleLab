@@ -4,6 +4,7 @@ import type {
   CreateBubbleFlowResponse,
   BubbleFlowListResponse,
   BubbleFlowListItem,
+  BubbleFlowDetailsResponse,
 } from '@bubblelab/shared-schemas';
 
 export interface CreateBubbleFlowRequest {
@@ -112,6 +113,10 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         (old) => {
           if (!old) return old;
 
+          console.log(
+            '[useCreateBubbleFlow] Updating flow list with real data:',
+            data
+          );
           // Replace the optimistic entry with the real data
           const updatedFlows = old.bubbleFlows.map((flow) => {
             // Find the optimistic entry using the tempId
@@ -149,23 +154,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         );
       }
 
-      // Cache the full flow details with the real ID
-      const realFlowDetails = {
-        id: data.id,
-        name: variables.name,
-        description: variables.description,
-        code: variables.code,
-        eventType: data.eventType,
-        webhookActive: variables.webhookActive,
-        prompt: variables.prompt,
-        bubbleParameters: data.bubbleParameters || {},
-        requiredCredentials: data.requiredCredentials || {},
-        inputSchema: data.inputSchema || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      queryClient.setQueryData(['bubbleFlow', data.id], realFlowDetails);
+      // Refetch the flow details
+      void queryClient.invalidateQueries({ queryKey: ['bubbleFlow', data.id] });
       console.log(
         '[useCreateBubbleFlow] Cached full flow details for real ID:',
         data.id
