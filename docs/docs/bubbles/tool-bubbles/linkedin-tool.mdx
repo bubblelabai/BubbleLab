@@ -1,0 +1,100 @@
+# Linkedin Tool
+
+Scrape LinkedIn posts by profile or search by keyword. Get engagement metrics, media, and complete metadata.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { LinkedInTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new LinkedInTool({
+
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'scrapePosts' | 'searchPosts'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation to perform: scrapePosts for user profiles, searchPosts for keyword search</dd>
+
+  <dt><code>username</code> <em>string</em> </dt>
+  <dd>LinkedIn username (for scrapePosts operation). Examples: "satyanadella", "billgates"</dd>
+
+  <dt><code>keyword</code> <em>string</em> </dt>
+  <dd>Keyword or phrase to search for (for searchPosts operation). Examples: "AI", "hiring", "n8n"</dd>
+
+  <dt><code>sortBy</code> <em>'relevance' | 'date_posted'</em> </dt>
+  <dd>Sort results by relevance or date posted (for searchPosts operation, default: relevance)</dd>
+
+  <dt><code>dateFilter</code> <em>'' | 'past-24h' | 'past-week' | 'past-month'</em> </dt>
+  <dd>Filter posts by date range (for searchPosts operation, default: no filter)</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Maximum number of posts to fetch (default: 50 for search, 100 for profiles)</dd>
+
+  <dt><code>pageNumber</code> <em>number</em> </dt>
+  <dd>Page number for pagination (default: 1)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials (auto-injected)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'scrapePosts' | 'searchPosts'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation that was performed</dd>
+
+  <dt><code>posts</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of LinkedIn posts</dd>
+
+  <dt><code>username</code> <em>string</em> </dt>
+  <dd>LinkedIn username that was scraped (only for scrapePosts operation)</dd>
+
+  <dt><code>paginationToken</code> <em>string</em> </dt>
+  <dd>Token for fetching next page of results (only for scrapePosts operation)</dd>
+
+  <dt><code>keyword</code> <em>string</em> </dt>
+  <dd>Search keyword that was used (only for searchPosts operation)</dd>
+
+  <dt><code>totalResults</code> <em>number</em> </dt>
+  <dd>Total results available (only for searchPosts operation)</dd>
+
+  <dt><code>hasNextPage</code> <em>boolean</em> </dt>
+  <dd>Whether there are more results (only for searchPosts operation)</dd>
+
+  <dt><code>totalPosts</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Total number of posts found</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

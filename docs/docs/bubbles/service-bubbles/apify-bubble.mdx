@@ -1,0 +1,87 @@
+# Apify Bubble
+
+Run any Apify actor for web scraping and automation
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { ApifyBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new ApifyBubble({
+
+  actorId: 'example',
+  input: null,
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>actorId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc.</dd>
+
+  <dt><code>input</code> <em>Record&lt;string,unknown&gt;</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Input parameters for the actor. Structure depends on the specific actor being used.</dd>
+
+  <dt><code>waitForFinish</code> <em>boolean</em> </dt>
+  <dd>Whether to wait for the actor run to complete before returning</dd>
+
+  <dt><code>timeout</code> <em>number</em> </dt>
+  <dd>Maximum time to wait for actor completion in milliseconds (default: 120000)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>runId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Apify actor run ID</dd>
+
+  <dt><code>status</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Actor run status (READY, RUNNING, SUCCEEDED, FAILED, etc.)</dd>
+
+  <dt><code>datasetId</code> <em>string</em> </dt>
+  <dd>Dataset ID where results are stored</dd>
+
+  <dt><code>items</code> <em>unknown[]</em> </dt>
+  <dd>Array of scraped items (if waitForFinish is true). Structure depends on the actor.</dd>
+
+  <dt><code>itemsCount</code> <em>number</em> </dt>
+  <dd>Total number of items scraped</dd>
+
+  <dt><code>consoleUrl</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>URL to view the actor run in Apify console</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

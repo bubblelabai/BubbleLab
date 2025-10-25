@@ -35,22 +35,14 @@ const result = await new WebExtractTool({
   <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The URL to extract structured data from</dd>
 
-<dt>
-  <code>prompt</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Detailed prompt describing what data to extract from the web page</dd>
+  <dt><code>prompt</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Detailed prompt describing what data to extract from the web page</dd>
 
-<dt>
-  <code>schema</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>JSON schema string defining the structure of the data to extract</dd>
+  <dt><code>schema</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>JSON schema string defining the structure of the data to extract</dd>
 
-<dt>
-  <code>timeout</code> <em>number</em>{' '}
-</dt>
-<dd>Timeout in milliseconds for the extraction (default: 30000)</dd>
+  <dt><code>timeout</code> <em>number</em> </dt>
+  <dd>Timeout in milliseconds for the extraction (default: 30000)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Required credentials including FIRECRAWL_API_KEY</dd>
@@ -66,23 +58,14 @@ const result = await new WebExtractTool({
   <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The original URL that was processed</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the extraction was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the extraction was successful</dd>
 
-<dt>
-  <code>error</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Error message if extraction failed</dd>
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if extraction failed</dd>
 
-<dt>
-  <code>extractedData</code> <em>Record&lt;string,unknown&gt;</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>The extracted structured data matching the provided schema</dd>
+  <dt><code>extractedData</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The extracted structured data matching the provided schema</dd>
 
   <dt><code>metadata</code> <em>object</em> </dt>
   <dd>Additional metadata about the extraction</dd>
@@ -92,3 +75,4 @@ const result = await new WebExtractTool({
 
   </TabItem>
 </Tabs>
+

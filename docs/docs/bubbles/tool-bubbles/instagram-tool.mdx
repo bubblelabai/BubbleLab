@@ -1,0 +1,85 @@
+# Instagram Tool
+
+Scrape Instagram profiles and posts with a simple, unified interface. Works with individual user profiles and hashtags.
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { InstagramTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new InstagramTool({
+
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'scrapeProfile' | 'scrapeHashtag'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation to perform: scrapeProfile for user profiles, scrapeHashtag for hashtag posts</dd>
+
+  <dt><code>profiles</code> <em>string[]</em> </dt>
+  <dd>Instagram usernames or profile URLs to scrape (for scrapeProfile operation). Examples: ["@username", "https://www.instagram.com/username/"]</dd>
+
+  <dt><code>hashtags</code> <em>string[]</em> </dt>
+  <dd>Hashtags to scrape (for scrapeHashtag operation). Examples: ["ai", "tech"] or ["https://www.instagram.com/explore/tags/ai"]</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Maximum number of posts to fetch (default: 20 for profiles, 50 for hashtags)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials (auto-injected)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'scrapeProfile' | 'scrapeHashtag'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation that was performed</dd>
+
+  <dt><code>posts</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of Instagram posts scraped</dd>
+
+  <dt><code>profiles</code> <em>object[]</em> </dt>
+  <dd>Profile information for each scraped profile (only for scrapeProfile operation)</dd>
+
+  <dt><code>scrapedHashtags</code> <em>string[]</em> </dt>
+  <dd>List of hashtags that were scraped (only for scrapeHashtag operation)</dd>
+
+  <dt><code>scrapedProfiles</code> <em>string[]</em> </dt>
+  <dd>List of profile usernames that were scraped (only for scrapeProfile operation)</dd>
+
+  <dt><code>totalPosts</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Total number of posts scraped</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

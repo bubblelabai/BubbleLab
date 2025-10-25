@@ -36,34 +36,20 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'read_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Read values from a range</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
+  <dt><code>range</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
 
-<dt>
-  <code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em>{' '}
-</dt>
-<dd>Major dimension for the values</dd>
+  <dt><code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em> </dt>
+  <dd>Major dimension for the values</dd>
 
-<dt>
-  <code>value_render_option</code>{' '}
-  <em>'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA'</em>{' '}
-</dt>
-<dd>How values should be represented in the output</dd>
+  <dt><code>value_render_option</code> <em>'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA'</em> </dt>
+  <dd>How values should be represented in the output</dd>
 
-<dt>
-  <code>date_time_render_option</code>{' '}
-  <em>'SERIAL_NUMBER' | 'FORMATTED_STRING'</em>{' '}
-</dt>
-<dd>How date/time values should be rendered</dd>
+  <dt><code>date_time_render_option</code> <em>'SERIAL_NUMBER' | 'FORMATTED_STRING'</em> </dt>
+  <dd>How date/time values should be rendered</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -79,26 +65,17 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'read_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Read values from a range</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-</dt>
-<dd>The range that was read</dd>
+  <dt><code>range</code> <em>string</em> </dt>
+  <dd>The range that was read</dd>
 
-<dt>
-  <code>values</code> <em>unknown[][]</em>{' '}
-</dt>
-<dd>The values that were read</dd>
+  <dt><code>values</code> <em>unknown[][]</em> </dt>
+  <dd>The values that were read</dd>
 
-<dt>
-  <code>major_dimension</code> <em>string</em>{' '}
-</dt>
-<dd>Major dimension of the returned values</dd>
+  <dt><code>major_dimension</code> <em>string</em> </dt>
+  <dd>Major dimension of the returned values</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -122,38 +99,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'write_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Write values to a range</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
+  <dt><code>range</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
 
-<dt>
-  <code>values</code> <em>unknown[][]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Data to write as array of arrays</dd>
+  <dt><code>values</code> <em>unknown[][]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Data to write as array of arrays</dd>
 
-<dt>
-  <code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em>{' '}
-</dt>
-<dd>Major dimension for the values</dd>
+  <dt><code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em> </dt>
+  <dd>Major dimension for the values</dd>
 
-<dt>
-  <code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em>{' '}
-</dt>
-<dd>How input data should be interpreted</dd>
+  <dt><code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em> </dt>
+  <dd>How input data should be interpreted</dd>
 
-<dt>
-  <code>include_values_in_response</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include updated values in response</dd>
+  <dt><code>include_values_in_response</code> <em>boolean</em> </dt>
+  <dd>Include updated values in response</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -169,36 +131,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'write_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Write values to a range</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>updated_range</code> <em>string</em>{' '}
-</dt>
-<dd>The range that was updated</dd>
+  <dt><code>updated_range</code> <em>string</em> </dt>
+  <dd>The range that was updated</dd>
 
-<dt>
-  <code>updated_rows</code> <em>number</em>{' '}
-</dt>
-<dd>Number of rows updated</dd>
+  <dt><code>updated_rows</code> <em>number</em> </dt>
+  <dd>Number of rows updated</dd>
 
-<dt>
-  <code>updated_columns</code> <em>number</em>{' '}
-</dt>
-<dd>Number of columns updated</dd>
+  <dt><code>updated_columns</code> <em>number</em> </dt>
+  <dd>Number of columns updated</dd>
 
-<dt>
-  <code>updated_cells</code> <em>number</em>{' '}
-</dt>
-<dd>Number of cells updated</dd>
+  <dt><code>updated_cells</code> <em>number</em> </dt>
+  <dd>Number of cells updated</dd>
 
-<dt>
-  <code>updated_data</code> <em>object</em>{' '}
-</dt>
-<dd>Updated data if requested</dd>
+  <dt><code>updated_data</code> <em>object</em> </dt>
+  <dd>Updated data if requested</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -222,38 +171,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'update_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update values in a specific range</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
+  <dt><code>range</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
 
-<dt>
-  <code>values</code> <em>unknown[][]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Data to update as array of arrays</dd>
+  <dt><code>values</code> <em>unknown[][]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Data to update as array of arrays</dd>
 
-<dt>
-  <code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em>{' '}
-</dt>
-<dd>Major dimension for the values</dd>
+  <dt><code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em> </dt>
+  <dd>Major dimension for the values</dd>
 
-<dt>
-  <code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em>{' '}
-</dt>
-<dd>How input data should be interpreted</dd>
+  <dt><code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em> </dt>
+  <dd>How input data should be interpreted</dd>
 
-<dt>
-  <code>include_values_in_response</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include updated values in response</dd>
+  <dt><code>include_values_in_response</code> <em>boolean</em> </dt>
+  <dd>Include updated values in response</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -269,36 +203,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'update_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update values in a specific range</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>updated_range</code> <em>string</em>{' '}
-</dt>
-<dd>The range that was updated</dd>
+  <dt><code>updated_range</code> <em>string</em> </dt>
+  <dd>The range that was updated</dd>
 
-<dt>
-  <code>updated_rows</code> <em>number</em>{' '}
-</dt>
-<dd>Number of rows updated</dd>
+  <dt><code>updated_rows</code> <em>number</em> </dt>
+  <dd>Number of rows updated</dd>
 
-<dt>
-  <code>updated_columns</code> <em>number</em>{' '}
-</dt>
-<dd>Number of columns updated</dd>
+  <dt><code>updated_columns</code> <em>number</em> </dt>
+  <dd>Number of columns updated</dd>
 
-<dt>
-  <code>updated_cells</code> <em>number</em>{' '}
-</dt>
-<dd>Number of cells updated</dd>
+  <dt><code>updated_cells</code> <em>number</em> </dt>
+  <dd>Number of cells updated</dd>
 
-<dt>
-  <code>updated_data</code> <em>object</em>{' '}
-</dt>
-<dd>Updated data if requested</dd>
+  <dt><code>updated_data</code> <em>object</em> </dt>
+  <dd>Updated data if requested</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -322,43 +243,26 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'append_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Append values to the end of a table</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>A1 notation range to search for table (e.g., "Sheet1!A:A")</dd>
+  <dt><code>range</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A1 notation range to search for table (e.g., "Sheet1!A:A")</dd>
 
-<dt>
-  <code>values</code> <em>unknown[][]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Data to append as array of arrays</dd>
+  <dt><code>values</code> <em>unknown[][]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Data to append as array of arrays</dd>
 
-<dt>
-  <code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em>{' '}
-</dt>
-<dd>Major dimension for the values</dd>
+  <dt><code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em> </dt>
+  <dd>Major dimension for the values</dd>
 
-<dt>
-  <code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em>{' '}
-</dt>
-<dd>How input data should be interpreted</dd>
+  <dt><code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em> </dt>
+  <dd>How input data should be interpreted</dd>
 
-<dt>
-  <code>insert_data_option</code> <em>'OVERWRITE' | 'INSERT_ROWS'</em>{' '}
-</dt>
-<dd>How data should be inserted</dd>
+  <dt><code>insert_data_option</code> <em>'OVERWRITE' | 'INSERT_ROWS'</em> </dt>
+  <dd>How data should be inserted</dd>
 
-<dt>
-  <code>include_values_in_response</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include appended values in response</dd>
+  <dt><code>include_values_in_response</code> <em>boolean</em> </dt>
+  <dd>Include appended values in response</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -374,36 +278,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'append_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Append values to the end of a table</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>table_range</code> <em>string</em>{' '}
-</dt>
-<dd>The table range values were appended to</dd>
+  <dt><code>table_range</code> <em>string</em> </dt>
+  <dd>The table range values were appended to</dd>
 
-<dt>
-  <code>updated_range</code> <em>string</em>{' '}
-</dt>
-<dd>The range that was updated</dd>
+  <dt><code>updated_range</code> <em>string</em> </dt>
+  <dd>The range that was updated</dd>
 
-<dt>
-  <code>updated_rows</code> <em>number</em>{' '}
-</dt>
-<dd>Number of rows updated</dd>
+  <dt><code>updated_rows</code> <em>number</em> </dt>
+  <dd>Number of rows updated</dd>
 
-<dt>
-  <code>updated_columns</code> <em>number</em>{' '}
-</dt>
-<dd>Number of columns updated</dd>
+  <dt><code>updated_columns</code> <em>number</em> </dt>
+  <dd>Number of columns updated</dd>
 
-<dt>
-  <code>updated_cells</code> <em>number</em>{' '}
-</dt>
-<dd>Number of cells updated</dd>
+  <dt><code>updated_cells</code> <em>number</em> </dt>
+  <dd>Number of cells updated</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -427,17 +318,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'clear_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Clear values from a range</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>range</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
+  <dt><code>range</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A1 notation range (e.g., "Sheet1!A1:B10")</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -453,16 +338,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'clear_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Clear values from a range</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>cleared_range</code> <em>string</em>{' '}
-</dt>
-<dd>The range that was cleared</dd>
+  <dt><code>cleared_range</code> <em>string</em> </dt>
+  <dd>The range that was cleared</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -486,34 +366,20 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'batch_read_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Read multiple ranges at once</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>ranges</code> <em>string[]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Array of A1 notation ranges</dd>
+  <dt><code>ranges</code> <em>string[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of A1 notation ranges</dd>
 
-<dt>
-  <code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em>{' '}
-</dt>
-<dd>Major dimension for the values</dd>
+  <dt><code>major_dimension</code> <em>'ROWS' | 'COLUMNS'</em> </dt>
+  <dd>Major dimension for the values</dd>
 
-<dt>
-  <code>value_render_option</code>{' '}
-  <em>'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA'</em>{' '}
-</dt>
-<dd>How values should be represented in the output</dd>
+  <dt><code>value_render_option</code> <em>'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA'</em> </dt>
+  <dd>How values should be represented in the output</dd>
 
-<dt>
-  <code>date_time_render_option</code>{' '}
-  <em>'SERIAL_NUMBER' | 'FORMATTED_STRING'</em>{' '}
-</dt>
-<dd>How date/time values should be rendered</dd>
+  <dt><code>date_time_render_option</code> <em>'SERIAL_NUMBER' | 'FORMATTED_STRING'</em> </dt>
+  <dd>How date/time values should be rendered</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -529,16 +395,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'batch_read_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Read multiple ranges at once</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>value_ranges</code> <em>object[]</em>{' '}
-</dt>
-<dd>Array of value ranges that were read</dd>
+  <dt><code>value_ranges</code> <em>object[]</em> </dt>
+  <dd>Array of value ranges that were read</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -562,27 +423,17 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'batch_update_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update multiple ranges at once</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>value_ranges</code> <em>object[]</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Array of value ranges to update</dd>
+  <dt><code>value_ranges</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of value ranges to update</dd>
 
-<dt>
-  <code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em>{' '}
-</dt>
-<dd>How input data should be interpreted</dd>
+  <dt><code>value_input_option</code> <em>'RAW' | 'USER_ENTERED'</em> </dt>
+  <dd>How input data should be interpreted</dd>
 
-<dt>
-  <code>include_values_in_response</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include updated values in response</dd>
+  <dt><code>include_values_in_response</code> <em>boolean</em> </dt>
+  <dd>Include updated values in response</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -598,36 +449,23 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'batch_update_values'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update multiple ranges at once</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>total_updated_rows</code> <em>number</em>{' '}
-</dt>
-<dd>Total number of rows updated across all ranges</dd>
+  <dt><code>total_updated_rows</code> <em>number</em> </dt>
+  <dd>Total number of rows updated across all ranges</dd>
 
-<dt>
-  <code>total_updated_columns</code> <em>number</em>{' '}
-</dt>
-<dd>Total number of columns updated across all ranges</dd>
+  <dt><code>total_updated_columns</code> <em>number</em> </dt>
+  <dd>Total number of columns updated across all ranges</dd>
 
-<dt>
-  <code>total_updated_cells</code> <em>number</em>{' '}
-</dt>
-<dd>Total number of cells updated across all ranges</dd>
+  <dt><code>total_updated_cells</code> <em>number</em> </dt>
+  <dd>Total number of cells updated across all ranges</dd>
 
-<dt>
-  <code>total_updated_sheets</code> <em>number</em>{' '}
-</dt>
-<dd>Total number of sheets updated</dd>
+  <dt><code>total_updated_sheets</code> <em>number</em> </dt>
+  <dd>Total number of sheets updated</dd>
 
-<dt>
-  <code>responses</code> <em>object[]</em>{' '}
-</dt>
-<dd>Individual update responses</dd>
+  <dt><code>responses</code> <em>object[]</em> </dt>
+  <dd>Individual update responses</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -651,16 +489,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'get_spreadsheet_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Get spreadsheet metadata and properties</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>include_grid_data</code> <em>boolean</em>{' '}
-</dt>
-<dd>Include grid data in response</dd>
+  <dt><code>include_grid_data</code> <em>boolean</em> </dt>
+  <dd>Include grid data in response</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -676,16 +509,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'get_spreadsheet_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Get spreadsheet metadata and properties</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>spreadsheet</code> <em>object</em>{' '}
-</dt>
-<dd>Spreadsheet information</dd>
+  <dt><code>spreadsheet</code> <em>object</em> </dt>
+  <dd>Spreadsheet information</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -709,16 +537,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'create_spreadsheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Create a new spreadsheet</dd>
 
-<dt>
-  <code>title</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Title for the new spreadsheet</dd>
+  <dt><code>title</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Title for the new spreadsheet</dd>
 
-<dt>
-  <code>sheet_titles</code> <em>string[]</em>{' '}
-</dt>
-<dd>Titles for the initial sheets</dd>
+  <dt><code>sheet_titles</code> <em>string[]</em> </dt>
+  <dd>Titles for the initial sheets</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -734,16 +557,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'create_spreadsheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Create a new spreadsheet</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>spreadsheet</code> <em>object</em>{' '}
-</dt>
-<dd>Created spreadsheet information</dd>
+  <dt><code>spreadsheet</code> <em>object</em> </dt>
+  <dd>Created spreadsheet information</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -767,27 +585,17 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'add_sheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Add a new sheet to spreadsheet</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>sheet_title</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Title for the new sheet</dd>
+  <dt><code>sheet_title</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Title for the new sheet</dd>
 
-<dt>
-  <code>row_count</code> <em>number</em>{' '}
-</dt>
-<dd>Number of rows in the new sheet</dd>
+  <dt><code>row_count</code> <em>number</em> </dt>
+  <dd>Number of rows in the new sheet</dd>
 
-<dt>
-  <code>column_count</code> <em>number</em>{' '}
-</dt>
-<dd>Number of columns in the new sheet</dd>
+  <dt><code>column_count</code> <em>number</em> </dt>
+  <dd>Number of columns in the new sheet</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -803,21 +611,14 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'add_sheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Add a new sheet to spreadsheet</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>sheet_id</code> <em>number</em>{' '}
-</dt>
-<dd>ID of the added sheet</dd>
+  <dt><code>sheet_id</code> <em>number</em> </dt>
+  <dd>ID of the added sheet</dd>
 
-<dt>
-  <code>sheet_title</code> <em>string</em>{' '}
-</dt>
-<dd>Title of the added sheet</dd>
+  <dt><code>sheet_title</code> <em>string</em> </dt>
+  <dd>Title of the added sheet</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -841,17 +642,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'delete_sheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Delete a sheet from spreadsheet</dd>
 
-<dt>
-  <code>spreadsheet_id</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Google Sheets spreadsheet ID</dd>
+  <dt><code>spreadsheet_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Sheets spreadsheet ID</dd>
 
-<dt>
-  <code>sheet_id</code> <em>number</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>ID of the sheet to delete</dd>
+  <dt><code>sheet_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>ID of the sheet to delete</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -867,16 +662,11 @@ const result = await new GoogleSheetsBubble({
   <dt><code>operation</code> <em>'delete_sheet'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Delete a sheet from spreadsheet</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
-<dt>
-  <code>deleted_sheet_id</code> <em>number</em>{' '}
-</dt>
-<dd>ID of the deleted sheet</dd>
+  <dt><code>deleted_sheet_id</code> <em>number</em> </dt>
+  <dd>ID of the deleted sheet</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -886,3 +676,4 @@ const result = await new GoogleSheetsBubble({
 
   </TabItem>
 </Tabs>
+

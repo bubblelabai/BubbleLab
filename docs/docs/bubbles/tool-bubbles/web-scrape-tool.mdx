@@ -34,32 +34,20 @@ const result = await new WebScrapeTool({
   <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The URL to scrape content from</dd>
 
-<dt>
-  <code>format</code> <em>'markdown'</em>{' '}
-</dt>
-<dd>Content format to extract (default: markdown)</dd>
+  <dt><code>format</code> <em>'markdown'</em> </dt>
+  <dd>Content format to extract (default: markdown)</dd>
 
-<dt>
-  <code>onlyMainContent</code> <em>boolean</em>{' '}
-</dt>
-<dd>Extract only main content, filtering out navigation/footers</dd>
+  <dt><code>onlyMainContent</code> <em>boolean</em> </dt>
+  <dd>Extract only main content, filtering out navigation/footers</dd>
 
-<dt>
-  <code>actions</code> <em>object[]</em>{' '}
-</dt>
-<dd>
-  Optional browser actions for authentication/navigation (e.g., login flows)
-</dd>
+  <dt><code>actions</code> <em>object[]</em> </dt>
+  <dd>Optional browser actions for authentication/navigation (e.g., login flows)</dd>
 
-<dt>
-  <code>headers</code> <em>Record&lt;string,string&gt;</em>{' '}
-</dt>
-<dd>Optional HTTP headers (e.g., for session cookies)</dd>
+  <dt><code>headers</code> <em>Record&lt;string,string&gt;</em> </dt>
+  <dd>Optional HTTP headers (e.g., for session cookies)</dd>
 
-<dt>
-  <code>waitFor</code> <em>number</em>{' '}
-</dt>
-<dd>Time to wait for dynamic content in milliseconds (default: 3000)</dd>
+  <dt><code>waitFor</code> <em>number</em> </dt>
+  <dd>Time to wait for dynamic content in milliseconds (default: 3000)</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Required credentials including FIRECRAWL_API_KEY</dd>
@@ -75,35 +63,20 @@ const result = await new WebScrapeTool({
   <dt><code>content</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Scraped content in requested format</dd>
 
-<dt>
-  <code>title</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Page title if available</dd>
+  <dt><code>title</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Page title if available</dd>
 
-<dt>
-  <code>url</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>The original URL that was scraped</dd>
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The original URL that was scraped</dd>
 
-<dt>
-  <code>format</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Format of the returned content</dd>
+  <dt><code>format</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Format of the returned content</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the scraping was successful</dd>
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the scraping was successful</dd>
 
-<dt>
-  <code>error</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Error message if scraping failed</dd>
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if scraping failed</dd>
 
   <dt><code>metadata</code> <em>object</em> </dt>
   <dd>Additional metadata about the scrape</dd>
@@ -113,3 +86,4 @@ const result = await new WebScrapeTool({
 
   </TabItem>
 </Tabs>
+

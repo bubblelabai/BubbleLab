@@ -29,6 +29,9 @@ const result = await new GetBubbleDetailsTool({
   <dt><code>bubbleName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>The name of the bubble to get details about</dd>
 
+  <dt><code>includeInputSchema</code> <em>boolean</em> </dt>
+  <dd>Include input parameter schema in the response</dd>
+
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
@@ -43,28 +46,20 @@ const result = await new GetBubbleDetailsTool({
   <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Name of the bubble</dd>
 
-<dt>
-  <code>alias</code> <em>string</em>{' '}
-</dt>
-<dd>Short alias for the bubble</dd>
+  <dt><code>alias</code> <em>string</em> </dt>
+  <dd>Short alias for the bubble</dd>
 
-<dt>
-  <code>longDescription</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Detailed description of the bubble functionality</dd>
+  <dt><code>inputSchema</code> <em>string</em> </dt>
+  <dd>String representation of the input parameter schema types</dd>
 
-<dt>
-  <code>usageExample</code> <em>string</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Code example showing how to use the bubble</dd>
+  <dt><code>outputSchema</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>String representation of the output schema types</dd>
 
-<dt>
-  <code>success</code> <em>boolean</em>{' '}
-  <span style={{ color: '#d32f2f', fontWeight: 600 }}>required</span>
-</dt>
-<dd>Whether the operation was successful</dd>
+  <dt><code>usageExample</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Code example showing how to use the bubble</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>
@@ -74,3 +69,4 @@ const result = await new GetBubbleDetailsTool({
 
   </TabItem>
 </Tabs>
+
