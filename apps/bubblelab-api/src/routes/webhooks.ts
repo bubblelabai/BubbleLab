@@ -18,7 +18,6 @@ import {
   validationErrorHook,
 } from '../utils/error-handler.js';
 import { transformWebhookPayload } from '../utils/payload-transformer.js';
-import { getAppType } from '../middleware/auth.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,

@@ -345,6 +345,7 @@ export function useRunExecution(
               code: editor.getCode(),
               flowId: flowId,
               credentials: executionState.pendingCredentials,
+              syncInputsWithFlow: true,
             });
             if (!isValid) {
               executionState.stopExecution();
