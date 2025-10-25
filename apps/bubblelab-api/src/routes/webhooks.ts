@@ -129,7 +129,6 @@ app.openapi(webhookRoute, async (c) => {
     // Execute the flow asynchronously (don't await)
     executeBubbleFlowViaWebhook(webhook.bubbleFlowId, webhookPayload, {
       userId,
-      appType: getAppType(c),
     })
       .then((result) => {
         console.log(
@@ -152,7 +151,7 @@ app.openapi(webhookRoute, async (c) => {
   const result = await executeBubbleFlowViaWebhook(
     webhook.bubbleFlowId,
     webhookPayload,
-    { userId, appType: getAppType(c) }
+    { userId }
   );
 
   // Return execution result with webhook metadata
