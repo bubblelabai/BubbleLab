@@ -75,7 +75,10 @@ export function formatFinalResponse(
     '[AIAgent] Checking if response is an array:',
     Array.isArray(response)
   );
-  console.log('[AIAgent] Response:', response);
+  console.log(
+    '[AIAgent] Response length:',
+    typeof response === 'string' ? response.length : 'N/A (object)'
+  );
   if (Array.isArray(response)) {
     for (const item of response) {
       if (
@@ -114,7 +117,10 @@ export function formatFinalResponse(
     return { response: result.response };
   }
 
-  console.log('[AIAgent] Final response:', finalResponse);
+  console.log(
+    '[AIAgent] Final response length:',
+    typeof finalResponse === 'string' ? finalResponse.length : 'N/A'
+  );
 
   return { response: finalResponse };
 }

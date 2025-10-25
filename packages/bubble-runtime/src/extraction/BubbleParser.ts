@@ -1320,7 +1320,7 @@ export class BubbleParser {
     const info = classNameLookup.get(className);
     if (!info) return null;
 
-    const parameters = [];
+    const parameters: BubbleParameter[] = [];
     if (newExpr.arguments && newExpr.arguments.length > 0) {
       const firstArg = newExpr.arguments[0];
       if (firstArg.type === 'ObjectExpression') {

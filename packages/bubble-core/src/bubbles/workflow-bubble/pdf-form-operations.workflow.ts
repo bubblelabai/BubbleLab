@@ -1032,7 +1032,20 @@ export class PDFFormOperationsWorkflow<
       }
 
       // Process each page with AI
-      const pageResults = [];
+      const pageResults: Array<{
+        pageNumber: number;
+        markdown: string;
+        formFields:
+          | {
+              id: number;
+              name: string;
+              type: string;
+              value: string;
+              x: number;
+              y: number;
+            }[]
+          | undefined;
+      }> = [];
       let combinedMarkdown = '';
 
       for (const image of images) {

@@ -746,7 +746,25 @@ Return only the JSON array, no additional text or formatting.`,
 
         extractedFields.forEach((field) => {
           if ('value' in field && field.value) {
-            let matchingDiscoveredField = null;
+            let matchingDiscoveredField:
+              | {
+                  type: string;
+                  name: string;
+                  id: number;
+                  label: string;
+                  width: number;
+                  height: number;
+                  page: number;
+                  field_type: string;
+                  current_value: string;
+                  choices: string[];
+                  rect: [number, number, number, number];
+                  x: number;
+                  y: number;
+                  field_flags: number;
+                  potential_labels: string[];
+                }
+              | undefined = undefined;
 
             // First try: Use originalFieldName if available (most precise)
             if (field.originalFieldName) {

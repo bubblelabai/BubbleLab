@@ -43,6 +43,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Version Check
+        run: |
+          echo "🔍 Checking versions..."
+          echo "Node.js version: $(node --version)"
+          echo "Bun version: $(bun --version)"
+          echo "pnpm version: $(pnpm --version)"
+          echo ""
+          echo "📦 Package versions:"
+          echo "Root package: $(node -p "require('./package.json').version || 'N/A'")"
+          echo ""
+          echo "Core packages:"
+          echo "- @bubblelab/bubble-core: $(node -p "require('./packages/bubble-core/package.json').version")"
+          echo "- @bubblelab/bubble-runtime: $(node -p "require('./packages/bubble-runtime/package.json').version")"
+          echo "- @bubblelab/shared-schemas: $(node -p "require('./packages/bubble-shared-schemas/package.json').version")"
+          echo "- create-bubblelab-app: $(node -p "require('./packages/create-bubblelab-app/package.json').version")"
+          echo ""
+          echo "🔧 Tool versions:"
+          echo "- TypeScript: $(npx tsc --version)"
+          echo "- ESLint: $(npx eslint --version)"
+          echo "- Turbo: $(npx turbo --version)"
+          echo ""
+          echo "🌍 Environment:"
+          echo "- OS: $(uname -a)"
+          echo "- Architecture: $(uname -m)"
+          echo "- Available memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "- Disk space: $(df -h / | tail -1 | awk '{print $4}')"
+          echo ""
+          echo "📋 Dependency validation:"
+          echo "Checking for version mismatches..."
+          pnpm list --depth=0 --json | jq -r '.dependencies | to_entries[] | select(.value.version != .value.resolved) | "⚠️  \(.key): \(.value.version) vs \(.value.resolved)"' || echo "✅ No version mismatches found"
+          echo ""
+          echo "✅ Version check completed"
+
       - name: Setup test database
         run: |
           cd apps/bubblelab-api
@@ -59,4 +92,3 @@ jobs:
         run: pnpm test
         env:
           CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
-

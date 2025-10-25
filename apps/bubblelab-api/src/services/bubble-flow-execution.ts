@@ -74,7 +74,7 @@ export async function executeBubbleFlowWithTracking(
 ): Promise<ExecutionResult> {
   const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
     options.userId,
-    options.appType ?? AppType.NODEX
+    options.appType ?? AppType.BUBBLE_LAB
   );
 
   // Get BubbleFlow from database (only if it belongs to the user)
