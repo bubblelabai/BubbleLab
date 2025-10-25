@@ -2,7 +2,7 @@ import type {
   BubbleOperationResult,
   ServiceBubbleParams,
   BubbleContext,
-} from './bubble.js';
+} from '@bubblelab/bubble-core';
 import { BaseBubble } from './base-bubble-class.js';
 import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
 

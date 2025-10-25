@@ -3,6 +3,8 @@ import type {
   DatabaseMetadata,
   CredentialOptions,
   DependencyGraphNode,
+  BubbleOperationResult,
+  BubbleResult,
 } from '@bubblelab/shared-schemas';
 import type { BubbleLogger } from '../logging/BubbleLogger';
 
@@ -74,20 +76,7 @@ export interface IInfraBubble extends IBubble {
   resourceType: string;
 }
 
-// Base interface that all bubble operation results must extend, at individual bubble level
-export interface BubbleOperationResult {
-  success: boolean;
-  error: string;
-}
-
 export type BubbleFlowOperationResult = unknown;
-
-// Final bubble execution result
-export interface BubbleResult<T> extends BubbleOperationResult {
-  data: T;
-  executionId: string;
-  timestamp: Date;
-}
 
 // Bubble context for execution
 export interface BubbleContext {

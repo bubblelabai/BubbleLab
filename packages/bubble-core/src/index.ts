@@ -1,13 +1,6 @@
 // Export all types
 export * from './types/bubble.js';
-export type {
-  BubbleTriggerEventRegistry,
-  WebhookEvent,
-  CronEvent,
-  SlackMentionEvent,
-  SlackMessageReceivedEvent,
-  GmailEmailEvent,
-} from '@bubblelab/shared-schemas';
+export * from '@bubblelab/shared-schemas';
 export * from './types/credentials.js';
 export * from './types/available-tools.js';
 

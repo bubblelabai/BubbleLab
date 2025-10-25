@@ -5,7 +5,7 @@ import type {
   BubbleContext,
   BubbleOperationResult,
   BubbleResult,
-} from './bubble.js';
+} from '@bubblelab/bubble-core';
 import { BaseBubble } from './base-bubble-class.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
