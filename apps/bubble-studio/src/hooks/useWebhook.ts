@@ -92,6 +92,6 @@ export function useWebhook() {
         queryKey: ['bubbleFlowList'],
       });
     },
-    onSuccess: (data, variables) => {},
+    onSuccess: () => {},
   });
 }

@@ -4,7 +4,6 @@ import type {
   CreateBubbleFlowResponse,
   BubbleFlowListResponse,
   BubbleFlowListItem,
-  BubbleFlowDetailsResponse,
 } from '@bubblelab/shared-schemas';
 
 export interface CreateBubbleFlowRequest {

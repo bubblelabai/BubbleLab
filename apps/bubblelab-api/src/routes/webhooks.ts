@@ -6,7 +6,7 @@ import {
   slackUrlVerificationSchema,
   webhookResponseSchema,
 } from '../schemas/index.js';
-import { webhookRoute, webhookStreamRoute } from '../schemas/routes.js';
+import { webhookRoute, webhookStreamRoute } from '../schemas/webhooks.js';
 import {
   executeBubbleFlowViaWebhook,
   executeBubbleFlowWithLiveStreaming,

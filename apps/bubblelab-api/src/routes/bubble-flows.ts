@@ -38,7 +38,7 @@ import {
   listBubbleFlowExecutionsRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
-} from '../schemas/routes.js';
+} from '../schemas/bubble-flows.js';
 
 import { createBubbleFlowResponseSchema } from '../schemas/index.js';
 import {

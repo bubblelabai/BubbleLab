@@ -1,6 +1,6 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { streamSSE } from 'hono/streaming';
-import { milkTeaRoute, pearlRoute } from '../schemas/routes.js';
+import { milkTeaRoute, pearlRoute } from '../schemas/ai.js';
 import {
   setupErrorHandler,
   validationErrorHook,

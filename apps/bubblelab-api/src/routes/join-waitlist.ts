@@ -1,7 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { ResendBubble, SlackBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '../schemas/index.js';
-import { joinWaitlistRoute } from '../schemas/routes.js';
+import { joinWaitlistRoute } from '../schemas/waitlist.js';
 import {
   setupErrorHandler,
   validationErrorHook,
