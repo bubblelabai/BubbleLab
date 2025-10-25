@@ -7,10 +7,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "../../packages/bubble-core/src/bubbles/tool-bubble/bubbleflow-validation-tool.ts",
-    "src/services/ai/pearl.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]
 }

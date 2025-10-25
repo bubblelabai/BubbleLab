@@ -111,6 +111,10 @@ export const createBubbleFlowResponseSchema = z
           'ai-analysis': [CredentialType.GOOGLE_GEMINI_CRED],
         },
       }),
+    eventType: z.string().min(1).openapi({
+      description: 'Event type this BubbleFlow responds to',
+      example: 'webhook/http',
+    }),
     webhook: z
       .object({
         id: z.number().openapi({ description: 'Webhook ID', example: 456 }),
@@ -150,6 +154,19 @@ export const bubbleFlowDetailsResponseSchema = z
       .record(z.string(), z.unknown())
       .optional()
       .openapi({ description: 'Input schema' }),
+    cron: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({ description: 'Cron expression' }),
+    cronActive: z
+      .boolean()
+      .optional()
+      .openapi({ description: 'Whether cron scheduling is active' }),
+    defaultInputs: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .openapi({ description: 'Default inputs for cron scheduling' }),
     isActive: z
       .boolean()
       .openapi({ description: 'Whether the BubbleFlow is active' }),
@@ -198,6 +215,10 @@ export const bubbleFlowListItemSchema = z.object({
   isActive: z
     .boolean()
     .openapi({ description: 'Whether the BubbleFlow is active' }),
+  cronActive: z
+    .boolean()
+    .openapi({ description: 'Whether cron scheduling is active' }),
+  cronSchedule: z.string().optional().openapi({ description: 'Cron schedule' }),
   webhookExecutionCount: z
     .number()
     .openapi({ description: 'Webhook execution count' }),

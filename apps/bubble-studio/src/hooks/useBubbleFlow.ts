@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { api } from '../lib/api';
-import type { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
+import type {
+  BubbleFlowDetailsResponse,
+  BubbleFlowListResponse,
+} from '@bubblelab/shared-schemas';
 
 interface UseBubbleFlowResult {
   data: BubbleFlowDetailsResponse | undefined;
@@ -10,6 +13,10 @@ interface UseBubbleFlowResult {
   refetch: () => void;
   setOptimisticData: (data: BubbleFlowDetailsResponse) => void;
   updateInputSchema: (inputSchema: Record<string, unknown>) => void;
+  updateCronActive: (cronActive: boolean) => void;
+  updateDefaultInputs: (defaultInputs: Record<string, unknown>) => void;
+  updateCronSchedule: (cronSchedule: string) => void;
+  updateEventType: (eventType: string) => void;
   updateCode: (code: string) => void;
   updateRequiredCredentials: (
     requiredCredentials: BubbleFlowDetailsResponse['requiredCredentials']
@@ -49,6 +56,138 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     [queryClient, flowId]
   );
 
+  const updateCronActive = useCallback(
+    (cronActive: boolean) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            cronActive,
+          };
+        }
+      );
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          console.log('Current data', JSON.stringify(currentData, null, 2));
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  cronActive: cronActive,
+                };
+              }
+              return flow;
+            }),
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+
+  const updateEventType = useCallback(
+    (eventType: string) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            eventType,
+          };
+        }
+      );
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  eventType: eventType,
+                };
+              }
+              return flow;
+            }),
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+  const updateDefaultInputs = useCallback(
+    (defaultInputs: Record<string, unknown>) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            defaultInputs,
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+
+  const updateCronSchedule = useCallback(
+    (cronSchedule: string) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            cron: cronSchedule,
+          };
+        }
+      );
+
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  cronSchedule: cronSchedule,
+                };
+              }
+              return flow;
+            }),
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
   const updateInputSchema = useCallback(
     (inputSchema: Record<string, unknown>) => {
       if (!flowId) return;
@@ -136,8 +275,12 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     error: query.error,
     refetch: query.refetch,
     setOptimisticData,
+    updateCronActive,
+    updateDefaultInputs,
+    updateCronSchedule,
     updateInputSchema,
     updateBubbleParameters,
+    updateEventType,
     updateCode,
     updateRequiredCredentials,
     syncWithBackend,

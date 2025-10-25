@@ -4,6 +4,10 @@ import { getFixture } from '../../tests/fixtures';
 import { BubbleFactory } from '@bubblelab/bubble-core';
 import { MockDataGenerator } from '@bubblelab/shared-schemas';
 import { buildParametersObject } from '../utils/parameter-formatter';
+import {
+  validateCronExpression,
+  describeCronExpression,
+} from '@bubblelab/shared-schemas';
 
 describe('BubbleAnalyzer', () => {
   let analyzer: BubbleScript;
@@ -376,6 +380,36 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
     });
   });
 
+  describe('should parse bubbles from cron schedule trigger correctly', () => {
+    it('should parse bubbles from cron schedule trigger correctly', () => {
+      const cronTestScript = getFixture('cron-test');
+      const analyzer = new BubbleScript(cronTestScript, bubbleFactory);
+      const triggerEventType = analyzer.getBubbleTriggerEventType();
+      expect(triggerEventType).toStrictEqual({
+        type: 'schedule/cron',
+        cronSchedule: '0 0 * * *',
+      });
+      const payloadJsonSchema = analyzer.getPayloadJsonSchema();
+      expect(payloadJsonSchema).toBeDefined();
+      expect(payloadJsonSchema).toEqual({
+        type: 'object',
+        properties: {
+          message: { type: 'string' },
+          name: { type: 'string' },
+        },
+        required: ['name', 'message'],
+      });
+      // Succesfully validates cron
+      const cronValidation = validateCronExpression(
+        analyzer.getBubbleTriggerEventType()?.cronSchedule as string
+      );
+      expect(cronValidation.valid).toBe(true);
+      const cronDescription = describeCronExpression(
+        analyzer.getBubbleTriggerEventType()?.cronSchedule as string
+      );
+      expect(cronDescription).toBe('Daily at midnight');
+    });
+  });
   describe('should get payload zod schema string', () => {
     it('should get payload zod schema string from image generation flow script', () => {
       const imageGenerationFlowScript = getFixture('image-generation-flow');
@@ -385,7 +419,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       );
       const payloadZodSchemaString = analyzer.getPayloadJsonSchema();
       const triggerEventType = analyzer.getBubbleTriggerEventType();
-      expect(triggerEventType).toBe('webhook/http');
+      expect(triggerEventType?.type).toBe('webhook/http');
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
@@ -405,7 +439,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       const analyzer = new BubbleScript(redditScraperScript, bubbleFactory);
       const payloadZodSchemaString = analyzer.getPayloadJsonSchema();
       const triggerEventType = analyzer.getBubbleTriggerEventType();
-      expect(triggerEventType).toBe('webhook/http');
+      expect(triggerEventType?.type).toBe('webhook/http');
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
@@ -424,7 +458,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       const analyzer = new BubbleScript(dataAssistantScript, bubbleFactory);
       const payloadZodSchemaString = analyzer.getPayloadJsonSchema();
       const triggerEventType = analyzer.getBubbleTriggerEventType();
-      expect(triggerEventType).toBe('slack/bot_mentioned');
+      expect(triggerEventType?.type).toBe('slack/bot_mentioned');
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',

@@ -1,0 +1,212 @@
+---
+alwaysApply: true
+---
+
+# Type Bundling for Monaco Editor
+
+## Overview
+
+The project uses a custom type bundling system to provide full TypeScript IntelliSense support in the Monaco editor for `@bubblelab/bubble-core` and its dependencies. This is necessary because Monaco cannot directly resolve workspace packages or external dependencies.
+
+## Architecture
+
+### Key Files
+
+- **Bundler Script**: `packages/bubble-core/scripts/bubble-bundler.ts`
+  - Processes TypeScript declaration files (`.d.ts`)
+  - Inlines all dependencies into a single self-contained bundle
+  - Runs as part of the build process: `tsc && tsx scripts/bubble-bundler.ts`
+
+- **Bundle Output**: `packages/bubble-core/dist/bubble-bundle.d.ts`
+  - Self-contained TypeScript declarations
+  - Includes Zod type stubs for type inference
+  - Contains inlined types from `@bubblelab/shared-schemas`
+  - All bubble-core types and classes
+
+- **Monaco Integration**: `apps/bubble-studio/public/bubble-types.txt`
+  - Copy of the bundle served to the Monaco editor
+  - Loaded in `apps/bubble-studio/src/components/MonacoEditor.tsx`
+
+### Bundling Process
+
+1. **Compile TypeScript**
+   ```bash
+   tsc  # Generates .d.ts files in dist/
+   ```
+
+2. **Bundle Types**
+   - Start from `packages/bubble-core/dist/index.d.ts`
+   - Recursively process all imports:
+     - Relative imports (`./types/bubble.js`) → inline the file content
+     - External imports (`@bubblelab/shared-schemas`) → bundle separately then inline
+     - Zod imports → remove (custom stubs provided)
+
+3. **Shared Schemas Handling**
+   - `@bubblelab/shared-schemas` is bundled separately via `bundleSharedSchemas()`
+   - Prevents cache key collisions (both packages have `index.d.ts`)
+   - Uses **absolute file paths** as cache keys to avoid conflicts
+   - Inlined content includes all shared types like:
+     - `BubbleOperationResult`
+     - `BubbleResult<T>`
+     - `BubbleTriggerEventRegistry`
+     - API schemas, credential types, etc.
+
+4. **Bundle Structure**
+   ```typescript
+   // Header comment
+
+   // Zod type stubs (for z.infer, z.ZodObject, etc.)
+   declare namespace z { ... }
+
+   // Inlined shared-schemas types
+   export interface BubbleOperationResult { ... }
+   export interface BubbleResult<T> { ... }
+
+   // Bubble-core types and classes
+   export class BubbleFlow { ... }
+   export class ServiceBubble { ... }
+   ```
+
+5. **Minification**
+   - Removes comments (except header)
+   - Compresses whitespace
+   - Reduces bundle size by ~30%
+
+### Monaco Editor Integration
+
+The Monaco editor (in `apps/bubble-studio/src/components/MonacoEditor.tsx`) loads the bundle:
+
+```typescript
+// 1. Fetch the bundle
+const response = await fetch('/bubble-types.txt');
+const bundledTypes = await response.text();
+
+// 2. Wrap in module declaration
+const moduleDeclaration = `
+declare module '@bubblelab/bubble-core' {
+  ${cleanedTypes.replace(/^/gm, '  ')}
+}
+`;
+
+// 3. Add to Monaco's type system
+monaco.languages.typescript.typescriptDefaults.addExtraLib(
+  moduleDeclaration,
+  'file:///node_modules/@types/nodex__bubble-core/index.d.ts'
+);
+```
+
+This makes all types available when users write:
+```typescript
+import { BubbleFlow, ServiceBubble } from '@bubblelab/bubble-core';
+```
+
+## Important Implementation Details
+
+### Cache Key Strategy
+
+**Problem**: Using relative paths as cache keys caused collisions:
+- `bubble-core/dist/index.d.ts` → cached as `"index.d.ts"`
+- `shared-schemas/dist/index.d.ts` → same key `"index.d.ts"`
+- Second file would return the first file's cached content!
+
+**Solution**: Use absolute file paths as cache keys:
+```typescript
+const cacheKey = filePath; // Full absolute path
+if (this.processedFiles.has(cacheKey)) {
+  return this.typeDefinitions.get(cacheKey) || '';
+}
+```
+
+### External Import Handling
+
+All external imports are removed from the bundle:
+```typescript
+if (!importPath.startsWith('.')) {
+  // Remove all external imports (zod, shared-schemas, etc)
+  processedContent = processedContent.replace(importStatement, '');
+  continue;
+}
+```
+
+Why?
+- **Zod**: Custom type stubs are provided (Monaco-friendly simplified versions)
+- **@bubblelab/shared-schemas**: Bundled separately and inlined to avoid circular processing
+
+### Type Re-exports
+
+When `bubble-core/src/index.ts` does:
+```typescript
+export * from '@bubblelab/shared-schemas';
+```
+
+The bundler:
+1. Compiles to `dist/index.d.ts` with the export statement
+2. Detects the external import during bundling
+3. Calls `bundleSharedSchemas()` to process shared-schemas separately
+4. Inlines the shared-schemas content before bubble-core content
+5. Removes the `export *` statement
+
+Result: All types are available directly in the bundle without external dependencies.
+
+## Troubleshooting
+
+### Types Missing in Monaco
+
+**Symptom**: `Cannot find name 'BubbleOperationResult'` or similar errors
+
+**Check**:
+1. Is the type defined in the bundle?
+   ```bash
+   grep "interface BubbleOperationResult" packages/bubble-core/dist/bubble-bundle.d.ts
+   ```
+
+2. Was the bundle copied to bubble-studio?
+   ```bash
+   diff packages/bubble-core/dist/bubble-bundle.d.ts apps/bubble-studio/public/bubble-types.txt
+   ```
+
+3. Is Monaco loading the bundle?
+   - Check browser console for fetch errors
+   - Look for "ServiceBubble declarations found" log
+
+### Cache Issues
+
+If types are missing after changes:
+1. Delete `dist/` folder
+2. Rebuild: `pnpm run build`
+3. Restart dev server
+
+### Duplicate Type Declarations
+
+**Symptom**: `Module has already exported a member named 'X'`
+
+**Cause**: Type defined in both shared-schemas and bubble-core
+
+**Solution**:
+- Remove from bubble-core
+- Import from shared-schemas instead
+- Bundler will inline it automatically
+
+## Build Process
+
+```bash
+# In packages/bubble-core
+pnpm run build
+
+# This runs:
+# 1. tsc (generates .d.ts files)
+# 2. tsx scripts/bubble-bundler.ts (creates bundle)
+# 3. tsx scripts/bubble-metadata-bundler.ts (creates bubbles.json)
+```
+
+## Maintenance
+
+When adding new types to shared-schemas:
+1. No changes needed! The bundler automatically includes them
+2. Just rebuild bubble-core: `pnpm run build`
+3. The bundle will include the new types
+
+When adding new files to bubble-core:
+1. Export from `src/index.ts`
+2. Rebuild to update the bundle
+3. Types automatically available in Monaco

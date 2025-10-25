@@ -138,9 +138,14 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
     ? `\n\nCurrent workflow code:\n\`\`\`typescript\n${request.currentCode}\n\`\`\` Available Variables:${JSON.stringify(request.availableVariables)}`
     : '';
 
+  // Add additional context if provided (e.g., timezone information)
+  const additionalContextInfo = request.additionalContext
+    ? `\n\nAdditional Context:\n${request.additionalContext}`
+    : '';
+
   messages.push(
     new HumanMessage(
-      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}`
+      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}${additionalContextInfo}`
     )
   );
 

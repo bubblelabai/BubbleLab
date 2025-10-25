@@ -5,7 +5,7 @@ import type {
   BubbleContext,
   BubbleResult,
   BubbleOperationResult,
-} from './bubble.js';
+} from '@bubblelab/bubble-core';
 import type { BubbleName } from '@bubblelab/shared-schemas';
 import { MockDataGenerator } from '@bubblelab/shared-schemas';
 import type { DependencyGraphNode } from '@bubblelab/shared-schemas';

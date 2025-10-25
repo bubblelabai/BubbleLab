@@ -16,8 +16,7 @@ export function MonacoEditor() {
   const setEditorInstance = useEditorStore((state) => state.setEditorInstance);
   const setCursorPosition = useEditorStore((state) => state.setCursorPosition);
   const setSelectedRange = useEditorStore((state) => state.setSelectedRange);
-  const openSidePanel = useEditorStore((state) => state.openSidePanel);
-  const openPearlChat = useEditorStore((state) => state.openPearlChat);
+  const openPearlChat = useUIStore((state) => state.openPearlChat);
   const executionHighlightRange = useEditorStore(
     (state) => state.executionHighlightRange
   );
@@ -65,18 +64,18 @@ export function MonacoEditor() {
     });
 
     // Add click handler on line numbers (gutter) to open side panel
-    editor.onMouseDown((e) => {
-      // Check if click is on gutter/line numbers
-      if (
-        e.target.type ===
-        monacoInstance.editor.MouseTargetType.GUTTER_LINE_NUMBERS
-      ) {
-        const lineNumber = e.target.position?.lineNumber;
-        if (lineNumber) {
-          openSidePanel(lineNumber);
-        }
-      }
-    });
+    // editor.onMouseDown((e) => {
+    //   // Check if click is on gutter/line numbers
+    //   if (
+    //     e.target.type ===
+    //     monacoInstance.editor.MouseTargetType.GUTTER_LINE_NUMBERS
+    //   ) {
+    //     const lineNumber = e.target.position?.lineNumber;
+    //     if (lineNumber) {
+    //       openSidePanel(lineNumber);
+    //     }
+    //   }
+    // });
 
     // Set up Monaco to properly support TypeScript
     monacoInstance.languages.typescript.typescriptDefaults.setEagerModelSync(

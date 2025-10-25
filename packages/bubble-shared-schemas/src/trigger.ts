@@ -2,7 +2,7 @@ export interface BubbleTriggerEventRegistry {
   'slack/bot_mentioned': SlackMentionEvent;
   'slack/message_received': SlackMessageReceivedEvent;
   'gmail/email_received': GmailEmailEvent;
-  'schedule/cron/daily': CronEvent;
+  'schedule/cron': CronEvent;
   'webhook/http': WebhookEvent;
 }
 
@@ -12,7 +12,7 @@ export const BUBBLE_TRIGGER_EVENTS = {
   'slack/bot_mentioned': true,
   'slack/message_received': true,
   'gmail/email_received': true,
-  'schedule/cron/daily': true,
+  'schedule/cron': true,
   'webhook/http': true,
 } as const satisfies Record<keyof BubbleTriggerEventRegistry, true>;
 
@@ -93,15 +93,47 @@ export interface GmailEmailEvent extends BubbleTriggerEvent {
   email: string;
 }
 
+/**
+ * Cron event payload structure
+ *
+ * The 'cron' field contains the cron expression in standard 5-part cron format:
+ *
+ * ┌───────────── minute (0 - 59)
+ * │ ┌───────────── hour (0 - 23)
+ * │ │ ┌───────────── day of month (1 - 31)
+ * │ │ │ ┌───────────── month (1 - 12)
+ * │ │ │ │ ┌───────────── day of week (0 - 6) (Sunday to Saturday)
+ * │ │ │ │ │
+ * * * * * *
+ *
+ * @example
+ * ```typescript
+ * // Daily at midnight
+ * { cron: '0 0 * * *' }
+ *
+ * // Every weekday at 9am
+ * { cron: '0 9 * * 1-5' }
+ *
+ * // Every 15 minutes
+ * { cron: '*\/15 * * * *' }
+ *
+ * // First day of every month at midnight
+ * { cron: '0 0 1 * *' }
+ * ```
+ */
 export interface CronEvent extends BubbleTriggerEvent {
+  /** The cron expression defining when this event triggers */
   cron: string;
+  body?: Record<string, unknown>;
 }
 
 export interface WebhookEvent extends BubbleTriggerEvent {
   body?: Record<string, unknown>;
 }
 
-export interface BubbleTriggerOptions {
+export interface BubbleTrigger {
+  type: keyof BubbleTriggerEventRegistry;
+  cronSchedule?: string;
   name?: string;
   description?: string;
   timeout?: number;

@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -22,9 +22,11 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useCredentials } from '../hooks/useCredentials';
+import { useValidateCode } from '../hooks/useValidateCode';
 import { useUIStore } from '../stores/uiStore';
-import { useEditorStore } from '../stores/editorStore';
+import { useEditor } from '../hooks/useEditor';
 import { API_BASE_URL } from '../env';
+import CronScheduleNode from './CronScheduleNode';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -37,6 +39,7 @@ interface FlowVisualizerProps {
 const nodeTypes = {
   bubbleNode: BubbleNode,
   inputSchemaNode: InputSchemaNode,
+  cronScheduleNode: CronScheduleNode,
 };
 
 const proOptions = { hideAttribution: true };
@@ -73,11 +76,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const { fitView } = useReactFlow();
 
   // Get all data from global stores
-  const currentFlow = useBubbleFlow(flowId);
+  const { data: currentFlow, loading } = useBubbleFlow(flowId);
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
   const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
-  const { setExecutionHighlight } = useEditorStore();
+  const { hasUnsavedChanges, setExecutionHighlight, updateCronSchedule } =
+    useEditor(flowId);
+  const validateCodeMutation = useValidateCode({ flowId });
 
   // Initialize execution hook
   const { runFlow } = useRunExecution(flowId);
@@ -88,7 +93,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const setInput = executionState.setInput;
 
   // Derive all state from global stores
-  const bubbleParameters = currentFlow.data?.bubbleParameters || {};
+  const bubbleParameters = currentFlow?.bubbleParameters || {};
   const highlightedBubble = executionState.highlightedBubble;
   const isExecuting = executionState.isRunning;
   const bubbleWithError = executionState.bubbleWithError;
@@ -96,21 +101,48 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const completedBubbles = executionState.completedBubbles;
   const executionInputs = executionState.executionInputs;
   const pendingCredentials = executionState.pendingCredentials;
-  const requiredCredentials = currentFlow.data?.requiredCredentials || {};
-  const flowName = currentFlow.data?.name;
-  const inputsSchema = currentFlow.data?.inputSchema
-    ? JSON.stringify(currentFlow.data.inputSchema)
+  const requiredCredentials = currentFlow?.requiredCredentials || {};
+  const flowName = currentFlow?.name;
+  const inputsSchema = currentFlow?.inputSchema
+    ? JSON.stringify(currentFlow.inputSchema)
     : undefined;
-  const isLoading = currentFlow.loading;
 
   // Local UI state for expanded/collapsed nodes
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
+  const eventType = currentFlow?.eventType;
+  const entryNodeId =
+    eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
+
   const bubbleEntries = useMemo(
     () => Object.entries(bubbleParameters),
     [bubbleParameters]
   );
+
+  // Track if we've initialized defaults for this flow to avoid loops
+  const didInitDefaultsForFlow = useRef<number | null>(null);
+
+  // Initialize execution inputs from defaults once per flow (avoid loops)
+  useEffect(() => {
+    const defaults = currentFlow?.defaultInputs || {};
+    const hasDefaults = Object.keys(defaults).length > 0;
+    const hasExisting = Object.keys(executionInputs || {}).length > 0;
+    if (
+      currentFlow?.id &&
+      didInitDefaultsForFlow.current !== currentFlow.id &&
+      !hasExisting &&
+      hasDefaults
+    ) {
+      executionState.setInputs(defaults);
+      didInitDefaultsForFlow.current = currentFlow.id;
+    }
+  }, [
+    currentFlow?.id,
+    currentFlow?.defaultInputs,
+    executionInputs,
+    executionState.setInputs,
+  ]);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
@@ -428,35 +460,81 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       }
     })();
 
-    // Create InputSchemaNode if needed
-    if (parsedFields.length > 0 && flowName) {
-      const inputSchemaNode: Node = {
-        id: 'input-schema-node',
-        type: 'inputSchemaNode',
-        position: {
-          x: startX - 450,
-          y: baseY,
-        },
-        origin: [0, 0.5] as [number, number],
-        data: {
-          flowName: flowName,
-          schemaFields: parsedFields,
-          executionInputs: executionInputs || {},
-          onExecutionInputChange: (fieldName: string, value: unknown) => {
-            setInput(fieldName, value);
+    // Create entry node based on event type
+    if (flowName) {
+      if (eventType === 'schedule/cron') {
+        // Create CronScheduleNode for cron events
+        const cronScheduleNode: Node = {
+          id: 'cron-schedule-node',
+          type: 'cronScheduleNode',
+          position: {
+            x: startX - 450,
+            y: baseY,
           },
-          onExecuteFlow: async () => {
-            await runFlow({
-              validateCode: true,
-              updateCredentials: true,
-              inputs: executionInputs || {},
-            });
+          origin: [0, 0.5] as [number, number],
+          data: {
+            flowId: currentFlow?.id,
+            flowName: flowName,
+            cronSchedule: currentFlow?.cron || '0 0 * * *',
+            isActive: currentFlow?.cronActive || false,
+            inputSchema: currentFlow?.inputSchema || {},
+            executionInputs: currentFlow?.defaultInputs || {},
+            isPending: validateCodeMutation.isPending,
+            onCronScheduleChange: (newSchedule: string) => {
+              // Update the cron schedule in the editor store
+              updateCronSchedule(newSchedule);
+
+              // TODO: In the future, we might want to save this to the backend
+              // For now, it's just stored locally in the editor
+            },
+            onDefaultInputChange: (fieldName: string, value: unknown) => {
+              // Update the input value in the execution state
+              setInput(fieldName, value);
+
+              // TODO: In the future, we might want to save this to the backend
+              // For now, it's just stored locally in the execution state
+            },
+            onExecuteFlow: async () => {
+              await runFlow({
+                validateCode: true,
+                updateCredentials: true,
+                inputs: executionInputs || {},
+              });
+            },
+            isExecuting: isExecuting,
           },
-          isExecuting: isExecuting,
-          isFormValid: true,
-        },
-      };
-      nodes.push(inputSchemaNode);
+        };
+        nodes.push(cronScheduleNode);
+      } else if (parsedFields.length > 0) {
+        // Create InputSchemaNode for regular flows with input schema
+        const inputSchemaNode: Node = {
+          id: 'input-schema-node',
+          type: 'inputSchemaNode',
+          position: {
+            x: startX - 450,
+            y: baseY,
+          },
+          origin: [0, 0.5] as [number, number],
+          data: {
+            flowName: flowName,
+            schemaFields: parsedFields,
+            executionInputs: executionInputs || {},
+            onExecutionInputChange: (fieldName: string, value: unknown) => {
+              setInput(fieldName, value);
+            },
+            onExecuteFlow: async () => {
+              await runFlow({
+                validateCode: true,
+                updateCredentials: true,
+                inputs: executionInputs || {},
+              });
+            },
+            isExecuting: isExecuting,
+            isFormValid: true,
+          },
+        };
+        nodes.push(inputSchemaNode);
+      }
     }
 
     // Create nodes for each bubble
@@ -601,25 +679,24 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       .filter((bubble) => bubble.startLine > 0)
       .sort((a, b) => a.startLine - b.startLine);
 
-    // Connect InputSchemaNode to first bubble
+    // Connect entry node to first bubble
     if (
-      parsedFields.length > 0 &&
       flowName &&
       mainBubbles.length > 0 &&
-      nodes.some((n) => n.id === 'input-schema-node')
+      nodes.some((n) => n.id === entryNodeId)
     ) {
       const firstBubbleId = mainBubbles[0].nodeId;
       if (nodes.some((n) => n.id === firstBubbleId)) {
         edges.push({
-          id: 'input-schema-to-first-bubble',
-          source: 'input-schema-node',
+          id: `${entryNodeId}-to-first-bubble`,
+          source: entryNodeId,
           target: firstBubbleId,
           sourceHandle: 'right',
           targetHandle: 'left',
           type: 'straight',
           animated: true,
           style: {
-            stroke: '#60a5fa',
+            stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
             strokeWidth: 2,
             strokeDasharray: '5,5',
           },
@@ -672,11 +749,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     toggleRootVisibility,
     bubbleWithError,
     completedBubbles,
+    validateCodeMutation.isPending,
     highlightBubble,
     setCredential,
     setInput,
     expandedRootIds,
     suppressedRootIds,
+    currentFlow,
   ]);
 
   // Auto-fit view when nodes load or change
@@ -705,7 +784,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   }, []);
 
   // Show loading state
-  if (isLoading) {
+  if (loading) {
     return (
       <div
         className="h-full flex items-center justify-center"
@@ -736,15 +815,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             The flow code needs to be validated to extract bubble parameters
           </p>
           {onValidate && (
-            <button
-              type="button"
-              onClick={onValidate}
-              disabled={isExecuting}
-              className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2 mx-auto"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Sync with code
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onValidate}
+                disabled={isExecuting}
+                className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Sync with code
+              </button>
+              {hasUnsavedChanges && (
+                <div className="bg-orange-500/20 border border-orange-500/50 px-3 py-1 rounded-lg text-xs font-medium text-orange-300">
+                  Unsaved changes
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -757,7 +843,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       style={{ backgroundColor: '#1e1e1e' }}
     >
       {onValidate && (
-        <div className="absolute top-4 left-4 z-10">
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
             type="button"
             onClick={onValidate}
@@ -767,6 +853,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             <RefreshCw className="w-3 h-3" />
             Sync with code
           </button>
+          {hasUnsavedChanges && (
+            <div className="bg-orange-500/20 border border-orange-500/50 px-2 py-1 rounded text-xs font-medium text-orange-300">
+              Unsaved
+            </div>
+          )}
         </div>
       )}
 

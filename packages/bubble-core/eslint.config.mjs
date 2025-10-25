@@ -3,8 +3,9 @@ import tseslint from 'typescript-eslint';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Import our custom rule
+// Import our custom rules
 import noNullContextRule from './eslint-rules/no-null-context.js';
+import requireCronScheduleRule from './eslint-rules/require-cron-schedule.js';
 
 export default [
   js.configs.recommended,
@@ -21,11 +22,13 @@ export default [
       'bubble-core': {
         rules: {
           'no-null-context': noNullContextRule,
+          'require-cron-schedule': requireCronScheduleRule,
         },
       },
     },
     rules: {
       'bubble-core/no-null-context': 'error',
+      'bubble-core/require-cron-schedule': 'error',
     },
   },
   {

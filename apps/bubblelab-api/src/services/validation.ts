@@ -1,4 +1,7 @@
-import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+import type {
+  BubbleTrigger,
+  ParsedBubbleWithInfo,
+} from '@bubblelab/shared-schemas';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from './bubble-factory-instance.js';
 
@@ -7,6 +10,7 @@ export interface ValidationResult {
   errors?: string[];
   bubbleParameters: Record<number, ParsedBubbleWithInfo>;
   inputSchema: Record<string, unknown>;
+  trigger?: BubbleTrigger;
 }
 
 export async function validateBubbleFlow(
@@ -21,12 +25,14 @@ export async function validateBubbleFlow(
       errors: result.errors,
       bubbleParameters: result.bubbleParameters || {},
       inputSchema: result.inputSchema || {},
+      trigger: result.trigger || undefined,
     };
   } catch (error) {
     return {
       valid: false,
       bubbleParameters: {},
       inputSchema: {},
+      trigger: { type: 'webhook/http' },
       errors: [
         `Validation error: ${error instanceof Error ? error.message : String(error)}`,
       ],

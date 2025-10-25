@@ -44,6 +44,9 @@ export const bubbleFlows = pgTable('bubble_flows', {
     .notNull()
     .default(0), // Track webhook executions
   webhookFailureCount: integer('webhook_failure_count').notNull().default(0), // Track webhook failures
+  cron: text('cron'), // Cron expression extracted from code
+  cronActive: boolean('cron_active').notNull().default(false), // Whether cron scheduling is active
+  defaultInputs: jsonb('default_inputs'), // User-filled input values for cron execution
   createdAt: timestamp('created_at', { mode: 'date' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -82,6 +85,7 @@ export const bubbleFlowExecutions = pgTable('bubble_flow_executions', {
   result: jsonb('result'), // JSON stored as JSONB
   status: text('status').notNull(),
   error: text('error'),
+  code: text('code'), // Store the original code at execution time
   startedAt: timestamp('started_at', { mode: 'date' }).notNull().defaultNow(),
   completedAt: timestamp('completed_at', { mode: 'date' }),
 });

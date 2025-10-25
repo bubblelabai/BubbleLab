@@ -1,6 +1,6 @@
 // Export all types
 export * from './types/bubble.js';
-export * from './bubble-trigger/types.js';
+export * from '@bubblelab/shared-schemas';
 export * from './types/credentials.js';
 export * from './types/available-tools.js';
 
@@ -19,7 +19,7 @@ export { ToolBubble } from './types/tool-bubble-class.js';
 export { BubbleFlow } from './bubble-flow/bubble-flow-class.js';
 
 // Export bubbles
-export type { BubbleTriggerEvent } from './bubble-trigger/types.js';
+export type { BubbleTriggerEvent } from '@bubblelab/shared-schemas';
 export { HelloWorldBubble } from './bubbles/service-bubble/hello-world.js';
 export {
   AIAgentBubble,

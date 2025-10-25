@@ -182,6 +182,9 @@ export const validateBubbleFlowCodeSchema = z.object({
       strictMode: z.boolean().default(true).openapi({
         description: 'Enable strict TypeScript validation',
       }),
+      syncInputsWithFlow: z.boolean().default(false).openapi({
+        description: 'Whether to sync input values with the flow',
+      }),
     })
     .optional()
     .openapi({
@@ -207,9 +210,31 @@ export const validateBubbleFlowCodeSchema = z.object({
         },
       },
     }),
+  defaultInputs: z
+    .record(z.unknown())
+    .optional()
+    .openapi({
+      description: 'User-filled input values for cron execution',
+      example: {
+        message: 'Hello World',
+        channel: '#general',
+      },
+    }),
+  activateCron: z.boolean().optional().openapi({
+    description: 'Whether to activate/deactivate cron scheduling',
+    example: true,
+  }),
 });
 
 export const validateBubbleFlowCodeResponseSchema = z.object({
+  eventType: z.string().min(1).openapi({
+    description: 'Event type this BubbleFlow responds to',
+    example: 'webhook/http',
+  }),
+  webhookPath: z.string().min(1).openapi({
+    description: 'Custom webhook path (auto-generated if not provided)',
+    example: 'my-webhook',
+  }),
   valid: z.boolean().openapi({
     description: 'Whether the code is valid',
   }),
@@ -253,6 +278,24 @@ export const validateBubbleFlowCodeResponseSchema = z.object({
     })
     .openapi({
       description: 'Validation metadata',
+    }),
+  cron: z.string().nullable().optional().openapi({
+    description: 'Cron expression extracted from code',
+    example: '0 0 * * *',
+  }),
+  cronActive: z.boolean().optional().openapi({
+    description: 'Whether cron scheduling is currently active',
+    example: false,
+  }),
+  defaultInputs: z
+    .record(z.unknown())
+    .optional()
+    .openapi({
+      description: 'User-filled input values for cron execution',
+      example: {
+        message: 'Hello World',
+        channel: '#general',
+      },
     }),
   success: z.boolean(),
   error: z.string(),

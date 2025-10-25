@@ -22,6 +22,12 @@ function getBubbleItems(
   const bubblesDir = path.join(__dirname, 'docs', 'bubbles', bubbleType);
 
   try {
+    // Check if directory exists first
+    if (!fs.existsSync(bubblesDir)) {
+      console.warn(`Directory ${bubblesDir} does not exist`);
+      return [];
+    }
+
     const files = fs.readdirSync(bubblesDir);
     return files
       .filter((file) => file.endsWith('.mdx'))

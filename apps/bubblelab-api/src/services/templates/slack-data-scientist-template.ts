@@ -15,7 +15,6 @@ export interface SlackDataScientistTemplateInput {
   includeExplanation?: boolean;
   maxQueries?: number;
 }
-
 /**
  * Generates TypeScript code for a Slack data scientist workflow template
  */
@@ -109,8 +108,8 @@ export class ${className} extends BubbleFlow<'slack/bot_mentioned'> {
       return {
         success: result.success,
         directAnswer: result.data?.formattedResponse,
-        insights: result.data?.queryResults?.map((result) => result.summary as string) ?? [],
-        recommendations: result.data?.queryResults?.map((result) => result.summary as string) ?? [],
+        insights: result.data?.queryResults?.map((queryResult: { summary: string }) => queryResult.summary as string) ?? [],
+        recommendations: result.data?.queryResults?.map((queryResult: { summary: string }) => queryResult.summary as string) ?? [],
         slackMessageId: result.data?.slackMessageTs,
         error: result.error ? result.error.substring(0, 100) + '...' : undefined,
       };

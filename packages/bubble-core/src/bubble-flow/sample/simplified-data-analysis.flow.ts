@@ -4,7 +4,7 @@ import { PostgreSQLBubble } from '../../bubbles/service-bubble/postgresql.js';
 import { DatabaseAnalyzerWorkflowBubble } from '../../bubbles/workflow-bubble/database-analyzer.workflow.js';
 import { SlackNotifierWorkflowBubble } from '../../bubbles/workflow-bubble/slack-notifier.workflow.js';
 import type { BubbleFlowOperationResult } from '../../types/bubble.js';
-import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
+import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
 
 /**
  * SimplifiedDataAnalysisFlow - Example showing the power of WorkflowBubbles

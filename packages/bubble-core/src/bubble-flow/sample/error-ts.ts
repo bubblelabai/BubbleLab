@@ -1,5 +1,5 @@
 import { BubbleFlow } from '@bubblelab/bubble-core';
-import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
+import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
 
 export class AIAnalysisFlow extends BubbleFlow<'webhook/http'> {
   constructor() {

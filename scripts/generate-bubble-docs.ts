@@ -370,7 +370,7 @@ function renderSchemaDlFromZod(
     const requiredBadge = meta.required
       ? `<span style={{color:'#d32f2f',fontWeight:600}}>required</span>`
       : '';
-    const desc = escapeMdx(meta.description || '');
+    const desc = escapeHtml(escapeMdx(meta.description || ''));
     lines.push(
       `  <dt><code>${key}</code> <em>${safeType}</em> ${requiredBadge}</dt>`
     );

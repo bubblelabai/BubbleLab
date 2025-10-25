@@ -122,8 +122,6 @@ async function runBubbleFlowCommon(
       systemCredentials
     );
 
-    console.log('injectionResult', JSON.stringify(injectionResult, null, 2));
-
     if (!injectionResult.success) {
       console.error(
         '[runBubbleFlowCommon] Credential injection failed:',

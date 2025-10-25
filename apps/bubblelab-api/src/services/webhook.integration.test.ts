@@ -10,6 +10,7 @@ import type {
   ErrorResponse,
 } from '../schemas/index.js';
 import { TestApp } from '../test/test-app.js';
+import { BUBBLE_TRIGGER_EVENTS } from '@bubblelab/shared-schemas';
 
 // Interface for test execution data to avoid any types
 interface TestExecutionData {
@@ -275,13 +276,9 @@ describe('Webhook Integration Tests', () => {
     });
 
     it('should accept valid event types', async () => {
-      const validEventTypes = [
-        'webhook/http',
-        'slack/bot_mentioned',
-        'slack/message_received',
-        'gmail/email_received',
-        'schedule/cron/daily',
-      ];
+      const validEventTypes = Object.keys(BUBBLE_TRIGGER_EVENTS) as string[];
+
+      // Loop through each event type and create a flow
 
       for (const eventType of validEventTypes) {
         const response = await TestApp.post('/bubble-flow', {

@@ -12,9 +12,62 @@ class ManualTypeBundler {
   private verbose = false;
   private processedFiles = new Set<string>();
   private typeDefinitions = new Map<string, string>();
+  private sharedSchemasBundle: string | null = null;
 
   constructor(verbose = false) {
     this.verbose = verbose;
+  }
+
+  // Bundle shared-schemas package separately
+  private async bundleSharedSchemas(basePath: string): Promise<string> {
+    if (this.sharedSchemasBundle) {
+      return this.sharedSchemasBundle;
+    }
+
+    this.log('Bundling @bubblelab/shared-schemas...');
+    const sharedSchemasPath = resolve(
+      basePath,
+      '../../bubble-shared-schemas/dist/index.d.ts'
+    );
+
+    if (!existsSync(sharedSchemasPath)) {
+      this.log('Warning: shared-schemas not found, skipping');
+      return '';
+    }
+
+    // Create a separate bundler instance to avoid conflicts
+    const sharedSchemasDist = dirname(sharedSchemasPath);
+    const content = await this.processFile(
+      sharedSchemasPath,
+      sharedSchemasDist
+    );
+
+    this.sharedSchemasBundle = `\n/* Inlined types from @bubblelab/shared-schemas */\n\n${content}\n`;
+
+    const hasBubbleOpResult = content.includes('BubbleOperationResult');
+    const hasInterface = content.includes('interface BubbleOperationResult');
+    console.log(
+      '[DEBUG] Shared-schemas content has BubbleOperationResult:',
+      hasBubbleOpResult
+    );
+    console.log(
+      '[DEBUG] Shared-schemas content has interface definition:',
+      hasInterface
+    );
+
+    // Find where BubbleOperationResult appears
+    const index = content.indexOf('BubbleOperationResult');
+    if (index > -1) {
+      console.log(
+        '[DEBUG] BubbleOperationResult context:',
+        content.substring(Math.max(0, index - 100), index + 200)
+      );
+    }
+
+    this.log(
+      `Bundled shared-schemas: ${this.sharedSchemasBundle.length} chars`
+    );
+    return this.sharedSchemasBundle;
   }
 
   private log(message: string) {
@@ -67,7 +120,11 @@ class ManualTypeBundler {
       const mainContent = await this.processFile(mainDtsPath, distPath);
 
       // Build the final bundle
-      const bundledContent = await this.buildBundle(packageName, mainContent);
+      const bundledContent = await this.buildBundle(
+        packageName,
+        mainContent,
+        distPath
+      );
 
       // Write the final bundle
       writeFileSync(outputPath, bundledContent);
@@ -109,16 +166,29 @@ class ManualTypeBundler {
     filePath: string,
     basePath: string
   ): Promise<string> {
-    const relativePath = filePath.replace(basePath + '/', '');
+    // Use absolute path as cache key to avoid conflicts
+    const cacheKey = filePath;
 
-    if (this.processedFiles.has(relativePath)) {
-      return this.typeDefinitions.get(relativePath) || '';
+    console.log(
+      `[DEBUG] Cache check - filePath: ${filePath}, cached: ${this.processedFiles.has(cacheKey)}`
+    );
+
+    if (this.processedFiles.has(cacheKey)) {
+      console.log(`[DEBUG] Returning cached content for: ${filePath}`);
+      return this.typeDefinitions.get(cacheKey) || '';
     }
 
+    const relativePath = filePath.replace(basePath + '/', '');
+
     this.log(`Processing: ${relativePath}`);
-    this.processedFiles.add(relativePath);
+    console.log(`[DEBUG] Processing file: ${filePath}`);
+    this.processedFiles.add(cacheKey);
 
     let content = readFileSync(filePath, 'utf8');
+    console.log(
+      `[DEBUG] File content length: ${content.length}, first 200 chars:`,
+      content.substring(0, 200)
+    );
 
     // Remove source map comments
     content = content.replace(/\/\/# sourceMappingURL=.*$/gm, '');
@@ -127,7 +197,7 @@ class ManualTypeBundler {
     content = await this.processImports(content, dirname(filePath), basePath);
 
     // Store the processed content
-    this.typeDefinitions.set(relativePath, content);
+    this.typeDefinitions.set(cacheKey, content);
 
     return content;
   }
@@ -150,6 +220,8 @@ class ManualTypeBundler {
       imports.push(match[0]);
     }
 
+    console.log(`[DEBUG] Found ${imports.length} imports in ${currentDir}`);
+
     // Process each import
     for (const importStatement of imports) {
       const pathMatch = importStatement.match(/['"]([^'"]+)['"]/);
@@ -159,10 +231,9 @@ class ManualTypeBundler {
 
       // Skip external dependencies
       if (!importPath.startsWith('.')) {
-        // Remove zod imports
-        if (importPath === 'zod') {
-          processedContent = processedContent.replace(importStatement, '');
-        }
+        // Remove all external imports (zod, shared-schemas, etc)
+        // shared-schemas will be bundled separately and prepended
+        processedContent = processedContent.replace(importStatement, '');
         continue;
       }
 
@@ -180,6 +251,7 @@ class ManualTypeBundler {
 
       // Check if file exists
       if (existsSync(resolvedPath)) {
+        console.log(`[DEBUG] Inlining file: ${resolvedPath}`);
         // Process the imported file
         const importedContent = await this.processFile(resolvedPath, basePath);
 
@@ -189,6 +261,7 @@ class ManualTypeBundler {
           `\n// Inlined from ${importPath}\n${importedContent}\n`
         );
       } else {
+        console.log(`[DEBUG] WARNING: Could not find file: ${resolvedPath}`);
         this.log(`Warning: Could not find imported file: ${resolvedPath}`);
       }
     }
@@ -198,9 +271,21 @@ class ManualTypeBundler {
 
   private async buildBundle(
     packageName: string,
-    mainContent: string
+    mainContent: string,
+    basePath: string
   ): Promise<string> {
     this.log('Building final bundle...');
+
+    // Bundle shared-schemas first
+    console.log(
+      '[DEBUG] About to bundle shared-schemas from basePath:',
+      basePath
+    );
+    const sharedSchemasContent = await this.bundleSharedSchemas(basePath);
+    console.log(
+      '[DEBUG] Bundled shared-schemas, length:',
+      sharedSchemasContent.length
+    );
 
     const header = `/**
  * Self-contained TypeScript declarations for ${packageName}
@@ -316,10 +401,34 @@ declare module '${packageName}' {
 }
 `;
 
-    const fullBundle = header + zodTypes + cleanedContent + moduleDeclaration;
+    const fullBundle =
+      header +
+      zodTypes +
+      sharedSchemasContent +
+      cleanedContent +
+      moduleDeclaration;
+
+    // Check if BubbleOperationResult is in the bundle before minification
+    const hasBubbleOpResult = fullBundle.includes(
+      'interface BubbleOperationResult'
+    );
+    console.log(
+      '[DEBUG] Before minify - has BubbleOperationResult definition:',
+      hasBubbleOpResult
+    );
+    console.log('[DEBUG] Full bundle length before minify:', fullBundle.length);
 
     // Minify the bundle for smaller size
-    return this.minifyBundle(fullBundle);
+    const minified = this.minifyBundle(fullBundle);
+
+    const hasAfterMinify = minified.includes('interface BubbleOperationResult');
+    console.log(
+      '[DEBUG] After minify - has BubbleOperationResult definition:',
+      hasAfterMinify
+    );
+    console.log('[DEBUG] Full bundle length after minify:', minified.length);
+
+    return minified;
   }
 
   private minifyBundle(content: string): string {

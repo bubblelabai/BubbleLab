@@ -14,6 +14,8 @@ export type CurrentPage =
   | 'flow-summary'
   | 'home';
 
+export type SidePanelMode = 'closed' | 'bubbleList' | 'milktea' | 'pearl';
+
 interface UIStore {
   // ============= Navigation State =============
 
@@ -49,6 +51,23 @@ interface UIStore {
    * Whether the output panel is collapsed
    */
   isOutputCollapsed: boolean;
+
+  // ============= Side Panel State =============
+
+  /**
+   * Current side panel mode
+   */
+  sidePanelMode: SidePanelMode;
+
+  /**
+   * Currently selected bubble name (for milktea panel)
+   */
+  selectedBubbleName: string | null;
+
+  /**
+   * Target line for code insertion
+   */
+  targetInsertLine: number | null;
 
   // ============= Modal Visibility State =============
 
@@ -135,6 +154,28 @@ interface UIStore {
    * Toggle prompt display
    */
   togglePrompt: () => void;
+
+  // ============= Side Panel Actions =============
+
+  /**
+   * Open side panel for bubble list
+   */
+  openBubbleListPanel: (line: number) => void;
+
+  /**
+   * Close side panel
+   */
+  closeSidePanel: () => void;
+
+  /**
+   * Select a bubble (opens milktea panel)
+   */
+  selectBubble: (bubbleName: string | null) => void;
+
+  /**
+   * Open Pearl chat panel
+   */
+  openPearlChat: () => void;
 }
 
 /**
@@ -156,6 +197,9 @@ export const useUIStore = create<UIStore>((set) => ({
   isOutputCollapsed: true,
   showExportModal: false,
   showPrompt: false,
+  sidePanelMode: 'closed',
+  selectedBubbleName: null,
+  targetInsertLine: null,
 
   // Actions
   navigateToPage: (page) => set({ currentPage: page }),
@@ -201,6 +245,35 @@ export const useUIStore = create<UIStore>((set) => ({
   closeExportModal: () => set({ showExportModal: false }),
 
   togglePrompt: () => set((state) => ({ showPrompt: !state.showPrompt })),
+
+  // Side panel actions
+  openBubbleListPanel: (line) =>
+    set({
+      sidePanelMode: 'bubbleList',
+      targetInsertLine: line,
+      selectedBubbleName: null,
+    }),
+
+  closeSidePanel: () =>
+    set({
+      sidePanelMode: 'closed',
+      selectedBubbleName: null,
+      targetInsertLine: null,
+    }),
+
+  selectBubble: (bubbleName) =>
+    set({
+      sidePanelMode: bubbleName === null ? 'bubbleList' : 'milktea',
+      selectedBubbleName: bubbleName,
+      // Keep targetInsertLine from when panel was opened
+    }),
+
+  openPearlChat: () =>
+    set({
+      sidePanelMode: 'pearl',
+      selectedBubbleName: null,
+      targetInsertLine: null,
+    }),
 }));
 
 // ============= Derived Selectors =============
@@ -222,3 +295,27 @@ export const selectIsPromptPage = (state: UIStore): boolean =>
  */
 export const selectHasSelectedFlow = (state: UIStore): boolean =>
   state.selectedFlowId !== null;
+
+/**
+ * Check if side panel is open
+ */
+export const selectIsSidePanelOpen = (state: UIStore): boolean =>
+  state.sidePanelMode !== 'closed';
+
+/**
+ * Check if bubble list panel is open
+ */
+export const selectIsBubbleListOpen = (state: UIStore): boolean =>
+  state.sidePanelMode === 'bubbleList' && state.selectedBubbleName === null;
+
+/**
+ * Check if milktea panel is open
+ */
+export const selectIsMilkteaPanelOpen = (state: UIStore): boolean =>
+  state.sidePanelMode === 'milktea' && state.selectedBubbleName !== null;
+
+/**
+ * Check if Pearl chat panel is open
+ */
+export const selectIsPearlChatOpen = (state: UIStore): boolean =>
+  state.sidePanelMode === 'pearl';

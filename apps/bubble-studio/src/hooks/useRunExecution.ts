@@ -4,7 +4,7 @@ import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
-import { getEditorCode, useEditorStore } from '@/stores/editorStore';
+import { useEditor } from '@/hooks/useEditor';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type {
@@ -67,7 +67,7 @@ export function useRunExecution(
   const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId, {
     limit: 50,
   });
-  const { setExecutionHighlight } = useEditorStore();
+  const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -339,10 +339,10 @@ export function useRunExecution(
         }
 
         // 4. Validate code if needed
-        if (validateCode && getEditorCode() !== currentFlow?.code) {
+        if (validateCode && editor.getCode() !== currentFlow?.code) {
           try {
             const isValid = await validateCodeMutation.mutateAsync({
-              code: getEditorCode(),
+              code: editor.getCode(),
               flowId: flowId,
               credentials: executionState.pendingCredentials,
             });

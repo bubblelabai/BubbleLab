@@ -241,7 +241,9 @@ export class OAuthService {
       credential.oauthRefreshToken
     ) {
       try {
-        console.log(`Refreshing OAuth token for credential ${credentialId}`);
+        console.info(
+          `[oauthService] Refreshing OAuth token for credential ${credentialId}`
+        );
         const newToken = await this.refreshToken(credentialId);
         return newToken;
       } catch (error) {
@@ -433,7 +435,9 @@ export class OAuthService {
     }
 
     if (expiredStates.length > 0) {
-      console.log(`Cleaned up ${expiredStates.length} expired OAuth states`);
+      console.info(
+        `[oauthService] Cleaned up ${expiredStates.length} expired OAuth states`
+      );
     }
   }
 
@@ -459,8 +463,8 @@ export class OAuthService {
           // );
           // Note: Not all providers support token revocation via @badgateway/oauth2-client
           // This would need to be implemented per-provider if needed
-          console.log(
-            `Would revoke token for ${credential.oauthProvider} (not implemented)`
+          console.debug(
+            `[oauthService] Would revoke token for ${credential.oauthProvider} (not implemented)`
           );
         }
       } catch (error) {

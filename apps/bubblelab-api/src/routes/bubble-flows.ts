@@ -22,7 +22,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
-import { isValidBubbleTriggerEvent } from '@bubblelab/bubble-core';
+import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { BubbleFlowGeneratorWorkflow } from '@bubblelab/bubble-core';
 import {
   createBubbleFlowRoute,
@@ -61,8 +61,6 @@ setupErrorHandler(app);
 
 app.openapi(listBubbleFlowsRoute, async (c) => {
   const userId = getUserId(c);
-
-  console.log('listBubbleFlowsRoute', userId);
   // Fetch both bubble flows and user data in parallel
   const [flows, userData] = await Promise.all([
     db.query.bubbleFlows.findMany({
@@ -74,7 +72,9 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
         eventType: true,
         webhookExecutionCount: true,
         webhookFailureCount: true,
+        cronActive: true,
         createdAt: true,
+        cron: true,
         updatedAt: true,
         originalCode: true,
         bubbleParameters: true,
@@ -131,6 +131,8 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
       description: flow.description || undefined,
       eventType: flow.eventType,
       isActive: flow.webhooks[0]?.isActive ?? false,
+      cronActive: flow.cronActive || false,
+      cronSchedule: flow.cron || undefined,
       webhookExecutionCount: flow.webhookExecutionCount,
       webhookFailureCount: flow.webhookFailureCount,
       executionCount: executionCountMap.get(flow.id) || 0,
@@ -182,20 +184,6 @@ app.openapi(createBubbleFlowRoute, async (c) => {
   // Process and transpile the code for execution
   const processedCode = processUserCode(data.code);
 
-  console.debug('Inserting data:', {
-    name: data.name,
-    description: data.description,
-    code: processedCode.substring(0, 50) + '...',
-    originalCode: data.code.substring(0, 50) + '...',
-    bubbleParameters: validationResult.bubbleParameters
-      ? Object.keys(validationResult.bubbleParameters).length + ' bubbles'
-      : 'none',
-    eventType: data.eventType,
-    inputSchema: validationResult.inputSchema || {},
-    webhookPath: data.webhookPath,
-    webhookActive: data.webhookActive,
-  });
-
   const userId = getUserId(c);
   const [inserted] = await db
     .insert(bubbleFlows)
@@ -208,7 +196,10 @@ app.openapi(createBubbleFlowRoute, async (c) => {
       originalCode: data.code,
       bubbleParameters: validationResult.bubbleParameters || {},
       inputSchema: validationResult.inputSchema || {},
-      eventType: data.eventType,
+      eventType: validationResult.trigger?.type || 'webhook/http',
+      cron: validationResult.trigger?.cronSchedule || null,
+      cronActive: false,
+      defaultInputs: {},
     })
     .returning({ id: bubbleFlows.id });
 
@@ -222,6 +213,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
     message: 'BubbleFlow created successfully',
     inputSchema: validationResult.inputSchema || {},
     bubbleParameters: validationResult.bubbleParameters || {},
+    eventType: validationResult.trigger?.type || 'webhook/http',
     requiredCredentials,
   };
 
@@ -419,7 +411,6 @@ app.openapi(getBubbleFlowRoute, async (c) => {
   >;
 
   if (!bubbleParameters || Object.keys(bubbleParameters).length === 0) {
-    console.log('Updating bubble parameters from flow code');
     //Parse parameters
     const bubbleFactory = await getBubbleFactory();
     const script = new BubbleScript(flow.originalCode!, bubbleFactory);
@@ -449,6 +440,9 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     inputSchema: flow.inputSchema || {},
     metadata: flow.metadata || {},
     isActive: flow.webhooks[0]?.isActive ?? false,
+    cron: flow.cron || null,
+    cronActive: flow.cronActive || false,
+    defaultInputs: flow.defaultInputs || {},
     createdAt: flow.createdAt.toISOString(),
     updatedAt: flow.updatedAt.toISOString(),
     webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
@@ -729,15 +723,32 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
 // Validate BubbleFlow code
 app.openapi(validateBubbleFlowCodeRoute, async (c) => {
   try {
-    const { code, options, flowId, credentials } = c.req.valid('json');
+    const { code, options, flowId, credentials, defaultInputs, activateCron } =
+      c.req.valid('json');
     const userId = getUserId(c);
     const bubbleFactory = await getBubbleFactory();
 
     // If flowId is provided, verify user owns the flow
     let existingFlow = null;
+
     if (flowId) {
       existingFlow = await db.query.bubbleFlows.findFirst({
         where: and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)),
+        with: {
+          webhooks: {
+            columns: {
+              path: true,
+            },
+          },
+        },
+        columns: {
+          id: true,
+          cron: true,
+          cronActive: true,
+          defaultInputs: true,
+          bubbleParameters: true,
+          eventType: true,
+        },
       });
 
       if (!existingFlow) {
@@ -751,17 +762,65 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
+    if (
+      flowId &&
+      options &&
+      activateCron !== undefined &&
+      options.syncInputsWithFlow === false
+    ) {
+      // Just update the activation state of the cron
+      await db
+        .update(bubbleFlows)
+        .set({
+          cronActive: activateCron,
+        })
+        .where(eq(bubbleFlows.id, flowId));
+
+      return c.json(
+        {
+          valid: true,
+          success: true,
+          cronActive: activateCron,
+          error: '',
+          errors: [],
+          inputSchema: {},
+          bubbles: {},
+          eventType: existingFlow?.eventType || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
+          cron: existingFlow?.cron || null,
+          metadata: {
+            validatedAt: new Date().toISOString(),
+            codeLength: code?.length || 0,
+            strictMode: options?.strictMode ?? true,
+            flowUpdated: flowId ? true : false,
+          },
+          defaultInputs: existingFlow?.defaultInputs || {},
+          requiredCredentials: extractRequiredCredentials(
+            existingFlow?.bubbleParameters as Record<
+              string,
+              ParsedBubbleWithInfo
+            >
+          ),
+        },
+        200
+      );
+    }
+
     // Create a new BubbleFlowValidationTool instance
-    console.log('Starting bubble factory....');
     const result = await validateAndExtract(code, bubbleFactory);
 
-    // If validation is successful and flowId is provided, update the flow
-    if (result.valid && flowId && existingFlow) {
-      const processedCode = processUserCode(code);
-
+    // If validation is successful and flowId is provided, update the flow as well before returning the result
+    if (
+      result.valid &&
+      existingFlow &&
+      flowId &&
+      options?.syncInputsWithFlow === true
+    ) {
       // Prepare bubble parameters with credentials if provided
       let finalBubbleParameters = result.bubbleParameters || {};
-
       // If credentials are provided in the request, merge them into the bubble parameters
       if (credentials && Object.keys(credentials).length > 0) {
         finalBubbleParameters = mergeCredentialsIntoBubbleParameters(
@@ -769,22 +828,30 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           credentials
         );
       }
+      const cronExpression = result.trigger?.cronSchedule || null;
 
+      // Prepare update object
+      const updateData: Partial<typeof bubbleFlows.$inferSelect> = {
+        originalCode: code,
+        bubbleParameters: finalBubbleParameters,
+        inputSchema: result.inputSchema || {},
+        eventType: result.trigger?.type,
+        updatedAt: new Date(),
+        cron: cronExpression,
+        cronActive: activateCron,
+      };
+
+      // Only include defaultInputs if it's provided and not empty
+      if (defaultInputs && Object.keys(defaultInputs).length > 0) {
+        updateData.defaultInputs = defaultInputs;
+      }
       await db
         .update(bubbleFlows)
-        .set({
-          code: processedCode,
-          originalCode: code,
-          bubbleParameters: finalBubbleParameters,
-          inputSchema: result.inputSchema || {},
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(bubbleFlows.id, flowId));
-
-      console.log(`Updated BubbleFlow ${flowId} with new validation results`);
     }
 
-    // We need to extract the actual validation result from the data property
+    // Return the validation result based on if code itself is valid
     if (result.valid) {
       return c.json(
         {
@@ -792,6 +859,14 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           success: true,
           inputSchema: result.inputSchema || {},
           bubbles: result.bubbleParameters,
+          eventType: result.trigger?.type || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
+          cron: result.trigger?.cronSchedule || null,
+          cronActive: activateCron,
+          defaultInputs: defaultInputs || existingFlow?.defaultInputs || {},
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
@@ -813,6 +888,13 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           valid: false,
           success: false,
           inputSchema: result.inputSchema || {},
+          eventType: result.trigger?.type || 'webhook/http',
+          webhookPath: getWebhookUrl(
+            userId,
+            existingFlow?.webhooks?.[0]?.path || ''
+          ),
+          cron: result.trigger?.cronSchedule || null,
+          cronActive: existingFlow?.cronActive || false,
           error: result.errors?.join('; ') || 'Validation failed',
           errors: [result.errors?.join('; ') || 'Validation failed'],
           metadata: {
@@ -896,9 +978,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
         if (result.generatedCode && result.generatedCode.trim()) {
           try {
-            console.log(
-              '[API] Parsing bubble parameters from generated code...'
-            );
             const validationResult = await validateBubbleFlow(
               result.generatedCode
             );
@@ -911,13 +990,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 validationResult.bubbleParameters
               );
               actualIsValid = true;
-              console.log(
-                '[API] Successfully extracted bubble parameters:',
-                Object.keys(bubbleParameters).length,
-                'bubbles'
-              );
             } else {
-              console.log('[API] Validation failed:', validationResult.errors);
               // Keep the AI's validation result if our parsing failed
               actualIsValid = result.isValid;
             }
@@ -949,8 +1022,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }),
           event: 'generation_complete',
         });
-
-        console.log('[API] Generation complete:', bubbleParameters);
 
         // Send stream completion
         await stream.writeSSE({

@@ -45,7 +45,6 @@ export async function executeBubbleFlowViaWebhook(
 
   // Update webhook execution counters
   if (result.success) {
-    console.log('Updating bubble flow execution status to success');
     await db
       .update(bubbleFlows)
       .set({
@@ -53,7 +52,6 @@ export async function executeBubbleFlowViaWebhook(
       })
       .where(eq(bubbleFlows.id, bubbleFlowId));
   } else {
-    console.log('Updating bubble flow execution status to error');
     await db
       .update(bubbleFlows)
       .set({
@@ -121,6 +119,7 @@ export async function executeBubbleFlowWithTracking(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -141,6 +140,7 @@ export async function executeBubbleFlowWithTracking(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 
@@ -241,6 +241,7 @@ export async function executeBubbleFlowWithLiveStreaming(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -261,6 +262,7 @@ export async function executeBubbleFlowWithLiveStreaming(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 
@@ -377,6 +379,7 @@ export async function executeBubbleFlowWithLog(
         currentUsage +
         ', limit: ' +
         limit,
+      code: flow.originalCode,
     });
 
     return {
@@ -397,6 +400,7 @@ export async function executeBubbleFlowWithLog(
       bubbleFlowId,
       payload,
       status: 'running',
+      code: flow.originalCode,
     })
     .returning();
 

@@ -1,10 +1,13 @@
 import type {
   ParsedBubbleWithInfo,
   CredentialType,
+  BubbleTrigger,
 } from '@bubblelab/shared-schemas';
 import { validateScript } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
+import { BubbleInjector } from '../injection/BubbleInjector.js';
 import { BubbleFactory } from '@bubblelab/bubble-core';
+import { validateCronExpression } from '@bubblelab/shared-schemas';
 
 export interface ValidationResult {
   valid: boolean;
@@ -14,6 +17,7 @@ export interface ValidationResult {
 export interface ValidationAndExtractionResult extends ValidationResult {
   bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
   inputSchema?: Record<string, unknown>;
+  trigger?: BubbleTrigger;
   requiredCredentials?: Record<string, CredentialType[]>;
 }
 
@@ -77,15 +81,23 @@ export async function validateAndExtract(
     return validationResult;
   }
 
-  // If validation passes, extract bubble parameters
+  // After script validation passes, extract bubble parameters and validate trigger event
   try {
     const script = new BubbleScript(code, bubbleFactory);
+
+    // Step 4: Validate trigger event
+    const triggerEventErrors = validateTriggerEvent(script);
+    if (triggerEventErrors.length > 0) {
+      return {
+        valid: false,
+        errors: triggerEventErrors,
+      };
+    }
     const bubbleParameters = script.getParsedBubbles();
 
     // Extract required credentials from bubble parameters
     const requiredCredentials: Record<string, CredentialType[]> = {};
 
-    const { BubbleInjector } = await import('../injection/BubbleInjector.js');
     const injector = new BubbleInjector(script);
     const credentials = injector.findCredentials(bubbleParameters);
 
@@ -100,6 +112,7 @@ export async function validateAndExtract(
       ...validationResult,
       bubbleParameters,
       inputSchema: script.getPayloadJsonSchema() || {},
+      trigger: script.getBubbleTriggerEventType() || undefined,
       requiredCredentials:
         Object.keys(requiredCredentials).length > 0
           ? requiredCredentials
@@ -113,6 +126,29 @@ export async function validateAndExtract(
       errors: [errorMessage],
     };
   }
+}
+
+function validateTriggerEvent(bubbleScript: BubbleScript): string[] {
+  const errors: string[] = [];
+
+  const triggerEvent = bubbleScript.getBubbleTriggerEventType();
+  if (!triggerEvent) {
+    errors.push('Missing trigger event');
+  }
+  if (triggerEvent?.type === 'schedule/cron') {
+    if (!triggerEvent.cronSchedule) {
+      errors.push(
+        "Missing cron schedule, please define it with the readonly cronSchedule property inside the BubbleFlow class. Ex. readonly cronSchedule = '0 0 * * *';"
+      );
+    }
+    if (!validateCronExpression(triggerEvent.cronSchedule!).valid) {
+      errors.push(
+        "Invalid cron schedule, please define it with the readonly cronSchedule property inside the BubbleFlow class. Ex. readonly cronSchedule = '0 0 * * *';"
+      );
+    }
+  }
+
+  return errors;
 }
 
 /**

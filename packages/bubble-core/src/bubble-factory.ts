@@ -608,7 +608,7 @@ import {
   ServiceBubble,
   WorkflowBubble,
   ToolBubble,
-  
+
   // Service Bubbles
   HelloWorldBubble,
   AIAgentBubble,
@@ -626,13 +626,14 @@ import {
   RedditScrapeTool,
   InstagramTool,
   LinkedInTool,
-    
+
   // Types and utilities
   BubbleFactory,
   type BubbleClassWithMetadata,
   type BubbleContext,
   type BubbleTriggerEvent,
   type WebhookEvent,
+  type CronEvent,
 } from '@bubblelab/bubble-core';
 
 export interface Output {
@@ -640,7 +641,8 @@ export interface Output {
   message: string;
 }
 
-// Define your custom input interface
+// TRIGGER TYPE 1: Webhook HTTP Trigger
+// Define your custom input interface for webhook triggers
 export interface CustomWebhookPayload extends WebhookEvent {
 // TODO: Add your custom payload fields here
   input: string;
@@ -650,11 +652,42 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   async handle(payload: CustomWebhookPayload): Promise<Output> {
     // TODO: Implement your workflow logic here
     const { input } = payload;
-    
+
     return {
       message: \`Response from \${payload.path} (Request: \${payload.requestId})\`,
     };
   }
-}`;
+}
+
+// TRIGGER TYPE 2: Cron Schedule Trigger
+// For cron-based scheduled workflows, or any workflow that can be benefited from being scheduled, extend BubbleFlow with 'schedule/cron'
+// and define the cronSchedule property with a cron expression
+// Time is in utc timezone, so if you want to schedule for a specific timezone, you need to convert the timezone to utc before writing the cron expression
+/*
+export interface CustomCronPayload extends CronEvent {
+  // TODO: Add your custom payload fields here
+  input: string;
+}
+
+export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
+  // Define cron schedule using standard 5-part cron format:
+  // * * * * * = minute hour day-of-month month day-of-week
+  // Examples:
+  //   '0 0 * * *'     = Daily at midnight
+  //   '0 9 * * 1-5'   = Every weekday at 9am
+  //   '*/15 * * * *' = Every 15 minutes
+  //   '0 0 1 * *'     = First day of every month at midnight
+  readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
+
+  async handle(payload: CustomCronPayload): Promise<Output> {
+    // TODO: Implement your scheduled workflow logic here
+    const { input, cron } = payload;
+
+    return {
+      message: \`Cron job executed at \${payload.timestamp} with schedule: \${cron}\`,
+    };
+  }
+}
+*/`;
   }
 }

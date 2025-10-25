@@ -146,15 +146,11 @@ export async function verifyMonthlyLimit(
     }
 
     // Get user's subscription features from Clerk metadata (now populated by middleware)
-    console.log(
-      '[subscription-validation] clerkUser.publicMetadata',
-      clerkUser.publicMetadata
-    );
     const features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
       'base_usage',
     ];
 
-    console.log(
+    console.info(
       '[subscription-validation] verifyMonthlyLimit: features',
       features
     );
