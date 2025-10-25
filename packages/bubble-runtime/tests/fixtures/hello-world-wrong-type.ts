@@ -14,7 +14,7 @@ export class HelloWorldEnvFlow extends BubbleFlow<'webhook/http'> {
   async handle(payload: HelloWorldEnvFlowPayload) {
     const greeting = new HelloWorldBubble({
       message: payload.message,
-      name: '2',
+      name: 2,
     });
 
     return await greeting.action();
