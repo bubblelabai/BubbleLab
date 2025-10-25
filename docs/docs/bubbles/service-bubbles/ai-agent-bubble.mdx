@@ -37,7 +37,7 @@ const result = await new AIAgentBubble({
   <dd>The message or question to send to the AI agent</dd>
 
   <dt><code>images</code> <em>unknown[]</em> </dt>
-  <dd>Array of base64 encoded images to include with the message (for multimodal AI models). Example: [&#123;type: "base64", data: "base64...", mimeType: "image/png", description: "A beautiful image of a cat"&#125;] or [&#123;type: "url", url: "https://example.com/image.png", description: "A beautiful image of a cat"&#125;]</dd>
+  <dd>Array of base64 encoded images to include with the message (for multimodal AI models). Example: [&amp;#123;type: "base64", data: "base64...", mimeType: "image/png", description: "A beautiful image of a cat"&amp;#125;] or [&amp;#123;type: "url", url: "https://example.com/image.png", description: "A beautiful image of a cat"&amp;#125;]</dd>
 
   <dt><code>systemPrompt</code> <em>string</em> </dt>
   <dd>System prompt that defines the AI agents behavior and personality</dd>
@@ -52,7 +52,7 @@ const result = await new AIAgentBubble({
   <dd>Array of pre-registered tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool, instagram-tool). If using image models, set the tools to []</dd>
 
   <dt><code>customTools</code> <em>object[]</em> </dt>
-  <dd>Array of custom runtime-defined tools with their own schemas and functions. Use this to add domain-specific tools without pre-registration. Example: [&#123; name: "calculate-tax", description: "Calculates sales tax", schema: &#123; amount: z.number() &#125;, func: async (input) => &#123;...&#125; &#125;]</dd>
+  <dd>Array of custom runtime-defined tools with their own schemas and functions. Use this to add domain-specific tools without pre-registration. Example: [&amp;#123; name: "calculate-tax", description: "Calculates sales tax", schema: &amp;#123; amount: z.number() &amp;#125;, func: async (input) =&gt; &amp;#123;...&amp;#125; &amp;#125;]</dd>
 
   <dt><code>maxIterations</code> <em>number</em> </dt>
   <dd>Maximum number of iterations for the agent workflow, 2 iterations per turn of conversation</dd>
