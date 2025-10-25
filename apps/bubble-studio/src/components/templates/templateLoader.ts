@@ -80,6 +80,23 @@ export const TEMPLATES: TemplateDefinition[] = [
     isPopular: true,
   },
   {
+    id: 'content-creation',
+    name: 'Content Creation Trends (Firecrawl, Google Drive, Email)',
+    prompt:
+      'Use ResearchAgentTool to search trending content formats from TikTok/Reels/Shorts trend sites (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, save formatted markdown report to Google Drive, then email beautiful HTML summary with top ideas and metrics.',
+    code: contentCreationTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: true,
+  },
+  {
+    id: 'database-metrics',
+    name: 'Database Metrics Assistant (Postgres, Gmail)',
+    prompt:
+      'Scheduled daily flow report: Analyze PostgreSQL database schema, use AI data analyst agent with SQL query tools to autonomously explore database and answer natural language questions, perform comprehensive analysis across multiple queries, generate actionable insights with key metrics and trends, create dynamic HTML report based on findings, then email beautifully formatted report with data visualization and executive summary.',
+    code: databaseTemplate.templateCode,
+    category: 'Project Management',
+  },
+  {
     id: 'project-management',
     name: 'Project Management Assistant (Slack, Email)',
     prompt:
@@ -112,14 +129,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     code: githubScraperTemplate.templateCode,
     category: 'Lead Generation',
   },
-  {
-    id: 'database-metrics',
-    name: 'Database Metrics Assistant (Postgres, Gmail)',
-    prompt:
-      'Analyze PostgreSQL database schema from public tables, use AI to generate SQL query from natural language question, execute read-only query, generate insights with key metrics and trends, then email a beautiful HTML report with data visualization, executive summary, and query explanation.',
-    code: databaseTemplate.templateCode,
-    category: 'Project Management',
-  },
+
   {
     id: 'daily-news',
     name: 'Daily News Digest (Firecrawl, Email, Reddit)',
@@ -136,15 +146,6 @@ export const TEMPLATES: TemplateDefinition[] = [
       'List unread emails from past 24 hours using Gmail query, fetch full email details with headers and body content, use AI with JSON mode to classify and filter out marketing/automated emails, generate smart contextual replies for each important email matching original tone, then create Gmail drafts in correct threads with proper recipients.',
     code: gmailReplyTemplate.templateCode,
     category: 'Personal Assistant',
-  },
-  {
-    id: 'content-creation',
-    name: 'Content Creation Trends (Firecrawl, Google Drive, Email)',
-    prompt:
-      'Use ResearchAgentTool to search trending content formats from TikTok/Reels/Shorts trend sites (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, save formatted markdown report to Google Drive, then email beautiful HTML summary with top ideas and metrics.',
-    code: contentCreationTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: true,
   },
   {
     id: 'techweek-calendar',

@@ -179,7 +179,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   http: [],
   'get-bubble-details-tool': [],
   'list-bubbles-tool': [],
-  'sql-query-tool': [],
+  'sql-query-tool': [CredentialType.DATABASE_CRED],
   'chart-js-tool': [],
   'bubbleflow-validation-tool': [],
   'web-search-tool': [CredentialType.FIRECRAWL_API_KEY],

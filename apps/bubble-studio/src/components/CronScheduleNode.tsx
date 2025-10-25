@@ -112,7 +112,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   // Check if there are unsaved input changes (similar to useEditor pattern)
   const hasUnsavedInputChanges = useMemo(() => {
-    if (!flowId || Object.keys(executionInputs).length === 0) {
+    if (!flowId) {
       return false;
     }
     // Compare current inputValues with the flow's defaultInputs from executionInputs
@@ -345,21 +345,23 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
       {/* Header */}
       <div className="p-4 border-b border-neutral-600">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <div
-              className={`h-8 w-8 rounded-lg flex items-center justify-center ${isActive ? 'bg-purple-600' : 'bg-neutral-600'}`}
+              className={`h-8 w-8 flex-shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-purple-600' : 'bg-neutral-600'}`}
             >
               <Clock className="h-4 w-4 text-white" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-semibold text-neutral-100">
                 Cron Schedule
               </h3>
-              <p className="text-xs text-neutral-400">{flowName}</p>
+              <p className="text-xs text-neutral-400 truncate" title={flowName}>
+                {flowName}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Active/Inactive toggle using CronToggle component */}
             {flowId && (
               <CronToggle
