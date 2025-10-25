@@ -31,6 +31,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
     updateCronActive,
     updateDefaultInputs,
     updateCronSchedule,
+    updateEventType,
   } = useBubbleFlow(flowId);
 
   return useMutation({
@@ -75,6 +76,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         // Now update the validation results (bubbles, schema, credentials)
         updateBubbleParameters(result.bubbles);
         updateInputSchema(result.inputSchema);
+        updateEventType(result.eventType);
         updateCronSchedule(result.cron || '');
         updateRequiredCredentials(
           result.requiredCredentials as Record<string, CredentialType[]>

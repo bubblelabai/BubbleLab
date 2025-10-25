@@ -30,7 +30,7 @@ export class CronScheduler {
   constructor(options: CronSchedulerOptions = {}) {
     this.maxConcurrency = options.maxConcurrency ?? 4;
     this.jitterMs = options.jitterMs ?? 0;
-    this.tickIntervalMs = options.tickIntervalMs ?? 10000; // Default 1 minute
+    this.tickIntervalMs = options.tickIntervalMs ?? 60000; // Default 1 minute
     this.logger = options.logger ?? console;
     this.enabled = options.enabled ?? true;
   }

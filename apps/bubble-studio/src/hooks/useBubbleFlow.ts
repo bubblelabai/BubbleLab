@@ -13,6 +13,7 @@ interface UseBubbleFlowResult {
   updateCronActive: (cronActive: boolean) => void;
   updateDefaultInputs: (defaultInputs: Record<string, unknown>) => void;
   updateCronSchedule: (cronSchedule: string) => void;
+  updateEventType: (eventType: string) => void;
   updateCode: (code: string) => void;
   updateRequiredCredentials: (
     requiredCredentials: BubbleFlowDetailsResponse['requiredCredentials']
@@ -71,6 +72,23 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     [queryClient, flowId]
   );
 
+  const updateEventType = useCallback(
+    (eventType: string) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            eventType,
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
   const updateDefaultInputs = useCallback(
     (defaultInputs: Record<string, unknown>) => {
       if (!flowId) return;
@@ -200,6 +218,7 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     updateCronSchedule,
     updateInputSchema,
     updateBubbleParameters,
+    updateEventType,
     updateCode,
     updateRequiredCredentials,
     syncWithBackend,

@@ -52,7 +52,7 @@ export const useFlowGeneration = () => {
       // The mutation will optimistically update both the flow list and individual flow cache
       const createResult = await createBubbleFlowMutation.mutateAsync({
         name: getFlowNameFromCode(codeToUse),
-        description: 'Created from AI Generated Code',
+        description: 'Created from prompt: ' + prompt,
         code: codeToUse,
         prompt: prompt || '',
         eventType: 'webhook/http',
