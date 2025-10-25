@@ -202,7 +202,7 @@ export function getSimplifiedSchedule(parts: CronParts): string {
  */
 export function convertLocalPartsToUtcCron(
   parts: CronParts,
-  timezone: string
+  _timezone: string
 ): { cron: string; warning?: string } {
   // For minute/hour intervals, no timezone conversion needed
   if (parts.frequency === 'minute' || parts.frequency === 'hour') {
@@ -225,7 +225,7 @@ export function convertLocalPartsToUtcCron(
   const utcMinute = parts.minute;
 
   // Handle day shifts for weekly/monthly
-  let deltaDays = 0;
+  const deltaDays = 0;
   let warning: string | undefined;
 
   if (parts.frequency === 'week') {
@@ -271,7 +271,7 @@ export function convertLocalPartsToUtcCron(
  */
 export function convertUtcCronToLocalParts(
   cron: string,
-  timezone: string
+  _timezone: string
 ): ConversionResult {
   const utcParts = parseCronToParts(cron);
 

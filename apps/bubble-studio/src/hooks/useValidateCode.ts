@@ -68,7 +68,6 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         toast.dismiss(context.loadingToastId);
       }
 
-      console.log('DONE VALIDATING1');
       // Update visualizer with bubbles from validation
       if (
         result.valid &&
@@ -109,47 +108,12 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       if (result.valid) {
         // Show success toast with bubble count (only if not a cron activation)
         if (variables.activateCron === undefined) {
-          const bubbleCount = result.bubbleCount || 0;
-          toast.success(
-            `✅ Code validation successful! Found ${bubbleCount} bubble${bubbleCount !== 1 ? 's' : ''}.`,
-            {
-              autoClose: 3000,
-            }
-          );
-
           // Show detailed info in a separate toast
           if (result.bubbles && Object.keys(result.bubbles).length > 0) {
-            const bubbleDetails = Object.values(result.bubbles)
-              .map(
-                (bubble, index) =>
-                  `${index + 1}. ${bubble.variableName} (${bubble.bubbleName})`
-              )
-              .join('\n');
-
-            toast.info(`Bubbles found:\n${bubbleDetails}`, {
-              autoClose: 8000,
-              style: {
-                whiteSpace: 'pre-line',
-                fontSize: '12px',
-              },
-            });
+            // Bubble details are available but not currently displayed
+            // Could be used for future detailed toast notifications
           }
-
-          // Show metadata toast
-          toast.info(
-            `Validation completed at ${new Date(result.metadata.validatedAt).toLocaleTimeString()}\n` +
-              `Code: ${result.metadata.codeLength} characters\n` +
-              `Strict mode: ${result.metadata.strictMode ? 'Yes' : 'No'}`,
-            {
-              autoClose: 5000,
-              style: {
-                whiteSpace: 'pre-line',
-                fontSize: '12px',
-              },
-            }
-          );
         }
-        console.log('DONE VALIDATING3');
         executionState.stopValidation();
       } else {
         // Show error toast with validation errors
