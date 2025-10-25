@@ -1,6 +1,5 @@
 import { Clock } from 'lucide-react';
 import {
-  getUserTimeZone,
   convertUtcCronToLocalParts,
   getSimplifiedSchedule,
 } from '../utils/cronUtils';
