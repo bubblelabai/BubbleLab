@@ -71,7 +71,13 @@ export type StreamingEvent =
     }
   | {
       type: 'tool_complete';
-      data: { callId: string; tool: string; output: unknown; duration: number };
+      data: {
+        tool: string;
+        input: unknown;
+        output: unknown;
+        duration: number;
+        callId: string;
+      };
     }
   | { type: 'iteration_start'; data: { iteration: number } }
   | {

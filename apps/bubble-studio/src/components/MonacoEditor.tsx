@@ -29,9 +29,7 @@ export function MonacoEditor() {
       console.log('📦 Loading Zod types from CDN...');
 
       // Try multiple CDN sources for Zod types
-      const cdnUrls = [
-        'https://cdn.jsdelivr.net/npm/zod@4.1.12/lib/index.d.ts',
-      ];
+      const cdnUrls = ['https://cdn.jsdelivr.net/npm/zod@4.1.12/+esm'];
 
       let zodTypes: string | null = null;
 

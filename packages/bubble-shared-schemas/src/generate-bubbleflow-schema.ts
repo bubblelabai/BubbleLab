@@ -28,6 +28,38 @@ export const generateBubbleFlowCodeResponseSchema = z.object({
     description: 'Required credentials for the bubbles in the generated code',
   }),
 });
+
+/**
+ * Schema for the result of BubbleFlow generation
+ * Used by the BubbleFlowGeneratorWorkflow
+ */
+export const GenerationResultSchema = z.object({
+  generatedCode: z
+    .string()
+    .describe('The generated BubbleFlow TypeScript code'),
+  isValid: z.boolean().describe('Whether the generated code is valid'),
+  success: z.boolean(),
+  error: z.string(),
+  flowId: z.number().optional().openapi({
+    description: 'ID of the generated BubbleFlow',
+    example: 123,
+  }),
+  toolCalls: z
+    .array(z.unknown())
+    .describe('The tool calls made by the AI agent'),
+  summary: z
+    .string()
+    .default('')
+    .describe('High-level instructions for using the validated flow'),
+  inputsSchema: z
+    .string()
+    .default('')
+    .describe('JSON Schema (string) representing the inputs of the flow'),
+  bubblesUsed: z
+    .array(z.string())
+    .default([])
+    .describe('List of bubble names used in the generated flow'),
+});
 // POST /bubbleflow-template/data-analyst - Generate template from description
 export const generateBubbleFlowTemplateSchema = z
   .object({
@@ -246,6 +278,7 @@ export const bubbleFlowTemplateResponseSchema = z
       description: 'ISO timestamp when the template was last updated',
       example: '2025-01-15T10:30:00.000Z',
     }),
+
     webhook: z
       .object({
         id: z.number().openapi({ description: 'Webhook ID', example: 456 }),
@@ -280,3 +313,4 @@ export type GenerateDocumentGenerationTemplateRequest = z.infer<
 export type BubbleFlowTemplateResponse = z.infer<
   typeof bubbleFlowTemplateResponseSchema
 >;
+export type GenerationResult = z.infer<typeof GenerationResultSchema>;

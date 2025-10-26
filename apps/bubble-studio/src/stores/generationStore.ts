@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { useUIStore } from '@/stores/uiStore';
+import { GenerationResult } from '@bubblelab/shared-schemas';
+
 /**
  * Generation Store - Flow Generation State
  *
@@ -31,6 +32,11 @@ interface GenerationStore {
    */
   isStreaming: boolean;
 
+  /**
+   * Generation result with summary and stats (null when not available)
+   */
+  generationResult: GenerationResult | null;
+
   // ============= Actions =============
 
   /**
@@ -42,6 +48,11 @@ interface GenerationStore {
    * Set the selected preset
    */
   setSelectedPreset: (preset: number) => void;
+
+  /**
+   * Set the generation result (after successful generation)
+   */
+  setGenerationResult: (result: GenerationResult | null) => void;
 
   /**
    * Start streaming (generation in progress)
@@ -97,11 +108,14 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
   generationPrompt: '',
   selectedPreset: -1,
   isStreaming: false,
+  generationResult: null,
 
   // Actions
   setGenerationPrompt: (prompt) => set({ generationPrompt: prompt }),
 
   setSelectedPreset: (preset) => set({ selectedPreset: preset }),
+
+  setGenerationResult: (result) => set({ generationResult: result }),
 
   startStreaming: () => set({ isStreaming: true }),
 
@@ -121,6 +135,7 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
       generationPrompt: '',
       selectedPreset: -1,
       isStreaming: false,
+      generationResult: null,
     }),
 }));
 

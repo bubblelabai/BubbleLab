@@ -4,7 +4,11 @@ import {
   hasTemplate,
 } from '@/components/templates/templateLoader';
 import { toast } from 'react-toastify';
-import { TokenUsage, StreamingEvent } from '@bubblelab/shared-schemas';
+import {
+  TokenUsage,
+  StreamingEvent,
+  GenerationResult,
+} from '@bubblelab/shared-schemas';
 import { trackWorkflowGeneration } from '@/services/analytics';
 
 // Extended type for generation streaming events (includes standard StreamingEvent + generation-specific events)
@@ -46,8 +50,13 @@ export const useFlowGeneration = () => {
     selectFlow,
     showEditorPanel,
   } = useUIStore();
-  const { startGenerationFlow, stopGenerationFlow, setGenerationPrompt } =
-    useGenerationStore();
+  const {
+    startGenerationFlow,
+    stopGenerationFlow,
+    setGenerationPrompt,
+    setGenerationResult,
+  } = useGenerationStore();
+
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const executionState = useExecutionStore(currentFlowId);
   const { updateBubbleParameters: updateCurrentBubbleParameters } =
@@ -55,7 +64,8 @@ export const useFlowGeneration = () => {
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const createFlowFromGeneration = async (
     generatedCode?: string,
-    prompt?: string
+    prompt?: string,
+    fromPearl: boolean = false
   ): Promise<number | null> => {
     const codeToUse = generatedCode;
     console.log('🚀 [createFlowFromGeneration] Starting flow creation...');
@@ -67,7 +77,9 @@ export const useFlowGeneration = () => {
     }
 
     try {
-      setOutput('Creating flow and preparing the visuals...');
+      if (!fromPearl) {
+        setOutput('Creating flow and preparing the visuals...');
+      }
 
       // Create the BubbleFlow using the mutation hook
       // The mutation will optimistically update both the flow list and individual flow cache
@@ -102,21 +114,21 @@ export const useFlowGeneration = () => {
       executionState.setAllCredentials({});
       executionState.setInputs({});
 
-      // Empty flow visualizer
-      // Clear live output
-      setOutput('');
-
-      // Flow diagram will now be visible alongside the editor
-      const successMessage = `\n✅ Flow "${getFlowNameFromCode(codeToUse)}" created and selected!\n🎯 Flow diagram is now visible alongside the editor!\n🚀 Execute Flow section is ready - configure credentials and run!`;
-
-      setOutput((prev) => prev + successMessage);
-
-      console.log(
-        '✅ [createFlowFromGeneration] Flow creation completed successfully'
-      );
-
-      // Refetch subscription to update token usage after generation
-      refetchSubscriptionStatus();
+      // If we are not generating from prompt, no confirmation is needed
+      if (!fromPearl) {
+        console.log(
+          '[createFlowFromGeneration] No generation result, navigating to flow IDE route'
+        );
+        navigate({
+          to: '/flow/$flowId',
+          params: { flowId: bubbleFlowId.toString() },
+        });
+        stopGenerationFlow();
+        setOutput('');
+      } else {
+        // Refetch subscription to update token usage after generation
+        refetchSubscriptionStatus();
+      }
 
       // Return the flow ID for navigation
       return bubbleFlowId;
@@ -162,14 +174,14 @@ export const useFlowGeneration = () => {
             generationPrompt.trim()
           );
 
-          // Navigate to the flow IDE route after successful creation
-          if (flowId) {
-            stopGenerationFlow();
-            navigate({
-              to: '/flow/$flowId',
-              params: { flowId: flowId.toString() },
-            });
-          }
+          // // Navigate to the flow IDE route after successful creation
+          // if (flowId) {
+          //   stopGenerationFlow();
+          //   navigate({
+          //     to: '/flow/$flowId',
+          //     params: { flowId: flowId.toString() },
+          //   });
+          // }
           return;
         }
       } catch (error) {
@@ -209,15 +221,7 @@ export const useFlowGeneration = () => {
         throw new Error('Failed to get response reader');
       }
 
-      let generatedResult: {
-        generatedCode?: string;
-        isValid?: boolean;
-        success?: boolean;
-        error?: string;
-        bubbleParameters?: Record<string, unknown>;
-        requiredCredentials?: Record<string, string[]>;
-        inputsSchema?: string;
-      } = {};
+      let generatedResult: GenerationResult | undefined = undefined;
 
       let buffer = '';
 
@@ -260,9 +264,13 @@ export const useFlowGeneration = () => {
                   setOutput((prev) => {
                     const lines = prev.split('\n');
                     for (let i = lines.length - 1; i >= 0; i--) {
-                      if (lines[i] && lines[i].includes('Pearl is analyzing')) {
+                      if (
+                        lines[i] &&
+                        lines[i].includes('...') &&
+                        lines[i].toLowerCase().includes('analyzing')
+                      ) {
                         lines[i] = '✅ Pearl analysis complete';
-                        break;
+                        return lines.join('\n');
                       }
                     }
                     return lines.join('\n');
@@ -285,32 +293,23 @@ export const useFlowGeneration = () => {
                       break;
                     case 'get-bubble-details-tool': {
                       let bubbleName: string | undefined;
-                      if (toolInput) {
-                        // Check if input has nested 'input' field with JSON string
-                        if (typeof toolInput.input === 'string') {
-                          try {
-                            const parsed = JSON.parse(
-                              toolInput.input
-                            ) as Record<string, unknown>;
-                            bubbleName = parsed.bubbleName as
-                              | string
-                              | undefined;
-                          } catch {
-                            bubbleName = toolInput.bubbleName as
-                              | string
-                              | undefined;
-                          }
-                        } else {
-                          bubbleName = toolInput.bubbleName as
-                            | string
-                            | undefined;
-                        }
-                      }
+                      bubbleName = (
+                        eventData.data.input as
+                          | { data: { bubbleName: string } }
+                          | undefined
+                      )?.data.bubbleName;
                       toolDesc = `${AI_NAME} is understanding ${bubbleName || 'bubble'} capabilities`;
                       break;
                     }
                     case 'bubbleflow-validation':
+                    case 'bubbleflow-validation-tool':
                       toolDesc = `${AI_NAME} is validating generated code`;
+                      break;
+                    case 'validation-agent':
+                      toolDesc = `${AI_NAME} is refining code`;
+                      break;
+                    case 'summary-agent':
+                      toolDesc = `${AI_NAME} is generating summary`;
                       break;
                     default:
                       toolDesc = `${AI_NAME} is using ${eventData.data.tool}`;
@@ -327,19 +326,59 @@ export const useFlowGeneration = () => {
                     ? ` (${eventData.data.duration}ms)`
                     : '';
                   let completionMsg = '';
+                  let searchPattern = ''; // Pattern to find the loading line to replace
 
                   switch (eventData.data.tool) {
                     case 'bubble-discovery':
                       completionMsg = `✅ ${AI_NAME} discovered available bubbles${duration}`;
+                      searchPattern = 'discovering available bubbles';
                       break;
                     case 'template-generation':
                       completionMsg = `✅ ${AI_NAME} created code template${duration}`;
+                      searchPattern = 'creating code template';
                       break;
-                    case 'get-bubble-details-tool':
-                      completionMsg = `✅ ${AI_NAME} loaded bubble details${duration}`;
+                    case 'get-bubble-details-tool': {
+                      // Extract bubble name from input
+                      let bubbleName: string | undefined;
+                      const toolCompleteInput = eventData.data.input as
+                        | Record<string, unknown>
+                        | undefined;
+
+                      if (toolCompleteInput) {
+                        if (typeof toolCompleteInput.input === 'string') {
+                          try {
+                            const parsed = JSON.parse(
+                              toolCompleteInput.input
+                            ) as Record<string, unknown>;
+                            bubbleName = parsed.bubbleName as
+                              | string
+                              | undefined;
+                          } catch {
+                            // Ignore parse errors
+                          }
+                        } else if (
+                          typeof toolCompleteInput.bubbleName === 'string'
+                        ) {
+                          bubbleName = toolCompleteInput.bubbleName;
+                        }
+                      }
+
+                      completionMsg = `✅ ${AI_NAME} loaded ${bubbleName || 'bubble'} details${duration}`;
+                      searchPattern = 'understanding';
                       break;
+                    }
                     case 'bubbleflow-validation':
+                    case 'bubbleflow-validation-tool':
                       completionMsg = `✅ ${AI_NAME} completed code validation${duration}`;
+                      searchPattern = 'validating generated code';
+                      break;
+                    case 'validation-agent':
+                      completionMsg = `✅ ${AI_NAME} refined code successfully${duration}`;
+                      searchPattern = 'refining code';
+                      break;
+                    case 'summary-agent':
+                      completionMsg = `✅ ${AI_NAME} generated summary${duration}`;
+                      searchPattern = 'generating summary';
                       break;
                     default:
                       if (
@@ -347,10 +386,11 @@ export const useFlowGeneration = () => {
                         eventData.data.duration > 1000
                       ) {
                         completionMsg = `✅ ${AI_NAME} completed tool${duration}`;
+                        searchPattern = eventData.data.tool;
                       }
                   }
 
-                  if (completionMsg) {
+                  if (completionMsg && searchPattern) {
                     setOutput((prev) => {
                       const lines = prev.split('\n');
                       // Find and replace the specific tool's loading line
@@ -358,12 +398,15 @@ export const useFlowGeneration = () => {
                         if (
                           lines[i] &&
                           lines[i].includes('...') &&
-                          lines[i].includes(AI_NAME)
+                          lines[i]
+                            .toLowerCase()
+                            .includes(searchPattern.toLowerCase())
                         ) {
                           lines[i] = completionMsg;
                           return lines.join('\n');
                         }
                       }
+                      // If no matching line found, append instead
                       return prev + `${completionMsg}\n`;
                     });
                   }
@@ -381,19 +424,40 @@ export const useFlowGeneration = () => {
                   break;
 
                 case 'iteration_complete':
-                  // Only show for later iterations
+                  console.log(
+                    '🔍 iteration_complete event received:',
+                    eventData.data
+                  );
+                  // Replace refinement loading line with completion
                   if (eventData.data.iteration > 1) {
-                    setOutput(
-                      (prev) =>
+                    setOutput((prev) => {
+                      const lines = prev.split('\n');
+                      for (let i = lines.length - 1; i >= 0; i--) {
+                        if (
+                          lines[i] &&
+                          lines[i].includes('...') &&
+                          lines[i].toLowerCase().includes('refining') &&
+                          lines[i].includes(
+                            `iteration ${eventData.data.iteration}`
+                          )
+                        ) {
+                          lines[i] =
+                            `✅ ${AI_NAME} completed refinement iteration ${eventData.data.iteration}`;
+                          return lines.join('\n');
+                        }
+                      }
+                      // If no matching line found, append instead
+                      return (
                         prev +
                         `✅ ${AI_NAME} completed refinement iteration ${eventData.data.iteration}\n`
-                    );
+                      );
+                    });
                   }
                   break;
 
                 case 'generation_complete': {
                   // Final result with generated code
-                  generatedResult = eventData.data;
+                  generatedResult = eventData.data as GenerationResult;
                   const codeLength = eventData.data?.generatedCode?.length || 0;
                   const bubbleCount = eventData.data?.bubbleParameters
                     ? Object.keys(eventData.data.bubbleParameters).length
@@ -450,19 +514,20 @@ export const useFlowGeneration = () => {
       }
 
       // Process the final result
+      if (!generatedResult) {
+        throw new Error(
+          'Pearl could not process your request at the moment. Please try again later.'
+        );
+      }
       console.log('[DEBUG] Full generatedResult:', generatedResult);
       if (generatedResult.success && generatedResult.generatedCode) {
         // Set the generated code in the editor
 
         // Show summary without the actual code
-        const bubbleCount = generatedResult.bubbleParameters
-          ? Object.keys(generatedResult.bubbleParameters).length
-          : 0;
         const validationStatus = generatedResult.isValid ? 'Valid' : 'Failed';
 
         let finalOutput = `\nGeneration Complete!\n`;
         finalOutput += `   Code: ${generatedResult.generatedCode.length} chars\n`;
-        finalOutput += `   Bubbles: ${bubbleCount}\n`;
         finalOutput += `   Validation: ${validationStatus}\n`;
 
         if (!generatedResult.isValid && generatedResult.error) {
@@ -501,19 +566,27 @@ export const useFlowGeneration = () => {
         // Auto-create the flow after successful code generation
         const flowId = await createFlowFromGeneration(
           generatedResult.generatedCode,
-          savedPrompt
+          savedPrompt,
+          true
         );
 
-        // Navigate to the flow IDE route after successful creation
-        if (flowId) {
-          stopGenerationFlow();
-          navigate({
-            to: '/flow/$flowId',
-            params: { flowId: flowId.toString() },
-          });
+        // Store generation result for display in overlay (don't navigate yet)
+        if (!flowId) {
+          throw new Error(
+            `Pearl failed to create the flow because ${generatedResult.error}. Please try again later.`
+          );
         }
+
+        // Now set the COMPLETE result with all required fields
+        setGenerationResult({
+          ...generatedResult,
+          flowId: flowId,
+        });
       } else {
-        throw new Error(generatedResult.error);
+        throw new Error(
+          generatedResult?.error ||
+            'Pearl failed to generate the workflow. Please try again later.'
+        );
       }
     } catch (error) {
       const errorMessage =
@@ -537,7 +610,6 @@ export const useFlowGeneration = () => {
       });
     } finally {
       // Always clear streaming state and generation info
-      stopGenerationFlow();
       setGenerationPrompt('');
     }
   };
