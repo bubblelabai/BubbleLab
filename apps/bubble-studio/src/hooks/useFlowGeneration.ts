@@ -557,7 +557,7 @@ export const useFlowGeneration = () => {
           prompt: savedPrompt,
           templateId: template?.id,
           templateName: template?.name,
-          generatedBubbleCount: bubbleCount,
+          generatedBubbleCount: generatedResult.bubblesUsed.length,
           generatedCodeLength: generatedResult.generatedCode.length,
           generationDuration: Date.now() - generationStartTime,
           success: true,
