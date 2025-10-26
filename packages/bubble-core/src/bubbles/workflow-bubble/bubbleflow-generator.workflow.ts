@@ -144,7 +144,6 @@ const VALIDATION_PROCESS = `CRITICAL VALIDATION PROCESS:
 7. NEVER provide code that has validation errors - keep fixing until it's completely error-free
 8. IMPORTANT: Use .action() on the to call the bubble, (this is the only way to run a bubble) - NEVER use runBubble() or any other method
 
-DO NOT ADD any imports, do not add import zod.
 Only return the final TypeScript code that passes validation. No explanations or markdown formatting.`;
 
 /**

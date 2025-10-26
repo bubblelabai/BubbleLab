@@ -5,7 +5,7 @@ export const AvailableModels = z.enum([
   // OpenAI models
   'openai/gpt-5',
   'openai/gpt-5-mini',
-  'openai/gpt-o4-mini',
+  'openai/gpt-4o-mini',
   'openai/gpt-4o',
   // Google Gemini models
   'google/gemini-2.5-pro',

@@ -748,28 +748,12 @@ export default function LiveOutput({
                       </div>
                     )}
 
-                    {/* Payload */}
-                    {execution.payload &&
-                      Object.keys(execution.payload).length > 0 && (
-                        <details
-                          className="mb-3"
-                          open={execution.status === 'success'}
-                        >
-                          <summary
-                            className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Execution Payload
-                          </summary>
-                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                            {renderJson(execution.payload)}
-                          </pre>
-                        </details>
-                      )}
-
                     {/* Result */}
                     {execution.result && (
-                      <details className="mb-3">
+                      <details
+                        className="mb-3"
+                        open={execution.status === 'success'}
+                      >
                         <summary
                           className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
                           onClick={(e) => e.stopPropagation()}
@@ -781,6 +765,22 @@ export default function LiveOutput({
                         </pre>
                       </details>
                     )}
+
+                    {/* Payload */}
+                    {execution.payload &&
+                      Object.keys(execution.payload).length > 0 && (
+                        <details className="mb-3">
+                          <summary
+                            className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Execution Payload
+                          </summary>
+                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                            {renderJson(execution.payload)}
+                          </pre>
+                        </details>
+                      )}
                   </div>
                 ))}
               </div>

@@ -26,27 +26,95 @@ export type TokenUsage = z.infer<typeof TokenUsageSchema>;
 
 export const ExecutionSummarySchema = z
   .object({
+    result: z.any().optional().openapi({
+      description: 'Execution result',
+      example: 'Execution completed successfully',
+    }),
     totalDuration: z.number().openapi({
       description: 'Total execution duration in milliseconds',
       example: 1500,
     }),
-    lineExecutionCount: z.number().openapi({
+    lineExecutionCount: z.number().optional().openapi({
       description: 'Number of lines executed',
       example: 25,
     }),
-    bubbleExecutionCount: z.number().openapi({
+    bubbleExecutionCount: z.number().optional().openapi({
       description: 'Number of bubbles executed',
       example: 5,
     }),
-    errorCount: z.number().openapi({
+    errorCount: z.number().optional().openapi({
       description: 'Number of errors encountered',
       example: 0,
     }),
-    warningCount: z.number().openapi({
+    warningCount: z.number().optional().openapi({
       description: 'Number of warnings encountered',
       example: 1,
     }),
-    averageLineExecutionTime: z.number().openapi({
+    errors: z
+      .array(
+        z.object({
+          message: z.string().openapi({
+            description: 'Error message',
+            example: 'Failed to execute bubble',
+          }),
+          timestamp: z.number().openapi({
+            description: 'Error timestamp (Unix timestamp)',
+            example: 1703123457000,
+          }),
+          bubbleName: z.string().optional().openapi({
+            description: 'Name of the bubble that caused the error',
+            example: 'AIAgentBubble',
+          }),
+          variableId: z.number().optional().openapi({
+            description: 'Variable ID associated with the error',
+            example: 1,
+          }),
+          lineNumber: z.number().optional().openapi({
+            description: 'Line number where the error occurred',
+            example: 15,
+          }),
+          additionalData: z.any().optional().openapi({
+            description: 'Additional error details',
+          }),
+        })
+      )
+      .optional()
+      .openapi({
+        description: 'Array of errors encountered during execution',
+      }),
+    warnings: z
+      .array(
+        z.object({
+          message: z.string().openapi({
+            description: 'Warning message',
+            example: 'Deprecated API usage detected',
+          }),
+          timestamp: z.number().openapi({
+            description: 'Warning timestamp (Unix timestamp)',
+            example: 1703123457000,
+          }),
+          bubbleName: z.string().optional().openapi({
+            description: 'Name of the bubble that caused the warning',
+            example: 'HttpBubble',
+          }),
+          variableId: z.number().optional().openapi({
+            description: 'Variable ID associated with the warning',
+            example: 2,
+          }),
+          lineNumber: z.number().optional().openapi({
+            description: 'Line number where the warning occurred',
+            example: 20,
+          }),
+          additionalData: z.any().optional().openapi({
+            description: 'Additional warning details',
+          }),
+        })
+      )
+      .optional()
+      .openapi({
+        description: 'Array of warnings encountered during execution',
+      }),
+    averageLineExecutionTime: z.number().optional().openapi({
       description: 'Average execution time per line in milliseconds',
       example: 60,
     }),
@@ -67,6 +135,7 @@ export const ExecutionSummarySchema = z
           }),
         })
       )
+      .optional()
       .openapi({
         description: 'Array of the slowest executing lines',
       }),
@@ -74,15 +143,17 @@ export const ExecutionSummarySchema = z
       description:
         'Peak memory usage during execution (NodeJS.MemoryUsage type)',
     }), // NodeJS.MemoryUsage type
-    startTime: z.number().openapi({
+    startTime: z.number().optional().openapi({
       description: 'Execution start timestamp (Unix timestamp)',
       example: 1703123456789,
     }),
-    endTime: z.number().openapi({
+    endTime: z.number().optional().openapi({
       description: 'Execution end timestamp (Unix timestamp)',
       example: 1703123458289,
     }),
-    tokenUsage: TokenUsageSchema,
+    tokenUsage: TokenUsageSchema.optional().openapi({
+      description: 'Token usage during execution',
+    }),
     tokenUsageByModel: z
       .record(z.string(), TokenUsageSchema.omit({ modelName: true }))
       .optional()

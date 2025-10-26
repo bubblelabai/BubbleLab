@@ -569,9 +569,6 @@ export class BubbleLogger {
 
     const errorLogs = this.logs.filter((log) => log.level >= LogLevel.ERROR);
     const warningLogs = this.logs.filter((log) => log.level === LogLevel.WARN);
-    const lineLogs = this.logs.filter(
-      (log) => log.metadata.lineNumber !== undefined
-    );
 
     // Calculate average line execution time from statistics
     let totalExecutionTime = 0;
@@ -582,8 +579,6 @@ export class BubbleLogger {
       totalExecutionCount += stats.count;
     }
 
-    const averageLineExecutionTime =
-      totalExecutionCount > 0 ? totalExecutionTime / totalExecutionCount : 0;
     // Find slowest lines using max from statistics
     const slowestLines: Array<{
       lineNumber: number;
@@ -616,19 +611,29 @@ export class BubbleLogger {
       tokenUsageByModel[modelName] = usage;
     }
 
+    // Extract errors and warnings with details
+    const errors = errorLogs.map((log) => ({
+      message: log.message,
+      timestamp: log.timestamp,
+      bubbleName: log.metadata.bubbleName,
+      variableId: log.metadata.variableId,
+      lineNumber: log.metadata.lineNumber,
+      additionalData: log.metadata.additionalData,
+    }));
+
+    const warnings = warningLogs.map((log) => ({
+      message: log.message,
+      timestamp: log.timestamp,
+      bubbleName: log.metadata.bubbleName,
+      variableId: log.metadata.variableId,
+      lineNumber: log.metadata.lineNumber,
+      additionalData: log.metadata.additionalData,
+    }));
+
     return {
       totalDuration,
-      lineExecutionCount: lineLogs.length,
-      bubbleExecutionCount: this.logs.filter(
-        (log) => log.metadata.operationType === 'bubble_execution'
-      ).length,
-      errorCount: errorLogs.length,
-      warningCount: warningLogs.length,
-      averageLineExecutionTime,
-      slowestLines: slowestLines.slice(0, 10), // Top 10 slowest lines
-      memoryPeakUsage: this.peakMemoryUsage,
-      startTime: this.startTime,
-      endTime,
+      errors,
+      warnings,
       tokenUsage: this.getTokenUsage(), // Aggregated token usage across all models
       tokenUsageByModel, // Per-model breakdown
     };

@@ -601,6 +601,7 @@ export class BubbleFactory {
     const className = options?.className || 'GeneratedFlow';
 
     return `
+import {z} from 'zod';
 import {
   // Base classes
   BubbleFlow,

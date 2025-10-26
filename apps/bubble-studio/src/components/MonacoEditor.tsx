@@ -22,6 +22,311 @@ export function MonacoEditor() {
   );
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const { data: selectedFlow } = useBubbleFlow(selectedFlowId);
+
+  // Helper function to load Zod types from CDN
+  const loadZodTypes = async (monacoInstance: typeof monaco) => {
+    try {
+      console.log('📦 Loading Zod types from CDN...');
+
+      // Try multiple CDN sources for Zod types
+      const cdnUrls = [
+        'https://cdn.jsdelivr.net/npm/zod@4.1.12/lib/index.d.ts',
+      ];
+
+      let zodTypes: string | null = null;
+
+      for (const url of cdnUrls) {
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            zodTypes = await response.text();
+            console.log(`✅ Loaded Zod types from ${url}`);
+            break;
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to load from ${url}:`, error);
+        }
+      }
+
+      if (zodTypes) {
+        // Add Zod types to Monaco
+        monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+          zodTypes,
+          'file:///node_modules/zod/index.d.ts'
+        );
+        console.log('✅ Successfully loaded Zod types');
+      } else {
+        // Try loading from ES module as fallback
+        try {
+          console.log('🔄 Trying to load Zod from ES module...');
+          const esmResponse = await fetch(
+            'https://cdn.jsdelivr.net/npm/zod@4.1.12/+esm'
+          );
+          if (esmResponse.ok) {
+            // Extract type information from the ES module (basic approach)
+            const moduleTypes = `
+declare module 'zod' {
+  export * from 'zod/lib/index.d.ts';
+}
+`;
+            monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+              moduleTypes,
+              'file:///node_modules/zod/index.d.ts'
+            );
+            console.log('✅ Loaded Zod from ES module');
+          }
+        } catch (esmError) {
+          console.warn('⚠️ Failed to load from ES module:', esmError);
+        }
+      }
+
+      if (!zodTypes) {
+        // Fallback: Create comprehensive Zod type definitions
+        const basicZodTypes = `
+declare module 'zod' {
+  export interface ZodType<Output = any, Def = any, Input = Output> {
+    _output: Output;
+    _input: Input;
+    _def: Def;
+    parse(input: unknown): Output;
+    safeParse(input: unknown): { success: true; data: Output } | { success: false; error: any };
+    optional(): ZodOptional<this>;
+    nullable(): ZodNullable<this>;
+    nullish(): ZodOptional<ZodNullable<this>>;
+    array(): ZodArray<this>;
+    default(def: () => Output): ZodDefault<this>;
+    refine<RefinedOutput extends Output>(
+      check: (arg: Output) => arg is RefinedOutput,
+      message?: string | { message?: string; path?: (string | number)[] }
+    ): ZodEffects<this, RefinedOutput, Input>;
+    refine(
+      check: (arg: Output) => unknown,
+      message?: string | { message?: string; path?: (string | number)[] }
+    ): ZodEffects<this, Output, Input>;
+    transform<NewOutput>(
+      transform: (arg: Output) => NewOutput
+    ): ZodEffects<this, NewOutput, Input>;
+    describe(description: string): this;
+  }
+  
+  export interface ZodString extends ZodType<string> {
+    min(minLength: number, message?: string): ZodString;
+    max(maxLength: number, message?: string): ZodString;
+    length(len: number, message?: string): ZodString;
+    email(message?: string): ZodString;
+    url(message?: string): ZodString;
+    uuid(message?: string): ZodString;
+    regex(regex: RegExp, message?: string): ZodString;
+    nonempty(message?: string): ZodString;
+    trim(): ZodString;
+    toLowerCase(): ZodString;
+    toUpperCase(): ZodString;
+  }
+  
+  export interface ZodNumber extends ZodType<number> {
+    min(minimum: number, message?: string): ZodNumber;
+    max(maximum: number, message?: string): ZodNumber;
+    int(message?: string): ZodNumber;
+    positive(message?: string): ZodNumber;
+    negative(message?: string): ZodNumber;
+    nonpositive(message?: string): ZodNumber;
+    nonnegative(message?: string): ZodNumber;
+    finite(message?: string): ZodNumber;
+    safe(message?: string): ZodNumber;
+  }
+  
+  export interface ZodBoolean extends ZodType<boolean> {}
+  
+  export interface ZodArray<T extends ZodTypeAny> extends ZodType<T['_output'][]> {
+    element: T;
+    min(minLength: number, message?: string): ZodArray<T>;
+    max(maxLength: number, message?: string): ZodArray<T>;
+    length(len: number, message?: string): ZodArray<T>;
+    nonempty(message?: string): ZodArray<T>;
+  }
+  
+  export interface ZodObject<T extends ZodRawShape> extends ZodType<{ [k in keyof T]: T[k]['_output'] }> {
+    shape: T;
+    keyof(): ZodEnum<[keyof T, ...(keyof T)[]]>;
+    extend<U extends ZodRawShape>(shape: U): ZodObject<T & U>;
+    merge<U extends ZodRawShape>(shape: U): ZodObject<T & U>;
+    pick<U extends keyof T>(keys: U[]): ZodObject<Pick<T, U>>;
+    omit<U extends keyof T>(keys: U[]): ZodObject<Omit<T, U>>;
+    partial(): ZodObject<{ [k in keyof T]: ZodOptional<T[k]> }>;
+    deepPartial(): ZodObject<{ [k in keyof T]: ZodOptional<ZodType<T[k]['_output']>> }>;
+    required(): ZodObject<{ [k in keyof T]: ZodType<T[k]['_output']> }>;
+  }
+  
+  export interface ZodOptional<T extends ZodTypeAny> extends ZodType<T['_output'] | undefined> {
+    unwrap(): T;
+  }
+  
+  export interface ZodNullable<T extends ZodTypeAny> extends ZodType<T['_output'] | null> {
+    unwrap(): T;
+  }
+  
+  export interface ZodDefault<T extends ZodTypeAny> extends ZodType<T['_output']> {
+    removeDefault(): T;
+  }
+  
+  export interface ZodEnum<T extends readonly [string, ...string[]]> extends ZodType<T[number]> {
+    options: T;
+  }
+  
+  export interface ZodLiteral<T extends string | number | boolean | null> extends ZodType<T> {
+    value: T;
+  }
+  
+  export interface ZodUnion<T extends readonly [ZodTypeAny, ...ZodTypeAny[]]> extends ZodType<T[number]['_output']> {
+    options: T;
+  }
+  
+  export interface ZodDiscriminatedUnion<
+    Discriminator extends string,
+    T extends readonly [ZodObject<any>, ...ZodObject<any>[]]
+  > extends ZodType<T[number]['_output']> {
+    discriminator: Discriminator;
+    options: T;
+  }
+  
+  export interface ZodRecord<K extends ZodTypeAny, V extends ZodTypeAny> extends ZodType<Record<K['_output'], V['_output']>> {
+    keySchema: K;
+    valueSchema: V;
+  }
+  
+  export interface ZodMap<K extends ZodTypeAny, V extends ZodTypeAny> extends ZodType<Map<K['_output'], V['_output']>> {
+    keySchema: K;
+    valueSchema: V;
+  }
+  
+  export interface ZodSet<T extends ZodTypeAny> extends ZodType<Set<T['_output']>> {
+    valueSchema: T;
+  }
+  
+  export interface ZodFunction<
+    Args extends ZodTuple<any>,
+    Returns extends ZodTypeAny
+  > extends ZodType<(...args: Args['_output']) => Returns['_output']> {
+    args: Args;
+    returns: Returns;
+  }
+  
+  export interface ZodTuple<T extends readonly ZodTypeAny[]> extends ZodType<{ [k in keyof T]: T[k]['_output'] }> {
+    items: T;
+  }
+  
+  export interface ZodEffects<
+    Output,
+    NewOutput,
+    Input
+  > extends ZodType<NewOutput, any, Input> {
+    innerType(): ZodType<Output>;
+  }
+  
+  export type ZodTypeAny = ZodType<any, any, any>;
+  export type ZodRawShape = { [k: string]: ZodTypeAny };
+  
+  export const z: {
+    string(): ZodString;
+    number(): ZodNumber;
+    boolean(): ZodBoolean;
+    array<T extends ZodTypeAny>(schema: T): ZodArray<T>;
+    object<T extends ZodRawShape>(shape: T): ZodObject<T>;
+    enum<T extends readonly [string, ...string[]]>(values: T): ZodEnum<T>;
+    literal<T extends string | number | boolean | null>(value: T): ZodLiteral<T>;
+    union<T extends readonly [ZodTypeAny, ...ZodTypeAny[]]>(options: T): ZodUnion<T>;
+    discriminatedUnion<Discriminator extends string, T extends readonly [ZodObject<any>, ...ZodObject<any>[]]>(
+      discriminator: Discriminator,
+      options: T
+    ): ZodDiscriminatedUnion<Discriminator, T>;
+    record<K extends ZodTypeAny, V extends ZodTypeAny>(keySchema: K, valueSchema: V): ZodRecord<K, V>;
+    map<K extends ZodTypeAny, V extends ZodTypeAny>(keySchema: K, valueSchema: V): ZodMap<K, V>;
+    set<T extends ZodTypeAny>(valueSchema: T): ZodSet<T>;
+    function<Args extends ZodTuple<any>, Returns extends ZodTypeAny>(
+      args: Args,
+      returns: Returns
+    ): ZodFunction<Args, Returns>;
+    tuple<T extends readonly ZodTypeAny[]>(schemas: T): ZodTuple<T>;
+    effects<Output, NewOutput, Input>(
+      schema: ZodType<Output, any, Input>,
+      transform: (arg: Output) => NewOutput
+    ): ZodEffects<Output, NewOutput, Input>;
+    any(): ZodType<any>;
+    unknown(): ZodType<unknown>;
+    never(): ZodType<never>;
+    void(): ZodType<void>;
+    null(): ZodType<null>;
+    undefined(): ZodType<undefined>;
+    date(): ZodType<Date>;
+    bigint(): ZodType<bigint>;
+    symbol(): ZodType<symbol>;
+    lazy<T extends ZodTypeAny>(getter: () => T): T;
+    catch<T extends ZodTypeAny>(schema: T, fallback: T['_output']): T;
+    transform<T extends ZodTypeAny, NewOutput>(
+      schema: T,
+      transform: (arg: T['_output']) => NewOutput
+    ): ZodEffects<T, NewOutput, T['_input']>;
+    preprocess<PreprocessInput, Input, Output>(
+      preprocess: (arg: PreprocessInput) => Input,
+      schema: ZodType<Output, any, Input>
+    ): ZodType<Output, any, PreprocessInput>;
+    pipeline<Input, Output>(
+      ...schemas: [ZodType<Output, any, Input>, ...ZodTypeAny[]]
+    ): ZodType<Output, any, Input>;
+    custom<T>(check: (arg: unknown) => arg is T, message?: string): ZodType<T>;
+    custom<T>(check: (arg: unknown) => unknown, message?: string): ZodType<T>;
+  };
+}
+`;
+
+        monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+          basicZodTypes,
+          'file:///node_modules/zod/index.d.ts'
+        );
+        console.log('✅ Loaded comprehensive Zod type definitions (fallback)');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load Zod types:', error);
+    }
+  };
+
+  // Helper function to add JSON Schema to Zod converter types
+  const addJsonSchemaToZodConverter = (monacoInstance: typeof monaco) => {
+    const converterTypes = `
+declare global {
+  interface JsonSchemaProperty {
+    type: string;
+    description?: string;
+    required?: boolean;
+    enum?: string[];
+    minimum?: number;
+    maximum?: number;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    items?: JsonSchemaProperty;
+    properties?: Record<string, JsonSchemaProperty>;
+  }
+
+  interface JsonSchema {
+    type: 'object';
+    properties: Record<string, JsonSchemaProperty>;
+    required?: string[];
+  }
+
+  class JsonSchemaToZodConverter {
+    static convert(jsonSchema: JsonSchema): Record<string, any>;
+  }
+}
+`;
+
+    monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+      converterTypes,
+      'file:///utils/json-schema-converter.d.ts'
+    );
+    console.log('✅ Added JSON Schema to Zod converter types');
+  };
+
   const handleEditorDidMount = async (
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
@@ -262,6 +567,12 @@ ${cleanedTypes.replace(/^/gm, '  ')}
     } catch (error) {
       console.error('❌ Failed to load bundled types:', error);
     }
+
+    // Load Zod types from CDN
+    await loadZodTypes(monacoInstance);
+
+    // Add JSON Schema to Zod converter types
+    addJsonSchemaToZodConverter(monacoInstance);
 
     setIsLoading(false);
   };

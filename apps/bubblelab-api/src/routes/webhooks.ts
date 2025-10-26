@@ -6,10 +6,14 @@ import {
   slackUrlVerificationSchema,
   webhookResponseSchema,
 } from '../schemas/index.js';
-import { webhookRoute, webhookStreamRoute } from '../schemas/webhooks.js';
+import {
+  webhookRoute,
+  webhookStreamRoute,
+  webhookTestRoute,
+} from '../schemas/webhooks.js';
 import {
   executeBubbleFlowViaWebhook,
-  executeBubbleFlowWithLiveStreaming,
+  runBubbleFlowWithLogging,
 } from '../services/bubble-flow-execution.js';
 import { eq } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
@@ -198,20 +202,16 @@ app.openapi(webhookStreamRoute, async (c) => {
   try {
     return streamSSE(c, async (stream) => {
       try {
-        await executeBubbleFlowWithLiveStreaming(
-          webhook.bubbleFlowId,
-          requestBody,
-          {
-            userId: webhook.userId,
-            streamCallback: async (event) => {
-              await stream.writeSSE({
-                data: JSON.stringify(event),
-                event: event.type,
-                id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-              });
-            },
-          }
-        );
+        await runBubbleFlowWithLogging(webhook.bubbleFlowId, requestBody, {
+          userId: webhook.userId,
+          streamCallback: async (event) => {
+            await stream.writeSSE({
+              data: JSON.stringify(event),
+              event: event.type,
+              id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            });
+          },
+        });
 
         // Send stream completion
         await stream.writeSSE({
@@ -248,6 +248,37 @@ app.openapi(webhookStreamRoute, async (c) => {
     }
     throw error; // Let global error handler deal with other errors
   }
+});
+
+// Test webhook route with simple bearer token authentication
+app.openapi(webhookTestRoute, async (c) => {
+  // Check for bearer token
+  const authHeader = c.req.header('Authorization');
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized - Bearer token required' }, 401);
+  }
+
+  const token = authHeader.replace('Bearer ', '').trim();
+
+  if (token !== 'ABCDEFG') {
+    return c.json({ error: 'Unauthorized - Invalid token' }, 401);
+  }
+
+  // Parse request body
+  const requestBody = await c.req.json().catch(() => ({}));
+  const receivedMessage = requestBody?.message || '';
+
+  // Create response with ping message and acknowledgment
+  const response = {
+    success: true,
+    message: 'pong',
+    acknowledged: true,
+    timestamp: new Date().toISOString(),
+    ...(receivedMessage && { receivedMessage }),
+  };
+
+  return c.json(response, 200);
 });
 
 export default app;

@@ -118,3 +118,85 @@ export const webhookStreamRoute = createRoute({
   description:
     'Execute a webhook by userId and path with real-time streaming of execution logs. Does not require authentication.',
 });
+
+// POST /webhook/test - Test webhook endpoint with authentication
+export const webhookTestRoute = createRoute({
+  method: 'post',
+  path: '/test',
+  security: [
+    {
+      Bearer: [],
+    },
+  ],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z
+            .object({
+              message: z.string().optional().openapi({
+                description: 'Optional test message',
+                example: 'Hello from test webhook',
+              }),
+            })
+            .optional(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean().openapi({
+              description: 'Test execution success status',
+              example: true,
+            }),
+            message: z.string().openapi({
+              description: 'Ping message',
+              example: 'pong',
+            }),
+            acknowledged: z.boolean().openapi({
+              description: 'Acknowledgment status',
+              example: true,
+            }),
+            timestamp: z.string().openapi({
+              description: 'Response timestamp',
+              example: '2024-01-01T00:00:00.000Z',
+            }),
+            userId: z.string().openapi({
+              description: 'Authenticated user ID',
+              example: 'user_123',
+            }),
+            receivedMessage: z.string().optional().openapi({
+              description: 'Echo of received message',
+              example: 'Hello from test webhook',
+            }),
+          }),
+        },
+      },
+      description: 'Test webhook executed successfully',
+    },
+    401: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Unauthorized - Invalid or missing authentication token',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['Webhooks'],
+  summary: 'Test webhook endpoint',
+  description:
+    'Test webhook endpoint that requires authentication and responds with ping message and acknowledgment.',
+});

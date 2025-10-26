@@ -33,8 +33,19 @@ export function useExecutionHistory(
   // Check if the flowId is optimistic (temporary) - don't fetch in this case
   const isOptimistic = flowId !== null && isOptimisticFlowId(flowId);
 
+  // Default limit to 50 if not specified
+  const queryOptions = {
+    ...options,
+    limit: options?.limit ?? 50,
+  };
+
   const query = useQuery({
-    queryKey: ['executionHistory', flowId, options?.limit, options?.offset],
+    queryKey: [
+      'executionHistory',
+      flowId,
+      queryOptions.limit,
+      queryOptions.offset,
+    ],
     queryFn: async () => {
       if (!flowId) {
         throw new Error('Flow ID is required');
@@ -45,7 +56,7 @@ export function useExecutionHistory(
       );
       const response = await bubbleFlowApi.getBubbleFlowExecutions(
         flowId,
-        options
+        queryOptions
       );
       console.log(
         '[useExecutionHistory] Execution history received:',
@@ -57,6 +68,7 @@ export function useExecutionHistory(
     enabled: !!flowId && !isOptimistic,
     staleTime: 30 * 1000, // 30 seconds (execution history changes more frequently)
     gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 30 * 1000, // Auto-refetch every minute (60 seconds)
   });
 
   if (isOptimistic) {

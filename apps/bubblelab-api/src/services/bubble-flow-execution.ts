@@ -169,7 +169,8 @@ export async function executeBubbleFlowWithTracking(
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result: 'Message has been successfully sent',
+        result:
+          JSON.stringify(result.data) || 'Execution completed without logging',
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),
@@ -215,7 +216,7 @@ export async function executeBubbleFlowWithTracking(
 /**
  * Executes a BubbleFlow with live streaming and handles the database operations
  */
-export async function executeBubbleFlowWithLiveStreaming(
+export async function runBubbleFlowWithLogging(
   bubbleFlowId: number,
   payload: ExecutionPayload,
   options: StreamingExecutionOptions
@@ -277,21 +278,36 @@ export async function executeBubbleFlowWithLiveStreaming(
 
   try {
     // Execute the flow using streaming execution
-    const result = await runBubbleFlowWithStreaming(
-      flow.originalCode!, // Use original TypeScript code
-      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-      payload,
-      {
-        userId: options.userId,
-        streamCallback: options.streamCallback,
-      }
-    );
+    let result: ExecutionResult;
+    if (options.streamCallback) {
+      result = await runBubbleFlowWithStreaming(
+        flow.originalCode!, // Use original TypeScript code
+        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
+        payload,
+        {
+          userId: options.userId,
+          streamCallback: options.streamCallback,
+        }
+      );
+    } else {
+      result = await runBubbleFlow(
+        flow.originalCode!, // Use original TypeScript code
+        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
+        payload,
+        {
+          userId: options.userId,
+        }
+      );
+    }
 
     // Update execution record
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result: result?.summary || 'Execution completed without logging',
+        result: {
+          data: result.data,
+          ...result.summary,
+        },
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),

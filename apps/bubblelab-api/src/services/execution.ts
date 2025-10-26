@@ -44,7 +44,7 @@ export interface ExecutionOptions {
 }
 
 export interface StreamingExecutionOptions extends ExecutionOptions {
-  streamCallback: StreamCallback;
+  streamCallback?: StreamCallback;
 }
 
 async function runBubbleFlowCommon(

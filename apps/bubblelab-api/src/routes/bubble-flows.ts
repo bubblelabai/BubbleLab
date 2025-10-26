@@ -47,7 +47,7 @@ import {
 } from '../utils/error-handler.js';
 import { verifyMonthlyLimit } from '../services/subscription-validation.js';
 import {
-  executeBubbleFlowWithLiveStreaming,
+  runBubbleFlowWithLogging,
   executeBubbleFlowWithTracking,
 } from '../services/bubble-flow-execution.js';
 import { BubbleScript, validateAndExtract } from '@bubblelab/bubble-runtime';
@@ -333,7 +333,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        await executeBubbleFlowWithLiveStreaming(id, triggerEvent, {
+        await runBubbleFlowWithLogging(id, triggerEvent, {
           userId,
           appType,
           streamCallback: async (event) => {
