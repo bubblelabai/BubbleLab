@@ -109,8 +109,7 @@ export const useGenerationStore = create<GenerationStore>((set) => ({
 
   startGenerationFlow: () => {
     set({ isStreaming: true });
-    // Import dynamically to avoid circular dependency
-    useUIStore.getState().navigateToPage('ide');
+    // Navigation is now handled by the useFlowGeneration hook after flow creation
   },
 
   stopGenerationFlow: () => set({ isStreaming: false }),

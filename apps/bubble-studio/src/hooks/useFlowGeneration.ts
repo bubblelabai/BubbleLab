@@ -15,14 +15,15 @@ import { useUIStore } from '@/stores/uiStore';
 import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useNavigate } from '@tanstack/react-router';
 
 // Export the generateCode function for use in other components
 export const useFlowGeneration = () => {
+  const navigate = useNavigate();
   const { setOutput } = useOutputStore();
   const {
     selectedFlowId: currentFlowId,
     selectFlow,
-    navigateToPage,
     showEditorPanel,
   } = useUIStore();
   const { startGenerationFlow, stopGenerationFlow, setGenerationPrompt } =
@@ -75,8 +76,11 @@ export const useFlowGeneration = () => {
       // Auto-select the newly created flow - this will now use the cached optimistic data
       selectFlow(bubbleFlowId);
 
-      // Navigate to IDE to show the newly created flow
-      navigateToPage('ide');
+      // Navigate to the flow IDE route
+      navigate({
+        to: '/flow/$flowId',
+        params: { flowId: bubbleFlowId.toString() },
+      });
 
       stopGenerationFlow();
 
