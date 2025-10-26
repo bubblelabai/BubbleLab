@@ -38,6 +38,7 @@ export interface DashboardPageProps {
   selectedPreset: number;
   setSelectedPreset: (preset: number) => void;
   onGenerateCode: () => void;
+  autoShowSignIn?: boolean;
 }
 
 export function DashboardPage({
@@ -47,9 +48,10 @@ export function DashboardPage({
   selectedPreset,
   setSelectedPreset,
   onGenerateCode,
+  autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
-  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>('Generate your own');
   const [savedPrompt, setSavedPrompt] = useState<string>(() => {

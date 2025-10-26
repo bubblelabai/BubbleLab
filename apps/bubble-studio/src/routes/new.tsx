@@ -4,11 +4,21 @@ import { useGenerationStore } from '@/stores/generationStore';
 import { useFlowGeneration } from '@/hooks/useFlowGeneration';
 import { useUIStore } from '@/stores/uiStore';
 
+interface NewRouteSearch {
+  showSignIn?: boolean;
+}
+
 export const Route = createFileRoute('/new')({
   component: NewFlowPage,
+  validateSearch: (search: Record<string, unknown>): NewRouteSearch => {
+    return {
+      showSignIn: search.showSignIn === true || search.showSignIn === 'true',
+    };
+  },
 });
 
 function NewFlowPage() {
+  const { showSignIn } = Route.useSearch();
   const {
     generationPrompt,
     selectedPreset,
@@ -36,6 +46,7 @@ function NewFlowPage() {
       selectedPreset={selectedPreset}
       setSelectedPreset={setSelectedPreset}
       onGenerateCode={generateCode}
+      autoShowSignIn={showSignIn}
     />
   );
 }

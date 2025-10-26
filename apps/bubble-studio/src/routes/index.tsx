@@ -1,12 +1,21 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 
 export const Route = createFileRoute('/')({
-  beforeLoad: () => {
-    const { isSignedIn } = useAuth();
-
-    throw redirect({
-      to: isSignedIn ? '/home' : '/new',
-    });
-  },
+  component: IndexRoute,
 });
+
+function IndexRoute() {
+  const navigate = useNavigate();
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    navigate({
+      to: isSignedIn ? '/home' : '/new',
+      replace: true,
+    });
+  }, [isSignedIn, navigate]);
+
+  return null;
+}

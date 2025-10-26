@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { HomePage } from '@/pages/HomePage';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
@@ -8,21 +8,23 @@ import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
 import { toast } from 'react-toastify';
 
 export const Route = createFileRoute('/home')({
-  beforeLoad: () => {
-    const { isSignedIn } = useAuth();
-    if (!isSignedIn) {
-      throw redirect({ to: '/new' });
-    }
-  },
   component: HomeRoute,
 });
 
 function HomeRoute() {
   const navigate = useNavigate();
+  const { isSignedIn } = useAuth();
   const deleteBubbleFlowMutation = useDeleteBubbleFlow();
   const { isStreaming } = useGenerationStore();
   const { setOutput } = useOutputStore();
   const { data: bubbleFlowList } = useBubbleFlowList();
+
+  // Redirect to /new if not signed in
+  if (!isSignedIn) {
+    // Open up sign in modal by passing showSignIn param
+    navigate({ to: '/new', search: { showSignIn: true }, replace: true });
+    return null;
+  }
 
   const navigationLockToastId = 'sidebar-navigation-lock';
 
