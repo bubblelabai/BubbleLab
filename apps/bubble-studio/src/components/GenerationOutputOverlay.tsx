@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
 import { useNavigate } from '@tanstack/react-router';
-import { TypewriterText } from './TypewriterText';
 import {
   X,
   Loader2,
@@ -13,7 +12,6 @@ import {
   AlertCircle,
   ArrowRight,
   Coins,
-  Code,
   Boxes,
 } from 'lucide-react';
 
@@ -38,7 +36,6 @@ export function GenerationOutputOverlay() {
   const { output, clearOutput } = useOutputStore();
   const navigate = useNavigate();
   const outputEndRef = useRef<HTMLDivElement>(null);
-  const [showStats, setShowStats] = useState(false);
 
   console.log('[GenerationOutputOverlay] generationResult:', generationResult);
 
@@ -46,13 +43,6 @@ export function GenerationOutputOverlay() {
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [output]);
-
-  // Reset showStats when generationResult changes
-  useEffect(() => {
-    if (generationResult) {
-      setShowStats(false); // Reset to false, will be set to true after typewriter completes
-    }
-  }, [generationResult]);
 
   // Don't show if not streaming and no output and no result
   if (!isStreaming && !output && !generationResult) return null;
@@ -75,7 +65,7 @@ export function GenerationOutputOverlay() {
     clearOutput();
     navigate({
       to: '/flow/$flowId',
-      params: { flowId: generationResult.flowId.toString() },
+      params: { flowId: generationResult.flowId?.toString() || '' },
     });
   };
 
@@ -233,7 +223,7 @@ export function GenerationOutputOverlay() {
         </div>
 
         {/* Footer - only show when not streaming */}
-        {isStreaming && generationResult && (
+        {!isStreaming && (
           <div className="p-6 border-t border-[#30363d] bg-[#161b22]">
             {hasError ? (
               // Error State
@@ -257,9 +247,9 @@ export function GenerationOutputOverlay() {
                 </div>
               </div>
             ) : generationResult ? (
-              // Success State - Show Typewriter Summary
+              // Success State - Show Summary and Stats
               <div className="space-y-4">
-                {/* Pearl's Summary with Typewriter Effect */}
+                {/* Pearl's Summary */}
                 <div className="bg-purple-900/20 border border-purple-700/30 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
@@ -267,18 +257,16 @@ export function GenerationOutputOverlay() {
                       <p className="text-xs text-purple-300 font-semibold mb-2">
                         Pearl's Summary
                       </p>
-                      <TypewriterText
-                        text={generationResult.summary}
-                        speed={30}
-                        onComplete={() => setShowStats(true)}
-                      />
+                      <p className="text-sm text-purple-200 leading-relaxed">
+                        {generationResult.summary}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Stats Grid - shown after typing completes */}
-                {showStats && (
-                  <div className="grid grid-cols-3 gap-3 animate-in fade-in duration-300">
+                {/* Stats Grid */}
+                {generationResult.tokenUsage && (
+                  <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-300">
                     {/* Tokens */}
                     <div className="flex flex-col items-center p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg">
                       <Coins className="w-5 h-5 text-blue-400 mb-1" />
@@ -292,35 +280,26 @@ export function GenerationOutputOverlay() {
                     <div className="flex flex-col items-center p-3 bg-purple-900/20 border border-purple-700/30 rounded-lg">
                       <Boxes className="w-5 h-5 text-purple-400 mb-1" />
                       <p className="text-lg font-bold text-purple-300">
-                        {generationResult.bubbleCount}
+                        {generationResult.bubbleCount ??
+                          generationResult.bubblesUsed?.length ??
+                          0}
                       </p>
                       <p className="text-xs text-purple-400">bubbles</p>
-                    </div>
-
-                    {/* Code Length */}
-                    <div className="flex flex-col items-center p-3 bg-green-900/20 border border-green-700/30 rounded-lg">
-                      <Code className="w-5 h-5 text-green-400 mb-1" />
-                      <p className="text-lg font-bold text-green-300">
-                        {generationResult.codeLength.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-green-400">chars</p>
                     </div>
                   </div>
                 )}
 
                 {/* Open Flow Button */}
-                {showStats && (
-                  <div className="flex justify-center mt-2 animate-in fade-in duration-300">
-                    <button
-                      type="button"
-                      onClick={handleOpenFlow}
-                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-base font-bold rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
-                    >
-                      Open Flow
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
+                <div className="flex justify-center mt-2 animate-in fade-in duration-300">
+                  <button
+                    type="button"
+                    onClick={handleOpenFlow}
+                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-base font-bold rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
+                  >
+                    Open Flow
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             ) : (
               // Fallback State

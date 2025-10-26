@@ -584,7 +584,7 @@ export function DashboardPage({
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
       />
-      {isStreaming && <GenerationOutputOverlay />}
+      <GenerationOutputOverlay />
     </div>
   );
 }

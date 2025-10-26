@@ -458,44 +458,8 @@ export const useFlowGeneration = () => {
                 case 'generation_complete': {
                   // Final result with generated code
                   generatedResult = eventData.data as GenerationResult;
-                  const codeLength = eventData.data?.generatedCode?.length || 0;
-                  const bubbleCount = eventData.data?.bubbleParameters
-                    ? Object.keys(eventData.data.bubbleParameters).length
-                    : 0;
-
-                  // Store inputsSchema for later use
-                  const inputsSchema = eventData.data?.inputsSchema || '';
-                  generatedResult.inputsSchema = inputsSchema;
-
-                  setOutput(
-                    (prev) =>
-                      prev +
-                      `\nCode generated successfully! (${codeLength} chars, ${bubbleCount} bubbles)\n` +
-                      (inputsSchema ? `Input Schema: Available\n` : '')
-                  );
-                  // Display token usage toast
-                  const tokenUsage = eventData.data?.tokenUsage as TokenUsage;
-                  if (tokenUsage) {
-                    const totalTokens = tokenUsage.totalTokens || 0;
-                    toast.info(
-                      `🪙 Flow generation used ${totalTokens.toLocaleString()} tokens\n` +
-                        `📥 Input: ${(tokenUsage.inputTokens || 0).toLocaleString()} tokens\n` +
-                        `📤 Output: ${(tokenUsage.outputTokens || 0).toLocaleString()} tokens`,
-                      {
-                        autoClose: 10000,
-                        style: {
-                          whiteSpace: 'pre-line',
-                          fontSize: '13px',
-                        },
-                      }
-                    );
-                  }
                   break;
                 }
-
-                case 'stream_complete':
-                  setOutput((prev) => prev + `Finalizing results...\n`);
-                  break;
 
                 case 'error':
                   setOutput(
@@ -522,29 +486,6 @@ export const useFlowGeneration = () => {
       console.log('[DEBUG] Full generatedResult:', generatedResult);
       if (generatedResult.success && generatedResult.generatedCode) {
         // Set the generated code in the editor
-
-        // Show summary without the actual code
-        const validationStatus = generatedResult.isValid ? 'Valid' : 'Failed';
-
-        let finalOutput = `\nGeneration Complete!\n`;
-        finalOutput += `   Code: ${generatedResult.generatedCode.length} chars\n`;
-        finalOutput += `   Validation: ${validationStatus}\n`;
-
-        if (!generatedResult.isValid && generatedResult.error) {
-          finalOutput += `   Error: ${generatedResult.error}\n`;
-        }
-
-        finalOutput +=
-          '\n✨ Code placed in editor! Flow diagram is now visible alongside the editor.';
-        setOutput((prev) => prev + finalOutput);
-
-        // Store inputsSchema and prompt for later use when creating flows
-        // Use a temporary flowSummaryData entry to hold this information
-        console.log('[DEBUG] Setting flowSummaryData:', {
-          inputsSchema: generatedResult.inputsSchema,
-          prompt: savedPrompt,
-        });
-
         // Clear the generation prompt
         setGenerationPrompt('');
 
@@ -553,6 +494,7 @@ export const useFlowGeneration = () => {
           selectedPreset !== undefined
             ? getTemplateByIndex(selectedPreset)
             : undefined;
+
         trackWorkflowGeneration({
           prompt: savedPrompt,
           templateId: template?.id,
@@ -579,9 +521,10 @@ export const useFlowGeneration = () => {
 
         // Now set the COMPLETE result with all required fields
         setGenerationResult({
-          ...generatedResult,
           flowId: flowId,
+          ...generatedResult,
         });
+        stopGenerationFlow();
       } else {
         throw new Error(
           generatedResult?.error ||
@@ -592,6 +535,7 @@ export const useFlowGeneration = () => {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       setOutput((prev) => prev + `\nGeneration Error: ${errorMessage}`);
+      stopGenerationFlow();
 
       // Track failed workflow generation
       const template =
