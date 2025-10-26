@@ -7,8 +7,11 @@ import {
   Home,
   User,
   MessageCircle,
+  Github,
+  Star,
 } from 'lucide-react';
 import { useUser } from '../hooks/useUser';
+import { useGitHubStars } from '../hooks/useGitHubStars';
 import { SignedIn } from './AuthComponents';
 import { DISABLE_AUTH } from '../env';
 
@@ -26,6 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onPageChange,
 }) => {
   const { user } = useUser();
+  const { starCount } = useGitHubStars();
 
   return (
     <div
@@ -201,6 +205,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
                 Get instant help & feedback
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* GitHub button */}
+        <div className="mt-2">
+          <div className="relative group">
+            <a
+              href="https://github.com/bubblelabai/BubbleLab"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              aria-label="Star us on GitHub"
+            >
+              {/* Fixed icon column */}
+              <span className="w-14 flex-none flex justify-center p-2">
+                <Github className="w-5 h-5" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <span>Star us</span>
+                  {starCount !== null && isOpen && (
+                    <span className="flex items-center gap-1 text-yellow-400">
+                      <Star className="w-3 h-3 fill-yellow-400" />
+                      <span className="text-xs">{starCount}</span>
+                    </span>
+                  )}
+                </div>
+              </span>
+            </a>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                {starCount !== null
+                  ? `Star us on GitHub (${starCount})`
+                  : 'Star us on GitHub'}
               </span>
             )}
           </div>
