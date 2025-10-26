@@ -16,6 +16,7 @@ import {
   type TemplateCategory,
 } from '../components/templates/templateLoader';
 import { trackTemplate } from '../services/analytics';
+import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
 
 // LoadingDots component using bouncing animation for code generation
 const LoadingDots: React.FC = () => {
@@ -581,6 +582,11 @@ export function DashboardPage({
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
       />
+
+      {isStreaming && (
+        /* Generation Output Overlay - shows during flow generation */
+        <GenerationOutputOverlay />
+      )}
     </div>
   );
 }

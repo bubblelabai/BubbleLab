@@ -36,14 +36,14 @@ export const useFlowGeneration = () => {
   const createFlowFromGeneration = async (
     generatedCode?: string,
     prompt?: string
-  ) => {
+  ): Promise<number | null> => {
     const codeToUse = generatedCode;
     console.log('🚀 [createFlowFromGeneration] Starting flow creation...');
 
     if (!codeToUse || codeToUse.trim() === '') {
       console.error('❌ [createFlowFromGeneration] No code to create flow');
       setOutput((prev) => prev + '\n❌ No code to create flow');
-      return;
+      return null;
     }
 
     try {
@@ -76,14 +76,6 @@ export const useFlowGeneration = () => {
       // Auto-select the newly created flow - this will now use the cached optimistic data
       selectFlow(bubbleFlowId);
 
-      // Navigate to the flow IDE route
-      navigate({
-        to: '/flow/$flowId',
-        params: { flowId: bubbleFlowId.toString() },
-      });
-
-      stopGenerationFlow();
-
       // Ensure editor is visible to show the generated code
       showEditorPanel();
 
@@ -105,6 +97,9 @@ export const useFlowGeneration = () => {
 
       // Refetch subscription to update token usage after generation
       refetchSubscriptionStatus();
+
+      // Return the flow ID for navigation
+      return bubbleFlowId;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -119,6 +114,7 @@ export const useFlowGeneration = () => {
       });
 
       setOutput((prev) => prev + `\n❌ Failed to create flow: ${errorMessage}`);
+      return null;
     }
   };
   const generateCode = async (
@@ -141,11 +137,19 @@ export const useFlowGeneration = () => {
           // Set generation info immediately
           setGenerationPrompt(generationPrompt.trim());
           // Create flow from template immediately
-          await createFlowFromGeneration(
+          const flowId = await createFlowFromGeneration(
             templateResult.code,
             generationPrompt.trim()
           );
-          // No output messages, no streaming state - just go straight to the code
+
+          // Navigate to the flow IDE route after successful creation
+          if (flowId) {
+            stopGenerationFlow();
+            navigate({
+              to: '/flow/$flowId',
+              params: { flowId: flowId.toString() },
+            });
+          }
           return;
         }
       } catch (error) {
@@ -453,11 +457,20 @@ export const useFlowGeneration = () => {
         });
 
         // Auto-create the flow after successful code generation
-        await createFlowFromGeneration(
+        const flowId = await createFlowFromGeneration(
           generatedResult.generatedCode,
           savedPrompt
         );
-      } else if (generatedResult.error) {
+
+        // Navigate to the flow IDE route after successful creation
+        if (flowId) {
+          stopGenerationFlow();
+          navigate({
+            to: '/flow/$flowId',
+            params: { flowId: flowId.toString() },
+          });
+        }
+      } else {
         throw new Error(generatedResult.error);
       }
     } catch (error) {
