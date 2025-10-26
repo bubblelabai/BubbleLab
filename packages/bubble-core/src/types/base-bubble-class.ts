@@ -80,30 +80,16 @@ export abstract class BaseBubble<
         this.context = context;
       }
     } catch (error) {
-      // Parse Zod validation errors to make them more user-friendly
-      if (error instanceof z.ZodError) {
-        const errorMessages = error.errors.map((err) => {
-          const path = err.path.length > 0 ? `${err.path.join('.')}: ` : '';
-          return `${path}${err.message}`;
-        });
-        throw new BubbleValidationError(
-          `Parameter validation failed: ${errorMessages.join(', ')}`,
-          {
-            variableId: context?.variableId,
-            bubbleName: ctor.bubbleName,
-            validationErrors: errorMessages,
-            cause: error,
-          }
-        );
-      }
-      throw new BubbleValidationError(
-        `Parameter validation failed: ${String(error)}`,
-        {
-          variableId: context?.variableId,
-          bubbleName: ctor.bubbleName,
-          cause: error instanceof Error ? error : undefined,
-        }
-      );
+      const errorMessage =
+        error instanceof z.ZodError
+          ? `Input Schema validation failed: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
+          : `Input Schema validation failed: ${error instanceof Error ? error.message : 'Unknown validation error'}`;
+
+      throw new BubbleValidationError(errorMessage, {
+        variableId: context?.variableId,
+        bubbleName: ctor.bubbleName,
+        cause: error instanceof Error ? error : undefined,
+      });
     }
   }
 
@@ -233,8 +219,35 @@ export abstract class BaseBubble<
 
       return savedResult;
     }
-
-    const result = await this.performAction(this.context);
+    let result: TResult;
+    try {
+      result = await this.performAction(this.context);
+    } catch (error) {
+      console.error('Error executing bubble:', error);
+      this.context?.logger?.logBubbleExecutionComplete(
+        this.context?.variableId ?? -999,
+        this.name,
+        this.name,
+        {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          executionId: randomUUID(),
+          timestamp: new Date(),
+        }
+      );
+      this.context?.logger?.error(
+        `[${this.name}] Unexpected error when performing action: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      throw new BubbleExecutionError(
+        error instanceof Error ? error.message : 'Unknown error',
+        {
+          variableId: this.context?.variableId,
+          bubbleName: this.name,
+          executionPhase: 'execution',
+          cause: error instanceof Error ? error : undefined,
+        }
+      );
+    }
 
     // Validate result if schema is provided
     if (this.resultSchema) {
@@ -267,16 +280,15 @@ export abstract class BaseBubble<
 
         return finalResult;
       } catch (validationError) {
-        // Throw execution error for result validation failures
+        // Validation error for result validation failures
         const errorMessage =
           validationError instanceof z.ZodError
             ? `Result schema validation failed: ${validationError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
             : `Result validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`;
 
-        throw new BubbleExecutionError(errorMessage, {
+        throw new BubbleValidationError(errorMessage, {
           variableId: this.context?.variableId,
           bubbleName: this.name,
-          executionPhase: 'validation',
           cause: validationError instanceof Error ? validationError : undefined,
         });
       }
