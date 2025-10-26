@@ -158,13 +158,6 @@ export function DashboardPage({
               <div className="mt-6">
                 <div className="bg-gradient-to-r from-[#5865F2]/10 to-[#4752C4]/10 border border-[#5865F2]/20 rounded-xl p-4 max-w-md mx-auto">
                   <div className="text-center">
-                    <h3 className="text-sm font-semibold text-white mb-2">
-                      💬 Join Our Discord Community
-                    </h3>
-                    <p className="text-xs text-gray-300 mb-3">
-                      Get instant help, share your workflows, and connect with
-                      other users
-                    </p>
                     <a
                       href="https://discord.com/invite/PkJvcU2myV"
                       target="_blank"
@@ -180,6 +173,10 @@ export function DashboardPage({
                       </svg>
                       Join Discord Community
                     </a>
+                    <p className="text-xs text-gray-300 mt-3">
+                      Get instant help, share your workflows, and connect with
+                      other users
+                    </p>
                   </div>
                 </div>
               </div>
