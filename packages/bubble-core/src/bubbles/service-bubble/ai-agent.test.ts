@@ -42,7 +42,7 @@ describe('AIAgentBubble', () => {
       expect(() => {
         // @ts-expect-error testing invalid input
         new AIAgentBubble({});
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should validate empty message', () => {
@@ -115,7 +115,7 @@ describe('AIAgentBubble', () => {
             { name: 'another-non-existent-tool' },
           ],
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should handle invalid model provider', () => {
@@ -127,7 +127,7 @@ describe('AIAgentBubble', () => {
             model: 'invalid/provider',
           },
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should handle invalid temperature range', () => {
@@ -138,7 +138,7 @@ describe('AIAgentBubble', () => {
             temperature: 3.0, // Invalid: should be 0-2
           },
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
   });
 
@@ -224,7 +224,7 @@ describe('AIAgentBubble', () => {
             model: 'unsupported/model-name',
           },
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
   });
 });
@@ -294,7 +294,7 @@ describe('AIAgentBubble - Credential System', () => {
           // @ts-expect-error testing invalid input
           model: { model: 'google/geminis-2.5-flash' },
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should throw validation error when credentials is not an object', () => {
@@ -305,7 +305,7 @@ describe('AIAgentBubble - Credential System', () => {
           // @ts-expect-error testing invalid input
           credentials: 'invalid-credentials',
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should choose OpenAI credential for OpenAI models', () => {
@@ -353,7 +353,7 @@ describe('AIAgentBubble - Credential System', () => {
           model: { model: 'unsupported/model-name' as any },
           credentials: testCredentials,
         });
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should return undefined when required credential type is missing', () => {

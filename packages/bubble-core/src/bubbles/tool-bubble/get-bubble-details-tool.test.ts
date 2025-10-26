@@ -29,7 +29,7 @@ describe('GetBubbleDetailsTool', () => {
       expect(() => {
         // @ts-expect-error testing invalid input
         new GetBubbleDetailsTool({});
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
     test('should validate empty bubbleName', () => {
       expect(() => {

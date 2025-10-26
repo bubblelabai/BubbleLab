@@ -30,7 +30,7 @@ describe('HelloWorldBubble', () => {
       expect(() => {
         // @ts-expect-error testing invalid input
         new HelloWorldBubble({});
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
 
     test('should validate empty name', () => {
@@ -100,7 +100,7 @@ describe('HelloWorldBubble', () => {
       expect(() => {
         // @ts-expect-error testing invalid input
         new HelloWorldBubble(params);
-      }).toThrow('Parameter validation failed');
+      }).toThrow('Input Schema validation failed');
     });
   });
 });

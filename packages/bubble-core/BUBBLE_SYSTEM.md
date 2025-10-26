@@ -389,42 +389,6 @@ protected async performAction(): Promise<MyResult> {
 }
 ```
 
-### 4. Testing
-
-```typescript
-describe('MyBubble', () => {
-  test('should handle optional parameters', async () => {
-    const bubble = new MyBubble({ name: 'test' });
-    const result = await bubble.action();
-
-    expect(result.success).toBe(true);
-    expect(result.data?.result).toContain('default value');
-  });
-
-  test('should validate required parameters', () => {
-    expect(() => {
-      new MyBubble({} as any);
-    }).toThrow('Parameter validation failed');
-  });
-});
-```
-
-## Architecture Benefits
-
-1. **Type Safety**: Full TypeScript support with compile-time validation
-2. **Runtime Validation**: Zod schemas ensure runtime type safety
-3. **Consistent Interface**: All bubbles follow the same execution pattern
-4. **Flexible Parameters**: Support for optional fields with defaults
-5. **Registry System**: Centralized bubble management and discovery
-6. **Error Handling**: Standardized error reporting and handling
-7. **Testability**: Easy to unit test with predictable interfaces
-
-## **🔥 Multi-Operation Bubble Benefits (Discriminated Unions)**
-
-When you create bubbles with multiple operations using discriminated unions, developers get an **exceptional experience**:
-
-### **Superior IntelliSense & Type Safety:**
-
 ```typescript
 // When developer types this...
 const uploader = new StorageBubble({
@@ -457,16 +421,3 @@ const deleteResult = await deleter.action();
 // deleteResult.deleted ✅ (available)
 // deleteResult.uploadUrl ❌ (TypeScript error - not available for delete)
 ```
-
-### **Compile-Time Validation:**
-
-```typescript
-// This will be a TypeScript ERROR at build time ❌
-new StorageBubble({
-  operation: 'getUploadUrl',
-  bucketName: 'my-bucket',
-  fileContent: 'some content', // ERROR: fileContent not valid for getUploadUrl
-});
-```
-
-**👉 Result: Developers can't make mistakes, get perfect autocomplete, and maintain confidence in their code!**
