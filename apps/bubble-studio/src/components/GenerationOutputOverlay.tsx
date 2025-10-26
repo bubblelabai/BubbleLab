@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
 import { useNavigate } from '@tanstack/react-router';
+import { TypewriterText } from './TypewriterText';
 import {
   X,
   Loader2,
@@ -247,9 +248,9 @@ export function GenerationOutputOverlay() {
                 </div>
               </div>
             ) : generationResult ? (
-              // Success State - Show Summary and Stats
+              // Success State - Show Typewriter Summary with Stats
               <div className="space-y-4">
-                {/* Pearl's Summary */}
+                {/* Pearl's Summary with Typewriter Effect */}
                 <div className="bg-purple-900/20 border border-purple-700/30 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
@@ -257,14 +258,15 @@ export function GenerationOutputOverlay() {
                       <p className="text-xs text-purple-300 font-semibold mb-2">
                         Pearl's Summary
                       </p>
-                      <p className="text-sm text-purple-200 leading-relaxed">
-                        {generationResult.summary}
-                      </p>
+                      <TypewriterText
+                        text={generationResult.summary}
+                        speed={10}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Stats Grid */}
+                {/* Stats Grid - show immediately */}
                 {generationResult.tokenUsage && (
                   <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-300">
                     {/* Tokens */}
@@ -289,7 +291,7 @@ export function GenerationOutputOverlay() {
                   </div>
                 )}
 
-                {/* Open Flow Button */}
+                {/* Open Flow Button - show immediately */}
                 <div className="flex justify-center mt-2 animate-in fade-in duration-300">
                   <button
                     type="button"
