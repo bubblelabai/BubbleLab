@@ -64,6 +64,12 @@ interface EditorState {
   editorInstance: monaco.editor.IStandaloneCodeEditor | null;
 
   /**
+   * Code to be set when editor becomes ready
+   * Used to handle race condition when components try to set code before editor loads
+   */
+  pendingCode: string | null;
+
+  /**
    * Current cursor position in the editor
    * Tracked for determining where to insert code and for type lookups
    */
@@ -116,6 +122,12 @@ interface EditorState {
   ) => void;
 
   /**
+   * Set code to be applied when editor becomes ready
+   * Used internally to handle race conditions
+   */
+  setPendingCode: (code: string | null) => void;
+
+  /**
    * Update cursor position when user moves cursor
    */
   setCursorPosition: (position: CursorPosition | null) => void;
@@ -162,9 +174,10 @@ interface EditorState {
  * );
  * ```
  */
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>((set, get) => ({
   // Initial state
   editorInstance: null,
+  pendingCode: null,
   cursorPosition: null,
   selectedRange: null,
   executionHighlightRange: null,
@@ -173,7 +186,26 @@ export const useEditorStore = create<EditorState>((set) => ({
   targetInsertLine: null,
 
   // Actions
-  setEditorInstance: (instance) => set({ editorInstance: instance }),
+  setEditorInstance: (instance) => {
+    set({ editorInstance: instance });
+
+    // Apply pending code when editor becomes ready
+    const { pendingCode } = get();
+    if (instance && pendingCode) {
+      const model = instance.getModel();
+      if (model) {
+        model.setValue(pendingCode);
+        console.log(
+          '[EditorStore] Applied pending code:',
+          pendingCode.length,
+          'characters'
+        );
+        set({ pendingCode: null }); // Clear pending code
+      }
+    }
+  },
+
+  setPendingCode: (code) => set({ pendingCode: code }),
 
   setCursorPosition: (position) => set({ cursorPosition: position }),
 

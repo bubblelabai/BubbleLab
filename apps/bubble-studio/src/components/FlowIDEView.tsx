@@ -60,6 +60,8 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     limit: 50,
   });
 
+  console.log('🚀 [FlowIDEView] currentFlow id:', currentFlow?.id);
+
   // Sync flow code to editor when flow changes
   useEffect(() => {
     console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
@@ -101,8 +103,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
         executionState.setAllCredentials(extractedCredentials);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentFlow?.id, currentFlow?.code]);
+  }, [currentFlow?.id]);
 
   const isRunnable = () => {
     if (!currentFlow) return false;
