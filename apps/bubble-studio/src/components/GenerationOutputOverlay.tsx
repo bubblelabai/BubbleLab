@@ -87,11 +87,13 @@ export function GenerationOutputOverlay() {
     }
 
     if (
+      line.includes('Pearl is') ||
       line.includes('AI analyzing') ||
       line.includes('Discovering') ||
       line.includes('Creating') ||
       line.includes('Understanding') ||
-      line.includes('Validating')
+      line.includes('Validating') ||
+      line.includes('refining')
     ) {
       return {
         type: 'ai',
