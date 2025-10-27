@@ -3,7 +3,6 @@ import {
   getTemplateByIndex,
   hasTemplate,
 } from '@/components/templates/templateLoader';
-import { toast } from 'react-toastify';
 import {
   TokenUsage,
   StreamingEvent,
@@ -169,7 +168,7 @@ export const useFlowGeneration = () => {
           // Set generation info immediately
           setGenerationPrompt(generationPrompt.trim());
           // Create flow from template immediately
-          const flowId = await createFlowFromGeneration(
+          await createFlowFromGeneration(
             templateResult.code,
             generationPrompt.trim()
           );
@@ -280,9 +279,6 @@ export const useFlowGeneration = () => {
                 case 'tool_start': {
                   // Extract and display tool descriptions with arguments
                   let toolDesc = '';
-                  const toolInput = eventData.data.input as
-                    | Record<string, unknown>
-                    | undefined;
 
                   switch (eventData.data.tool) {
                     case 'bubble-discovery':
@@ -292,8 +288,7 @@ export const useFlowGeneration = () => {
                       toolDesc = `${AI_NAME} is creating code template`;
                       break;
                     case 'get-bubble-details-tool': {
-                      let bubbleName: string | undefined;
-                      bubbleName = (
+                      const bubbleName = (
                         eventData.data.input as
                           | { data: { bubbleName: string } }
                           | undefined

@@ -1034,9 +1034,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }
         );
 
-        // Parse bubble parameters from the generated code (route responsibility)
-        let bubbleParameters = {};
-        let requiredCredentials = {};
         let actualIsValid = result.isValid;
 
         if (result.generatedCode && result.generatedCode.trim()) {
@@ -1048,10 +1045,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             result.inputsSchema = JSON.stringify(validationResult.inputSchema);
 
             if (validationResult.valid && validationResult.bubbleParameters) {
-              bubbleParameters = validationResult.bubbleParameters;
-              requiredCredentials = extractRequiredCredentials(
-                validationResult.bubbleParameters
-              );
               actualIsValid = true;
             } else {
               // Keep the AI's validation result if our parsing failed
