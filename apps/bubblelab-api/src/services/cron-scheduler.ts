@@ -153,15 +153,29 @@ export class CronScheduler {
   }
 
   private isCronDue(expr: string, now: Date): boolean {
+    // Round to nearest minute to prevent double execution
+    // If tick happens at XX:XX:59.995, treat it as XX:XX+1:00.000
+    const rounded = new Date(now);
+    const seconds = rounded.getUTCSeconds();
+
+    // If >= 30 seconds into the minute, round up to next minute
+    if (seconds >= 30) {
+      rounded.setUTCMinutes(rounded.getUTCMinutes() + 1);
+    }
+
+    // Set seconds and milliseconds to 0 for clean minute boundary
+    rounded.setUTCSeconds(0, 0);
+
+    console.log('[cron] rounded', rounded.toISOString());
     const { minute, hour, dayOfMonth, month, dayOfWeek } =
       parseCronExpression(expr);
     // Use UTC methods to ensure cron expressions are evaluated in UTC timezone
     return (
-      this.matchesField(minute, now.getUTCMinutes(), 0, 59) &&
-      this.matchesField(hour, now.getUTCHours(), 0, 23) &&
-      this.matchesField(dayOfMonth, now.getUTCDate(), 1, 31) &&
-      this.matchesField(month, now.getUTCMonth() + 1, 1, 12) &&
-      this.matchesField(dayOfWeek, now.getUTCDay(), 0, 6)
+      this.matchesField(minute, rounded.getUTCMinutes(), 0, 59) &&
+      this.matchesField(hour, rounded.getUTCHours(), 0, 23) &&
+      this.matchesField(dayOfMonth, rounded.getUTCDate(), 1, 31) &&
+      this.matchesField(month, rounded.getUTCMonth() + 1, 1, 12) &&
+      this.matchesField(dayOfWeek, rounded.getUTCDay(), 0, 6)
     );
   }
 
