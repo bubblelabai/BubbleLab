@@ -11,14 +11,6 @@ describe('BubbleFlow Validation', () => {
     await bubbleFactory.registerDefaults();
   });
 
-  it('strict type checking', async () => {
-    const code = getFixture('linkedin-lead-finder');
-    const result = await validateBubbleFlow(code);
-    console.log(result);
-    expect(result.valid).toBe(false);
-    expect(result.errors?.some((error) => error.includes('TS2322'))).toBe(true);
-  });
-
   describe('Valid BubbleFlow validation', () => {
     it('should validate simple HelloWorld BubbleFlow', async () => {
       const code = getFixture('hello-world');

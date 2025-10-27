@@ -47,13 +47,19 @@ describe('LanguageService typechecker - validateScript', () => {
   });
 
   it('passes on valid LinkedInLeadFinder flow', () => {
-    const code = getFixture('linkedin-lead-finder');
+    const code = getFixture('linkedin-lead-finder-problematic');
     const result = validateScript(code, {
       fileName: 'virtual/linkedin-lead-finder.ts',
     });
     console.log(result);
-    expect(result.success).toBe(true);
-    expect(Object.keys(result.errors || {}).length).toBe(0);
+    expect(result.success).toBe(false);
+    expect(Object.keys(result.errors || {}).length).toBeGreaterThan(0);
+    // Expect some erros to contain 'TS2322'
+    expect(
+      Object.values(result.errors || {}).some((error) =>
+        error.includes('TS2322')
+      )
+    ).toBe(true);
   });
 
   it('passes on valid GmailCategorizationCron flow', () => {

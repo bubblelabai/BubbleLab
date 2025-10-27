@@ -36,7 +36,7 @@ export const fixtures = {
   'starter-flow': '',
   'emails-complex': '',
   'content-creation': '',
-  'linkedin-lead-finder': '',
+  'linkedin-lead-finder-problematic': '',
   'param-as-var': '',
 } as const;
 
