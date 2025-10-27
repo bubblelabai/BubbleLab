@@ -9,7 +9,7 @@ import {
   jsonb,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import type { DatabaseMetadata } from '@bubblelab/shared-schemas/src/database-definition-schema';
+import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
 
 export const users = pgTable('users', {
   clerkId: text('clerk_id').primaryKey(),

@@ -29,12 +29,14 @@ export const fixtures = {
   'hello-world-no-payload': '',
   'hello-world-multi-line-para': '',
   'para-with-comment': '',
+  'google-drive-complex': '',
   yfinance: '',
   'cron-test': '',
   'techweek-scrape': '',
   'starter-flow': '',
   'emails-complex': '',
   'content-creation': '',
+  'linkedin-lead-finder-problematic': '',
   'param-as-var': '',
 } as const;
 

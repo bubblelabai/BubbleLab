@@ -37,7 +37,14 @@ export async function validateBubbleFlow(
     // Step 1: Basic syntax and structure validation
     const validationResult = validateScript(code);
     if (!validationResult.success) {
-      errors.push(...Object.values(validationResult.errors || {}));
+      if (validationResult.errors) {
+        errors.push(
+          ...Object.entries(validationResult.errors).map(
+            ([lineNumber, errorMessage]) =>
+              `line ${lineNumber}: ${errorMessage}`
+          )
+        );
+      }
     }
 
     // Step 2: Validate BubbleFlow class requirements

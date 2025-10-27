@@ -313,6 +313,19 @@ describe('BubbleRunner correctly runs and plans', () => {
           result.error?.includes('API')
       ).toBe(true);
     });
+    it('should inject credentials into a flow with a google drive complex', async () => {
+      const testScript = getFixture('google-drive-complex');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      // inject credentials
+      const bubbles = runner.getParsedBubbles();
+      const credentialsResult = runner.injector.injectCredentials(
+        bubbles,
+        [],
+        getUserCredential()
+      );
+      expect(credentialsResult.success).toBe(true);
+      // Expect either success or no cr
+    });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
       const bubbles = runner.getParsedBubbles();
