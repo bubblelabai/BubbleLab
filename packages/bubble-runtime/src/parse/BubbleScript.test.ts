@@ -4,6 +4,8 @@ import { getFixture } from '../../tests/fixtures';
 import { BubbleFactory } from '@bubblelab/bubble-core';
 import { MockDataGenerator } from '@bubblelab/shared-schemas';
 import { buildParametersObject } from '../utils/parameter-formatter';
+import { BubbleInjector } from '../injection/BubbleInjector';
+import { CredentialType } from '@bubblelab/shared-schemas';
 import {
   validateCronExpression,
   describeCronExpression,
@@ -547,5 +549,64 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
         required: ['ticker', 'email'],
       });
     });
+  });
+
+  it('does not spread single-property object literal for PostgreSQLBubble', async () => {
+    const bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+
+    const script = `
+import {z} from 'zod';
+import {
+  BubbleFlow,
+  AIAgentBubble,
+  PostgreSQLBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output { response: string }
+export interface CustomWebhookPayload extends WebhookEvent { message: string }
+
+export class ChatWithPostgres extends BubbleFlow<'webhook/http'> {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { message } = payload;
+    const runQuery = async (input: Record<string, unknown>) => {
+      const { query } = input as { query: string };
+      const pgBubble = new PostgreSQLBubble({ query: query });
+      const result = await pgBubble.action();
+      if (result.success && result.data) {
+        return result.data.cleanedJSONString;
+      } else {
+        return \`Error executing query: \${result.error}\`;
+      }
+    };
+    const customTools = [
+      { name: 'run_sql_query', description: 'Executes a SQL query', schema: { query: z.string() }, func: runQuery },
+    ];
+    const agent = new AIAgentBubble({ message, customTools, model: { model: 'google/gemini-2.5-pro' } });
+    const result = await agent.action();
+    if (!result.success || !result.data) throw new Error('failed');
+    return { response: result.data.response };
+  }
+}
+`;
+
+    const analyzer = new BubbleScript(script, bubbleFactory);
+    const injector = new BubbleInjector(analyzer);
+    const parsed = analyzer.getParsedBubbles();
+
+    const injection = injector.injectCredentials(parsed, [], {
+      [CredentialType.DATABASE_CRED]:
+        'postgresql://user:pass@localhost:5432/db',
+    });
+
+    expect(injection.success).toBe(true);
+    expect(injection.code).toBeDefined();
+
+    const transformed = injection.code as string;
+    // Should NOT spread the variable 'query' (because original was an object literal { query: query })
+    expect(transformed).not.toContain('{...query,');
+    // Should keep explicit property form
+    expect(transformed).toContain('query: query');
   });
 });
