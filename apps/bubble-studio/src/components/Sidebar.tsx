@@ -9,6 +9,7 @@ import {
   User,
   MessageCircle,
   Github,
+  Star,
 } from 'lucide-react';
 import { useUser } from '../hooks/useUser';
 import { useGitHubStars } from '../hooks/useGitHubStars';
@@ -244,7 +245,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                 }`}
               >
                 {githubStars !== undefined ? (
-                  <>⭐ {githubStars} Stars</>
+                  <span className="text-yellow-400 flex items-center gap-1">
+                    <Star className="w-3 h-3" fill="currentColor" />
+                    {githubStars} Stars
+                  </span>
                 ) : (
                   'Star us on GitHub'
                 )}
