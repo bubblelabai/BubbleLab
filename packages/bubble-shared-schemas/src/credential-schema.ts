@@ -83,28 +83,18 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
       [CredentialType.GMAIL_CRED]: {
         displayName: 'Gmail',
-        defaultScopes: [
-          'https://www.googleapis.com/auth/gmail.readonly',
-          'https://www.googleapis.com/auth/gmail.send',
-          'https://www.googleapis.com/auth/gmail.modify',
-        ],
+        defaultScopes: ['https://mail.google.com/'],
         description: 'Access Gmail for reading, sending, and managing emails',
       },
       [CredentialType.GOOGLE_SHEETS_CRED]: {
         displayName: 'Google Sheets',
-        defaultScopes: [
-          'https://www.googleapis.com/auth/spreadsheets',
-          'https://www.googleapis.com/auth/drive.file',
-        ],
+        defaultScopes: ['https://www.googleapis.com/auth/spreadsheets'],
         description:
           'Access Google Sheets for reading and writing spreadsheet data',
       },
       [CredentialType.GOOGLE_CALENDAR_CRED]: {
         displayName: 'Google Calendar',
-        defaultScopes: [
-          'https://www.googleapis.com/auth/calendar.readonly',
-          'https://www.googleapis.com/auth/calendar.events',
-        ],
+        defaultScopes: ['https://www.googleapis.com/auth/calendar.events'],
         description: 'Access Google Calendar for reading and managing events',
       },
     },

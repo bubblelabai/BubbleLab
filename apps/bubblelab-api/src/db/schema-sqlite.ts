@@ -1,6 +1,6 @@
 import { sqliteTable, text, int, unique } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
-import type { DatabaseMetadata } from '@bubblelab/shared-schemas/src/database-definition-schema';
+import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
 
 export const users = sqliteTable('users', {
   clerkId: text('clerk_id').primaryKey(),
