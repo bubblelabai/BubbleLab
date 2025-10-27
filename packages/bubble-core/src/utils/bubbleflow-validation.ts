@@ -21,6 +21,7 @@ function getOrCreateLanguageService(): ts.LanguageService {
   }
 
   // Get TypeScript compiler options (similar to bubble-core config)
+  // Disable file generation options for runtime validation performance
   const compilerOptions: ts.CompilerOptions = {
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
@@ -31,10 +32,10 @@ function getOrCreateLanguageService(): ts.LanguageService {
     noImplicitAny: false,
     skipLibCheck: true,
     forceConsistentCasingInFileNames: true,
-    declaration: true,
-    declarationMap: true,
-    sourceMap: true,
-    incremental: true,
+    declaration: false,
+    declarationMap: false,
+    sourceMap: false,
+    incremental: false,
     noUnusedLocals: true,
     noUnusedParameters: true,
     noImplicitReturns: true,

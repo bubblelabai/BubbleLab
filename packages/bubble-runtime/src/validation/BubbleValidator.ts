@@ -54,6 +54,9 @@ class LanguageServiceTypechecker {
       ...this.options,
       incremental: false,
       tsBuildInfoFile: undefined,
+      declaration: false,
+      declarationMap: false,
+      sourceMap: false,
     };
     this.configFileNames = parsed.fileNames;
     this.moduleResolutionCache = ts.createModuleResolutionCache(
