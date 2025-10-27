@@ -162,11 +162,11 @@ BubbleLab is built on a modular architecture with the following core packages:
 
 ### Core Packages
 
-- **[@bubblelab/bubble-core](./bubble-core)** - Core AI workflow engine
-- **[@bubblelab/bubble-runtime](./bubble-runtime)** - Runtime execution environment
-- **[@bubblelab/shared-schemas](./bubble-shared-schemas)** - Common type definitions and schemas
-- **[@bubblelab/ts-scope-manager](./bubble-scope-manager)** - TypeScript scope analysis utilities
-- **[create-bubblelab-app](./create-bubblelab-app)** - Quick start with bubble lab runtime
+- **[@bubblelab/bubble-core](./packages/bubble-core)** - Core AI workflow engine
+- **[@bubblelab/bubble-runtime](./packages/bubble-runtime)** - Runtime execution environment
+- **[@bubblelab/shared-schemas](./packages/bubble-shared-schemas)** - Common type definitions and schemas
+- **[@bubblelab/ts-scope-manager](./packages/bubble-scope-manager)** - TypeScript scope analysis utilities
+- **[create-bubblelab-app](./packages/create-bubblelab-app)** - Quick start with bubble lab runtime
 
 ### Apps
 
