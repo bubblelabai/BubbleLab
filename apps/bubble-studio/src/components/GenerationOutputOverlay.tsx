@@ -12,8 +12,6 @@ import {
   Sparkles,
   AlertCircle,
   ArrowRight,
-  Coins,
-  Boxes,
 } from 'lucide-react';
 
 /**
@@ -142,7 +140,7 @@ export function GenerationOutputOverlay() {
   const messages = output.split('\n').filter((line) => line.trim());
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-5xl mx-6 bg-gradient-to-b from-[#0d1117] to-[#0a0d12] border border-[#30363d] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#30363d]">
@@ -249,54 +247,53 @@ export function GenerationOutputOverlay() {
               </div>
             ) : generationResult ? (
               // Success State - Show Typewriter Summary with Stats
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* Pearl's Summary with Typewriter Effect */}
-                <div className="bg-purple-900/20 border border-purple-700/30 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-purple-300 font-semibold mb-2">
-                        Pearl's Summary
-                      </p>
-                      <TypewriterText
-                        text={generationResult.summary}
-                        speed={10}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                    Summary
+                  </p>
+                  <div className="text-base text-gray-200 leading-relaxed">
+                    <TypewriterText
+                      text={generationResult.summary}
+                      speed={10}
+                    />
                   </div>
                 </div>
 
                 {/* Stats Grid - show immediately */}
                 {generationResult.tokenUsage && (
-                  <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-300">
+                  <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
                     {/* Tokens */}
-                    <div className="flex flex-col items-center p-3 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-                      <Coins className="w-5 h-5 text-blue-400 mb-1" />
-                      <p className="text-lg font-bold text-blue-300">
+                    <div className="flex flex-col">
+                      <p className="text-2xl font-bold text-gray-100">
                         {generationResult.tokenUsage.totalTokens.toLocaleString()}
                       </p>
-                      <p className="text-xs text-blue-400">tokens</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">
+                        tokens
+                      </p>
                     </div>
 
                     {/* Bubbles */}
-                    <div className="flex flex-col items-center p-3 bg-purple-900/20 border border-purple-700/30 rounded-lg">
-                      <Boxes className="w-5 h-5 text-purple-400 mb-1" />
-                      <p className="text-lg font-bold text-purple-300">
+                    <div className="flex flex-col">
+                      <p className="text-2xl font-bold text-gray-100">
                         {generationResult.bubbleCount ??
                           generationResult.bubblesUsed?.length ??
                           0}
                       </p>
-                      <p className="text-xs text-purple-400">bubbles</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide">
+                        bubbles
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {/* Open Flow Button - show immediately */}
-                <div className="flex justify-center mt-2 animate-in fade-in duration-300">
+                <div className="flex justify-center pt-2 animate-in fade-in duration-300">
                   <button
                     type="button"
                     onClick={handleOpenFlow}
-                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-base font-bold rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
+                    className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white text-base font-bold rounded-lg transition-all hover:scale-105 shadow-lg flex items-center gap-2"
                   >
                     Open Flow
                     <ArrowRight className="w-5 h-5" />
