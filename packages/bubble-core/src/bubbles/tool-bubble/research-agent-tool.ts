@@ -25,12 +25,12 @@ const ResearchAgentToolParamsSchema = z.object({
     'JSON schema string that defines the expected structure of the research result. Out'
   ),
   model: AvailableModels.describe(
-    'Model to use for the research agent (default: google/gemini-2.5-flash)'
+    'Model to use for the research agent (default: google/gemini-2.5-pro)'
   )
-    .default('google/gemini-2.5-flash')
+    .default('google/gemini-2.5-pro')
     .optional()
     .describe(
-      'Model to use for the research agent (default: google/gemini-2.5-flash)'
+      'Model to use for the research agent (default: google/gemini-2.5-pro)'
     ),
   maxTokens: z
     .number()
