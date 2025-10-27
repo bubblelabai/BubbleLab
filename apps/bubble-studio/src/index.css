@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+/* Monaco Editor codicon font - load from public directory */
+@font-face {
+  font-family: 'codicon';
+  font-display: block;
+  src: url('/fonts/codicon.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -11,12 +20,30 @@
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-/* Ensure Monaco Editor uses monospace fonts */
+/* Ensure Monaco Editor uses monospace fonts (but not codicon icons) */
 .monaco-editor,
-.monaco-editor *,
+.monaco-editor *:not(.codicon),
 .monaco-editor-container,
-.monaco-editor-container * {
+.monaco-editor-container *:not(.codicon) {
   font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+}
+
+/* Ensure codicon icons use the correct font - MUST come after Monaco editor rules */
+.codicon[class*='codicon-'],
+.monaco-editor .codicon[class*='codicon-'] {
+  font-family: codicon !important;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  text-decoration: none;
+  text-rendering: auto;
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 /* JSON output code font */
