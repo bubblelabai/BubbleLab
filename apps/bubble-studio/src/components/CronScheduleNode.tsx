@@ -97,7 +97,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     isExecuting = false,
   } = data;
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [inputValues, setInputValues] =
     useState<Record<string, unknown>>(executionInputs);
 

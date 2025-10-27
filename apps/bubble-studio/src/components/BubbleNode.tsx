@@ -70,7 +70,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     executionStats,
   } = data;
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [createModalForType, setCreateModalForType] = useState<string | null>(
     null
