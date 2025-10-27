@@ -251,6 +251,35 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Move file operation
+  z.object({
+    operation: z
+      .literal('move_file')
+      .describe(
+        'Move a file or folder to a different location in Google Drive'
+      ),
+    file_id: z
+      .string()
+      .min(1, 'File ID is required')
+      .describe('Google Drive file or folder ID to move'),
+    new_parent_folder_id: z
+      .string()
+      .optional()
+      .describe('ID of the new parent folder (moves to root if not provided)'),
+    remove_parent_folder_id: z
+      .string()
+      .optional()
+      .describe(
+        'ID of the parent folder to remove (removes from all parents if not provided)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -361,6 +390,19 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('ID of the created permission'),
     share_link: z.string().optional().describe('Shareable link to the file'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('move_file')
+      .describe(
+        'Move a file or folder to a different location in Google Drive'
+      ),
+    success: z.boolean().describe('Whether the file was moved successfully'),
+    file: DriveFileSchema.optional().describe(
+      'Updated file metadata after move'
+    ),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -553,6 +595,8 @@ export class GoogleDriveBubble<
             return await this.getFileInfo(this.params);
           case 'share_file':
             return await this.shareFile(this.params);
+          case 'move_file':
+            return await this.moveFile(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -985,6 +1029,56 @@ export class GoogleDriveBubble<
       success: true,
       permission_id: response.id,
       share_link: fileResponse.webViewLink,
+      error: '',
+    };
+  }
+
+  private async moveFile(
+    params: Extract<GoogleDriveParams, { operation: 'move_file' }>
+  ): Promise<Extract<GoogleDriveResult, { operation: 'move_file' }>> {
+    const { file_id, new_parent_folder_id, remove_parent_folder_id } = params;
+
+    // First, get the current file info to retrieve existing parents
+    const currentFileInfo = await this.makeGoogleApiRequest(
+      `/files/${file_id}?fields=parents`
+    );
+
+    const currentParents: string[] = currentFileInfo.parents || [];
+
+    // Build the query parameters for the update
+    const queryParams = new URLSearchParams();
+
+    // Determine which parents to add
+    if (new_parent_folder_id) {
+      queryParams.set('addParents', new_parent_folder_id);
+    }
+
+    // Determine which parents to remove
+    if (remove_parent_folder_id) {
+      // Remove specific parent
+      queryParams.set('removeParents', remove_parent_folder_id);
+    } else if (new_parent_folder_id) {
+      // Remove all current parents when moving to a new location
+      queryParams.set('removeParents', currentParents.join(','));
+    }
+
+    // Add fields to return
+    queryParams.set(
+      'fields',
+      'id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents,shared,owners'
+    );
+
+    // Make the update request
+    const response = await this.makeGoogleApiRequest(
+      `/files/${file_id}?${queryParams.toString()}`,
+      'PATCH',
+      {}
+    );
+
+    return {
+      operation: 'move_file',
+      success: true,
+      file: response,
       error: '',
     };
   }

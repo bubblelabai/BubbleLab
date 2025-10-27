@@ -29,6 +29,7 @@ export const fixtures = {
   'hello-world-no-payload': '',
   'hello-world-multi-line-para': '',
   'para-with-comment': '',
+  'google-drive-complex': '',
   yfinance: '',
   'cron-test': '',
   'techweek-scrape': '',

@@ -104,14 +104,8 @@ export function formatParameterValue(value: unknown, type: string): string {
       if (stringValue.startsWith('`') && stringValue.endsWith('`')) {
         return stringValue;
       }
-      // If already quoted, return as-is
-      if (
-        (stringValue.startsWith("'") && stringValue.endsWith("'")) ||
-        (stringValue.startsWith('"') && stringValue.endsWith('"'))
-      ) {
-        return stringValue;
-      }
-      // Escape single quotes and return single-quoted string
+      // Always properly quote strings, regardless of input format
+      // This ensures consistent quoting that survives condensation
       const escapedValue = stringValue.replace(/'/g, "\\'");
       return `'${escapedValue}'`;
     }

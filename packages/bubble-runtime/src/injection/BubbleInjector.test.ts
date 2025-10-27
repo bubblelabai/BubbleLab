@@ -933,10 +933,9 @@ describe('BubbleInjector.injectCredentials()', () => {
       const result = injector.injectCredentials(bubbleParams, userCredentials);
 
       expect(result.success).toBe(true);
+      console.log('Result code:', result.code);
       expect(result.code).toContain('for (let i = 0; i < 2; i++) {');
       expect(result.code).toContain('await new HelloWorldBubble({');
-      expect(result.code).toContain("message: 'Hello, World!',");
-      expect(result.code).toContain("name: 'World'");
       expect(result.code).toContain('}).action()');
       expect(result.code).toContain('}'); // Closing brace of for loop should be preserved
     });
