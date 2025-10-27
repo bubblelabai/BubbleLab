@@ -2,10 +2,7 @@
   "extends": "../../tools/tsconfig/node.json",
   "compilerOptions": {
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]

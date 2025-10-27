@@ -44,6 +44,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     collapseOutput,
     expandOutput,
     toggleExportModal,
+    selectFlow,
   } = useUIStore();
 
   const { output } = useOutputStore();
@@ -60,10 +61,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     limit: 50,
   });
 
-  console.log('🚀 [FlowIDEView] currentFlow id:', currentFlow?.id);
-
   // Sync flow code to editor when flow changes
   useEffect(() => {
+    selectFlow(flowId);
     console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
     if (currentFlow) {
       editor.setCode(currentFlow.code);
