@@ -51,8 +51,7 @@ interface OutputStore {
  */
 export const useOutputStore = create<OutputStore>((set) => ({
   // Initial state
-  output:
-    'Ready to code! Try the examples above to test TypeScript IntelliSense.',
+  output: '',
 
   // Actions
   appendOutput: (text) =>

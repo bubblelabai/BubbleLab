@@ -1,4 +1,5 @@
-import { SignedOut, SignInButton, SignUpButton } from '@clerk/clerk-react';
+import { SignInButton, SignUpButton } from '@clerk/clerk-react';
+import { SignedOut } from './AuthComponents';
 import { X } from 'lucide-react';
 
 interface SignInModalProps {

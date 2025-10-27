@@ -171,8 +171,6 @@ export function trackWorkflowGeneration(
     prompt_length: props.prompt.length,
     template_id: props.templateId,
     template_name: props.templateName,
-    generated_bubble_count: props.generatedBubbleCount,
-    generated_code_length: props.generatedCodeLength,
     generation_duration_ms: props.generationDuration,
     success: props.success,
     error_message: props.errorMessage,

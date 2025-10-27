@@ -10,7 +10,11 @@
 import { z } from 'zod';
 import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  GenerationResultSchema,
+  type GenerationResult,
+} from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
   type StreamingCallback,
@@ -48,6 +52,17 @@ interface ToolCallResult {
 }
 
 /**
+ * Extract unique bubble names from validation result
+ */
+function extractBubbleNames(validationResult?: ValidationResult): string[] {
+  if (!validationResult?.bubbles) {
+    return [];
+  }
+  const bubbleNames = validationResult.bubbles.map((b) => b.bubbleName);
+  return Array.from(new Set(bubbleNames));
+}
+
+/**
  * Parameters schema for the simple BubbleFlow generator
  */
 const BubbleFlowGeneratorParamsSchema = z.object({
@@ -62,32 +77,8 @@ const BubbleFlowGeneratorParamsSchema = z.object({
     .describe('Credentials for AI agent operations'),
 });
 
-/**
- * Result schema
- */
-const BubbleFlowGeneratorResultSchema = z.object({
-  generatedCode: z
-    .string()
-    .describe('The generated BubbleFlow TypeScript code'),
-  isValid: z.boolean().describe('Whether the generated code is valid'),
-  success: z.boolean(),
-  error: z.string(),
-  toolCalls: z.array(z.any()).describe('The tool calls made by the AI agent'),
-  summary: z
-    .string()
-    .default('')
-    .describe('High-level instructions for using the validated flow'),
-  inputsSchema: z
-    .string()
-    .default('')
-    .describe('JSON Schema (string) representing the inputs of the flow'),
-});
-
 type BubbleFlowGeneratorParams = z.output<
   typeof BubbleFlowGeneratorParamsSchema
->;
-type BubbleFlowGeneratorResult = z.output<
-  typeof BubbleFlowGeneratorResultSchema
 >;
 
 // Shared constants and prompts
@@ -151,12 +142,12 @@ Only return the final TypeScript code that passes validation. No explanations or
  */
 export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
   BubbleFlowGeneratorParams,
-  BubbleFlowGeneratorResult
+  GenerationResult
 > {
   static readonly type = 'workflow' as const;
   static readonly bubbleName = 'bubbleflow-generator';
   static readonly schema = BubbleFlowGeneratorParamsSchema;
-  static readonly resultSchema = BubbleFlowGeneratorResultSchema;
+  static readonly resultSchema = GenerationResultSchema;
   static readonly shortDescription =
     'Generate BubbleFlow code from natural language';
   static readonly longDescription = `
@@ -191,6 +182,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
     isValid: boolean;
     validationError: string;
     toolCalls?: unknown[];
+    bubblesUsed: string[];
   }> {
     const validationAgent = new AIAgentBubble(
       {
@@ -231,6 +223,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
     let validatedCode = code;
     let isValid = false;
     let validationError = 'Validation agent failed';
+    let bubblesUsed: string[] = [];
     // Handle both streaming (direct response) and non-streaming (wrapped in data) results
     const isStreamingResult = 'response' in validationRun;
     const response = isStreamingResult
@@ -295,11 +288,16 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
 
+            // Extract bubble names from validation result
+            bubblesUsed = extractBubbleNames(validationResult);
+
             console.log(
               '[BubbleFlowGenerator] ✅ Validation parsed - valid:',
               isValid,
               'error:',
-              validationError || 'none'
+              validationError || 'none',
+              'bubblesUsed:',
+              bubblesUsed
             );
           } catch (e) {
             isValid = true;
@@ -314,6 +312,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
       isValid,
       validationError,
       toolCalls,
+      bubblesUsed,
     };
   }
 
@@ -439,7 +438,7 @@ ${VALIDATION_PROCESS}`;
 
   protected async performAction(
     context?: BubbleContext
-  ): Promise<BubbleFlowGeneratorResult> {
+  ): Promise<GenerationResult> {
     void context;
 
     console.log('[BubbleFlowGenerator] Starting generation process...');
@@ -519,6 +518,7 @@ ${VALIDATION_PROCESS}`;
           error: result.error || 'Failed to generate code',
           summary: '',
           inputsSchema: '',
+          bubblesUsed: [],
         };
       }
 
@@ -531,6 +531,7 @@ ${VALIDATION_PROCESS}`;
       // Check if the AI made any tool calls and get validation from the last one
       let isValid = true;
       let validationError = '';
+      let bubblesUsed: string[] = [];
 
       let needsValidationAgent = false;
 
@@ -604,11 +605,16 @@ ${VALIDATION_PROCESS}`;
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
 
+            // Extract bubble names from validation result
+            bubblesUsed = extractBubbleNames(validationResult);
+
             console.log(
               '[BubbleFlowGenerator] ✅ Validation result - valid:',
               isValid,
               'needsAgent:',
-              !isValid
+              !isValid,
+              'bubblesUsed:',
+              bubblesUsed
             );
 
             // If validation ran but code is still invalid, trigger validationAgent to self-heal
@@ -652,12 +658,14 @@ ${VALIDATION_PROCESS}`;
           validatedCode,
           isValid: validated,
           validationError: vErr,
+          bubblesUsed: validationBubbles,
         } = await this.runValidationAgent(
           generatedCode,
           this.params.credentials
         );
         isValid = validated;
         validationError = vErr;
+        bubblesUsed = validationBubbles;
         const { summary, inputsSchema } = isValid
           ? await this.runSummarizeAgent(validatedCode, this.params.credentials)
           : { summary: '', inputsSchema: '' };
@@ -669,6 +677,7 @@ ${VALIDATION_PROCESS}`;
           error: validationError,
           summary,
           inputsSchema,
+          bubblesUsed,
         };
       }
 
@@ -689,6 +698,7 @@ ${VALIDATION_PROCESS}`;
         error: validationError, // Include validation error for reference
         summary,
         inputsSchema,
+        bubblesUsed,
       };
     } catch (error) {
       console.error('[BubbleFlowGenerator] Error during generation:', error);
@@ -703,6 +713,7 @@ ${VALIDATION_PROCESS}`;
             : 'Unknown error during generation',
         summary: '',
         inputsSchema: '',
+        bubblesUsed: [],
       };
     }
   }
@@ -713,7 +724,7 @@ ${VALIDATION_PROCESS}`;
   public async actionWithStreaming(
     streamingCallback: StreamingCallback,
     context?: BubbleContext
-  ): Promise<BubbleFlowGeneratorResult> {
+  ): Promise<GenerationResult> {
     void context;
 
     console.log(
@@ -760,6 +771,9 @@ ${VALIDATION_PROCESS}`;
         data: {
           callId: 'discovery-1',
           tool: 'bubble-discovery',
+          input: {
+            action: 'listing_available_bubbles',
+          },
           output: {
             availableBubbles: availableBubbles.length,
             descriptions: bubbleDescriptions,
@@ -785,6 +799,7 @@ ${VALIDATION_PROCESS}`;
         type: 'tool_complete',
         data: {
           tool: 'template-generation',
+          input: { action: 'generating_boilerplate' },
           callId: 'template-1',
           output: { templateGenerated: true, length: boilerplate.length },
           duration: 50,
@@ -843,6 +858,7 @@ ${VALIDATION_PROCESS}`;
           error: result.error || 'Failed to generate code',
           summary: '',
           inputsSchema: '',
+          bubblesUsed: [],
         };
       }
 
@@ -854,6 +870,7 @@ ${VALIDATION_PROCESS}`;
       // Check validation status from tool calls
       let isValid = true;
       let validationError = '';
+      let bubblesUsed: string[] = [];
 
       console.log('[BubbleFlowGenerator] Checking validation status...');
 
@@ -920,9 +937,14 @@ ${VALIDATION_PROCESS}`;
               (validationResult.errors && validationResult.errors.join('; ')) ||
               '';
 
+            // Extract bubble names from validation result
+            bubblesUsed = extractBubbleNames(validationResult);
+
             console.log(
               '[BubbleFlowGenerator] ✅ Validation agent result - valid:',
-              isValid
+              isValid,
+              'bubblesUsed:',
+              bubblesUsed
             );
 
             if (!isValid) {
@@ -969,6 +991,7 @@ ${VALIDATION_PROCESS}`;
           validatedCode,
           isValid: validated,
           validationError: vErr,
+          bubblesUsed: validationBubbles,
         } = await this.runValidationAgent(
           generatedCode,
           this.params.credentials,
@@ -979,6 +1002,7 @@ ${VALIDATION_PROCESS}`;
           type: 'tool_complete',
           data: {
             tool: 'validation-agent',
+            input: { action: 'validating_generated_code' },
             callId: 'validation-agent-1',
             output: { success: validated },
             duration: 100,
@@ -987,6 +1011,7 @@ ${VALIDATION_PROCESS}`;
 
         isValid = validated;
         validationError = vErr;
+        bubblesUsed = validationBubbles;
 
         let summary = '';
         let inputsSchema = '';
@@ -1013,6 +1038,7 @@ ${VALIDATION_PROCESS}`;
             data: {
               callId: 'summary-agent-1',
               tool: 'summary-agent',
+              input: { action: 'generating_summary_and_schema' },
               output: {
                 summaryGenerated: !!summary,
                 schemaGenerated: !!inputsSchema,
@@ -1029,6 +1055,7 @@ ${VALIDATION_PROCESS}`;
           error: validationError,
           summary,
           inputsSchema,
+          bubblesUsed,
         };
       }
 
@@ -1063,6 +1090,7 @@ ${VALIDATION_PROCESS}`;
           data: {
             callId: 'summary-agent-final',
             tool: 'summary-agent',
+            input: { action: 'generating_summary_and_schema' },
             output: {
               summaryGenerated: !!summary,
               schemaGenerated: !!inputsSchema,
@@ -1079,6 +1107,7 @@ ${VALIDATION_PROCESS}`;
         error: validationError,
         summary,
         inputsSchema,
+        bubblesUsed,
       };
     } catch (error) {
       console.error(
@@ -1108,6 +1137,7 @@ ${VALIDATION_PROCESS}`;
             : 'Unknown error during generation',
         summary: '',
         inputsSchema: '',
+        bubblesUsed: [],
       };
     }
   }

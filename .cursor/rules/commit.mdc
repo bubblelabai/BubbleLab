@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+Check commit styling guide at @COMMIT.md at / folder to see best styling practice for git commit messages.
+
+Try to be as concise as possible. No need for body unless huge changes

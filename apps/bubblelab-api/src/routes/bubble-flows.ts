@@ -7,7 +7,10 @@ import {
   bubbleFlowExecutions,
   users,
 } from '../db/schema.js';
-import { type StreamingEvent } from '@bubblelab/shared-schemas';
+import {
+  GenerationResult,
+  type StreamingEvent,
+} from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
@@ -1031,9 +1034,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }
         );
 
-        // Parse bubble parameters from the generated code (route responsibility)
-        let bubbleParameters = {};
-        let requiredCredentials = {};
         let actualIsValid = result.isValid;
 
         if (result.generatedCode && result.generatedCode.trim()) {
@@ -1045,10 +1045,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             result.inputsSchema = JSON.stringify(validationResult.inputSchema);
 
             if (validationResult.valid && validationResult.bubbleParameters) {
-              bubbleParameters = validationResult.bubbleParameters;
-              requiredCredentials = extractRequiredCredentials(
-                validationResult.bubbleParameters
-              );
               actualIsValid = true;
             } else {
               // Keep the AI's validation result if our parsing failed
@@ -1064,21 +1060,27 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         // Get token usage before sending final events
         const tokenUsage = logger.getTokenUsage();
 
+        const generationResult: GenerationResult = {
+          generatedCode: result.generatedCode,
+          summary: result.summary,
+          inputsSchema: result.inputsSchema,
+          isValid: actualIsValid,
+          success: result.success,
+          error: result.error,
+          toolCalls: result.toolCalls,
+          bubblesUsed: result.bubblesUsed,
+          tokenUsage,
+          bubbleCount: result.bubblesUsed.length,
+          codeLength: result.generatedCode.length,
+        };
+
+        console.log('[API] Generation result:', generationResult);
+
         // Send final result with code generation summary and extracted bubble parameters
         await stream.writeSSE({
           data: JSON.stringify({
             type: 'generation_complete',
-            data: {
-              generatedCode: result.generatedCode,
-              summary: result.summary,
-              inputsSchema: result.inputsSchema,
-              isValid: actualIsValid,
-              success: result.success,
-              error: result.error,
-              bubbleParameters,
-              requiredCredentials,
-              tokenUsage,
-            },
+            data: generationResult,
           }),
           event: 'generation_complete',
         });

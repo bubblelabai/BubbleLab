@@ -1,32 +1,21 @@
 import { create } from 'zustand';
 
 /**
- * UI Store - Global navigation and panel visibility state
+ * UI Store - Global panel visibility and UI state
  *
- * Philosophy: Manages all UI chrome - navigation, panels, modals, indicators
+ * Philosophy: Manages all UI chrome - panels, modals, indicators
  * Does NOT manage domain-specific state (execution, generation, editor)
+ * Navigation is now handled by TanStack Router
  */
-
-export type CurrentPage =
-  | 'prompt'
-  | 'ide'
-  | 'credentials'
-  | 'flow-summary'
-  | 'home';
 
 export type SidePanelMode = 'closed' | 'bubbleList' | 'milktea' | 'pearl';
 
 interface UIStore {
-  // ============= Navigation State =============
-
-  /**
-   * Current page/view in the application
-   */
-  currentPage: CurrentPage;
+  // ============= Panel State =============
 
   /**
    * Currently selected flow ID (which flow is being viewed/edited)
-   * This is navigation state - determines what's shown in the IDE
+   * Used by execution/editor stores to track which flow is active
    */
   selectedFlowId: number | null;
 
@@ -84,11 +73,6 @@ interface UIStore {
   // ============= Visual Indicators =============
 
   // ============= Actions =============
-
-  /**
-   * Navigate to a different page
-   */
-  navigateToPage: (page: CurrentPage) => void;
 
   /**
    * Select a flow (changes what's shown in the IDE)
@@ -189,7 +173,6 @@ interface UIStore {
  */
 export const useUIStore = create<UIStore>((set) => ({
   // Initial state
-  currentPage: 'prompt',
   selectedFlowId: null,
   showEditor: false,
   showLeftPanel: false,
@@ -202,8 +185,6 @@ export const useUIStore = create<UIStore>((set) => ({
   targetInsertLine: null,
 
   // Actions
-  navigateToPage: (page) => set({ currentPage: page }),
-
   selectFlow: (flowId) => set({ selectedFlowId: flowId }),
 
   // If sidebar is open AND trying to open editor, close sidebar
@@ -277,18 +258,6 @@ export const useUIStore = create<UIStore>((set) => ({
 }));
 
 // ============= Derived Selectors =============
-
-/**
- * Check if we're on the IDE page
- */
-export const selectIsIDEPage = (state: UIStore): boolean =>
-  state.currentPage === 'ide';
-
-/**
- * Check if we're on the prompt page
- */
-export const selectIsPromptPage = (state: UIStore): boolean =>
-  state.currentPage === 'prompt';
 
 /**
  * Check if a flow is selected

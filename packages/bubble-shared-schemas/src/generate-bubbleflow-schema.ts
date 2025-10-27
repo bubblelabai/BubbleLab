@@ -2,6 +2,7 @@ import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema';
 import { z } from '@hono/zod-openapi';
 import { BubbleParameterType } from './bubble-definition-schema';
 import { CredentialType } from './types';
+import { TokenUsageSchema } from './bubbleflow-execution-schema';
 
 // BubbleFlow generation schemas
 export const generateBubbleFlowCodeSchema = z.object({
@@ -26,6 +27,47 @@ export const generateBubbleFlowCodeResponseSchema = z.object({
   }),
   requiredCredentials: z.record(z.string(), z.array(z.string())).openapi({
     description: 'Required credentials for the bubbles in the generated code',
+  }),
+});
+
+/**
+ * Schema for the result of BubbleFlow generation
+ * Used by the BubbleFlowGeneratorWorkflow
+ */
+export const GenerationResultSchema = z.object({
+  generatedCode: z
+    .string()
+    .describe('The generated BubbleFlow TypeScript code'),
+  isValid: z.boolean().describe('Whether the generated code is valid'),
+  success: z.boolean(),
+  error: z.string(),
+  flowId: z.number().optional().openapi({
+    description: 'ID of the generated BubbleFlow',
+    example: 123,
+  }),
+  toolCalls: z
+    .array(z.unknown())
+    .describe('The tool calls made by the AI agent'),
+  summary: z
+    .string()
+    .default('')
+    .describe('High-level instructions for using the validated flow'),
+  inputsSchema: z
+    .string()
+    .default('')
+    .describe('JSON Schema (string) representing the inputs of the flow'),
+  bubblesUsed: z
+    .array(z.string())
+    .default([])
+    .describe('List of bubble names used in the generated flow'),
+  tokenUsage: TokenUsageSchema.optional().openapi({
+    description: 'Token usage statistics for the generation',
+  }),
+  bubbleCount: z.number().optional().openapi({
+    description: 'Number of bubbles used in the generated flow',
+  }),
+  codeLength: z.number().optional().openapi({
+    description: 'Length of the generated code in characters',
   }),
 });
 // POST /bubbleflow-template/data-analyst - Generate template from description
@@ -246,6 +288,7 @@ export const bubbleFlowTemplateResponseSchema = z
       description: 'ISO timestamp when the template was last updated',
       example: '2025-01-15T10:30:00.000Z',
     }),
+
     webhook: z
       .object({
         id: z.number().openapi({ description: 'Webhook ID', example: 456 }),
@@ -280,3 +323,4 @@ export type GenerateDocumentGenerationTemplateRequest = z.infer<
 export type BubbleFlowTemplateResponse = z.infer<
   typeof bubbleFlowTemplateResponseSchema
 >;
+export type GenerationResult = z.infer<typeof GenerationResultSchema>;

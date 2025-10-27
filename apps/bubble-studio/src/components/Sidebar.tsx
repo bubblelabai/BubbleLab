@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserButton } from '@clerk/clerk-react';
+import { Link } from '@tanstack/react-router';
 import {
   Plus,
   KeyRound,
@@ -7,25 +8,22 @@ import {
   Home,
   User,
   MessageCircle,
+  Github,
+  Star,
 } from 'lucide-react';
 import { useUser } from '../hooks/useUser';
+import { useGitHubStars } from '../hooks/useGitHubStars';
 import { SignedIn } from './AuthComponents';
 import { DISABLE_AUTH } from '../env';
 
 export interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
-  onPageChange: (
-    page: 'prompt' | 'ide' | 'credentials' | 'flow-summary' | 'home'
-  ) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  isOpen,
-  onToggle,
-  onPageChange,
-}) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const { user } = useUser();
+  const { data: githubStars } = useGitHubStars();
 
   return (
     <div
@@ -76,10 +74,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Home button (icon only, shows label on hover) */}
         <div className="mt-2">
           <div className="relative group">
-            <button
-              type="button"
-              onClick={() => onPageChange('home')}
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+            <Link
+              to="/home"
+              activeProps={{
+                className:
+                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+              }}
+              inactiveProps={{
+                className:
+                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+              }}
               aria-label="Home"
             >
               {/* Fixed icon column */}
@@ -96,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 Home
               </span>
-            </button>
+            </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -109,10 +113,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* New Flow button (icon only, shows label on hover) */}
         <div className="mt-2">
           <div className="relative group">
-            <button
-              type="button"
-              onClick={() => onPageChange('prompt')}
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+            <Link
+              to="/new"
+              activeProps={{
+                className:
+                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+              }}
+              inactiveProps={{
+                className:
+                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+              }}
               aria-label="New Flow"
             >
               {/* Fixed icon column */}
@@ -129,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 New Flow
               </span>
-            </button>
+            </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -142,10 +152,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Credentials button (icon only, shows label on hover) */}
         <div className="mt-2">
           <div className="relative group">
-            <button
-              type="button"
-              onClick={() => onPageChange('credentials')}
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+            <Link
+              to="/credentials"
+              activeProps={{
+                className:
+                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+              }}
+              inactiveProps={{
+                className:
+                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+              }}
               aria-label="Credentials"
             >
               {/* Fixed icon column */}
@@ -162,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 Credentials
               </span>
-            </button>
+            </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -201,6 +217,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
                 Get instant help & feedback
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* GitHub Star button */}
+        <div className="mt-2">
+          <div className="relative group">
+            <a
+              href="https://github.com/bubblelabai/BubbleLab"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              aria-label="Star us on GitHub"
+            >
+              {/* Fixed icon column */}
+              <span className="w-14 flex-none flex justify-center p-2">
+                <Github className="w-5 h-5" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                {githubStars !== undefined ? (
+                  <span className="text-yellow-400 flex items-center gap-1">
+                    <Star className="w-3 h-3" fill="currentColor" />
+                    {githubStars} Stars
+                  </span>
+                ) : (
+                  'Star us on GitHub'
+                )}
+              </span>
+            </a>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                Star us on GitHub
               </span>
             )}
           </div>
