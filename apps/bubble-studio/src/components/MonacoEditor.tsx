@@ -29,7 +29,9 @@ export function MonacoEditor() {
       console.log('📦 Loading Zod types from CDN...');
 
       // Try multiple CDN sources for Zod types
-      const cdnUrls = ['https://cdn.jsdelivr.net/npm/zod@4.1.12/+esm'];
+      const cdnUrls = [
+        'https://cdn.jsdelivr.net/npm/zod@4.1.12/lib/index.d.ts',
+      ];
 
       let zodTypes: string | null = null;
 
@@ -79,6 +81,7 @@ declare module 'zod' {
       }
 
       if (!zodTypes) {
+        console.log('⚠️ Failed to load Zod types from CDN, trying fallback...');
         // Fallback: Create comprehensive Zod type definitions
         const basicZodTypes = `
 declare module 'zod' {

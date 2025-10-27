@@ -70,9 +70,6 @@ function HomeRoute() {
 
         // Use the delete mutation with optimistic updates
         await deleteBubbleFlowMutation.mutateAsync(flowId);
-        setOutput(
-          (prev) => prev + `\n✅ Flow "${flowName}" deleted successfully.`
-        );
 
         console.log('[deleteFlow] Flow deletion completed successfully');
       } catch (error) {
