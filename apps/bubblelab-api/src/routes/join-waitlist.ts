@@ -7,11 +7,11 @@ import {
   validationErrorHook,
 } from '../utils/error-handler.js';
 import { requireJsonContentType } from '../middleware/content-type.js';
-import { clerk } from '@/utils/clerk-client.js';
+import { clerk } from '../utils/clerk-client.js';
 import { db } from '../db/index.js';
 import { users, waitlistedUsers } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { env } from '@/config/env.js';
+import { env } from '../config/env.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
