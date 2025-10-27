@@ -46,6 +46,16 @@ describe('LanguageService typechecker - validateScript', () => {
     expect(Object.keys(result.errors || {}).length).toBe(0);
   });
 
+  it('passes on valid LinkedInLeadFinder flow', () => {
+    const code = getFixture('linkedin-lead-finder');
+    const result = validateScript(code, {
+      fileName: 'virtual/linkedin-lead-finder.ts',
+    });
+    console.log(result);
+    expect(result.success).toBe(true);
+    expect(Object.keys(result.errors || {}).length).toBe(0);
+  });
+
   it('passes on valid GmailCategorizationCron flow', () => {
     const code = `
 import {

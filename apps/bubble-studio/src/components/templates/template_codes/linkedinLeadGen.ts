@@ -84,7 +84,7 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     // Step 3: Analyze each post to determine if it's a lead and extract username using AI heuristics
     const analysisPromises = posts.map(async (post: any) => {
       // Use AI heuristics to extract username from profileUrl
-      let username = null;
+      let username: string | null = null;
       
       if (post.author?.profileUrl) {
         try {
