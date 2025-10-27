@@ -138,7 +138,7 @@ export class CronScheduler {
         {}
       );
 
-      console.log('[cron] transformedPayload', transformedPayload);
+      this.logger.debug?.(`[cron] transformedPayload`, transformedPayload);
       runBubbleFlowWithLogging(f.id, transformedPayload, {
         userId: f.userId,
         appType: AppType.BUBBLE_LAB,
@@ -166,7 +166,7 @@ export class CronScheduler {
     // Set seconds and milliseconds to 0 for clean minute boundary
     rounded.setUTCSeconds(0, 0);
 
-    console.log('[cron] rounded', rounded.toISOString());
+    this.logger.debug?.(`[cron] rounded`, rounded.toISOString());
     const { minute, hour, dayOfMonth, month, dayOfWeek } =
       parseCronExpression(expr);
     // Use UTC methods to ensure cron expressions are evaluated in UTC timezone
