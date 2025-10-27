@@ -70,6 +70,9 @@ export class WebSearchTool extends ToolBubble<
   WebSearchToolParams,
   WebSearchToolResult
 > {
+  // Delay between searches in milliseconds
+  private static readonly SEARCH_DELAY = 2000;
+
   // Required static metadata
   static readonly bubbleName: BubbleName = 'web-search-tool';
   static readonly schema = WebSearchToolParamsSchema;
@@ -106,6 +109,11 @@ export class WebSearchTool extends ToolBubble<
 
   async performAction(context?: BubbleContext): Promise<WebSearchToolResult> {
     void context; // Context available but not currently used
+
+    // Wait for the configured delay before performing the search
+    await new Promise((resolve) =>
+      setTimeout(resolve, WebSearchTool.SEARCH_DELAY)
+    );
 
     const { query, limit, location } = this.params;
 

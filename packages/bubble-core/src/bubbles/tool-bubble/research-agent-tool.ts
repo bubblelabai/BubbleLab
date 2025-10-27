@@ -173,7 +173,7 @@ export class ResearchAgentTool extends ToolBubble<
           systemPrompt: this.buildSystemPrompt(),
           model: {
             model: this.params.model,
-            temperature: 0.7,
+            temperature: 1,
             maxTokens: this.params.maxTokens,
             jsonMode: true, // Enable JSON mode for structured output
           },
