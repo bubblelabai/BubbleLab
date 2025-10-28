@@ -3,6 +3,20 @@ import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
+// Essential headers that users typically care about
+const ESSENTIAL_HEADERS = [
+  'Subject',
+  'From',
+  'To',
+  'Cc',
+  'Bcc',
+  'Date',
+  'Reply-To',
+  'Message-ID',
+  'In-Reply-To',
+  'References',
+] as const;
+
 // Define email header schema
 const EmailHeaderSchema = z
   .object({
@@ -24,6 +38,10 @@ const GmailMessageSchema = z
       .string()
       .optional()
       .describe('Short snippet of the message text'),
+    textContent: z
+      .string()
+      .optional()
+      .describe('Clean, readable email text content'),
     historyId: z
       .string()
       .optional()
@@ -46,7 +64,9 @@ const GmailMessageSchema = z
         headers: z
           .array(EmailHeaderSchema)
           .optional()
-          .describe('Email headers (Subject, From, To, etc.)'),
+          .describe(
+            'Essential email headers only (Subject, From, To, Cc, Bcc, Date, Reply-To, Message-ID, In-Reply-To, References)'
+          ),
         body: z
           .object({
             data: z
@@ -162,6 +182,12 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Token for pagination to get next page'),
+    include_details: z
+      .boolean()
+      .default(true)
+      .describe(
+        'Whether to fetch full message details including snippet, headers, and body'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -679,6 +705,187 @@ export class GmailBubble<
     }
   }
 
+  /**
+   * Extract clean, readable text content from a Gmail message
+   */
+  private extractEmailTextContent(message: any): string {
+    if (!message.payload) return '';
+
+    // Handle simple emails with direct body content
+    if (message.payload.body && message.payload.body.data) {
+      return this.decodeBase64(message.payload.body.data);
+    }
+
+    // Handle multipart emails - look for text/plain content
+    if (message.payload.parts) {
+      for (const part of message.payload.parts) {
+        if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+          return this.decodeBase64(part.body.data);
+        }
+
+        // Handle nested multipart (e.g., multipart/alternative)
+        if (part.mimeType?.startsWith('multipart/') && part.parts) {
+          for (const subPart of part.parts) {
+            if (
+              subPart.mimeType === 'text/plain' &&
+              subPart.body &&
+              subPart.body.data
+            ) {
+              return this.decodeBase64(subPart.body.data);
+            }
+          }
+        }
+      }
+    }
+
+    return '';
+  }
+
+  /**
+   * Decode base64url encoded content to UTF-8 string
+   */
+  private decodeBase64(base64String: string): string {
+    try {
+      // Convert base64url to base64
+      const base64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+      return Buffer.from(base64, 'base64').toString('utf-8');
+    } catch (error) {
+      console.warn('Failed to decode base64 content:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Clean up email content by removing forwarded/replied content and excessive whitespace
+   */
+  private cleanEmailContent(content: string): string {
+    if (!content) return '';
+
+    // Remove excessive whitespace and normalize line breaks
+    let cleaned = content
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // Optional: Remove forwarded message indicators (uncomment if needed)
+    // cleaned = cleaned.replace(/^[\s\S]*?----- Forwarded message -----[\s\S]*$/gm, '');
+
+    return cleaned;
+  }
+
+  /**
+   * Clean up a body part by removing base64 data fields
+   */
+  private cleanBodyPart(part: any): any {
+    if (!part) return part;
+
+    const cleanedPart = { ...part };
+
+    // Remove base64 data from body
+    if (cleanedPart.body && cleanedPart.body.data) {
+      cleanedPart.body = {
+        ...cleanedPart.body,
+        data: undefined,
+      };
+    }
+
+    // Recursively clean nested parts
+    if (cleanedPart.parts && Array.isArray(cleanedPart.parts)) {
+      cleanedPart.parts = cleanedPart.parts.map((subPart: any) =>
+        this.cleanBodyPart(subPart)
+      );
+    }
+
+    return cleanedPart;
+  }
+
+  /**
+   * Filter headers to only keep essential ones that users care about
+   */
+  private filterEssentialHeaders(
+    headers: Array<{ name: string; value: string }>
+  ): Array<{ name: string; value: string }> {
+    if (!headers || !Array.isArray(headers)) return [];
+
+    return headers.filter((header) =>
+      ESSENTIAL_HEADERS.includes(
+        header.name as (typeof ESSENTIAL_HEADERS)[number]
+      )
+    );
+  }
+
+  /**
+   * Clean up payload by removing base64 data fields to reduce response size
+   */
+  private cleanPayloadData(payload: any): any {
+    if (!payload) return payload;
+
+    const cleanedPayload = { ...payload };
+
+    // Filter headers to only essential ones
+    if (cleanedPayload.headers && Array.isArray(cleanedPayload.headers)) {
+      cleanedPayload.headers = this.filterEssentialHeaders(
+        cleanedPayload.headers
+      );
+    }
+
+    // Remove base64 data from main body
+    if (cleanedPayload.body && cleanedPayload.body.data) {
+      cleanedPayload.body = {
+        ...cleanedPayload.body,
+        data: undefined,
+      };
+    }
+
+    // Clean up parts recursively
+    if (cleanedPayload.parts && Array.isArray(cleanedPayload.parts)) {
+      cleanedPayload.parts = cleanedPayload.parts.map((part: any) =>
+        this.cleanBodyPart(part)
+      );
+    }
+
+    return cleanedPayload;
+  }
+
+  /**
+   * Process and clean a Gmail message by extracting text content and removing heavy fields
+   */
+  private async processAndCleanMessage(
+    messageIdOrMessage: string | any
+  ): Promise<any> {
+    try {
+      // If we only have an ID, fetch the full message
+      const fullMessage =
+        typeof messageIdOrMessage === 'string'
+          ? await this.makeGmailApiRequest(
+              `/messages/${messageIdOrMessage}?format=full`
+            )
+          : messageIdOrMessage;
+
+      // Extract clean text content
+      const rawTextContent = this.extractEmailTextContent(fullMessage);
+      const cleanTextContent = this.cleanEmailContent(rawTextContent);
+
+      // Clean up the payload by removing base64 data fields
+      const cleanedPayload = this.cleanPayloadData(fullMessage.payload);
+
+      // Return message with clean content and remove heavy fields
+      return {
+        ...fullMessage,
+        textContent: cleanTextContent,
+        payload: cleanedPayload,
+        raw: undefined, // Remove the heavy raw field to reduce payload size
+      };
+    } catch (error) {
+      // If processing fails, return the original message/ID
+      console.warn(`Failed to process message:`, error);
+      return typeof messageIdOrMessage === 'string'
+        ? { id: messageIdOrMessage }
+        : messageIdOrMessage;
+    }
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<Extract<GmailResult, { operation: T['operation'] }>> {
@@ -841,8 +1048,14 @@ export class GmailBubble<
   private async listEmails(
     params: Extract<GmailParams, { operation: 'list_emails' }>
   ): Promise<Extract<GmailResult, { operation: 'list_emails' }>> {
-    const { query, label_ids, include_spam_trash, max_results, page_token } =
-      params;
+    const {
+      query,
+      label_ids,
+      include_spam_trash,
+      max_results,
+      page_token,
+      include_details,
+    } = params;
 
     const queryParams = new URLSearchParams({
       maxResults: max_results!.toString(),
@@ -859,10 +1072,19 @@ export class GmailBubble<
       `/messages?${queryParams.toString()}`
     );
 
+    let messages = response.messages || [];
+
+    // If include_details is true, fetch full message details and extract clean content
+    if (include_details && messages.length > 0) {
+      messages = await Promise.all(
+        messages.map((msg: any) => this.processAndCleanMessage(msg.id))
+      );
+    }
+
     return {
       operation: 'list_emails',
       success: true,
-      messages: response.messages || [],
+      messages,
       next_page_token: response.nextPageToken,
       result_size_estimate: response.resultSizeEstimate,
       error: '',
@@ -888,10 +1110,16 @@ export class GmailBubble<
       `/messages/${message_id}?${queryParams.toString()}`
     );
 
+    // Clean up the message by removing heavy fields and adding clean text content
+    const cleanedMessage =
+      format === 'full' || format === 'raw'
+        ? await this.processAndCleanMessage(response)
+        : response;
+
     return {
       operation: 'get_email',
       success: true,
-      message: response,
+      message: cleanedMessage,
       error: '',
     };
   }
@@ -912,10 +1140,20 @@ export class GmailBubble<
       `/messages?${queryParams.toString()}`
     );
 
+    let messages = response.messages || [];
+
+    // Since search_emails returns the same basic structure as list_emails,
+    // we should apply the same cleaning logic for consistency
+    if (messages.length > 0) {
+      messages = await Promise.all(
+        messages.map((msg: any) => this.processAndCleanMessage(msg.id))
+      );
+    }
+
     return {
       operation: 'search_emails',
       success: true,
-      messages: response.messages || [],
+      messages,
       result_size_estimate: response.resultSizeEstimate,
       error: '',
     };
@@ -1038,10 +1276,30 @@ export class GmailBubble<
       `/drafts?${queryParams.toString()}`
     );
 
+    let drafts = response.drafts || [];
+
+    // Clean up draft messages to remove heavy fields
+    if (drafts.length > 0) {
+      drafts = await Promise.all(
+        drafts.map(async (draft: any) => {
+          if (draft.message) {
+            const cleanedMessage = await this.processAndCleanMessage(
+              draft.message
+            );
+            return {
+              ...draft,
+              message: cleanedMessage,
+            };
+          }
+          return draft;
+        })
+      );
+    }
+
     return {
       operation: 'list_drafts',
       success: true,
-      drafts: response.drafts || [],
+      drafts,
       next_page_token: response.nextPageToken,
       result_size_estimate: response.resultSizeEstimate,
       error: '',
