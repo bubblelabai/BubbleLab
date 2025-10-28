@@ -762,7 +762,7 @@ export class GmailBubble<
     if (!content) return '';
 
     // Remove excessive whitespace and normalize line breaks
-    let cleaned = content
+    const cleaned = content
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
