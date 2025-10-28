@@ -728,7 +728,8 @@ ${VALIDATION_PROCESS}`;
     void context;
 
     console.log(
-      '[BubbleFlowGenerator] Starting streaming generation process...'
+      '[BubbleFlowGenerator] Starting streaming generation process with prompt: ' +
+        this.params.prompt
     );
     console.log('[BubbleFlowGenerator] Prompt:', this.params.prompt);
 
@@ -862,7 +863,7 @@ ${VALIDATION_PROCESS}`;
         };
       }
 
-      const generatedCode = result.response
+      let generatedCode = result.response
         .replace(/```typescript/g, '')
         .replace(/```/g, '')
         .trim();
@@ -890,6 +891,15 @@ ${VALIDATION_PROCESS}`;
           try {
             // Handle ToolMessage object with content property
             let validationContent: string;
+            console.log(
+              '[BubbleFlowGenerator] Last tool call output:',
+              lastToolCall.input
+            );
+            // Parse the input as a JSON object
+            const input = JSON.parse(
+              (lastToolCall.input as ToolCallResult).input as string
+            );
+            generatedCode = input.code;
 
             if (lastToolCall.output instanceof ToolMessage) {
               const content = lastToolCall.output.content;
