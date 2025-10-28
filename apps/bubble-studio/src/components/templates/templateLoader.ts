@@ -26,6 +26,7 @@ import * as githubScraperTemplate from './template_codes/githubScraper';
 import * as databaseTemplate from './template_codes/databaseMetricsAssistant';
 import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as gmailReplyTemplate from './template_codes/gmailReplyAssistant';
+import * as gmailLabelingTemplate from './template_codes/gmailLabeling';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
 import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
@@ -146,6 +147,15 @@ export const TEMPLATES: TemplateDefinition[] = [
       'List unread emails from past 24 hours using Gmail query, fetch full email details with headers and body content, use AI with JSON mode to classify and filter out marketing/automated emails, generate smart contextual replies for each important email matching original tone, then create Gmail drafts in correct threads with proper recipients.',
     code: gmailReplyTemplate.templateCode,
     category: 'Personal Assistant',
+  },
+  {
+    id: 'gmail-labeling',
+    name: 'Gmail Labeling Assistant (Gmail)',
+    prompt:
+      'Automatically classify and label emails using AI. Creates labels for Newsletters, Social, Updates, Receipts, Support, and Personal categories, then intelligently categorizes unlabeled emails and applies appropriate labels.',
+    code: gmailLabelingTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: false,
   },
   {
     id: 'techweek-calendar',
