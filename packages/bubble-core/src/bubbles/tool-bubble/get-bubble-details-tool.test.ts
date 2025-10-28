@@ -88,6 +88,16 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('description:');
     });
 
+    // Should show description in nested schema structure for gmail bubble
+    test('should show description in nested schema structure for gmail bubble', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'gmail' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).toBeDefined();
+      console.log(result.data.usageExample);
+      expect(usageExample).toContain('Clean, readable email text content');
+    });
+
     test('should show output schema structure for reddit-scrape-tool images parameter', async () => {
       const tool = new GetBubbleDetailsTool({
         bubbleName: 'reddit-scrape-tool',

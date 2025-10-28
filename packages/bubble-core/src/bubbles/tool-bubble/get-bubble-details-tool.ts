@@ -157,7 +157,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
         for (const [key, value] of Object.entries(shape)) {
           if (value && typeof value === 'object' && '_def' in value) {
             const zodType = value as z.ZodTypeAny;
-            const typeInfo = this.generateTypeInfo(zodType);
+            const typeInfo = this.generateTypeInfo(zodType, true); // Enable nested descriptions
             const description = this.getParameterDescription(zodType);
 
             if (typeInfo) {
@@ -181,7 +181,10 @@ export class GetBubbleDetailsTool extends ToolBubble<
     }
   }
 
-  private generateTypeInfo(zodType: z.ZodTypeAny): string | null {
+  private generateTypeInfo(
+    zodType: z.ZodTypeAny,
+    includeNestedDescriptions = false
+  ): string | null {
     const def = zodType._def;
 
     if (def.typeName === 'ZodString') {
@@ -193,7 +196,10 @@ export class GetBubbleDetailsTool extends ToolBubble<
     } else if (def.typeName === 'ZodArray') {
       const elementType = def.type;
       if (elementType) {
-        const elementTypeInfo = this.generateTypeInfo(elementType);
+        const elementTypeInfo = this.generateTypeInfo(
+          elementType,
+          includeNestedDescriptions
+        );
         if (elementTypeInfo) {
           return `${elementTypeInfo}[]`;
         }
@@ -207,9 +213,23 @@ export class GetBubbleDetailsTool extends ToolBubble<
         for (const [key, value] of Object.entries(shape)) {
           if (value && typeof value === 'object' && '_def' in value) {
             const zodValue = value as z.ZodTypeAny;
-            const typeInfo = this.generateTypeInfo(zodValue);
+            const typeInfo = this.generateTypeInfo(
+              zodValue,
+              includeNestedDescriptions
+            );
+
             if (typeInfo) {
-              properties.push(`${key}: ${typeInfo}`);
+              let propertyLine = `${key}: ${typeInfo}`;
+
+              // Include descriptions for nested properties if flag is set
+              if (includeNestedDescriptions) {
+                const description = this.getParameterDescription(zodValue);
+                if (description) {
+                  propertyLine += ` // ${description}`;
+                }
+              }
+
+              properties.push(propertyLine);
             }
           }
         }
@@ -220,13 +240,19 @@ export class GetBubbleDetailsTool extends ToolBubble<
       }
       return 'object';
     } else if (def.typeName === 'ZodOptional') {
-      const innerType = this.generateTypeInfo(def.innerType);
+      const innerType = this.generateTypeInfo(
+        def.innerType,
+        includeNestedDescriptions
+      );
       return innerType ? `${innerType} | undefined` : 'unknown | undefined';
     } else if (def.typeName === 'ZodNullable') {
-      const innerType = this.generateTypeInfo(def.innerType);
+      const innerType = this.generateTypeInfo(
+        def.innerType,
+        includeNestedDescriptions
+      );
       return innerType ? `${innerType} | null` : 'unknown | null';
     } else if (def.typeName === 'ZodDefault') {
-      return this.generateTypeInfo(def.innerType);
+      return this.generateTypeInfo(def.innerType, includeNestedDescriptions);
     } else if (def.typeName === 'ZodEnum') {
       const enumValues = def.values as string[];
       return enumValues.map((v) => `"${v}"`).join(' | ');
@@ -237,7 +263,10 @@ export class GetBubbleDetailsTool extends ToolBubble<
     } else if (def.typeName === 'ZodRecord') {
       const valueType = def.valueType;
       if (valueType) {
-        const valueTypeInfo = this.generateTypeInfo(valueType);
+        const valueTypeInfo = this.generateTypeInfo(
+          valueType,
+          includeNestedDescriptions
+        );
         if (valueTypeInfo) {
           return `Record<string, ${valueTypeInfo}>`;
         }

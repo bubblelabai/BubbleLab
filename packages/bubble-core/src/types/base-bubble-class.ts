@@ -64,16 +64,16 @@ export abstract class BaseBubble<
       this.params = this.schema.parse(params) as TParams;
       // Enrich context with child variableId/currentUniqueId if dependencyGraph is provided
       if (context && context.dependencyGraph && context.currentUniqueId) {
-        console.debug('Computing child context');
+        console.debug('[BaseBubble] Computing child context');
         const next = this.computeChildContext(context);
         this.context = next;
         console.debug(
-          'Computed child context unique id:',
+          '[BaseBubble] Computed child context unique id:',
           this.context?.currentUniqueId
         );
         //Prnt the var id of the computed child context
         console.debug(
-          'Computed child context variable id:',
+          '[BaseBubble] Computed child context variable id:',
           this.context?.variableId
         );
       } else {
