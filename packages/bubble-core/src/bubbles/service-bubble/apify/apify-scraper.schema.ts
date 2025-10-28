@@ -14,6 +14,14 @@ import {
   LinkedInPostsSearchInputSchema,
   LinkedInPostsSearchOutputSchema,
 } from './actors/linkedin-posts-search.js';
+import {
+  YouTubeScraperInputSchema,
+  YouTubeVideoSchema,
+} from './actors/youtube-scraper.js';
+import {
+  YouTubeTranscriptScraperInputSchema,
+  YouTubeTranscriptResultSchema,
+} from './actors/youtube-transcript-scraper.js';
 
 // ============================================================================
 // ACTOR REGISTRY
@@ -47,6 +55,20 @@ export const APIFY_ACTOR_SCHEMAS = {
     description: 'Search LinkedIn posts by keyword without login',
     documentation:
       'https://apify.com/apimaestro/linkedin-posts-search-scraper-no-cookies',
+    category: 'social-media',
+  },
+  'streamers/youtube-scraper': {
+    input: YouTubeScraperInputSchema,
+    output: YouTubeVideoSchema,
+    description: 'YouTube crawler and video scraper with no API limits',
+    documentation: 'https://apify.com/streamers/youtube-scraper',
+    category: 'social-media',
+  },
+  'pintostudio/youtube-transcript-scraper': {
+    input: YouTubeTranscriptScraperInputSchema,
+    output: YouTubeTranscriptResultSchema,
+    description: 'Extract transcripts from YouTube videos with timestamps',
+    documentation: 'https://apify.com/pintostudio/youtube-transcript-scraper',
     category: 'social-media',
   },
 };

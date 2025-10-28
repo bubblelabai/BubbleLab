@@ -143,6 +143,7 @@ export class BubbleFactory {
       'apify',
       'instagram-tool',
       'linkedin-tool',
+      'youtube-tool',
     ];
   }
 
@@ -225,6 +226,9 @@ export class BubbleFactory {
     );
     const { LinkedInTool } = await import(
       './bubbles/tool-bubble/linkedin-tool.js'
+    );
+    const { YouTubeTool } = await import(
+      './bubbles/tool-bubble/youtube-tool.js'
     );
     const { SlackFormatterAgentBubble } = await import(
       './bubbles/workflow-bubble/slack-formatter-agent.js'
@@ -327,6 +331,7 @@ export class BubbleFactory {
     );
     this.register('instagram-tool', InstagramTool as BubbleClassWithMetadata);
     this.register('linkedin-tool', LinkedInTool as BubbleClassWithMetadata);
+    this.register('youtube-tool', YouTubeTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
 
     this.register(

@@ -86,6 +86,11 @@ export type {
   LinkedInAuthor,
   LinkedInStats,
 } from './bubbles/tool-bubble/linkedin-tool.js';
+export { YouTubeTool } from './bubbles/tool-bubble/youtube-tool.js';
+export type {
+  YouTubeVideo,
+  YouTubeTranscriptSegment,
+} from './bubbles/tool-bubble/youtube-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {

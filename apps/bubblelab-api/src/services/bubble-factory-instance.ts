@@ -9,7 +9,7 @@ let initializationPromise: Promise<BubbleFactory> | null = null;
  * Ensures the factory is initialized with defaults before returning
  */
 export async function getBubbleFactory(): Promise<BubbleFactory> {
-  if (bubbleFactoryInstance) {
+  if (bubbleFactoryInstance && bubbleFactoryInstance.list().length > 0) {
     return bubbleFactoryInstance;
   }
 
@@ -17,16 +17,16 @@ export async function getBubbleFactory(): Promise<BubbleFactory> {
     return initializationPromise;
   }
 
-  initializationPromise = initializeFactory();
+  initializationPromise = (async () => {
+    const instance = new BubbleFactory();
+    await instance.registerDefaults();
+    bubbleFactoryInstance = instance;
+    return instance;
+  })().finally(() => {
+    // If initialization failed, allow retry on next call
+    initializationPromise = null;
+  });
   return initializationPromise;
 }
 
-async function initializeFactory(): Promise<BubbleFactory> {
-  if (bubbleFactoryInstance) {
-    return bubbleFactoryInstance;
-  }
-
-  bubbleFactoryInstance = new BubbleFactory();
-  await bubbleFactoryInstance.registerDefaults();
-  return bubbleFactoryInstance;
-}
+// Note: legacy initializeFactory removed; use getBubbleFactory()

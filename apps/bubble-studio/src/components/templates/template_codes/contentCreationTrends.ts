@@ -1,12 +1,35 @@
-// Template for Content Creation Trends
+// Template for Content Creation Trends - EVENT-DRIVEN Fresh Content Flow
+//
+// INPUT: industry (required), brandWebsite (optional), targetAudience (optional), email (required)
+//
+// PHILOSOPHY: Generate FRESH, TIMELY ideas based on RECENT events/news, NOT stale evergreen trends
 //
 // Workflow:
-// 1. Scrapes Exploding Topics to find trending topics relevant to your industry
-// 2. AI analyzes and selects 4-6 most relevant topics for your product
-// 3. Deep research on each topic sequentially (avoids rate limits, better visibility)
-// 4. Gathers real creator insights from Reddit communities in parallel
-// 5. AI synthesizes everything into actionable, product-specific content ideas
-// 6. Generates formatted report with sources and delivers via Google Drive + Email
+// PHASE 1: Brand Intelligence
+//   - Auto-format brandWebsite URL (prepend https:// if missing)
+//   - Scrape brand website → extract brand context (products, voice, audience, values)
+//
+// PHASE 2: AI Research Planning - FRESH NEWS SOURCES
+//   - AI brainstorms BEST sources for RECENT news/events (not evergreen sites)
+//   - Generates: Fresh news sites, YouTube queries, subreddits, trend keywords
+//   - Priority: Sites publishing NEW content daily with DATES
+//
+// PHASE 3: NEWS-FIRST Research
+//   - PARALLEL scraping: Google Trends + Exploding Topics + AI-suggested NEWS sources
+//   - Extract 4-6 EMERGING PHENOMENA from recent news (specific events with dates)
+//   - PARALLEL execution:
+//     * YouTube: Full transcripts from 3-5 videos (NO truncation)
+//     * Research: How creators are responding to EACH specific event/phenomenon
+//   - Reddit: Full post content from AI-suggested communities
+//
+// PHASE 4: EVENT-DRIVEN Ideation
+//   - Pass: Brand context + Emerging phenomena + Research + Transcripts + Reddit
+//   - Generate 8-12 FRESH, TIMELY ideas tied to SPECIFIC recent events
+//   - Each idea references a specific event/date (not generic trends)
+//
+// PHASE 5: Delivery
+//   - Send comprehensive professional email with ALL information
+//   - Focus on FRESHNESS and timeliness of opportunities
 
 export const templateCode = `import {
   BubbleFlow,
@@ -14,8 +37,8 @@ export const templateCode = `import {
   ResearchAgentTool,
   RedditScrapeTool,
   AIAgentBubble,
-  GoogleDriveBubble,
   ResendBubble,
+  YouTubeTool,
   type WebhookEvent,
 } from '@bubblelab/bubble-core';
 
@@ -23,22 +46,43 @@ export interface Output {
   message: string;
   trendsCount: number;
   ideasCount: number;
-  fileId?: string;
+  youtubeVideosAnalyzed: number;
   emailId?: string;
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
   email: string;
-  productName: string;
-  industry?: string;
+  industry: string;
+  brandWebsite?: string;
   targetAudience?: string;
-  subreddits?: string[];
 }
 
-interface TrendTopic {
-  topic: string;
+interface BrandIntelligence {
+  productName: string;
   description: string;
-  relevanceScore: string;
+  products: string[];
+  brandVoice: string;
+  targetAudience: string;
+  industry: string;
+  valuePropositions: string[];
+}
+
+interface ResearchPlan {
+  newsSourceUrls: Array<{ url: string; reason: string }>;
+  trendKeywords: string[];
+  youtubeSearchQueries: string[];
+  subreddits: string[];
+  reasoning: string;
+}
+
+interface EmergingPhenomena {
+  phenomena: Array<{
+    title: string;
+    description: string;
+    dateContext: string;
+    relevanceToIndustry: string;
+    contentOpportunity: string;
+  }>;
 }
 
 interface TrendData {
@@ -68,125 +112,395 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
   async handle(payload: CustomWebhookPayload): Promise<Output> {
     const {
       email,
-      productName,
-      industry = 'general',
-      targetAudience = 'general audience',
-      subreddits = ['ContentCreator', 'InstagramMarketing', 'NewTubers'],
+      industry,
+      brandWebsite,
+      targetAudience,
     } = payload;
 
-    // STEP 1: Scrape Exploding Topics to discover trending topics related to the industry
-    // Exploding Topics aggregates emerging trends across tech, marketing, health, finance, etc.
-    // We'll use AI to extract topics relevant to the user's product/industry
-    const explodingTopicsScraper = new WebScrapeTool({
-      url: 'https://www.explodingtopics.com',
-      format: 'markdown',
-      onlyMainContent: true,
-    });
+    // ========================================================================
+    // PHASE 1: BRAND INTELLIGENCE - Extract brand context from website
+    // ========================================================================
+    let brandContext: BrandIntelligence;
 
-    const scrapeResult = await explodingTopicsScraper.action();
+    if (brandWebsite) {
+      // Auto-prepend https:// if no protocol specified
+      const formattedUrl = brandWebsite.startsWith('http://') || brandWebsite.startsWith('https://')
+        ? brandWebsite
+        : \`https://\${brandWebsite}\`;
 
-    if (!scrapeResult.success || !scrapeResult.data?.content) {
-      throw new Error(\`Failed to scrape Exploding Topics: \${scrapeResult.error || 'No content'}\`);
-    }
+      const brandScraper = new WebScrapeTool({
+        url: formattedUrl,
+        format: 'markdown',
+        onlyMainContent: true,
+      });
 
-    // STEP 2: Use AI to extract trending topics relevant to the product/industry
-    const topicExtractionPrompt = \`
-Analyze the following content from Exploding Topics and identify 3 trending topics
-that are most relevant to a product in the "\${industry}" industry targeting "\${targetAudience}".
+      const brandResult = await brandScraper.action();
 
-Product Name: \${productName}
-Industry: \${industry}
-Target Audience: \${targetAudience}
+      if (!brandResult.success || !brandResult.data?.content) {
+        throw new Error(\`Failed to scrape brand website: \${brandResult.error || 'No content'}\`);
+      }
 
-Content from Exploding Topics:
-\${scrapeResult.data.content.substring(0, 8000)}
+      // Use AI to extract structured brand intelligence
+      const brandAnalysisPrompt = \`
+Analyze this brand's website and extract key information:
 
-Return a JSON object with:
+Website Content:
+\${brandResult.data.content.substring(0, 10000)}
+
+Extract and return JSON:
 {
-  "topics": [
-    {
-      "topic": "Trend name or keyword",
-      "description": "Why this trend is relevant for content creation",
-      "relevanceScore": "High/Medium - why it's relevant to this product"
-    }
-  ]
+  "productName": "Main product/company name",
+  "description": "2-3 sentence company description",
+  "products": ["list of main products/services"],
+  "brandVoice": "Description of tone/style (professional, casual, technical, etc.)",
+  "targetAudience": "Who is the primary audience",
+  "industry": "Specific industry/niche",
+  "valuePropositions": ["key benefits they emphasize"]
 }
+      \`;
 
-Focus on topics that can be adapted into content formats (videos, posts, campaigns).
+      const brandAnalyzer = new AIAgentBubble({
+        message: brandAnalysisPrompt,
+        systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence. Return only valid JSON.',
+        model: {
+          model: 'google/gemini-2.5-flash',
+          jsonMode: true,
+        },
+      });
+
+      const brandAnalysisResult = await brandAnalyzer.action();
+
+      if (!brandAnalysisResult.success || !brandAnalysisResult.data?.response) {
+        throw new Error('Failed to analyze brand');
+      }
+
+      try {
+        brandContext = JSON.parse(brandAnalysisResult.data.response);
+      } catch (error) {
+        throw new Error('Failed to parse brand analysis JSON');
+      }
+    } else {
+      // No brand website provided - use industry and audience
+      brandContext = {
+        productName: \`\${industry} Business\`,
+        description: \`A business in the \${industry} industry\`,
+        products: [],
+        brandVoice: 'professional',
+        targetAudience: targetAudience || 'general audience',
+        industry: industry,
+        valuePropositions: [],
+      };
+    }
+
+    // Override target audience if provided explicitly
+    if (targetAudience) {
+      brandContext.targetAudience = targetAudience;
+    }
+
+    // ========================================================================
+    // PHASE 2: AI RESEARCH PLANNING - Brainstorm FRESH news sources first
+    // ========================================================================
+    const researchPlanningPrompt = \`
+You are a research strategist specializing in finding FRESH, RECENT content opportunities.
+
+BRAND CONTEXT:
+- Company: \${brandContext.productName}
+- Industry: \${brandContext.industry}
+- Target Audience: \${brandContext.targetAudience}
+- Description: \${brandContext.description}
+
+CRITICAL: We need FRESH ideas based on RECENT events, news, and emerging phenomena.
+Focus on sources that publish NEW content daily/weekly, NOT evergreen trend aggregators.
+
+TASK: Identify the BEST sources for discovering RECENT events and emerging phenomena:
+
+1. **NEWS SOURCES (3-5 REQUIRED)** - TOP PRIORITY:
+   - What are the BEST news sites/blogs that cover RECENT developments in this industry?
+   - MUST BE: Sites that publish NEW articles daily/weekly with DATES
+   - MUST HAVE: Coverage of events, launches, phenomena, cultural moments, breaking news
+   - AVOID: Evergreen content sites, old blogs, generic news
+   - Examples:
+     * Tech: TechCrunch, The Verge, Ars Technica
+     * Marketing: AdAge, MarketingBrew, Adweek
+     * Finance: Bloomberg, Financial Times, WSJ
+     * Culture: Vulture, The Ringer, Polygon
+   - Provide FULL URLs (e.g., "https://techcrunch.com")
+
+2. Trend Keywords (3-5 keywords):
+   - Industry-specific terms for Google Trends and Exploding Topics
+   - Focus on emerging topics, not established ones
+
+3. YouTube Search Queries (MAX 3 searches):
+   - Queries to find videos about RECENT events/trends in this niche
+   - Include time-sensitive terms like "2024", "latest", "new"
+
+4. Reddit Communities (3-5 subreddits):
+   - Subreddits discussing CURRENT events in this industry
+   - Active communities with recent posts
+
+Return JSON:
+{
+  "newsSourceUrls": [
+    { "url": "https://example.com", "reason": "Why this news source publishes fresh, relevant content for this industry" }
+  ],
+  "trendKeywords": ["keyword1", "keyword2", "keyword3"],
+  "youtubeSearchQueries": ["query 1", "query 2", "query 3"],
+  "subreddits": ["subreddit1", "subreddit2", "subreddit3"],
+  "reasoning": "Brief explanation focusing on how these sources will surface RECENT events and phenomena"
+}
     \`;
 
-    const topicExtractor = new AIAgentBubble({
-      message: topicExtractionPrompt,
-      systemPrompt: 'You are a trend analyst specializing in content marketing. Extract the most relevant trending topics for content creation. Return only valid JSON.',
+    const researchPlanner = new AIAgentBubble({
+      message: researchPlanningPrompt,
+      systemPrompt: 'You are an expert research strategist. Plan comprehensive research strategies for content trend discovery. Return only valid JSON.',
       model: {
         model: 'google/gemini-2.5-flash',
         jsonMode: true,
       },
     });
 
-    const topicResult = await topicExtractor.action();
+    const researchPlanResult = await researchPlanner.action();
 
-    if (!topicResult.success || !topicResult.data?.response) {
-      throw new Error(\`Failed to extract topics: \${topicResult.error || 'No response'}\`);
+    if (!researchPlanResult.success || !researchPlanResult.data?.response) {
+      throw new Error('Failed to create research plan');
     }
 
-    let extractedTopics: { topics: TrendTopic[] };
+    let researchPlan: ResearchPlan;
     try {
-      extractedTopics = JSON.parse(topicResult.data.response);
+      researchPlan = JSON.parse(researchPlanResult.data.response);
     } catch (error) {
-      throw new Error('Failed to parse extracted topics JSON');
+      throw new Error('Failed to parse research plan JSON');
     }
 
-    // STEP 3: For each topic, do deep research sequentially (to avoid rate limits)
-    // This approach:
-    // - Avoids overwhelming the research agent with parallel requests
-    // - Provides better visibility in live output (you see each topic being researched)
-    // - Prevents rate limiting from search APIs
-    const allTrends: TrendData['trends'] = [];
+    // ========================================================================
+    // PHASE 3: NEWS-FIRST RESEARCH - Scrape fresh news to find emerging phenomena
+    // ========================================================================
 
-    for (const topic of extractedTopics.topics) {
-      const researchTask = \`
-Research how the trend "\${topic.topic}" is being used in content creation across social media platforms.
+    // STEP 3.1: Scrape FRESH news sources in parallel (prioritize recent content)
+    const scrapingPromises = [
+      // Google Trends (what's trending RIGHT NOW)
+      new WebScrapeTool({
+        url: 'https://trends.google.com/trends/trendingsearches/daily',
+        format: 'markdown',
+        onlyMainContent: true,
+      }).action(),
 
-Context: This trend is relevant because: \${topic.description}
+      // Exploding Topics (emerging topics)
+      new WebScrapeTool({
+        url: 'https://www.explodingtopics.com',
+        format: 'markdown',
+        onlyMainContent: true,
+      }).action(),
 
-Find specific examples of:
-- How creators are using this trend in TikTok, Instagram Reels, YouTube Shorts
-- Viral content formats related to this trend
-- Popular hashtags, sounds, or challenges associated with it
-- Creative ways brands/creators are adapting this trend
-- Engagement patterns (what makes content around this trend perform well)
+      // AI-suggested FRESH news sources (priority)
+      ...researchPlan.newsSourceUrls.map((site) =>
+        new WebScrapeTool({
+          url: site.url,
+          format: 'markdown',
+          onlyMainContent: true,
+        }).action()
+      ),
+    ];
 
-Provide 2-3 specific content format examples with sources.
-      \`;
+    const scrapeResults = await Promise.all(scrapingPromises);
 
-      const researchSchema = JSON.stringify({
-        trends: [
-          {
-            topic: 'string (the trending topic being researched)',
-            format: 'string (specific content format name)',
-            description: 'string (how this format works and why its effective)',
-            platforms: ['array of platforms where this format is trending'],
-            sourceUrl: 'string (URL source where you found this information)',
-            viralExamples: ['array of specific examples, hashtags, or creator names - optional'],
-          },
-        ],
-      });
+    // Combine all scraped news content
+    const allNewsContent = scrapeResults
+      .filter((result) => result.success && result.data?.content)
+      .map((result, index) => {
+        if (index === 0) return \`=== GOOGLE TRENDS (LIVE) ===\\n\${result.data!.content}\`;
+        if (index === 1) return \`=== EXPLODING TOPICS ===\\n\${result.data!.content}\`;
+        const siteIndex = index - 2;
+        return \`=== \${researchPlan.newsSourceUrls[siteIndex]?.url || 'NEWS SOURCE'} ===\\n\${result.data!.content}\`;
+      })
+      .join('\\n\\n---\\n\\n');
 
-      const topicResearch = new ResearchAgentTool({
-        task: researchTask,
-        expectedResultSchema: researchSchema,
-        maxIterations: 25,
-      });
+    // STEP 3.2: Extract EMERGING PHENOMENA from recent news (what's happening NOW)
+    const phenomenaExtractionPrompt = \`
+Analyze RECENT news content and identify 4-6 emerging phenomena, events, or cultural moments that are happening RIGHT NOW.
 
-      const researchResult = await topicResearch.action();
+BRAND CONTEXT:
+- Company: \${brandContext.productName}
+- Industry: \${brandContext.industry}
+- Target Audience: \${brandContext.targetAudience}
 
-      if (researchResult.success && researchResult.data?.result) {
-        const topicTrends = (researchResult.data.result as TrendData).trends || [];
-        allTrends.push(...topicTrends);
-      }
-      // Continue even if one topic fails - we want partial results
+CRITICAL INSTRUCTIONS:
+- Focus on RECENT events (last 2-4 weeks ideally)
+- Look for: product launches, cultural moments, viral phenomena, breaking news, industry events
+- Extract the DATE/TIME CONTEXT (when did this happen?)
+- Explain why THIS SPECIFIC EVENT creates a content opportunity
+
+RECENT NEWS CONTENT:
+\${allNewsContent.substring(0, 20000)}
+
+NEWS SOURCES ANALYZED:
+- Google Trends (live trending searches)
+- Exploding Topics
+\${researchPlan.newsSourceUrls.map(s => \`- \${s.url} (\${s.reason})\`).join('\\n')}
+
+Return JSON with RECENT, SPECIFIC phenomena:
+{
+  "phenomena": [
+    {
+      "title": "Specific event/phenomenon name (e.g., 'ChatGPT Vision Launch', 'Apple Glowtime Event')",
+      "description": "What happened? Be specific about the event/news",
+      "dateContext": "When did this happen? (e.g., 'September 2024', 'Last week', 'This month')",
+      "relevanceToIndustry": "Why this matters for \${brandContext.industry} industry",
+      "contentOpportunity": "Specific content angle this event creates for \${brandContext.productName}"
     }
+  ]
+}
+
+FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen trends.
+    \`;
+
+    const phenomenaExtractor = new AIAgentBubble({
+      message: phenomenaExtractionPrompt,
+      systemPrompt: 'You are a news analyst specializing in identifying emerging phenomena and timely content opportunities. Focus on RECENT events with specific dates. Return only valid JSON.',
+      model: {
+        model: 'google/gemini-2.5-flash',
+        jsonMode: true,
+      },
+    });
+
+    const phenomenaResult = await phenomenaExtractor.action();
+
+    if (!phenomenaResult.success || !phenomenaResult.data?.response) {
+      throw new Error(\`Failed to extract phenomena: \${phenomenaResult.error || 'No response'}\`);
+    }
+
+    let emergingPhenomena: EmergingPhenomena;
+    try {
+      emergingPhenomena = JSON.parse(phenomenaResult.data.response);
+    } catch (error) {
+      throw new Error('Failed to parse emerging phenomena JSON');
+    }
+
+    if (!emergingPhenomena.phenomena || emergingPhenomena.phenomena.length === 0) {
+      throw new Error('No emerging phenomena found in recent news');
+    }
+
+    // STEP 3.3 & 3.4: Run YouTube + Deep Research in PARALLEL for maximum efficiency
+    const [youtubeData, researchData] = await Promise.all([
+      // PARALLEL TASK 1: YouTube - search and get FULL transcripts
+      (async () => {
+        // Limit to max 3 queries for efficiency
+        const limitedQueries = researchPlan.youtubeSearchQueries.slice(0, 3);
+
+        const youtubeSearch = new YouTubeTool({
+          operation: 'searchVideos',
+          searchQueries: limitedQueries,
+          maxResults: 5,
+        });
+
+        const youtubeSearchResult = await youtubeSearch.action();
+
+        let fullYoutubeTranscripts = '';
+        let youtubeVideoTitles: string[] = [];
+
+        if (youtubeSearchResult.success && youtubeSearchResult.data?.videos && youtubeSearchResult.data.videos.length > 0) {
+          // Get top 5 videos with full transcripts
+          const topVideos = youtubeSearchResult.data.videos.slice(0, 5).filter(v => v.url);
+          youtubeVideoTitles = topVideos.map(v => v.title || '').filter(Boolean);
+
+          // Get FULL transcripts from all 5 videos in parallel
+          const transcriptPromises = topVideos.map(async (video) => {
+            try {
+              const transcriptTool = new YouTubeTool({
+                operation: 'getTranscript',
+                videoUrl: video.url!,
+              });
+
+              const result = await transcriptTool.action();
+
+              if (result.success && result.data?.fullTranscriptText) {
+                return \`
+=== VIDEO: \${video.title || 'Untitled'} ===
+URL: \${video.url}
+FULL TRANSCRIPT:
+\${result.data.fullTranscriptText}
+
+\`;
+              }
+              return '';
+            } catch (error) {
+              console.error(\`Failed to get transcript for \${video.url}:\`, error);
+              return '';
+            }
+          });
+
+          const transcripts = await Promise.all(transcriptPromises);
+          fullYoutubeTranscripts = transcripts.filter(Boolean).join('\\n--- NEXT VIDEO ---\\n');
+        }
+
+        return { fullYoutubeTranscripts, youtubeVideoTitles };
+      })(),
+
+      // PARALLEL TASK 2: Deep research AROUND each emerging phenomenon
+      (async () => {
+        const allTrends: TrendData['trends'] = [];
+
+        for (const phenomenon of emergingPhenomena.phenomena) {
+          const researchTask = \`
+Research how creators and brands are responding to this RECENT event/phenomenon on social media.
+
+EMERGING PHENOMENON:
+- Event: \${phenomenon.title}
+- What Happened: \${phenomenon.description}
+- When: \${phenomenon.dateContext}
+- Why It Matters: \${phenomenon.relevanceToIndustry}
+
+BRAND CONTEXT:
+- Company: \${brandContext.productName}
+- Industry: \${brandContext.industry}
+- Target Audience: \${brandContext.targetAudience}
+
+RESEARCH TASK:
+Find how creators are ALREADY creating content around this event/phenomenon:
+- TikTok, Instagram Reels, YouTube Shorts responses to this event
+- Viral content formats that have emerged in response
+- Hashtags, sounds, or memes related to this specific event
+- How brands/creators are jumping on this timely moment
+- What makes the most engaging responses to this event
+
+Provide 2-3 specific content format examples showing how creators are responding to THIS event.
+          \`;
+
+          const researchSchema = JSON.stringify({
+            trends: [
+              {
+                topic: 'string (the trending topic being researched)',
+                format: 'string (specific content format name)',
+                description: 'string (how this format works and why its effective)',
+                platforms: ['array of platforms where this format is trending'],
+                sourceUrl: 'string (URL source where you found this information)',
+                viralExamples: ['array of specific examples, hashtags, or creator names - optional'],
+              },
+            ],
+          });
+
+          const topicResearch = new ResearchAgentTool({
+            task: researchTask,
+            expectedResultSchema: researchSchema,
+            maxIterations: 25,
+          });
+
+          const researchResult = await topicResearch.action();
+
+          if (researchResult.success && researchResult.data?.result) {
+            const topicTrends = (researchResult.data.result as TrendData).trends || [];
+            allTrends.push(...topicTrends);
+          }
+          // Continue even if one topic fails - we want partial results
+        }
+
+        return allTrends;
+      })(),
+    ]);
+
+    // Extract results from parallel execution
+    const { fullYoutubeTranscripts, youtubeVideoTitles } = youtubeData;
+    const allTrends = researchData;
 
     if (allTrends.length === 0) {
       throw new Error('Failed to research any trends - no data gathered');
@@ -196,14 +510,9 @@ Provide 2-3 specific content format examples with sources.
       trends: allTrends,
     };
 
-    // STEP 4: Gather real-world creator insights from Reddit (in parallel)
-    // Reddit communities provide:
-    // - ContentCreator: General creator tips, what's working now, tool recommendations
-    // - tiktokcreators: TikTok-specific trends, algorithm insights, viral strategies
-    // - InstagramMarketing: IG Reels trends, hashtag strategies, posting best practices
-    // - NewTubers: YouTube Shorts trends, thumbnail strategies, what's getting views
-    // Running in parallel since Reddit API is separate and has its own rate limits
-    const redditPromises = subreddits.map(async (subreddit) => {
+    // STEP 3.5: Gather FULL Reddit posts from AI-suggested subreddits (in parallel)
+    // Get complete post content including title, body, and top comments for deeper insights
+    const redditPromises = researchPlan.subreddits.map(async (subreddit) => {
       const redditScraper = new RedditScrapeTool({
         subreddit,
         limit: 10,
@@ -216,7 +525,25 @@ Provide 2-3 specific content format examples with sources.
 
         if (redditResult.success && redditResult.data?.posts) {
           const topPosts = redditResult.data.posts.slice(0, 5);
-          return \`r/\${subreddit}: \${topPosts.map((p: any) => p.title).join('; ')}\`;
+
+          // Format FULL post content
+          const formattedPosts = topPosts.map((p: any) => {
+            const title = p.title || 'No title';
+            const content = p.selftext || p.body || 'No content';
+            const score = p.score || 0;
+            const comments = p.num_comments || 0;
+
+            return \`
+[r/\${subreddit}] \${title}
+Score: \${score} | Comments: \${comments}
+Content: \${content.substring(0, 500)}\${content.length > 500 ? '...' : ''}
+---\`;
+          }).join('\\n');
+
+          return \`
+=== SUBREDDIT: r/\${subreddit} ===
+\${formattedPosts}
+\`;
         }
         return null;
       } catch (error) {
@@ -226,47 +553,83 @@ Provide 2-3 specific content format examples with sources.
     });
 
     const redditResults = await Promise.all(redditPromises);
-    const redditInsights = redditResults.filter((r): r is string => r !== null);
+    const fullRedditContent = redditResults.filter((r): r is string => r !== null).join('\\n');
 
-    // STEP 5: Use AI to synthesize all research into actionable content ideas
-    // This combines:
-    // - Trending topics from Exploding Topics
-    // - Deep research on how each trend is being used in content
-    // - Real creator insights from Reddit communities
-    // The AI will adapt these trends specifically for the user's product/audience
+    // ========================================================================
+    // PHASE 4: AI IDEATION - Generate FRESH, EVENT-DRIVEN content ideas
+    // ========================================================================
+    // Pass ALL collected data: brand context, emerging phenomena, research, transcripts, Reddit
     const adaptationPrompt = \`
-You are a creative content strategist. Analyze the following trending content formats and generate actionable content ideas adapted for a specific product.
+You are an expert content strategist specializing in TIMELY, EVENT-DRIVEN content.
 
-TRENDING FORMATS DISCOVERED:
+========================================
+BRAND INTELLIGENCE
+========================================
+Company: \${brandContext.productName}
+Industry: \${brandContext.industry}
+Target Audience: \${brandContext.targetAudience}
+Description: \${brandContext.description}
+Brand Voice: \${brandContext.brandVoice}
+Products/Services: \${brandContext.products.join(', ')}
+Value Propositions: \${brandContext.valuePropositions.join(', ')}
+
+========================================
+EMERGING PHENOMENA (RECENT EVENTS)
+========================================
+These are FRESH, RECENT events happening RIGHT NOW:
+
+\${emergingPhenomena.phenomena.map((p, i) => \`
+\${i + 1}. \${p.title} (\${p.dateContext})
+   What happened: \${p.description}
+   Why it matters: \${p.relevanceToIndustry}
+   Content opportunity: \${p.contentOpportunity}
+\`).join('\\n')}
+
+========================================
+HOW CREATORS ARE RESPONDING (RESEARCH)
+========================================
 \${JSON.stringify(trendData.trends, null, 2)}
 
-ADDITIONAL REDDIT INSIGHTS:
-\${redditInsights.join('\\n')}
+========================================
+YOUTUBE VIDEO ANALYSIS (\${youtubeVideoTitles.length} videos)
+========================================
+Videos analyzed:
+\${youtubeVideoTitles.map((title, i) => \`\${i + 1}. \${title}\`).join('\\n')}
 
-PRODUCT INFORMATION:
-- Product Name: \${productName}
-- Industry: \${industry}
-- Target Audience: \${targetAudience}
+Full transcripts:
+\${fullYoutubeTranscripts || 'No transcripts available'}
 
-TASK:
-Generate 8-12 specific, actionable content ideas that adapt these trending formats for this product. Each idea should:
-1. Leverage a specific trending format
-2. Be tailored to the product and target audience
-3. Include specific content hooks and engagement strategies
-4. Explain how to adapt the trend authentically (not just copy it)
-5. Estimate engagement potential (High/Medium/Low)
+========================================
+REDDIT CREATOR DISCUSSIONS
+========================================
+\${fullRedditContent || 'No Reddit data available'}
 
-Return a JSON object with:
+========================================
+CRITICAL TASK
+========================================
+Generate 8-12 FRESH, TIMELY content ideas that:
+1. Are tied to SPECIFIC RECENT EVENTS from the emerging phenomena above
+2. Feel FRESH and TIMELY (not evergreen or generic)
+3. Reference the event/date context (e.g., "Responding to Apple's latest launch...")
+4. Are tailored to \${brandContext.productName}'s brand and products
+5. Can be executed NOW while the moment is still relevant
+
+Each idea should:
+- Reference a SPECIFIC recent event/phenomenon
+- Explain WHY this moment matters NOW
+- Show how \${brandContext.productName} can authentically participate
+
+Return ONLY valid JSON:
 {
-  "executiveSummary": "2-3 sentence overview of the trend landscape and key opportunities",
+  "executiveSummary": "2-3 sentences about the FRESH opportunities from recent events/phenomena",
   "ideas": [
     {
-      "title": "Catchy idea title",
-      "format": "Which trending format this uses",
-      "description": "Detailed description of the content piece",
-      "adaptationStrategy": "How to authentically adapt the trend for this product",
-      "contentHooks": ["Hook 1", "Hook 2", "Hook 3"],
-      "estimatedEngagement": "High/Medium/Low with brief reasoning"
+      "title": "Timely, event-driven idea title (reference the event)",
+      "format": "Content format being used",
+      "description": "Description that references the SPECIFIC event and timing",
+      "adaptationStrategy": "How \${brandContext.productName} can authentically join this conversation NOW",
+      "contentHooks": ["Hook 1 (event-specific)", "Hook 2", "Hook 3"],
+      "estimatedEngagement": "High/Medium/Low with reasoning (mention timeliness)"
     }
   ]
 }
@@ -275,7 +638,7 @@ Return a JSON object with:
     const ideationAgent = new AIAgentBubble({
       message: adaptationPrompt,
       systemPrompt:
-        'You are an expert content strategist specializing in viral social media content. Generate creative, actionable ideas that authentically adapt trends. Return only valid JSON.',
+        'You are an expert content strategist specializing in TIMELY, EVENT-DRIVEN viral content. Generate FRESH ideas tied to recent events with specific dates. Avoid evergreen or generic ideas. Return only valid JSON.',
       model: {
         model: 'google/gemini-2.5-flash',
         jsonMode: true,
@@ -295,84 +658,9 @@ Return a JSON object with:
       throw new Error('Failed to parse content ideas JSON');
     }
 
-    // 4. Create a beautifully formatted document for Google Drive
-    const documentContent = \`
-# 📈 Content Creation Trends Report
-**Generated for: \${productName}**
-**Date: \${new Date().toLocaleDateString()}**
-
-## 📊 Executive Summary
-\${contentIdeas.executiveSummary}
-
----
-
-## 🔥 Trending Formats Discovered
-\${trendData.trends
-  .map(
-    (trend, i) => \`
-### \${i + 1}. \${trend.format}
-**Description:** \${trend.description}
-**Platforms:** \${trend.platforms.join(', ')}
-**Source:** [\${new URL(trend.sourceUrl).hostname}](\${trend.sourceUrl})
-\${trend.viralExamples && trend.viralExamples.length > 0 ? \`**Examples:** \${trend.viralExamples.join(', ')}\` : ''}
-\`
-  )
-  .join('\\n')}
-
----
-
-## 💡 Actionable Content Ideas for \${productName}
-
-\${contentIdeas.ideas
-  .map(
-    (idea, i) => \`
-### Idea \${i + 1}: \${idea.title}
-**Format:** \${idea.format}
-**Engagement Potential:** \${idea.estimatedEngagement}
-
-**Description:**
-\${idea.description}
-
-**Adaptation Strategy:**
-\${idea.adaptationStrategy}
-
-**Content Hooks:**
-\${idea.contentHooks && idea.contentHooks.length > 0 ? idea.contentHooks.map((hook) => \`- \${hook}\`).join('\\n') : '- N/A'}
-
----
-\`
-  )
-  .join('\\n')}
-
-## 📚 Research Sources
-**Primary Trend Source:**
-- [Exploding Topics](https://www.explodingtopics.com) - Emerging trend aggregator
-
-**Deep Research Sources:**
-\${trendData.trends.map((trend) => \`- [\${new URL(trend.sourceUrl).hostname}](\${trend.sourceUrl}) - \${trend.topic}\`).join('\\n')}
-
-**Creator Community Insights:**
-\${subreddits.map((sub) => \`- r/\${sub} - Real-world creator discussions\`).join('\\n')}
-
----
-*Generated by BubbleLab Content Trends Workflow*
-    \`.trim();
-
-    // 5. Upload to Google Drive
-    const driveUpload = new GoogleDriveBubble({
-      operation: 'upload_file',
-      name: \`Content_Trends_\${productName.replace(/\\s+/g, '_')}_\${new Date().toISOString().split('T')[0]}.txt\`,
-      content: documentContent,
-      mimeType: 'text/plain',
-    });
-
-    const driveResult = await driveUpload.action();
-
-    if (!driveResult.success) {
-      throw new Error(\`Failed to upload to Drive: \${driveResult.error || 'Unknown error'}\`);
-    }
-
-    // 6. Send email summary with HTML formatting
+    // ========================================================================
+    // PHASE 5: DELIVERY - Send comprehensive email with ALL information
+    // ========================================================================
     const htmlEmail = \`
 <!DOCTYPE html>
 <html>
@@ -381,69 +669,123 @@ Return a JSON object with:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Content Trends Report</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; color: #212529;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fa; padding: 40px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <table width="700" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 4px;">
+
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">📈 Content Trends Report</h1>
-              <p style="margin: 10px 0 0 0; color: #ffe0e0; font-size: 16px;">For \${productName}</p>
+            <td style="padding: 40px 40px 30px 40px; border-bottom: 2px solid #495057;">
+              <h1 style="margin: 0 0 8px 0; color: #212529; font-size: 26px; font-weight: 600; letter-spacing: -0.5px;">Content Trends Analysis Report</h1>
+              <p style="margin: 0; color: #6c757d; font-size: 15px;">\${brandContext.productName} • \${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </td>
           </tr>
 
           <!-- Executive Summary -->
           <tr>
-            <td style="padding: 30px; background-color: #fff5f5; border-bottom: 3px solid #fee;">
-              <h2 style="margin: 0 0 15px 0; color: #c92a2a; font-size: 18px;">📊 Executive Summary</h2>
-              <p style="margin: 0; color: #495057; font-size: 15px; line-height: 1.6;">\${contentIdeas.executiveSummary}</p>
+            <td style="padding: 35px 40px; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+              <h2 style="margin: 0 0 15px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Executive Summary</h2>
+              <p style="margin: 0; color: #212529; font-size: 15px; line-height: 1.7;">\${contentIdeas.executiveSummary}</p>
             </td>
           </tr>
 
-          <!-- Key Metrics -->
+          <!-- Research Overview -->
           <tr>
-            <td style="padding: 30px;">
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6;">
+              <h2 style="margin: 0 0 20px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Research Methodology & Sources</h2>
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="33%" style="text-align: center; padding: 20px; background-color: #fff5f5; border-radius: 8px;">
-                    <div style="font-size: 32px; font-weight: 700; color: #ff6b6b; margin-bottom: 5px;">\${trendData.trends.length}</div>
-                    <div style="font-size: 14px; color: #868e96;">Trends Found</div>
+                  <td width="48%" style="vertical-align: top; padding: 15px; background-color: #f8f9fa; border-radius: 3px;">
+                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Data Sources</div>
+                    <div style="font-size: 24px; font-weight: 600; color: #495057; margin-bottom: 4px;">\${new Set(trendData.trends.map(t => t.sourceUrl)).size}</div>
+                    <div style="font-size: 13px; color: #6c757d;">Unique research sources</div>
                   </td>
-                  <td width="10"></td>
-                  <td width="33%" style="text-align: center; padding: 20px; background-color: #fff5f5; border-radius: 8px;">
-                    <div style="font-size: 32px; font-weight: 700; color: #ff6b6b; margin-bottom: 5px;">\${contentIdeas.ideas.length}</div>
-                    <div style="font-size: 14px; color: #868e96;">Ideas Generated</div>
-                  </td>
-                  <td width="10"></td>
-                  <td width="33%" style="text-align: center; padding: 20px; background-color: #fff5f5; border-radius: 8px;">
-                    <div style="font-size: 32px; font-weight: 700; color: #ff6b6b; margin-bottom: 5px;">\${new Set(trendData.trends.map(t => t.sourceUrl)).size}</div>
-                    <div style="font-size: 14px; color: #868e96;">Sources Analyzed</div>
+                  <td width="4%"></td>
+                  <td width="48%" style="vertical-align: top; padding: 15px; background-color: #f8f9fa; border-radius: 3px;">
+                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Analysis Depth</div>
+                    <div style="font-size: 24px; font-weight: 600; color: #495057; margin-bottom: 4px;">\${trendData.trends.length}</div>
+                    <div style="font-size: 13px; color: #6c757d;">Trending formats analyzed</div>
                   </td>
                 </tr>
               </table>
+              <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #495057; border-radius: 3px;">
+                <div style="font-size: 12px; font-weight: 600; color: #495057; margin-bottom: 8px;">RESEARCH COMPONENTS:</div>
+                <ul style="margin: 0; padding-left: 20px; color: #495057; font-size: 13px; line-height: 1.8;">
+                  <li><strong>Google Trends:</strong> Real-time trending search data analysis</li>
+                  <li><strong>Fresh News Sources:</strong> \${researchPlan.newsSourceUrls.length} AI-selected news sites (recent articles with dates)</li>
+                  <li><strong>Exploding Topics:</strong> Emerging topic identification</li>
+                  <li><strong>Event-Driven Research:</strong> Analysis of how creators respond to specific phenomena</li>
+                  <li><strong>Reddit Insights:</strong> Real creator discussions from r/\${researchPlan.subreddits.join(', r/')}</li>
+                  \${fullYoutubeTranscripts ? '<li><strong>YouTube Analysis:</strong> Full video transcript analysis from multiple trending videos</li>' : ''}
+                </ul>
+              </div>
             </td>
           </tr>
 
-          <!-- Trending Topics & Formats -->
+          <!-- Emerging Phenomena -->
           <tr>
-            <td style="padding: 30px; background-color: #fff5f5;">
-              <h2 style="margin: 0 0 20px 0; color: #c92a2a; font-size: 20px;">🔥 Trending Topics & Content Formats</h2>
-              <p style="margin: 0 0 20px 0; color: #495057; font-size: 14px;">Discovered from Exploding Topics and researched across social platforms</p>
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6; background-color: #f8f9fa;">
+              <h2 style="margin: 0 0 15px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Emerging Phenomena & Recent Events</h2>
+              <p style="margin: 0 0 20px 0; color: #495057; font-size: 13px; line-height: 1.6;">Fresh, timely events identified from recent news that create content opportunities:</p>
+              \${emergingPhenomena.phenomena.map((phenomenon, i) => \`
+              <div style="margin-bottom: 20px; padding: 20px; background-color: #ffffff; border: 1px solid #dee2e6; border-left: 3px solid #495057; border-radius: 3px;">
+                <div style="margin-bottom: 10px;">
+                  <span style="display: inline-block; padding: 3px 8px; background-color: #495057; color: #ffffff; border-radius: 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px;">\${phenomenon.dateContext}</span>
+                </div>
+                <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 16px; font-weight: 600;">\${i + 1}. \${phenomenon.title}</h3>
+                <p style="margin: 0 0 10px 0; color: #495057; font-size: 13px; line-height: 1.6;"><strong>What happened:</strong> \${phenomenon.description}</p>
+                <p style="margin: 0 0 10px 0; color: #495057; font-size: 13px; line-height: 1.6;"><strong>Why it matters:</strong> \${phenomenon.relevanceToIndustry}</p>
+                <p style="margin: 0; color: #495057; font-size: 13px; line-height: 1.6; background-color: #f8f9fa; padding: 10px; border-radius: 3px;"><strong>Opportunity:</strong> \${phenomenon.contentOpportunity}</p>
+              </div>
+              \`).join('')}
+            </td>
+          </tr>
+
+          \${youtubeVideoTitles.length > 0 ? \`
+          <!-- YouTube Insights -->
+          <tr>
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6; background-color: #f8f9fa;">
+              <h2 style="margin: 0 0 15px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">YouTube Video Analysis</h2>
+              <p style="margin: 0 0 15px 0; color: #495057; font-size: 13px; line-height: 1.6;">Analyzed top YouTube content in this niche to understand creator presentation styles and audience engagement patterns. Full transcripts were analyzed to extract deep insights.</p>
+              <div style="background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 3px; padding: 15px;">
+                <div style="font-size: 12px; font-weight: 600; color: #495057; margin-bottom: 10px;">TOP VIDEOS ANALYZED (\${youtubeVideoTitles.length}):</div>
+                <ul style="margin: 0; padding-left: 20px; color: #495057; font-size: 13px; line-height: 1.8;">
+                  \${youtubeVideoTitles.map((title) => \`<li>\${title}</li>\`).join('')}
+                </ul>
+              </div>
+              \${fullYoutubeTranscripts ? \`
+              <div style="margin-top: 15px; padding: 15px; background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 3px;">
+                <div style="font-size: 12px; font-weight: 600; color: #495057; margin-bottom: 8px;">TRANSCRIPT INSIGHTS:</div>
+                <p style="margin: 0; color: #6c757d; font-size: 12px; line-height: 1.6;">Complete transcripts analyzed for content patterns, presentation styles, and engagement hooks. All insights incorporated into the content ideas below.</p>
+              </div>
+              \` : ''}
+            </td>
+          </tr>
+          \` : ''}
+
+          <!-- Trending Formats -->
+          <tr>
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6;">
+              <h2 style="margin: 0 0 20px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Discovered Trending Formats</h2>
               \${trendData.trends
-                .slice(0, 5)
                 .map(
-                  (trend) => \`
-                <div style="margin-bottom: 15px; padding: 15px; background-color: #ffffff; border-radius: 6px; border-left: 4px solid #ff6b6b;">
-                  <div style="display: inline-block; padding: 4px 8px; background-color: #ffe3e3; color: #c92a2a; border-radius: 4px; font-size: 11px; font-weight: 600; margin-bottom: 8px;">
-                    \${trend.topic}
+                  (trend, i) => \`
+                <div style="margin-bottom: 20px; padding: 20px; background-color: #f8f9fa; border-left: 3px solid #495057; border-radius: 3px;">
+                  <div style="margin-bottom: 10px;">
+                    <span style="display: inline-block; padding: 3px 8px; background-color: #495057; color: #ffffff; border-radius: 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px;">\${trend.topic}</span>
+                    <span style="color: #6c757d; font-size: 11px;">\${trend.platforms.join(' • ')}</span>
                   </div>
-                  <h3 style="margin: 0 0 8px 0; color: #c92a2a; font-size: 16px;">\${trend.format}</h3>
-                  <p style="margin: 0 0 8px 0; color: #495057; font-size: 14px; line-height: 1.5;">\${trend.description}</p>
-                  <a href="\${trend.sourceUrl}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background-color: #ff6b6b; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                    📖 Read Source (\${new URL(trend.sourceUrl).hostname})
-                  </a>
+                  <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 16px; font-weight: 600;">\${i + 1}. \${trend.format}</h3>
+                  <p style="margin: 0 0 12px 0; color: #495057; font-size: 14px; line-height: 1.6;">\${trend.description}</p>
+                  \${trend.viralExamples && trend.viralExamples.length > 0 ? \`
+                  <div style="margin-bottom: 12px;">
+                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; margin-bottom: 5px;">VIRAL EXAMPLES:</div>
+                    <div style="color: #495057; font-size: 12px;">\${trend.viralExamples.join(' • ')}</div>
+                  </div>
+                  \` : ''}
+                  <a href="\${trend.sourceUrl}" style="color: #495057; font-size: 12px; text-decoration: none; border-bottom: 1px solid #495057;">Source: \${new URL(trend.sourceUrl).hostname}</a>
                 </div>
               \`
                 )
@@ -451,20 +793,37 @@ Return a JSON object with:
             </td>
           </tr>
 
-          <!-- Top Ideas Preview -->
+          <!-- Content Ideas -->
           <tr>
-            <td style="padding: 30px;">
-              <h2 style="margin: 0 0 20px 0; color: #c92a2a; font-size: 20px;">💡 Top Adapted Ideas</h2>
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6; background-color: #f8f9fa;">
+              <h2 style="margin: 0 0 20px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Actionable Content Ideas for \${brandContext.productName}</h2>
+              <p style="margin: 0 0 25px 0; color: #495057; font-size: 13px; line-height: 1.6;">The following ideas adapt the trending formats discovered above specifically for your brand, products, target audience, and industry context. Each idea incorporates insights from YouTube transcripts and Reddit community discussions.</p>
               \${contentIdeas.ideas
-                .slice(0, 3)
                 .map(
-                  (idea) => \`
-                <div style="margin-bottom: 20px; padding: 20px; background-color: #fff5f5; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                  <h3 style="margin: 0 0 10px 0; color: #c92a2a; font-size: 18px;">\${idea.title}</h3>
-                  <p style="margin: 0 0 10px 0; color: #495057; font-size: 14px; line-height: 1.5;">\${idea.description}</p>
-                  <div style="display: inline-block; padding: 4px 12px; background-color: \${idea.estimatedEngagement.toLowerCase().includes('high') ? '#51cf66' : idea.estimatedEngagement.toLowerCase().includes('medium') ? '#ffd43b' : '#adb5bd'}; color: white; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                    \${idea.estimatedEngagement}
+                  (idea, i) => \`
+                <div style="margin-bottom: 25px; padding: 25px; background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 3px;">
+                  <div style="margin-bottom: 12px;">
+                    <span style="display: inline-block; padding: 4px 10px; background-color: #212529; color: #ffffff; border-radius: 2px; font-size: 11px; font-weight: 600; margin-right: 8px;">IDEA #\${i + 1}</span>
+                    <span style="display: inline-block; padding: 4px 10px; background-color: #e9ecef; color: #495057; border-radius: 2px; font-size: 11px;">\${idea.estimatedEngagement}</span>
                   </div>
+                  <h3 style="margin: 0 0 12px 0; color: #212529; font-size: 17px; font-weight: 600;">\${idea.title}</h3>
+                  <div style="margin-bottom: 8px;">
+                    <span style="font-size: 11px; color: #6c757d; font-weight: 600;">FORMAT:</span>
+                    <span style="font-size: 13px; color: #495057; margin-left: 8px;">\${idea.format}</span>
+                  </div>
+                  <p style="margin: 0 0 15px 0; color: #495057; font-size: 14px; line-height: 1.6;">\${idea.description}</p>
+                  <div style="padding: 15px; background-color: #f8f9fa; border-radius: 3px; margin-bottom: 15px;">
+                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; margin-bottom: 8px;">ADAPTATION STRATEGY:</div>
+                    <p style="margin: 0; color: #495057; font-size: 13px; line-height: 1.6;">\${idea.adaptationStrategy}</p>
+                  </div>
+                  \${idea.contentHooks && idea.contentHooks.length > 0 ? \`
+                  <div>
+                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; margin-bottom: 8px;">CONTENT HOOKS:</div>
+                    <ul style="margin: 0; padding-left: 20px; color: #495057; font-size: 13px; line-height: 1.7;">
+                      \${idea.contentHooks.map((hook) => \`<li>\${hook}</li>\`).join('')}
+                    </ul>
+                  </div>
+                  \` : ''}
                 </div>
               \`
                 )
@@ -472,18 +831,23 @@ Return a JSON object with:
             </td>
           </tr>
 
-          <!-- Google Drive Link -->
+          <!-- Reddit Community Insights -->
+          \${fullRedditContent ? \`
           <tr>
-            <td style="padding: 30px; background-color: #f8f9fa; text-align: center;">
-              <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px;">Full report with all \${contentIdeas.ideas.length} ideas saved to Google Drive</p>
-              <a href="https://drive.google.com/file/d/\${driveResult.data?.file?.id}/view" style="display: inline-block; padding: 12px 30px; background-color: #ff6b6b; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">View Full Report</a>
+            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6;">
+              <h2 style="margin: 0 0 15px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Creator Community Insights from Reddit</h2>
+              <p style="margin: 0 0 15px 0; color: #495057; font-size: 13px;">Real discussions and insights from content creator communities. Top posts analyzed from: r/\${researchPlan.subreddits.join(', r/')}</p>
+              <div style="padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 3px;">
+                <p style="margin: 0; color: #6c757d; font-size: 12px; line-height: 1.6;">Full post content and engagement data were analyzed to identify trending topics, creator concerns, and effective strategies. All insights have been incorporated into the content ideas above.</p>
+              </div>
             </td>
           </tr>
+          \` : ''}
 
           <!-- Footer -->
           <tr>
-            <td style="padding: 30px; background-color: #212529; text-align: center;">
-              <p style="margin: 0; color: #adb5bd; font-size: 14px;">Powered by <a href="https://bubblelab.ai" style="color: #ff6b6b; text-decoration: none; font-weight: 600;">bubble lab</a></p>
+            <td style="padding: 25px 40px; background-color: #212529; text-align: center; border-top: 1px solid #495057;">
+              <p style="margin: 0; color: #adb5bd; font-size: 12px;">Generated by BubbleLab Trends Workflow • <a href="https://bubblelab.ai" style="color: #dee2e6; text-decoration: none;">bubblelab.ai</a></p>
             </td>
           </tr>
         </table>
@@ -497,7 +861,7 @@ Return a JSON object with:
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
-      subject: \`📈 Content Trends Report for \${productName} - \${new Date().toLocaleDateString()}\`,
+      subject: \`Content Trends Analysis for \${brandContext.productName} - \${brandContext.industry} - \${new Date().toLocaleDateString()}\`,
       html: htmlEmail,
     });
 
@@ -508,10 +872,10 @@ Return a JSON object with:
     }
 
     return {
-      message: \`Successfully generated \${contentIdeas.ideas.length} content ideas from \${trendData.trends.length} trending formats\`,
+      message: \`Successfully generated \${contentIdeas.ideas.length} brand-tailored content ideas from \${trendData.trends.length} trending formats, \${youtubeVideoTitles.length} YouTube videos analyzed, and \${researchPlan.subreddits.length} Reddit communities researched\`,
       trendsCount: trendData.trends.length,
       ideasCount: contentIdeas.ideas.length,
-      fileId: driveResult.data?.file?.id as string,
+      youtubeVideosAnalyzed: youtubeVideoTitles.length,
       emailId: emailResult.data?.email_id as string,
     };
   }

@@ -32,11 +32,19 @@ const RedditScrapeToolParamsSchema = z.object({
   subreddit: z
     .string()
     .min(1, 'Subreddit name is required')
-    .regex(
-      /^[a-zA-Z0-9_]+$/,
-      'Subreddit name can only contain letters, numbers, and underscores'
+    .transform((val) => {
+      // Strip "r/" prefix if present (be tolerant of input format)
+      return val.startsWith('r/') ? val.substring(2) : val;
+    })
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^[a-zA-Z0-9_]+$/,
+          'Subreddit name can only contain letters, numbers, and underscores'
+        )
     )
-    .describe('Name of the subreddit to scrape (without r/ prefix)'),
+    .describe('Name of the subreddit to scrape (with or without r/ prefix)'),
 
   limit: z
     .number()

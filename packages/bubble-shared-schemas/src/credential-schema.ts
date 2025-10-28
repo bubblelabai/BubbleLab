@@ -220,6 +220,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   apify: [CredentialType.APIFY_CRED],
   'instagram-tool': [CredentialType.APIFY_CRED],
   'linkedin-tool': [CredentialType.APIFY_CRED],
+  'youtube-tool': [CredentialType.APIFY_CRED],
 };
 
 // POST /credentials - Create credential schema
