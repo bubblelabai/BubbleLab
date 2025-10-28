@@ -76,8 +76,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       [CredentialType.GOOGLE_DRIVE_CRED]: {
         displayName: 'Google Drive',
         defaultScopes: [
-          'https://www.googleapis.com/auth/drive.readonly',
-          'https://www.googleapis.com/auth/docs',
+          'https://www.googleapis.com/auth/drive.file',
+          'https://www.googleapis.com/auth/drive',
         ],
         description: 'Access Google Drive files and folders',
       },
@@ -94,7 +94,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
       [CredentialType.GOOGLE_CALENDAR_CRED]: {
         displayName: 'Google Calendar',
-        defaultScopes: ['https://www.googleapis.com/auth/calendar.events'],
+        defaultScopes: ['https://www.googleapis.com/auth/calendar'],
         description: 'Access Google Calendar for reading and managing events',
       },
     },
