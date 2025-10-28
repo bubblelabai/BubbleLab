@@ -522,23 +522,10 @@ export class GoogleDriveBubble<
       }
     }
 
-    console.log('📤 Sending request...');
     const response = await fetch(url, requestInit);
-
-    console.log('📥 Response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      contentType: response.headers.get('content-type'),
-    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ API Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorText,
-      });
       throw new Error(
         `Google Drive API error: ${response.status} ${response.statusText} - ${errorText}`
       );
@@ -549,23 +536,14 @@ export class GoogleDriveBubble<
     let responseData;
     if (responseType === 'arrayBuffer') {
       const ab = await response.arrayBuffer();
-      console.log('✅ API Response data: arrayBuffer bytes', ab.byteLength);
       responseData = ab;
     } else if (
       responseType === 'json' ||
       (responseType === 'auto' && contentType.includes('application/json'))
     ) {
       responseData = await response.json();
-      console.log(
-        '✅ API Response data:',
-        JSON.stringify(responseData, null, 2)
-      );
     } else {
       responseData = await response.text();
-      console.log(
-        '✅ API Response data:',
-        `text: ${String(responseData).substring(0, 200)}...`
-      );
     }
 
     return responseData;
@@ -620,7 +598,6 @@ export class GoogleDriveBubble<
     params: Extract<GoogleDriveParams, { operation: 'upload_file' }>
   ): Promise<Extract<GoogleDriveResult, { operation: 'upload_file' }>> {
     try {
-      console.log('🔍 Starting Google Drive upload process...');
       const {
         name,
         content,
@@ -628,14 +605,6 @@ export class GoogleDriveBubble<
         parent_folder_id,
         convert_to_google_docs,
       } = params;
-
-      console.log('📝 Upload parameters:', {
-        name,
-        contentLength: content?.length,
-        mimeType,
-        parent_folder_id,
-        convert_to_google_docs,
-      });
 
       // Validate required parameters
       if (!name || name.trim().length === 0) {
@@ -675,41 +644,21 @@ export class GoogleDriveBubble<
 
       // Check if content is base64 encoded
       const isBase64 = this.isBase64(content);
-      console.log('🔍 Content analysis:', {
-        isBase64,
-        contentPreview:
-          content.substring(0, 100) + (content.length > 100 ? '...' : ''),
-        providedMimeType: mimeType,
-      });
 
       if (isBase64) {
         // Extract actual base64 content (might be wrapped in JSON)
         const extractedBase64 = this.extractBase64Content(content);
-        console.log('🎯 Extracted base64 info:', {
-          originalLength: content.length,
-          extractedLength: extractedBase64.length,
-          isExtracted: extractedBase64 !== content,
-        });
 
         // Decode base64 content
         fileData = Buffer.from(extractedBase64, 'base64');
-        console.log('✅ Decoded base64 content:', {
-          base64Length: extractedBase64.length,
-          decodedLength: fileData.length,
-        });
 
         // Auto-detect MIME type if not provided
         if (!actualMimeType) {
           actualMimeType = this.detectMimeTypeFromBase64(extractedBase64);
-          console.log('🎯 Auto-detected MIME type:', actualMimeType);
         }
       } else {
         // Treat as plain text
         fileData = Buffer.from(content, 'utf-8');
-        console.log('📝 Processing as plain text:', {
-          contentLength: content.length,
-          bufferLength: fileData.length,
-        });
 
         // Default to text/plain if no MIME type provided for plain text
         if (!actualMimeType) {
@@ -717,19 +666,10 @@ export class GoogleDriveBubble<
         }
       }
 
-      console.log('🎯 Final MIME type:', actualMimeType);
-
       // Create multipart form data for upload
       const boundary = `----formdata-boundary-${Date.now()}`;
       const delimiter = `\r\n--${boundary}\r\n`;
       const closeDelimiter = `\r\n--${boundary}--`;
-
-      console.log('🔧 Building multipart request:', {
-        boundary,
-        fileMetadata,
-        actualMimeType,
-        fileDataLength: fileData.length,
-      });
 
       // Build the multipart body
       let body = delimiter;
@@ -744,7 +684,6 @@ export class GoogleDriveBubble<
 
       const uploadUrl =
         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents';
-      console.log('🚀 Making upload request to:', uploadUrl);
 
       // Make the upload request
       const response = await this.makeGoogleApiRequest(
@@ -756,8 +695,6 @@ export class GoogleDriveBubble<
         }
       );
 
-      console.log('✅ Upload successful:', response);
-
       return {
         operation: 'upload_file',
         success: true,
@@ -766,16 +703,9 @@ export class GoogleDriveBubble<
       };
     } catch (error) {
       // Enhanced error handling for upload failures
-      console.error('❌ Upload failed:', error);
       let errorMessage = 'Unknown error occurred during file upload';
 
       if (error instanceof Error) {
-        console.error('📝 Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        });
-
         errorMessage = error.message;
 
         // Provide more specific error messages for common issues
@@ -795,8 +725,6 @@ export class GoogleDriveBubble<
             'Google Drive storage quota exceeded. Please free up space.';
         }
       }
-
-      console.error('💥 Final error message:', errorMessage);
 
       return {
         operation: 'upload_file',
@@ -1085,15 +1013,10 @@ export class GoogleDriveBubble<
 
   private isBase64(str: string): boolean {
     try {
-      console.log('🔍 Analyzing content for base64...');
-      console.log('📏 Content length:', str.length);
-      console.log('🔤 Content start:', str.substring(0, 200));
-
       // First check if it's a direct base64 string
       const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
 
       if (base64Regex.test(str)) {
-        console.log('✅ Direct base64 detected');
         // Try to decode and re-encode to verify
         const decoded = Buffer.from(str, 'base64').toString('base64');
         return decoded === str;
@@ -1101,43 +1024,34 @@ export class GoogleDriveBubble<
 
       // Check if it's JSON containing base64 data
       if (str.trim().startsWith('[') || str.trim().startsWith('{')) {
-        console.log('🔍 JSON structure detected, looking for base64 inside...');
         try {
           const parsed = JSON.parse(str);
           const hasBase64Data = this.findBase64InObject(parsed);
-          console.log('📊 Base64 found in JSON:', hasBase64Data);
           return hasBase64Data;
         } catch (jsonError) {
-          console.log('❌ Invalid JSON structure');
+          // Invalid JSON structure
         }
       }
 
       // Check if it looks like base64 data (longer strings that might be base64)
       if (str.length > 100 && /^[A-Za-z0-9+/]/.test(str) && str.includes('=')) {
-        console.log('🤔 Possible base64 string detected');
         const cleanStr = str.replace(/\s/g, ''); // Remove whitespace
         if (base64Regex.test(cleanStr)) {
-          console.log('✅ Cleaned base64 validated');
           return true;
         }
       }
 
-      console.log('❌ No base64 content detected');
       return false;
     } catch (error) {
-      console.error('⚠️ Error in base64 detection:', error);
       return false;
     }
   }
 
   private extractBase64Content(content: string): string {
     try {
-      console.log('🔍 Extracting base64 content...');
-
       // If content is direct base64, return as-is
       const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
       if (base64Regex.test(content)) {
-        console.log('✅ Content is direct base64');
         return content;
       }
 
@@ -1147,19 +1061,16 @@ export class GoogleDriveBubble<
           const parsed = JSON.parse(content);
           const extractedBase64 = this.findAndExtractBase64(parsed);
           if (extractedBase64) {
-            console.log('✅ Extracted base64 from JSON structure');
             return extractedBase64;
           }
         } catch (parseError) {
-          console.log('❌ Failed to parse JSON for base64 extraction');
+          // Failed to parse JSON for base64 extraction
         }
       }
 
       // If no extraction possible, return original content
-      console.log('⚠️ No base64 extraction possible, returning original');
       return content;
     } catch (error) {
-      console.error('⚠️ Error extracting base64 content:', error);
       return content;
     }
   }
