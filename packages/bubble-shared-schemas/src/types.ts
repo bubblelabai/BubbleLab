@@ -64,4 +64,5 @@ export type BubbleName =
   | 'google-calendar'
   | 'apify'
   | 'instagram-tool'
-  | 'linkedin-tool';
+  | 'linkedin-tool'
+  | 'youtube-tool';
