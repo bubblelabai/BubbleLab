@@ -29,7 +29,10 @@ const EmailHeaderSchema = z
 const GmailMessageSchema = z
   .object({
     id: z.string().describe('Unique message identifier'),
-    threadId: z.string().describe('Thread identifier this message belongs to'),
+    threadId: z
+      .string()
+      .optional()
+      .describe('Thread identifier this message belongs to'),
     labelIds: z
       .array(z.string())
       .optional()
@@ -116,6 +119,26 @@ const GmailThreadSchema = z
     snippet: z.string().optional().describe('Thread snippet'),
   })
   .describe('Gmail thread object');
+
+// Define label schema
+const GmailLabelSchema = z
+  .object({
+    id: z.string().describe('Label ID'),
+    name: z.string().describe('Label name'),
+    type: z
+      .enum(['system', 'user'])
+      .optional()
+      .describe('Label type: system (built-in) or user (custom)'),
+    messageListVisibility: z
+      .enum(['show', 'hide'])
+      .optional()
+      .describe('Visibility in message list'),
+    labelListVisibility: z
+      .enum(['labelShow', 'labelShowIfUnread', 'labelHide'])
+      .optional()
+      .describe('Visibility in label list'),
+  })
+  .describe('Gmail label object');
 
 // Define the parameters schema for Gmail operations
 const GmailParamsSchema = z.discriminatedUnion('operation', [
@@ -426,6 +449,102 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // List labels operation
+  z.object({
+    operation: z.literal('list_labels').describe('List all labels in mailbox'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Create label operation
+  z.object({
+    operation: z.literal('create_label').describe('Create a new custom label'),
+    name: z
+      .string()
+      .min(1, 'Label name is required')
+      .describe('Label name (display name)'),
+    label_list_visibility: z
+      .enum(['labelShow', 'labelShowIfUnread', 'labelHide'])
+      .optional()
+      .default('labelShow')
+      .describe('Visibility in label list'),
+    message_list_visibility: z
+      .enum(['show', 'hide'])
+      .optional()
+      .default('show')
+      .describe('Visibility in message list'),
+    background_color: z
+      .string()
+      .optional()
+      .describe('Background color in hex format (e.g., #000000)'),
+    text_color: z
+      .string()
+      .optional()
+      .describe('Text color in hex format (e.g., #ffffff)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Modify message labels operation
+  z.object({
+    operation: z
+      .literal('modify_message_labels')
+      .describe('Add or remove labels from a message'),
+    message_id: z
+      .string()
+      .min(1, 'Message ID is required')
+      .describe('Gmail message ID to modify'),
+    add_label_ids: z
+      .array(z.string())
+      .optional()
+      .describe('List of label IDs to add (max 100)'),
+    remove_label_ids: z
+      .array(z.string())
+      .optional()
+      .describe('List of label IDs to remove (max 100)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Modify thread labels operation
+  z.object({
+    operation: z
+      .literal('modify_thread_labels')
+      .describe('Add or remove labels from all messages in a thread'),
+    thread_id: z
+      .string()
+      .min(1, 'Thread ID is required')
+      .describe('Gmail thread ID to modify'),
+    add_label_ids: z
+      .array(z.string())
+      .optional()
+      .describe('List of label IDs to add to all messages in thread (max 100)'),
+    remove_label_ids: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'List of label IDs to remove from all messages in thread (max 100)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -588,6 +707,51 @@ const GmailResultSchema = z.discriminatedUnion('operation', [
       .number()
       .optional()
       .describe('Estimated total number of results'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z.literal('list_labels').describe('List all labels in mailbox'),
+    success: z
+      .boolean()
+      .describe('Whether the label list was retrieved successfully'),
+    labels: z
+      .array(GmailLabelSchema)
+      .optional()
+      .describe('List of labels (both system and user labels)'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z.literal('create_label').describe('Create a new custom label'),
+    success: z.boolean().describe('Whether the label was created successfully'),
+    label: GmailLabelSchema.optional().describe('Created label details'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('modify_message_labels')
+      .describe('Add or remove labels from a message'),
+    success: z
+      .boolean()
+      .describe('Whether the labels were modified successfully'),
+    message_id: z.string().optional().describe('Modified message ID'),
+    label_ids: z
+      .array(z.string())
+      .optional()
+      .describe('Current label IDs after modification'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('modify_thread_labels')
+      .describe('Add or remove labels from all messages in a thread'),
+    success: z
+      .boolean()
+      .describe('Whether the thread labels were modified successfully'),
+    thread_id: z.string().optional().describe('Modified thread ID'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -920,6 +1084,14 @@ export class GmailBubble<
             return await this.trashEmail(this.params);
           case 'list_threads':
             return await this.listThreads(this.params);
+          case 'list_labels':
+            return await this.listLabels(this.params);
+          case 'create_label':
+            return await this.createLabel(this.params);
+          case 'modify_message_labels':
+            return await this.modifyMessageLabels(this.params);
+          case 'modify_thread_labels':
+            return await this.modifyThreadLabels(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1363,6 +1535,161 @@ export class GmailBubble<
       threads: response.threads || [],
       next_page_token: response.nextPageToken,
       result_size_estimate: response.resultSizeEstimate,
+      error: '',
+    };
+  }
+
+  private async listLabels(
+    params: Extract<GmailParams, { operation: 'list_labels' }>
+  ): Promise<Extract<GmailResult, { operation: 'list_labels' }>> {
+    void params;
+
+    const response = await this.makeGmailApiRequest('/labels');
+
+    return {
+      operation: 'list_labels',
+      success: true,
+      labels: response.labels || [],
+      error: '',
+    };
+  }
+
+  private async createLabel(
+    params: Extract<GmailParams, { operation: 'create_label' }>
+  ): Promise<Extract<GmailResult, { operation: 'create_label' }>> {
+    const {
+      name,
+      label_list_visibility,
+      message_list_visibility,
+      background_color,
+      text_color,
+    } = params;
+
+    const requestBody: {
+      name: string;
+      labelListVisibility?: string;
+      messageListVisibility?: string;
+      color?: {
+        backgroundColor?: string;
+        textColor?: string;
+      };
+    } = {
+      name,
+    };
+
+    if (label_list_visibility) {
+      requestBody.labelListVisibility = label_list_visibility;
+    }
+
+    if (message_list_visibility) {
+      requestBody.messageListVisibility = message_list_visibility;
+    }
+
+    if (background_color || text_color) {
+      requestBody.color = {};
+      if (background_color) {
+        requestBody.color.backgroundColor = background_color;
+      }
+      if (text_color) {
+        requestBody.color.textColor = text_color;
+      }
+    }
+
+    const response = await this.makeGmailApiRequest(
+      '/labels',
+      'POST',
+      requestBody
+    );
+
+    return {
+      operation: 'create_label',
+      success: true,
+      label: response,
+      error: '',
+    };
+  }
+
+  private async modifyMessageLabels(
+    params: Extract<GmailParams, { operation: 'modify_message_labels' }>
+  ): Promise<Extract<GmailResult, { operation: 'modify_message_labels' }>> {
+    const { message_id, add_label_ids, remove_label_ids } = params;
+
+    // Validate that at least one operation is specified
+    if (
+      (!add_label_ids || add_label_ids.length === 0) &&
+      (!remove_label_ids || remove_label_ids.length === 0)
+    ) {
+      throw new Error(
+        'At least one of add_label_ids or remove_label_ids must be provided'
+      );
+    }
+
+    const requestBody: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    } = {};
+
+    if (add_label_ids && add_label_ids.length > 0) {
+      requestBody.addLabelIds = add_label_ids;
+    }
+
+    if (remove_label_ids && remove_label_ids.length > 0) {
+      requestBody.removeLabelIds = remove_label_ids;
+    }
+
+    const response = await this.makeGmailApiRequest(
+      `/messages/${message_id}/modify`,
+      'POST',
+      requestBody
+    );
+
+    return {
+      operation: 'modify_message_labels',
+      success: true,
+      message_id: response.id,
+      label_ids: response.labelIds || [],
+      error: '',
+    };
+  }
+
+  private async modifyThreadLabels(
+    params: Extract<GmailParams, { operation: 'modify_thread_labels' }>
+  ): Promise<Extract<GmailResult, { operation: 'modify_thread_labels' }>> {
+    const { thread_id, add_label_ids, remove_label_ids } = params;
+
+    // Validate that at least one operation is specified
+    if (
+      (!add_label_ids || add_label_ids.length === 0) &&
+      (!remove_label_ids || remove_label_ids.length === 0)
+    ) {
+      throw new Error(
+        'At least one of add_label_ids or remove_label_ids must be provided'
+      );
+    }
+
+    const requestBody: {
+      addLabelIds?: string[];
+      removeLabelIds?: string[];
+    } = {};
+
+    if (add_label_ids && add_label_ids.length > 0) {
+      requestBody.addLabelIds = add_label_ids;
+    }
+
+    if (remove_label_ids && remove_label_ids.length > 0) {
+      requestBody.removeLabelIds = remove_label_ids;
+    }
+
+    const response = await this.makeGmailApiRequest(
+      `/threads/${thread_id}/modify`,
+      'POST',
+      requestBody
+    );
+
+    return {
+      operation: 'modify_thread_labels',
+      success: true,
+      thread_id: response.id,
       error: '',
     };
   }
