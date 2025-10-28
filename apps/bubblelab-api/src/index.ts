@@ -41,6 +41,7 @@ import subscriptionRoutes from './routes/subscription.js';
 import joinWaitlistRoutes from './routes/join-waitlist.js';
 import { startCronScheduler } from './services/cron-scheduler.js';
 import aiRoutes from './routes/ai.js';
+import { getBubbleFactory } from './services/bubble-factory-instance.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -161,6 +162,8 @@ try {
   await runMigrations();
   // Seed dev user after migrations (only in dev mode)
   await seedDevUser();
+  // Eagerly initialize bubble factory before handling any requests or starting cron
+  await getBubbleFactory();
 } catch (error) {
   console.error('Failed to run migrations or seed dev user, exiting...');
   process.exit(1);

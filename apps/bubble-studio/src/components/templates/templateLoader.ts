@@ -18,11 +18,10 @@ export const TEMPLATE_CATEGORIES = [
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 
 // Import individual template files
-import * as techweekTemplate from './template_codes/techweekScheduler';
+import * as videoScriptTemplate from './template_codes/videoScriptGenerator';
 import * as redditTemplate from './template_codes/redditLeadGeneration';
 import * as personalTemplate from './template_codes/personalAssistant';
 import * as financialTemplate from './template_codes/financialAdvisor';
-import * as githubScraperTemplate from './template_codes/githubScraper';
 import * as databaseTemplate from './template_codes/databaseMetricsAssistant';
 import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as gmailReplyTemplate from './template_codes/gmailReplyAssistant';
@@ -71,22 +70,31 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Lead Generation',
     isPopular: true,
   },
+  {
+    id: 'content-creation',
+    name: 'Content Creation Ideas and Trends Analysis (Research Agent, Youtube, Reddit, Email)',
+    prompt:
+      'Deep research trending content formats from Youtube/Reddit/News Sources (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, email beautiful HTML summary with top ideas and metrics.',
+    code: contentCreationTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: true,
+  },
 
   {
-    id: 'reddit-lead-gen',
-    name: 'Reddit Lead Generation (Firecrawl, Google Sheets)',
-    prompt: `Find qualified prospects from relevant Reddit threads/users and log them to a sheet with an auto-drafted outreach message.`,
-    code: redditTemplate.templateCode,
-    category: 'Lead Generation',
+    id: 'video-script-generator',
+    name: 'Video Script Generator (YouTube, Email)',
+    prompt:
+      'Analyze similar YouTube videos on a topic, extract full transcripts, identify successful patterns (hooks, pacing, engagement tactics), and generate 4 complete video script variations in different styles (Educational, Storytelling, Professional, Casual). Each script includes hooks, timing markers, talking points, visual suggestions, and CTAs. Perfect for content creators who want data-driven scripts based on proven successful videos.',
+    code: videoScriptTemplate.templateCode,
+    category: 'Marketing',
     isPopular: true,
   },
   {
-    id: 'content-creation',
-    name: 'Content Creation Trends (Firecrawl, Google Drive, Email)',
-    prompt:
-      'Use ResearchAgentTool to search trending content formats from TikTok/Reels/Shorts trend sites (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, save formatted markdown report to Google Drive, then email beautiful HTML summary with top ideas and metrics.',
-    code: contentCreationTemplate.templateCode,
-    category: 'Marketing',
+    id: 'reddit-lead-gen',
+    name: 'Reddit Lead Generation (Google Sheets, Reddit)',
+    prompt: `Find qualified prospects from relevant Reddit threads/users and log them to a sheet with an auto-drafted outreach message.`,
+    code: redditTemplate.templateCode,
+    category: 'Lead Generation',
     isPopular: true,
   },
   {
@@ -116,24 +124,24 @@ export const TEMPLATES: TemplateDefinition[] = [
   },
   {
     id: 'financial-advisor',
-    name: 'Financial Portfolio Advisor (Firecrawl, Email)',
+    name: 'Financial Portfolio Advisor (Research Agent, Email)',
     prompt:
       'Read in my portfolio of tickers, and fetch the latest stock price and news for a stock ticker. Summarize sentiment, risks, and opportunities in a short report, then email it to me.',
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
   },
-  {
-    id: 'github-contributor',
-    name: 'Github Contributor Report (Firecrawl, Email)',
-    prompt:
-      'Scrape the contributors of a GitHub repository. For each contributor, collect their username, commit activity, and profile link. Rank them by activity and generate a clean summary table. Email me the report.',
-    code: githubScraperTemplate.templateCode,
-    category: 'Lead Generation',
-  },
+  // {
+  //   id: 'github-contributor',
+  //   name: 'Github Contributor Report (Firecrawl, Email)',
+  //   prompt:
+  //     'Scrape the contributors of a GitHub repository. For each contributor, collect their username, commit activity, and profile link. Rank them by activity and generate a clean summary table. Email me the report.',
+  //   code: githubScraperTemplate.templateCode,
+  //   category: 'Lead Generation',
+  // },
 
   {
     id: 'daily-news',
-    name: 'Daily News Digest (Firecrawl, Email, Reddit)',
+    name: 'Daily News Digest (Research Agent, Email, Reddit)',
     prompt:
       'Scrape top posts from Reddit communities (news, worldnews, technology) and news websites (Hacker News, TechCrunch), use AI to organize headlines into categories with summaries, then email a beautifully formatted HTML digest with executive summary.',
     code: dailyNewsTemplate.templateCode,
@@ -157,14 +165,14 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Personal Assistant',
     isPopular: false,
   },
-  {
-    id: 'techweek-calendar',
-    name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
-    prompt: `Get your personalized LA Tech Week Calendar curated to your preferences and interests, alongside the scraped event schedule!`,
-    code: techweekTemplate.templateCode,
-    category: 'Popular',
-    isPopular: false,
-  },
+  // {
+  //   id: 'techweek-calendar',
+  //   name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
+  //   prompt: `Get your personalized LA Tech Week Calendar curated to your preferences and interests, alongside the scraped event schedule!`,
+  //   code: techweekTemplate.templateCode,
+  //   category: 'Popular',
+  //   isPopular: false,
+  // },
 ];
 
 // ============================================================================
