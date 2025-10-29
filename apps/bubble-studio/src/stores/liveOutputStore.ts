@@ -66,8 +66,9 @@ const emptyState: FlowLiveOutputState = {
 
 /**
  * Factory function to create a new LiveOutput store instance
+ * @param _flowId - Flow ID (unused but kept for consistency with factory pattern)
  */
-function createLiveOutputStore(flowId: number) {
+function createLiveOutputStore(_flowId: number) {
   return create<FlowLiveOutputState>((set) => ({
     // Initial state
     selectedTab: { kind: 'warnings' },

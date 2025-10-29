@@ -16,6 +16,8 @@ import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
+import { useUIStore } from '@/stores/uiStore';
+import { useLiveOutput } from './useLiveOutput';
 
 interface RunExecutionOptions {
   validateCode?: boolean;
@@ -66,6 +68,7 @@ export function useRunExecution(
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
+  const { selectBubbleInConsole } = useLiveOutput(flowId);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -77,6 +80,8 @@ export function useRunExecution(
 
       // Start execution in store
       executionState.startExecution();
+
+      useUIStore.getState().setConsolidatedPanelTab('output');
 
       const abortController = new AbortController();
       executionState.setAbortController(abortController);
@@ -130,9 +135,7 @@ export function useRunExecution(
 
                   // Mark bubble as running
                   executionState.setBubbleRunning(bubbleId);
-
-                  // Read directly from store to verify it was set
-                  getExecutionStore(flowId);
+                  selectBubbleInConsole(bubbleId);
 
                   // Highlight the line range in the editor (validate line numbers)
                   if (
