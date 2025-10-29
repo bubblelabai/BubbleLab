@@ -6,8 +6,16 @@ import {
   BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from '@xyflow/react';
-import type { Node, Edge, Connection } from '@xyflow/react';
+import type {
+  Node,
+  Edge,
+  Connection,
+  NodeChange,
+  EdgeChange,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
@@ -73,7 +81,7 @@ function generateDependencyNodeId(
 
 // Inner component that has access to ReactFlow instance
 function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
-  const { fitView } = useReactFlow();
+  const { setCenter, getNode } = useReactFlow();
 
   // Get all data from global stores
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
@@ -110,6 +118,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // Local UI state for expanded/collapsed nodes
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
+
+  // Track if the initial view has been set to avoid auto-repositioning
+  const hasSetInitialView = useRef(false);
+
+  // State for nodes and edges to enable dragging
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
   const eventType = currentFlow?.eventType;
   const entryNodeId =
@@ -343,6 +358,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         id: nodeId,
         type: 'bubbleNode',
         position,
+        draggable: true,
         data: {
           bubble: subBubble,
           bubbleKey: nodeId,
@@ -472,6 +488,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
+          draggable: true,
           data: {
             flowId: currentFlow?.id,
             flowName: flowName,
@@ -515,6 +532,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
+          draggable: true,
           data: {
             flowId: currentFlow?.id,
             flowName: flowName,
@@ -586,6 +604,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           y: baseY,
         },
         origin: [0, 0.5] as [number, number],
+        draggable: true,
         data: {
           bubble,
           bubbleKey: key,
@@ -759,26 +778,69 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     currentFlow,
   ]);
 
-  // Auto-fit view when nodes load or change
+  // Sync nodes and edges state with computed values
   useEffect(() => {
-    if (initialNodes.length > 0) {
-      // Small delay to ensure nodes are rendered before fitting
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges]);
+
+  // Reset view initialization flag when flowId changes
+  useEffect(() => {
+    hasSetInitialView.current = false;
+  }, [flowId]);
+
+  // Auto-position view on entry node only on initial load
+  useEffect(() => {
+    if (nodes.length > 0 && !hasSetInitialView.current) {
+      // Small delay to ensure nodes are rendered before positioning
       const timer = setTimeout(() => {
-        fitView({
-          padding: 0.2, // 20% padding around nodes
-          duration: 300, // Smooth animation
-          maxZoom: 1.0, // Don't zoom in too much
-        });
+        // Find the entry node (input-schema-node or cron-schedule-node)
+        const entryNode = getNode(entryNodeId);
+        if (entryNode) {
+          const zoom = 1.5; // Much more zoomed in
+
+          // Position the entry node towards the left (about 20% from the left edge)
+          // setCenter will center the given coordinates in the viewport
+          // To position the node 20% from left instead of centered (50%), we shift the center point right
+          const viewportWidth = window.innerWidth;
+          const horizontalShift = (viewportWidth * 0.3) / zoom; // Shift right to position node on left
+
+          setCenter(
+            entryNode.position.x + horizontalShift,
+            entryNode.position.y,
+            {
+              zoom: zoom,
+              duration: 300,
+            }
+          );
+
+          // Mark that we've set the initial view
+          hasSetInitialView.current = true;
+        }
       }, 100);
 
       return () => clearTimeout(timer);
     }
-  }, [initialNodes.length, flowId, fitView]);
+  }, [nodes.length, getNode, setCenter, entryNodeId]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {
   //   logBubbleDebugInfo(flowId, bubbleParameters, executionState, currentFlow, flowNodes);
   // }, [flowId, bubbleParameters, executionState.isRunning, executionState.isValidating, executionState.highlightedBubble, currentFlow.data, flowNodes]);
+
+  // Handle node changes (position updates, etc.)
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) =>
+      setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  );
+
+  // Handle edge changes
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) =>
+      setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
 
   const onConnect = useCallback((params: Connection) => {
     console.log('Connection created:', params);
@@ -863,8 +925,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       )}
 
       <ReactFlow
-        nodes={initialNodes}
-        edges={initialEdges}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onConnect={onConnect}
         onPaneClick={() => {
