@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
@@ -14,8 +15,9 @@ import type {
 import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useExecutionHistory } from './useExecutionHistory';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
+import { useUIStore } from '@/stores/uiStore';
+import { useLiveOutput } from './useLiveOutput';
 
 interface RunExecutionOptions {
   validateCode?: boolean;
@@ -59,15 +61,14 @@ export function useRunExecution(
   flowId: number | null,
   options: UseRunExecutionOptions = {}
 ): RunExecutionResult {
+  const queryClient = useQueryClient();
   const executionState = useExecutionStore(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
-  const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId, {
-    limit: 50,
-  });
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
+  const { selectBubbleInConsole } = useLiveOutput(flowId);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -79,6 +80,8 @@ export function useRunExecution(
 
       // Start execution in store
       executionState.startExecution();
+
+      useUIStore.getState().setConsolidatedPanelTab('output');
 
       const abortController = new AbortController();
       executionState.setAbortController(abortController);
@@ -132,9 +135,7 @@ export function useRunExecution(
 
                   // Mark bubble as running
                   executionState.setBubbleRunning(bubbleId);
-
-                  // Read directly from store to verify it was set
-                  getExecutionStore(flowId);
+                  selectBubbleInConsole(bubbleId);
 
                   // Highlight the line range in the editor (validate line numbers)
                   if (
@@ -366,7 +367,10 @@ export function useRunExecution(
         // 7. Execute with streaming
         await executeWithStreaming(cleanedInputs);
         refetchSubscriptionStatus();
-        refetchExecutionHistory();
+        // Invalidate all execution history queries to ensure all pages are updated
+        queryClient.invalidateQueries({
+          queryKey: ['executionHistory', flowId],
+        });
       } catch (error) {
         console.error('Error executing flow:', error);
         const errorMessage =
@@ -384,7 +388,7 @@ export function useRunExecution(
       updateBubbleFlowMutation,
       executeWithStreaming,
       setExecutionHighlight,
-      refetchExecutionHistory,
+      queryClient,
       refetchSubscriptionStatus,
     ]
   );

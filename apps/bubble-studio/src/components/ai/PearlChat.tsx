@@ -11,14 +11,17 @@ import {
   ParsedBubbleWithInfo,
   type AvailableModel,
   type StreamingEvent,
+  type StreamingLogEvent,
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
-import { INTEGRATIONS } from '../../lib/integrations';
 import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
-import { useExecutionStore } from '../../stores/executionStore';
+import {
+  useExecutionStore,
+  getExecutionStore,
+} from '../../stores/executionStore';
 import ReactMarkdown from 'react-markdown';
 
 // Display event types for chronological rendering
@@ -52,7 +55,7 @@ export function PearlChat() {
   );
 
   // Fixed model - users cannot change this currently
-  const selectedModel: AvailableModel = 'openrouter/x-ai/grok-code-fast-1';
+  const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
@@ -108,6 +111,7 @@ export function PearlChat() {
       case 'tool_start':
         setActiveToolCallIds((prev) => new Set(prev).add(event.data.callId));
         setEventsList((prev) => {
+          if (!prev || prev.length === 0) return prev;
           const lastIndex = prev.length - 1;
           if (lastIndex >= 0) {
             const updated = [...prev];
@@ -240,7 +244,49 @@ export function PearlChat() {
       dateStyle: 'full',
       timeStyle: 'long',
     });
-    const additionalContext = `User's timezone: ${userTimezone}\nCurrent time: ${currentTime}`;
+
+    // Get error logs from current execution for context (non-reactive, no subscription)
+    const executionState = selectedFlowId
+      ? getExecutionStore(selectedFlowId)
+      : null;
+    const allEvents = executionState?.events || [];
+    const errorLogs = allEvents.filter(
+      (e) => e.type === 'error' || e.type === 'fatal'
+    );
+
+    const timeZoneContext = `\n\nUser's timezone: ${userTimezone}`;
+
+    const currentTimeContext = `\n\nCurrent time: ${currentTime}`;
+
+    const errorContext =
+      errorLogs.length > 0
+        ? `\n\nRecent Execution Errors (${errorLogs.length} errors):\n${errorLogs
+            .map((log: StreamingLogEvent, idx: number) => {
+              const timestamp = new Date(log.timestamp).toLocaleTimeString();
+              return `${idx + 1}. [${timestamp}] ${log.type.toUpperCase()}: ${log.message}${
+                log.additionalData
+                  ? `\n   Additional Info: ${JSON.stringify(log.additionalData)}`
+                  : ''
+              }`;
+            })
+            .join('\n')}`
+        : '';
+
+    // Get input schema and credentials context
+    const inputSchemaContext = executionState?.executionInputs
+      ? `\n\nUser's provided input:\n${JSON.stringify(executionState.executionInputs, null, 2)}`
+      : '';
+
+    const credentialsContext =
+      pendingCredentials && Object.keys(pendingCredentials).length > 0
+        ? `\n\nAvailable Credentials/Integrations:\n${Object.keys(
+            pendingCredentials
+          )
+            .map((key) => `- ${key}`)
+            .join('\n')}`
+        : '';
+
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
 
     pearlChat.mutate(
       {
@@ -299,7 +345,6 @@ export function PearlChat() {
 
   const handleReplace = (code: string) => {
     editor.replaceAllContent(code);
-    console.log('handleReplace', code);
     trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');
 
@@ -319,35 +364,9 @@ export function PearlChat() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4">
-      {/* Info Banner */}
-      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
-        <p className="text-xs text-blue-300 mb-3">
-          💡 If adding new bubbles, please stick to these supported
-          integrations.
-        </p>
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          {INTEGRATIONS.map((integration) => (
-            <div
-              key={integration.name}
-              className="flex items-center gap-1.5 p-1 bg-blue-900/10 rounded"
-            >
-              <img
-                src={integration.file}
-                alt={`${integration.name} logo`}
-                className="h-3.5 w-3.5 opacity-80"
-                loading="lazy"
-              />
-              <p className="text-[10px] text-blue-200 truncate">
-                {integration.name}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
-      <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
+      <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
         {messages.length === 0 && !pearlChat.isPending && (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
             <p className="text-center">
@@ -482,7 +501,7 @@ export function PearlChat() {
       </div>
 
       {/* Compact chat input at bottom */}
-      <div className="p-2">
+      <div className="flex-shrink-0 p-4 pt-2">
         <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
           <textarea
             value={prompt}

@@ -9,31 +9,20 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
 } from '@xyflow/react';
-import type {
-  Node,
-  Edge,
-  Connection,
-  NodeChange,
-  EdgeChange,
-} from '@xyflow/react';
+import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
-import { useRunExecution } from '@/hooks/useRunExecution';
 import type {
-  CredentialType,
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
-import { useCredentials } from '../hooks/useCredentials';
-import { useValidateCode } from '../hooks/useValidateCode';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
-import { API_BASE_URL } from '../env';
+import { useLiveOutput } from '../hooks/useLiveOutput';
 import CronScheduleNode from './CronScheduleNode';
 
 // Keep backward compatibility - use the shared schema type
@@ -85,30 +74,26 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
   // Get all data from global stores
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
-  const executionState = useExecutionStore(flowId);
-  const { data: availableCredentials } = useCredentials(API_BASE_URL);
-  const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
-  const { hasUnsavedChanges, setExecutionHighlight, updateCronSchedule } =
-    useEditor(flowId);
-  const validateCodeMutation = useValidateCode({ flowId });
+  const { showEditor, showEditorPanel } = useUIStore();
+  const { hasUnsavedChanges, setExecutionHighlight } = useEditor(flowId);
+  // Select only needed execution store actions/state to avoid re-renders from events
+  // Note: Individual nodes subscribe to their own state - FlowVisualizer only needs minimal state
+  const setInputs = useExecutionStore(flowId, (s) => s.setInputs);
+  const highlightedBubble = useExecutionStore(
+    flowId,
+    (s) => s.highlightedBubble
+  );
+  const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+  const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
 
-  // Initialize execution hook
-  const { runFlow } = useRunExecution(flowId);
+  // Get LiveOutput hook for syncing console panel tab selection
+  const { selectBubbleInConsole } = useLiveOutput(flowId);
 
-  // Extract stable methods from execution state
-  const highlightBubble = executionState.highlightBubble;
-  const setCredential = executionState.setCredential;
-  const setInput = executionState.setInput;
+  // Get execution inputs for initial defaults setup (using selector to avoid re-renders from events)
+  const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
 
   // Derive all state from global stores
   const bubbleParameters = currentFlow?.bubbleParameters || {};
-  const highlightedBubble = executionState.highlightedBubble;
-  const isExecuting = executionState.isRunning;
-  const bubbleWithError = executionState.bubbleWithError;
-  const runningBubbles = executionState.runningBubbles;
-  const completedBubbles = executionState.completedBubbles;
-  const executionInputs = executionState.executionInputs;
-  const pendingCredentials = executionState.pendingCredentials;
   const requiredCredentials = currentFlow?.requiredCredentials || {};
   const flowName = currentFlow?.name;
   const inputsSchema = currentFlow?.inputSchema
@@ -159,15 +144,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       !hasExisting &&
       hasDefaults
     ) {
-      executionState.setInputs(defaults);
+      setInputs(defaults);
       didInitDefaultsForFlow.current = currentFlow.id;
     }
-  }, [
-    currentFlow?.id,
-    currentFlow?.defaultInputs,
-    executionInputs,
-    executionState.setInputs,
-  ]);
+  }, [currentFlow?.id, currentFlow?.defaultInputs, executionInputs, setInputs]);
 
   // Auto-expand roots when execution starts
   useEffect(() => {
@@ -362,11 +342,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const persistedPosition = persistedPositions.current.get(nodeId);
       const position = persistedPosition || initialPosition;
 
-      // Check execution state for dependency bubble
-      const dependencyVariableId = String(dependencyNode.variableId);
-      const hasErrorState = bubbleWithError === dependencyVariableId;
-      const isCompletedState = dependencyVariableId in completedBubbles;
-      const executionStats = completedBubbles[dependencyVariableId];
+      // Note: Sub-bubbles will subscribe to their own execution state via BubbleNode
 
       const node: Node = {
         id: nodeId,
@@ -374,18 +350,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         position,
         draggable: true,
         data: {
+          flowId: currentFlow?.id || flowId,
           bubble: subBubble,
           bubbleKey: nodeId,
-          onParameterChange: undefined,
-          isHighlighted:
-            highlightedBubble === String(dependencyNode.variableId),
-          onHighlightChange: () =>
-            highlightBubble(String(dependencyNode.variableId) || nodeId),
+          onHighlightChange: () => {
+            // BubbleNode will handle store updates
+          },
           onBubbleClick: () => {},
-          hasError: hasErrorState,
-          isCompleted: isCompletedState,
-          isExecuting: runningBubbles.has(dependencyVariableId),
-          executionStats: executionStats,
         },
       };
       nodes.push(node);
@@ -432,14 +403,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       isExecuting,
       highlightBubble,
       suppressedRootIds,
-      bubbleWithError,
-      runningBubbles,
-      completedBubbles,
+      currentFlow,
+      flowId,
     ]
   );
 
   // Convert bubbles to React Flow nodes and edges
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const initialNodesAndEdges = () => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
     const horizontalSpacing = 450;
@@ -506,35 +476,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           origin: [0, 0.5] as [number, number],
           draggable: true,
           data: {
-            flowId: currentFlow?.id,
+            flowId: currentFlow?.id || flowId,
             flowName: flowName,
             cronSchedule: currentFlow?.cron || '0 0 * * *',
             isActive: currentFlow?.cronActive || false,
             inputSchema: currentFlow?.inputSchema || {},
-            executionInputs: currentFlow?.defaultInputs || {},
-            isPending: validateCodeMutation.isPending,
-            onCronScheduleChange: (newSchedule: string) => {
-              // Update the cron schedule in the editor store
-              updateCronSchedule(newSchedule);
-
-              // TODO: In the future, we might want to save this to the backend
-              // For now, it's just stored locally in the editor
-            },
-            onDefaultInputChange: (fieldName: string, value: unknown) => {
-              // Update the input value in the execution state
-              setInput(fieldName, value);
-
-              // TODO: In the future, we might want to save this to the backend
-              // For now, it's just stored locally in the execution state
-            },
-            onExecuteFlow: async () => {
-              await runFlow({
-                validateCode: true,
-                updateCredentials: true,
-                inputs: executionInputs || {},
-              });
-            },
-            isExecuting: isExecuting,
           },
         };
         nodes.push(cronScheduleNode);
@@ -552,22 +498,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           origin: [0, 0.5] as [number, number],
           draggable: true,
           data: {
-            flowId: currentFlow?.id,
+            flowId: currentFlow?.id || flowId,
             flowName: flowName,
             schemaFields: parsedFields,
-            executionInputs: executionInputs || {},
-            onExecutionInputChange: (fieldName: string, value: unknown) => {
-              setInput(fieldName, value);
-            },
-            onExecuteFlow: async () => {
-              await runFlow({
-                validateCode: true,
-                updateCredentials: true,
-                inputs: executionInputs || {},
-              });
-            },
-            isExecuting: isExecuting,
-            isFormValid: true,
           },
         };
         nodes.push(inputSchemaNode);
@@ -581,38 +514,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         ? String(bubble.variableId)
         : String(key);
 
-      const keyCandidates = [
-        String(bubble.variableId),
-        bubble.variableName,
-        bubble.bubbleName,
-      ];
-      const credentialsKeyForBubble =
-        keyCandidates.find(
-          (k) =>
-            k &&
-            Array.isArray((requiredCredentials as Record<string, unknown>)[k])
-        ) || bubble.bubbleName;
-
-      const requiredCredTypes =
-        (requiredCredentials as Record<string, string[]>)[
-          credentialsKeyForBubble
-        ] || [];
-
-      const missingCreds = requiredCredTypes.some((credType) => {
-        if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
-        const selected =
-          (pendingCredentials as Record<string, Record<string, number>>)[
-            credentialsKeyForBubble
-          ] || {};
-        const selectedId = selected[credType];
-        return selectedId === undefined || selectedId === null;
-      });
-
       const rootExpanded = expandedRootIds.includes(nodeId);
       const rootSuppressed = suppressedRootIds.includes(nodeId);
-      const hasErrorState = bubbleWithError === nodeId;
-      const isCompletedState = nodeId in completedBubbles;
-      const executionStats = completedBubbles[nodeId];
 
       // Use persisted position if available, otherwise use initial position
       const persistedPosition = persistedPositions.current.get(nodeId);
@@ -628,15 +531,33 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         origin: [0, 0.5] as [number, number],
         draggable: true,
         data: {
+          flowId: currentFlow?.id || flowId,
           bubble,
           bubbleKey: key,
-          hasMissingRequirements: missingCreds,
-          hasMissingCredentials: missingCreds,
-          onParameterChange: undefined,
-          isHighlighted: highlightedBubble === key,
-          onHighlightChange: () => highlightBubble(key),
+          requiredCredentialTypes: (() => {
+            const keyCandidates = [
+              String(bubble.variableId),
+              bubble.variableName,
+              bubble.bubbleName,
+            ];
+            const credentialsKeyForBubble =
+              keyCandidates.find(
+                (k) =>
+                  k &&
+                  Array.isArray(
+                    (requiredCredentials as Record<string, unknown>)[k]
+                  )
+              ) || bubble.bubbleName;
+            return (
+              (requiredCredentials as Record<string, string[]>)[
+                credentialsKeyForBubble
+              ] || []
+            );
+          })(),
+          onHighlightChange: () => {
+            // BubbleNode will handle store updates
+          },
           onBubbleClick: () => {
-            highlightBubble(String(key));
             showEditorPanel();
             setExecutionHighlight({
               startLine: bubble.location.startLine,
@@ -660,28 +581,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             }
           },
           hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
-          areSubBubblesVisible:
-            isExecuting || (rootExpanded && !rootSuppressed),
+          areSubBubblesVisible: rootExpanded && !rootSuppressed,
           onToggleSubBubbles: bubble.dependencyGraph?.dependencies?.length
             ? () => toggleRootVisibility(nodeId)
             : undefined,
-          requiredCredentialTypes: requiredCredentials
-            ? requiredCredentials[credentialsKeyForBubble] || []
-            : [],
-          availableCredentials: availableCredentials || [],
-          selectedBubbleCredentials: pendingCredentials
-            ? pendingCredentials[credentialsKeyForBubble] || {}
-            : {},
-          onCredentialSelectionChange: (
-            credType: string,
-            credId: number | null
-          ) => {
-            setCredential(String(bubble.variableId), credType, credId);
-          },
-          hasError: hasErrorState,
-          isCompleted: isCompletedState,
-          isExecuting: runningBubbles.has(nodeId),
-          executionStats: executionStats,
         },
       };
       nodes.push(node);
@@ -777,33 +680,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     }
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [
-    bubbleEntries,
-    highlightedBubble,
-    requiredCredentials,
-    availableCredentials,
-    pendingCredentials,
-    flowName,
-    inputsSchema,
-    isExecuting,
-    executionInputs,
-    createNodesFromDependencyGraph,
-    toggleRootVisibility,
-    bubbleWithError,
-    completedBubbles,
-    validateCodeMutation.isPending,
-    highlightBubble,
-    setCredential,
-    setInput,
-    expandedRootIds,
-    suppressedRootIds,
-    currentFlow,
-  ]);
+  };
 
   // Sync nodes and edges state with computed values, preserving positions
   useEffect(() => {
+    const { initialNodes, initialEdges } = initialNodesAndEdges();
     setNodes((currentNodes) => {
       // If this is the first time we have nodes, just set them
+
       if (currentNodes.length === 0) {
         return initialNodes;
       }
@@ -821,7 +705,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       return updatedNodes;
     });
     setEdges(initialEdges);
-  }, [initialNodes, initialEdges]);
+  }, [currentFlow, expandedRootIds, suppressedRootIds]);
 
   // Reset view initialization flag when flowId changes
   useEffect(() => {
@@ -884,10 +768,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       setEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
-
-  const onConnect = useCallback((params: Connection) => {
-    console.log('Connection created:', params);
-  }, []);
 
   // Show loading state
   if (loading) {
@@ -973,10 +853,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        onConnect={onConnect}
+        onNodeClick={(_event, node) => {
+          // When a bubble node is clicked, select its tab in the console panel
+          if (node.type === 'bubbleNode') {
+            const variableId = node.id;
+            selectBubbleInConsole(variableId);
+          }
+        }}
         onPaneClick={() => {
           highlightBubble(null);
-          hideEditorPanel();
         }}
         proOptions={proOptions}
         minZoom={0.1}

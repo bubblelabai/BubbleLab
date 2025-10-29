@@ -2,7 +2,6 @@ import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, Info } from 'lucide-react';
-import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
@@ -12,35 +11,23 @@ import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from './BubbleExecutionBadge';
 import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
 import { useUIStore } from '../stores/uiStore';
+import { useExecutionStore } from '../stores/executionStore';
+import { useCredentials } from '../hooks/useCredentials';
+import { API_BASE_URL } from '../env';
 
 interface BubbleNodeData {
+  flowId: number;
   bubble: ParsedBubbleWithInfo;
   bubbleKey: string | number;
+  requiredCredentialTypes?: string[]; // Static data from flow - not execution state
   onParameterChange?: (paramName: string, newValue: unknown) => void;
-  isHighlighted?: boolean;
   onHighlightChange?: () => void;
   onBubbleClick?: () => void;
-  hasMissingRequirements?: boolean;
-  // Credentials props for this bubble
-  requiredCredentialTypes?: string[];
-  availableCredentials?: CredentialResponse[];
-  selectedBubbleCredentials?: Record<string, number>;
-  onCredentialSelectionChange?: (
-    credType: string,
-    credId: number | null
-  ) => void;
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
   hasSubBubbles?: boolean;
   areSubBubblesVisible?: boolean;
   onToggleSubBubbles?: () => void;
-  // Error state
-  hasError?: boolean;
-  // Completion state
-  isCompleted?: boolean;
-  // Execution state
-  isExecuting?: boolean;
-  executionStats?: { totalTime: number; count: number };
 }
 
 interface BubbleNodeProps {
@@ -49,23 +36,87 @@ interface BubbleNodeProps {
 
 function BubbleNode({ data }: BubbleNodeProps) {
   const {
+    flowId,
     bubble,
-    isHighlighted,
+    bubbleKey,
+    requiredCredentialTypes: propRequiredCredentialTypes = [],
     onHighlightChange,
     onBubbleClick,
-    hasMissingRequirements = false,
-    requiredCredentialTypes = [],
-    availableCredentials = [],
-    selectedBubbleCredentials = {},
-    onCredentialSelectionChange,
+    onParamEditInCode,
     hasSubBubbles = false,
     areSubBubblesVisible = false,
     onToggleSubBubbles,
-    hasError = false,
-    isCompleted = false,
-    isExecuting = false,
-    executionStats,
   } = data;
+
+  // Determine the bubble ID for store lookups (prefer variableId, fallback to bubbleKey)
+  const bubbleId = bubble.variableId
+    ? String(bubble.variableId)
+    : String(bubbleKey);
+
+  // Determine credentials key (try variableId, variableName, bubbleName, fallback to bubbleKey)
+  const credentialsKey = String(
+    bubble.variableId || bubble.variableName || bubble.bubbleName || bubbleKey
+  );
+
+  // Subscribe to execution store state for this bubble (using selectors to avoid re-renders from events)
+  const highlightedBubble = useExecutionStore(
+    flowId,
+    (s) => s.highlightedBubble
+  );
+  const bubbleWithError = useExecutionStore(flowId, (s) => s.bubbleWithError);
+  const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
+  const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
+  const pendingCredentials = useExecutionStore(
+    flowId,
+    (s) => s.pendingCredentials
+  );
+
+  // Get actions from store
+  const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
+  const setCredential = useExecutionStore(flowId, (s) => s.setCredential);
+
+  // Get available credentials
+  const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
+
+  // Determine bubble-specific state
+  const isHighlighted =
+    highlightedBubble === bubbleKey || highlightedBubble === bubbleId;
+  const hasError = bubbleWithError === bubbleId;
+  const isExecuting = runningBubbles.has(bubbleId);
+  const isCompleted = bubbleId in completedBubbles;
+  const executionStats = completedBubbles[bubbleId];
+
+  // Get selected credentials for this bubble
+  const selectedBubbleCredentials = pendingCredentials[credentialsKey] || {};
+
+  // Get required credential types - prefer prop (from flow.requiredCredentials), fallback to bubble parameters
+  const requiredCredentialTypes = useMemo(() => {
+    if (propRequiredCredentialTypes.length > 0) {
+      return propRequiredCredentialTypes;
+    }
+    // Fallback: derive from bubble's credentials parameter
+    const credParams = bubble.parameters.find((p) => p.name === 'credentials');
+    if (
+      !credParams ||
+      typeof credParams.value !== 'object' ||
+      !credParams.value
+    ) {
+      return [];
+    }
+    const credValue = credParams.value as Record<string, unknown>;
+    return Object.keys(credValue);
+  }, [propRequiredCredentialTypes, bubble.parameters]);
+
+  // Check if credentials are missing
+  const hasMissingRequirements = requiredCredentialTypes.some((credType) => {
+    if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
+    const selectedId = selectedBubbleCredentials[credType];
+    return selectedId === undefined || selectedId === null;
+  });
+
+  const handleCredentialChange = (credType: string, credId: number | null) => {
+    setCredential(credentialsKey, credType, credId);
+  };
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
@@ -76,7 +127,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showExpandTooltip, setShowExpandTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
-  const { showEditor, hideEditorPanel } = useUIStore();
+  const { showEditor } = useUIStore();
 
   const logo = useMemo(
     () =>
@@ -130,8 +181,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
   };
 
   const handleClick = () => {
+    // Update store highlight state (convert to string for consistency)
+    highlightBubble(String(bubbleKey));
     onHighlightChange?.();
-    // onBubbleClick?.();
   };
 
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
@@ -221,6 +273,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
               {bubble.parameters.length > 0 && (
                 <div className="relative">
                   <button
+                    title={isExpanded ? 'Collapse' : 'Details'}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -244,14 +297,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
           {!isSubBubble && (
             <div className="relative">
               <button
+                title={'View Code'}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (showEditor) {
-                    hideEditorPanel();
-                  } else {
-                    onBubbleClick?.();
-                  }
+                  onBubbleClick?.();
                 }}
                 onMouseEnter={() => setShowCodeTooltip(true)}
                 onMouseLeave={() => setShowCodeTooltip(false)}
@@ -400,7 +450,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                             return;
                           }
                           const credId = val ? parseInt(val, 10) : null;
-                          onCredentialSelectionChange?.(credType, credId);
+                          handleCredentialChange(credType, credId);
                         }}
                         className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
                       >
@@ -438,12 +488,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   {param.name}
                   <span className="ml-1 text-neutral-500">({param.type})</span>
                 </label>
-                {data.onParamEditInCode && (
+                {onParamEditInCode && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      data.onParamEditInCode?.(param.name);
+                      onParamEditInCode?.(param.name);
                     }}
                     className="text-xs text-blue-400 hover:text-blue-300 px-1"
                   >
@@ -501,7 +551,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
           lockedCredentialType={createModalForType as CredentialType}
           lockType
           onSuccess={(created) => {
-            onCredentialSelectionChange?.(createModalForType, created.id);
+            if (createModalForType) {
+              handleCredentialChange(createModalForType, created.id);
+            }
             setCreateModalForType(null);
           }}
         />

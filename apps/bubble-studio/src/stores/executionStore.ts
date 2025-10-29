@@ -1,4 +1,5 @@
-import { create } from 'zustand';
+import { createWithEqualityFn } from 'zustand/traditional';
+import { shallow } from 'zustand/shallow';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 
 /**
@@ -247,236 +248,239 @@ export interface FlowExecutionState {
 // Factory function to create a store for a specific flow
 function createExecutionStore(flowId: number) {
   console.debug('Creating execution store for flow:', flowId);
-  return create<FlowExecutionState>((set, get) => ({
-    // Initial state
-    isRunning: false,
-    isValidating: false,
-    highlightedBubble: null,
-    bubbleWithError: null,
-    lastExecutingBubble: null,
-    runningBubbles: new Set<string>(),
-    completedBubbles: {},
-    executionInputs: {},
-    pendingCredentials: {},
-    isConnected: false,
-    error: null,
-    events: [],
-    currentLine: null,
-    abortController: null,
+  return createWithEqualityFn<FlowExecutionState>(
+    (set, get) => ({
+      // Initial state
+      isRunning: false,
+      isValidating: false,
+      highlightedBubble: null,
+      bubbleWithError: null,
+      lastExecutingBubble: null,
+      runningBubbles: new Set<string>(),
+      completedBubbles: {},
+      executionInputs: {},
+      pendingCredentials: {},
+      isConnected: false,
+      error: null,
+      events: [],
+      currentLine: null,
+      abortController: null,
 
-    // Execution control
-    startExecution: () =>
-      set({
-        isRunning: true,
-        error: null,
-        events: [],
-        bubbleWithError: null,
-        runningBubbles: new Set<string>(),
-        completedBubbles: {},
-      }),
+      // Execution control
+      startExecution: () =>
+        set({
+          isRunning: true,
+          error: null,
+          events: [],
+          bubbleWithError: null,
+          runningBubbles: new Set<string>(),
+          completedBubbles: {},
+        }),
 
-    stopExecution: () => {
-      const { abortController } = get();
-      if (abortController) {
-        abortController.abort();
-      }
-      set({
-        isRunning: false,
-        isConnected: false,
-        abortController: null,
-        highlightedBubble: null,
-        currentLine: null,
-      });
-    },
+      stopExecution: () => {
+        const { abortController } = get();
+        if (abortController) {
+          abortController.abort();
+        }
+        set({
+          isRunning: false,
+          isConnected: false,
+          abortController: null,
+          highlightedBubble: null,
+          currentLine: null,
+        });
+      },
 
-    startValidation: () => set({ isValidating: true }),
+      startValidation: () => set({ isValidating: true }),
 
-    stopValidation: () => set({ isValidating: false }),
+      stopValidation: () => set({ isValidating: false }),
 
-    setAbortController: (controller) => set({ abortController: controller }),
+      setAbortController: (controller) => set({ abortController: controller }),
 
-    // Visual state
-    highlightBubble: (bubbleKey) => set({ highlightedBubble: bubbleKey }),
+      // Visual state
+      highlightBubble: (bubbleKey) => set({ highlightedBubble: bubbleKey }),
 
-    setBubbleError: (bubbleKey) => set({ bubbleWithError: bubbleKey }),
+      setBubbleError: (bubbleKey) => set({ bubbleWithError: bubbleKey }),
 
-    setLastExecutingBubble: (bubbleKey) =>
-      set({ lastExecutingBubble: bubbleKey }),
+      setLastExecutingBubble: (bubbleKey) =>
+        set({ lastExecutingBubble: bubbleKey }),
 
-    setBubbleRunning: (bubbleKey) =>
-      set((state) => ({
-        runningBubbles: new Set([...state.runningBubbles, bubbleKey]),
-      })),
+      setBubbleRunning: (bubbleKey) =>
+        set((state) => ({
+          runningBubbles: new Set([...state.runningBubbles, bubbleKey]),
+        })),
 
-    setBubbleStopped: (bubbleKey) =>
-      set((state) => {
-        const newRunningBubbles = new Set(state.runningBubbles);
-        newRunningBubbles.delete(bubbleKey);
-        return { runningBubbles: newRunningBubbles };
-      }),
+      setBubbleStopped: (bubbleKey) =>
+        set((state) => {
+          const newRunningBubbles = new Set(state.runningBubbles);
+          newRunningBubbles.delete(bubbleKey);
+          return { runningBubbles: newRunningBubbles };
+        }),
 
-    setBubbleCompleted: (bubbleKey, executionTimeMs) =>
-      set((state) => {
-        const existing = state.completedBubbles[bubbleKey];
-        return {
-          completedBubbles: {
-            ...state.completedBubbles,
-            [bubbleKey]: {
-              totalTime: (existing?.totalTime || 0) + executionTimeMs,
-              count: (existing?.count || 0) + 1,
+      setBubbleCompleted: (bubbleKey, executionTimeMs) =>
+        set((state) => {
+          const existing = state.completedBubbles[bubbleKey];
+          return {
+            completedBubbles: {
+              ...state.completedBubbles,
+              [bubbleKey]: {
+                totalTime: (existing?.totalTime || 0) + executionTimeMs,
+                count: (existing?.count || 0) + 1,
+              },
             },
+            // Remove from running bubbles when completed
+            runningBubbles: (() => {
+              const newRunningBubbles = new Set(state.runningBubbles);
+              newRunningBubbles.delete(bubbleKey);
+              return newRunningBubbles;
+            })(),
+          };
+        }),
+
+      clearHighlighting: () =>
+        set({
+          highlightedBubble: null,
+          bubbleWithError: null,
+          lastExecutingBubble: null,
+        }),
+
+      // Execution data
+      setInput: (field, value) =>
+        set((state) => ({
+          executionInputs: {
+            ...state.executionInputs,
+            [field]: value,
           },
-          // Remove from running bubbles when completed
-          runningBubbles: (() => {
-            const newRunningBubbles = new Set(state.runningBubbles);
-            newRunningBubbles.delete(bubbleKey);
-            return newRunningBubbles;
-          })(),
-        };
-      }),
+        })),
 
-    clearHighlighting: () =>
-      set({
-        highlightedBubble: null,
-        bubbleWithError: null,
-        lastExecutingBubble: null,
-      }),
+      setInputs: (inputs) => set({ executionInputs: inputs }),
 
-    // Execution data
-    setInput: (field, value) =>
-      set((state) => ({
-        executionInputs: {
-          ...state.executionInputs,
-          [field]: value,
-        },
-      })),
+      setCredential: (bubbleName, credType, credId) =>
+        set((state) => {
+          const bubbleCredentials = state.pendingCredentials[bubbleName] || {};
 
-    setInputs: (inputs) => set({ executionInputs: inputs }),
+          // If credId is null, remove the credential
+          if (credId === null) {
+            const rest = Object.fromEntries(
+              Object.entries(bubbleCredentials).filter(
+                ([key]) => key !== credType
+              )
+            );
+            return {
+              pendingCredentials: {
+                ...state.pendingCredentials,
+                [bubbleName]: rest,
+              },
+            };
+          }
 
-    setCredential: (bubbleName, credType, credId) =>
-      set((state) => {
-        const bubbleCredentials = state.pendingCredentials[bubbleName] || {};
-
-        // If credId is null, remove the credential
-        if (credId === null) {
-          const rest = Object.fromEntries(
-            Object.entries(bubbleCredentials).filter(
-              ([key]) => key !== credType
-            )
-          );
+          // Otherwise, add/update the credential
           return {
             pendingCredentials: {
               ...state.pendingCredentials,
-              [bubbleName]: rest,
+              [bubbleName]: {
+                ...bubbleCredentials,
+                [credType]: credId,
+              },
             },
           };
-        }
+        }),
 
-        // Otherwise, add/update the credential
-        return {
+      setBubbleCredentials: (bubbleName, credentials) =>
+        set((state) => ({
           pendingCredentials: {
             ...state.pendingCredentials,
-            [bubbleName]: {
-              ...bubbleCredentials,
-              [credType]: credId,
-            },
+            [bubbleName]: credentials,
           },
+        })),
+
+      setAllCredentials: (credentials) =>
+        set({ pendingCredentials: credentials }),
+
+      // Streaming state
+      addEvent: (event) =>
+        set((state) => ({
+          events: [...state.events, event],
+        })),
+
+      setCurrentLine: (line) => set({ currentLine: line }),
+
+      setConnected: (connected) => set({ isConnected: connected }),
+
+      setError: (error) => set({ error }),
+
+      clearEvents: () => set({ events: [], error: null }),
+
+      // Reset
+      reset: () =>
+        set({
+          isRunning: false,
+          isValidating: false,
+          highlightedBubble: null,
+          bubbleWithError: null,
+          lastExecutingBubble: null,
+          completedBubbles: {},
+          executionInputs: {},
+          pendingCredentials: {},
+          isConnected: false,
+          error: null,
+          events: [],
+          currentLine: null,
+          abortController: null,
+        }),
+
+      resetExecution: () =>
+        set({
+          isRunning: false,
+          isValidating: false,
+          highlightedBubble: null,
+          bubbleWithError: null,
+          lastExecutingBubble: null,
+          completedBubbles: {},
+          isConnected: false,
+          error: null,
+          events: [],
+          currentLine: null,
+          abortController: null,
+        }),
+
+      getExecutionStats: () => {
+        const { events } = get();
+
+        let totalTime = 0;
+        let memoryUsage = 0;
+        let linesExecuted = 0;
+        let bubblesProcessed = 0;
+
+        for (const event of events) {
+          if (event.executionTime) {
+            totalTime = Math.max(totalTime, event.executionTime);
+          }
+          if (event.memoryUsage) {
+            memoryUsage = Math.max(memoryUsage, event.memoryUsage);
+          }
+          if (event.type === 'log_line') {
+            linesExecuted++;
+          }
+          if (
+            event.type === 'bubble_complete' ||
+            event.type === 'bubble_execution' ||
+            event.type === 'bubble_execution_complete'
+          ) {
+            bubblesProcessed++;
+          }
+        }
+
+        return {
+          totalTime,
+          memoryUsage,
+          linesExecuted,
+          bubblesProcessed,
         };
-      }),
-
-    setBubbleCredentials: (bubbleName, credentials) =>
-      set((state) => ({
-        pendingCredentials: {
-          ...state.pendingCredentials,
-          [bubbleName]: credentials,
-        },
-      })),
-
-    setAllCredentials: (credentials) =>
-      set({ pendingCredentials: credentials }),
-
-    // Streaming state
-    addEvent: (event) =>
-      set((state) => ({
-        events: [...state.events, event],
-      })),
-
-    setCurrentLine: (line) => set({ currentLine: line }),
-
-    setConnected: (connected) => set({ isConnected: connected }),
-
-    setError: (error) => set({ error }),
-
-    clearEvents: () => set({ events: [], error: null }),
-
-    // Reset
-    reset: () =>
-      set({
-        isRunning: false,
-        isValidating: false,
-        highlightedBubble: null,
-        bubbleWithError: null,
-        lastExecutingBubble: null,
-        completedBubbles: {},
-        executionInputs: {},
-        pendingCredentials: {},
-        isConnected: false,
-        error: null,
-        events: [],
-        currentLine: null,
-        abortController: null,
-      }),
-
-    resetExecution: () =>
-      set({
-        isRunning: false,
-        isValidating: false,
-        highlightedBubble: null,
-        bubbleWithError: null,
-        lastExecutingBubble: null,
-        completedBubbles: {},
-        isConnected: false,
-        error: null,
-        events: [],
-        currentLine: null,
-        abortController: null,
-      }),
-
-    getExecutionStats: () => {
-      const { events } = get();
-
-      let totalTime = 0;
-      let memoryUsage = 0;
-      let linesExecuted = 0;
-      let bubblesProcessed = 0;
-
-      for (const event of events) {
-        if (event.executionTime) {
-          totalTime = Math.max(totalTime, event.executionTime);
-        }
-        if (event.memoryUsage) {
-          memoryUsage = Math.max(memoryUsage, event.memoryUsage);
-        }
-        if (event.type === 'log_line') {
-          linesExecuted++;
-        }
-        if (
-          event.type === 'bubble_complete' ||
-          event.type === 'bubble_execution' ||
-          event.type === 'bubble_execution_complete'
-        ) {
-          bubblesProcessed++;
-        }
-      }
-
-      return {
-        totalTime,
-        memoryUsage,
-        linesExecuted,
-        bubblesProcessed,
-      };
-    },
-  }));
+      },
+    }),
+    shallow
+  );
 }
 
 // Map to store instances per flowId
@@ -536,6 +540,9 @@ const emptyState: FlowExecutionState = {
 /**
  * Hook to get execution state for a specific flow with optional selector
  *
+ * The store uses createWithEqualityFn with shallow comparison as the default,
+ * so object selectors automatically use shallow comparison to prevent unnecessary re-renders.
+ *
  * Usage:
  * ```typescript
  * // Get full state (re-renders on ANY change)
@@ -544,21 +551,26 @@ const emptyState: FlowExecutionState = {
  * // Get specific field (re-renders ONLY when that field changes)
  * const isRunning = useExecutionStore(flowId, (state) => state.isRunning);
  *
- * // Get multiple fields (re-renders when ANY of these fields change)
+ * // Get multiple fields with shallow comparison (re-renders when ANY of these fields change)
+ * // Shallow comparison is the default, so this prevents re-renders when selector returns new object with same values
+ * import { shallow } from 'zustand/shallow';
  * const { isRunning, highlightedBubble } = useExecutionStore(
  *   flowId,
- *   (state) => ({ isRunning: state.isRunning, highlightedBubble: state.highlightedBubble })
+ *   (state) => ({ isRunning: state.isRunning, highlightedBubble: state.highlightedBubble }),
+ *   shallow // Optional: explicitly pass shallow (default is already shallow)
  * );
  * ```
  */
 export function useExecutionStore(flowId: number | null): FlowExecutionState;
 export function useExecutionStore<T>(
   flowId: number | null,
-  selector: (state: FlowExecutionState) => T
+  selector: (state: FlowExecutionState) => T,
+  equalityFn?: typeof shallow
 ): T;
 export function useExecutionStore<T>(
   flowId: number | null,
-  selector?: (state: FlowExecutionState) => T
+  selector?: (state: FlowExecutionState) => T,
+  equalityFn?: typeof shallow
 ): FlowExecutionState | T {
   // Get or create store for this flowId (or use empty store for null)
   let store: ReturnType<typeof createExecutionStore>;
@@ -578,8 +590,12 @@ export function useExecutionStore<T>(
   }
 
   // ALWAYS call the hook - never return early before this
-  // If selector is provided, use it; otherwise subscribe to full state
-  const state = selector ? store(selector) : store();
+  // If selector is provided, use it with optional equality function; otherwise subscribe to full state
+  const state = selector
+    ? equalityFn
+      ? store(selector, equalityFn)
+      : store(selector)
+    : store();
 
   // Return empty state data if flowId is null, but still subscribe to the store
   if (flowId === null) {

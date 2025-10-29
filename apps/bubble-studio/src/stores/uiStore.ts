@@ -58,6 +58,18 @@ interface UIStore {
    */
   targetInsertLine: number | null;
 
+  // ============= Consolidated Side Panel State =============
+
+  /**
+   * Whether the consolidated side panel is open
+   */
+  isConsolidatedPanelOpen: boolean;
+
+  /**
+   * Active tab in the consolidated side panel
+   */
+  consolidatedPanelTab: 'pearl' | 'code' | 'output' | 'history';
+
   // ============= Modal Visibility State =============
 
   /**
@@ -88,11 +100,6 @@ interface UIStore {
    * Show the editor
    */
   showEditorPanel: () => void;
-
-  /**
-   * Hide the editor
-   */
-  hideEditorPanel: () => void;
 
   /**
    * Toggle sidebar visibility
@@ -160,6 +167,32 @@ interface UIStore {
    * Open Pearl chat panel
    */
   openPearlChat: () => void;
+
+  // ============= Consolidated Panel Actions =============
+
+  /**
+   * Set the active tab in the consolidated side panel
+   */
+  setConsolidatedPanelTab: (
+    tab: 'pearl' | 'code' | 'output' | 'history'
+  ) => void;
+
+  /**
+   * Open the consolidated side panel with a specific tab
+   */
+  openConsolidatedPanelWith: (
+    tab: 'pearl' | 'code' | 'output' | 'history'
+  ) => void;
+
+  /**
+   * Toggle the consolidated side panel visibility
+   */
+  toggleConsolidatedPanel: () => void;
+
+  /**
+   * Close the consolidated side panel
+   */
+  closeConsolidatedPanel: () => void;
 }
 
 /**
@@ -183,6 +216,8 @@ export const useUIStore = create<UIStore>((set) => ({
   sidePanelMode: 'closed',
   selectedBubbleName: null,
   targetInsertLine: null,
+  isConsolidatedPanelOpen: true,
+  consolidatedPanelTab: 'pearl',
 
   // Actions
   selectFlow: (flowId) => set({ selectedFlowId: flowId, showEditor: false }),
@@ -200,12 +235,10 @@ export const useUIStore = create<UIStore>((set) => ({
   showEditorPanel: () =>
     set((state) => {
       if (state.isSidebarOpen) {
-        return { showEditor: true, isSidebarOpen: false };
+        return { isSidebarOpen: false, consolidatedPanelTab: 'code' };
       }
-      return { showEditor: true };
+      return { consolidatedPanelTab: 'code' };
     }),
-
-  hideEditorPanel: () => set({ showEditor: false }),
 
   toggleSidebar: () =>
     set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -255,6 +288,22 @@ export const useUIStore = create<UIStore>((set) => ({
       selectedBubbleName: null,
       targetInsertLine: null,
     }),
+
+  // Consolidated panel actions
+  setConsolidatedPanelTab: (tab) => set({ consolidatedPanelTab: tab }),
+
+  openConsolidatedPanelWith: (tab) =>
+    set({
+      isConsolidatedPanelOpen: true,
+      consolidatedPanelTab: tab,
+    }),
+
+  toggleConsolidatedPanel: () =>
+    set((state) => ({
+      isConsolidatedPanelOpen: !state.isConsolidatedPanelOpen,
+    })),
+
+  closeConsolidatedPanel: () => set({ isConsolidatedPanelOpen: false }),
 }));
 
 // ============= Derived Selectors =============

@@ -1,20 +1,12 @@
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './AuthComponents';
-import {
-  Code,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  Play,
-  Bot,
-  FileJson2,
-} from 'lucide-react';
-import { MonacoEditor } from '@/components/MonacoEditor';
+import { ChevronUpIcon, ChevronDownIcon, Play, FileJson2 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/FlowVisualizer';
-import LiveOutput from '@/components/execution_logs/LiveOutput';
 import { FlowGeneration } from '@/components/FlowGeneration';
 import { Tooltip } from '@/components/Tooltip';
+import { ConsolidatedSidePanel } from '@/components/ConsolidatedSidePanel';
 import { useEditor } from '@/hooks/useEditor';
 import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
@@ -26,6 +18,7 @@ import { getFlowNameFromCode } from '@/utils/codeParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useRunExecution } from '@/hooks/useRunExecution';
 import { useEffect } from 'react';
+import { shallow } from 'zustand/shallow';
 
 export interface FlowIDEViewProps {
   flowId: number;
@@ -34,24 +27,30 @@ export interface FlowIDEViewProps {
 export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   // ============= Zustand Stores =============
   const {
-    showEditor,
-    toggleEditor,
     showLeftPanel,
-    isOutputCollapsed,
     showExportModal,
     showPrompt,
     togglePrompt,
-    collapseOutput,
-    expandOutput,
     toggleExportModal,
     selectFlow,
+    isConsolidatedPanelOpen,
   } = useUIStore();
 
   const { output } = useOutputStore();
   const { generationPrompt, isStreaming } = useGenerationStore();
   const { editor } = useEditor();
-  const { openPearlChat } = useUIStore();
-  const executionState = useExecutionStore(flowId);
+  // Use selector to only subscribe to specific fields and prevent unnecessary re-renders
+  const executionState = useExecutionStore(
+    flowId,
+    (state) => ({
+      executionInputs: state.executionInputs,
+      isValidating: state.isValidating,
+      isRunning: state.isRunning,
+      pendingCredentials: state.pendingCredentials,
+      setAllCredentials: state.setAllCredentials,
+    }),
+    shallow
+  );
 
   // ============= React Query Hooks =============
   const { data: currentFlow } = useBubbleFlow(flowId);
@@ -132,27 +131,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     return '';
   };
 
-  const handleOpenOutputPanel = () => {
-    expandOutput();
-  };
-
   const handleExportClick = () => {
     toggleExportModal();
   };
-
-  const CodeEditorPanel = (
-    <div className="h-full bg-[#1a1a1a] min-h-0">
-      <div className="h-full min-h-0">
-        <div className="h-full relative">
-          <MonacoEditor />
-          {/* Code editor overlay with line count */}
-          <div className="absolute top-2 right-2 bg-[#1a1a1a] border border-[#30363d] px-2 py-1 rounded text-xs text-gray-400">
-            {editor.getCode().split('\n').length} lines
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
@@ -230,28 +211,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
             <SignedIn>
               {!isStreaming && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      openPearlChat();
-                    }}
-                    className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
-                  >
-                    <Bot className="w-3 h-3" />
-                    AI Assistant
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toggleEditor();
-                    }}
-                    className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
-                  >
-                    <Code className="w-3 h-3" />
-                    {showEditor ? 'Hide Code' : 'Show Code'}
-                  </button>
-
                   <Tooltip
                     content="⚡ Run the flow at least once to enable export"
                     show={
@@ -324,7 +283,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
               <Panel defaultSize={25} minSize={20} maxSize={40}>
                 {/* Left panel content if needed */}
               </Panel>
-              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
+              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
             </>
           )}
 
@@ -386,11 +345,14 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                     ) : (
                       <PanelGroup
                         direction="horizontal"
-                        autoSaveId="bubbleflow-editor-flow-layout"
+                        autoSaveId="bubbleflow-consolidated-layout"
                         className="h-full"
                       >
-                        {/* Flow Panel */}
-                        <Panel defaultSize={showEditor ? 50 : 100} minSize={30}>
+                        {/* Flow Visualizer Panel */}
+                        <Panel
+                          defaultSize={isConsolidatedPanelOpen ? 60 : 100}
+                          minSize={30}
+                        >
                           <div className="h-full bg-[#1a1a1a] min-h-0">
                             <div className="h-full min-h-0">
                               <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
@@ -425,25 +387,15 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                           </div>
                         </Panel>
 
-                        <>
-                          {showEditor && (
-                            <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
-                          )}
-
-                          {/* Editor Panel */}
-                          <Panel
-                            defaultSize={showEditor ? 20 : 0}
-                            minSize={showEditor ? 30 : 0}
-                            maxSize={showEditor ? 100 : 0}
-                            style={{
-                              visibility: showEditor ? 'visible' : 'hidden',
-                              opacity: showEditor ? 1 : 0,
-                              transition: 'opacity 0.2s ease-in-out',
-                            }}
-                          >
-                            {CodeEditorPanel}
-                          </Panel>
-                        </>
+                        {/* Consolidated Side Panel */}
+                        {isConsolidatedPanelOpen && (
+                          <>
+                            <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
+                            <Panel defaultSize={40} minSize={30} maxSize={50}>
+                              <ConsolidatedSidePanel />
+                            </Panel>
+                          </>
+                        )}
                       </PanelGroup>
                     )}
                   </div>
@@ -452,38 +404,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
             </PanelGroup>
           </Panel>
         </PanelGroup>
-
-        {/* Bottom floating drawer for Live Output */}
-        {isOutputCollapsed ? (
-          <div className="absolute bottom-0 left-0 right-0 z-40 px-4">
-            <button
-              onClick={handleOpenOutputPanel}
-              className={`w-full border border-b-0 px-4 py-4 text-sm font-medium rounded-t-md shadow-lg flex items-center justify-between transition-all duration-200 ${
-                executionState.isRunning
-                  ? 'bg-purple-500/30 border-purple-500/60 text-purple-200 hover:bg-purple-500/35 shadow-purple-500/30 animate-pulse'
-                  : 'bg-[#0f1115] border-[#30363d] text-gray-300 hover:text-gray-200 hover:bg-[#161b22]'
-              }`}
-              title="Show Live Execution Output"
-            >
-              <div className="flex items-center gap-2">
-                <span>Live Execution Output</span>
-              </div>
-              <ChevronUpIcon className="w-3 h-3" />
-            </button>
-          </div>
-        ) : (
-          <div className="absolute bottom-0 left-0 right-0 z-40 px-4">
-            <div className="h-[55vh] min-h-[260px] bg-[#0f1115] border border-[#30363d] rounded-t-lg shadow-2xl overflow-hidden transition-transform duration-300 ease-out translate-y-0">
-              <LiveOutput
-                flowId={currentFlow?.id}
-                events={executionState.events}
-                currentLine={executionState.currentLine}
-                executionStats={executionState.getExecutionStats()}
-                onToggleCollapse={collapseOutput}
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Export Modal */}

@@ -36,8 +36,6 @@ export function GenerationOutputOverlay() {
   const navigate = useNavigate();
   const outputEndRef = useRef<HTMLDivElement>(null);
 
-  console.log('[GenerationOutputOverlay] generationResult:', generationResult);
-
   // Auto-scroll to bottom when new output arrives
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
