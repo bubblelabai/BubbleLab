@@ -173,26 +173,22 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ right: -6 }}
       />
-      {/* Only show bottom handle for bubbles that have sub-bubbles */}
-      {hasSubBubbles && (
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom"
-          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ bottom: -6 }}
-        />
-      )}
-      {/* Only show top handle for sub-bubbles (they're connected from above) */}
-      {isSubBubble && (
-        <Handle
-          type="target"
-          position={Position.Top}
-          id="top"
-          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ top: -6 }}
-        />
-      )}
+      {/* Bottom handle */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+        style={{ bottom: -6 }}
+      />
+      {/* Top handle */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+        style={{ top: -6 }}
+      />
 
       {/* Header */}
       <div
