@@ -135,10 +135,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const entryNodeId =
     eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
 
-  const bubbleEntries = useMemo(
-    () => Object.entries(bubbleParameters),
-    [bubbleParameters]
-  );
+  const bubbleEntries = useMemo(() => {
+    const entries = Object.entries(bubbleParameters);
+    // Sort by startLine to ensure consistent ordering (matching edge creation logic)
+    return entries.sort(([, a], [, b]) => {
+      const aStartLine = (a as ParsedBubble)?.location?.startLine ?? 0;
+      const bStartLine = (b as ParsedBubble)?.location?.startLine ?? 0;
+      return aStartLine - bStartLine;
+    });
+  }, [bubbleParameters]);
 
   // Track if we've initialized defaults for this flow to avoid loops
   const didInitDefaultsForFlow = useRef<number | null>(null);
