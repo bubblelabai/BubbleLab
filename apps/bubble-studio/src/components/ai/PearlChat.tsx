@@ -14,7 +14,6 @@ import {
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
-import { INTEGRATIONS } from '../../lib/integrations';
 import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
@@ -319,35 +318,9 @@ export function PearlChat() {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-4">
-      {/* Info Banner */}
-      <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/30 rounded-lg">
-        <p className="text-xs text-blue-300 mb-3">
-          💡 If adding new bubbles, please stick to these supported
-          integrations.
-        </p>
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          {INTEGRATIONS.map((integration) => (
-            <div
-              key={integration.name}
-              className="flex items-center gap-1.5 p-1 bg-blue-900/10 rounded"
-            >
-              <img
-                src={integration.file}
-                alt={`${integration.name} logo`}
-                className="h-3.5 w-3.5 opacity-80"
-                loading="lazy"
-              />
-              <p className="text-[10px] text-blue-200 truncate">
-                {integration.name}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
-      <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
+      <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
         {messages.length === 0 && !pearlChat.isPending && (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
             <p className="text-center">
@@ -482,7 +455,7 @@ export function PearlChat() {
       </div>
 
       {/* Compact chat input at bottom */}
-      <div className="p-2">
+      <div className="flex-shrink-0 p-4 pt-2">
         <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
           <textarea
             value={prompt}
