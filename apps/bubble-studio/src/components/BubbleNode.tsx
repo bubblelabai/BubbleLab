@@ -75,6 +75,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [createModalForType, setCreateModalForType] = useState<string | null>(
     null
   );
+  const [showDocsTooltip, setShowDocsTooltip] = useState(false);
 
   const logo = useMemo(
     () =>
@@ -192,17 +193,24 @@ function BubbleNode({ data }: BubbleNodeProps) {
       >
         <div className="absolute top-4 right-4 flex items-center gap-2">
           {docsUrl && (
-            <a
-              href={docsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-800/60 text-neutral-300 border border-neutral-600 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-              title="Open documentation"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Docs</span>
-            </a>
+            <div className="relative">
+              <a
+                href={docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onMouseEnter={() => setShowDocsTooltip(true)}
+                onMouseLeave={() => setShowDocsTooltip(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+              </a>
+              {showDocsTooltip && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                  See Docs
+                </div>
+              )}
+            </div>
           )}
           {(hasError ||
             isCompleted ||
