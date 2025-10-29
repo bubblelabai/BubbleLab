@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   PlayIcon,
   ExclamationTriangleIcon,
@@ -9,6 +9,8 @@ import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
 import { getVariableNameForDisplay } from '../../utils/bubbleUtils';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
+import { useLiveOutput } from '../../hooks/useLiveOutput';
+import type { TabType } from '../../stores/liveOutputStore';
 
 interface AllEventsViewProps {
   orderedItems: Array<
@@ -49,17 +51,14 @@ export default function AllEventsView({
   const currentFlow = useBubbleFlow(flowId);
   const bubbleParameters = currentFlow.data?.bubbleParameters || {};
 
-  // Tab types
-  type TabType =
-    | { kind: 'warnings' }
-    | { kind: 'errors' }
-    | { kind: 'info' }
-    | { kind: 'item'; index: number };
+  // Use LiveOutput hook for state management
+  const {
+    selectedTab,
+    setSelectedTab,
+    selectedEventIndexByVariableId,
+    setSelectedEventIndex,
+  } = useLiveOutput(flowId);
 
-  const [selectedTab, setSelectedTab] = useState<TabType>({ kind: 'info' });
-  const [selectedByVar, setSelectedByVar] = useState<Record<string, number>>(
-    {}
-  );
   const eventsEndRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -337,7 +336,7 @@ export default function AllEventsView({
               const varId = item.name;
               const evs = item.events;
               const selectedIndex = Math.min(
-                selectedByVar[varId] ?? evs.length - 1,
+                selectedEventIndexByVariableId[varId] ?? evs.length - 1,
                 evs.length - 1
               );
               const selectedEvent = evs[selectedIndex];
@@ -362,10 +361,7 @@ export default function AllEventsView({
                         max={Math.max(0, evs.length - 1)}
                         value={selectedIndex}
                         onChange={(e) =>
-                          setSelectedByVar((s) => ({
-                            ...s,
-                            [varId]: Number(e.target.value),
-                          }))
+                          setSelectedEventIndex(varId, Number(e.target.value))
                         }
                         className="w-40"
                         aria-label={`Select output for variable ${varId}`}

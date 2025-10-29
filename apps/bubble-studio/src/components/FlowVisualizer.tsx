@@ -22,6 +22,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
+import { useLiveOutput } from '../hooks/useLiveOutput';
 import CronScheduleNode from './CronScheduleNode';
 
 // Keep backward compatibility - use the shared schema type
@@ -84,6 +85,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   );
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
   const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
+
+  // Get LiveOutput hook for syncing console panel tab selection
+  const { selectBubbleInConsole } = useLiveOutput(flowId);
 
   // Get execution inputs for initial defaults setup (using selector to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
@@ -849,6 +853,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
+        onNodeClick={(_event, node) => {
+          // When a bubble node is clicked, select its tab in the console panel
+          if (node.type === 'bubbleNode') {
+            const variableId = node.id;
+            selectBubbleInConsole(variableId);
+          }
+        }}
         onPaneClick={() => {
           highlightBubble(null);
         }}
