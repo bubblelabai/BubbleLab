@@ -11,6 +11,7 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from './BubbleExecutionBadge';
 import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
+import { useUIStore } from '../stores/uiStore';
 
 interface BubbleNodeData {
   bubble: ParsedBubbleWithInfo;
@@ -75,6 +76,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showExpandTooltip, setShowExpandTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
+  const { showEditor, hideEditorPanel } = useUIStore();
+
   const logo = useMemo(
     () =>
       findLogoForBubble({
@@ -128,7 +131,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   const handleClick = () => {
     onHighlightChange?.();
-    onBubbleClick?.();
+    // onBubbleClick?.();
   };
 
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
@@ -248,7 +251,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleClick();
+                  if (showEditor) {
+                    hideEditorPanel();
+                  } else {
+                    onBubbleClick?.();
+                  }
                 }}
                 onMouseEnter={() => setShowCodeTooltip(true)}
                 onMouseLeave={() => setShowCodeTooltip(false)}
@@ -258,7 +265,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
               </button>
               {showCodeTooltip && (
                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                  View Code
+                  {showEditor ? 'Hide Code' : 'View Code'}
                 </div>
               )}
             </div>
