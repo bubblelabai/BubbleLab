@@ -144,6 +144,16 @@ export const useFlowGeneration = () => {
         error: error,
       });
 
+      // Track flow creation failure with generated code
+      trackWorkflowGeneration({
+        prompt: prompt || '',
+        generatedBubbleCount: 0,
+        generatedCodeLength: codeToUse?.length || 0,
+        generatedCode: codeToUse,
+        success: false,
+        errorMessage: `Flow creation failed: ${errorMessage}`,
+      });
+
       setOutput((prev) => prev + `\n❌ Failed to create flow: ${errorMessage}`);
       return null;
     }
@@ -496,6 +506,7 @@ export const useFlowGeneration = () => {
           templateName: template?.name,
           generatedBubbleCount: generatedResult.bubblesUsed.length,
           generatedCodeLength: generatedResult.generatedCode.length,
+          generatedCode: generatedResult.generatedCode,
           generationDuration: Date.now() - generationStartTime,
           success: true,
         });

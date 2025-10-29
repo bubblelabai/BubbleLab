@@ -159,6 +159,7 @@ export interface WorkflowGenerationEventProps {
   templateName?: string;
   generatedBubbleCount: number;
   generatedCodeLength: number;
+  generatedCode?: string;
   generationDuration?: number;
   success: boolean;
   errorMessage?: string;
@@ -168,9 +169,12 @@ export function trackWorkflowGeneration(
   props: WorkflowGenerationEventProps
 ): void {
   analytics.track('workflow_generation', {
+    prompt: props.prompt,
     prompt_length: props.prompt.length,
     template_id: props.templateId,
     template_name: props.templateName,
+    generated_code: props.generatedCode,
+    generated_code_length: props.generatedCodeLength,
     generation_duration_ms: props.generationDuration,
     success: props.success,
     error_message: props.errorMessage,
