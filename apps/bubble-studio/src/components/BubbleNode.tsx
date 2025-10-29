@@ -1,11 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CogIcon,
-} from '@heroicons/react/24/outline';
-import { ExternalLink } from 'lucide-react';
+import { CogIcon } from '@heroicons/react/24/outline';
+import { BookOpen, Code, Info } from 'lucide-react';
 import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
@@ -15,6 +11,7 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from './BubbleExecutionBadge';
 import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
+import { useUIStore } from '../stores/uiStore';
 
 interface BubbleNodeData {
   bubble: ParsedBubbleWithInfo;
@@ -75,6 +72,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [createModalForType, setCreateModalForType] = useState<string | null>(
     null
   );
+  const [showDocsTooltip, setShowDocsTooltip] = useState(false);
+  const [showExpandTooltip, setShowExpandTooltip] = useState(false);
+  const [showCodeTooltip, setShowCodeTooltip] = useState(false);
+
+  const { showEditor, hideEditorPanel } = useUIStore();
 
   const logo = useMemo(
     () =>
@@ -129,7 +131,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   const handleClick = () => {
     onHighlightChange?.();
-    onBubbleClick?.();
+    // onBubbleClick?.();
   };
 
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
@@ -171,6 +173,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ right: -6 }}
       />
+      {/* Bottom handle */}
       <Handle
         type="source"
         position={Position.Bottom}
@@ -178,6 +181,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ bottom: -6 }}
       />
+      {/* Top handle */}
       <Handle
         type="target"
         position={Position.Top}
@@ -190,48 +194,99 @@ function BubbleNode({ data }: BubbleNodeProps) {
       <div
         className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
-        {(hasError ||
-          isCompleted ||
-          isExecuting ||
-          hasMissingRequirements ||
-          bubble.parameters.length > 0) && (
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            <BubbleExecutionBadge
-              hasError={hasError}
-              isCompleted={isCompleted}
-              isExecuting={isExecuting}
-              executionStats={executionStats}
-            />
-            {!hasError && !isExecuting && hasMissingRequirements && (
-              <div className="flex-shrink-0">
-                <div
-                  title="Missing credentials"
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
-                >
-                  <span>⚠️</span>
-                  <span>Missing</span>
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          {(hasError ||
+            isCompleted ||
+            isExecuting ||
+            hasMissingRequirements ||
+            bubble.parameters.length > 0) && (
+            <>
+              <BubbleExecutionBadge
+                hasError={hasError}
+                isCompleted={isCompleted}
+                isExecuting={isExecuting}
+                executionStats={executionStats}
+              />
+              {!hasError && !isExecuting && hasMissingRequirements && (
+                <div className="flex-shrink-0">
+                  <div
+                    title="Missing credentials"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
+                  >
+                    <span>⚠️</span>
+                    <span>Missing</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            {bubble.parameters.length > 0 && (
+              )}
+              {bubble.parameters.length > 0 && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    onMouseEnter={() => setShowExpandTooltip(true)}
+                    onMouseLeave={() => setShowExpandTooltip(false)}
+                    className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                  {showExpandTooltip && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                      {isExpanded ? 'Collapse' : 'Details'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+          {!isSubBubble && (
+            <div className="relative">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsExpanded(!isExpanded);
+                  if (showEditor) {
+                    hideEditorPanel();
+                  } else {
+                    onBubbleClick?.();
+                  }
                 }}
-                className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
-                title={isExpanded ? 'Collapse' : 'Expand'}
+                onMouseEnter={() => setShowCodeTooltip(true)}
+                onMouseLeave={() => setShowCodeTooltip(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
               >
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
-                ) : (
-                  <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
-                )}
+                <Code className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
-        )}
+              {showCodeTooltip && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                  {showEditor ? 'Hide Code' : 'View Code'}
+                </div>
+              )}
+            </div>
+          )}
+          {docsUrl && (
+            <div className="relative">
+              <a
+                href={docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                onMouseEnter={() => setShowDocsTooltip(true)}
+                onMouseLeave={() => setShowDocsTooltip(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+              </a>
+              {showDocsTooltip && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                  See Docs
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {/* Icon on top, details below */}
         <div className="w-full">
           <div className="mb-3">
@@ -260,103 +315,117 @@ function BubbleNode({ data }: BubbleNodeProps) {
               <h3 className="text-sm font-semibold text-neutral-100 truncate">
                 {bubble.variableName}
               </h3>
-              <p className="text-xs text-neutral-400 truncate mt-1">
+              {/* <p className="text-xs text-neutral-400 truncate mt-1">
                 {bubble.bubbleName}
-              </p>
-              {bubble.location && bubble.location.startLine > 0 && (
+              </p> */}
+              {/* {bubble.location && bubble.location.startLine > 0 && (
                 <p className="text-xs text-neutral-500 truncate mt-1">
                   Line {bubble.location.startLine}:{bubble.location.startCol}
                   {bubble.location.startLine !== bubble.location.endLine &&
                     ` - ${bubble.location.endLine}:${bubble.location.endCol}`}
                 </p>
-              )}
-              {docsUrl && (
-                <div className="mt-2">
-                  <a
-                    href={docsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-800/60 text-neutral-300 border border-neutral-600 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-                    title="Open documentation"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Docs</span>
-                  </a>
-                </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>
 
         {/* Credentials Section - Full Width, Left Aligned */}
-        {requiredCredentialTypes.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <label className="block text-xs font-medium text-blue-300">
-              Credentials
-            </label>
-            <div className="grid grid-cols-1 gap-2">
-              {requiredCredentialTypes.map((credType) => {
-                const availableForType = getCredentialsForType(credType);
+        {(() => {
+          const filteredCredentialTypes = requiredCredentialTypes.filter(
+            (credType) => {
+              // When Details is collapsed, only show credentials that need configuring
+              if (!isExpanded) {
                 const systemCred = isSystemCredential(
                   credType as CredentialType
                 );
-                const isMissingSelection =
-                  !systemCred &&
-                  (selectedBubbleCredentials[credType] === undefined ||
-                    selectedBubbleCredentials[credType] === null);
+                const hasSelection =
+                  selectedBubbleCredentials[credType] !== undefined &&
+                  selectedBubbleCredentials[credType] !== null;
 
-                return (
-                  <div key={credType} className={`space-y-1`}>
-                    <label className="block text-[11px] text-neutral-300">
-                      {credType}
-                      {systemCred && (
+                // Hide system credentials that are using the default (no selection)
+                if (systemCred && !hasSelection) {
+                  return false;
+                }
+              }
+              return true;
+            }
+          );
+
+          // Only show the entire credentials section if there are credentials to display
+          if (filteredCredentialTypes.length === 0) {
+            return null;
+          }
+
+          return (
+            <div className="mt-4 space-y-2">
+              <label className="block text-xs font-medium text-blue-300">
+                Credentials
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {filteredCredentialTypes.map((credType) => {
+                  const availableForType = getCredentialsForType(credType);
+                  const systemCred = isSystemCredential(
+                    credType as CredentialType
+                  );
+                  const isMissingSelection =
+                    !systemCred &&
+                    (selectedBubbleCredentials[credType] === undefined ||
+                      selectedBubbleCredentials[credType] === null);
+
+                  return (
+                    <div key={credType} className={`space-y-1`}>
+                      <label className="block text-[11px] text-neutral-300">
+                        {credType}
+                        {/* {systemCred && (
                         <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-neutral-600 text-neutral-200 rounded">
                           System Managed
                         </span>
-                      )}
-                      {!systemCred && availableForType.length > 0 && (
-                        <span className="text-red-400 ml-1">*</span>
-                      )}
-                    </label>
-                    <select
-                      title={`${bubble.bubbleName} ${credType}`}
-                      value={
-                        selectedBubbleCredentials[credType] !== undefined &&
-                        selectedBubbleCredentials[credType] !== null
-                          ? String(selectedBubbleCredentials[credType])
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '__ADD_NEW__') {
-                          setCreateModalForType(credType);
-                          return;
+                      )} */}
+                        {!systemCred && availableForType.length > 0 && (
+                          <span className="text-red-400 ml-1">*</span>
+                        )}
+                      </label>
+                      <select
+                        title={`${bubble.bubbleName} ${credType}`}
+                        value={
+                          selectedBubbleCredentials[credType] !== undefined &&
+                          selectedBubbleCredentials[credType] !== null
+                            ? String(selectedBubbleCredentials[credType])
+                            : ''
                         }
-                        const credId = val ? parseInt(val, 10) : null;
-                        onCredentialSelectionChange?.(credType, credId);
-                      }}
-                      className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
-                    >
-                      <option value="">
-                        {systemCred
-                          ? 'Use system default'
-                          : 'Select credential...'}
-                      </option>
-                      {availableForType.map((cred) => (
-                        <option key={cred.id} value={String(cred.id)}>
-                          {cred.name || `${cred.credentialType} (${cred.id})`}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__ADD_NEW__') {
+                            setCreateModalForType(credType);
+                            return;
+                          }
+                          const credId = val ? parseInt(val, 10) : null;
+                          onCredentialSelectionChange?.(credType, credId);
+                        }}
+                        className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
+                      >
+                        <option value="">
+                          {systemCred
+                            ? 'Use system default'
+                            : 'Select credential...'}
                         </option>
-                      ))}
-                      <option disabled>────────────</option>
-                      <option value="__ADD_NEW__">+ Add New Credential…</option>
-                    </select>
-                  </div>
-                );
-              })}
+                        {availableForType.map((cred) => (
+                          <option key={cred.id} value={String(cred.id)}>
+                            {cred.name || `${cred.credentialType} (${cred.id})`}
+                          </option>
+                        ))}
+                        <option disabled>────────────</option>
+                        <option value="__ADD_NEW__">
+                          + Add New Credential…
+                        </option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Parameters (collapsible) */}

@@ -185,7 +185,7 @@ export const useUIStore = create<UIStore>((set) => ({
   targetInsertLine: null,
 
   // Actions
-  selectFlow: (flowId) => set({ selectedFlowId: flowId }),
+  selectFlow: (flowId) => set({ selectedFlowId: flowId, showEditor: false }),
 
   // If sidebar is open AND trying to open editor, close sidebar
   toggleEditor: () =>

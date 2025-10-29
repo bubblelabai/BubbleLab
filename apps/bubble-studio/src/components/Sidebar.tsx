@@ -10,6 +10,8 @@ import {
   MessageCircle,
   Github,
   Star,
+  Video,
+  BookOpen,
 } from 'lucide-react';
 import { useUser } from '../hooks/useUser';
 import { useGitHubStars } from '../hooks/useGitHubStars';
@@ -188,6 +190,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           </div>
         </div>
 
+        {/* Spacer to push bottom content down */}
+        <div className="flex-1" />
+
+        {/* Divider */}
+        <div className="px-3 py-2">
+          <div className="border-t border-[#30363d]" />
+        </div>
+
         {/* Discord Community button */}
         <div className="mt-2">
           <div className="relative group">
@@ -217,6 +227,74 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
                 Get instant help & feedback
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Documentation button */}
+        <div className="mt-2">
+          <div className="relative group">
+            <a
+              href="https://docs.bubblelab.ai/intro"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              aria-label="Read Documentation"
+            >
+              {/* Fixed icon column */}
+              <span className="w-14 flex-none flex justify-center p-2">
+                <BookOpen className="w-5 h-5" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                Documentation
+              </span>
+            </a>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                Read Documentation
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Demos button */}
+        <div className="mt-2">
+          <div className="relative group">
+            <a
+              href="https://www.youtube.com/@bubblelab_ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              aria-label="Watch Demos"
+            >
+              {/* Fixed icon column */}
+              <span className="w-14 flex-none flex justify-center p-2">
+                <Video className="w-5 h-5" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                Demos
+              </span>
+            </a>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                Watch Demos
               </span>
             )}
           </div>
@@ -262,9 +340,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             )}
           </div>
         </div>
-
-        {/* Spacer to push bottom content down */}
-        <div className="flex-1" />
 
         {/* Profile button at sidebar bottom */}
         <div className="mb-3">

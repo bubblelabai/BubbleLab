@@ -44,11 +44,7 @@ const AI_NAME = 'Pearl';
 export const useFlowGeneration = () => {
   const navigate = useNavigate();
   const { setOutput } = useOutputStore();
-  const {
-    selectedFlowId: currentFlowId,
-    selectFlow,
-    showEditorPanel,
-  } = useUIStore();
+  const { selectedFlowId: currentFlowId, selectFlow } = useUIStore();
   const {
     startGenerationFlow,
     stopGenerationFlow,
@@ -106,9 +102,6 @@ export const useFlowGeneration = () => {
 
       // Auto-select the newly created flow - this will now use the cached optimistic data
       selectFlow(bubbleFlowId);
-
-      // Ensure editor is visible to show the generated code
-      showEditorPanel();
 
       executionState.setAllCredentials({});
       executionState.setInputs({});
