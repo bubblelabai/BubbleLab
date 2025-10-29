@@ -5,7 +5,7 @@ import {
   ChevronUpIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Code } from 'lucide-react';
 import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
@@ -77,6 +77,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
   );
   const [showDocsTooltip, setShowDocsTooltip] = useState(false);
   const [showExpandTooltip, setShowExpandTooltip] = useState(false);
+  const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const logo = useMemo(
     () =>
@@ -193,6 +194,27 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
         <div className="absolute top-4 right-4 flex items-center gap-2">
+          {!isSubBubble && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClick();
+                }}
+                onMouseEnter={() => setShowCodeTooltip(true)}
+                onMouseLeave={() => setShowCodeTooltip(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+              >
+                <Code className="w-3.5 h-3.5" />
+              </button>
+              {showCodeTooltip && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                  View Code
+                </div>
+              )}
+            </div>
+          )}
           {docsUrl && (
             <div className="relative">
               <a

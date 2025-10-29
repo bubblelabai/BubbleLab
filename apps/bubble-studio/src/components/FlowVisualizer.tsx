@@ -126,6 +126,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
+  // Store persisted positions for all nodes (both main and sub-bubbles)
+  const persistedPositions = useRef<Map<string, { x: number; y: number }>>(
+    new Map()
+  );
+
   const eventType = currentFlow?.eventType;
   const entryNodeId =
     eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
@@ -343,10 +348,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       const rowWidth =
         siblingsTotal > 1 ? (siblingsTotal - 1) * siblingHorizontalSpacing : 0;
-      const position = {
+      const initialPosition = {
         x: baseX - rowWidth / 2 + siblingIndex * siblingHorizontalSpacing,
         y: baseY + verticalSpacing,
       };
+
+      // Use persisted position if available, otherwise use initial position
+      const persistedPosition = persistedPositions.current.get(nodeId);
+      const position = persistedPosition || initialPosition;
 
       // Check execution state for dependency bubble
       const dependencyVariableId = String(dependencyNode.variableId);
@@ -480,10 +489,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     if (flowName) {
       if (eventType === 'schedule/cron') {
         // Create CronScheduleNode for cron events
+        const entryNodeId = 'cron-schedule-node';
+        const persistedEntryPos = persistedPositions.current.get(entryNodeId);
         const cronScheduleNode: Node = {
-          id: 'cron-schedule-node',
+          id: entryNodeId,
           type: 'cronScheduleNode',
-          position: {
+          position: persistedEntryPos || {
             x: startX - 450,
             y: baseY,
           },
@@ -524,10 +535,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         nodes.push(cronScheduleNode);
       } else {
         // Create InputSchemaNode for regular flows (with or without input schema)
+        const entryNodeId = 'input-schema-node';
+        const persistedEntryPos = persistedPositions.current.get(entryNodeId);
         const inputSchemaNode: Node = {
-          id: 'input-schema-node',
+          id: entryNodeId,
           type: 'inputSchemaNode',
-          position: {
+          position: persistedEntryPos || {
             x: startX - 450,
             y: baseY,
           },
@@ -596,13 +609,17 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const isCompletedState = nodeId in completedBubbles;
       const executionStats = completedBubbles[nodeId];
 
+      // Use persisted position if available, otherwise use initial position
+      const persistedPosition = persistedPositions.current.get(nodeId);
+      const initialPosition = {
+        x: startX + index * horizontalSpacing,
+        y: baseY,
+      };
+
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
-        position: {
-          x: startX + index * horizontalSpacing,
-          y: baseY,
-        },
+        position: persistedPosition || initialPosition,
         origin: [0, 0.5] as [number, number],
         draggable: true,
         data: {
@@ -778,9 +795,26 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     currentFlow,
   ]);
 
-  // Sync nodes and edges state with computed values
+  // Sync nodes and edges state with computed values, preserving positions
   useEffect(() => {
-    setNodes(initialNodes);
+    setNodes((currentNodes) => {
+      // If this is the first time we have nodes, just set them
+      if (currentNodes.length === 0) {
+        return initialNodes;
+      }
+
+      // Otherwise, merge positions from current nodes
+      const updatedNodes = initialNodes.map((initialNode) => {
+        const currentNode = currentNodes.find((n) => n.id === initialNode.id);
+        if (currentNode) {
+          // Keep the current position if node exists
+          return { ...initialNode, position: currentNode.position };
+        }
+        return initialNode;
+      });
+
+      return updatedNodes;
+    });
     setEdges(initialEdges);
   }, [initialNodes, initialEdges]);
 
@@ -829,11 +863,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // }, [flowId, bubbleParameters, executionState.isRunning, executionState.isValidating, executionState.highlightedBubble, currentFlow.data, flowNodes]);
 
   // Handle node changes (position updates, etc.)
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) =>
-      setNodes((nds) => applyNodeChanges(changes, nds)),
-    []
-  );
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    // Persist positions when nodes are dragged or moved
+    changes.forEach((change) => {
+      if (change.type === 'position' && change.position && change.id) {
+        persistedPositions.current.set(change.id, change.position);
+      }
+    });
+    setNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
 
   // Handle edge changes
   const onEdgesChange = useCallback(
