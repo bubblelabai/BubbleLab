@@ -831,7 +831,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         // Find the entry node (input-schema-node or cron-schedule-node)
         const entryNode = getNode(entryNodeId);
         if (entryNode) {
-          const zoom = 1.5; // Much more zoomed in
+          const zoom = 1; // Much more zoomed in
 
           // Position the entry node towards the left (about 20% from the left edge)
           // setCenter will center the given coordinates in the viewport
