@@ -68,7 +68,7 @@ interface UIStore {
   /**
    * Active tab in the consolidated side panel
    */
-  consolidatedPanelTab: 'pearl' | 'code' | 'output';
+  consolidatedPanelTab: 'pearl' | 'code' | 'output' | 'history';
 
   // ============= Modal Visibility State =============
 
@@ -173,12 +173,16 @@ interface UIStore {
   /**
    * Set the active tab in the consolidated side panel
    */
-  setConsolidatedPanelTab: (tab: 'pearl' | 'code' | 'output') => void;
+  setConsolidatedPanelTab: (
+    tab: 'pearl' | 'code' | 'output' | 'history'
+  ) => void;
 
   /**
    * Open the consolidated side panel with a specific tab
    */
-  openConsolidatedPanelWith: (tab: 'pearl' | 'code' | 'output') => void;
+  openConsolidatedPanelWith: (
+    tab: 'pearl' | 'code' | 'output' | 'history'
+  ) => void;
 
   /**
    * Toggle the consolidated side panel visibility

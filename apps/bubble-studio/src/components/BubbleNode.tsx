@@ -76,7 +76,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showExpandTooltip, setShowExpandTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
-  const { showEditor, hideEditorPanel } = useUIStore();
+  const { showEditor } = useUIStore();
 
   const logo = useMemo(
     () =>
@@ -221,6 +221,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
               {bubble.parameters.length > 0 && (
                 <div className="relative">
                   <button
+                    title={isExpanded ? 'Collapse' : 'Details'}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -244,14 +245,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
           {!isSubBubble && (
             <div className="relative">
               <button
+                title={'View Code'}
                 type="button"
                 onClick={(e) => {
-                  e.stopPropagation();
-                  if (showEditor) {
-                    hideEditorPanel();
-                  } else {
-                    onBubbleClick?.();
-                  }
+                  onBubbleClick?.();
                 }}
                 onMouseEnter={() => setShowCodeTooltip(true)}
                 onMouseLeave={() => setShowCodeTooltip(false)}

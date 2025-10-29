@@ -1,10 +1,12 @@
-import { Bot, Code, Activity } from 'lucide-react';
+import { Bot, Code, Activity, Clock } from 'lucide-react';
 import { PearlChat } from './ai/PearlChat';
 import { MonacoEditor } from './MonacoEditor';
 import LiveOutput from './execution_logs/LiveOutput';
+import { ExecutionHistory } from './execution_logs/ExecutionHistory';
 import { useExecutionStore } from '../stores/executionStore';
 import { useEditor } from '../hooks/useEditor';
 import { useUIStore } from '../stores/uiStore';
+import { useExecutionHistory } from '../hooks/useExecutionHistory';
 
 export function ConsolidatedSidePanel() {
   const flowId = useUIStore((state) => state.selectedFlowId);
@@ -15,11 +17,12 @@ export function ConsolidatedSidePanel() {
 
   const executionState = useExecutionStore(flowId ?? 0);
   const { editor } = useEditor();
+  const { data: executionHistory } = useExecutionHistory(flowId, { limit: 50 });
 
   const tabs = [
     {
       id: 'pearl' as const,
-      label: 'AI Assistant',
+      label: 'Pearl',
       icon: Bot,
       badge: null,
     },
@@ -31,9 +34,15 @@ export function ConsolidatedSidePanel() {
     },
     {
       id: 'output' as const,
-      label: 'Live Output',
+      label: 'Console',
       icon: Activity,
       badge: executionState.isRunning ? 'running' : null,
+    },
+    {
+      id: 'history' as const,
+      label: 'History',
+      icon: Clock,
+      badge: executionHistory?.length ?? null,
     },
   ];
 
@@ -100,9 +109,6 @@ export function ConsolidatedSidePanel() {
               events={executionState.events}
               currentLine={executionState.currentLine}
               executionStats={executionState.getExecutionStats()}
-              onToggleCollapse={() => {
-                // No-op: collapse functionality handled at parent level now
-              }}
             />
           ) : (
             <div className="h-full flex items-center justify-center">
@@ -115,6 +121,13 @@ export function ConsolidatedSidePanel() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* History Tab */}
+        <div
+          className={`absolute inset-0 ${activeTab === 'history' ? 'block' : 'hidden'}`}
+        >
+          <ExecutionHistory flowId={flowId} />
         </div>
       </div>
     </div>
