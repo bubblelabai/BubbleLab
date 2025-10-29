@@ -370,11 +370,7 @@ export function PearlChat() {
         {messages.length === 0 && !pearlChat.isPending && (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
             <p className="text-center">
-              Start a conversation to modify your current workflow
-            </p>
-            <p className="text-xs text-gray-600 text-center">
-              Example: "After the google sheet is updated, also send me an email
-              with the updated data"
+              Start a conversation with Pearl to modify or debug your workflow
             </p>
           </div>
         )}
@@ -506,7 +502,7 @@ export function PearlChat() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Example: Create a workflow that fetches data from Airtable and sends it via email..."
+            placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
             className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
             disabled={pearlChat.isPending}
             onKeyDown={(e) => {
@@ -565,7 +561,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
         <div className="text-sm text-gray-400 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" />
-            <span>💭 Thinking...</span>
+            <span>Thinking...</span>
           </div>
         </div>
       );
@@ -573,7 +569,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
     case 'think':
       return (
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
-          <div className="text-xs text-gray-400 mb-1">💭 Thinking Process</div>
+          <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
           <div className="text-xs prose prose-invert prose-sm max-w-none">
             <ReactMarkdown>{event.content}</ReactMarkdown>
           </div>
@@ -586,7 +582,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
           <div className="flex items-center gap-2 mb-1">
             <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
             <span className="text-xs text-blue-300">
-              🔧 Calling {event.tool}...
+              Calling {event.tool}...
             </span>
           </div>
           <div className="text-xs text-gray-400">
@@ -601,7 +597,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
           <div className="flex items-center gap-2 mb-1">
             <Check className="w-3 h-3 text-green-400" />
             <span className="text-xs text-green-300">
-              ✓ {event.tool} completed
+              {event.tool} completed
             </span>
           </div>
           <div className="text-xs text-gray-400">
