@@ -327,73 +327,102 @@ function BubbleNode({ data }: BubbleNodeProps) {
         </div>
 
         {/* Credentials Section - Full Width, Left Aligned */}
-        {requiredCredentialTypes.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <label className="block text-xs font-medium text-blue-300">
-              Credentials
-            </label>
-            <div className="grid grid-cols-1 gap-2">
-              {requiredCredentialTypes.map((credType) => {
-                const availableForType = getCredentialsForType(credType);
+        {(() => {
+          const filteredCredentialTypes = requiredCredentialTypes.filter(
+            (credType) => {
+              // When Details is collapsed, only show credentials that need configuring
+              if (!isExpanded) {
                 const systemCred = isSystemCredential(
                   credType as CredentialType
                 );
-                const isMissingSelection =
-                  !systemCred &&
-                  (selectedBubbleCredentials[credType] === undefined ||
-                    selectedBubbleCredentials[credType] === null);
+                const hasSelection =
+                  selectedBubbleCredentials[credType] !== undefined &&
+                  selectedBubbleCredentials[credType] !== null;
 
-                return (
-                  <div key={credType} className={`space-y-1`}>
-                    <label className="block text-[11px] text-neutral-300">
-                      {credType}
-                      {/* {systemCred && (
+                // Hide system credentials that are using the default (no selection)
+                if (systemCred && !hasSelection) {
+                  return false;
+                }
+              }
+              return true;
+            }
+          );
+
+          // Only show the entire credentials section if there are credentials to display
+          if (filteredCredentialTypes.length === 0) {
+            return null;
+          }
+
+          return (
+            <div className="mt-4 space-y-2">
+              <label className="block text-xs font-medium text-blue-300">
+                Credentials
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {filteredCredentialTypes.map((credType) => {
+                  const availableForType = getCredentialsForType(credType);
+                  const systemCred = isSystemCredential(
+                    credType as CredentialType
+                  );
+                  const isMissingSelection =
+                    !systemCred &&
+                    (selectedBubbleCredentials[credType] === undefined ||
+                      selectedBubbleCredentials[credType] === null);
+
+                  return (
+                    <div key={credType} className={`space-y-1`}>
+                      <label className="block text-[11px] text-neutral-300">
+                        {credType}
+                        {/* {systemCred && (
                         <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-neutral-600 text-neutral-200 rounded">
                           System Managed
                         </span>
                       )} */}
-                      {!systemCred && availableForType.length > 0 && (
-                        <span className="text-red-400 ml-1">*</span>
-                      )}
-                    </label>
-                    <select
-                      title={`${bubble.bubbleName} ${credType}`}
-                      value={
-                        selectedBubbleCredentials[credType] !== undefined &&
-                        selectedBubbleCredentials[credType] !== null
-                          ? String(selectedBubbleCredentials[credType])
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '__ADD_NEW__') {
-                          setCreateModalForType(credType);
-                          return;
+                        {!systemCred && availableForType.length > 0 && (
+                          <span className="text-red-400 ml-1">*</span>
+                        )}
+                      </label>
+                      <select
+                        title={`${bubble.bubbleName} ${credType}`}
+                        value={
+                          selectedBubbleCredentials[credType] !== undefined &&
+                          selectedBubbleCredentials[credType] !== null
+                            ? String(selectedBubbleCredentials[credType])
+                            : ''
                         }
-                        const credId = val ? parseInt(val, 10) : null;
-                        onCredentialSelectionChange?.(credType, credId);
-                      }}
-                      className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
-                    >
-                      <option value="">
-                        {systemCred
-                          ? 'Use system default'
-                          : 'Select credential...'}
-                      </option>
-                      {availableForType.map((cred) => (
-                        <option key={cred.id} value={String(cred.id)}>
-                          {cred.name || `${cred.credentialType} (${cred.id})`}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__ADD_NEW__') {
+                            setCreateModalForType(credType);
+                            return;
+                          }
+                          const credId = val ? parseInt(val, 10) : null;
+                          onCredentialSelectionChange?.(credType, credId);
+                        }}
+                        className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
+                      >
+                        <option value="">
+                          {systemCred
+                            ? 'Use system default'
+                            : 'Select credential...'}
                         </option>
-                      ))}
-                      <option disabled>────────────</option>
-                      <option value="__ADD_NEW__">+ Add New Credential…</option>
-                    </select>
-                  </div>
-                );
-              })}
+                        {availableForType.map((cred) => (
+                          <option key={cred.id} value={String(cred.id)}>
+                            {cred.name || `${cred.credentialType} (${cred.id})`}
+                          </option>
+                        ))}
+                        <option disabled>────────────</option>
+                        <option value="__ADD_NEW__">
+                          + Add New Credential…
+                        </option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Parameters (collapsible) */}
