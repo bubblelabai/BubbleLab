@@ -298,7 +298,6 @@ export function PearlChat() {
 
   const handleReplace = (code: string) => {
     editor.replaceAllContent(code);
-    console.log('handleReplace', code);
     trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');
 

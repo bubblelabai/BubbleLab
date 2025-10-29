@@ -151,8 +151,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     }
   }, [currentFlow?.id, currentFlow?.defaultInputs, executionInputs, setInputs]);
 
-  console.log('Rendering FlowVisualizerInner');
-
   // Auto-expand roots when execution starts
   useEffect(() => {
     if (isExecuting) {
@@ -709,18 +707,16 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       return updatedNodes;
     });
     setEdges(initialEdges);
-  }, [currentFlow]);
+  }, [currentFlow, expandedRootIds, suppressedRootIds]);
 
   // Reset view initialization flag when flowId changes
   useEffect(() => {
     hasSetInitialView.current = false;
-    console.log('Triggering useEffect to reset initial view', flowId);
   }, [flowId]);
 
   // Auto-position view on entry node only on initial load
   useEffect(() => {
     if (nodes.length > 0 && !hasSetInitialView.current) {
-      console.log('DOne loading nodes and setting initial view', nodes);
       // Small delay to ensure nodes are rendered before positioning
       const timer = setTimeout(() => {
         // Find the entry node (input-schema-node or cron-schedule-node)
@@ -774,10 +770,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       setEdges((eds) => applyEdgeChanges(changes, eds)),
     []
   );
-
-  const onConnect = useCallback((params: Connection) => {
-    console.log('Connection created:', params);
-  }, []);
 
   // Show loading state
   if (loading) {
@@ -863,7 +855,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        onConnect={onConnect}
         onPaneClick={() => {
           highlightBubble(null);
         }}
