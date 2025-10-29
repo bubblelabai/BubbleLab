@@ -1,4 +1,4 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Play, FileInput } from 'lucide-react';
 import InputFieldsRenderer from './InputFieldsRenderer';
@@ -25,7 +25,7 @@ interface InputSchemaNodeProps {
 }
 
 function InputSchemaNode({ data }: InputSchemaNodeProps) {
-  const { flowId, flowName, schemaFields } = data;
+  const { flowId, schemaFields } = data;
 
   // Subscribe to execution store (using selectors to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
@@ -36,8 +36,6 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   // Get runFlow function
   const { runFlow } = useRunExecution(flowId);
-
-  const [isExpanded, setIsExpanded] = useState(true);
 
   // Handle input changes
   const handleInputChange = (fieldName: string, value: unknown) => {
@@ -93,7 +91,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       <WebhookURLDisplay flowId={flowId || null} />
 
       {/* Header */}
-      <div className="p-4 border-b border-neutral-600">
+      <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -103,18 +101,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
               <h3 className="text-sm font-semibold text-neutral-100">
                 Flow Inputs
               </h3>
-              <p className="text-xs text-neutral-400">{flowName}</p>
             </div>
           </div>
-          {schemaFields.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs text-neutral-300 hover:text-neutral-100 transition-colors"
-            >
-              {isExpanded ? 'Collapse' : 'Expand'}
-            </button>
-          )}
+          {/* Removed Collapse/Expand toggle; section is always expanded */}
         </div>
 
         {/* Status indicator */}
@@ -131,17 +120,15 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         )}
       </div>
 
-      {/* Input fields */}
-      {isExpanded && (
-        <div className="p-4 space-y-3">
-          <InputFieldsRenderer
-            schemaFields={schemaFields}
-            inputValues={executionInputs}
-            onInputChange={handleInputChange}
-            isExecuting={isExecuting}
-          />
-        </div>
-      )}
+      {/* Input fields (always expanded) */}
+      <div className="p-4 space-y-3">
+        <InputFieldsRenderer
+          schemaFields={schemaFields}
+          inputValues={executionInputs}
+          onInputChange={handleInputChange}
+          isExecuting={isExecuting}
+        />
+      </div>
 
       {/* Execute button */}
       <div className="p-4 border-t border-neutral-600">
