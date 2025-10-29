@@ -83,12 +83,10 @@ export function ConsolidatedSidePanel() {
         })}
       </div>
 
-      {/* Tab Content - Monaco is always mounted but hidden when not active */}
+      {/* Tab Content - Monaco is always mounted for useEditor to work */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        {/* Pearl Chat Tab */}
-        <div
-          className={`absolute inset-0 ${activeTab === 'pearl' ? 'block' : 'hidden'}`}
-        >
+        {/* Pearl Chat Tab - Only render when active */}
+        <div className="absolute inset-0">
           <PearlChat />
         </div>
 
@@ -99,36 +97,36 @@ export function ConsolidatedSidePanel() {
           <MonacoEditor />
         </div>
 
-        {/* Live Output Tab */}
-        <div
-          className={`absolute inset-0 ${activeTab === 'output' ? 'block' : 'hidden'}`}
-        >
-          {flowId ? (
-            <LiveOutput
-              flowId={flowId}
-              events={executionState.events}
-              currentLine={executionState.currentLine}
-              executionStats={executionState.getExecutionStats()}
-            />
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No flow selected</p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Select a flow to view execution output
-                </p>
+        {/* Live Output Tab - Only render when active */}
+        {activeTab === 'output' && (
+          <div className="absolute inset-0">
+            {flowId ? (
+              <LiveOutput
+                flowId={flowId}
+                events={executionState.events}
+                currentLine={executionState.currentLine}
+                executionStats={executionState.getExecutionStats()}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No flow selected</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Select a flow to view execution output
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
-        {/* History Tab */}
-        <div
-          className={`absolute inset-0 ${activeTab === 'history' ? 'block' : 'hidden'}`}
-        >
-          <ExecutionHistory flowId={flowId} />
-        </div>
+        {/* History Tab - Only render when active */}
+        {activeTab === 'history' && (
+          <div className="absolute inset-0">
+            <ExecutionHistory flowId={flowId} />
+          </div>
+        )}
       </div>
     </div>
   );
