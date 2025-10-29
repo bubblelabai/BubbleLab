@@ -53,6 +53,9 @@ export function PearlChat() {
   const [activeToolCallIds, setActiveToolCallIds] = useState<Set<string>>(
     new Set()
   );
+  const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
+    new Set()
+  );
 
   // Fixed model - users cannot change this currently
   const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
@@ -343,10 +346,13 @@ export function PearlChat() {
     );
   };
 
-  const handleReplace = (code: string) => {
+  const handleReplace = (code: string, messageId: string) => {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response' });
     toast.success('Workflow updated!');
+
+    // Mark message as updated
+    setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
 
     // Update all workflow data from Pearl response
     if (pearlChat.data?.bubbleParameters) {
@@ -441,13 +447,22 @@ export function PearlChat() {
                             <pre className="text-xs text-gray-300 overflow-x-auto max-h-96 overflow-y-auto thin-scrollbar mb-2 p-2 bg-black/30 rounded">
                               {message.code}
                             </pre>
-                            <button
-                              onClick={() => handleReplace(message.code!)}
-                              className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <Check className="w-4 h-4" />
-                              Update Workflow
-                            </button>
+                            {updatedMessageIds.has(message.id) ? (
+                              <div className="w-full py-2 px-4 bg-gray-600 text-white font-medium rounded-lg flex items-center justify-center gap-2">
+                                <Check className="w-4 h-4" />
+                                Workflow Updated
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  handleReplace(message.code!, message.id)
+                                }
+                                className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                              >
+                                <Check className="w-4 h-4" />
+                                Update Workflow
+                              </button>
+                            )}
                           </>
                         )}
                       </>
