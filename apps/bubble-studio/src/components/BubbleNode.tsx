@@ -76,6 +76,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     null
   );
   const [showDocsTooltip, setShowDocsTooltip] = useState(false);
+  const [showExpandTooltip, setShowExpandTooltip] = useState(false);
 
   const logo = useMemo(
     () =>
@@ -236,21 +237,29 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 </div>
               )}
               {bubble.parameters.length > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
-                  title={isExpanded ? 'Collapse' : 'Expand'}
-                >
-                  {isExpanded ? (
-                    <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
-                  ) : (
-                    <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    onMouseEnter={() => setShowExpandTooltip(true)}
+                    onMouseLeave={() => setShowExpandTooltip(false)}
+                    className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
+                  >
+                    {isExpanded ? (
+                      <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
+                    )}
+                  </button>
+                  {showExpandTooltip && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                      {isExpanded ? 'Collapse' : 'Details'}
+                    </div>
                   )}
-                </button>
+                </div>
               )}
             </>
           )}
@@ -318,11 +327,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   <div key={credType} className={`space-y-1`}>
                     <label className="block text-[11px] text-neutral-300">
                       {credType}
-                      {systemCred && (
+                      {/* {systemCred && (
                         <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-neutral-600 text-neutral-200 rounded">
                           System Managed
                         </span>
-                      )}
+                      )} */}
                       {!systemCred && availableForType.length > 0 && (
                         <span className="text-red-400 ml-1">*</span>
                       )}
