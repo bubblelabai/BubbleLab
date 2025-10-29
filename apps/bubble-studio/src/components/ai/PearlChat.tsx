@@ -11,13 +11,17 @@ import {
   ParsedBubbleWithInfo,
   type AvailableModel,
   type StreamingEvent,
+  type StreamingLogEvent,
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
 import { type ChatMessage } from './type';
 import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
-import { useExecutionStore } from '../../stores/executionStore';
+import {
+  useExecutionStore,
+  getExecutionStore,
+} from '../../stores/executionStore';
 import ReactMarkdown from 'react-markdown';
 
 // Display event types for chronological rendering
@@ -107,6 +111,7 @@ export function PearlChat() {
       case 'tool_start':
         setActiveToolCallIds((prev) => new Set(prev).add(event.data.callId));
         setEventsList((prev) => {
+          if (!prev || prev.length === 0) return prev;
           const lastIndex = prev.length - 1;
           if (lastIndex >= 0) {
             const updated = [...prev];
@@ -239,7 +244,49 @@ export function PearlChat() {
       dateStyle: 'full',
       timeStyle: 'long',
     });
-    const additionalContext = `User's timezone: ${userTimezone}\nCurrent time: ${currentTime}`;
+
+    // Get error logs from current execution for context (non-reactive, no subscription)
+    const executionState = selectedFlowId
+      ? getExecutionStore(selectedFlowId)
+      : null;
+    const allEvents = executionState?.events || [];
+    const errorLogs = allEvents.filter(
+      (e) => e.type === 'error' || e.type === 'fatal'
+    );
+
+    const timeZoneContext = `\n\nUser's timezone: ${userTimezone}`;
+
+    const currentTimeContext = `\n\nCurrent time: ${currentTime}`;
+
+    const errorContext =
+      errorLogs.length > 0
+        ? `\n\nRecent Execution Errors (${errorLogs.length} errors):\n${errorLogs
+            .map((log: StreamingLogEvent, idx: number) => {
+              const timestamp = new Date(log.timestamp).toLocaleTimeString();
+              return `${idx + 1}. [${timestamp}] ${log.type.toUpperCase()}: ${log.message}${
+                log.additionalData
+                  ? `\n   Additional Info: ${JSON.stringify(log.additionalData)}`
+                  : ''
+              }`;
+            })
+            .join('\n')}`
+        : '';
+
+    // Get input schema and credentials context
+    const inputSchemaContext = executionState?.executionInputs
+      ? `\n\nUser's provided input:\n${JSON.stringify(executionState.executionInputs, null, 2)}`
+      : '';
+
+    const credentialsContext =
+      pendingCredentials && Object.keys(pendingCredentials).length > 0
+        ? `\n\nAvailable Credentials/Integrations:\n${Object.keys(
+            pendingCredentials
+          )
+            .map((key) => `- ${key}`)
+            .join('\n')}`
+        : '';
+
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
 
     pearlChat.mutate(
       {
