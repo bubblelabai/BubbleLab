@@ -2,7 +2,6 @@ import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, Info } from 'lucide-react';
-import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
@@ -109,13 +108,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
   }, [propRequiredCredentialTypes, bubble.parameters]);
 
   // Check if credentials are missing
-  const hasMissingRequirements = useMemo(() => {
-    return requiredCredentialTypes.some((credType) => {
-      if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
-      const selectedId = selectedBubbleCredentials[credType];
-      return selectedId === undefined || selectedId === null;
-    });
-  }, [requiredCredentialTypes, selectedBubbleCredentials]);
+  const hasMissingRequirements = requiredCredentialTypes.some((credType) => {
+    if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
+    const selectedId = selectedBubbleCredentials[credType];
+    return selectedId === undefined || selectedId === null;
+  });
 
   const handleCredentialChange = (credType: string, credId: number | null) => {
     setCredential(credentialsKey, credType, credId);
@@ -303,6 +300,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 title={'View Code'}
                 type="button"
                 onClick={(e) => {
+                  e.stopPropagation();
                   onBubbleClick?.();
                 }}
                 onMouseEnter={() => setShowCodeTooltip(true)}

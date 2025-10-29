@@ -20,20 +20,14 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
-import { useRunExecution } from '@/hooks/useRunExecution';
 import type {
-  CredentialType,
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
-import { useCredentials } from '../hooks/useCredentials';
-import { useValidateCode } from '../hooks/useValidateCode';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
-import { API_BASE_URL } from '../env';
 import CronScheduleNode from './CronScheduleNode';
 
 // Keep backward compatibility - use the shared schema type
