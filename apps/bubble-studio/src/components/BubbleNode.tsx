@@ -283,16 +283,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
               <h3 className="text-sm font-semibold text-neutral-100 truncate">
                 {bubble.variableName}
               </h3>
-              <p className="text-xs text-neutral-400 truncate mt-1">
+              {/* <p className="text-xs text-neutral-400 truncate mt-1">
                 {bubble.bubbleName}
-              </p>
-              {bubble.location && bubble.location.startLine > 0 && (
+              </p> */}
+              {/* {bubble.location && bubble.location.startLine > 0 && (
                 <p className="text-xs text-neutral-500 truncate mt-1">
                   Line {bubble.location.startLine}:{bubble.location.startCol}
                   {bubble.location.startLine !== bubble.location.endLine &&
                     ` - ${bubble.location.endLine}:${bubble.location.endCol}`}
                 </p>
-              )}
+              )} */}
             </div>
           </div>
         </div>
