@@ -5,7 +5,7 @@ import {
   ChevronUpIcon,
   CogIcon,
 } from '@heroicons/react/24/outline';
-import { ExternalLink } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
@@ -190,48 +190,63 @@ function BubbleNode({ data }: BubbleNodeProps) {
       <div
         className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
-        {(hasError ||
-          isCompleted ||
-          isExecuting ||
-          hasMissingRequirements ||
-          bubble.parameters.length > 0) && (
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            <BubbleExecutionBadge
-              hasError={hasError}
-              isCompleted={isCompleted}
-              isExecuting={isExecuting}
-              executionStats={executionStats}
-            />
-            {!hasError && !isExecuting && hasMissingRequirements && (
-              <div className="flex-shrink-0">
-                <div
-                  title="Missing credentials"
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
-                >
-                  <span>⚠️</span>
-                  <span>Missing</span>
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          {docsUrl && (
+            <a
+              href={docsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-800/60 text-neutral-300 border border-neutral-600 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+              title="Open documentation"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Docs</span>
+            </a>
+          )}
+          {(hasError ||
+            isCompleted ||
+            isExecuting ||
+            hasMissingRequirements ||
+            bubble.parameters.length > 0) && (
+            <>
+              <BubbleExecutionBadge
+                hasError={hasError}
+                isCompleted={isCompleted}
+                isExecuting={isExecuting}
+                executionStats={executionStats}
+              />
+              {!hasError && !isExecuting && hasMissingRequirements && (
+                <div className="flex-shrink-0">
+                  <div
+                    title="Missing credentials"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
+                  >
+                    <span>⚠️</span>
+                    <span>Missing</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            {bubble.parameters.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(!isExpanded);
-                }}
-                className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
-                title={isExpanded ? 'Collapse' : 'Expand'}
-              >
-                {isExpanded ? (
-                  <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
-                ) : (
-                  <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
-                )}
-              </button>
-            )}
-          </div>
-        )}
+              )}
+              {bubble.parameters.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
+                  title={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {isExpanded ? (
+                    <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
+                  ) : (
+                    <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
+                  )}
+                </button>
+              )}
+            </>
+          )}
+        </div>
         {/* Icon on top, details below */}
         <div className="w-full">
           <div className="mb-3">
@@ -269,21 +284,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   {bubble.location.startLine !== bubble.location.endLine &&
                     ` - ${bubble.location.endLine}:${bubble.location.endCol}`}
                 </p>
-              )}
-              {docsUrl && (
-                <div className="mt-2">
-                  <a
-                    href={docsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-800/60 text-neutral-300 border border-neutral-600 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-                    title="Open documentation"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Docs</span>
-                  </a>
-                </div>
               )}
             </div>
           </div>
