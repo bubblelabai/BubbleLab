@@ -274,17 +274,9 @@ export default function AllEventsView({
                       </p>
                       {event.additionalData &&
                         Object.keys(event.additionalData).length > 0 && (
-                          <details className="mt-2" open={true}>
-                            <summary
-                              className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Additional Data
-                            </summary>
-                            <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                              {renderJson(event.additionalData)}
-                            </pre>
-                          </details>
+                          <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                            {renderJson(event.additionalData)}
+                          </pre>
                         )}
                     </div>
                   </div>
@@ -345,17 +337,9 @@ export default function AllEventsView({
                     </p>
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
-                        <details className="mt-2" open={true}>
-                          <summary
-                            className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Additional Data
-                          </summary>
-                          <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                            {renderJson(event.additionalData)}
-                          </pre>
-                        </details>
+                        <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                          {renderJson(event.additionalData)}
+                        </pre>
                       )}
                   </div>
                 </div>
@@ -421,17 +405,6 @@ export default function AllEventsView({
                                 .replace('_', ' ')
                                 .replace(/\b\w/g, (l) => l.toUpperCase())}
                             </span>
-                            {'variableId' in selectedEvent &&
-                              (selectedEvent as { variableId?: number })
-                                .variableId !== undefined && (
-                                <span className="text-xs font-mono text-blue-300 bg-blue-900/30 px-2 py-0.5 rounded">
-                                  var{' '}
-                                  {String(
-                                    (selectedEvent as { variableId?: number })
-                                      .variableId
-                                  )}
-                                </span>
-                              )}
                             {selectedEvent.lineNumber && (
                               <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
                                 Line {selectedEvent.lineNumber}
@@ -447,17 +420,9 @@ export default function AllEventsView({
                           {selectedEvent.additionalData &&
                             Object.keys(selectedEvent.additionalData).length >
                               0 && (
-                              <details className="mt-2" open={true}>
-                                <summary
-                                  className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Additional Data
-                                </summary>
-                                <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                                  {renderJson(selectedEvent.additionalData)}
-                                </pre>
-                              </details>
+                              <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                                {renderJson(selectedEvent.additionalData)}
+                              </pre>
                             )}
                         </div>
                       </div>

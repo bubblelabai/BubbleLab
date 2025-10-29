@@ -2,10 +2,10 @@ import React from 'react';
 import { UserButton } from '@clerk/clerk-react';
 import { Link } from '@tanstack/react-router';
 import {
-  Plus,
   KeyRound,
   PanelLeft,
   Home,
+  Workflow,
   User,
   MessageCircle,
   Github,
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="mt-2">
           <div className="relative group">
             <Link
-              to="/home"
+              to="/new"
               activeProps={{
                 className:
                   'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
@@ -112,11 +112,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           </div>
         </div>
 
-        {/* New Flow button (icon only, shows label on hover) */}
+        {/* My Flows button (icon only, shows label on hover) */}
         <div className="mt-2">
           <div className="relative group">
             <Link
-              to="/new"
+              to="/home"
               activeProps={{
                 className:
                   'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
@@ -125,11 +125,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                 className:
                   'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
               }}
-              aria-label="New Flow"
+              aria-label="My Flows"
             >
               {/* Fixed icon column */}
               <span className="w-14 flex-none flex justify-center p-2">
-                <Plus className="w-5 h-5" />
+                <Workflow className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
               <span
@@ -139,13 +139,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                     : 'opacity-0 max-w-0'
                 }`}
               >
-                New Flow
+                My Flows
               </span>
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                New Flow
+                My Flows
               </span>
             )}
           </div>

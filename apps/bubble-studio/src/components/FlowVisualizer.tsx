@@ -24,6 +24,7 @@ import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
 import { useLiveOutput } from '../hooks/useLiveOutput';
 import CronScheduleNode from './CronScheduleNode';
+import { WebhookURLDisplay } from './WebhookURLDisplay';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -844,6 +845,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               Unsaved
             </div>
           )}
+          {currentFlow?.id ? (
+            <WebhookURLDisplay flowId={currentFlow.id} />
+          ) : null}
         </div>
       )}
 
