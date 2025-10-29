@@ -1,14 +1,7 @@
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './AuthComponents';
-import {
-  Code,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  Play,
-  Bot,
-  FileJson2,
-} from 'lucide-react';
+import { ChevronUpIcon, ChevronDownIcon, Play, FileJson2 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/FlowVisualizer';
 import { FlowGeneration } from '@/components/FlowGeneration';
@@ -40,7 +33,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     toggleExportModal,
     selectFlow,
     isConsolidatedPanelOpen,
-    openConsolidatedPanelWith,
   } = useUIStore();
 
   const { output } = useOutputStore();
@@ -207,28 +199,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
             <SignedIn>
               {!isStreaming && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      openConsolidatedPanelWith('pearl');
-                    }}
-                    className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
-                  >
-                    <Bot className="w-3 h-3" />
-                    AI Assistant
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      openConsolidatedPanelWith('code');
-                    }}
-                    className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
-                  >
-                    <Code className="w-3 h-3" />
-                    Code
-                  </button>
-
                   <Tooltip
                     content="⚡ Run the flow at least once to enable export"
                     show={
