@@ -61,7 +61,7 @@ export function ConsolidatedSidePanel() {
               onClick={() => setConsolidatedPanelTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
                 isActive
-                  ? 'border-pink-500 text-pink-300 bg-[#1a1a1a]'
+                  ? 'border-white text-white bg-[#1a1a1a]'
                   : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
               }`}
             >
@@ -71,7 +71,7 @@ export function ConsolidatedSidePanel() {
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     tab.badge === 'running'
-                      ? 'bg-pink-600/20 text-pink-300 animate-pulse'
+                      ? 'bg-gray-700 text-white animate-pulse'
                       : 'bg-gray-700/50 text-gray-400'
                   }`}
                 >

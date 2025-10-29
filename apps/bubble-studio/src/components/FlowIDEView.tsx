@@ -271,7 +271,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
               <Panel defaultSize={25} minSize={20} maxSize={40}>
                 {/* Left panel content if needed */}
               </Panel>
-              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-blue-500 transition-colors" />
+              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
             </>
           )}
 
@@ -378,7 +378,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                         {/* Consolidated Side Panel */}
                         {isConsolidatedPanelOpen && (
                           <>
-                            <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-pink-500 transition-colors" />
+                            <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
                             <Panel defaultSize={40} minSize={30} maxSize={50}>
                               <ConsolidatedSidePanel />
                             </Panel>
