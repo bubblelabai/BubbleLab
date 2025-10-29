@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Pencil, FileDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import {
   INTEGRATIONS,
@@ -53,7 +53,7 @@ export function DashboardPage({
   const { isSignedIn } = useAuth();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
-    useState<TemplateCategory | null>('Generate your own');
+    useState<TemplateCategory | null>('Prompt');
   const [savedPrompt, setSavedPrompt] = useState<string>(() => {
     // Load saved prompt from localStorage on initialization
     try {
@@ -112,11 +112,10 @@ export function DashboardPage({
     }
   }, [isSignedIn, savedPrompt, setGenerationPrompt]);
 
-  // Clear generation prompt when "Generate your own" or "Import JSON Workflow" category is selected
+  // Clear generation prompt when "Prompt" or "Import JSON" category is selected
   useEffect(() => {
     if (
-      (selectedCategory === 'Generate your own' ||
-        selectedCategory === 'Import JSON Workflow') &&
+      (selectedCategory === 'Prompt' || selectedCategory === 'Import JSON') &&
       generationPrompt.trim()
     ) {
       setGenerationPrompt('');
@@ -174,32 +173,34 @@ export function DashboardPage({
 
           {/* Category Filter Buttons */}
           <div className="flex flex-wrap gap-2 justify-center mb-6">
-            {/* Generate your own - First button */}
-            {TEMPLATE_CATEGORIES.includes('Generate your own') && (
+            {/* Prompt - First button */}
+            {TEMPLATE_CATEGORIES.includes('Prompt') && (
               <button
                 type="button"
-                onClick={() => setSelectedCategory('Generate your own')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                  selectedCategory === 'Generate your own'
+                onClick={() => setSelectedCategory('Prompt')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
+                  selectedCategory === 'Prompt'
                     ? 'bg-purple-600 text-white'
                     : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
                 }`}
               >
-                Generate your own
+                <Pencil className="w-4 h-4" />
+                Prompt
               </button>
             )}
-            {/* Import JSON Workflow - Second button */}
-            {TEMPLATE_CATEGORIES.includes('Import JSON Workflow') && (
+            {/* Import JSON - Second button */}
+            {TEMPLATE_CATEGORIES.includes('Import JSON') && (
               <button
                 type="button"
-                onClick={() => setSelectedCategory('Import JSON Workflow')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                  selectedCategory === 'Import JSON Workflow'
+                onClick={() => setSelectedCategory('Import JSON')}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
+                  selectedCategory === 'Import JSON'
                     ? 'bg-purple-600 text-white'
                     : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
                 }`}
               >
-                Import JSON Workflow
+                <FileDown className="w-4 h-4" />
+                Import JSON
               </button>
             )}
             {/* All Templates - Third button */}
@@ -214,10 +215,9 @@ export function DashboardPage({
             >
               All Templates
             </button>
-            {/* Rest of the categories (excluding Generate your own and Import JSON Workflow) */}
+            {/* Rest of the categories (excluding Prompt and Import JSON) */}
             {TEMPLATE_CATEGORIES.filter(
-              (cat) =>
-                cat !== 'Generate your own' && cat !== 'Import JSON Workflow'
+              (cat) => cat !== 'Prompt' && cat !== 'Import JSON'
             ).map((category) => (
               <button
                 key={category}
@@ -235,18 +235,13 @@ export function DashboardPage({
           </div>
 
           {/* Templates Grid */}
-          {selectedCategory === 'Generate your own' ? (
+          {selectedCategory === 'Prompt' ? (
             <div className="bg-[#252525] rounded-xl p-6 shadow-lg">
               {/* Custom Prompt Section */}
               <div>
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-100 mb-2">
-                    Prompt your ideal workflow
-                  </h3>
-                </div>
                 <textarea
                   ref={promptRef}
-                  placeholder="Create a comprehensive lead generation workflow that scrapes Reddit posts from specific subreddits, uses AI to identify qualified prospects based on detailed criteria, checks for duplicates against existing contacts, generates personalized outreach messages, and logs everything to a Google Sheet with proper headers and status tracking. Include specific details like: target subreddits (e.g., r/entrepreneur, r/startups), qualification criteria (e.g., 'posts about funding challenges or growth problems'), persona details (e.g., 'startup founders seeking solutions'), outreach message templates with personalization, and spreadsheet structure with columns for Name, Link, Message, Date, and Status."
+                  placeholder="Read in my Google Calendar and send me an email with my upcoming events"
                   value={generationPrompt}
                   onChange={(e) => {
                     setGenerationPrompt(e.target.value);
@@ -261,12 +256,12 @@ export function DashboardPage({
                   onInput={(e) => autoResize(e.currentTarget)}
                   className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
                   onKeyDown={(e) => {
-                    // Only allow Ctrl+Enter for "Generate your own" category
+                    // Only allow Ctrl+Enter for "Prompt" category
                     if (
                       e.key === 'Enter' &&
                       e.ctrlKey &&
                       !isStreaming &&
-                      selectedCategory === 'Generate your own'
+                      selectedCategory === 'Prompt'
                     ) {
                       if (!isSignedIn) {
                         if (generationPrompt.trim()) {
@@ -326,18 +321,13 @@ export function DashboardPage({
                 </div>
               </div>
             </div>
-          ) : selectedCategory === 'Import JSON Workflow' ? (
+          ) : selectedCategory === 'Import JSON' ? (
             <div className="bg-[#252525] rounded-xl p-6 shadow-lg">
               {/* Import JSON Section */}
               <div>
-                <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-100 mb-2">
-                    Paste your JSON file to convert it to a Bubble Lab workflow
-                  </h3>
-                </div>
                 <textarea
                   ref={promptRef}
-                  placeholder="Paste your JSON here..."
+                  placeholder="Paste in your JSON workflow..."
                   value={generationPrompt}
                   onChange={(e) => {
                     setGenerationPrompt(e.target.value);
@@ -352,12 +342,12 @@ export function DashboardPage({
                   onInput={(e) => autoResize(e.currentTarget)}
                   className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
                   onKeyDown={(e) => {
-                    // Only allow Ctrl+Enter for "Import JSON Workflow" category
+                    // Only allow Ctrl+Enter for "Import JSON" category
                     if (
                       e.key === 'Enter' &&
                       e.ctrlKey &&
                       !isStreaming &&
-                      selectedCategory === 'Import JSON Workflow'
+                      selectedCategory === 'Import JSON'
                     ) {
                       if (!isSignedIn) {
                         if (generationPrompt.trim()) {
@@ -509,8 +499,8 @@ export function DashboardPage({
             </div>
           )}
 
-          {(selectedCategory === 'Generate your own' ||
-            selectedCategory === 'Import JSON Workflow') &&
+          {(selectedCategory === 'Prompt' ||
+            selectedCategory === 'Import JSON') &&
             selectedPreset === -1 && (
               <div className="mt-16 p-5 bg-[#0d1117] border border-[#30363d] rounded-xl">
                 <div className="flex items-center justify-between mb-4">
