@@ -67,7 +67,7 @@ export function syntaxHighlightJson(json: string): string {
           cls = 'text-purple-300'; // keys
           return `<span class="${cls}">${match}</span>`;
         } else {
-          cls = 'text-green-300'; // string values
+          cls = 'text-gray-200'; // string values
           return `<span class="${cls}">${match}</span>`;
         }
       } else if (/true|false/.test(match)) {
