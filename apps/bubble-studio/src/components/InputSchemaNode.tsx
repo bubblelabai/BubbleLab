@@ -1,8 +1,10 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Play, FileInput } from 'lucide-react';
 import InputFieldsRenderer from './InputFieldsRenderer';
 import { WebhookURLDisplay } from './WebhookURLDisplay';
+import { useExecutionStore } from '../stores/executionStore';
+import { useRunExecution } from '../hooks/useRunExecution';
 
 interface SchemaField {
   name: string;
@@ -13,14 +15,9 @@ interface SchemaField {
 }
 
 interface InputSchemaNodeData {
-  flowId?: number;
+  flowId: number;
   flowName: string;
   schemaFields: SchemaField[];
-  executionInputs: Record<string, unknown>;
-  onExecutionInputChange: (fieldName: string, value: unknown) => void;
-  onExecuteFlow?: () => void;
-  isExecuting?: boolean;
-  isFormValid?: boolean;
 }
 
 interface InputSchemaNodeProps {
@@ -28,30 +25,50 @@ interface InputSchemaNodeProps {
 }
 
 function InputSchemaNode({ data }: InputSchemaNodeProps) {
-  const {
-    flowId,
-    flowName,
-    schemaFields,
-    executionInputs,
-    onExecutionInputChange,
-    onExecuteFlow,
-    isExecuting = false,
-    isFormValid = false,
-  } = data;
+  const { flowId, flowName, schemaFields } = data;
+
+  // Subscribe to execution store (using selectors to avoid re-renders from events)
+  const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
+  const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+
+  // Get actions from store
+  const setInput = useExecutionStore(flowId, (s) => s.setInput);
+
+  // Get runFlow function
+  const { runFlow } = useRunExecution(flowId);
 
   const [isExpanded, setIsExpanded] = useState(true);
 
+  // Handle input changes
+  const handleInputChange = (fieldName: string, value: unknown) => {
+    setInput(fieldName, value);
+  };
+
   // Check if there are any required fields that are missing
-  const missingRequiredFields = schemaFields
-    .filter((field) => field.required)
-    .filter(
-      (field) =>
-        (executionInputs[field.name] === undefined ||
-          executionInputs[field.name] === '') &&
-        field.default === undefined
-    );
+  const missingRequiredFields = useMemo(() => {
+    return schemaFields
+      .filter((field) => field.required)
+      .filter(
+        (field) =>
+          (executionInputs[field.name] === undefined ||
+            executionInputs[field.name] === '') &&
+          field.default === undefined
+      );
+  }, [schemaFields, executionInputs]);
 
   const hasMissingRequired = missingRequiredFields.length > 0;
+
+  // Check if form is valid (no missing required fields)
+  const isFormValid = !hasMissingRequired;
+
+  // Handle execute flow
+  const handleExecuteFlow = async () => {
+    await runFlow({
+      validateCode: true,
+      updateCredentials: true,
+      inputs: executionInputs || {},
+    });
+  };
 
   return (
     <div
@@ -120,39 +137,37 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
           <InputFieldsRenderer
             schemaFields={schemaFields}
             inputValues={executionInputs}
-            onInputChange={onExecutionInputChange}
+            onInputChange={handleInputChange}
             isExecuting={isExecuting}
           />
         </div>
       )}
 
       {/* Execute button */}
-      {onExecuteFlow && (
-        <div className="p-4 border-t border-neutral-600">
-          <button
-            type="button"
-            onClick={onExecuteFlow}
-            disabled={!isFormValid || isExecuting}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              isFormValid && !isExecuting
-                ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
-            }`}
-          >
-            {isExecuting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                <span>Executing...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span>Execute Flow</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      <div className="p-4 border-t border-neutral-600">
+        <button
+          type="button"
+          onClick={handleExecuteFlow}
+          disabled={!isFormValid || isExecuting}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            isFormValid && !isExecuting
+              ? 'bg-blue-600 hover:bg-blue-500 text-white'
+              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+          }`}
+        >
+          {isExecuting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              <span>Executing...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              <span>Execute Flow</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

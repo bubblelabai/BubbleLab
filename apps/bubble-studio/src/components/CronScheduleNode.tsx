@@ -25,19 +25,14 @@ import { CronToggle } from './CronToggle';
 import { useExecutionStore } from '../stores/executionStore';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useEditor } from '../hooks/useEditor';
+import { useRunExecution } from '../hooks/useRunExecution';
 
 interface CronScheduleNodeData {
-  flowId?: number;
+  flowId: number;
   flowName: string;
   cronSchedule: string;
   isActive?: boolean;
-  isPending?: boolean;
   inputSchema?: Record<string, unknown>;
-  executionInputs?: Record<string, unknown>;
-  onCronScheduleChange?: (newSchedule: string) => void;
-  onDefaultInputChange?: (fieldName: string, value: unknown) => void;
-  onExecuteFlow?: () => void;
-  isExecuting?: boolean;
 }
 
 interface CronScheduleNodeProps {
@@ -90,21 +85,38 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     cronSchedule,
     isActive = true,
     inputSchema = {},
-    executionInputs = {},
-    onCronScheduleChange,
-    onDefaultInputChange,
-    onExecuteFlow,
-    isExecuting = false,
   } = data;
 
   const [isExpanded, setIsExpanded] = useState(true);
-  const [inputValues, setInputValues] =
-    useState<Record<string, unknown>>(executionInputs);
 
-  // Get execution store and editor for save functionality
-  const executionState = useExecutionStore(flowId || null);
-  const validateCodeMutation = useValidateCode({ flowId: flowId || null });
-  const { editor } = useEditor();
+  // Subscribe to execution store (using selectors to avoid re-renders from events)
+  const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
+  const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+  const setInput = useExecutionStore(flowId, (s) => s.setInput);
+  const setInputs = useExecutionStore(flowId, (s) => s.setInputs);
+  const pendingCredentials = useExecutionStore(
+    flowId,
+    (s) => s.pendingCredentials
+  );
+
+  // Get editor and mutations
+  const validateCodeMutation = useValidateCode({ flowId });
+  const { editor, updateCronSchedule } = useEditor(flowId);
+
+  // Get runFlow function
+  const { runFlow } = useRunExecution(flowId);
+
+  // Local state for input values (before saving)
+  const [inputValues, setInputValues] = useState<Record<string, unknown>>(
+    executionInputs || {}
+  );
+
+  // Sync local state with store when executionInputs changes externally
+  useEffect(() => {
+    if (executionInputs && Object.keys(executionInputs).length > 0) {
+      setInputValues(executionInputs);
+    }
+  }, [executionInputs]);
 
   // Get user's timezone
   const userTimezone = getUserTimeZone();
@@ -112,12 +124,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   // Check if there are unsaved input changes (similar to useEditor pattern)
   const hasUnsavedInputChanges = useMemo(() => {
-    if (!flowId) {
-      return false;
-    }
     // Compare current inputValues with the flow's defaultInputs from executionInputs
     return JSON.stringify(inputValues) !== JSON.stringify(executionInputs);
-  }, [inputValues, executionInputs, flowId]);
+  }, [inputValues, executionInputs]);
 
   // Parse input schema using the same logic as InputSchemaNode
   const schemaFields =
@@ -232,7 +241,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
     const utcResult = computeUtcCron(patch);
     setConversionWarning(utcResult.warning);
-    onCronScheduleChange?.(utcResult.cron);
+    handleCronScheduleChange(utcResult.cron);
   };
 
   // Sync local state when cronSchedule prop changes
@@ -272,22 +281,34 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const handleInputChange = (fieldName: string, value: unknown) => {
     const newInputValues = { ...inputValues, [fieldName]: value };
     setInputValues(newInputValues);
-    onDefaultInputChange?.(fieldName, value);
+    // Also update store immediately for execution
+    setInput(fieldName, value);
+  };
+
+  const handleCronScheduleChange = (newSchedule: string) => {
+    // Update the cron schedule in the editor store
+    updateCronSchedule(newSchedule);
   };
 
   const handleSaveInputs = async () => {
-    if (!flowId) return;
-
     // Update execution store inputs
-    executionState.setInputs(inputValues);
+    setInputs(inputValues);
 
     // Call validation with syncInputsWithFlow to save to backend
     await validateCodeMutation.mutateAsync({
       code: editor.getCode(),
       flowId,
       syncInputsWithFlow: true,
-      credentials: executionState.pendingCredentials,
+      credentials: pendingCredentials,
       defaultInputs: inputValues,
+    });
+  };
+
+  const handleExecuteFlow = async () => {
+    await runFlow({
+      validateCode: true,
+      updateCredentials: true,
+      inputs: executionInputs || {},
     });
   };
 
@@ -431,7 +452,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       </div>
 
       {/* Schedule editor */}
-      {isExpanded && onCronScheduleChange && (
+      {isExpanded && (
         <div className="p-4 space-y-4">
           {/* Frequency selector */}
           <div>
@@ -769,32 +790,30 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       )}
 
       {/* Execute button */}
-      {onExecuteFlow && (
-        <div className="p-4 border-t border-neutral-600">
-          <button
-            type="button"
-            onClick={onExecuteFlow}
-            disabled={!validation.valid || isExecuting}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              validation.valid && !isExecuting
-                ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
-            }`}
-          >
-            {isExecuting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                <span>Executing...</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                <span>Test Flow</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
+      <div className="p-4 border-t border-neutral-600">
+        <button
+          type="button"
+          onClick={handleExecuteFlow}
+          disabled={!validation.valid || isExecuting}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            validation.valid && !isExecuting
+              ? 'bg-purple-600 hover:bg-purple-500 text-white'
+              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+          }`}
+        >
+          {isExecuting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+              <span>Executing...</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4" />
+              <span>Test Flow</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

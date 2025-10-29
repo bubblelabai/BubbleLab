@@ -18,9 +18,9 @@ import { useBubbleFlow } from './useBubbleFlow';
 function getEditorCode(): string {
   const { editorInstance } = useEditorStore.getState();
   if (!editorInstance) {
-    console.warn(
-      '[EditorStore] Cannot get code: editor instance not available'
-    );
+    // console.warn(
+    //   '[EditorStore] Cannot get code: editor instance not available'
+    // );
     return '';
   }
 
