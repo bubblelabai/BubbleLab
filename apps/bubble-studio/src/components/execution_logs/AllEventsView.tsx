@@ -56,7 +56,7 @@ export default function AllEventsView({
     | { kind: 'info' }
     | { kind: 'item'; index: number };
 
-  const [selectedTab, setSelectedTab] = useState<TabType>({ kind: 'warnings' });
+  const [selectedTab, setSelectedTab] = useState<TabType>({ kind: 'info' });
   const [selectedByVar, setSelectedByVar] = useState<Record<string, number>>(
     {}
   );
@@ -101,17 +101,7 @@ export default function AllEventsView({
 
   // Add dynamic tabs from orderedItems
   orderedItems.forEach((item, index) => {
-    if (item.kind === 'global') {
-      const event = item.event;
-      tabs.push({
-        id: `global-${index}`,
-        label: event.type
-          .replace('_', ' ')
-          .replace(/\b\w/g, (l) => l.toUpperCase()),
-        icon: getEventIcon(event),
-        type: { kind: 'item', index },
-      });
-    } else {
+    if (item.kind === 'group') {
       // Bubble group
       const varId = item.name;
       const bubbleName = (item.events[0] as { bubbleName?: string }).bubbleName;

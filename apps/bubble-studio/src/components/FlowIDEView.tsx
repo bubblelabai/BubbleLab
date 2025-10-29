@@ -18,6 +18,7 @@ import { getFlowNameFromCode } from '@/utils/codeParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useRunExecution } from '@/hooks/useRunExecution';
 import { useEffect } from 'react';
+import { shallow } from 'zustand/shallow';
 
 export interface FlowIDEViewProps {
   flowId: number;
@@ -38,7 +39,18 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   const { output } = useOutputStore();
   const { generationPrompt, isStreaming } = useGenerationStore();
   const { editor } = useEditor();
-  const executionState = useExecutionStore(flowId);
+  // Use selector to only subscribe to specific fields and prevent unnecessary re-renders
+  const executionState = useExecutionStore(
+    flowId,
+    (state) => ({
+      executionInputs: state.executionInputs,
+      isValidating: state.isValidating,
+      isRunning: state.isRunning,
+      pendingCredentials: state.pendingCredentials,
+      setAllCredentials: state.setAllCredentials,
+    }),
+    shallow
+  );
 
   // ============= React Query Hooks =============
   const { data: currentFlow } = useBubbleFlow(flowId);

@@ -7,6 +7,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useEditor } from '../hooks/useEditor';
 import { useUIStore } from '../stores/uiStore';
 import { useExecutionHistory } from '../hooks/useExecutionHistory';
+import { shallow } from 'zustand/shallow';
 
 export function ConsolidatedSidePanel() {
   const flowId = useUIStore((state) => state.selectedFlowId);
@@ -15,7 +16,18 @@ export function ConsolidatedSidePanel() {
     (state) => state.setConsolidatedPanelTab
   );
 
-  const executionState = useExecutionStore(flowId ?? 0);
+  // Use selector to only subscribe to specific fields and prevent unnecessary re-renders
+  // This prevents FlowVisualizer from re-rendering when tabs switch
+  const executionState = useExecutionStore(
+    flowId ?? 0,
+    (state) => ({
+      isRunning: state.isRunning,
+      events: state.events,
+      currentLine: state.currentLine,
+      getExecutionStats: state.getExecutionStats,
+    }),
+    shallow
+  );
   const { editor } = useEditor();
   const { data: executionHistory } = useExecutionHistory(flowId, { limit: 10 });
 
