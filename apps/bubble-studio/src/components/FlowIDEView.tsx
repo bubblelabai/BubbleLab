@@ -458,14 +458,15 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
           <div className="absolute bottom-0 left-0 right-0 z-40 px-4">
             <button
               onClick={handleOpenOutputPanel}
-              className="w-full border border-b-0 px-4 py-4 text-sm font-medium rounded-t-md shadow-lg flex items-center justify-between transition-all duration-200 bg-[#0f1115] border-[#30363d] text-gray-300 hover:text-gray-200 hover:bg-[#161b22]"
+              className={`w-full border border-b-0 px-4 py-4 text-sm font-medium rounded-t-md shadow-lg flex items-center justify-between transition-all duration-200 ${
+                executionState.isRunning
+                  ? 'bg-purple-500/30 border-purple-500/60 text-purple-200 hover:bg-purple-500/35 shadow-purple-500/30 animate-pulse'
+                  : 'bg-[#0f1115] border-[#30363d] text-gray-300 hover:text-gray-200 hover:bg-[#161b22]'
+              }`}
               title="Show Live Execution Output"
             >
               <div className="flex items-center gap-2">
                 <span>Live Execution Output</span>
-                {executionState.isRunning && (
-                  <div className="w-2 h-2 bg-pink-400 rounded-full animate-ping"></div>
-                )}
               </div>
               <ChevronUpIcon className="w-3 h-3" />
             </button>
