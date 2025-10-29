@@ -74,22 +74,27 @@ export function ConsolidatedSidePanel() {
         })}
       </div>
 
-      {/* Tab Content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === 'pearl' && (
-          <div className="h-full">
-            <PearlChat />
-          </div>
-        )}
+      {/* Tab Content - Monaco is always mounted but hidden when not active */}
+      <div className="flex-1 min-h-0 overflow-hidden relative">
+        {/* Pearl Chat Tab */}
+        <div
+          className={`absolute inset-0 ${activeTab === 'pearl' ? 'block' : 'hidden'}`}
+        >
+          <PearlChat />
+        </div>
 
-        {activeTab === 'code' && (
-          <div className="h-full">
-            <MonacoEditor />
-          </div>
-        )}
+        {/* Code Editor Tab - Always mounted for useEditor to work */}
+        <div
+          className={`absolute inset-0 ${activeTab === 'code' ? 'block' : 'hidden'}`}
+        >
+          <MonacoEditor />
+        </div>
 
-        {activeTab === 'output' && flowId && (
-          <div className="h-full">
+        {/* Live Output Tab */}
+        <div
+          className={`absolute inset-0 ${activeTab === 'output' ? 'block' : 'hidden'}`}
+        >
+          {flowId ? (
             <LiveOutput
               flowId={flowId}
               events={executionState.events}
@@ -99,20 +104,18 @@ export function ConsolidatedSidePanel() {
                 // No-op: collapse functionality handled at parent level now
               }}
             />
-          </div>
-        )}
-
-        {activeTab === 'output' && !flowId && (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">No flow selected</p>
-              <p className="text-xs text-gray-600 mt-1">
-                Select a flow to view execution output
-              </p>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No flow selected</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Select a flow to view execution output
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
