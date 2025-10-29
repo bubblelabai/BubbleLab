@@ -819,6 +819,18 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
       expect(newBubbleLocations).toEqual(originalBubbleLocations);
     });
 
+    it('should inject bubble logging and reinitialize bubble parameters with credentials', () => {
+      const testScript = getFixture('function-outside-flow');
+      const mockBubbleScript = new BubbleScript(testScript, bubbleFactory);
+      const injector = new BubbleInjector(mockBubbleScript);
+      injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+      const lines = mockBubbleScript.bubblescript.split('\n');
+      console.log(lines);
+      expect(lines[1]).toContain('function outsideFlow() {');
+      expect(lines[2]).toContain('return "Hello, World!";');
+      expect(lines[3]).toContain('}');
+    });
+
     it('The line numbers should not change from original after credential injection', () => {
       const mockBubbleScript = new BubbleScript(redditScraper, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
