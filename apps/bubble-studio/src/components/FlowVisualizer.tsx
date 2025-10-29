@@ -87,7 +87,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
   const executionState = useExecutionStore(flowId);
   const { data: availableCredentials } = useCredentials(API_BASE_URL);
-  const { showEditor, showEditorPanel, hideEditorPanel } = useUIStore();
+  const { showEditor, showEditorPanel } = useUIStore();
   const { hasUnsavedChanges, setExecutionHighlight, updateCronSchedule } =
     useEditor(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
@@ -976,7 +976,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onConnect={onConnect}
         onPaneClick={() => {
           highlightBubble(null);
-          hideEditorPanel();
         }}
         proOptions={proOptions}
         minZoom={0.1}

@@ -102,11 +102,6 @@ interface UIStore {
   showEditorPanel: () => void;
 
   /**
-   * Hide the editor
-   */
-  hideEditorPanel: () => void;
-
-  /**
    * Toggle sidebar visibility
    */
   toggleSidebar: () => void;
@@ -236,12 +231,10 @@ export const useUIStore = create<UIStore>((set) => ({
   showEditorPanel: () =>
     set((state) => {
       if (state.isSidebarOpen) {
-        return { showEditor: true, isSidebarOpen: false };
+        return { isSidebarOpen: false, consolidatedPanelTab: 'code' };
       }
-      return { showEditor: true };
+      return { consolidatedPanelTab: 'code' };
     }),
-
-  hideEditorPanel: () => set({ showEditor: false }),
 
   toggleSidebar: () =>
     set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),

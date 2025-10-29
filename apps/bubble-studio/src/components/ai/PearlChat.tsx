@@ -51,7 +51,7 @@ export function PearlChat() {
   );
 
   // Fixed model - users cannot change this currently
-  const selectedModel: AvailableModel = 'openrouter/x-ai/grok-code-fast-1';
+  const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
