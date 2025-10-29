@@ -18,13 +18,17 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Resend: '/integrations/resend.svg',
   Firecrawl: '/integrations/firecrawl.png',
   Cloudflare: '/integrations/cloudflare.svg',
-  OpenRouter: '/integrations/openrouter.svg',
   Reddit: '/integrations/reddit.svg',
+  LinkedIn: '/integrations/linkedin.svg',
+  YouTube: '/integrations/youtube.svg',
+  Instagram: '/integrations/instagram.svg',
+  Apify: '/integrations/apify.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
   Claude: '/integrations/claude.svg',
   Gemini: '/integrations/gemini.svg',
+  OpenRouter: '/integrations/openrouter.svg',
 
   // Vendor aliases that map to model logos
   OpenAI: '/integrations/gpt.svg',
@@ -50,13 +54,17 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Resend', file: SERVICE_LOGOS['Resend'] },
   { name: 'Firecrawl', file: SERVICE_LOGOS['Firecrawl'] },
   { name: 'Cloudflare', file: SERVICE_LOGOS['Cloudflare'] },
-  { name: 'OpenRouter', file: SERVICE_LOGOS['OpenRouter'] },
+  { name: 'LinkedIn', file: SERVICE_LOGOS['LinkedIn'] },
+  { name: 'YouTube', file: SERVICE_LOGOS['YouTube'] },
+  { name: 'Instagram', file: SERVICE_LOGOS['Instagram'] },
+  { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
 ];
 
 export const AI_MODELS: IntegrationLogo[] = [
   { name: 'GPT', file: SERVICE_LOGOS['GPT'] },
   { name: 'Claude', file: SERVICE_LOGOS['Claude'] },
   { name: 'Gemini', file: SERVICE_LOGOS['Gemini'] },
+  { name: 'OpenRouter', file: SERVICE_LOGOS['OpenRouter'] },
 ];
 
 // Normalization helpers and aliases
@@ -85,6 +93,10 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   slack: 'Slack',
   resend: 'Resend',
   reddit: 'Reddit',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  apify: 'Apify',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -158,6 +170,10 @@ export function findLogoForBubble(
     [/\bfirecrawl\b/, 'Firecrawl'],
     [/\bcloudflare\b/, 'Cloudflare'],
     [/\bopenrouter\b/, 'OpenRouter'],
+    [/\blinkedin\b/, 'LinkedIn'],
+    [/\byoutube\b/, 'YouTube'],
+    [/\binstagram\b/, 'Instagram'],
+    [/\bapify\b/, 'Apify'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],

@@ -6,8 +6,16 @@ import {
   BackgroundVariant,
   useReactFlow,
   ReactFlowProvider,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from '@xyflow/react';
-import type { Node, Edge, Connection } from '@xyflow/react';
+import type {
+  Node,
+  Edge,
+  Connection,
+  NodeChange,
+  EdgeChange,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
@@ -73,7 +81,7 @@ function generateDependencyNodeId(
 
 // Inner component that has access to ReactFlow instance
 function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
-  const { fitView } = useReactFlow();
+  const { setCenter, getNode } = useReactFlow();
 
   // Get all data from global stores
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
@@ -111,14 +119,31 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
   const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
+  // Track if the initial view has been set to avoid auto-repositioning
+  const hasSetInitialView = useRef(false);
+
+  // State for nodes and edges to enable dragging
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
+
+  // Store persisted positions for all nodes (both main and sub-bubbles)
+  const persistedPositions = useRef<Map<string, { x: number; y: number }>>(
+    new Map()
+  );
+
   const eventType = currentFlow?.eventType;
   const entryNodeId =
     eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
 
-  const bubbleEntries = useMemo(
-    () => Object.entries(bubbleParameters),
-    [bubbleParameters]
-  );
+  const bubbleEntries = useMemo(() => {
+    const entries = Object.entries(bubbleParameters);
+    // Sort by startLine to ensure consistent ordering (matching edge creation logic)
+    return entries.sort(([, a], [, b]) => {
+      const aStartLine = (a as ParsedBubble)?.location?.startLine ?? 0;
+      const bStartLine = (b as ParsedBubble)?.location?.startLine ?? 0;
+      return aStartLine - bStartLine;
+    });
+  }, [bubbleParameters]);
 
   // Track if we've initialized defaults for this flow to avoid loops
   const didInitDefaultsForFlow = useRef<number | null>(null);
@@ -328,10 +353,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       const rowWidth =
         siblingsTotal > 1 ? (siblingsTotal - 1) * siblingHorizontalSpacing : 0;
-      const position = {
+      const initialPosition = {
         x: baseX - rowWidth / 2 + siblingIndex * siblingHorizontalSpacing,
         y: baseY + verticalSpacing,
       };
+
+      // Use persisted position if available, otherwise use initial position
+      const persistedPosition = persistedPositions.current.get(nodeId);
+      const position = persistedPosition || initialPosition;
 
       // Check execution state for dependency bubble
       const dependencyVariableId = String(dependencyNode.variableId);
@@ -343,6 +372,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         id: nodeId,
         type: 'bubbleNode',
         position,
+        draggable: true,
         data: {
           bubble: subBubble,
           bubbleKey: nodeId,
@@ -464,14 +494,17 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     if (flowName) {
       if (eventType === 'schedule/cron') {
         // Create CronScheduleNode for cron events
+        const entryNodeId = 'cron-schedule-node';
+        const persistedEntryPos = persistedPositions.current.get(entryNodeId);
         const cronScheduleNode: Node = {
-          id: 'cron-schedule-node',
+          id: entryNodeId,
           type: 'cronScheduleNode',
-          position: {
+          position: persistedEntryPos || {
             x: startX - 450,
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
+          draggable: true,
           data: {
             flowId: currentFlow?.id,
             flowName: flowName,
@@ -507,14 +540,17 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         nodes.push(cronScheduleNode);
       } else {
         // Create InputSchemaNode for regular flows (with or without input schema)
+        const entryNodeId = 'input-schema-node';
+        const persistedEntryPos = persistedPositions.current.get(entryNodeId);
         const inputSchemaNode: Node = {
-          id: 'input-schema-node',
+          id: entryNodeId,
           type: 'inputSchemaNode',
-          position: {
+          position: persistedEntryPos || {
             x: startX - 450,
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
+          draggable: true,
           data: {
             flowId: currentFlow?.id,
             flowName: flowName,
@@ -578,14 +614,19 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const isCompletedState = nodeId in completedBubbles;
       const executionStats = completedBubbles[nodeId];
 
+      // Use persisted position if available, otherwise use initial position
+      const persistedPosition = persistedPositions.current.get(nodeId);
+      const initialPosition = {
+        x: startX + index * horizontalSpacing,
+        y: baseY,
+      };
+
       const node: Node = {
         id: nodeId,
         type: 'bubbleNode',
-        position: {
-          x: startX + index * horizontalSpacing,
-          y: baseY,
-        },
+        position: persistedPosition || initialPosition,
         origin: [0, 0.5] as [number, number],
+        draggable: true,
         data: {
           bubble,
           bubbleKey: key,
@@ -759,26 +800,90 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     currentFlow,
   ]);
 
-  // Auto-fit view when nodes load or change
+  // Sync nodes and edges state with computed values, preserving positions
   useEffect(() => {
-    if (initialNodes.length > 0) {
-      // Small delay to ensure nodes are rendered before fitting
+    setNodes((currentNodes) => {
+      // If this is the first time we have nodes, just set them
+      if (currentNodes.length === 0) {
+        return initialNodes;
+      }
+
+      // Otherwise, merge positions from current nodes
+      const updatedNodes = initialNodes.map((initialNode) => {
+        const currentNode = currentNodes.find((n) => n.id === initialNode.id);
+        if (currentNode) {
+          // Keep the current position if node exists
+          return { ...initialNode, position: currentNode.position };
+        }
+        return initialNode;
+      });
+
+      return updatedNodes;
+    });
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges]);
+
+  // Reset view initialization flag when flowId changes
+  useEffect(() => {
+    hasSetInitialView.current = false;
+  }, [flowId]);
+
+  // Auto-position view on entry node only on initial load
+  useEffect(() => {
+    if (nodes.length > 0 && !hasSetInitialView.current) {
+      // Small delay to ensure nodes are rendered before positioning
       const timer = setTimeout(() => {
-        fitView({
-          padding: 0.2, // 20% padding around nodes
-          duration: 300, // Smooth animation
-          maxZoom: 1.0, // Don't zoom in too much
-        });
+        // Find the entry node (input-schema-node or cron-schedule-node)
+        const entryNode = getNode(entryNodeId);
+        if (entryNode) {
+          const zoom = 1; // Much more zoomed in
+
+          // Position the entry node towards the left (about 20% from the left edge)
+          // setCenter will center the given coordinates in the viewport
+          // To position the node 20% from left instead of centered (50%), we shift the center point right
+          const viewportWidth = window.innerWidth;
+          const horizontalShift = (viewportWidth * 0.3) / zoom; // Shift right to position node on left
+
+          setCenter(
+            entryNode.position.x + horizontalShift,
+            entryNode.position.y,
+            {
+              zoom: zoom,
+              duration: 300,
+            }
+          );
+
+          // Mark that we've set the initial view
+          hasSetInitialView.current = true;
+        }
       }, 100);
 
       return () => clearTimeout(timer);
     }
-  }, [initialNodes.length, flowId, fitView]);
+  }, [nodes.length, getNode, setCenter, entryNodeId]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {
   //   logBubbleDebugInfo(flowId, bubbleParameters, executionState, currentFlow, flowNodes);
   // }, [flowId, bubbleParameters, executionState.isRunning, executionState.isValidating, executionState.highlightedBubble, currentFlow.data, flowNodes]);
+
+  // Handle node changes (position updates, etc.)
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    // Persist positions when nodes are dragged or moved
+    changes.forEach((change) => {
+      if (change.type === 'position' && change.position && change.id) {
+        persistedPositions.current.set(change.id, change.position);
+      }
+    });
+    setNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
+
+  // Handle edge changes
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) =>
+      setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  );
 
   const onConnect = useCallback((params: Connection) => {
     console.log('Connection created:', params);
@@ -863,8 +968,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       )}
 
       <ReactFlow
-        nodes={initialNodes}
-        edges={initialEdges}
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onConnect={onConnect}
         onPaneClick={() => {
