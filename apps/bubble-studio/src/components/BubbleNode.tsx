@@ -1,11 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CogIcon,
-} from '@heroicons/react/24/outline';
-import { BookOpen, Code } from 'lucide-react';
+import { CogIcon } from '@heroicons/react/24/outline';
+import { BookOpen, Code, Info } from 'lucide-react';
 import type { CredentialResponse } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
@@ -200,6 +196,52 @@ function BubbleNode({ data }: BubbleNodeProps) {
         className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
         <div className="absolute top-4 right-4 flex items-center gap-2">
+          {(hasError ||
+            isCompleted ||
+            isExecuting ||
+            hasMissingRequirements ||
+            bubble.parameters.length > 0) && (
+            <>
+              <BubbleExecutionBadge
+                hasError={hasError}
+                isCompleted={isCompleted}
+                isExecuting={isExecuting}
+                executionStats={executionStats}
+              />
+              {!hasError && !isExecuting && hasMissingRequirements && (
+                <div className="flex-shrink-0">
+                  <div
+                    title="Missing credentials"
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
+                  >
+                    <span>⚠️</span>
+                    <span>Missing</span>
+                  </div>
+                </div>
+              )}
+              {bubble.parameters.length > 0 && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    onMouseEnter={() => setShowExpandTooltip(true)}
+                    onMouseLeave={() => setShowExpandTooltip(false)}
+                    className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                  {showExpandTooltip && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                      {isExpanded ? 'Collapse' : 'Details'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           {!isSubBubble && (
             <div className="relative">
               <button
@@ -240,56 +282,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 </div>
               )}
             </div>
-          )}
-          {(hasError ||
-            isCompleted ||
-            isExecuting ||
-            hasMissingRequirements ||
-            bubble.parameters.length > 0) && (
-            <>
-              <BubbleExecutionBadge
-                hasError={hasError}
-                isCompleted={isCompleted}
-                isExecuting={isExecuting}
-                executionStats={executionStats}
-              />
-              {!hasError && !isExecuting && hasMissingRequirements && (
-                <div className="flex-shrink-0">
-                  <div
-                    title="Missing credentials"
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
-                  >
-                    <span>⚠️</span>
-                    <span>Missing</span>
-                  </div>
-                </div>
-              )}
-              {bubble.parameters.length > 0 && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                    onMouseEnter={() => setShowExpandTooltip(true)}
-                    onMouseLeave={() => setShowExpandTooltip(false)}
-                    className="flex-shrink-0 p-1 hover:bg-neutral-600 rounded transition-colors"
-                  >
-                    {isExpanded ? (
-                      <ChevronUpIcon className="h-4 w-4 text-neutral-400" />
-                    ) : (
-                      <ChevronDownIcon className="h-4 w-4 text-neutral-400" />
-                    )}
-                  </button>
-                  {showExpandTooltip && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                      {isExpanded ? 'Collapse' : 'Details'}
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
           )}
         </div>
         {/* Icon on top, details below */}
