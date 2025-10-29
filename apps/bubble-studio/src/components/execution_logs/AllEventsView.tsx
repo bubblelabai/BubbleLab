@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   PlayIcon,
   ExclamationTriangleIcon,
@@ -132,6 +132,35 @@ export default function AllEventsView({
     }
     return true;
   };
+
+  // Auto-scroll to selected tab when it changes
+  useEffect(() => {
+    if (!tabsRef.current) return;
+
+    // Find the selected tab button
+    const tabContainer = tabsRef.current;
+    const selectedTabIndex = tabs.findIndex((tab) => isTabSelected(tab.type));
+
+    if (selectedTabIndex === -1) return;
+
+    // Get the selected tab button element
+    const tabButtons = tabContainer.querySelectorAll('button');
+    const selectedButton = tabButtons[selectedTabIndex];
+
+    if (selectedButton) {
+      // Calculate scroll position to center the selected tab
+      const containerWidth = tabContainer.clientWidth;
+      const buttonLeft = selectedButton.offsetLeft;
+      const buttonWidth = selectedButton.offsetWidth;
+      const scrollLeft = buttonLeft - containerWidth / 2 + buttonWidth / 2;
+
+      // Smooth scroll to the selected tab
+      tabContainer.scrollTo({
+        left: Math.max(0, scrollLeft),
+        behavior: 'smooth',
+      });
+    }
+  }, [selectedTab, tabs]);
 
   return (
     <div className="flex flex-col h-full">
