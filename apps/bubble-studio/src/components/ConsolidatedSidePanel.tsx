@@ -17,7 +17,7 @@ export function ConsolidatedSidePanel() {
 
   const executionState = useExecutionStore(flowId ?? 0);
   const { editor } = useEditor();
-  const { data: executionHistory } = useExecutionHistory(flowId, { limit: 50 });
+  const { data: executionHistory } = useExecutionHistory(flowId, { limit: 10 });
 
   const tabs = [
     {

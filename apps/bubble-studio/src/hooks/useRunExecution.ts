@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
@@ -14,7 +15,6 @@ import type {
 import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useExecutionHistory } from './useExecutionHistory';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 
 interface RunExecutionOptions {
@@ -59,14 +59,12 @@ export function useRunExecution(
   flowId: number | null,
   options: UseRunExecutionOptions = {}
 ): RunExecutionResult {
+  const queryClient = useQueryClient();
   const executionState = useExecutionStore(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
-  const { refetch: refetchExecutionHistory } = useExecutionHistory(flowId, {
-    limit: 50,
-  });
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
 
   // Execute with streaming - merged from useExecutionStream
@@ -366,7 +364,10 @@ export function useRunExecution(
         // 7. Execute with streaming
         await executeWithStreaming(cleanedInputs);
         refetchSubscriptionStatus();
-        refetchExecutionHistory();
+        // Invalidate all execution history queries to ensure all pages are updated
+        queryClient.invalidateQueries({
+          queryKey: ['executionHistory', flowId],
+        });
       } catch (error) {
         console.error('Error executing flow:', error);
         const errorMessage =
@@ -384,7 +385,7 @@ export function useRunExecution(
       updateBubbleFlowMutation,
       executeWithStreaming,
       setExecutionHighlight,
-      refetchExecutionHistory,
+      queryClient,
       refetchSubscriptionStatus,
     ]
   );
