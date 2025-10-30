@@ -273,7 +273,6 @@ export const JsonRenderer = memo(function JsonRenderer({
 
     // Check cache first
     if (jsonCache.has(cacheKey)) {
-      console.log('Cache hit for JSON:', cacheKey);
       return jsonCache.get(cacheKey)!;
     }
 
