@@ -147,7 +147,7 @@ export class CredentialValidator {
       case CredentialType.OPENAI_CRED:
         baseParams.message = 'Hello, how are you?';
         baseParams.model = {
-          model: 'openai/gpt-4o',
+          model: 'openai/gpt-5',
         };
         break;
       case CredentialType.ANTHROPIC_CRED:
