@@ -55,6 +55,6 @@ inputs are fixed take out the interface and just use handle() without the payloa
 If no particular trigger is specified, use the webhook/http trigger.`;
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
-1. When using the storage bubble, always use the bubblelab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
+1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
 2. When using the resend bubble, do not set the from parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 `;
