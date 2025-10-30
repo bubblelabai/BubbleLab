@@ -219,7 +219,7 @@ const StorageResultSchema = z.discriminatedUnion('operation', [
     operation: z
       .literal('updateFile')
       .describe(
-        'Update/replace file content and generates a new secure filename for the file'
+        'Update/replace file content and generate a new secure filename for the file'
       ),
     success: z.boolean().describe('Whether the operation was successful'),
     fileName: z
