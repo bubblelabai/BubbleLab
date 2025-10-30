@@ -134,7 +134,7 @@ export function PearlChat() {
           }
           newFiles.push({ name: file.name, content: base64 });
         }
-      } catch (e) {
+      } catch {
         setUploadError(`Failed to read or process file: ${file.name}`);
       }
     }

@@ -81,7 +81,7 @@ function InputFieldsRenderer({
         onInputChange(fieldName, base64);
         setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
       }
-    } catch (e) {
+    } catch {
       setError(fieldName, 'Failed to read or process file');
     }
   };

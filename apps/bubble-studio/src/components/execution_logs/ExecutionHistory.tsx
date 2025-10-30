@@ -8,7 +8,8 @@ import {
 } from '@heroicons/react/24/solid';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
 import { useExecutionStore } from '../../stores/executionStore';
-import { formatTimestamp, JsonRenderer } from '../../utils/executionLogsFormat';
+import { JsonRenderer } from '../../utils/executionLogsFormat';
+import { formatTimestamp } from '../../utils/executionLogsFormatUtils';
 
 interface ExecutionHistoryProps {
   flowId: number | null;

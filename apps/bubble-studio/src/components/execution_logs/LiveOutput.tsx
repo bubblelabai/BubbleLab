@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
+import { JsonRenderer } from '../../utils/executionLogsFormat';
 import {
   formatTimestamp,
   makeLinksClickable,
-  JsonRenderer,
   getEventIcon,
   getEventColor,
-} from '../../utils/executionLogsFormat';
+} from '../../utils/executionLogsFormatUtils';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
 import AllEventsView from './AllEventsView';
 
