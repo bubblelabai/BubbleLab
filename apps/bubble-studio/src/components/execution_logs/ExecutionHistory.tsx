@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
 import { useExecutionStore } from '../../stores/executionStore';
-import { formatTimestamp, renderJson } from '../../utils/executionLogsFormat';
+import { formatTimestamp, JsonRenderer } from '../../utils/executionLogsFormat';
 
 interface ExecutionHistoryProps {
   flowId: number | null;
@@ -198,7 +198,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                         Execution Result
                       </summary>
                       <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
-                        {renderJson(execution.result)}
+                        <JsonRenderer
+                          data={execution.result}
+                          flowId={flowId}
+                          executionId={execution.id}
+                          timestamp={execution.startedAt}
+                        />
                       </pre>
                     </details>
                   )}
@@ -214,7 +219,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                           Execution Payload
                         </summary>
                         <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                          {renderJson(execution.payload)}
+                          <JsonRenderer
+                            data={execution.payload}
+                            flowId={flowId}
+                            executionId={execution.id}
+                            timestamp={execution.startedAt}
+                          />
                         </pre>
                       </details>
                     )}

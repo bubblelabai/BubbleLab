@@ -3,7 +3,7 @@ import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import {
   formatTimestamp,
   makeLinksClickable,
-  renderJson,
+  JsonRenderer,
   getEventIcon,
   getEventColor,
 } from '../../utils/executionLogsFormat';
@@ -63,7 +63,7 @@ export default function LiveOutput({
             getEventColor={getEventColor}
             formatTimestamp={formatTimestamp}
             makeLinksClickable={makeLinksClickable}
-            renderJson={renderJson}
+            renderJson={JsonRenderer}
             flowId={flowId}
             events={events}
             warningCount={warningCount}
