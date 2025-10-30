@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
-import { JsonRenderer } from '../../utils/executionLogsFormat';
+import { JsonRenderer } from './JsonRenderer';
 import {
   formatTimestamp,
   makeLinksClickable,

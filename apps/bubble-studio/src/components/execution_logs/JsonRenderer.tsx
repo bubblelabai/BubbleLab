@@ -4,7 +4,7 @@ import {
   evictCacheIfNeeded,
   jsonCache,
   syntaxHighlightJson,
-} from './executionLogsFormatUtils';
+} from '../../utils/executionLogsFormatUtils';
 
 /**
  * Memoized JSON renderer component
