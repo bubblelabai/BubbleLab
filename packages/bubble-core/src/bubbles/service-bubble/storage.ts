@@ -524,11 +524,16 @@ export class StorageBubble<
       fileName: params.fileName,
       contentType: params.contentType,
     });
-
+    // Generate secure filename with timestamp and optional userId for isolation
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileExtension = params.fileName.split('.').pop() || 'bin';
+    const baseName = params.fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const secureFileName = `${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
     // For R2/S3, update is the same as upload - it replaces the entire object
     const command = new PutObjectCommand({
       Bucket: params.bucketName,
-      Key: params.fileName,
+      Key: secureFileName,
       ContentType: params.contentType,
       Body: params.fileContent,
     });
