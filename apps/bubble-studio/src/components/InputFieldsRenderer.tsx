@@ -1,5 +1,13 @@
-import { memo } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import { memo, useState } from 'react';
+import { Plus, Minus, Paperclip, X } from 'lucide-react';
+import {
+  MAX_BYTES,
+  bytesToMB,
+  isAllowedType,
+  isTextLike,
+  readTextFile,
+  compressPngToBase64,
+} from '../utils/fileUtils';
 
 interface SchemaField {
   name: string;
@@ -24,6 +32,69 @@ function InputFieldsRenderer({
   isExecuting = false,
   className = '',
 }: InputFieldsRendererProps) {
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>(
+    {}
+  );
+  const [uploadedFileNames, setUploadedFileNames] = useState<
+    Record<string, string>
+  >({});
+
+  const setError = (fieldName: string, msg: string | null) => {
+    setFieldErrors((prev) => ({ ...prev, [fieldName]: msg }));
+  };
+
+  const handleFileChange = async (fieldName: string, file: File | null) => {
+    if (!file) return;
+    setError(fieldName, null);
+
+    if (!isAllowedType(file)) {
+      setError(
+        fieldName,
+        'Unsupported file type. Allowed: html, csv, txt, png'
+      );
+      return;
+    }
+
+    try {
+      if (isTextLike(file)) {
+        if (file.size > MAX_BYTES) {
+          setError(
+            fieldName,
+            `File too large. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+          );
+          return;
+        }
+        const text = await readTextFile(file);
+        onInputChange(fieldName, text);
+        setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
+      } else {
+        // PNG path: compress client-side, convert to base64 (no data URL prefix)
+        const base64 = await compressPngToBase64(file);
+        const approxBytes = Math.floor((base64.length * 3) / 4);
+        if (approxBytes > MAX_BYTES) {
+          setError(
+            fieldName,
+            `Image too large after compression. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+          );
+          return;
+        }
+        onInputChange(fieldName, base64);
+        setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
+      }
+    } catch (e) {
+      setError(fieldName, 'Failed to read or process file');
+    }
+  };
+
+  const handleDeleteFile = (fieldName: string) => {
+    setUploadedFileNames((prev) => {
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+    onInputChange(fieldName, '');
+    setError(fieldName, null);
+  };
   if (schemaFields.length === 0) {
     return (
       <div className={`text-xs text-neutral-400 text-center py-2 ${className}`}>
@@ -124,55 +195,120 @@ function InputFieldsRenderer({
                 </button>
               </div>
             ) : (
-              <input
-                type="text"
-                value={
-                  field.type === 'array'
-                    ? Array.isArray(currentValue)
-                      ? JSON.stringify(currentValue)
-                      : typeof currentValue === 'string'
-                        ? currentValue
-                        : ''
-                    : typeof currentValue === 'string' ||
-                        typeof currentValue === 'number'
-                      ? currentValue
-                      : ''
-                }
-                onChange={(e) => {
-                  if (field.type === 'array') {
-                    // For array types, try to parse the JSON string
-                    try {
-                      const parsedValue = JSON.parse(e.target.value);
-                      onInputChange(field.name, parsedValue);
-                    } catch {
-                      // If parsing fails, store as string temporarily
-                      // This allows users to type partial JSON
-                      onInputChange(field.name, e.target.value);
+              <div className="space-y-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={
+                      uploadedFileNames[field.name] &&
+                      (field.type === undefined || field.type === 'string')
+                        ? uploadedFileNames[field.name]
+                        : field.type === 'array'
+                          ? Array.isArray(currentValue)
+                            ? JSON.stringify(currentValue)
+                            : typeof currentValue === 'string'
+                              ? currentValue
+                              : ''
+                          : typeof currentValue === 'string' ||
+                              typeof currentValue === 'number'
+                            ? currentValue
+                            : ''
                     }
-                  } else {
-                    onInputChange(field.name, e.target.value);
-                  }
-                }}
-                placeholder={
-                  field.type === 'array'
-                    ? Array.isArray(field.default)
-                      ? JSON.stringify(field.default)
-                      : '["item1","item2"]'
-                    : field.default !== undefined
-                      ? String(field.default)
-                      : field.description || `Enter ${field.name}...`
-                }
-                disabled={isExecuting}
-                className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
-                  isMissing
-                    ? 'border-amber-500 focus:border-amber-400'
-                    : 'border-neutral-600 focus:border-blue-500'
-                } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
-                  isMissing
-                    ? 'focus:ring-amber-500/50'
-                    : 'focus:ring-blue-500/50'
-                } disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
-              />
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      if (field.type === 'array') {
+                        try {
+                          const parsedValue = JSON.parse(newValue);
+                          onInputChange(field.name, parsedValue);
+                        } catch {
+                          onInputChange(field.name, newValue);
+                        }
+                      } else {
+                        onInputChange(field.name, newValue);
+                      }
+                    }}
+                    placeholder={
+                      field.type === 'array'
+                        ? Array.isArray(field.default)
+                          ? JSON.stringify(field.default)
+                          : '["item1","item2"]'
+                        : field.default !== undefined
+                          ? String(field.default)
+                          : field.description || `Enter ${field.name}...`
+                    }
+                    disabled={
+                      isExecuting ||
+                      field.type === undefined ||
+                      field.type === 'string'
+                        ? !!uploadedFileNames[field.name]
+                        : false
+                    }
+                    className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                      isMissing
+                        ? 'border-amber-500 focus:border-amber-400'
+                        : 'border-neutral-600 focus:border-blue-500'
+                    } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                      isMissing
+                        ? 'focus:ring-amber-500/50'
+                        : 'focus:ring-blue-500/50'
+                    } disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                      (field.type === undefined || field.type === 'string') &&
+                      uploadedFileNames[field.name]
+                        ? 'pr-14'
+                        : field.type === undefined || field.type === 'string'
+                          ? 'pr-7'
+                          : ''
+                    }`}
+                  />
+                  {(field.type === undefined || field.type === 'string') && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {uploadedFileNames[field.name] ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFile(field.name)}
+                            disabled={isExecuting}
+                            className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={`Delete uploaded file for ${field.name}`}
+                          >
+                            <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
+                          </button>
+                          <Paperclip className="w-3 h-3 text-neutral-300" />
+                        </>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".html,.csv,.txt,image/png"
+                            disabled={isExecuting}
+                            aria-label={`Upload file for ${field.name}`}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] || null;
+                              handleFileChange(field.name, f);
+                              // reset so selecting the same file again triggers onChange
+                              e.currentTarget.value = '';
+                            }}
+                          />
+                          <Paperclip
+                            className={`w-3 h-3 transition-colors ${
+                              isExecuting
+                                ? 'text-neutral-600 cursor-not-allowed'
+                                : 'text-neutral-400 hover:text-neutral-200'
+                            }`}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {fieldErrors[field.name] && (
+                  <div className="text-[10px] text-amber-300">
+                    {fieldErrors[field.name]}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         );
