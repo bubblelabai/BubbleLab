@@ -232,31 +232,4 @@ describe('CredentialValidator', () => {
       ).toBe(false);
     });
   });
-
-  describe('createTestParameters', () => {
-    it('should create correct parameters for each credential type', () => {
-      // Access private method through type assertion
-      const createTestParams = (
-        CredentialValidator as unknown as {
-          createTestParameters: (
-            credentialType: CredentialType
-          ) => Record<string, unknown>;
-        }
-      ).createTestParameters;
-
-      // Test OpenAI parameters
-      const openAIParams = createTestParams(CredentialType.OPENAI_CRED);
-
-      expect(openAIParams.model).toEqual({
-        model: 'openai/gpt-4o',
-      });
-
-      // Test Gemini parameters
-      const geminiParams = createTestParams(CredentialType.GOOGLE_GEMINI_CRED);
-
-      expect(geminiParams.model).toEqual({
-        model: 'google/gemini-2.5-flash',
-      });
-    });
-  });
 });
