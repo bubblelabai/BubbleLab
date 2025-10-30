@@ -109,7 +109,7 @@ const StorageParamsSchema = z.discriminatedUnion('operation', [
     bucketName: z
       .string()
       .min(1, 'Bucket name is required')
-      .describe('Name of the R2 bucket'),
+      .default('bubble-lab-bucket'),
     fileName: z
       .string()
       .min(1, 'File name is required')
@@ -216,9 +216,18 @@ const StorageResultSchema = z.discriminatedUnion('operation', [
 
   // Update file result
   z.object({
-    operation: z.literal('updateFile').describe('Update/replace file content'),
+    operation: z
+      .literal('updateFile')
+      .describe(
+        'Update/replace file content and generates a new secure filename for the file'
+      ),
     success: z.boolean().describe('Whether the operation was successful'),
-    fileName: z.string().optional().describe('Name of the updated file'),
+    fileName: z
+      .string()
+      .optional()
+      .describe(
+        'Secure filename for the updated file (different from the original filename)'
+      ),
     updated: z
       .boolean()
       .optional()
@@ -543,7 +552,7 @@ export class StorageBubble<
     return {
       operation: 'updateFile',
       success: true,
-      fileName: params.fileName,
+      fileName: secureFileName,
       updated: true,
       contentType: params.contentType,
       error: '',

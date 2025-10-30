@@ -14,6 +14,9 @@ import {
   CredentialType,
   GenerationResultSchema,
   type GenerationResult,
+  CRITICAL_INSTRUCTIONS,
+  VALIDATION_PROCESS,
+  BUBBLE_SPECIFIC_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -104,38 +107,7 @@ WORKFLOW:
 4. Use bubbleflow-validation iteratively until valid
 5. Do not provide a response until your code is fully validated`;
 
-const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
-1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
-2. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
-2. BEFORE writing any code, identify which bubbles you plan to use from the available list
-3. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
-   - The correct input parameters and their types
-   - The expected output structure in result.data
-   - How to properly handle success/error cases
-4. Replace the handle method with logic that fulfills the user's request
-5. Use the exact parameter structures shown in the bubble details
-6. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
-7. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
-9. Return meaningful data from the handle method
-10. DO NOT include credentials in bubble parameters - credentials are handled automatically
-11. CRITICAL: Always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method
-12. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
-13. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
-14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), forEach(), or other callback functions.
-
-CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
-
-const VALIDATION_PROCESS = `CRITICAL VALIDATION PROCESS:
-1. After generating the initial code, ALWAYS use the bubbleflow-validation to validate it
-2. If validation fails, you MUST analyze ALL errors carefully and fix EVERY single one
-3. Use the bubbleflow-validation again to validate the fixed code
-4. If there are still errors, fix them ALL and validate again
-5. Repeat this validation-fix cycle until the code passes validation with NO ERRORS (valid: true)
-6. Do NOT stop until you get a successful validation result with valid: true and no errors
-7. NEVER provide code that has validation errors - keep fixing until it's completely error-free
-8. IMPORTANT: Use .action() on the to call the bubble, (this is the only way to run a bubble) - NEVER use runBubble() or any other method
-
-Only return the final TypeScript code that passes validation. No explanations or markdown formatting.`;
+// CRITICAL_INSTRUCTIONS and VALIDATION_PROCESS are now imported from @bubblelab/shared-schemas
 
 /**
  * Simple BubbleFlow Generator using AI agent with tools
@@ -413,6 +385,8 @@ Available bubbles in the system:
 ${bubbleDescriptions}
 
 ${CRITICAL_INSTRUCTIONS}
+
+${BUBBLE_SPECIFIC_INSTRUCTIONS}
 
 ${VALIDATION_PROCESS}`;
   }

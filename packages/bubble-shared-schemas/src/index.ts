@@ -20,3 +20,4 @@ export * from './pearl.js';
 export * from './ai-models.js';
 export * from './cron-utils.js';
 export * from './trigger.js';
+export * from './bubbleflow-generation-prompts.js';
