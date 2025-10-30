@@ -45,6 +45,10 @@ const proOptions = { hideAttribution: true };
 const sanitizeIdSegment = (value: string) =>
   value.replace(/[^a-zA-Z0-9_-]/g, '') || 'segment';
 
+// Executing bubble viewport preferences (tweak these)
+const EXECUTION_LEFT_OFFSET_RATIO = 0.1; // 0 = center, 0.3 = ~30% from left
+const EXECUTION_ZOOM = 1.0; // Set desired zoom when centering during execution
+
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
   parentNodeId: string,
@@ -85,6 +89,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     (s) => s.highlightedBubble
   );
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+  const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
 
   // Get LiveOutput hook for syncing console panel tab selection
@@ -746,6 +751,52 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       return () => clearTimeout(timer);
     }
   }, [nodes.length, getNode, setCenter, entryNodeId]);
+
+  // While executing, center the currently running parent bubble (if multiple, pick the top-most by startLine)
+  const lastCenteredBubbleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isExecuting) {
+      lastCenteredBubbleIdRef.current = null;
+      return;
+    }
+    if (!runningBubbles || runningBubbles.size === 0) return;
+
+    // Build a map of main bubbleId -> startLine for ordering
+    const idToStartLine = new Map<string, number>();
+    bubbleEntries.forEach(([, bubbleData]) => {
+      const b = bubbleData as ParsedBubble;
+      const id = b.variableId ? String(b.variableId) : String(b.bubbleName);
+      const startLine = b?.location?.startLine ?? Number.MAX_SAFE_INTEGER;
+      idToStartLine.set(id, startLine);
+    });
+
+    // Choose the running bubble with the smallest startLine (top-most parent)
+    let chosenId: string | null = null;
+    let bestLine = Number.MAX_SAFE_INTEGER;
+    for (const id of runningBubbles) {
+      const line = idToStartLine.get(id);
+      if (line !== undefined && line < bestLine) {
+        bestLine = line;
+        chosenId = id;
+      }
+    }
+
+    if (!chosenId) return;
+    if (lastCenteredBubbleIdRef.current === chosenId) return;
+
+    const node = getNode(chosenId);
+    if (!node) return;
+
+    lastCenteredBubbleIdRef.current = chosenId;
+    const zoom = EXECUTION_ZOOM || 1;
+    const viewportWidth = window.innerWidth;
+    const horizontalShift =
+      (viewportWidth * EXECUTION_LEFT_OFFSET_RATIO) / zoom;
+    setCenter(node.position.x + horizontalShift, node.position.y, {
+      duration: 250,
+      zoom,
+    });
+  }, [isExecuting, runningBubbles, bubbleEntries, getNode, setCenter]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {

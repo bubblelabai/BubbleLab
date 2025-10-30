@@ -65,7 +65,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'linkedin-lead-gen',
     name: 'LinkedIn Lead Generation (LinkedIn, Email)',
     prompt:
-      "Search LinkedIn for leads based on a given lead persona and keyword, scrape the profile and generate a report with the lead's name, headline, profile URL, username, reason for being a lead, post text, post URL, additional posts, and story analysis.",
+      'Search LinkedIn for persona and keyword-matched leads, scrape profiles, and generate a lead report',
     code: linkedinLeadGenTemplate.templateCode,
     category: 'Lead Generation',
     isPopular: true,
@@ -74,7 +74,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'content-creation',
     name: 'Content Creation Ideas and Trends Analysis (Research Agent, Youtube, Reddit, Email)',
     prompt:
-      'Deep research trending content formats from Youtube/Reddit/News Sources (Google Trends, Hootsuite, TikTok Business blog), scrape Reddit communities (r/tiktoktrends, r/socialmedia, r/marketing) for additional insights, use AI with JSON mode to analyze trends and generate 8-12 actionable content ideas adapted for specific product/industry/audience with engagement estimates, email beautiful HTML summary with top ideas and metrics.',
+      'Research trending formats across YouTube/Reddit/news, generate 10+ tailored content ideas with metrics, and email a summary',
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
     isPopular: true,
@@ -84,7 +84,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'video-script-generator',
     name: 'Video Script Generator (YouTube, Email)',
     prompt:
-      'Analyze similar YouTube videos on a topic, extract full transcripts, identify successful patterns (hooks, pacing, engagement tactics), and generate 4 complete video script variations in different styles (Educational, Storytelling, Professional, Casual). Each script includes hooks, timing markers, talking points, visual suggestions, and CTAs. Perfect for content creators who want data-driven scripts based on proven successful videos.',
+      'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
     code: videoScriptTemplate.templateCode,
     category: 'Marketing',
     isPopular: true,
@@ -92,7 +92,7 @@ export const TEMPLATES: TemplateDefinition[] = [
   {
     id: 'reddit-lead-gen',
     name: 'Reddit Lead Generation (Google Sheets, Reddit)',
-    prompt: `Find qualified prospects from relevant Reddit threads/users and log them to a sheet with an auto-drafted outreach message.`,
+    prompt: `Find qualified prospects from relevant Reddit threads and log them to a sheet with personalized outreach messages`,
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
     isPopular: true,
@@ -101,7 +101,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'database-metrics',
     name: 'Database Metrics Assistant (Postgres, Gmail)',
     prompt:
-      'Scheduled daily flow report: Analyze PostgreSQL database schema, use AI data analyst agent with SQL query tools to autonomously explore database and answer natural language questions, perform comprehensive analysis across multiple queries, generate actionable insights with key metrics and trends, create dynamic HTML report based on findings, then email beautifully formatted report with data visualization and executive summary.',
+      'Analyze my database daily, surface key metrics and trends, and email a report',
     code: databaseTemplate.templateCode,
     category: 'Project Management',
   },
@@ -109,7 +109,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'project-management',
     name: 'Project Management Assistant (Slack, Email)',
     prompt:
-      'Pull the last 24 hours of Slack messages, summarize them into Updates/Blockers/Decisions, and send a daily digest via email.',
+      'Summarize last 24h of Slack into Updates/Blockers/Decisions and email a daily digest',
     code: projectManagementTemplate.templateCode,
     category: 'Project Management',
     isPopular: true,
@@ -118,7 +118,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'daily-briefing',
     name: 'Daily Briefing (Google Calendar, Email)',
     prompt:
-      'Read in my google calendar and summarize my upcoming events and reminders.',
+      'Read in my google calendar and summarize my upcoming events and reminders',
     code: personalTemplate.templateCode,
     category: 'Personal Assistant',
   },
@@ -126,7 +126,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'financial-advisor',
     name: 'Financial Portfolio Advisor (Research Agent, Email)',
     prompt:
-      'Read in my portfolio of tickers, and fetch the latest stock price and news for a stock ticker. Summarize sentiment, risks, and opportunities in a short report, then email it to me.',
+      'Fetch prices and news for stock tickers, assess sentiment/risks/opportunities, and email a report',
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
   },
@@ -143,7 +143,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'daily-news',
     name: 'Daily News Digest (Research Agent, Email, Reddit)',
     prompt:
-      'Scrape top posts from Reddit communities (news, worldnews, technology) and news websites (Hacker News, TechCrunch), use AI to organize headlines into categories with summaries, then email a beautifully formatted HTML digest with executive summary.',
+      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
     code: dailyNewsTemplate.templateCode,
     category: 'Personal Assistant',
     isPopular: true,
@@ -152,7 +152,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'gmail-reply',
     name: 'Gmail Reply Assistant (Gmail)',
     prompt:
-      'List unread emails from past 24 hours using Gmail query, fetch full email details with headers and body content, use AI with JSON mode to classify and filter out marketing/automated emails, generate smart contextual replies for each important email matching original tone, then create Gmail drafts in correct threads with proper recipients.',
+      'List important unread emails, draft smart context-aware replies, and create Gmail drafts in-thread',
     code: gmailReplyTemplate.templateCode,
     category: 'Personal Assistant',
   },
@@ -160,7 +160,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'gmail-labeling',
     name: 'Gmail Labeling Assistant (Gmail)',
     prompt:
-      'Automatically classify and label emails using AI. Creates labels for Newsletters, Social, Updates, Receipts, Support, and Personal categories, then intelligently categorizes unlabeled emails and applies appropriate labels.',
+      'Auto-label emails into categories (Newsletters, Social, Updates, Receipts, Support, Personal)',
     code: gmailLabelingTemplate.templateCode,
     category: 'Personal Assistant',
     isPopular: false,
