@@ -81,13 +81,14 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
 
         // Decode body (simplified - assumes text/plain in body.data)
         let bodyText = '';
-        if (message.payload?.body?.data) {
-          bodyText = Buffer.from(message.payload.body.data, 'base64').toString('utf-8');
+        const bodyData = message.payload?.body?.data;
+        if (bodyData) {
+          bodyText = Buffer.from(bodyData, 'base64').toString('utf-8');
         }
 
         emails.push({
           id: message.id,
-          threadId: message.threadId,
+          threadId: message.threadId || '',
           subject: getHeader('Subject'),
           from: getHeader('From'),
           body: bodyText,
@@ -225,7 +226,7 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
         to: [toEmail],
         subject: replyData.subject,
         body_text: replyData.body,
-        thread_id: email.threadId,
+        ...(email.threadId ? { thread_id: email.threadId } : {}),
       });
 
       const draftResult = await createDraft.action();
