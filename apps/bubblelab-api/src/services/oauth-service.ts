@@ -1,4 +1,8 @@
-import { OAuth2Client, OAuth2Token } from '@badgateway/oauth2-client';
+import {
+  OAuth2Client,
+  OAuth2Token,
+  generateCodeVerifier,
+} from '@badgateway/oauth2-client';
 import {
   CredentialType,
   OAUTH_PROVIDERS,
@@ -44,6 +48,7 @@ export class OAuthService {
       credentialName?: string;
       timestamp: number;
       scopes: string[];
+      codeVerifier?: string; // For PKCE (required by X/Twitter)
     }
   > = new Map();
 
@@ -73,6 +78,25 @@ export class OAuthService {
     } else {
       console.warn(
         'Google OAuth credentials not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET'
+      );
+    }
+
+    // X (Twitter) OAuth 2.0 configuration with PKCE
+    if (env.X_OAUTH_CLIENT_ID && env.X_OAUTH_CLIENT_SECRET) {
+      this.clients.set(
+        'x',
+        new OAuth2Client({
+          server: 'https://api.twitter.com',
+          clientId: env.X_OAUTH_CLIENT_ID,
+          clientSecret: env.X_OAUTH_CLIENT_SECRET,
+          authorizationEndpoint: 'https://twitter.com/i/oauth2/authorize',
+          tokenEndpoint: '/2/oauth2/token',
+          // PKCE is automatically handled by @badgateway/oauth2-client
+        })
+      );
+    } else {
+      console.warn(
+        'X OAuth credentials not configured. Set X_OAUTH_CLIENT_ID and X_OAUTH_CLIENT_SECRET'
       );
     }
   }
@@ -105,6 +129,15 @@ export class OAuthService {
     const defaultScopes = this.getDefaultScopes(provider, credentialType);
     const requestedScopes = scopes || defaultScopes;
 
+    // For X (Twitter), generate PKCE code_verifier using library's helper
+    let codeVerifier: string | undefined;
+
+    if (provider === 'x') {
+      // Use the library's built-in PKCE code verifier generator
+      codeVerifier = await generateCodeVerifier();
+      console.log(`Generated PKCE code_verifier for X OAuth`);
+    }
+
     // Store state for CSRF protection with requested scopes (expires in 10 minutes)
     this.stateStore.set(state, {
       userId,
@@ -113,6 +146,7 @@ export class OAuthService {
       credentialName,
       timestamp,
       scopes: requestedScopes,
+      codeVerifier, // Store for token exchange
     });
 
     try {
@@ -120,30 +154,59 @@ export class OAuthService {
       const providerConfig = OAUTH_PROVIDERS[provider];
       const authorizationParams = providerConfig?.authorizationParams || {};
 
-      const authUrl = await client.authorizationCode.getAuthorizeUri({
+      // Build authorization options - library handles PKCE automatically when codeVerifier is provided
+      const authOptions: {
+        redirectUri: string;
+        scope: string[];
+        state: string;
+        codeVerifier?: string;
+        [key: string]: string | string[] | undefined;
+      } = {
         redirectUri,
         scope: requestedScopes,
         state,
         ...authorizationParams,
-      });
+      };
 
-      // Check if our parameters are actually in the URL and manually add if missing
+      // For X, pass codeVerifier - library automatically generates code_challenge and adds PKCE params
+      if (provider === 'x' && codeVerifier) {
+        authOptions.codeVerifier = codeVerifier;
+      }
+
+      const authUrl =
+        await client.authorizationCode.getAuthorizeUri(authOptions);
+
+      // For X (Twitter), ensure scopes are space-separated (X API requirement)
+      // Library might use comma-separated, so we fix it if needed
       const urlObj = new URL(authUrl);
-
-      // If parameters are missing, manually add them
-      if (
-        !urlObj.searchParams.has('access_type') &&
-        authorizationParams.access_type
-      ) {
-        urlObj.searchParams.set('access_type', authorizationParams.access_type);
+      if (provider === 'x') {
+        const scopeParam = urlObj.searchParams.get('scope');
+        if (scopeParam && scopeParam.includes(',')) {
+          const spaceSeparatedScopes = scopeParam
+            .split(',')
+            .map((s) => s.trim())
+            .join(' ');
+          urlObj.searchParams.set('scope', spaceSeparatedScopes);
+        }
       }
-      if (!urlObj.searchParams.has('prompt') && authorizationParams.prompt) {
-        urlObj.searchParams.set('prompt', authorizationParams.prompt);
+
+      // For Google, ensure access_type and prompt are present if specified
+      if (provider === 'google') {
+        if (
+          !urlObj.searchParams.has('access_type') &&
+          authorizationParams.access_type
+        ) {
+          urlObj.searchParams.set(
+            'access_type',
+            authorizationParams.access_type
+          );
+        }
+        if (!urlObj.searchParams.has('prompt') && authorizationParams.prompt) {
+          urlObj.searchParams.set('prompt', authorizationParams.prompt);
+        }
       }
 
-      const finalAuthUrl = urlObj.toString();
-
-      return { authUrl: finalAuthUrl, state };
+      return { authUrl: urlObj.toString(), state };
     } catch (error) {
       // Clean up state on error
       this.stateStore.delete(state);
@@ -186,10 +249,22 @@ export class OAuthService {
 
     try {
       // Exchange authorization code for tokens
-      const token = await client.authorizationCode.getToken({
+      // Library requires code_verifier for PKCE (X/Twitter) - pass it if we have it
+      const tokenOptions: {
+        code: string;
+        redirectUri: string;
+        codeVerifier?: string;
+      } = {
         code,
         redirectUri,
-      });
+      };
+
+      // For X (Twitter), include code_verifier for PKCE token exchange
+      if (provider === 'x' && stateData.codeVerifier) {
+        tokenOptions.codeVerifier = stateData.codeVerifier;
+      }
+
+      const token = await client.authorizationCode.getToken(tokenOptions);
 
       if (!token.refreshToken) {
         console.warn(

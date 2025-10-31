@@ -160,6 +160,16 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       ignoreSSL: false,
     },
   },
+  [CredentialType.X_TWITTER_CRED]: {
+    label: 'X (Twitter)',
+    description:
+      'OAuth connection to X (Twitter) for posting tweets and reading data',
+    placeholder: '', // Not used for OAuth
+    namePlaceholder: 'My X Account',
+    credentialConfigurations: {
+      ignoreSSL: false,
+    },
+  },
   [CredentialType.GOOGLE_SHEETS_CRED]: {
     label: 'Google Sheets',
     description: 'OAuth connection to Google Sheets for spreadsheet management',
@@ -201,6 +211,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GMAIL_CRED]: 'Gmail',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',
     [CredentialType.GOOGLE_CALENDAR_CRED]: 'Google Calendar',
+    [CredentialType.X_TWITTER_CRED]: 'X (Twitter)',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

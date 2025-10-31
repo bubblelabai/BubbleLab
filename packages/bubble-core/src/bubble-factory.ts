@@ -144,6 +144,7 @@ export class BubbleFactory {
       'instagram-tool',
       'linkedin-tool',
       'youtube-tool',
+      'x-twitter',
     ];
   }
 
@@ -176,6 +177,9 @@ export class BubbleFactory {
     );
     const { GoogleCalendarBubble } = await import(
       './bubbles/service-bubble/google-calendar.js'
+    );
+    const { XTwitterBubble } = await import(
+      './bubbles/service-bubble/x-twitter.js'
     );
     const { ApifyBubble } = await import('./bubbles/service-bubble/apify');
     const { BubbleFlowGeneratorWorkflow } = await import(
@@ -264,6 +268,7 @@ export class BubbleFactory {
       'google-calendar',
       GoogleCalendarBubble as BubbleClassWithMetadata
     );
+    this.register('x-twitter', XTwitterBubble as BubbleClassWithMetadata);
     this.register('apify', ApifyBubble as BubbleClassWithMetadata);
     this.register(
       'bubbleflow-generator',
