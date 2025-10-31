@@ -72,14 +72,21 @@ export default function AllEventsView({
     (e) => e.type === 'info' || e.type === 'debug' || e.type === 'trace'
   ).length;
 
-  // Generate tabs: Warnings, Errors, Info (fixed) + dynamic tabs from orderedItems
-  const tabs: Array<{
+  // Generate alert tabs (Warnings, Errors, Info)
+  const alertTabs: Array<{
     id: string;
     label: string;
     badge?: number;
     icon: React.ReactElement;
     type: TabType;
   }> = [
+    {
+      id: 'info',
+      label: 'Info',
+      badge: infoCount,
+      icon: <InformationCircleIcon className="h-4 w-4 text-blue-300" />,
+      type: { kind: 'info' },
+    },
     {
       id: 'warnings',
       label: 'Warnings',
@@ -94,23 +101,23 @@ export default function AllEventsView({
       icon: <ExclamationCircleIcon className="h-4 w-4 text-red-400" />,
       type: { kind: 'errors' },
     },
-    {
-      id: 'info',
-      label: 'Info',
-      badge: infoCount,
-      icon: <InformationCircleIcon className="h-4 w-4 text-blue-300" />,
-      type: { kind: 'info' },
-    },
   ];
 
-  // Add dynamic tabs from orderedItems
+  // Generate step tabs (dynamic from orderedItems)
+  const stepTabs: Array<{
+    id: string;
+    label: string;
+    badge?: number;
+    icon: React.ReactElement;
+    type: TabType;
+  }> = [];
+
   orderedItems.forEach((item, index) => {
     if (item.kind === 'group') {
-      // Bubble group
       const varId = item.name;
       const bubbleName = (item.events[0] as { bubbleName?: string }).bubbleName;
       const logo = findLogoForBubble({ bubbleName: bubbleName });
-      tabs.push({
+      stepTabs.push({
         id: `bubble-${varId}`,
         label: getVariableNameForDisplay(varId, item.events, bubbleParameters),
         badge: item.events.length,
@@ -138,13 +145,16 @@ export default function AllEventsView({
     return true;
   };
 
-  // Auto-scroll to selected tab when it changes
+  // Auto-scroll to selected tab when it changes (applies to either row)
   useEffect(() => {
     if (!tabsRef.current) return;
 
     // Find the selected tab button
     const tabContainer = tabsRef.current;
-    const selectedTabIndex = tabs.findIndex((tab) => isTabSelected(tab.type));
+    const allTabs = [...alertTabs, ...stepTabs];
+    const selectedTabIndex = allTabs.findIndex((tab) =>
+      isTabSelected(tab.type)
+    );
 
     if (selectedTabIndex === -1) return;
 
@@ -165,18 +175,46 @@ export default function AllEventsView({
         behavior: 'smooth',
       });
     }
-  }, [selectedTab, tabs]);
+  }, [selectedTab]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Horizontal Scrollable Tab Bar */}
+      {/* Alerts Row: Warnings / Errors / Info (full-width tabs) */}
       <div
         ref={tabsRef}
-        className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115] overflow-x-auto thin-scrollbar"
-        style={{ scrollBehavior: 'smooth' }}
+        className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115]"
       >
+        <div className="flex">
+          {alertTabs.map((tab) => {
+            const isSelected = isTabSelected(tab.type);
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedTab(tab.type)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
+                  isSelected
+                    ? 'border-gray-400 text-gray-200 bg-[#15181d]'
+                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
+                }`}
+              >
+                <div className="flex-shrink-0">{tab.icon}</div>
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-700/50 text-gray-400">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Steps Row: actual bubble steps */}
+      <div className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115] overflow-x-auto thin-scrollbar">
         <div className="flex gap-1 p-2 min-w-max">
-          {tabs.map((tab) => {
+          {stepTabs.map((tab) => {
             const isSelected = isTabSelected(tab.type);
             return (
               <button
