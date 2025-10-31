@@ -488,6 +488,13 @@ function renderQuickStart(bubble: BubbleClass): string {
 
   // Get a sample operation from the schema
   const inShape = extractObjectShape(bubble.schema);
+
+  // Check if operation field exists and is required
+  const hasOperationField = 'operation' in inShape;
+  const operationIsRequired =
+    hasOperationField && inShape.operation?.required === true;
+
+  // Get required fields excluding credentials and operation
   const requiredFields = Object.entries(inShape).filter(
     ([key, v]) => v.required && key !== 'credentials' && key !== 'operation'
   );
@@ -499,7 +506,11 @@ function renderQuickStart(bubble: BubbleClass): string {
 
   // Determine if this is a discriminated union (has operations)
   const hasOperations = discriminatedUnionOptions(bubble.schema) !== undefined;
-  const operationLine = hasOperations
+
+  // Always include operation line if operation field exists and is required
+  // This ensures operation is shown in Quick Start examples for clarity
+  const shouldIncludeOperation = hasOperations || operationIsRequired;
+  const operationLine = shouldIncludeOperation
     ? `  operation: '${getFirstOperation(bubble.schema)}',`
     : '';
 
@@ -523,6 +534,17 @@ function getFirstOperation(schema: AnyZod): string {
   if (options && options.length > 0) {
     return options[0].op;
   }
+
+  // If not a discriminated union, try to extract first enum value from operation field
+  const inShape = extractObjectShape(schema);
+  if (inShape.operation && inShape.operation.type) {
+    // Extract first enum value from type string like "'scrapePosts' | 'searchPosts'"
+    const enumMatch = inShape.operation.type.match(/'([^']+)'/);
+    if (enumMatch) {
+      return enumMatch[1];
+    }
+  }
+
   return 'execute';
 }
 
@@ -593,6 +615,9 @@ async function updateExistingFile(
 ): Promise<void> {
   const existingContent = await fs.readFile(outPath, 'utf8');
 
+  // Generate new Quick Start section
+  const newQuickStart = renderQuickStart(bubble);
+
   // Generate new Operation Details section
   const newOperationDetails = renderTabs(
     'Operation Details',
@@ -602,15 +627,23 @@ async function updateExistingFile(
     bubble.name
   );
 
+  // Replace the Quick Start section using regex
+  // Look for "## Quick Start" and everything until "## Operation Details"
+  const quickStartRegex = /## Quick Start[\s\S]*?(?=## Operation Details)/;
+  const updatedContent = existingContent.replace(
+    quickStartRegex,
+    `${newQuickStart}\n\n`
+  );
+
   // Replace the Operation Details section using regex
   // Look for "## Operation Details" and everything after it until end of file
   const operationDetailsRegex = /## Operation Details[\s\S]*$/;
-  const updatedContent = existingContent.replace(
+  const finalContent = updatedContent.replace(
     operationDetailsRegex,
     `## Operation Details\n\n${newOperationDetails}\n`
   );
 
-  await fs.writeFile(outPath, updatedContent, 'utf8');
+  await fs.writeFile(outPath, finalContent, 'utf8');
   console.log(`Updated existing file: ${outPath}`);
 }
 

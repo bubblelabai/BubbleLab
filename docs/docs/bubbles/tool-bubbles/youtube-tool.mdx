@@ -1,0 +1,91 @@
+# Youtube Tool
+
+Search YouTube videos, extract transcripts, and scrape channel content with a simple interface
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { YouTubeTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new YouTubeTool({
+  operation: 'searchVideos',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'searchVideos' | 'getTranscript' | 'scrapeChannel'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation: searchVideos for search/URLs, getTranscript for transcripts, scrapeChannel for channel videos. Not all videos will have transcript available.</dd>
+
+  <dt><code>searchQueries</code> <em>string[]</em> </dt>
+  <dd>Search queries for YouTube (for searchVideos). Examples: ["AI tutorials", "react hooks"]</dd>
+
+  <dt><code>videoUrls</code> <em>string[]</em> </dt>
+  <dd>Direct YouTube URLs - videos, channels, playlists (for searchVideos or getTranscript)</dd>
+
+  <dt><code>channelUrl</code> <em>string</em> </dt>
+  <dd>YouTube channel URL (for scrapeChannel operation)</dd>
+
+  <dt><code>videoUrl</code> <em>string</em> </dt>
+  <dd>Single video URL for transcript extraction (for getTranscript)</dd>
+
+  <dt><code>maxResults</code> <em>number</em> </dt>
+  <dd>Max videos to fetch (default: 20)</dd>
+
+  <dt><code>includeShorts</code> <em>boolean</em> </dt>
+  <dd>Include YouTube Shorts in results</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Required credentials (auto-injected)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'searchVideos' | 'getTranscript' | 'scrapeChannel'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Operation performed</dd>
+
+  <dt><code>videos</code> <em>object[]</em> </dt>
+  <dd>Array of YouTube videos</dd>
+
+  <dt><code>transcript</code> <em>object[]</em> </dt>
+  <dd>Video transcript with timestamps</dd>
+
+  <dt><code>fullTranscriptText</code> <em>string</em> </dt>
+  <dd>Complete transcript as plain text</dd>
+
+  <dt><code>totalResults</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Total number of results</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
