@@ -12,7 +12,8 @@ export const AvailableModels = z.enum([
   'google/gemini-2.5-flash-image-preview',
 
   // Anthropic models
-  'anthropic/claude-sonnet-4-5-20250929',
+  'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-haiku-4-5',
 
   // OpenRouter models
   'openrouter/x-ai/grok-code-fast-1',

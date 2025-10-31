@@ -610,12 +610,8 @@ import {z} from 'zod';
 import {
   // Base classes
   BubbleFlow,
-  BaseBubble,
-  ServiceBubble,
-  WorkflowBubble,
-  ToolBubble,
 
-  // Service Bubbles
+  // Service Bubbles (Connects to external services)
   HelloWorldBubble,
   AIAgentBubble,
   PostgreSQLBubble,
@@ -625,18 +621,17 @@ import {
   GmailBubble,
   SlackFormatterAgentBubble,
   HttpBubble,
+  StorageBubble,
   ApifyBubble,
 
-  // Specialized Tool Bubbles
+  // Tool Bubbles (Perform useful actions)
   ResearchAgentTool,
   RedditScrapeTool,
   InstagramTool,
   LinkedInTool,
+  YouTubeTool,
 
-  // Types and utilities
-  type BubbleClassWithMetadata,
-  type BubbleContext,
-  type BubbleTriggerEvent,
+  // Event Types (How the workflow is triggered)
   type WebhookEvent,
   type CronEvent,
 } from '@bubblelab/bubble-core';
@@ -656,7 +651,7 @@ export interface CustomWebhookPayload extends WebhookEvent {
 export class ${className} extends BubbleFlow<'webhook/http'> {
   async handle(payload: CustomWebhookPayload): Promise<Output> {
     // TODO: Implement your workflow logic here
-    const { input } = payload;
+    const { input = 'sensible example value' } = payload;
 
     return {
       message: \`Response from \${payload.path} (Request: \${payload.requestId})\`,
@@ -686,7 +681,7 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
 
   async handle(payload: CustomCronPayload): Promise<Output> {
     // TODO: Implement your scheduled workflow logic here
-    const { input, cron } = payload;
+    const { input = 'sensible example value', cron } = payload;
 
     return {
       message: \`Cron job executed at \${payload.timestamp} with schedule: \${cron}\`,

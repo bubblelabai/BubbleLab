@@ -344,7 +344,6 @@ export async function executeBubbleFlow(
       return new ${className}();
     `
     );
-
     // Wrap bubble core to automatically throw on bubble action failures
     const wrappedBubbleCore: Record<string, unknown> = { ...bubbleCore };
     Object.entries(bubbleCore).forEach(([key, BubbleClass]) => {

@@ -1,12 +1,11 @@
 import { db } from '../db/index.js';
 import { bubbleFlowExecutions, bubbleFlows, users } from '../db/schema.js';
 import {
-  executeBubbleFlow,
   runBubbleFlow,
   runBubbleFlowWithStreaming,
   type StreamingExecutionOptions,
 } from './execution.js';
-import { ParsedBubble, ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import type { ExecutionResult } from '@bubblelab/shared-schemas';
 import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
@@ -110,14 +109,13 @@ export async function executeBubbleFlowWithTracking(
         ', limit: ' +
         limit,
     };
-    await executeBubbleFlow(
-      flow.code, // Processed code
+    await runBubbleFlow(
+      flow.originalCode!, // Use original TypeScript code
+      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
       specialPayload,
       {
         userId: options.userId,
-      },
-      flow.originalCode!, // Original TypeScript code for credential injection
-      flow.bubbleParameters as Record<string, ParsedBubble> // Pass stored bubble parameters
+      }
     );
     await db.insert(bubbleFlowExecutions).values({
       bubbleFlowId,
@@ -155,14 +153,13 @@ export async function executeBubbleFlowWithTracking(
 
   try {
     // Execute the flow using the pre-processed code from database
-    const result = await executeBubbleFlow(
-      flow.code, // Processed code
+    const result = await runBubbleFlow(
+      flow.originalCode!, // Use original TypeScript code
+      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
       payload,
       {
         userId: options.userId,
-      },
-      flow.originalCode!, // Original TypeScript code for credential injection
-      flow.bubbleParameters as Record<string, ParsedBubble> // Pass stored bubble parameters
+      }
     );
 
     // Update execution record

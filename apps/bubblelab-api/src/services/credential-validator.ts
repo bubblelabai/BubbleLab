@@ -153,7 +153,7 @@ export class CredentialValidator {
       case CredentialType.ANTHROPIC_CRED:
         baseParams.message = 'Hello, how are you?';
         baseParams.model = {
-          model: 'anthropic/claude-sonnet-4-5-20250929',
+          model: 'anthropic/claude-sonnet-4-5',
         };
         break;
       case CredentialType.GOOGLE_GEMINI_CRED:
