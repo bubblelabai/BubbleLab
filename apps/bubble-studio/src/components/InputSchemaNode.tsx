@@ -4,6 +4,7 @@ import { Play, FileInput } from 'lucide-react';
 import InputFieldsRenderer from './InputFieldsRenderer';
 import { useExecutionStore } from '../stores/executionStore';
 import { useRunExecution } from '../hooks/useRunExecution';
+import { filterEmptyInputs } from '../utils/inputUtils';
 
 interface SchemaField {
   name: string;
@@ -62,18 +63,8 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   // Handle execute flow
   const handleExecuteFlow = async () => {
-    // Filter out empty arrays so defaults are used
-    const filteredInputs = Object.entries(executionInputs || {}).reduce(
-      (acc, [key, value]) => {
-        // Skip empty arrays - let them use default values
-        if (Array.isArray(value) && value.length === 0) {
-          return acc;
-        }
-        acc[key] = value;
-        return acc;
-      },
-      {} as Record<string, unknown>
-    );
+    // Filter out empty values (empty strings, undefined, empty arrays) so defaults are used
+    const filteredInputs = filterEmptyInputs(executionInputs || {});
 
     await runFlow({
       validateCode: true,

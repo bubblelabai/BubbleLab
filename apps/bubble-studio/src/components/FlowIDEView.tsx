@@ -17,6 +17,7 @@ import { useExecutionHistory } from '@/hooks/useExecutionHistory';
 import { getFlowNameFromCode } from '@/utils/codeParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useRunExecution } from '@/hooks/useRunExecution';
+import { filterEmptyInputs } from '@/utils/inputUtils';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 
@@ -111,10 +112,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   };
 
   const handleExecuteFromMainPage = async () => {
+    // Filter out empty values (empty strings, undefined, empty arrays) so defaults are used
+    const filteredInputs = filterEmptyInputs(executionState.executionInputs);
+
     await runFlow({
       validateCode: true,
       updateCredentials: true,
-      inputs: executionState.executionInputs,
+      inputs: filteredInputs,
     });
   };
 

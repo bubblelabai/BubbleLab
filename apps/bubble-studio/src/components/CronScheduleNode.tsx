@@ -26,6 +26,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useEditor } from '../hooks/useEditor';
 import { useRunExecution } from '../hooks/useRunExecution';
+import { filterEmptyInputs } from '../utils/inputUtils';
 
 interface CronScheduleNodeData {
   flowId: number;
@@ -305,10 +306,13 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   };
 
   const handleExecuteFlow = async () => {
+    // Filter out empty values (empty strings, undefined, empty arrays) so defaults are used
+    const filteredInputs = filterEmptyInputs(executionInputs || {});
+
     await runFlow({
       validateCode: true,
       updateCredentials: true,
-      inputs: executionInputs || {},
+      inputs: filteredInputs,
     });
   };
 
