@@ -9,6 +9,7 @@ import {
   ArrowTopRightOnSquareIcon,
   ArrowPathIcon,
   CogIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import {
   CredentialType,
@@ -179,6 +180,86 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     },
   },
 } as const satisfies Record<CredentialType, CredentialConfig>;
+
+// Helper function to parse and format error messages for user-friendly display
+const parseErrorMessage = (error: unknown): string => {
+  let rawMessage = '';
+
+  // Extract the raw error message from various formats
+  if (typeof error === 'string') {
+    // Handle "HTTP XXX: {json}" format - strip the HTTP prefix
+    const httpPrefixMatch = error.match(/^HTTP \d+:\s*/);
+    let cleanError = error;
+    if (httpPrefixMatch) {
+      cleanError = error.substring(httpPrefixMatch[0].length);
+    }
+
+    // Try to parse if it's a JSON string
+    try {
+      const parsed = JSON.parse(cleanError);
+      rawMessage = String(
+        parsed.details || parsed.error || parsed.message || cleanError
+      );
+    } catch {
+      // Not JSON, check if we can extract a readable message
+      const jsonMatch = cleanError.match(/\{.*\}/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          rawMessage = String(
+            parsed.details || parsed.error || parsed.message || cleanError
+          );
+        } catch {
+          rawMessage = cleanError;
+        }
+      } else {
+        rawMessage = cleanError;
+      }
+    }
+  } else if (error instanceof Error) {
+    rawMessage = error.message;
+  } else if (typeof error === 'object' && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    rawMessage = String(
+      errorObj.details ||
+        errorObj.error ||
+        errorObj.message ||
+        'An unexpected error occurred'
+    );
+  } else {
+    return 'An unexpected error occurred';
+  }
+
+  // Clean up the message to extract only the essential part
+  // Pattern 1: Extract message after "error: XXX " (e.g., "error: 401 Incorrect API key")
+  const errorCodeMatch = rawMessage.match(/error:\s*\d+\s+([^.]+)/i);
+  if (errorCodeMatch) {
+    let extractedMsg = errorCodeMatch[1].trim();
+    // Remove anything after common stop phrases
+    extractedMsg = extractedMsg.split(/\.\s*You can find/i)[0];
+    extractedMsg = extractedMsg.split(/\.\s*Troubleshooting/i)[0];
+    return extractedMsg.trim();
+  }
+
+  // Pattern 2: Remove URLs from the message
+  let cleanedMsg = rawMessage.replace(/https?:\/\/[^\s]+/g, '').trim();
+
+  // Pattern 3: Remove "You can find..." and everything after
+  cleanedMsg = cleanedMsg.split(/\.\s*You can find/i)[0];
+
+  // Pattern 4: Remove "Troubleshooting URL..." and everything after
+  cleanedMsg = cleanedMsg.split(/\.\s*Troubleshooting/i)[0];
+
+  // Pattern 5: If message is still too long (>150 chars), extract first sentence
+  if (cleanedMsg.length > 150) {
+    const firstSentence = cleanedMsg.split(/\.\s+/)[0];
+    if (firstSentence) {
+      cleanedMsg = firstSentence;
+    }
+  }
+
+  return cleanedMsg.trim() || 'An unexpected error occurred';
+};
 
 // Helper function to map credential types to service names for icon resolution
 const getServiceNameForCredentialType = (
@@ -397,168 +478,178 @@ export function CreateCredentialModal({
         onClick={onClose}
       />
 
-      <div className="relative bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[#30363d]">
-        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] rounded-t-lg">
+      <div className="relative bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[#30363d] max-h-[90vh] flex flex-col">
+        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] rounded-t-lg flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-100">
             Add New Credential
           </h2>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-              <p className="text-sm text-red-200">{error}</p>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Name *
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              placeholder={
-                CREDENTIAL_TYPE_CONFIG[
-                  formData.credentialType as CredentialType
-                ].namePlaceholder
-              }
-              className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Type *
-            </label>
-            <div className="relative">
-              <select
-                title="Credential Type"
-                value={formData.credentialType}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    credentialType: e.target.value as CredentialType,
-                    name:
-                      prev.name ||
-                      CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
-                        .namePlaceholder,
-                    credentialConfigurations:
-                      CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
-                        .credentialConfigurations,
-                  }))
-                }
-                className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                disabled={!!lockType || !!lockedCredentialType}
-                required
-              >
-                {Object.entries(CREDENTIAL_TYPE_CONFIG).map(
-                  ([type, config]) => (
-                    <option key={type} value={type}>
-                      {config.label}
-                    </option>
-                  )
-                )}
-              </select>
-              {/* Icon preview next to the dropdown */}
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                {(() => {
-                  const serviceName = getServiceNameForCredentialType(
-                    formData.credentialType as CredentialType
-                  );
-                  const logo = resolveLogoByName(serviceName);
-                  return logo ? (
-                    <img
-                      src={logo.file}
-                      alt={`${logo.name} logo`}
-                      className="h-5 w-5 object-contain"
-                    />
-                  ) : (
-                    <CogIcon className="h-5 w-5 text-gray-400" />
-                  );
-                })()}
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {
-                CREDENTIAL_TYPE_CONFIG[
-                  formData.credentialType as CredentialType
-                ].description
-              }
-            </p>
-          </div>
-
-          {!isOAuthCredentialType && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Value *
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.value}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, value: e.target.value }))
-                  }
-                  placeholder={
-                    CREDENTIAL_TYPE_CONFIG[
-                      formData.credentialType as CredentialType
-                    ].placeholder
-                  }
-                  className="w-full bg-gray-700 text-gray-100 px-3 py-2 pr-10 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isOAuthCredentialType && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                OAuth Connection
-              </label>
-              <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#30363d]">
-                <div className="flex items-center gap-3 mb-3">
-                  <ArrowTopRightOnSquareIcon className="h-5 w-5 text-blue-400" />
-                  <span className="text-sm text-gray-300">
-                    This will open a secure OAuth connection window
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  You'll be redirected to authorize access to your account. Once
-                  completed, the connection will be saved automatically.
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            {error && (
+              <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
+                <p className="text-sm text-red-200">
+                  {parseErrorMessage(error)}
                 </p>
               </div>
-              {getOAuthProvider(formData.credentialType as CredentialType) ===
-                'google' &&
-                API_BASE_URL.includes('bubblelab.ai') && (
-                  <div className="mt-3 bg-yellow-900 bg-opacity-20 rounded-lg p-3 border border-yellow-500">
-                    <p className="text-xs text-yellow-300">
-                      ⚠️ Our Google OAuth app is pending approval. You may see a
-                      warning about an "untrusted app" during authentication.
-                      This is normal and safe to proceed.
-                    </p>
-                  </div>
-                )}
-            </div>
-          )}
+            )}
 
-          <div className="flex items-center justify-end space-x-3 pt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Name *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+                placeholder={
+                  CREDENTIAL_TYPE_CONFIG[
+                    formData.credentialType as CredentialType
+                  ].namePlaceholder
+                }
+                className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Type *
+              </label>
+              <div className="relative">
+                <select
+                  title="Credential Type"
+                  value={formData.credentialType}
+                  onChange={(e) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      credentialType: e.target.value as CredentialType,
+                      name:
+                        prev.name ||
+                        CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
+                          .namePlaceholder,
+                      credentialConfigurations:
+                        CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
+                          .credentialConfigurations,
+                    }));
+                    setError(null);
+                  }}
+                  className="w-full bg-[#1a1a1a] text-gray-100 pl-3 py-2 pr-16 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 appearance-none"
+                  disabled={!!lockType || !!lockedCredentialType}
+                  required
+                >
+                  {Object.entries(CREDENTIAL_TYPE_CONFIG).map(
+                    ([type, config]) => (
+                      <option key={type} value={type}>
+                        {config.label}
+                      </option>
+                    )
+                  )}
+                </select>
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="absolute right-10 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  {(() => {
+                    const serviceName = getServiceNameForCredentialType(
+                      formData.credentialType as CredentialType
+                    );
+                    const logo = resolveLogoByName(serviceName);
+                    return logo ? (
+                      <img
+                        src={logo.file}
+                        alt={`${logo.name} logo`}
+                        className="h-5 w-5 object-contain"
+                      />
+                    ) : (
+                      <CogIcon className="h-5 w-5 text-gray-400" />
+                    );
+                  })()}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {
+                  CREDENTIAL_TYPE_CONFIG[
+                    formData.credentialType as CredentialType
+                  ].description
+                }
+              </p>
+            </div>
+
+            {!isOAuthCredentialType && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Value *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.value}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        value: e.target.value,
+                      }))
+                    }
+                    placeholder={
+                      CREDENTIAL_TYPE_CONFIG[
+                        formData.credentialType as CredentialType
+                      ].placeholder
+                    }
+                    className="w-full bg-gray-700 text-gray-100 px-3 py-2 pr-10 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isOAuthCredentialType && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  OAuth Connection
+                </label>
+                <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#30363d]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <ArrowTopRightOnSquareIcon className="h-5 w-5 text-blue-400" />
+                    <span className="text-sm text-gray-300">
+                      This will open a secure OAuth connection window
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    You'll be redirected to authorize access to your account.
+                    Once completed, the connection will be saved automatically.
+                  </p>
+                </div>
+                {getOAuthProvider(formData.credentialType as CredentialType) ===
+                  'google' &&
+                  API_BASE_URL.includes('bubblelab.ai') && (
+                    <div className="mt-3 bg-yellow-900 bg-opacity-20 rounded-lg p-3 border border-yellow-500">
+                      <p className="text-xs text-yellow-300">
+                        ⚠️ Our Google OAuth app is pending approval. You may see
+                        a warning about an "untrusted app" during
+                        authentication. This is normal and safe to proceed.
+                      </p>
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-[#30363d] flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
