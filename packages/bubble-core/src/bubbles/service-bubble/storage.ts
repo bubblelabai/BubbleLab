@@ -109,7 +109,7 @@ const StorageParamsSchema = z.discriminatedUnion('operation', [
     bucketName: z
       .string()
       .min(1, 'Bucket name is required')
-      .describe('Name of the R2 bucket'),
+      .default('bubble-lab-bucket'),
     fileName: z
       .string()
       .min(1, 'File name is required')
@@ -216,9 +216,18 @@ const StorageResultSchema = z.discriminatedUnion('operation', [
 
   // Update file result
   z.object({
-    operation: z.literal('updateFile').describe('Update/replace file content'),
+    operation: z
+      .literal('updateFile')
+      .describe(
+        'Update/replace file content and generate a new secure filename for the file'
+      ),
     success: z.boolean().describe('Whether the operation was successful'),
-    fileName: z.string().optional().describe('Name of the updated file'),
+    fileName: z
+      .string()
+      .optional()
+      .describe(
+        'Secure filename for the updated file (different from the original filename)'
+      ),
     updated: z
       .boolean()
       .optional()
@@ -524,11 +533,16 @@ export class StorageBubble<
       fileName: params.fileName,
       contentType: params.contentType,
     });
-
+    // Generate secure filename with timestamp and optional userId for isolation
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileExtension = params.fileName.split('.').pop() || 'bin';
+    const baseName = params.fileName.replace(/\.[^/.]+$/, ''); // Remove extension
+    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const secureFileName = `${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
     // For R2/S3, update is the same as upload - it replaces the entire object
     const command = new PutObjectCommand({
       Bucket: params.bucketName,
-      Key: params.fileName,
+      Key: secureFileName,
       ContentType: params.contentType,
       Body: params.fileContent,
     });
@@ -538,7 +552,7 @@ export class StorageBubble<
     return {
       operation: 'updateFile',
       success: true,
-      fileName: params.fileName,
+      fileName: secureFileName,
       updated: true,
       contentType: params.contentType,
       error: '',

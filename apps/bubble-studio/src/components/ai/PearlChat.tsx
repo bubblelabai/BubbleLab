@@ -16,13 +16,28 @@ import {
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
 import { type ChatMessage } from './type';
-import { Check, AlertCircle, Loader2, ArrowUp } from 'lucide-react';
+import {
+  Check,
+  AlertCircle,
+  Loader2,
+  ArrowUp,
+  Paperclip,
+  X,
+} from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import {
   useExecutionStore,
   getExecutionStore,
 } from '../../stores/executionStore';
 import ReactMarkdown from 'react-markdown';
+import {
+  MAX_BYTES,
+  bytesToMB,
+  isAllowedType,
+  isTextLike,
+  readTextFile,
+  compressPngToBase64,
+} from '../../utils/fileUtils';
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -47,6 +62,10 @@ type DisplayEvent =
 export function PearlChat() {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Array<{ name: string; content: string }>
+  >([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   // List of event lists - eventsList[0] corresponds to events for first assistant response, etc.
   // During streaming, we append to the last array in eventsList
   const [eventsList, setEventsList] = useState<DisplayEvent[][]>([]);
@@ -76,6 +95,58 @@ export function PearlChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, eventsList, pearlChat.isPending]);
+
+  const handleFileChange = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadError(null);
+
+    const newFiles: Array<{ name: string; content: string }> = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      if (!isAllowedType(file)) {
+        setUploadError(
+          `Unsupported file type: ${file.name}. Allowed: html, csv, txt, png`
+        );
+        continue;
+      }
+
+      try {
+        if (isTextLike(file)) {
+          if (file.size > MAX_BYTES) {
+            setUploadError(
+              `File too large: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            );
+            continue;
+          }
+          const text = await readTextFile(file);
+          newFiles.push({ name: file.name, content: text });
+        } else {
+          // PNG path: compress client-side, convert to base64 (no data URL prefix)
+          const base64 = await compressPngToBase64(file);
+          const approxBytes = Math.floor((base64.length * 3) / 4);
+          if (approxBytes > MAX_BYTES) {
+            setUploadError(
+              `Image too large after compression: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            );
+            continue;
+          }
+          newFiles.push({ name: file.name, content: base64 });
+        }
+      } catch {
+        setUploadError(`Failed to read or process file: ${file.name}`);
+      }
+    }
+
+    if (newFiles.length > 0) {
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleDeleteFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleEvent = (event: StreamingEvent) => {
     switch (event.type) {
@@ -214,15 +285,32 @@ export function PearlChat() {
   };
 
   const handleGenerate = () => {
-    if (!prompt.trim()) {
+    if (!prompt.trim() && uploadedFiles.length === 0) {
       return;
+    }
+
+    // Build user message content - include file info if uploaded
+    let userContent = prompt.trim();
+    if (uploadedFiles.length > 0) {
+      const fileInfo = uploadedFiles
+        .map((f) => {
+          const fileType = f.name.toLowerCase().endsWith('.png')
+            ? 'image (base64)'
+            : 'text';
+          return `${f.name} (${fileType})`;
+        })
+        .join(', ');
+
+      userContent = userContent
+        ? `${userContent}\n\n[Attached files: ${fileInfo}]`
+        : `[Processing attached files: ${fileInfo}]`;
     }
 
     // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
-      content: prompt.trim(),
+      content: userContent,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -230,8 +318,9 @@ export function PearlChat() {
     // Create new empty events array for this turn
     setEventsList((prev) => [...prev, []]);
 
-    // Clear input
+    // Clear input and files
     setPrompt('');
+    setUploadedFiles([]);
     setActiveToolCallIds(new Set());
 
     // Build conversation history from messages
@@ -289,7 +378,12 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
-    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
+    const fileContext =
+      uploadedFiles.length > 0
+        ? `\n\nAttached Files:\n${uploadedFiles.map((f) => `\n${f.name}:\n${f.content}`).join('\n\n---\n')}`
+        : '';
+
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}${fileContext}`;
 
     pearlChat.mutate(
       {
@@ -513,24 +607,82 @@ export function PearlChat() {
 
       {/* Compact chat input at bottom */}
       <div className="flex-shrink-0 p-4 pt-2">
-        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
-            className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
-            disabled={pearlChat.isPending}
-            onKeyDown={(e) => {
-              if (
-                e.key === 'Enter' &&
-                e.ctrlKey &&
-                !pearlChat.isPending &&
-                prompt.trim()
-              ) {
-                handleGenerate();
-              }
-            }}
-          />
+        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg relative">
+          {uploadError && (
+            <div className="text-[10px] text-amber-300 mb-2">{uploadError}</div>
+          )}
+
+          {/* Uploaded files display */}
+          {uploadedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {uploadedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded border border-gray-700"
+                >
+                  <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  <span className="text-xs text-gray-300 truncate max-w-[120px]">
+                    {file.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteFile(index)}
+                    disabled={pearlChat.isPending}
+                    className="p-0.5 hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    aria-label={`Delete ${file.name}`}
+                  >
+                    <X className="w-3 h-3 text-gray-400 hover:text-gray-200" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="relative">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
+              className={`bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10 disabled:opacity-50 disabled:cursor-not-allowed`}
+              disabled={pearlChat.isPending}
+              onKeyDown={(e) => {
+                if (
+                  e.key === 'Enter' &&
+                  e.ctrlKey &&
+                  !pearlChat.isPending &&
+                  (prompt.trim() || uploadedFiles.length > 0)
+                ) {
+                  handleGenerate();
+                }
+              }}
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".html,.csv,.txt,image/png"
+                  multiple
+                  disabled={pearlChat.isPending}
+                  aria-label="Upload files"
+                  onChange={(e) => {
+                    handleFileChange(e.target.files);
+                    // reset so selecting the same file again triggers onChange
+                    e.currentTarget.value = '';
+                  }}
+                />
+                <Paperclip
+                  className={`w-5 h-5 transition-colors ${
+                    pearlChat.isPending
+                      ? 'text-gray-600 cursor-not-allowed'
+                      : uploadedFiles.length > 0
+                        ? 'text-gray-300'
+                        : 'text-gray-400 hover:text-gray-200'
+                  }`}
+                />
+              </label>
+            </div>
+          </div>
 
           {/* Generate Button - Inside the prompt container */}
           <div className="flex justify-end mt-2">
@@ -538,9 +690,13 @@ export function PearlChat() {
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={!prompt.trim() || pearlChat.isPending}
+                disabled={
+                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  pearlChat.isPending
+                }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  !prompt.trim() || pearlChat.isPending
+                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  pearlChat.isPending
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                 }`}
@@ -553,7 +709,8 @@ export function PearlChat() {
               </button>
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                  !prompt.trim() || pearlChat.isPending
+                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  pearlChat.isPending
                     ? 'text-gray-500/60'
                     : 'text-gray-400'
                 }`}

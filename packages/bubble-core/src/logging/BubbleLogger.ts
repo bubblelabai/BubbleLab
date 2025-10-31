@@ -220,7 +220,7 @@ export class BubbleLogger {
     // Calculate individual bubble execution time
     const individualExecutionTime = this.getBubbleExecutionTime(variableId);
 
-    const logMessage = `Bubble execution completed: ${bubbleName} in ${individualExecutionTime}ms ${result && typeof result === 'object' && 'data' in result ? ` - Result: ${JSON.stringify(result.data).substring(0, 200)}` : ''}`;
+    const logMessage = `Bubble execution completed: ${bubbleName} in ${individualExecutionTime}ms`;
     this.log(LogLevel.DEBUG, logMessage, {
       variableId,
       bubbleName,

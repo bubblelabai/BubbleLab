@@ -21,6 +21,7 @@ import {
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import { trackTokenUsage } from './token-tracking.js';
+import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 
 /**
  * Convert script ParsedBubbleWithInfo format (keyed by number) to credential format (keyed by string)
@@ -408,20 +409,22 @@ export async function executeBubbleFlow(
         data: result,
       };
     } catch (error) {
-      console.error('Execution error:', error);
+      const safeError = getSafeErrorMessage(error);
+      console.error('Execution error:', safeError);
       return {
         executionId: 0,
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: safeError,
         data: undefined,
       };
     }
   } catch (error) {
-    console.error('Execution error:', error);
+    const safeError = getSafeErrorMessage(error);
+    console.error('Execution error:', safeError);
     return {
       executionId: 0,
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: safeError,
       data: undefined,
     };
   }

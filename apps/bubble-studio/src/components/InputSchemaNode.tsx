@@ -45,12 +45,14 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
   const missingRequiredFields = useMemo(() => {
     return schemaFields
       .filter((field) => field.required)
-      .filter(
-        (field) =>
-          (executionInputs[field.name] === undefined ||
-            executionInputs[field.name] === '') &&
-          field.default === undefined
-      );
+      .filter((field) => {
+        const value = executionInputs[field.name];
+        const isEmpty =
+          value === undefined ||
+          value === '' ||
+          (Array.isArray(value) && value.length === 0);
+        return isEmpty && field.default === undefined;
+      });
   }, [schemaFields, executionInputs]);
 
   const hasMissingRequired = missingRequiredFields.length > 0;
@@ -60,10 +62,23 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   // Handle execute flow
   const handleExecuteFlow = async () => {
+    // Filter out empty arrays so defaults are used
+    const filteredInputs = Object.entries(executionInputs || {}).reduce(
+      (acc, [key, value]) => {
+        // Skip empty arrays - let them use default values
+        if (Array.isArray(value) && value.length === 0) {
+          return acc;
+        }
+        acc[key] = value;
+        return acc;
+      },
+      {} as Record<string, unknown>
+    );
+
     await runFlow({
       validateCode: true,
       updateCredentials: true,
-      inputs: executionInputs || {},
+      inputs: filteredInputs,
     });
   };
 
@@ -117,7 +132,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       </div>
 
       {/* Input fields (always expanded) */}
-      <div className="p-4 space-y-3">
+      <div className="p-4">
         <InputFieldsRenderer
           schemaFields={schemaFields}
           inputValues={executionInputs}

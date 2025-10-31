@@ -27,7 +27,12 @@ interface AllEventsViewProps {
   getEventColor: (event: StreamingLogEvent) => string;
   formatTimestamp: (timestamp: string) => string;
   makeLinksClickable: (text: string | null) => (string | React.ReactElement)[];
-  renderJson: (data: unknown) => React.ReactElement;
+  renderJson: React.ComponentType<{
+    data: unknown;
+    flowId?: number | null;
+    executionId?: number;
+    timestamp?: string;
+  }>;
   flowId?: number | null;
   events: StreamingLogEvent[]; // NEW: All events for filtering
   warningCount: number; // NEW: For badge
@@ -41,7 +46,7 @@ export default function AllEventsView({
   getEventColor,
   formatTimestamp,
   makeLinksClickable,
-  renderJson,
+  renderJson: JsonRenderer,
   flowId = null,
   events,
   warningCount,
@@ -275,7 +280,11 @@ export default function AllEventsView({
                       {event.additionalData &&
                         Object.keys(event.additionalData).length > 0 && (
                           <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                            {renderJson(event.additionalData)}
+                            <JsonRenderer
+                              data={event.additionalData}
+                              flowId={flowId}
+                              timestamp={event.timestamp}
+                            />
                           </pre>
                         )}
                     </div>
@@ -338,7 +347,11 @@ export default function AllEventsView({
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
                         <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                          {renderJson(event.additionalData)}
+                          <JsonRenderer
+                            data={event.additionalData}
+                            flowId={flowId}
+                            timestamp={event.timestamp}
+                          />
                         </pre>
                       )}
                   </div>
@@ -421,7 +434,11 @@ export default function AllEventsView({
                             Object.keys(selectedEvent.additionalData).length >
                               0 && (
                               <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
-                                {renderJson(selectedEvent.additionalData)}
+                                <JsonRenderer
+                                  data={selectedEvent.additionalData}
+                                  flowId={flowId}
+                                  timestamp={selectedEvent.timestamp}
+                                />
                               </pre>
                             )}
                         </div>
