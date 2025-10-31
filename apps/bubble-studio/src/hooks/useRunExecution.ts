@@ -62,7 +62,6 @@ export function useRunExecution(
   options: UseRunExecutionOptions = {}
 ): RunExecutionResult {
   const queryClient = useQueryClient();
-  const executionState = useExecutionStore(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
   const { data: currentFlow } = useBubbleFlow(flowId);
@@ -79,12 +78,11 @@ export function useRunExecution(
       }
 
       // Start execution in store
-      executionState.startExecution();
+      getExecutionStore(flowId).startExecution();
 
       useUIStore.getState().setConsolidatedPanelTab('output');
-
       const abortController = new AbortController();
-      executionState.setAbortController(abortController);
+      getExecutionStore(flowId).setAbortController(abortController);
 
       try {
         const response = await api.postStream(
@@ -100,7 +98,7 @@ export function useRunExecution(
           throw new Error('No response body for streaming');
         }
 
-        executionState.setConnected(true);
+        getExecutionStore(flowId).setConnected(true);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -117,8 +115,10 @@ export function useRunExecution(
             const eventData: StreamingLogEvent = JSON.parse(dataStr);
 
             // Update store with event
-            executionState.addEvent(eventData);
-            executionState.setCurrentLine(eventData.lineNumber || null);
+            getExecutionStore(flowId).addEvent(eventData);
+            getExecutionStore(flowId).setCurrentLine(
+              eventData.lineNumber || null
+            );
 
             // Handle different event types with the logic from App.tsx
             if (eventData.type === 'bubble_execution') {
@@ -131,10 +131,10 @@ export function useRunExecution(
                   const bubbleId = String(bubble.variableId);
 
                   // Track this as the last executing bubble in the store
-                  executionState.setLastExecutingBubble(bubbleId);
+                  getExecutionStore(flowId).setLastExecutingBubble(bubbleId);
 
                   // Mark bubble as running
-                  executionState.setBubbleRunning(bubbleId);
+                  getExecutionStore(flowId).setBubbleRunning(bubbleId);
                   selectBubbleInConsole(bubbleId);
 
                   // Highlight the line range in the editor (validate line numbers)
@@ -162,11 +162,14 @@ export function useRunExecution(
                 );
                 if (bubble) {
                   const bubbleId = String(bubble.variableId);
-                  executionState.setLastExecutingBubble(bubbleId);
+                  getExecutionStore(flowId).setLastExecutingBubble(bubbleId);
 
                   // Mark bubble as completed with execution time
                   const executionTimeMs = eventData.executionTime ?? 0;
-                  executionState.setBubbleCompleted(bubbleId, executionTimeMs);
+                  getExecutionStore(flowId).setBubbleCompleted(
+                    bubbleId,
+                    executionTimeMs
+                  );
                   console.log('Bubble completed:', bubbleId, executionTimeMs);
                 }
               }
@@ -177,38 +180,38 @@ export function useRunExecution(
               eventData.type === 'bubble_parameters_update' &&
               eventData.bubbleParameters
             ) {
-              executionState.clearHighlighting();
+              getExecutionStore(flowId).clearHighlighting();
               options.onBubbleParametersUpdate?.();
             }
 
             if (eventData.type === 'execution_complete') {
-              executionState.stopExecution();
+              getExecutionStore(flowId).stopExecution();
               options.onComplete?.();
               return true;
             }
 
             if (eventData.type === 'stream_complete') {
-              executionState.stopExecution();
+              getExecutionStore(flowId).stopExecution();
               options.onComplete?.();
               return true;
             }
 
             // Handle fatal errors
             if (eventData.type === 'fatal') {
-              executionState.setError(eventData.message);
-              executionState.stopExecution();
+              getExecutionStore(flowId).setError(eventData.message);
+              getExecutionStore(flowId).stopExecution();
 
               // First try to use the variableId from the error event
               if (eventData.variableId !== undefined) {
                 const bubbleId = String(eventData.variableId);
-                executionState.setBubbleError(bubbleId);
+                getExecutionStore(flowId).setBubbleError(bubbleId);
               } else {
                 // Fallback to last executing bubble from store
                 const storeState = getExecutionStore(flowId);
                 const lastExecutingBubble = storeState.lastExecutingBubble;
 
                 if (lastExecutingBubble) {
-                  executionState.setBubbleError(lastExecutingBubble);
+                  getExecutionStore(flowId).setBubbleError(lastExecutingBubble);
                 } else {
                   console.warn(
                     '❌ Fatal error occurred but no bubble ID available'
@@ -222,7 +225,7 @@ export function useRunExecution(
 
             // Handle non-fatal errors
             if (eventData.type === 'error') {
-              executionState.setError(eventData.message);
+              getExecutionStore(flowId).setError(eventData.message);
               options.onError?.(eventData.message, false);
               return false;
             }
@@ -272,17 +275,17 @@ export function useRunExecution(
         if (!abortController.signal.aborted) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
-          executionState.setError(errorMessage);
-          executionState.stopExecution();
+          getExecutionStore(flowId).setError(errorMessage);
+          getExecutionStore(flowId).stopExecution();
           options.onError?.(errorMessage, true);
         }
       } finally {
         if (!abortController.signal.aborted) {
-          executionState.stopExecution();
+          getExecutionStore(flowId).stopExecution();
         }
       }
     },
-    [flowId, executionState, currentFlow, options]
+    [flowId, currentFlow, options]
   );
 
   const runFlow = useCallback(
@@ -299,7 +302,7 @@ export function useRunExecution(
       } = options;
 
       // Start execution
-      executionState.startExecution();
+      getExecutionStore(flowId).startExecution();
 
       try {
         // 1. Validate inputs
@@ -308,7 +311,7 @@ export function useRunExecution(
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
           );
-          executionState.stopExecution();
+          getExecutionStore(flowId).stopExecution();
           return;
         }
 
@@ -318,23 +321,23 @@ export function useRunExecution(
           toast.error(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
           );
-          executionState.stopExecution();
+          getExecutionStore(flowId).stopExecution();
           return;
         }
 
         // 3. Update credentials if needed
         if (
           updateCredentials &&
-          Object.keys(executionState.pendingCredentials).length > 0
+          Object.keys(getExecutionStore(flowId).pendingCredentials).length > 0
         ) {
           try {
             await updateBubbleFlowMutation.mutateAsync({
               flowId,
-              credentials: executionState.pendingCredentials,
+              credentials: getExecutionStore(flowId).pendingCredentials,
             });
           } catch {
             toast.error('Failed to update credentials');
-            executionState.stopExecution();
+            getExecutionStore(flowId).stopExecution();
             return;
           }
         }
@@ -345,23 +348,23 @@ export function useRunExecution(
             const isValid = await validateCodeMutation.mutateAsync({
               code: editor.getCode(),
               flowId: flowId,
-              credentials: executionState.pendingCredentials,
+              credentials: getExecutionStore(flowId).pendingCredentials,
               syncInputsWithFlow: true,
             });
             if (!isValid) {
-              executionState.stopExecution();
+              getExecutionStore(flowId).stopExecution();
               return;
             }
           } catch {
             toast.error('Code validation failed');
-            executionState.stopExecution();
+            getExecutionStore(flowId).stopExecution();
             return;
           }
         }
 
         // 6. Clean up inputs
         const cleanedInputs = cleanupFlattenedKeys(
-          inputs || executionState.executionInputs
+          inputs || getExecutionStore(flowId).executionInputs
         );
 
         // 7. Execute with streaming
@@ -376,14 +379,13 @@ export function useRunExecution(
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         toast.error(`Execution failed: ${errorMessage}`);
-        executionState.stopExecution();
+        getExecutionStore(flowId).stopExecution();
         throw error;
       }
     },
     [
       flowId,
       currentFlow,
-      executionState,
       validateCodeMutation,
       updateBubbleFlowMutation,
       executeWithStreaming,
@@ -396,6 +398,9 @@ export function useRunExecution(
   const validateInputs = (
     currentFlow: BubbleFlowDetailsResponse | undefined
   ) => {
+    if (!flowId) {
+      return { isValid: false, reasons: ['No flow selected'] };
+    }
     const reasons: string[] = [];
 
     if (!currentFlow) {
@@ -414,8 +419,8 @@ export function useRunExecution(
 
       requiredFields.forEach((fieldName: string) => {
         if (
-          executionState.executionInputs[fieldName] === undefined ||
-          executionState.executionInputs[fieldName] === ''
+          getExecutionStore(flowId).executionInputs[fieldName] === undefined ||
+          getExecutionStore(flowId).executionInputs[fieldName] === ''
         ) {
           reasons.push(`Missing required input: ${fieldName}`);
         }
@@ -431,7 +436,7 @@ export function useRunExecution(
   const validateCredentials = (currentFlow: BubbleFlowDetailsResponse) => {
     const reasons: string[] = [];
 
-    if (!currentFlow) {
+    if (!currentFlow || !flowId) {
       reasons.push('No flow selected');
       return { isValid: false, reasons };
     }
@@ -446,7 +451,7 @@ export function useRunExecution(
         if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
 
         const selectedForBubble =
-          executionState.pendingCredentials[bubbleKey] || {};
+          getExecutionStore(flowId).pendingCredentials[bubbleKey] || {};
         const selectedId = selectedForBubble[credType];
 
         if (selectedId === undefined || selectedId === null) {
@@ -459,11 +464,15 @@ export function useRunExecution(
   };
 
   const canExecute = () => {
+    if (!flowId) {
+      return { isValid: false, reasons: ['No flow selected'] };
+    }
     const reasons: string[] = [];
 
     if (!currentFlow) reasons.push('No flow selected');
-    if (executionState.isRunning) reasons.push('Already executing');
-    if (executionState.isValidating) reasons.push('Currently validating');
+    if (getExecutionStore(flowId).isRunning) reasons.push('Already executing');
+    if (getExecutionStore(flowId).isValidating)
+      reasons.push('Currently validating');
 
     const inputValidation = validateInputs(currentFlow);
     if (!inputValidation.isValid) {
@@ -502,7 +511,7 @@ export function useRunExecution(
 
   return {
     runFlow,
-    isRunning: executionState.isRunning,
+    isRunning: getExecutionStore(flowId || -1).isRunning,
     canExecute,
     executionStatus,
   };
