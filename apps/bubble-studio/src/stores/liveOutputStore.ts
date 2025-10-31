@@ -1,4 +1,21 @@
 import { create } from 'zustand';
+import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
+import { getExecutionStore } from './executionStore';
+import { useUIStore } from './uiStore';
+
+/**
+ * Ordered item type for event grouping
+ * - group: Multiple events from same bubble (needs range slider)
+ * - global: Single global event (no grouping)
+ */
+export type OrderedItem =
+  | {
+      kind: 'group';
+      name: string;
+      events: StreamingLogEvent[];
+      firstTs: number;
+    }
+  | { kind: 'global'; event: StreamingLogEvent; firstTs: number };
 
 /**
  * Discriminated union type for tab selection in LiveOutput
@@ -47,6 +64,14 @@ interface FlowLiveOutputState {
   setSelectedEventIndex: (variableId: string, index: number) => void;
 
   /**
+   * Select a bubble tab by its variableId (programmatic selection)
+   * Finds the bubble group and sets the tab to that item
+   * @param flowId - The flow ID to get execution events from
+   * @param variableId - The variableId of the bubble to select (e.g., 'var_123')
+   */
+  selectBubbleInConsole: (variableId: string) => void;
+
+  /**
    * Reset state to initial values
    * Called on flow execution start or when cleaning up
    */
@@ -61,16 +86,71 @@ const emptyState: FlowLiveOutputState = {
   selectedEventIndexByVariableId: {},
   setSelectedTab: () => {},
   setSelectedEventIndex: () => {},
+  selectBubbleInConsole: () => {},
   reset: () => {},
 };
+
+/**
+ * Helper function to get ordered items from execution events
+ * Groups events by variableId and returns ordered list
+ */
+function getOrderedItemsFromEvents(events: StreamingLogEvent[]): OrderedItem[] {
+  // Group events by variableId (fallback to bubbleName, then 'global')
+  const byVariableId: Record<string, StreamingLogEvent[]> = events.reduce(
+    (acc, ev) => {
+      // Check for variableId in multiple places:
+      // 1. Direct variableId field
+      // 2. additionalData.variableId (for info logs and other events)
+      // 3. bubbleName as fallback
+      const directVariableId = (ev as { variableId?: number }).variableId;
+      const additionalDataVariableId = (
+        ev.additionalData as { variableId?: number }
+      )?.variableId;
+      const bubbleName = (ev as { bubbleName?: string }).bubbleName;
+
+      const key = String(
+        directVariableId ?? additionalDataVariableId ?? bubbleName ?? 'global'
+      );
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(ev);
+      return acc;
+    },
+    {} as Record<string, StreamingLogEvent[]>
+  );
+
+  const globalEvents = byVariableId['global'] ?? [];
+  const ts = (e?: StreamingLogEvent) =>
+    e ? new Date(e.timestamp).getTime() : 0;
+  const variableEntries = Object.entries(byVariableId)
+    .filter(([k]) => k !== 'global')
+    .sort(([, a], [, b]) => ts(a[0]) - ts(b[0]));
+
+  // Build unified ordered list: groups (by first event) + each global event
+  const orderedItems: OrderedItem[] = [];
+  for (const [name, evs] of variableEntries) {
+    if (evs.length)
+      orderedItems.push({
+        kind: 'group',
+        name,
+        events: evs,
+        firstTs: ts(evs[0]),
+      });
+  }
+  for (const ev of globalEvents) {
+    orderedItems.push({ kind: 'global', event: ev, firstTs: ts(ev) });
+  }
+  orderedItems.sort((a, b) => a.firstTs - b.firstTs);
+
+  return orderedItems;
+}
 
 /**
  * Factory function to create a new LiveOutput store instance
  * @param _flowId - Flow ID (unused but kept for consistency with factory pattern)
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createLiveOutputStore(_flowId: number) {
-  return create<FlowLiveOutputState>((set) => ({
+function createLiveOutputStore(flowId: number) {
+  return create<FlowLiveOutputState>((set, get) => ({
     // Initial state
     selectedTab: { kind: 'warnings' },
     selectedEventIndexByVariableId: {},
@@ -85,6 +165,27 @@ function createLiveOutputStore(_flowId: number) {
           [variableId]: index,
         },
       })),
+
+    selectBubbleInConsole: (variableId) => {
+      // Get execution events from executionStore
+      const executionState = getExecutionStore(flowId);
+      const events = executionState.events || [];
+
+      // Get ordered items
+      const orderedItems = getOrderedItemsFromEvents(events);
+
+      // Find the index of the bubble group
+      const index = orderedItems.findIndex(
+        (item) => item.kind === 'group' && item.name === variableId
+      );
+
+      if (index !== -1) {
+        // Open the output panel
+        useUIStore.getState().setConsolidatedPanelTab('output');
+        // Set the selected tab
+        get().setSelectedTab({ kind: 'item', index });
+      }
+    },
 
     reset: () =>
       set({

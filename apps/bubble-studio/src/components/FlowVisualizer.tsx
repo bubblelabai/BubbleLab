@@ -18,13 +18,13 @@ import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { useExecutionStore } from '../stores/executionStore';
+import { useExecutionStore, getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
-import { useLiveOutput } from '../hooks/useLiveOutput';
 import CronScheduleNode from './CronScheduleNode';
 import { WebhookURLDisplay } from './WebhookURLDisplay';
+import { getLiveOutputStore } from '@/stores/liveOutputStore';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -79,7 +79,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
   // Get all data from global stores
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
-  const { showEditor, showEditorPanel } = useUIStore();
   const { hasUnsavedChanges, setExecutionHighlight } = useEditor(flowId);
   // Select only needed execution store actions/state to avoid re-renders from events
   // Note: Individual nodes subscribe to their own state - FlowVisualizer only needs minimal state
@@ -90,14 +89,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   );
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
-  const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
-
-  // Get LiveOutput hook for syncing console panel tab selection
-  const { selectBubbleInConsole } = useLiveOutput(flowId);
-
-  // Get execution inputs for initial defaults setup (using selector to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
-
+  // Subscribe to expandedRootIds and suppressedRootIds so nodes/edges sync when toggled
+  const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
+  const suppressedRootIds = useExecutionStore(
+    flowId,
+    (s) => s.suppressedRootIds
+  );
   // Derive all state from global stores
   const bubbleParameters = currentFlow?.bubbleParameters || {};
   const requiredCredentials = currentFlow?.requiredCredentials || {};
@@ -105,10 +103,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const inputsSchema = currentFlow?.inputSchema
     ? JSON.stringify(currentFlow.inputSchema)
     : undefined;
-
-  // Local UI state for expanded/collapsed nodes
-  const [expandedRootIds, setExpandedRootIds] = useState<string[]>([]);
-  const [suppressedRootIds, setSuppressedRootIds] = useState<string[]>([]);
 
   // Track if the initial view has been set to avoid auto-repositioning
   const hasSetInitialView = useRef(false);
@@ -155,8 +149,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     }
   }, [currentFlow?.id, currentFlow?.defaultInputs, executionInputs, setInputs]);
 
-  // Auto-expand roots when execution starts
+  // Auto-expand roots when execution starts (but don't auto-collapse when execution stops)
+  // This prevents flicker when execution completes - sub-bubbles stay visible
   useEffect(() => {
+    const executionStore = getExecutionStore(currentFlow?.id || flowId);
+    const currentExpanded = executionStore.expandedRootIds;
+
     if (isExecuting) {
       const allRoots: string[] = [];
       bubbleEntries.forEach(([key, bubbleData]) => {
@@ -168,10 +166,21 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           allRoots.push(nodeId);
         }
       });
-      setExpandedRootIds(allRoots);
+      // Only update if the roots are different
+      const rootsEqual =
+        allRoots.length === currentExpanded.length &&
+        allRoots.every((id) => currentExpanded.includes(id)) &&
+        currentExpanded.every((id) => allRoots.includes(id));
+      if (!rootsEqual) {
+        executionStore.setExpandedRootIds(allRoots);
+      }
     } else {
-      setExpandedRootIds([]);
+      // Only clear if not already empty
+      if (currentExpanded.length > 0) {
+        executionStore.setExpandedRootIds([]);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExecuting, bubbleEntries]);
 
   const { dependencyParentMap, dependencyCanonicalIdMap } = useMemo(() => {
@@ -257,26 +266,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     return visible;
   }, [highlightedBubble, dependencyParentMap, dependencyCanonicalIdMap]);
 
-  const toggleRootVisibility = useCallback(
-    (nodeId: string) => {
-      const isExpanded = expandedRootIds.includes(nodeId);
-      if (isExpanded) {
-        setExpandedRootIds((prev: string[]) =>
-          prev.filter((id: string) => id !== nodeId)
-        );
-        if (!suppressedRootIds.includes(nodeId)) {
-          setSuppressedRootIds((prev: string[]) => [...prev, nodeId]);
-        }
-      } else {
-        setExpandedRootIds((prev: string[]) => [...prev, nodeId]);
-        setSuppressedRootIds((prev: string[]) =>
-          prev.filter((id: string) => id !== nodeId)
-        );
-      }
-    },
-    [expandedRootIds, suppressedRootIds]
-  );
-
   // Helper function to create nodes from dependency graph
   const createNodesFromDependencyGraph = useCallback(
     (
@@ -289,7 +278,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       siblingIndex: number = 0,
       siblingsTotal: number = 1,
       path: string = '',
-      rootExpanded: boolean = false,
       rootId: string = ''
     ) => {
       const verticalSpacing = 220;
@@ -322,10 +310,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       );
 
       const isNodeAutoVisible = autoVisibleNodes.has(nodeId);
-      const isRootSuppressed = suppressedRootIds.includes(rootId);
+      // Read execution state directly from store (BubbleNode subscribes for UI updates)
+      const executionState = getExecutionStore(currentFlow?.id || flowId);
+      const rootExpanded = executionState.expandedRootIds.includes(rootId);
+      const isRootSuppressed =
+        executionState.suppressedRootIds.includes(rootId);
+      const isExecutingLocal = executionState.isRunning;
       const shouldRender =
-        isExecuting ||
-        ((rootExpanded || (isExecuting && isNodeAutoVisible)) &&
+        isExecutingLocal ||
+        ((rootExpanded || (isExecutingLocal && isNodeAutoVisible)) &&
           !isRootSuppressed);
 
       if (!shouldRender) {
@@ -368,10 +361,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       nodes.push(node);
 
       if (parentNodeId && nodes.some((n) => n.id === parentNodeId)) {
+        // Read highlightedBubble directly from store (already in dependency array for reactivity)
+        const currentHighlighted = getExecutionStore(
+          currentFlow?.id || flowId
+        ).highlightedBubble;
         const isEdgeHighlighted =
-          highlightedBubble === parentNodeId ||
-          highlightedBubble === nodeId ||
-          highlightedBubble === String(dependencyNode.variableId);
+          currentHighlighted === parentNodeId ||
+          currentHighlighted === nodeId ||
+          currentHighlighted === String(dependencyNode.variableId);
         edges.push({
           id: `${parentNodeId}-${nodeId}`,
           source: parentNodeId,
@@ -398,20 +395,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           idx,
           arr.length,
           path ? `${path}-${idx}` : `${idx}`,
-          rootExpanded,
           rootId
         );
       });
     },
-    [
-      highlightedBubble,
-      autoVisibleNodes,
-      isExecuting,
-      highlightBubble,
-      suppressedRootIds,
-      currentFlow,
-      flowId,
-    ]
+    [autoVisibleNodes, currentFlow, flowId]
   );
 
   // Convert bubbles to React Flow nodes and edges
@@ -520,9 +508,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         ? String(bubble.variableId)
         : String(key);
 
-      const rootExpanded = expandedRootIds.includes(nodeId);
-      const rootSuppressed = suppressedRootIds.includes(nodeId);
-
       // Use persisted position if available, otherwise use initial position
       const persistedPosition = persistedPositions.current.get(nodeId);
       const initialPosition = {
@@ -564,7 +549,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             // BubbleNode will handle store updates
           },
           onBubbleClick: () => {
-            showEditorPanel();
+            useUIStore.getState().showEditorPanel();
             setExecutionHighlight({
               startLine: bubble.location.startLine,
               endLine: bubble.location.endLine,
@@ -575,8 +560,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             const param = bubble.parameters.find((p) => p.name === paramName);
             if (param && param.location) {
               // Open editor if not visible
-              if (!showEditor) {
-                showEditorPanel();
+              if (!useUIStore.getState().showEditor) {
+                useUIStore.getState().showEditorPanel();
               }
 
               // Highlight the parameter's location in the editor
@@ -587,10 +572,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             }
           },
           hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
-          areSubBubblesVisible: rootExpanded && !rootSuppressed,
-          onToggleSubBubbles: bubble.dependencyGraph?.dependencies?.length
-            ? () => toggleRootVisibility(nodeId)
-            : undefined,
         },
       };
       nodes.push(node);
@@ -608,7 +589,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             idx,
             arr.length,
             `${idx}`,
-            rootExpanded,
             nodeId
           );
         });
@@ -664,9 +644,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         nodes.some((n) => n.id === sourceNodeId) &&
         nodes.some((n) => n.id === targetNodeId)
       ) {
+        // Read highlightedBubble directly from store (nodes/edges sync happens when needed)
+        const currentHighlighted = getExecutionStore(
+          currentFlow?.id || flowId
+        ).highlightedBubble;
         const isSequentialEdgeHighlighted =
-          highlightedBubble === sourceNodeId ||
-          highlightedBubble === targetNodeId;
+          currentHighlighted === sourceNodeId ||
+          currentHighlighted === targetNodeId;
 
         edges.push({
           id: `sequential-${sourceNodeId}-${targetNodeId}`,
@@ -688,17 +672,68 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     return { initialNodes: nodes, initialEdges: edges };
   };
 
+  // Track previous expandedRootIds and currentFlow to detect changes
+  const prevExpandedRootIdsRef = useRef<string[]>([]);
+  const prevFlowIdRef = useRef<number | undefined>(undefined);
+
   // Sync nodes and edges state with computed values, preserving positions
   useEffect(() => {
     const { initialNodes, initialEdges } = initialNodesAndEdges();
+
+    const flowChanged = prevFlowIdRef.current !== currentFlow?.id;
+    const expandedChanged =
+      prevExpandedRootIdsRef.current.length !== expandedRootIds.length ||
+      !prevExpandedRootIdsRef.current.every((id) =>
+        expandedRootIds.includes(id)
+      ) ||
+      !expandedRootIds.every((id) =>
+        prevExpandedRootIdsRef.current.includes(id)
+      );
+
     setNodes((currentNodes) => {
       // If this is the first time we have nodes, just set them
-
-      if (currentNodes.length === 0) {
+      if (currentNodes.length === 0 || flowChanged) {
+        prevExpandedRootIdsRef.current = expandedRootIds;
+        prevFlowIdRef.current = currentFlow?.id;
         return initialNodes;
       }
 
-      // Otherwise, merge positions from current nodes
+      // If only expandedRootIds changed (not flow structure), use incremental updates
+      if (expandedChanged && !flowChanged && currentFlow?.id) {
+        const currentNodeIds = new Set(currentNodes.map((n) => n.id));
+        const initialNodeIds = new Set(initialNodes.map((n) => n.id));
+
+        // Find nodes to add and remove
+        const nodesToAdd = initialNodes.filter(
+          (n) => !currentNodeIds.has(n.id)
+        );
+        const nodesToRemove = currentNodes.filter(
+          (n) => !initialNodeIds.has(n.id)
+        );
+
+        // Build node changes for incremental update
+        const nodeChanges: NodeChange[] = [
+          ...nodesToRemove.map(
+            (n) => ({ type: 'remove', id: n.id }) as NodeChange
+          ),
+          ...nodesToAdd.map((n) => {
+            const existingPos = persistedPositions.current.get(n.id);
+            return {
+              type: 'add',
+              item: { ...n, position: existingPos || n.position },
+            } as NodeChange;
+          }),
+        ];
+
+        prevExpandedRootIdsRef.current = expandedRootIds;
+
+        if (nodeChanges.length > 0) {
+          return applyNodeChanges(nodeChanges, currentNodes);
+        }
+        return currentNodes;
+      }
+
+      // For flow structure changes, merge positions and update
       const updatedNodes = initialNodes.map((initialNode) => {
         const currentNode = currentNodes.find((n) => n.id === initialNode.id);
         if (currentNode) {
@@ -708,10 +743,46 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return initialNode;
       });
 
+      prevExpandedRootIdsRef.current = expandedRootIds;
+      prevFlowIdRef.current = currentFlow?.id;
       return updatedNodes;
     });
-    setEdges(initialEdges);
-  }, [currentFlow, expandedRootIds, suppressedRootIds]);
+
+    // For edges, only update if nodes changed
+    setEdges((currentEdges) => {
+      if (flowChanged) {
+        prevExpandedRootIdsRef.current = expandedRootIds;
+        prevFlowIdRef.current = currentFlow?.id;
+        return initialEdges;
+      }
+
+      const currentEdgeIds = new Set(currentEdges.map((e) => e.id));
+      const initialEdgeIds = new Set(initialEdges.map((e) => e.id));
+
+      // If only expandedRootIds changed, use incremental edge updates
+      if (expandedChanged && !flowChanged && currentFlow?.id) {
+        const edgesToAdd = initialEdges.filter(
+          (e) => !currentEdgeIds.has(e.id)
+        );
+        const edgesToRemove = currentEdges.filter(
+          (e) => !initialEdgeIds.has(e.id)
+        );
+
+        if (edgesToAdd.length > 0 || edgesToRemove.length > 0) {
+          const edgeChanges: EdgeChange[] = [
+            ...edgesToRemove.map(
+              (e) => ({ type: 'remove', id: e.id }) as EdgeChange
+            ),
+            ...edgesToAdd.map((e) => ({ type: 'add', item: e }) as EdgeChange),
+          ];
+          return applyEdgeChanges(edgeChanges, currentEdges);
+        }
+        return currentEdges;
+      }
+
+      return currentEdges;
+    });
+  }, [currentFlow, expandedRootIds]);
 
   // Reset view initialization flag when flowId changes
   useEffect(() => {
@@ -759,7 +830,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       lastCenteredBubbleIdRef.current = null;
       return;
     }
-    if (!runningBubbles || runningBubbles.size === 0) return;
+    // Early return if no running bubbles to prevent unnecessary renders
+    if (!runningBubbles || runningBubbles.size === 0) {
+      lastCenteredBubbleIdRef.current = null;
+      return;
+    }
 
     // Build a map of main bubbleId -> startLine for ordering
     const idToStartLine = new Map<string, number>();
@@ -912,11 +987,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           // When a bubble node is clicked, select its tab in the console panel
           if (node.type === 'bubbleNode') {
             const variableId = node.id;
-            selectBubbleInConsole(variableId);
+            getLiveOutputStore(flowId)
+              ?.getState()
+              .selectBubbleInConsole(variableId);
           }
         }}
         onPaneClick={() => {
-          highlightBubble(null);
+          getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
         }}
         proOptions={proOptions}
         minZoom={0.1}
