@@ -57,7 +57,7 @@ export const JsonRenderer = memo(function JsonRenderer({
     jsonCache.set(cacheKey, highlighted);
 
     return highlighted;
-  }, [flowId, executionId, timestamp]);
+  }, [data, flowId, executionId, timestamp]); // Include data in dependencies!
 
   return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
 });

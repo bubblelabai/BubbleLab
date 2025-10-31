@@ -178,10 +178,18 @@ function getCacheKey(
   context?: { flowId?: number | null; executionId?: number; timestamp?: string }
 ): string {
   // If context is provided, use it for better cache locality
-  // Format: "flowId-executionId-hash" (e.g., "123-456-abc123")
-  // This helps when same JSON appears in different executions (unlikely but possible)
+  // Format: "flowId-timestamp-hash" where hash is a simple hash of jsonString
+  // This ensures different JSON content gets different cache keys even with same timestamp
   if (context?.flowId != null && context.timestamp != null) {
-    return `${context.flowId}-${context.timestamp}`;
+    // Simple hash function for JSON string (djb2 hash)
+    let hash = 5381;
+    for (let i = 0; i < jsonString.length; i++) {
+      hash = (hash << 5) + hash + jsonString.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    // Use absolute value and convert to hex for shorter key
+    const hashStr = Math.abs(hash).toString(36);
+    return `${context.flowId}-${context.timestamp}-${hashStr}`;
   }
 
   // Fallback to just hash (works everywhere, backwards compatible)
