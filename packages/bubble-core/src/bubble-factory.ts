@@ -634,7 +634,6 @@ import {
   LinkedInTool,
 
   // Types and utilities
-  BubbleFactory,
   type BubbleClassWithMetadata,
   type BubbleContext,
   type BubbleTriggerEvent,

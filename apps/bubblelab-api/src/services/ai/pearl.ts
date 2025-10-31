@@ -86,7 +86,7 @@ Rejection (when infeasible):
 
 CRITICAL CODE GENERATION RULES:
 1. Generate COMPLETE workflow code including:
-   - All necessary imports from @bubblelab/bubble-core
+   - All necessary imports from @bubblelab/bubble-core, and any additional bubble imports if needed
    - A class that extends BubbleFlow<'webhook/http'> or BubbleFlow<'cron/schedule'> depending on the user's request or whether the task is suitable for a cron schedule.
    - A handle() method with the workflow logic
    - Proper error handling and return values
