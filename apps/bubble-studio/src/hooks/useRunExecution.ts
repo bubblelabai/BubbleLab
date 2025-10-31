@@ -123,10 +123,21 @@ export function useRunExecution(
             // Handle different event types with the logic from App.tsx
             if (eventData.type === 'bubble_execution') {
               if (eventData.variableId) {
+                // Always use latest flow from React Query cache to avoid stale closure data
+                // This is critical after validation updates bubbleParameters
+                const latestFlow =
+                  queryClient.getQueryData<BubbleFlowDetailsResponse>([
+                    'bubbleFlow',
+                    flowId,
+                  ]);
+
                 const bubble = findBubbleByVariableId(
-                  currentFlow?.bubbleParameters || {},
+                  latestFlow?.bubbleParameters ||
+                    currentFlow?.bubbleParameters ||
+                    {},
                   eventData.variableId
                 );
+
                 if (bubble) {
                   const bubbleId = String(bubble.variableId);
 
@@ -156,10 +167,20 @@ export function useRunExecution(
 
             if (eventData.type === 'bubble_execution_complete') {
               if (eventData.variableId) {
+                // Always use latest flow from React Query cache to avoid stale closure data
+                const latestFlow =
+                  queryClient.getQueryData<BubbleFlowDetailsResponse>([
+                    'bubbleFlow',
+                    flowId,
+                  ]);
+
                 const bubble = findBubbleByVariableId(
-                  currentFlow?.bubbleParameters || {},
+                  latestFlow?.bubbleParameters ||
+                    currentFlow?.bubbleParameters ||
+                    {},
                   eventData.variableId
                 );
+
                 if (bubble) {
                   const bubbleId = String(bubble.variableId);
                   getExecutionStore(flowId).setLastExecutingBubble(bubbleId);
@@ -285,7 +306,14 @@ export function useRunExecution(
         }
       }
     },
-    [flowId, currentFlow, options]
+    [
+      flowId,
+      currentFlow,
+      options,
+      queryClient,
+      setExecutionHighlight,
+      selectBubbleInConsole,
+    ]
   );
 
   const runFlow = useCallback(
@@ -355,6 +383,9 @@ export function useRunExecution(
               getExecutionStore(flowId).stopExecution();
               return;
             }
+            // After validation, bubbleParameters have changed - clear old execution state
+            getExecutionStore(flowId).clearHighlighting();
+            getExecutionStore(flowId).setBubbleError(null);
           } catch {
             toast.error('Code validation failed');
             getExecutionStore(flowId).stopExecution();
