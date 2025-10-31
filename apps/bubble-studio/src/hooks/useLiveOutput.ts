@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import {
   useLiveOutputStore,
@@ -8,7 +7,6 @@ import {
 import { getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from './useBubbleFlow';
 import { getVariableNameForDisplay } from '../utils/bubbleUtils';
-import { useUIStore } from '@/stores/uiStore';
 
 /**
  * Ordered item type for event grouping

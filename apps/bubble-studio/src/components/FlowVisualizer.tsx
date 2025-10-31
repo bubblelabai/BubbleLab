@@ -90,12 +90,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
-  // Subscribe to expandedRootIds and suppressedRootIds so nodes/edges sync when toggled
+  // Subscribe to expandedRootIds so nodes/edges sync when toggled
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
-  const suppressedRootIds = useExecutionStore(
-    flowId,
-    (s) => s.suppressedRootIds
-  );
   // Derive all state from global stores
   const bubbleParameters = currentFlow?.bubbleParameters || {};
   const requiredCredentials = currentFlow?.requiredCredentials || {};

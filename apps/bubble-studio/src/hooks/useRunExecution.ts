@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
+import { getExecutionStore } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
