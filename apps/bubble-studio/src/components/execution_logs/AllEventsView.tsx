@@ -295,26 +295,14 @@ export default function AllEventsView({
                       {getEventIcon(event)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span
-                          className={`text-sm font-medium ${getEventColor(event)}`}
-                        >
-                          {event.type
-                            .replace('_', ' ')
-                            .replace(/\b\w/g, (l) => l.toUpperCase())}
-                        </span>
-                        {event.lineNumber && (
-                          <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                            Line {event.lineNumber}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-500 ml-auto">
+                      <div className="flex items-start justify-between gap-3 min-w-0">
+                        <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                          {makeLinksClickable(event.message)}
+                        </p>
+                        <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                           {formatTimestamp(event.timestamp)}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-300 break-words">
-                        {makeLinksClickable(event.message)}
-                      </p>
                       {event.additionalData &&
                         Object.keys(event.additionalData).length > 0 && (
                           <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
@@ -362,26 +350,14 @@ export default function AllEventsView({
                     {getEventIcon(event)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span
-                        className={`text-sm font-medium ${getEventColor(event)}`}
-                      >
-                        {event.type
-                          .replace('_', ' ')
-                          .replace(/\b\w/g, (l) => l.toUpperCase())}
-                      </span>
-                      {event.lineNumber && (
-                        <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                          Line {event.lineNumber}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500 ml-auto">
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                        {makeLinksClickable(event.message)}
+                      </p>
+                      <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                         {formatTimestamp(event.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-300 break-words">
-                      {makeLinksClickable(event.message)}
-                    </p>
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
                         <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
@@ -406,34 +382,22 @@ export default function AllEventsView({
               const selectedEvent = evs[selectedIndex];
               return (
                 <div className="rounded-lg border border-[#30363d] bg-[#0f1115]/60">
-                  <div className="flex items-center gap-3 px-3 py-2 border-b border-[#30363d]">
-                    <div className="text-sm text-gray-200 font-mono">
-                      Bubble:{' '}
-                      <span className="text-blue-300">
-                        {getVariableNameForDisplay(
-                          varId,
-                          evs,
-                          bubbleParameters
-                        )}
-                      </span>
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <label className="text-xs text-gray-400">Output</label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={Math.max(0, evs.length - 1)}
-                        value={selectedIndex}
-                        onChange={(e) =>
-                          setSelectedEventIndex(varId, Number(e.target.value))
-                        }
-                        className="w-40"
-                        aria-label={`Select output for variable ${varId}`}
-                      />
-                      <span className="text-xs text-gray-400 font-mono">
-                        {selectedIndex + 1}/{evs.length}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-[#30363d]">
+                    <label className="text-xs text-gray-400">Output</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, evs.length - 1)}
+                      value={selectedIndex}
+                      onChange={(e) =>
+                        setSelectedEventIndex(varId, Number(e.target.value))
+                      }
+                      className="w-40"
+                      aria-label={`Select output for variable ${varId}`}
+                    />
+                    <span className="text-xs text-gray-400 font-mono">
+                      {selectedIndex + 1}/{evs.length}
+                    </span>
                   </div>
                   {selectedEvent ? (
                     <div className="p-3">
@@ -448,26 +412,14 @@ export default function AllEventsView({
                           {getEventIcon(selectedEvent)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <span
-                              className={`text-sm font-medium ${getEventColor(selectedEvent)}`}
-                            >
-                              {selectedEvent.type
-                                .replace('_', ' ')
-                                .replace(/\b\w/g, (l) => l.toUpperCase())}
-                            </span>
-                            {selectedEvent.lineNumber && (
-                              <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                                Line {selectedEvent.lineNumber}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500 ml-auto">
+                          <div className="flex items-start justify-between gap-3 min-w-0">
+                            <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                              {makeLinksClickable(selectedEvent.message)}
+                            </p>
+                            <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                               {formatTimestamp(selectedEvent.timestamp)}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-300 break-words">
-                            {makeLinksClickable(selectedEvent.message)}
-                          </p>
                           {selectedEvent.additionalData &&
                             Object.keys(selectedEvent.additionalData).length >
                               0 && (
