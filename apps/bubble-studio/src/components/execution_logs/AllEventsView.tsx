@@ -72,14 +72,21 @@ export default function AllEventsView({
     (e) => e.type === 'info' || e.type === 'debug' || e.type === 'trace'
   ).length;
 
-  // Generate tabs: Warnings, Errors, Info (fixed) + dynamic tabs from orderedItems
-  const tabs: Array<{
+  // Generate alert tabs (Warnings, Errors, Info)
+  const alertTabs: Array<{
     id: string;
     label: string;
     badge?: number;
     icon: React.ReactElement;
     type: TabType;
   }> = [
+    {
+      id: 'info',
+      label: 'Info',
+      badge: infoCount,
+      icon: <InformationCircleIcon className="h-4 w-4 text-blue-300" />,
+      type: { kind: 'info' },
+    },
     {
       id: 'warnings',
       label: 'Warnings',
@@ -94,23 +101,23 @@ export default function AllEventsView({
       icon: <ExclamationCircleIcon className="h-4 w-4 text-red-400" />,
       type: { kind: 'errors' },
     },
-    {
-      id: 'info',
-      label: 'Info',
-      badge: infoCount,
-      icon: <InformationCircleIcon className="h-4 w-4 text-blue-300" />,
-      type: { kind: 'info' },
-    },
   ];
 
-  // Add dynamic tabs from orderedItems
+  // Generate step tabs (dynamic from orderedItems)
+  const stepTabs: Array<{
+    id: string;
+    label: string;
+    badge?: number;
+    icon: React.ReactElement;
+    type: TabType;
+  }> = [];
+
   orderedItems.forEach((item, index) => {
     if (item.kind === 'group') {
-      // Bubble group
       const varId = item.name;
       const bubbleName = (item.events[0] as { bubbleName?: string }).bubbleName;
       const logo = findLogoForBubble({ bubbleName: bubbleName });
-      tabs.push({
+      stepTabs.push({
         id: `bubble-${varId}`,
         label: getVariableNameForDisplay(varId, item.events, bubbleParameters),
         badge: item.events.length,
@@ -138,13 +145,16 @@ export default function AllEventsView({
     return true;
   };
 
-  // Auto-scroll to selected tab when it changes
+  // Auto-scroll to selected tab when it changes (applies to either row)
   useEffect(() => {
     if (!tabsRef.current) return;
 
     // Find the selected tab button
     const tabContainer = tabsRef.current;
-    const selectedTabIndex = tabs.findIndex((tab) => isTabSelected(tab.type));
+    const allTabs = [...alertTabs, ...stepTabs];
+    const selectedTabIndex = allTabs.findIndex((tab) =>
+      isTabSelected(tab.type)
+    );
 
     if (selectedTabIndex === -1) return;
 
@@ -165,18 +175,46 @@ export default function AllEventsView({
         behavior: 'smooth',
       });
     }
-  }, [selectedTab, tabs]);
+  }, [selectedTab]);
 
   return (
     <div className="flex flex-col h-full">
-      {/* Horizontal Scrollable Tab Bar */}
+      {/* Alerts Row: Warnings / Errors / Info (full-width tabs) */}
       <div
         ref={tabsRef}
-        className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115] overflow-x-auto thin-scrollbar"
-        style={{ scrollBehavior: 'smooth' }}
+        className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115]"
       >
+        <div className="flex">
+          {alertTabs.map((tab) => {
+            const isSelected = isTabSelected(tab.type);
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedTab(tab.type)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
+                  isSelected
+                    ? 'border-gray-400 text-gray-200 bg-[#15181d]'
+                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
+                }`}
+              >
+                <div className="flex-shrink-0">{tab.icon}</div>
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-700/50 text-gray-400">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Steps Row: actual bubble steps */}
+      <div className="flex-shrink-0 border-b border-[#30363d] bg-[#0f1115] overflow-x-auto thin-scrollbar">
         <div className="flex gap-1 p-2 min-w-max">
-          {tabs.map((tab) => {
+          {stepTabs.map((tab) => {
             const isSelected = isTabSelected(tab.type);
             return (
               <button
@@ -257,26 +295,14 @@ export default function AllEventsView({
                       {getEventIcon(event)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span
-                          className={`text-sm font-medium ${getEventColor(event)}`}
-                        >
-                          {event.type
-                            .replace('_', ' ')
-                            .replace(/\b\w/g, (l) => l.toUpperCase())}
-                        </span>
-                        {event.lineNumber && (
-                          <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                            Line {event.lineNumber}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-500 ml-auto">
+                      <div className="flex items-start justify-between gap-3 min-w-0">
+                        <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                          {makeLinksClickable(event.message)}
+                        </p>
+                        <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                           {formatTimestamp(event.timestamp)}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-300 break-words">
-                        {makeLinksClickable(event.message)}
-                      </p>
                       {event.additionalData &&
                         Object.keys(event.additionalData).length > 0 && (
                           <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
@@ -324,26 +350,14 @@ export default function AllEventsView({
                     {getEventIcon(event)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span
-                        className={`text-sm font-medium ${getEventColor(event)}`}
-                      >
-                        {event.type
-                          .replace('_', ' ')
-                          .replace(/\b\w/g, (l) => l.toUpperCase())}
-                      </span>
-                      {event.lineNumber && (
-                        <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                          Line {event.lineNumber}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500 ml-auto">
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                        {makeLinksClickable(event.message)}
+                      </p>
+                      <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                         {formatTimestamp(event.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-300 break-words">
-                      {makeLinksClickable(event.message)}
-                    </p>
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
                         <pre className="json-output text-xs mt-2 p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
@@ -368,34 +382,22 @@ export default function AllEventsView({
               const selectedEvent = evs[selectedIndex];
               return (
                 <div className="rounded-lg border border-[#30363d] bg-[#0f1115]/60">
-                  <div className="flex items-center gap-3 px-3 py-2 border-b border-[#30363d]">
-                    <div className="text-sm text-gray-200 font-mono">
-                      Bubble:{' '}
-                      <span className="text-blue-300">
-                        {getVariableNameForDisplay(
-                          varId,
-                          evs,
-                          bubbleParameters
-                        )}
-                      </span>
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <label className="text-xs text-gray-400">Output</label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={Math.max(0, evs.length - 1)}
-                        value={selectedIndex}
-                        onChange={(e) =>
-                          setSelectedEventIndex(varId, Number(e.target.value))
-                        }
-                        className="w-40"
-                        aria-label={`Select output for variable ${varId}`}
-                      />
-                      <span className="text-xs text-gray-400 font-mono">
-                        {selectedIndex + 1}/{evs.length}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-[#30363d]">
+                    <label className="text-xs text-gray-400">Output</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={Math.max(0, evs.length - 1)}
+                      value={selectedIndex}
+                      onChange={(e) =>
+                        setSelectedEventIndex(varId, Number(e.target.value))
+                      }
+                      className="w-40"
+                      aria-label={`Select output for variable ${varId}`}
+                    />
+                    <span className="text-xs text-gray-400 font-mono">
+                      {selectedIndex + 1}/{evs.length}
+                    </span>
                   </div>
                   {selectedEvent ? (
                     <div className="p-3">
@@ -410,26 +412,14 @@ export default function AllEventsView({
                           {getEventIcon(selectedEvent)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <span
-                              className={`text-sm font-medium ${getEventColor(selectedEvent)}`}
-                            >
-                              {selectedEvent.type
-                                .replace('_', ' ')
-                                .replace(/\b\w/g, (l) => l.toUpperCase())}
-                            </span>
-                            {selectedEvent.lineNumber && (
-                              <span className="text-xs font-mono text-yellow-400 bg-yellow-900/30 px-2 py-0.5 rounded">
-                                Line {selectedEvent.lineNumber}
-                              </span>
-                            )}
-                            <span className="text-xs text-gray-500 ml-auto">
+                          <div className="flex items-start justify-between gap-3 min-w-0">
+                            <p className="text-sm text-gray-300 break-words flex-1 min-w-0 overflow-hidden">
+                              {makeLinksClickable(selectedEvent.message)}
+                            </p>
+                            <span className="text-xs text-gray-500 whitespace-nowrap flex-shrink-0 pl-3">
                               {formatTimestamp(selectedEvent.timestamp)}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-300 break-words">
-                            {makeLinksClickable(selectedEvent.message)}
-                          </p>
                           {selectedEvent.additionalData &&
                             Object.keys(selectedEvent.additionalData).length >
                               0 && (

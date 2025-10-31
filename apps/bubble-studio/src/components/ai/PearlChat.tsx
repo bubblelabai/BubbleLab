@@ -532,8 +532,8 @@ export function PearlChat() {
                     {message.resultType === 'code' ? (
                       <>
                         {message.content && (
-                          <div className="text-sm text-gray-200 mb-2">
-                            {message.content}
+                          <div className="prose prose-invert prose-sm max-w-none mb-2 text-[13px]">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
                           </div>
                         )}
                         {message.code && (
@@ -561,8 +561,8 @@ export function PearlChat() {
                         )}
                       </>
                     ) : (
-                      <div className="text-sm text-gray-200">
-                        {message.content}
+                      <div className="prose prose-invert prose-sm max-w-none text-[13px]">
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
                       </div>
                     )}
                   </div>
