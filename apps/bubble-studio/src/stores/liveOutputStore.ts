@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { getExecutionStore } from './executionStore';
 import { useUIStore } from './uiStore';
+import { getVariableNameForDisplay } from '../utils/bubbleUtils';
 
 /**
  * Ordered item type for event grouping
@@ -29,6 +30,18 @@ export type TabType =
   | { kind: 'errors' }
   | { kind: 'info' }
   | { kind: 'item'; index: number };
+
+/**
+ * Bubble group metadata for tab generation
+ */
+export interface BubbleGroup {
+  variableId: string;
+  bubbleName: string | undefined;
+  displayName: string;
+  events: StreamingLogEvent[];
+  eventCount: number;
+  firstTimestamp: number;
+}
 
 /**
  * State interface for per-flow LiveOutput UI state
@@ -76,6 +89,53 @@ interface FlowLiveOutputState {
    * Called on flow execution start or when cleaning up
    */
   reset: () => void;
+
+  // ============= NON-REACTIVE GETTERS =============
+  // These methods read current state without subscribing to updates
+
+  /**
+   * Get all events from executionStore (non-reactive)
+   * @returns Array of all events for this flow
+   */
+  getAllEvents: () => StreamingLogEvent[];
+
+  /**
+   * Get warning events only (non-reactive)
+   * @returns Array of warning events
+   */
+  getWarningLogs: () => StreamingLogEvent[];
+
+  /**
+   * Get error/fatal events only (non-reactive)
+   * @returns Array of error events
+   */
+  getErrorLogs: () => StreamingLogEvent[];
+
+  /**
+   * Get info/debug/trace events only (excludes log_line) (non-reactive)
+   * @returns Array of info events
+   */
+  getInfoLogs: () => StreamingLogEvent[];
+
+  /**
+   * Group events by variableId and return ordered items (non-reactive)
+   * @returns Array of ordered items (bubble groups + global events)
+   */
+  getOrderedItems: () => OrderedItem[];
+
+  /**
+   * Get bubble groups with metadata for tab generation (non-reactive)
+   * @param bubbleParameters - Bubble parameters for display name generation
+   * @returns Array of bubble groups with display names and event counts
+   */
+  getBubbleGroups: (bubbleParameters: Record<string, unknown>) => BubbleGroup[];
+
+  /**
+   * Get events for a specific tab (non-reactive)
+   * @param tab - The tab to get events for
+   * @returns Filtered array of events for the specified tab
+   */
+  getEventsForTab: (tab: TabType) => StreamingLogEvent[];
 }
 
 /**
@@ -88,6 +148,13 @@ const emptyState: FlowLiveOutputState = {
   setSelectedEventIndex: () => {},
   selectBubbleInConsole: () => {},
   reset: () => {},
+  getAllEvents: () => [],
+  getWarningLogs: () => [],
+  getErrorLogs: () => [],
+  getInfoLogs: () => [],
+  getOrderedItems: () => [],
+  getBubbleGroups: () => [],
+  getEventsForTab: () => [],
 };
 
 /**
@@ -192,6 +259,88 @@ function createLiveOutputStore(flowId: number) {
         selectedTab: { kind: 'warnings' },
         selectedEventIndexByVariableId: {},
       }),
+
+    // ============= NON-REACTIVE GETTERS =============
+    getAllEvents: () => {
+      const executionState = getExecutionStore(flowId);
+      return executionState.events || [];
+    },
+
+    getWarningLogs: () => {
+      const events = get().getAllEvents();
+      return events.filter((e) => e.type === 'warn');
+    },
+
+    getErrorLogs: () => {
+      const events = get().getAllEvents();
+      return events.filter((e) => e.type === 'error' || e.type === 'fatal');
+    },
+
+    getInfoLogs: () => {
+      const events = get().getAllEvents();
+      return events.filter(
+        (e) => e.type === 'info' || e.type === 'debug' || e.type === 'trace'
+      );
+    },
+
+    getOrderedItems: () => {
+      const events = get().getAllEvents();
+      return getOrderedItemsFromEvents(events);
+    },
+
+    getBubbleGroups: (bubbleParameters: Record<string, unknown>) => {
+      const orderedItems = get().getOrderedItems();
+
+      return orderedItems
+        .filter(
+          (item): item is Extract<OrderedItem, { kind: 'group' }> =>
+            item.kind === 'group'
+        )
+        .map((item) => {
+          const bubbleName = (item.events[0] as { bubbleName?: string })
+            .bubbleName;
+          const displayName = getVariableNameForDisplay(
+            item.name,
+            item.events,
+            bubbleParameters
+          );
+
+          return {
+            variableId: item.name,
+            bubbleName,
+            displayName,
+            events: item.events,
+            eventCount: item.events.length,
+            firstTimestamp: item.firstTs,
+          };
+        });
+    },
+
+    getEventsForTab: (tab: TabType) => {
+      const events = get().getAllEvents();
+
+      if (tab.kind === 'warnings') {
+        return events.filter((e) => e.type === 'warn');
+      } else if (tab.kind === 'errors') {
+        return events.filter((e) => e.type === 'error' || e.type === 'fatal');
+      } else if (tab.kind === 'info') {
+        return events.filter(
+          (e) => e.type === 'info' || e.type === 'debug' || e.type === 'trace'
+        );
+      } else if (tab.kind === 'item') {
+        const orderedItems = get().getOrderedItems();
+        const item = orderedItems[tab.index];
+        if (!item) return [];
+
+        if (item.kind === 'global') {
+          return [item.event];
+        } else {
+          return item.events;
+        }
+      }
+
+      return [];
+    },
   }));
 }
 
