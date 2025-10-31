@@ -23,6 +23,9 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   YouTube: '/integrations/youtube.svg',
   Instagram: '/integrations/instagram.svg',
   Apify: '/integrations/apify.svg',
+  'X (Twitter)': '/integrations/x-twitter.png',
+  X: '/integrations/x-twitter.png',
+  Twitter: '/integrations/x-twitter.png',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -58,6 +61,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'YouTube', file: SERVICE_LOGOS['YouTube'] },
   { name: 'Instagram', file: SERVICE_LOGOS['Instagram'] },
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
+  { name: 'X (Twitter)', file: SERVICE_LOGOS['X (Twitter)'] },
 ];
 
 export const AI_MODELS: IntegrationLogo[] = [
@@ -97,6 +101,11 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   youtube: 'YouTube',
   instagram: 'Instagram',
   apify: 'Apify',
+  'x-twitter': 'X (Twitter)',
+  'x-twitter-bubble': 'X (Twitter)',
+  xtwitter: 'X (Twitter)',
+  twitter: 'X (Twitter)',
+  x: 'X (Twitter)',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -174,6 +183,7 @@ export function findLogoForBubble(
     [/\byoutube\b/, 'YouTube'],
     [/\binstagram\b/, 'Instagram'],
     [/\bapify\b/, 'Apify'],
+    [/\b(x|twitter|x-twitter|xtwitter)\b/, 'X (Twitter)'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
@@ -233,6 +243,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       slackbubble: 'slack-bubble',
       slackformatteragentbubble: 'slack-formatter-agent-bubble',
       storagebubble: 'storage-bubble',
+      xtwitterbubble: 'x-twitter-bubble',
     }
   );
 
@@ -272,6 +283,10 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     'slack-formatter-agent': 'slack-formatter-agent-bubble',
     slackformatteragent: 'slack-formatter-agent-bubble',
     storage: 'storage-bubble',
+    'x-twitter': 'x-twitter-bubble',
+    xtwitter: 'x-twitter-bubble',
+    twitter: 'x-twitter-bubble',
+    x: 'x-twitter-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants
