@@ -78,6 +78,8 @@ export const env = {
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  X_OAUTH_CLIENT_ID: process.env.X_OAUTH_CLIENT_ID,
+  X_OAUTH_CLIENT_SECRET: process.env.X_OAUTH_CLIENT_SECRET,
   isDev:
     process.env.BUBBLE_ENV?.toLowerCase() === 'dev' ||
     process.env.BUBBLE_ENV?.toLowerCase() === 'test',
@@ -106,4 +108,6 @@ console.log('🔧 Environment variables loaded:', {
   GOOGLE_OAUTH_CLIENT_SECRET: env.GOOGLE_OAUTH_CLIENT_SECRET
     ? '✅ Set'
     : '❌ Missing',
+  X_OAUTH_CLIENT_ID: env.X_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing',
+  X_OAUTH_CLIENT_SECRET: env.X_OAUTH_CLIENT_SECRET ? '✅ Set' : '❌ Missing',
 });

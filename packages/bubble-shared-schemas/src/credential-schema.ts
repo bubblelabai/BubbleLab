@@ -22,6 +22,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GMAIL_CRED]: '',
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
   [CredentialType.GOOGLE_CALENDAR_CRED]: '',
+  [CredentialType.X_TWITTER_CRED]: '',
 };
 
 /** Used by bubblelab studio */
@@ -43,7 +44,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google';
+export type OAuthProvider = 'google' | 'x';
 
 /**
  * OAuth credential type configuration for a specific service under a provider
@@ -101,6 +102,26 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     authorizationParams: {
       access_type: 'offline', // Required for refresh tokens
       prompt: 'consent', // Force consent screen to ensure refresh token is issued
+    },
+  },
+  x: {
+    name: 'x',
+    displayName: 'X (Twitter)',
+    credentialTypes: {
+      [CredentialType.X_TWITTER_CRED]: {
+        displayName: 'X (Twitter)',
+        defaultScopes: [
+          'tweet.read',
+          'tweet.write',
+          'users.read',
+          'offline.access',
+        ],
+        description:
+          'Access X (Twitter) API for posting tweets and reading user data',
+      },
+    },
+    authorizationParams: {
+      // X uses PKCE which is handled automatically by @badgateway/oauth2-client
     },
   },
 };
@@ -221,6 +242,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'instagram-tool': [CredentialType.APIFY_CRED],
   'linkedin-tool': [CredentialType.APIFY_CRED],
   'youtube-tool': [CredentialType.APIFY_CRED],
+  'x-twitter': [CredentialType.X_TWITTER_CRED],
 };
 
 // POST /credentials - Create credential schema

@@ -37,6 +37,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.GMAIL_CRED]: {},
   [CredentialType.GOOGLE_SHEETS_CRED]: {},
   [CredentialType.GOOGLE_CALENDAR_CRED]: {},
+  [CredentialType.X_TWITTER_CRED]: {},
 };
 
 // Fixed list of bubble names that need context injection
