@@ -676,13 +676,43 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
   // Track previous expandedRootIds and currentFlow to detect changes
   const prevExpandedRootIdsRef = useRef<string[]>([]);
-  const prevFlowIdRef = useRef<number | undefined>(undefined);
+  const prevFlowRef = useRef<typeof currentFlow>(undefined);
 
   // Sync nodes and edges state with computed values, preserving positions
   useEffect(() => {
     const { initialNodes, initialEdges } = initialNodesAndEdges();
 
-    const flowChanged = prevFlowIdRef.current !== currentFlow?.id;
+    // Check if flow ID changed
+    const flowIdChanged = prevFlowRef.current?.id !== currentFlow?.id;
+
+    // Check if bubbleParameters changed (compare by serializing keys and variableIds)
+    const prevBubbleParams = prevFlowRef.current?.bubbleParameters || {};
+    const currentBubbleParams = currentFlow?.bubbleParameters || {};
+    const prevBubbleKeys = JSON.stringify(
+      Object.keys(prevBubbleParams)
+        .sort()
+        .map((key) => {
+          const bubble = prevBubbleParams[key] as
+            | { variableId?: number }
+            | undefined;
+          return `${key}:${bubble?.variableId ?? 'no-id'}`;
+        })
+    );
+    const currentBubbleKeys = JSON.stringify(
+      Object.keys(currentBubbleParams)
+        .sort()
+        .map((key) => {
+          const bubble = currentBubbleParams[key] as
+            | { variableId?: number }
+            | undefined;
+          return `${key}:${bubble?.variableId ?? 'no-id'}`;
+        })
+    );
+    const bubbleParametersChanged = prevBubbleKeys !== currentBubbleKeys;
+
+    // Structure changed if flow ID changed OR bubbleParameters changed
+    const structureChanged = flowIdChanged || bubbleParametersChanged;
+
     const expandedChanged =
       prevExpandedRootIdsRef.current.length !== expandedRootIds.length ||
       !prevExpandedRootIdsRef.current.every((id) =>
@@ -694,14 +724,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
     setNodes((currentNodes) => {
       // If this is the first time we have nodes, just set them
-      if (currentNodes.length === 0 || flowChanged) {
+      if (currentNodes.length === 0 || structureChanged) {
         prevExpandedRootIdsRef.current = expandedRootIds;
-        prevFlowIdRef.current = currentFlow?.id;
+        prevFlowRef.current = currentFlow;
         return initialNodes;
       }
 
       // If only expandedRootIds changed (not flow structure), use incremental updates
-      if (expandedChanged && !flowChanged && currentFlow?.id) {
+      if (expandedChanged && !structureChanged && currentFlow?.id) {
         const currentNodeIds = new Set(currentNodes.map((n) => n.id));
         const initialNodeIds = new Set(initialNodes.map((n) => n.id));
 
@@ -746,15 +776,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       });
 
       prevExpandedRootIdsRef.current = expandedRootIds;
-      prevFlowIdRef.current = currentFlow?.id;
+      prevFlowRef.current = currentFlow;
       return updatedNodes;
     });
 
-    // For edges, only update if nodes changed
+    // For edges, regenerate when structure changes (including bubbleParameters)
     setEdges((currentEdges) => {
-      if (flowChanged) {
+      if (structureChanged) {
         prevExpandedRootIdsRef.current = expandedRootIds;
-        prevFlowIdRef.current = currentFlow?.id;
+        prevFlowRef.current = currentFlow;
         return initialEdges;
       }
 
@@ -762,7 +792,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const initialEdgeIds = new Set(initialEdges.map((e) => e.id));
 
       // If only expandedRootIds changed, use incremental edge updates
-      if (expandedChanged && !flowChanged && currentFlow?.id) {
+      if (expandedChanged && !structureChanged && currentFlow?.id) {
         const edgesToAdd = initialEdges.filter(
           (e) => !currentEdgeIds.has(e.id)
         );
