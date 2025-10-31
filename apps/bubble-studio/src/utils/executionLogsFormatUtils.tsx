@@ -60,6 +60,7 @@ const JSON_BOOLEAN_REGEX = /^(true|false)$/;
 const JSON_NULL_REGEX = /^null$/;
 const JSON_TOKEN_REGEX =
   /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
+const URL_REGEX = /(https?:\/\/[^\s"<>]+)/g;
 
 /**
  * Intelligently truncate JSON string at a reasonable point
@@ -130,7 +131,7 @@ export function syntaxHighlightJson(json: string): string {
     ? truncateJson(json, PREVIEW_LENGTH)
     : json;
 
-  const highlighted = jsonToHighlight.replace(JSON_TOKEN_REGEX, (match) => {
+  let highlighted = jsonToHighlight.replace(JSON_TOKEN_REGEX, (match) => {
     if (JSON_KEY_REGEX.test(match)) {
       if (JSON_KEY_COLON_REGEX.test(match)) {
         return `<span class="text-purple-300">${match}</span>`;
@@ -145,6 +146,16 @@ export function syntaxHighlightJson(json: string): string {
       return `<span class="text-orange-300">${match}</span>`;
     }
   });
+
+  // Highlight URLs within the JSON (especially in string values)
+  // Process URLs that are inside span tags from JSON highlighting (JSON string values)
+  highlighted = highlighted.replace(
+    /(<span[^>]*>)([^<]*?)(https?:\/\/[^\s"<>]+)([^<]*?)(<\/span>)/g,
+    (match, openTag, before, url, after, closeTag) => {
+      // If we found a URL inside a span, replace just the URL part with a clickable link
+      return `${openTag}${before}<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline">${url}</a>${after}${closeTag}`;
+    }
+  );
 
   // Add truncation indicator if needed
   if (isTruncated) {
