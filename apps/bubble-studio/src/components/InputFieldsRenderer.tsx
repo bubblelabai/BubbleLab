@@ -263,7 +263,7 @@ function InputFieldsRenderer({
   }
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {schemaFields.map((field) => {
         const isNumber = field.type === 'number';
         const isArray = field.type === 'array';
@@ -282,7 +282,7 @@ function InputFieldsRenderer({
         return (
           <div
             key={field.name}
-            className="pb-4 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
+            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
           >
             <label className="block text-xs font-semibold text-neutral-200 mb-1">
               {field.name}
