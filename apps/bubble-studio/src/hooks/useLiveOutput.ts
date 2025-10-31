@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import {
   useLiveOutputStore,
@@ -8,7 +7,6 @@ import {
 import { getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from './useBubbleFlow';
 import { getVariableNameForDisplay } from '../utils/bubbleUtils';
-import { useUIStore } from '@/stores/uiStore';
 
 /**
  * Ordered item type for event grouping
@@ -250,50 +248,33 @@ export function useLiveOutput(flowId: number | null) {
   /**
    * Select a bubble tab by its variableId (programmatic selection)
    * Finds the bubble group and sets the tab to that item
+   * Wrapper around store action for convenience
    * @param variableId - The variableId of the bubble to select (e.g., 'var_123')
    */
   const selectBubbleInConsole = (variableId: string) => {
-    const orderedItems = getOrderedItems();
-    const index = orderedItems.findIndex(
-      (item) => item.kind === 'group' && item.name === variableId
-    );
-
-    console.log('index', index, orderedItems);
-
-    if (index !== -1) {
-      useUIStore.getState().setConsolidatedPanelTab('output');
-      setSelectedTab({ kind: 'item', index });
-    }
+    if (flowId === null) return;
+    liveOutputStore?.getState().selectBubbleInConsole(variableId);
   };
 
-  // Memoize the return object to prevent unnecessary re-renders
-  return useMemo(
-    () => ({
-      // ============= REACTIVE STATE =============
-      // These are subscribed and will cause re-renders when changed
-      selectedTab,
-      selectedEventIndexByVariableId,
+  return {
+    // ============= REACTIVE STATE =============
+    // These are subscribed and will cause re-renders when changed
+    selectedTab,
+    selectedEventIndexByVariableId,
 
-      // ============= ACTIONS =============
-      setSelectedTab,
-      setSelectedEventIndex,
-      selectBubbleInConsole: selectBubbleInConsole,
+    // ============= ACTIONS =============
+    setSelectedTab,
+    setSelectedEventIndex,
+    selectBubbleInConsole: selectBubbleInConsole,
 
-      // ============= NON-REACTIVE GETTERS =============
-      // These use .getState() internally and do NOT cause re-renders
-      getAllEvents,
-      getWarningLogs,
-      getErrorLogs,
-      getInfoLogs,
-      getBubbleGroups,
-      getEventsForTab,
-      getOrderedItems,
-    }),
-    [
-      // Only re-create when reactive state changes
-      selectedTab,
-      selectedEventIndexByVariableId,
-      // Note: We don't include the getter functions as deps because they're stable
-    ]
-  );
+    // ============= NON-REACTIVE GETTERS =============
+    // These use .getState() internally and do NOT cause re-renders
+    getAllEvents,
+    getWarningLogs,
+    getErrorLogs,
+    getInfoLogs,
+    getBubbleGroups,
+    getEventsForTab,
+    getOrderedItems,
+  };
 }

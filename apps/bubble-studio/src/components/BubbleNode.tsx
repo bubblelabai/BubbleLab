@@ -15,7 +15,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useCredentials } from '../hooks/useCredentials';
 import { API_BASE_URL } from '../env';
 
-interface BubbleNodeData {
+export interface BubbleNodeData {
   flowId: number;
   bubble: ParsedBubbleWithInfo;
   bubbleKey: string | number;
@@ -26,8 +26,6 @@ interface BubbleNodeData {
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
   hasSubBubbles?: boolean;
-  areSubBubblesVisible?: boolean;
-  onToggleSubBubbles?: () => void;
 }
 
 interface BubbleNodeProps {
@@ -44,8 +42,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
-    areSubBubblesVisible = false,
-    onToggleSubBubbles,
   } = data;
 
   // Determine the bubble ID for store lookups (prefer variableId, fallback to bubbleKey)
@@ -74,6 +70,25 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Get actions from store
   const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
   const setCredential = useExecutionStore(flowId, (s) => s.setCredential);
+  const toggleRootExpansion = useExecutionStore(
+    flowId,
+    (s) => s.toggleRootExpansion
+  );
+
+  // Get sub-bubble visibility state from store
+  const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
+  const suppressedRootIds = useExecutionStore(
+    flowId,
+    (s) => s.suppressedRootIds
+  );
+
+  // Compute if sub-bubbles are visible (local to this bubble node)
+  const areSubBubblesVisibleLocal = useMemo(() => {
+    if (!hasSubBubbles) return false;
+    const rootExpanded = expandedRootIds.includes(bubbleId);
+    const rootSuppressed = suppressedRootIds.includes(bubbleId);
+    return rootExpanded && !rootSuppressed;
+  }, [hasSubBubbles, expandedRootIds, suppressedRootIds, bubbleId]);
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
@@ -523,21 +538,23 @@ function BubbleNode({ data }: BubbleNodeProps) {
         </div>
       )}
 
-      {hasSubBubbles && onToggleSubBubbles && (
+      {hasSubBubbles && (
         <div className="px-4 py-3 border-t border-neutral-600 bg-neutral-800/70">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onToggleSubBubbles();
+              toggleRootExpansion(bubbleId);
             }}
             className={`w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-medium rounded ${
-              areSubBubblesVisible
+              areSubBubblesVisibleLocal
                 ? 'bg-purple-700/40 text-purple-200 border border-purple-500/60'
                 : 'bg-purple-900/40 text-purple-200 border border-purple-700/60 hover:bg-purple-800/50'
             }`}
           >
-            {areSubBubblesVisible ? 'Hide Sub Bubbles' : 'Show Sub Bubbles'}
+            {areSubBubblesVisibleLocal
+              ? 'Hide Sub Bubbles'
+              : 'Show Sub Bubbles'}
           </button>
         </div>
       )}

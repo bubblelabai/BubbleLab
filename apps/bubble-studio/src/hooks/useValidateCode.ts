@@ -5,7 +5,7 @@ import type {
   ValidateBubbleFlowResponse,
   CredentialType,
 } from '@bubblelab/shared-schemas';
-import { useExecutionStore } from '../stores/executionStore';
+import { getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from './useBubbleFlow';
 
 interface ValidateCodeRequest {
@@ -22,7 +22,7 @@ interface ValidateCodeOptions {
 }
 
 export function useValidateCode({ flowId }: ValidateCodeOptions) {
-  const executionState = useExecutionStore(flowId);
+  const executionState = getExecutionStore(flowId ?? -1);
   const {
     // data: currentFlow,
     updateBubbleParameters,
@@ -83,6 +83,23 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         updateRequiredCredentials(
           result.requiredCredentials as Record<string, CredentialType[]>
         );
+
+        // Clear execution state when bubble structure changes (sync happened)
+        // This ensures old bubble IDs don't interfere with new execution
+        if (!executionState.isRunning) {
+          // Only clear if not currently running (don't interrupt active execution)
+          // resetExecution clears completedBubbles, events, highlighting, etc.
+          // But it doesn't clear runningBubbles, so we need to ensure it's cleared
+          executionState.resetExecution();
+          // Manually clear runningBubbles if any are lingering
+          if (flowId && executionState.runningBubbles.size > 0) {
+            getExecutionStore(flowId).stopExecution(); // This clears runningBubbles
+          }
+        } else {
+          // If running, just clear highlighting to avoid stale state
+          executionState.clearHighlighting();
+          executionState.setBubbleError(null);
+        }
       }
 
       if (result.defaultInputs) {

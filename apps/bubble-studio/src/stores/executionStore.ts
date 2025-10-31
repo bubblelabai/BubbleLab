@@ -54,6 +54,16 @@ export interface FlowExecutionState {
    */
   completedBubbles: Record<string, { totalTime: number; count: number }>;
 
+  /**
+   * Root bubble IDs that are expanded (showing sub-bubbles)
+   */
+  expandedRootIds: string[];
+
+  /**
+   * Root bubble IDs that are suppressed (manually hidden)
+   */
+  suppressedRootIds: string[];
+
   // ============= Execution Data =============
 
   /**
@@ -234,6 +244,18 @@ export interface FlowExecutionState {
    */
   resetExecution: () => void;
 
+  // ============= Actions - Sub-Bubble Visibility =============
+
+  /**
+   * Toggle expansion of a root bubble (show/hide sub-bubbles)
+   */
+  toggleRootExpansion: (nodeId: string) => void;
+
+  /**
+   * Set expanded root IDs (for auto-expansion during execution)
+   */
+  setExpandedRootIds: (ids: string[]) => void;
+
   /**
    * Get execution statistics from events
    */
@@ -260,6 +282,8 @@ function createExecutionStore(flowId: number) {
       completedBubbles: {},
       executionInputs: {},
       pendingCredentials: {},
+      expandedRootIds: [],
+      suppressedRootIds: [],
       isConnected: false,
       error: null,
       events: [],
@@ -288,6 +312,8 @@ function createExecutionStore(flowId: number) {
           abortController: null,
           highlightedBubble: null,
           currentLine: null,
+          // Clear running bubbles to prevent lingering state that could cause flicker
+          runningBubbles: new Set<string>(),
         });
       },
 
@@ -422,6 +448,8 @@ function createExecutionStore(flowId: number) {
           completedBubbles: {},
           executionInputs: {},
           pendingCredentials: {},
+          expandedRootIds: [],
+          suppressedRootIds: [],
           isConnected: false,
           error: null,
           events: [],
@@ -443,6 +471,31 @@ function createExecutionStore(flowId: number) {
           currentLine: null,
           abortController: null,
         }),
+
+      // Sub-bubble visibility
+      toggleRootExpansion: (nodeId) =>
+        set((state) => {
+          const isExpanded = state.expandedRootIds.includes(nodeId);
+          if (isExpanded) {
+            return {
+              expandedRootIds: state.expandedRootIds.filter(
+                (id) => id !== nodeId
+              ),
+              suppressedRootIds: state.suppressedRootIds.includes(nodeId)
+                ? state.suppressedRootIds
+                : [...state.suppressedRootIds, nodeId],
+            };
+          } else {
+            return {
+              expandedRootIds: [...state.expandedRootIds, nodeId],
+              suppressedRootIds: state.suppressedRootIds.filter(
+                (id) => id !== nodeId
+              ),
+            };
+          }
+        }),
+
+      setExpandedRootIds: (ids) => set({ expandedRootIds: ids }),
 
       getExecutionStats: () => {
         const { events } = get();
@@ -500,6 +553,8 @@ const emptyState: FlowExecutionState = {
   completedBubbles: {},
   executionInputs: {},
   pendingCredentials: {},
+  expandedRootIds: [],
+  suppressedRootIds: [],
   isConnected: false,
   error: null,
   events: [],
@@ -529,6 +584,8 @@ const emptyState: FlowExecutionState = {
   clearEvents: () => {},
   reset: () => {},
   resetExecution: () => {},
+  toggleRootExpansion: () => {},
+  setExpandedRootIds: () => {},
   getExecutionStats: () => ({
     totalTime: 0,
     memoryUsage: 0,
