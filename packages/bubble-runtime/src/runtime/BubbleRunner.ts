@@ -23,6 +23,7 @@ import { pathToFileURL } from 'url';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 export interface VariableState {
   value: unknown;
   error?: string;
@@ -602,6 +603,7 @@ export class BubbleRunner {
         };
       } else {
         // Generic error fallback
+        const safeError = getSafeErrorMessage(error);
         this.logger?.fatal(
           'BubbleFlow execution failed',
           error instanceof Error ? error : undefined
@@ -609,18 +611,14 @@ export class BubbleRunner {
 
         // Log execution failure for streaming
         if (this.logger instanceof StreamingBubbleLogger) {
-          this.logger.logExecutionComplete(
-            false,
-            undefined,
-            error instanceof Error ? error.message : String(error)
-          );
+          this.logger.logExecutionComplete(false, undefined, safeError);
         }
 
         return {
           executionId: 0,
           summary: this.logger.getExecutionSummary(),
           success: false,
-          error: error instanceof Error ? error.message : String(error),
+          error: safeError,
           data: undefined,
         };
       }

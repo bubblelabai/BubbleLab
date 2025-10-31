@@ -9,6 +9,10 @@ import type {
   StreamCallback,
 } from '@bubblelab/shared-schemas';
 import { BubbleError } from '../types/bubble-errors';
+import {
+  sanitizeErrorMessage,
+  sanitizeErrorStack,
+} from '../utils/error-sanitizer.js';
 
 interface StreamingLoggerConfig extends Partial<LoggerConfig> {
   streamCallback?: StreamCallback;
@@ -290,8 +294,8 @@ export class StreamingBubbleLogger extends BubbleLogger {
         ...metadata?.additionalData,
         error: error
           ? {
-              message: error.message,
-              stack: error.stack,
+              message: sanitizeErrorMessage(error.message),
+              stack: sanitizeErrorStack(error),
               name: error.name,
             }
           : undefined,
@@ -322,8 +326,8 @@ export class StreamingBubbleLogger extends BubbleLogger {
         ...metadata?.additionalData,
         error: error
           ? {
-              message: error.message,
-              stack: error.stack,
+              message: sanitizeErrorMessage(error.message),
+              stack: sanitizeErrorStack(error),
               name: error.name,
             }
           : undefined,
