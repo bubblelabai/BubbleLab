@@ -60,7 +60,6 @@ const JSON_BOOLEAN_REGEX = /^(true|false)$/;
 const JSON_NULL_REGEX = /^null$/;
 const JSON_TOKEN_REGEX =
   /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g;
-const URL_REGEX = /(https?:\/\/[^\s"<>]+)/g;
 
 /**
  * Intelligently truncate JSON string at a reasonable point
