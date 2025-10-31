@@ -15,7 +15,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useCredentials } from '../hooks/useCredentials';
 import { API_BASE_URL } from '../env';
 
-interface BubbleNodeData {
+export interface BubbleNodeData {
   flowId: number;
   bubble: ParsedBubbleWithInfo;
   bubbleKey: string | number;

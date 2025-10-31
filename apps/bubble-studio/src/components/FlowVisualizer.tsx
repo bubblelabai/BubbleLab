@@ -303,11 +303,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         : parentBubble.variableId
           ? String(parentBubble.variableId)
           : parentBubble.bubbleName;
-      const nodeId = generateDependencyNodeId(
-        dependencyNode,
-        parentIdForNode,
-        path
-      );
+      // Use the same ID format as regular bubbles: variableId if available, otherwise generate synthetic ID
+      const nodeId =
+        dependencyNode.variableId !== undefined &&
+        dependencyNode.variableId !== null &&
+        dependencyNode.variableId !== -1
+          ? String(dependencyNode.variableId)
+          : generateDependencyNodeId(dependencyNode, parentIdForNode, path);
 
       const isNodeAutoVisible = autoVisibleNodes.has(nodeId);
       // Read execution state directly from store (BubbleNode subscribes for UI updates)
@@ -986,10 +988,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onNodeClick={(_event, node) => {
           // When a bubble node is clicked, select its tab in the console panel
           if (node.type === 'bubbleNode') {
-            const variableId = node.id;
             getLiveOutputStore(flowId)
               ?.getState()
-              .selectBubbleInConsole(variableId);
+              .selectBubbleInConsole(node.id);
           }
         }}
         onPaneClick={() => {
