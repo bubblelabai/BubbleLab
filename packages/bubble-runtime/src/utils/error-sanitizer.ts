@@ -44,7 +44,7 @@ function sanitizeString(str: string): string {
     credentialPattern,
     (match, fieldName, quote, value) => {
       // Only replace if it looks like a credential value (long alphanumeric/hex string)
-      if (value.length > 8 && /^[a-zA-Z0-9+\/=-]+$/.test(value)) {
+      if (value.length > 8 && /^[a-zA-Z0-9+/\-=]+$/.test(value)) {
         return `${fieldName}: ${quote}[REDACTED]${quote}`;
       }
       return match;
@@ -74,7 +74,7 @@ function sanitizeString(str: string): string {
 
           // Check if the value looks like a credential
           const isCredentialValue =
-            value.length > 8 && /^[a-zA-Z0-9+\/=-]+$/.test(value);
+            value.length > 8 && /^[a-zA-Z0-9+/\-=]+$/.test(value);
 
           if (isCredentialKey || isCredentialValue) {
             return `${key}: ${quote}[REDACTED]${quote}`;
