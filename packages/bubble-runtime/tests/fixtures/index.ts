@@ -38,6 +38,7 @@ export const fixtures = {
   'content-creation': '',
   'linkedin-lead-finder-problematic': '',
   'param-as-var': '',
+  'method-inside-handler': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

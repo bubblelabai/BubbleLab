@@ -55,7 +55,7 @@ export class BubbleRunner {
   private logger: BubbleLogger;
   public injector: BubbleInjector;
   private options: BubbleRunnerOptions;
-
+  private hasInjectedLogging: boolean = false;
   constructor(
     bubbleScript: string | BubbleScript,
     bubbleFactory: BubbleFactory,
@@ -379,9 +379,14 @@ export class BubbleRunner {
 
       // Inject logging into the script if enabled
       let scriptToExecute = this.bubbleScript.bubblescript;
-      if (this.options.enableLogging && this.logger) {
+      if (
+        this.options.enableLogging &&
+        this.logger &&
+        !this.hasInjectedLogging
+      ) {
         this.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
         scriptToExecute = this.bubbleScript.bubblescript;
+        this.hasInjectedLogging = true;
       }
 
       // Create a temporary file with the bubble script code in the project directory

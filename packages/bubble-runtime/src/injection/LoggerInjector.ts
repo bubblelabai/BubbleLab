@@ -76,6 +76,9 @@ export class LoggerInjector {
       return;
     }
 
+    // Note: __bubbleFlowSelf should already be injected via injectSelfCapture()
+    // which is called before this method in injectBubbleLoggingAndReinitializeBubbleParameters()
+
     // Get the existing AST and find statements within the handle method
     const ast = this.bubbleScript.getAST();
     const statements = this.findStatementsInHandleMethod(
@@ -92,8 +95,9 @@ export class LoggerInjector {
 
       if (arrayIndex >= 0 && arrayIndex < lines.length) {
         const line = lines[arrayIndex];
-        const indentation = line.match(/^\\s*/)?.[0] || '    ';
-        const statementLog = `${indentation}this.logger?.logLine(${statement.line}, 'Statement: ${statement.type}');`;
+        const indentation = line.match(/^\s*/)?.[0] || '    ';
+        // Use __bubbleFlowSelf.logger instead of this.logger for nested function support
+        const statementLog = `${indentation}__bubbleFlowSelf.logger?.logLine(${statement.line}, 'Statement: ${statement.type}');`;
 
         // Insert after the statement line
         lines.splice(arrayIndex + 1, 0, statementLog);
@@ -116,6 +120,9 @@ export class LoggerInjector {
       return;
     }
 
+    // Note: __bubbleFlowSelf should already be injected via injectSelfCapture()
+    // which is called before this method in injectBubbleLoggingAndReinitializeBubbleParameters()
+
     // Find statements within the original handle method
     const statements = this.findStatementsInHandleMethod(
       originalAST,
@@ -131,14 +138,42 @@ export class LoggerInjector {
 
       if (arrayIndex >= 0 && arrayIndex < lines.length) {
         const line = lines[arrayIndex];
-        const indentation = line.match(/^\\s*/)?.[0] || '    ';
-        // Use original line number for traceability
-        const statementLog = `${indentation}this.logger?.logLine(${statement.line}, 'Statement: ${statement.type}');`;
+        const indentation = line.match(/^\s*/)?.[0] || '    ';
+        // Use __bubbleFlowSelf.logger instead of this.logger for nested function support
+        const statementLog = `${indentation}__bubbleFlowSelf.logger?.logLine(${statement.line}, 'Statement: ${statement.type}');`;
 
         // Insert after the statement line
         lines.splice(arrayIndex + 1, 0, statementLog);
       }
     }
+  }
+
+  /**
+   * Inject `const __bubbleFlowSelf = this;` at the beginning of the handle method body
+   * This captures `this` in a lexical variable that works at any nesting level
+   * This should be called BEFORE reapplyBubbleInstantiations so bubble instantiations can use __bubbleFlowSelf.logger
+   */
+  injectSelfCapture(): void {
+    const handleMethodLocation = this.bubbleScript.getHandleMethodLocation();
+
+    if (!handleMethodLocation) {
+      console.warn(
+        'Handle method location not found, skipping __bubbleFlowSelf injection'
+      );
+      return;
+    }
+
+    // Print handle method location
+    // Found opening brace on same line as method signature
+    const selfCapture = `  const __bubbleFlowSelf = this;`;
+    this.bubbleScript.injectLines(
+      [selfCapture],
+      handleMethodLocation.startLine + 1
+    );
+    this.bubbleScript.reparseAST();
+    this.bubbleScript.showScript(
+      '[LoggerInjector] After injectSelfCapture in opening brace match'
+    );
   }
 
   /**

@@ -410,48 +410,15 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        slack: {
-          variableId: 1,
-          variableName: 'slack',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 4,
-            startCol: 22,
-            endLine: 7,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#general',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'message',
-              value: 'Hello world',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
       const userCredentials: UserCredentialWithId[] = [
         {
-          bubbleVarId: 1,
+          bubbleVarId: 405,
           secret: 'slack-token-123',
           credentialType: CredentialType.SLACK_CRED,
         },
       ];
 
-      const result = injector.injectCredentials(
-        slackBubbleParams,
-        userCredentials
-      );
+      const result = injector.injectCredentials(userCredentials);
 
       console.log('Injection result:', result);
       if (!result.success) {
@@ -462,20 +429,24 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.code).toBeDefined();
       expect(result.injectedCredentials).toBeDefined();
       console.log(result.injectedCredentials);
-      expect(result.injectedCredentials!['1.SLACK_CRED']).toMatch(
+      expect(result.injectedCredentials!['405.SLACK_CRED']).toMatch(
         /slac\*+-123/
       );
 
       // Check that credentials were added to bubble parameters
-      expect(slackBubbleParams.slack.parameters).toHaveLength(3);
-      const credentialsParam = slackBubbleParams.slack.parameters.find(
+      expect(result.parsedBubbles?.[405]?.parameters).toHaveLength(3);
+      const credentialsParam = result.parsedBubbles?.[405]?.parameters?.find(
         (p) => p.name === 'credentials'
       );
       expect(credentialsParam).toBeDefined();
-      expect(credentialsParam!.type).toBe(BubbleParameterType.OBJECT);
+      expect(credentialsParam?.type).toBe(BubbleParameterType.OBJECT);
 
-      const credentialsObj = credentialsParam!.value as Record<string, string>;
-      expect(credentialsObj[CredentialType.SLACK_CRED]).toBe('slack-token-123');
+      const credentialsObj = credentialsParam?.value as string;
+      const obj = JSON.parse(credentialsObj as string) as Record<
+        string,
+        string
+      >;
+      expect(obj[CredentialType.SLACK_CRED]).toBe('slack-token-123');
     });
 
     it('should inject credentials into PostgreSQL bubble', () => {
@@ -493,14 +464,9 @@ describe('BubbleInjector.injectCredentials()', () => {
         )
       );
 
-      const result = injector.injectCredentials(
-        mockBubbleScript.getOriginalParsedBubbles(),
-        [],
-        {
-          [CredentialType.DATABASE_CRED]: 'dfd',
-        }
-      );
-      console.log('Injection result:', result);
+      const result = injector.injectCredentials([], {
+        [CredentialType.DATABASE_CRED]: 'dfd',
+      });
       expect(result.success).toBe(true);
     });
 
@@ -514,59 +480,26 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        slack: {
-          variableId: 1,
-          variableName: 'slack',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 2,
-            startCol: 20,
-            endLine: 5,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#general',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'message',
-              value: 'Hello world',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
       const systemCredentials = {
         [CredentialType.SLACK_CRED]: 'system-slack-token',
       };
 
-      const result = injector.injectCredentials(
-        slackBubbleParams,
-        [],
-        systemCredentials
-      );
-
+      const result = injector.injectCredentials([], systemCredentials);
       expect(result.success).toBe(true);
-      expect(result.injectedCredentials!['1.SLACK_CRED']).toMatch(
+      expect(result.injectedCredentials!['404.SLACK_CRED']).toMatch(
         /syst\*+oken/
       );
 
-      // Check that system credentials were added
-      const credentialsParam = slackBubbleParams.slack.parameters.find(
+      console.log('Parsed bubbles:', result.parsedBubbles);
+
+      const credentialsObj = result.parsedBubbles?.[404]?.parameters?.find(
         (p) => p.name === 'credentials'
-      );
-      const credentialsObj = credentialsParam!.value as Record<string, string>;
-      expect(credentialsObj[CredentialType.SLACK_CRED]).toBe(
-        'system-slack-token'
-      );
+      )?.value as string;
+      const obj = JSON.parse(credentialsObj as string) as Record<
+        string,
+        string
+      >;
+      expect(obj[CredentialType.SLACK_CRED]).toBe('system-slack-token');
     });
 
     it('should prioritize user credentials over system credentials', () => {
@@ -578,34 +511,9 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        slack: {
-          variableId: 1,
-          variableName: 'slack',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 2,
-            startCol: 22,
-            endLine: 4,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#general',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
       const userCredentials: UserCredentialWithId[] = [
         {
-          bubbleVarId: 1,
+          bubbleVarId: 404,
           secret: 'user-slack-token',
           credentialType: CredentialType.SLACK_CRED,
         },
@@ -616,7 +524,6 @@ describe('BubbleInjector.injectCredentials()', () => {
       };
 
       const result = injector.injectCredentials(
-        slackBubbleParams,
         userCredentials,
         systemCredentials
       );
@@ -624,20 +531,22 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.success).toBe(true);
 
       // Check that user credentials override system credentials
-      const credentialsParam = slackBubbleParams.slack.parameters.find(
+      const credentialsParam = result.parsedBubbles?.[404]?.parameters?.find(
         (p) => p.name === 'credentials'
       );
-      const credentialsObj = credentialsParam!.value as Record<string, string>;
-      expect(credentialsObj[CredentialType.SLACK_CRED]).toBe(
-        'user-slack-token'
-      );
+      const credentialsObj = credentialsParam?.value as string;
+      const obj = JSON.parse(credentialsObj as string) as Record<
+        string,
+        string
+      >;
+      expect(obj[CredentialType.SLACK_CRED]).toBe('user-slack-token');
     });
   });
 
   describe('AI agent tool credential injection', () => {
     it('should inject credentials for AI agent with tools', () => {
       const bubbleScript = `
-        const aiAgent = new AIAgent({
+        const aiAgent = new AIAgentBubble({
           model: 'gemini-2.0-flash-exp',
           tools: [{"name": "slack"}, {"name": "web-scrape-tool"}]
         });
@@ -645,39 +554,17 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const aiAgentParams: Record<string, ParsedBubbleWithInfo> = {
-        aiAgent: {
-          variableId: 1,
-          variableName: 'aiAgent',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 2,
-            startCol: 22,
-            endLine: 5,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'tools',
-              value: '[{"name": "slack"}, {"name": "web-scrape-tool"}]',
-              type: BubbleParameterType.ARRAY,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
+      console.log(mockBubbleScript.getParsedBubbles());
+      const aiAgentVarId = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'ai-agent')?.variableId;
+      if (!aiAgentVarId) {
+        throw new Error('AI agent variable id not found');
+      }
 
       const userCredentials: UserCredentialWithId[] = [
         {
-          bubbleVarId: 1,
+          bubbleVarId: aiAgentVarId,
           secret: 'user-slack-token',
           credentialType: CredentialType.SLACK_CRED,
         },
@@ -689,7 +576,6 @@ describe('BubbleInjector.injectCredentials()', () => {
       };
 
       const result = injector.injectCredentials(
-        aiAgentParams,
         userCredentials,
         systemCredentials
       );
@@ -699,28 +585,28 @@ describe('BubbleInjector.injectCredentials()', () => {
 
       // Should have injected multiple credentials
       expect(Object.keys(result.injectedCredentials!)).toHaveLength(3);
-      expect(result.injectedCredentials!['1.SLACK_CRED']).toMatch(
+      expect(result.injectedCredentials![`${aiAgentVarId}.SLACK_CRED`]).toMatch(
         /user\*+oken/
       );
-      expect(result.injectedCredentials!['1.OPENAI_CRED']).toMatch(
-        /syst\*+-key/
-      );
-      expect(result.injectedCredentials!['1.FIRECRAWL_API_KEY']).toMatch(
-        /syst\*+-key/
-      );
+      expect(
+        result.injectedCredentials![`${aiAgentVarId}.OPENAI_CRED`]
+      ).toMatch(/syst\*+-key/);
+      expect(
+        result.injectedCredentials![`${aiAgentVarId}.FIRECRAWL_API_KEY`]
+      ).toMatch(/syst\*+-key/);
 
       // Check bubble parameters were updated
-      const credentialsParam = aiAgentParams.aiAgent.parameters.find(
-        (p) => p.name === 'credentials'
-      );
-      const credentialsObj = credentialsParam!.value as Record<string, string>;
-      expect(credentialsObj[CredentialType.SLACK_CRED]).toBe(
-        'user-slack-token'
-      );
-      expect(credentialsObj[CredentialType.OPENAI_CRED]).toBe(
-        'system-openai-key'
-      );
-      expect(credentialsObj[CredentialType.FIRECRAWL_API_KEY]).toBe(
+      const credentialsParam = result.parsedBubbles?.[
+        aiAgentVarId
+      ]?.parameters?.find((p) => p.name === 'credentials');
+      const credentialsObj = credentialsParam?.value as string;
+      const obj = JSON.parse(credentialsObj as string) as Record<
+        string,
+        string
+      >;
+      expect(obj[CredentialType.SLACK_CRED]).toBe('user-slack-token');
+      expect(obj[CredentialType.OPENAI_CRED]).toBe('system-openai-key');
+      expect(obj[CredentialType.FIRECRAWL_API_KEY]).toBe(
         'system-firecrawl-key'
       );
     });
@@ -761,7 +647,7 @@ describe('BubbleInjector.injectCredentials()', () => {
         },
       };
 
-      const result = injector.injectCredentials(httpBubbleParams);
+      const result = injector.injectCredentials();
 
       expect(result.success).toBe(true);
       expect(Object.keys(result.injectedCredentials!)).toHaveLength(0);
@@ -774,7 +660,7 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript('', bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const result = injector.injectCredentials({});
+      const result = injector.injectCredentials([]);
 
       expect(result.success).toBe(true);
       expect(Object.keys(result.injectedCredentials!)).toHaveLength(0);
@@ -791,46 +677,18 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        slack: {
-          variableId: 1,
-          variableName: 'slack',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 2,
-            startCol: 22,
-            endLine: 4,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#test',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
       const userCredentials: UserCredentialWithId[] = [
         {
-          bubbleVarId: 1,
+          bubbleVarId: 404,
           secret: 'short',
           credentialType: CredentialType.SLACK_CRED,
         },
       ];
 
-      const result = injector.injectCredentials(
-        slackBubbleParams,
-        userCredentials
-      );
+      const result = injector.injectCredentials(userCredentials);
 
       expect(result.success).toBe(true);
-      expect(result.injectedCredentials!['1.SLACK_CRED']).toBe('*****');
+      expect(result.injectedCredentials!['404.SLACK_CRED']).toBe('*****');
     });
 
     it('should properly mask long credentials', () => {
@@ -842,46 +700,19 @@ describe('BubbleInjector.injectCredentials()', () => {
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        slack: {
-          variableId: 1,
-          variableName: 'slack',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 2,
-            startCol: 22,
-            endLine: 4,
-            endCol: 10,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#test',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
       const userCredentials: UserCredentialWithId[] = [
         {
-          bubbleVarId: 1,
+          bubbleVarId: 404,
           secret: 'very-long-secret-key-that-should-be-masked',
           credentialType: CredentialType.SLACK_CRED,
         },
       ];
 
-      const result = injector.injectCredentials(
-        slackBubbleParams,
-        userCredentials
-      );
+      const result = injector.injectCredentials(userCredentials);
 
       expect(result.success).toBe(true);
-      expect(result.injectedCredentials!['1.SLACK_CRED']).toBe(
+      console.log('Injected credentials:', result.injectedCredentials);
+      expect(result.injectedCredentials!['404.SLACK_CRED']).toBe(
         'very**********************************sked'
       );
     });
@@ -897,40 +728,9 @@ describe('BubbleInjector.injectCredentials()', () => {
       `;
       const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
-
-      const bubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        _anonymous_HelloWorldBubble_1: {
-          variableId: -1,
-          variableName: '_anonymous_HelloWorldBubble_1',
-          bubbleName: 'hello-world',
-          className: 'HelloWorldBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 3,
-            startCol: 16,
-            endLine: 6,
-            endCol: 18,
-          },
-          parameters: [
-            {
-              name: 'message',
-              value: "'Hello, World!'",
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'name',
-              value: "'World'",
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
       const userCredentials: UserCredentialWithId[] = [];
 
-      const result = injector.injectCredentials(bubbleParams, userCredentials);
+      const result = injector.injectCredentials(userCredentials);
 
       expect(result.success).toBe(true);
       console.log('Result code:', result.code);
@@ -955,10 +755,7 @@ describe('BubbleInjector.injectCredentials()', () => {
 
       const userCredentials: UserCredentialWithId[] = [];
 
-      const result = injector.injectCredentials(
-        mockBubbleScript.getParsedBubbles(),
-        userCredentials
-      );
+      const result = injector.injectCredentials(userCredentials);
 
       expect(result.success).toBe(true);
       expect(result.code).toContain(
@@ -1001,7 +798,7 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
 
       // Check if line 14 contains the logger configuration with dependency graph
       expect(lines[14]).toContain(
-        '}, {logger: this.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"})'
+        '}, {logger: __bubbleFlowSelf.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"})'
       );
     });
     it('The line numbers should not change from original script', () => {
@@ -1054,7 +851,6 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
         [CredentialType.GOOGLE_GEMINI_CRED]: `google-gemini-${Math.random().toString(36).substring(2, 15)}`,
       };
       const { injectedCredentials } = injector.injectCredentials(
-        mockBubbleScript.getParsedBubbles(),
         userCredentials,
         systemCredentials
       );

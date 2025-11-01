@@ -113,6 +113,32 @@ export class BubbleScript {
     return this.currentBubbleScript;
   }
 
+  /** Print script with line numbers in pretty readable format */
+  public showScript(message: string): void {
+    const lines = this.currentBubbleScript.split('\n');
+    console.debug(`###### ${message} ######`);
+    console.debug('------------Script--------------');
+    console.debug(
+      lines.map((line, index) => `${index + 1}: ${line}`).join('\n')
+    );
+    // Show bubble paramer location (just the basic info)
+    console.debug('---------------------------------');
+
+    console.debug('--------Bubble Locations---------');
+    const bubbles = this.getParsedBubbles();
+    for (const bubble of Object.values(bubbles)) {
+      console.debug(
+        `Bubble ${bubble.bubbleName} location: ${bubble.location.startLine}-${bubble.location.endLine}`
+      );
+    }
+    // Print handle method location
+    console.debug(
+      `Handle method location: ${this.handleMethodLocation?.startLine}-${this.handleMethodLocation?.endLine}`
+    );
+    console.debug('---------------------------------');
+    console.debug(`##################`);
+  }
+
   /**
    * Get all variable names available at a specific line (excluding globals)
    * This is like setting a debugger breakpoint at that line
@@ -370,6 +396,7 @@ export class BubbleScript {
   /**
    * Build a mapping of all user-defined variables with unique IDs
    * Also cross-references with parsed bubbles
+   * Fills variableLocations
    */
   private buildVariableMapping(): Record<number, Variable> {
     const variableMap: Record<number, Variable> = {};

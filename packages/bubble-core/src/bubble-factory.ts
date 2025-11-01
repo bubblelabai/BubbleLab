@@ -618,6 +618,8 @@ import {
   SlackBubble,
   ResendBubble,
   GoogleDriveBubble,
+  GoogleSheetsBubble,
+  GoogleCalendarBubble,
   GmailBubble,
   SlackFormatterAgentBubble,
   HttpBubble,

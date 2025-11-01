@@ -34,7 +34,7 @@ export function buildParametersObject(
           ? `, dependencyGraph: ${dependencyGraphLiteral}`
           : '';
       const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-      return `${paramValue}, {logger: this.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
     }
 
     return paramValue;
@@ -66,7 +66,7 @@ export function buildParametersObject(
             ? `, dependencyGraph: ${dependencyGraphLiteral}`
             : '';
         const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: this.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
       }
 
       return `{...${paramsValue}, credentials: ${credentialsValue}}`;
@@ -87,7 +87,7 @@ export function buildParametersObject(
         ? `, dependencyGraph: ${dependencyGraphLiteral}`
         : '';
     const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-    return `${paramsString}, {logger: this.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+    return `${paramsString}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
   }
 
   return paramsString;
