@@ -12,7 +12,11 @@ const RedditPostSchema = z.object({
   numComments: z.number().describe('Number of comments on the post'),
   createdUtc: z.number().describe('Post creation timestamp (Unix UTC)'),
   postUrl: z.string().describe('Reddit url to the post'),
-  selftext: z.string().describe('Post content text (for text posts)'),
+  selftext: z
+    .string()
+    .describe(
+      "Post content text (for text posts/self posts). Empty for link posts which don't have text content."
+    ),
   subreddit: z.string().describe('Subreddit name'),
   postHint: z
     .string()
@@ -49,9 +53,9 @@ const RedditScrapeToolParamsSchema = z.object({
   limit: z
     .number()
     .min(1, 'Limit must be at least 1')
-    .max(500, 'Limit cannot exceed 500')
-    .default(25)
-    .describe('Maximum number of posts to fetch (1-500, default: 25)'),
+    .max(1000, 'Limit cannot exceed 1000')
+    .default(100)
+    .describe('Maximum number of posts to fetch (1-1000, default: 25)'),
 
   sort: z
     .enum(['hot', 'new', 'top', 'rising'])
@@ -127,7 +131,7 @@ export class RedditScrapeTool extends ToolBubble<
     🔥 Core Features:
     - Scrape posts from any public subreddit
     - Multiple sorting options (hot, new, top, rising)
-    - Flexible post limits (1-100 posts)
+    - Flexible post limits (1-1000 posts with pagination)
     - Time-based filtering for top posts
     - Today-only filtering option
     - Score-based filtering
@@ -187,16 +191,8 @@ export class RedditScrapeTool extends ToolBubble<
         `[RedditScrapeTool] Scraping r/${subreddit} with ${limit} ${sort} posts`
       );
 
-      // Build Reddit API URL
-      const apiUrl = this.buildRedditApiUrl();
-
-      console.log(`[RedditScrapeTool] API endpoint: ${apiUrl}`);
-
-      // Fetch data from Reddit's JSON API
-      const redditData = await this.fetchRedditData(apiUrl);
-
-      // Parse and process posts
-      const rawPosts = this.parseRedditResponse(redditData);
+      // Fetch posts with pagination support (up to 1000 posts)
+      const rawPosts = await this.fetchPostsWithPagination();
       console.log(`[RedditScrapeTool] Found ${rawPosts.length} raw posts`);
 
       // Apply filters
@@ -218,7 +214,7 @@ export class RedditScrapeTool extends ToolBubble<
           sort,
           timeFilter,
           scrapedAt,
-          apiEndpoint: apiUrl,
+          apiEndpoint: this.buildRedditApiUrl(),
         },
         success: true,
         error: '',
@@ -239,7 +235,7 @@ export class RedditScrapeTool extends ToolBubble<
           sort,
           timeFilter,
           scrapedAt,
-          apiEndpoint: '',
+          apiEndpoint: this.buildRedditApiUrl(),
         },
         success: false,
         error: errorMessage,
@@ -248,19 +244,91 @@ export class RedditScrapeTool extends ToolBubble<
   }
 
   /**
-   * Build the Reddit JSON API URL
+   * Build the Reddit JSON API URL with optional pagination
    */
-  private buildRedditApiUrl(): string {
-    const { subreddit, sort, timeFilter, limit } = this.params;
+  private buildRedditApiUrl(after?: string): string {
+    const { subreddit, sort, timeFilter } = this.params;
 
-    let url = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=${Math.min(limit * 2, 100)}`;
+    // Use max limit of 100 per request (Reddit API limit)
+    // Add raw_json=1 to get unprocessed JSON content (helps ensure full selftext)
+    let url = `https://www.reddit.com/r/${subreddit}/${sort}.json?limit=100&raw_json=1`;
 
     // Add time filter for top posts
     if (sort === 'top' && timeFilter) {
       url += `&t=${timeFilter}`;
     }
 
+    // Add pagination parameter if provided
+    if (after) {
+      url += `&after=${after}`;
+    }
+
     return url;
+  }
+
+  /**
+   * Fetch posts with pagination support (up to 1000 posts)
+   * Makes multiple requests if needed, using the 'after' parameter for pagination
+   */
+  private async fetchPostsWithPagination(): Promise<RedditPost[]> {
+    const { limit } = this.params;
+    const allPosts: RedditPost[] = [];
+    let after: string | null = null;
+    const maxRequests = Math.ceil(limit / 100); // Max 100 posts per request
+
+    for (
+      let requestNum = 0;
+      requestNum < maxRequests && allPosts.length < limit;
+      requestNum++
+    ) {
+      const apiUrl = this.buildRedditApiUrl(after || undefined);
+
+      if (requestNum === 0) {
+        console.log(`[RedditScrapeTool] API endpoint: ${apiUrl}`);
+      } else {
+        console.log(`[RedditScrapeTool] Fetching page ${requestNum + 1}...`);
+      }
+
+      try {
+        // Fetch data from Reddit's JSON API
+        const redditData = await this.fetchRedditData(apiUrl);
+
+        // Parse and process posts
+        const posts = this.parseRedditResponse(redditData);
+        allPosts.push(...posts);
+
+        // Stop if we've collected enough posts
+        if (allPosts.length >= limit) {
+          break;
+        }
+
+        // Get the 'after' parameter for next page
+        after = redditData?.data?.after || null;
+
+        // If no more posts available, break
+        if (!after || posts.length === 0) {
+          break;
+        }
+
+        // Respect rate limits - add a small delay between requests
+        if (requestNum < maxRequests - 1 && allPosts.length < limit) {
+          await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+        }
+      } catch (error) {
+        console.error(
+          `[RedditScrapeTool] Error fetching page ${requestNum + 1}:`,
+          error
+        );
+        // If we have some posts, return what we have
+        if (allPosts.length > 0) {
+          break;
+        }
+        // If this is the first request and it fails, throw the error
+        throw error;
+      }
+    }
+
+    return allPosts;
   }
 
   /**
@@ -356,6 +424,29 @@ export class RedditScrapeTool extends ToolBubble<
           // Skip if not a post (could be an ad or other content)
           if (!post || !post.title) continue;
 
+          // Extract selftext - for text posts (is_self=true), this contains the post content
+          // For link posts (is_self=false), selftext will be empty (expected - they don't have text content)
+          // Try selftext_html as fallback if selftext is empty but post is marked as self post
+          let selftext = post.selftext || '';
+          const isSelfPost = post.is_self || false;
+
+          // If selftext is empty but we have selftext_html and it's a self post, try to use HTML version
+          // (though we prefer plain text, this is a fallback)
+          if (isSelfPost && !selftext && post.selftext_html) {
+            // For now, we'll use selftext_html as a fallback (could decode HTML if needed)
+            selftext = post.selftext_html;
+            console.warn(
+              `[RedditScrapeTool] Text post "${post.title.substring(0, 50)}..." has empty selftext, using selftext_html`
+            );
+          }
+
+          // Debug logging for text posts without any content (might indicate an API issue)
+          if (isSelfPost && !selftext && !post.selftext_html) {
+            console.warn(
+              `[RedditScrapeTool] Text post "${post.title.substring(0, 50)}..." has no content (empty selftext and selftext_html)`
+            );
+          }
+
           posts.push({
             title: post.title,
             url: post.url || '',
@@ -366,10 +457,10 @@ export class RedditScrapeTool extends ToolBubble<
             postUrl: post.permalink
               ? `https://reddit.com${post.permalink}`
               : '',
-            selftext: post.selftext || '',
+            selftext: selftext,
             subreddit: post.subreddit || this.params.subreddit,
             postHint: post.post_hint || null,
-            isSelf: post.is_self || false,
+            isSelf: isSelfPost,
             thumbnail:
               post.thumbnail !== 'self' && post.thumbnail !== 'default'
                 ? post.thumbnail

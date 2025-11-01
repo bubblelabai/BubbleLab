@@ -83,8 +83,8 @@ export class HelloWorldBubble extends ServiceBubble<
   ): Promise<HelloWorldResult> {
     // Context is available but not currently used in this implementation
     void context;
-    // Simulate some processing, random delay between 2- 5 seconds
-    const delay = Math.floor(Math.random() * 3000) + 2000;
+    // Simulate some processing, random delay between 200- 700ms
+    const delay = Math.floor(Math.random() * 500) + 200;
     await new Promise((resolve) => setTimeout(resolve, delay));
 
     const greeting = `${this.params.message} ${this.params.name}!`;

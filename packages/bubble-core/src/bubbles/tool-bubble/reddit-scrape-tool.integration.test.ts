@@ -294,7 +294,8 @@ describe('RedditScrapeTool Integration Tests', () => {
 
       expect(bubble).toBeInstanceOf(RedditScrapeTool);
 
-      const result = (await bubble.action()) as RedditScrapeToolResult;
+      const result =
+        (await bubble.action()) as unknown as RedditScrapeToolResult;
       expect(result.success).toBe(true);
     });
 
