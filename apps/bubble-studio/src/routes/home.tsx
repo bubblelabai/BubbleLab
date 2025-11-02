@@ -3,9 +3,11 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useFlowGeneration } from '@/hooks/useFlowGeneration';
 import { useUIStore } from '@/stores/uiStore';
+import { usePromptFromURL } from '@/hooks/usePromptFromURL';
 
 interface HomeRouteSearch {
   showSignIn?: boolean;
+  prompt?: string;
 }
 
 export const Route = createFileRoute('/home')({
@@ -13,12 +15,13 @@ export const Route = createFileRoute('/home')({
   validateSearch: (search: Record<string, unknown>): HomeRouteSearch => {
     return {
       showSignIn: search.showSignIn === true || search.showSignIn === 'true',
+      prompt: typeof search.prompt === 'string' ? search.prompt : undefined,
     };
   },
 });
 
 function NewFlowPage() {
-  const { showSignIn } = Route.useSearch();
+  const { showSignIn, prompt } = Route.useSearch();
   const {
     generationPrompt,
     selectedPreset,
@@ -29,6 +32,9 @@ function NewFlowPage() {
 
   const { closeSidebar } = useUIStore();
   const { generateCode: generateCodeFromHook } = useFlowGeneration();
+
+  // Handle prompt from URL with authentication check
+  const { showSignInModal } = usePromptFromURL({ prompt });
 
   // Wrapper function that calls the hook's generateCode with proper parameters
   const generateCode = async () => {
@@ -46,7 +52,7 @@ function NewFlowPage() {
       selectedPreset={selectedPreset}
       setSelectedPreset={setSelectedPreset}
       onGenerateCode={generateCode}
-      autoShowSignIn={showSignIn}
+      autoShowSignIn={showSignIn || showSignInModal}
     />
   );
 }
