@@ -31,7 +31,8 @@
 //   - Send comprehensive professional email with ALL information
 //   - Focus on FRESHNESS and timeliness of opportunities
 
-export const templateCode = `import {
+export const templateCode = `
+import {
   BubbleFlow,
   WebScrapeTool,
   ResearchAgentTool,
@@ -695,22 +696,7 @@ Return ONLY valid JSON:
           <tr>
             <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6;">
               <h2 style="margin: 0 0 20px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Research Methodology & Sources</h2>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td width="48%" style="vertical-align: top; padding: 15px; background-color: #f8f9fa; border-radius: 3px;">
-                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Data Sources</div>
-                    <div style="font-size: 24px; font-weight: 600; color: #495057; margin-bottom: 4px;">\${new Set(trendData.trends.map(t => t.sourceUrl)).size}</div>
-                    <div style="font-size: 13px; color: #6c757d;">Unique research sources</div>
-                  </td>
-                  <td width="4%"></td>
-                  <td width="48%" style="vertical-align: top; padding: 15px; background-color: #f8f9fa; border-radius: 3px;">
-                    <div style="font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">Analysis Depth</div>
-                    <div style="font-size: 24px; font-weight: 600; color: #495057; margin-bottom: 4px;">\${trendData.trends.length}</div>
-                    <div style="font-size: 13px; color: #6c757d;">Trending formats analyzed</div>
-                  </td>
-                </tr>
-              </table>
-              <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #495057; border-radius: 3px;">
+              <div style="padding: 15px; background-color: #f8f9fa; border-left: 3px solid #495057; border-radius: 3px;">
                 <div style="font-size: 12px; font-weight: 600; color: #495057; margin-bottom: 8px;">RESEARCH COMPONENTS:</div>
                 <ul style="margin: 0; padding-left: 20px; color: #495057; font-size: 13px; line-height: 1.8;">
                   <li><strong>Google Trends:</strong> Real-time trending search data analysis</li>
@@ -731,9 +717,6 @@ Return ONLY valid JSON:
               <p style="margin: 0 0 20px 0; color: #495057; font-size: 13px; line-height: 1.6;">Fresh, timely events identified from recent news that create content opportunities:</p>
               \${emergingPhenomena.phenomena.map((phenomenon, i) => \`
               <div style="margin-bottom: 20px; padding: 20px; background-color: #ffffff; border: 1px solid #dee2e6; border-left: 3px solid #495057; border-radius: 3px;">
-                <div style="margin-bottom: 10px;">
-                  <span style="display: inline-block; padding: 3px 8px; background-color: #495057; color: #ffffff; border-radius: 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px;">\${phenomenon.dateContext}</span>
-                </div>
                 <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 16px; font-weight: 600;">\${i + 1}. \${phenomenon.title}</h3>
                 <p style="margin: 0 0 10px 0; color: #495057; font-size: 13px; line-height: 1.6;"><strong>What happened:</strong> \${phenomenon.description}</p>
                 <p style="margin: 0 0 10px 0; color: #495057; font-size: 13px; line-height: 1.6;"><strong>Why it matters:</strong> \${phenomenon.relevanceToIndustry}</p>
@@ -773,10 +756,6 @@ Return ONLY valid JSON:
                 .map(
                   (trend, i) => \`
                 <div style="margin-bottom: 20px; padding: 20px; background-color: #f8f9fa; border-left: 3px solid #495057; border-radius: 3px;">
-                  <div style="margin-bottom: 10px;">
-                    <span style="display: inline-block; padding: 3px 8px; background-color: #495057; color: #ffffff; border-radius: 2px; font-size: 10px; font-weight: 600; text-transform: uppercase; margin-right: 8px;">\${trend.topic}</span>
-                    <span style="color: #6c757d; font-size: 11px;">\${trend.platforms.join(' • ')}</span>
-                  </div>
                   <h3 style="margin: 0 0 10px 0; color: #212529; font-size: 16px; font-weight: 600;">\${i + 1}. \${trend.format}</h3>
                   <p style="margin: 0 0 12px 0; color: #495057; font-size: 14px; line-height: 1.6;">\${trend.description}</p>
                   \${trend.viralExamples && trend.viralExamples.length > 0 ? \`
@@ -831,19 +810,6 @@ Return ONLY valid JSON:
             </td>
           </tr>
 
-          <!-- Reddit Community Insights -->
-          \${fullRedditContent ? \`
-          <tr>
-            <td style="padding: 35px 40px; border-bottom: 1px solid #dee2e6;">
-              <h2 style="margin: 0 0 15px 0; color: #495057; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Creator Community Insights from Reddit</h2>
-              <p style="margin: 0 0 15px 0; color: #495057; font-size: 13px;">Real discussions and insights from content creator communities. Top posts analyzed from: r/\${researchPlan.subreddits.join(', r/')}</p>
-              <div style="padding: 15px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 3px;">
-                <p style="margin: 0; color: #6c757d; font-size: 12px; line-height: 1.6;">Full post content and engagement data were analyzed to identify trending topics, creator concerns, and effective strategies. All insights have been incorporated into the content ideas above.</p>
-              </div>
-            </td>
-          </tr>
-          \` : ''}
-
           <!-- Footer -->
           <tr>
             <td style="padding: 25px 40px; background-color: #212529; text-align: center; border-top: 1px solid #495057;">
@@ -879,7 +845,9 @@ Return ONLY valid JSON:
       emailId: emailResult.data?.email_id as string,
     };
   }
-}`;
+}
+  
+`;
 
 // Metadata export is now optional - this template demonstrates removal of metadata export
 // The templateLoader will use {} as default metadata when not present
