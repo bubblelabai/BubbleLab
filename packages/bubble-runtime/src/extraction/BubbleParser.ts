@@ -31,7 +31,12 @@ export class BubbleParser {
     scopeManager: ScopeManager
   ): {
     bubbles: Record<number, ParsedBubbleWithInfo>;
-    handleMethodLocation: { startLine: number; endLine: number } | null;
+    handleMethodLocation: {
+      startLine: number;
+      endLine: number;
+      definitionStartLine: number;
+      bodyStartLine: number;
+    } | null;
   } {
     // Build registry lookup from bubble-core
     const classNameToInfo = buildClassNameLookup(bubbleFactory);
@@ -844,18 +849,25 @@ export class BubbleParser {
   /**
    * Find the handle method location in the AST
    */
-  private findHandleMethodLocation(
-    ast: TSESTree.Program
-  ): { startLine: number; endLine: number } | null {
+  private findHandleMethodLocation(ast: TSESTree.Program): {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null {
     for (const statement of ast.body) {
       // Look for function declarations named 'handle'
       if (
         statement.type === 'FunctionDeclaration' &&
         statement.id?.name === 'handle'
       ) {
+        const definitionStart = statement.loc?.start.line || -1;
+        const bodyStart = statement.body?.loc?.start.line || definitionStart;
         return {
-          startLine: statement.loc?.start.line || -1,
+          startLine: definitionStart,
           endLine: statement.loc?.end.line || -1,
+          definitionStartLine: definitionStart,
+          bodyStartLine: bodyStart,
         };
       }
 
@@ -865,9 +877,14 @@ export class BubbleParser {
         statement.declaration?.type === 'FunctionDeclaration' &&
         statement.declaration.id?.name === 'handle'
       ) {
+        const decl = statement.declaration;
+        const definitionStart = decl.loc?.start.line || -1;
+        const bodyStart = decl.body?.loc?.start.line || definitionStart;
         return {
-          startLine: statement.declaration.loc?.start.line || -1,
-          endLine: statement.declaration.loc?.end.line || -1,
+          startLine: definitionStart,
+          endLine: decl.loc?.end.line || -1,
+          definitionStartLine: definitionStart,
+          bodyStartLine: bodyStart,
         };
       }
 
@@ -881,9 +898,17 @@ export class BubbleParser {
             (declarator.init?.type === 'FunctionExpression' ||
               declarator.init?.type === 'ArrowFunctionExpression')
           ) {
+            const init = declarator.init;
+            const definitionStart = declarator.loc?.start.line || -1;
+            const bodyStart =
+              init.type === 'FunctionExpression'
+                ? init.body?.loc?.start.line || definitionStart
+                : init.body?.loc?.start.line || definitionStart;
             return {
-              startLine: declarator.init.loc?.start.line || -1,
-              endLine: declarator.init.loc?.end.line || -1,
+              startLine: definitionStart,
+              endLine: init.loc?.end.line || -1,
+              definitionStartLine: definitionStart,
+              bodyStartLine: bodyStart,
             };
           }
         }
@@ -902,9 +927,17 @@ export class BubbleParser {
             (declarator.init?.type === 'FunctionExpression' ||
               declarator.init?.type === 'ArrowFunctionExpression')
           ) {
+            const init = declarator.init;
+            const definitionStart = declarator.loc?.start.line || -1;
+            const bodyStart =
+              init.type === 'FunctionExpression'
+                ? init.body?.loc?.start.line || definitionStart
+                : init.body?.loc?.start.line || definitionStart;
             return {
-              startLine: declarator.init.loc?.start.line || -1,
-              endLine: declarator.init.loc?.end.line || -1,
+              startLine: definitionStart,
+              endLine: init.loc?.end.line || -1,
+              definitionStartLine: definitionStart,
+              bodyStartLine: bodyStart,
             };
           }
         }
@@ -940,7 +973,12 @@ export class BubbleParser {
    */
   private findHandleMethodInClass(
     classDeclaration: TSESTree.ClassDeclaration
-  ): { startLine: number; endLine: number } | null {
+  ): {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null {
     if (!classDeclaration.body) return null;
 
     for (const member of classDeclaration.body.body) {
@@ -950,9 +988,14 @@ export class BubbleParser {
         member.key.name === 'handle' &&
         member.value.type === 'FunctionExpression'
       ) {
+        const definitionStart = member.loc?.start.line || -1;
+        const bodyStart = member.value.body?.loc?.start.line || definitionStart;
+        const definitionEnd = member.loc?.end.line || -1;
         return {
-          startLine: member.value.loc?.start.line || -1,
-          endLine: member.value.loc?.end.line || -1,
+          startLine: definitionStart,
+          endLine: definitionEnd,
+          definitionStartLine: definitionStart,
+          bodyStartLine: bodyStart,
         };
       }
     }

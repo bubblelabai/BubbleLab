@@ -111,7 +111,12 @@ export class LoggerInjector {
   private injectLineLoggingWithOriginalLines(
     lines: string[],
     originalAST: any,
-    originalHandleMethodLocation: any
+    originalHandleMethodLocation: {
+      startLine: number;
+      endLine: number;
+      definitionStartLine: number;
+      bodyStartLine: number;
+    }
   ): void {
     if (!originalHandleMethodLocation) {
       console.warn(
@@ -163,12 +168,12 @@ export class LoggerInjector {
       return;
     }
 
-    // Print handle method location
-    // Found opening brace on same line as method signature
+    // Inject self capture at body start line (after opening brace)
+    // bodyStartLine is the line with the opening brace, so inject on the next line
     const selfCapture = `  const __bubbleFlowSelf = this;`;
     this.bubbleScript.injectLines(
       [selfCapture],
-      handleMethodLocation.startLine + 1
+      handleMethodLocation.bodyStartLine + 1
     );
     this.bubbleScript.showScript(
       '[LoggerInjector] After injectSelfCapture in opening brace match'
@@ -180,7 +185,12 @@ export class LoggerInjector {
    */
   private findStatementsInHandleMethod(
     ast: TSESTree.Program,
-    handleMethodLocation: { startLine: number; endLine: number }
+    handleMethodLocation: {
+      startLine: number;
+      endLine: number;
+      definitionStartLine: number;
+      bodyStartLine: number;
+    }
   ): Array<{ line: number; type: string }> {
     const statements: Array<{ line: number; type: string }> = [];
 

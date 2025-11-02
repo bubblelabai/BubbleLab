@@ -26,7 +26,12 @@ export class BubbleScript {
     number,
     { startLine: number; startCol: number; endLine: number; endCol: number }
   >; // Maps Variable.$id to location
-  private handleMethodLocation: { startLine: number; endLine: number } | null;
+  private handleMethodLocation: {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null;
   private bubbleScript: string;
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
@@ -133,7 +138,7 @@ export class BubbleScript {
     }
     // Print handle method location
     console.debug(
-      `Handle method location: ${this.handleMethodLocation?.startLine}-${this.handleMethodLocation?.endLine}`
+      `Handle method location: ${this.handleMethodLocation?.bodyStartLine}-${this.handleMethodLocation?.endLine}`
     );
     console.debug('---------------------------------');
     console.debug(`##################`);
@@ -502,7 +507,12 @@ export class BubbleScript {
   /**
    * Get the handle method location (start and end lines)
    */
-  getHandleMethodLocation(): { startLine: number; endLine: number } | null {
+  getHandleMethodLocation(): {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null {
     return this.handleMethodLocation;
   }
 
