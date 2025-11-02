@@ -177,7 +177,7 @@ describe('BubbleInjector.findCredentials()', () => {
       const mockBubbleScript = new BubbleScript('', bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const credentials = injector.findCredentials({});
+      const credentials = injector.findCredentials();
 
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials)).toHaveLength(0);
@@ -187,32 +187,7 @@ describe('BubbleInjector.findCredentials()', () => {
       const mockBubbleScript = new BubbleScript('', bubbleFactory);
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const noCreds: Record<string, ParsedBubbleWithInfo> = {
-        'math-bubble': {
-          variableId: 9,
-          variableName: 'mathBubble',
-          bubbleName: 'unknown-bubble',
-          className: 'UnknownBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 5,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'operation',
-              value: 'add',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: false,
-          hasActionCall: false,
-        },
-      };
-
-      const credentials = injector.findCredentials(noCreds);
+      const credentials = injector.findCredentials();
 
       expect(credentials).toBeDefined();
       expect(Object.keys(credentials)).toHaveLength(0);
@@ -628,8 +603,8 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
       const lines = mockBubbleScript.bubblescript.split('\n');
 
       // Check if line 16 contains the logger configuration with dependency graph
-      expect(lines[16]).toContain(
-        'logger: __bubbleFlowSelf.logger, variableId: 413, dependencyGraph: {"name":"hello-world", "uniqueId":"413", "variableId":413, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "413"'
+      expect(lines[15]).toContain(
+        'logger: __bubbleFlowSelf.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"'
       );
     });
     it('The line numbers should not change from original script', () => {
