@@ -72,9 +72,9 @@ export const TEMPLATES: TemplateDefinition[] = [
   },
   {
     id: 'content-creation',
-    name: 'Content Creation Ideas and Trends Analysis (Research Agent, Youtube, Reddit, Email)',
+    name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
     prompt:
-      'Research trending formats across YouTube/Reddit/news, generate 10+ tailored content ideas with metrics, and email a summary',
+      'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
     isPopular: true,
