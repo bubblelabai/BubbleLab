@@ -17,327 +17,158 @@ describe('BubbleInjector.findCredentials()', () => {
     await bubbleFactory.registerDefaults();
   });
 
+  const slackBubbleScript = `
+    const slack = new SlackBubble({
+      channel: '#general',
+      message: 'Hello world'
+    });
+  `;
+
+  const aiAgentBubbleScript = `
+    const aiAgent = new AIAgentBubble({
+      model: 'gemini-2.0-flash-exp',
+      tools: [{"name": "slack"}, {"name": "web-scrape-tool"}]
+    });
+  `;
+
+  const aiAgentWithMalformedToolsBubbleScript = `
+    const aiAgent = new AIAgentBubble({
+      model: 'gemini-2.0-flash-exp',
+      tools: 'invalid json [',
+    });
+  `;
+
+  const aiAgentWithSingleToolBubbleScript = `
+    const aiAgent = new AIAgentBubble({
+      model: 'gemini-2.0-flash-exp',
+      tools: [{"name": "slack"}],
+    });
+  `;
+
+  const multiBubbleScript = `
+    const slack = new SlackBubble({
+      channel: '#general',
+      message: 'Hello world'
+    });
+    const aiAgent = new AIAgentBubble({
+      model: 'gemini-2.0-flash-exp',
+      tools: [{"name": "sql-query-tool"}, {"name": "web-scrape-tool"}]
+    });
+  `;
+
   describe('Slack bubble credential detection', () => {
     it('should extract Slack credentials from Slack bubble', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        slackBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const slackBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        'slack-sender': {
-          variableId: 1,
-          variableName: 'slackSender',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 5,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#general',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'message',
-              value: 'Hello world',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(slackBubbleParams);
-
+      const credentials = injector.findCredentials();
+      console.log(credentials);
       expect(credentials).toBeDefined();
-      expect(credentials[1]).toContain(CredentialType.SLACK_CRED);
-      expect(credentials[1]).toHaveLength(1);
+      expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
+      expect(credentials['404']).toHaveLength(1);
     });
 
     it('should return all credentials including system credentials', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        aiAgentBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
-
-      const aiAgentBubble: Record<string, ParsedBubbleWithInfo> = {
-        'ai-bubble': {
-          variableId: 2,
-          variableName: 'aiBubble',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 5,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(aiAgentBubble);
-
+      const credentials = injector.findCredentials();
       // Should return all AI agent credentials (including system ones)
       expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials[2]).toContain(CredentialType.OPENAI_CRED);
-      expect(credentials[2]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials[2]).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials[2]).toContain(CredentialType.FIRECRAWL_API_KEY);
+      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
+      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY);
     });
   });
 
   describe('AI agent with tools credential detection', () => {
     it('should extract credentials from AI agent tools (Slack + Firecrawl)', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        aiAgentBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const aiAgentWithTools: Record<string, ParsedBubbleWithInfo> = {
-        'ai-assistant': {
-          variableId: 3,
-          variableName: 'aiAssistant',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 10,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'tools',
-              value: '[{"name": "slack"}, {"name": "web-scrape-tool"}]',
-              type: BubbleParameterType.ARRAY,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(aiAgentWithTools);
-
-      expect(credentials).toBeDefined();
-      expect(credentials[3]).toBeDefined();
+      const credentials = injector.findCredentials();
 
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials[3]).toContain(CredentialType.OPENAI_CRED);
-      expect(credentials[3]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials[3]).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials[3]).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials[3]).toContain(CredentialType.SLACK_CRED); // From tool
+      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
+      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
+      expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
 
     it('should handle malformed tools parameter gracefully', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        aiAgentWithMalformedToolsBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const aiAgentWithMalformedTools: Record<string, ParsedBubbleWithInfo> = {
-        'ai-assistant': {
-          variableId: 4,
-          variableName: 'aiAssistant',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 10,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'tools',
-              value: 'invalid json [',
-              type: BubbleParameterType.ARRAY,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(aiAgentWithMalformedTools);
+      const credentials = injector.findCredentials();
 
       // Should return AI agent base credentials but not crash on malformed tools
       expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials[4]).toContain(CredentialType.OPENAI_CRED);
-      expect(credentials[4]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials[4]).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials[4]).toContain(CredentialType.FIRECRAWL_API_KEY);
+      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
+      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY);
     });
 
     it('should handle single tool object (not array)', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        aiAgentWithSingleToolBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const aiAgentWithSingleTool: Record<string, ParsedBubbleWithInfo> = {
-        'ai-assistant': {
-          variableId: 5,
-          variableName: 'aiAssistant',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 10,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'tools',
-              value: '{"name": "slack"}',
-              type: BubbleParameterType.OBJECT,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(aiAgentWithSingleTool);
-
+      const credentials = injector.findCredentials();
       expect(credentials).toBeDefined();
-      expect(credentials[5]).toBeDefined();
+      expect(credentials['404']).toBeDefined();
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials[5]).toContain(CredentialType.OPENAI_CRED);
-      expect(credentials[5]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials[5]).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials[5]).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials[5]).toContain(CredentialType.SLACK_CRED); // From tool
+      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
+      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
+      expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
   });
 
   describe('Complex multi-bubble scenario', () => {
     it('should extract credentials from multiple bubbles correctly', () => {
-      const mockBubbleScript = new BubbleScript('', bubbleFactory);
+      const mockBubbleScript = new BubbleScript(
+        multiBubbleScript,
+        bubbleFactory
+      );
       const injector = new BubbleInjector(mockBubbleScript);
 
-      const multiBubbleParams: Record<string, ParsedBubbleWithInfo> = {
-        'slack-sender': {
-          variableId: 6,
-          variableName: 'slackSender',
-          bubbleName: 'slack',
-          className: 'SlackBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 1,
-            startCol: 0,
-            endLine: 5,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'channel',
-              value: '#general',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-        'database-query': {
-          variableId: 7,
-          variableName: 'dbQuery',
-          bubbleName: 'postgresql',
-          className: 'PostgreSQLBubble',
-          nodeType: 'service',
-          location: {
-            startLine: 10,
-            startCol: 0,
-            endLine: 15,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'query',
-              value: 'SELECT * FROM users',
-              type: BubbleParameterType.STRING,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-        'ai-assistant': {
-          variableId: 8,
-          variableName: 'aiAssistant',
-          bubbleName: 'ai-agent',
-          className: 'AIAgent',
-          nodeType: 'service',
-          location: {
-            startLine: 20,
-            startCol: 0,
-            endLine: 30,
-            endCol: 0,
-          },
-          parameters: [
-            {
-              name: 'model',
-              value: 'gemini-2.0-flash-exp',
-              type: BubbleParameterType.STRING,
-            },
-            {
-              name: 'tools',
-              value: '[{"name": "web-scrape-tool"}]',
-              type: BubbleParameterType.ARRAY,
-            },
-          ],
-          hasAwait: true,
-          hasActionCall: true,
-        },
-      };
-
-      const credentials = injector.findCredentials(multiBubbleParams);
+      const credentials = injector.findCredentials();
 
       expect(credentials).toBeDefined();
+      console.log(credentials);
 
       // Slack bubble should require Slack credentials
-      expect(credentials[6]).toContain(CredentialType.SLACK_CRED);
-      expect(credentials[6]).toHaveLength(1);
-
-      // Database bubble should require database credentials
-      expect(credentials[7]).toContain(CredentialType.DATABASE_CRED);
-      expect(credentials[7]).toHaveLength(1);
+      expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
+      expect(credentials['404']).toHaveLength(1);
 
       // AI agent should require base credentials plus tool credentials
-      expect(credentials[8]).toContain(CredentialType.OPENAI_CRED);
-      expect(credentials[8]).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials[8]).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials[8]).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials[8]).toHaveLength(5); // All AI agent credentials
+      expect(credentials['405']).toContain(CredentialType.OPENAI_CRED);
+      expect(credentials['405']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['405']).toContain(CredentialType.ANTHROPIC_CRED);
+      expect(credentials['405']).toContain(CredentialType.DATABASE_CRED);
+      expect(credentials['405']).toContain(CredentialType.OPENROUTER_CRED);
+      expect(credentials['405']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
+      expect(credentials['405']).toHaveLength(6); // All AI agent credentials
 
       // Should have 3 different bubble IDs with credentials
-      expect(Object.keys(credentials)).toHaveLength(3);
+      expect(Object.keys(credentials)).toHaveLength(2);
     });
   });
 

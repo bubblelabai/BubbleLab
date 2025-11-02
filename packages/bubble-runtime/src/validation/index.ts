@@ -106,7 +106,7 @@ export async function validateAndExtract(
     const requiredCredentials: Record<string, CredentialType[]> = {};
 
     const injector = new BubbleInjector(script);
-    const credentials = injector.findCredentials(bubbleParameters);
+    const credentials = injector.findCredentials();
 
     for (const [varId, credentialTypes] of Object.entries(credentials)) {
       const bubble = bubbleParameters[Number(varId)];

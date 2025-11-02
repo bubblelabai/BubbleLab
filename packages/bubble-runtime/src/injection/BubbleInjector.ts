@@ -40,13 +40,13 @@ export class BubbleInjector {
    * @param bubbleParameters - Parsed bubble parameters with info
    * @returns Record mapping bubble variable IDs to their required credential types (excluding system credentials)
    */
-  findCredentials(
-    bubbleParameters: Record<string, ParsedBubbleWithInfo>
-  ): Record<number, CredentialType[]> {
-    const requiredCredentials: Record<number, CredentialType[]> = {};
+  findCredentials(): Record<string, CredentialType[]> {
+    const requiredCredentials: Record<string, CredentialType[]> = {};
 
     // Iterate through each bubble and check its credential requirements
-    for (const [, bubble] of Object.entries(bubbleParameters)) {
+    for (const [, bubble] of Object.entries(
+      this.bubbleScript.getParsedBubbles()
+    )) {
       const allCredentialTypes = new Set<CredentialType>();
 
       // Get bubble-level credentials
