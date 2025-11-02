@@ -26,7 +26,12 @@ export class BubbleScript {
     number,
     { startLine: number; startCol: number; endLine: number; endCol: number }
   >; // Maps Variable.$id to location
-  private handleMethodLocation: { startLine: number; endLine: number } | null;
+  private handleMethodLocation: {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null;
   private bubbleScript: string;
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
@@ -64,7 +69,7 @@ export class BubbleScript {
       this.ast,
       this.scopeManager
     );
-
+    this.handleMethodLocation = parseResult.handleMethodLocation;
     this.parsedBubbles = parseResult.bubbles;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
@@ -111,6 +116,32 @@ export class BubbleScript {
   public get bubblescript(): string {
     // Regenerate the script
     return this.currentBubbleScript;
+  }
+
+  /** Print script with line numbers in pretty readable format */
+  public showScript(message: string): void {
+    const lines = this.currentBubbleScript.split('\n');
+    console.debug(`###### ${message} ######`);
+    console.debug('------------Script--------------');
+    console.debug(
+      lines.map((line, index) => `${index + 1}: ${line}`).join('\n')
+    );
+    // Show bubble paramer location (just the basic info)
+    console.debug('---------------------------------');
+
+    console.debug('--------Bubble Locations---------');
+    const bubbles = this.getParsedBubbles();
+    for (const bubble of Object.values(bubbles)) {
+      console.debug(
+        `Bubble ${bubble.bubbleName} location: ${bubble.location.startLine}-${bubble.location.endLine}`
+      );
+    }
+    // Print handle method location
+    console.debug(
+      `Handle method location: ${this.handleMethodLocation?.bodyStartLine}-${this.handleMethodLocation?.endLine}`
+    );
+    console.debug('---------------------------------');
+    console.debug(`##################`);
   }
 
   /**
@@ -370,6 +401,7 @@ export class BubbleScript {
   /**
    * Build a mapping of all user-defined variables with unique IDs
    * Also cross-references with parsed bubbles
+   * Fills variableLocations
    */
   private buildVariableMapping(): Record<number, Variable> {
     const variableMap: Record<number, Variable> = {};
@@ -475,7 +507,12 @@ export class BubbleScript {
   /**
    * Get the handle method location (start and end lines)
    */
-  getHandleMethodLocation(): { startLine: number; endLine: number } | null {
+  getHandleMethodLocation(): {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  } | null {
     return this.handleMethodLocation;
   }
 

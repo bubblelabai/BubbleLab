@@ -55,7 +55,7 @@ export class BubbleRunner {
   private logger: BubbleLogger;
   public injector: BubbleInjector;
   private options: BubbleRunnerOptions;
-
+  private hasInjectedLogging: boolean = false;
   constructor(
     bubbleScript: string | BubbleScript,
     bubbleFactory: BubbleFactory,
@@ -375,21 +375,24 @@ export class BubbleRunner {
     console.log('Running all');
 
     try {
-      this.logger?.info('Starting BubbleFlow execution');
+      this.logger?.info('Preparing for BubbleFlow execution...');
 
       // Inject logging into the script if enabled
       let scriptToExecute = this.bubbleScript.bubblescript;
-      if (this.options.enableLogging && this.logger) {
-        this.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+      if (this.logger && !this.hasInjectedLogging) {
+        this.injector.injectBubbleLoggingAndReinitializeBubbleParameters(
+          this.options.enableLogging
+        );
         scriptToExecute = this.bubbleScript.bubblescript;
+        this.hasInjectedLogging = true;
       }
+
+      this.bubbleScript.showScript('Prepared script for execution');
 
       // Create a temporary file with the bubble script code in the project directory
       // This ensures proper module resolution for @nodex packages
       const projectRoot = this.findProjectRoot();
       const tempDir = path.join(projectRoot, '.tmp');
-      console.log('[BubbleRunner] projectRoot:', projectRoot);
-      console.log('[BubbleRunner] tempDir:', tempDir);
 
       // Ensure temp directory exists
       try {
@@ -402,8 +405,6 @@ export class BubbleRunner {
 
       const tempFileName = `bubble-script-${Date.now()}-${Math.random().toString(36).substring(7)}.ts`;
       tempFilePath = path.join(tempDir, tempFileName);
-      console.log('[BubbleRunner] tempFilePath:', tempFilePath);
-
       // Write the script code to the temporary file
       try {
         console.log(

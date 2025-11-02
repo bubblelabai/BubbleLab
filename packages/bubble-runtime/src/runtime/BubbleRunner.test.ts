@@ -13,6 +13,7 @@ describe('BubbleRunner correctly runs and plans', () => {
   const researchWeatherScript = getFixture('research-weather');
   const simpleHttpScript = getFixture('simple-http');
   const helloWorldNoPayloadScript = getFixture('hello-world-no-payload');
+  const methodInsideHandlerScript = getFixture('method-inside-handler');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -199,8 +200,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         true
       );
       // Inject credentials
-      const bubbles = runner.getParsedBubbles();
-      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      runner.injector.injectCredentials([], getUserCredential());
       result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success || result.error?.includes('credentials')).toBe(
@@ -251,11 +251,7 @@ describe('BubbleRunner correctly runs and plans', () => {
     it('should execute a flow with a starter flow', async () => {
       const testScript = getFixture('starter-flow');
       const runner = new BubbleRunner(testScript, bubbleFactory);
-      runner.injector.injectCredentials(
-        runner.getParsedBubbles(),
-        [],
-        getUserCredential()
-      );
+      runner.injector.injectCredentials([], getUserCredential());
       const result = await runner.runAll();
       expect(result).toBeDefined();
       console.log(result);
@@ -268,8 +264,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       const testScript = getFixture('reddit-lead-finder');
       const runner = new BubbleRunner(testScript, bubbleFactory);
 
-      const bubbles = runner.getParsedBubbles();
-      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      runner.injector.injectCredentials([], getUserCredential());
       const result = await runner.runAll({
         spreadsheetId: '1234567890',
         subreddit: 'n8n',
@@ -317,14 +312,27 @@ describe('BubbleRunner correctly runs and plans', () => {
       const testScript = getFixture('google-drive-complex');
       const runner = new BubbleRunner(testScript, bubbleFactory);
       // inject credentials
-      const bubbles = runner.getParsedBubbles();
       const credentialsResult = runner.injector.injectCredentials(
-        bubbles,
         [],
         getUserCredential()
       );
       expect(credentialsResult.success).toBe(true);
       // Expect either success or no cr
+    });
+    it('should execute a flow with a method inside the handler', async () => {
+      const testScript = getFixture('method-inside-handler');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
+
+    it('should execute a flow with a function outside the handler', async () => {
+      const testScript = getFixture('function-outside-flow');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
     });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
@@ -337,7 +345,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         'message',
         `What is the weather in ${city}? Find info from web.`
       );
-      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      runner.injector.injectCredentials([], getUserCredential());
       console.log('Final script:', runner.bubbleScript.bubblescript);
       const result = await runner.runAll();
       expect(result).toBeDefined();

@@ -11,7 +11,7 @@ import { replaceBubbleInstantiation } from '../utils/parameter-formatter';
 
 export interface UserCredentialWithId {
   /** The variable id of the bubble */
-  bubbleVarId: number;
+  bubbleVarId: number | string;
   secret: string;
   credentialType: CredentialType;
   credentialId?: number;
@@ -40,13 +40,13 @@ export class BubbleInjector {
    * @param bubbleParameters - Parsed bubble parameters with info
    * @returns Record mapping bubble variable IDs to their required credential types (excluding system credentials)
    */
-  findCredentials(
-    bubbleParameters: Record<string, ParsedBubbleWithInfo>
-  ): Record<number, CredentialType[]> {
-    const requiredCredentials: Record<number, CredentialType[]> = {};
+  findCredentials(): Record<string, CredentialType[]> {
+    const requiredCredentials: Record<string, CredentialType[]> = {};
 
     // Iterate through each bubble and check its credential requirements
-    for (const [, bubble] of Object.entries(bubbleParameters)) {
+    for (const [, bubble] of Object.entries(
+      this.bubbleScript.getParsedBubbles()
+    )) {
       const allCredentialTypes = new Set<CredentialType>();
 
       // Get bubble-level credentials
@@ -162,12 +162,11 @@ export class BubbleInjector {
    * @returns Result of credential injection
    */
   injectCredentials(
-    bubbleParameters: Record<string, ParsedBubbleWithInfo>,
     userCredentials: UserCredentialWithId[] = [],
     systemCredentials: Partial<Record<CredentialType, string>> = {}
   ): CredentialInjectionResult {
     try {
-      const modifiedBubbles = { ...bubbleParameters };
+      const modifiedBubbles = { ...this.bubbleScript.getParsedBubbles() };
       const injectedCredentials: Record<string, string> = {};
       const errors: string[] = [];
 
@@ -236,8 +235,10 @@ export class BubbleInjector {
       }
 
       // Apply the modified bubbles back to the script
-      const finalScript = this.reapplyBubbleInstantiations(
-        Object.values(modifiedBubbles)
+      const finalScript = this.reapplyBubbleInstantiations();
+      console.log(
+        'Final script:',
+        this.bubbleScript.showScript('[BubbleInjector] Final script')
       );
 
       console.debug('INJECTED CREDENTIALS', injectedCredentials);
@@ -337,9 +338,9 @@ export class BubbleInjector {
    * and deleting old multi-line parameters. Processes bubbles in order and
    * tracks line shifts to adjust subsequent bubble locations.
    */
-  private reapplyBubbleInstantiations(bubbles: ParsedBubbleWithInfo[]): string {
+  private reapplyBubbleInstantiations(): string {
+    const bubbles = Object.values(this.bubbleScript.getParsedBubbles());
     const lines = this.bubbleScript.currentBubbleScript.split('\n');
-    console.log('Lines:', lines);
     // Sort bubbles by start line to process in order
     const sortedBubbles = [...bubbles].sort(
       (a, b) => a.location.startLine - b.location.startLine
@@ -378,14 +379,25 @@ export class BubbleInjector {
    * Apply new bubble parameters by converting them back to code and injecting in place
    * Injects logger to the bubble instantiations
    */
-  injectBubbleLoggingAndReinitializeBubbleParameters() {
-    const parsedBubbles = this.bubbleScript.getParsedBubbles();
+  injectBubbleLoggingAndReinitializeBubbleParameters(
+    loggingEnabled: boolean = true
+  ) {
+    // STEP 1: Inject `__bubbleFlowSelf = this;` at the beginning of handle method
+    // This must be done FIRST so that bubble instantiations can use __bubbleFlowSelf.logger
+    if (loggingEnabled) {
+      this.bubbleScript.showScript('[BubbleInjector] Before injectSelfCapture');
+      // Normalize to single-line instantiations and refresh AST
+      this.reapplyBubbleInstantiations();
 
-    // Normalize to single-line instantiations and refresh AST
-    this.reapplyBubbleInstantiations(Object.values(parsedBubbles));
-
-    // Inject logging based on the current AST/locations to avoid placement inside params
-    this.loggerInjector.injectLogging();
+      this.bubbleScript.showScript(
+        '[BubbleInjector] After reapplyBubbleInstantiations'
+      );
+      // Inject logging based on the current AST/locations to avoid placement inside params
+      this.loggerInjector.injectLogging();
+      this.bubbleScript.showScript('[BubbleInjector] After injectLogging');
+    }
+    this.loggerInjector.injectSelfCapture();
+    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */

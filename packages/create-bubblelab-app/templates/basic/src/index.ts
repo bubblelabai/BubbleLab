@@ -39,9 +39,9 @@ async function main() {
   // Step 4: (Optional) Modify bubble parameters dynamically
   const bubbles = runner.getParsedBubbles();
   const bubbleIds = Object.keys(bubbles).map(Number);
+  const city = process.env.CITY || 'New York';
 
   if (bubbleIds.length > 0) {
-    const city = process.env.CITY || 'New York';
     console.log(`🌍 Researching weather for: ${city}\n`);
 
     runner.injector.changeBubbleParameters(
@@ -51,14 +51,14 @@ async function main() {
     );
   }
   // Inject the credentials
-  runner.injector.injectCredentials(bubbles, [], {
+  runner.injector.injectCredentials([], {
     [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY,
     [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY,
   });
 
   // Step 5: Execute the flow
   console.log('🤖 Running AI agent...\n');
-  const result = await runner.runAll();
+  const result = await runner.runAll({ city: city });
 
   // Step 6: Display results
   console.log('📊 Results:');

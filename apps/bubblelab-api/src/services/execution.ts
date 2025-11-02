@@ -23,21 +23,6 @@ import {
 import { trackTokenUsage } from './token-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 
-/**
- * Convert script ParsedBubbleWithInfo format (keyed by number) to credential format (keyed by string)
- */
-function convertScriptBubblesToCredentialFormat(
-  scriptBubbles: Record<number, ParsedBubbleWithInfo>
-): Record<string, ParsedBubbleWithInfo> {
-  const converted: Record<string, ParsedBubbleWithInfo> = {};
-
-  for (const [, bubble] of Object.entries(scriptBubbles)) {
-    converted[bubble.variableId.toString()] = bubble;
-  }
-
-  return converted;
-}
-
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
   systemCredentials?: Record<string, string>;
@@ -66,14 +51,9 @@ async function runBubbleFlowCommon(
   });
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection
-  const scriptParsedBubbles = bubbleScriptInstance.getParsedBubbles();
-  const parsedBubblesForCredentials =
-    convertScriptBubblesToCredentialFormat(scriptParsedBubbles);
 
   const injector: BubbleInjector = runner.injector;
-  const requiredCredentials = injector.findCredentials(
-    parsedBubblesForCredentials
-  );
+  const requiredCredentials = injector.findCredentials();
 
   console.log(
     '[runBubbleFlowCommon] Required credentials:',
@@ -112,7 +92,6 @@ async function runBubbleFlowCommon(
   // Inject when needed
   if (Object.keys(requiredCredentials).length > 0) {
     const injectionResult = injector.injectCredentials(
-      parsedBubblesForCredentials,
       userCredentials.map((uc) => ({
         bubbleVarId: uc.bubbleVarId,
         secret: uc.secret,
@@ -151,12 +130,6 @@ async function runBubbleFlowCommon(
   // Run
   const enhancedPayload = { ...payload, userId: options.userId };
   const result = await runner.runAll(enhancedPayload);
-  if (options.streamCallback) {
-    console.log('[runBubbleFlowCommon] Result error:', result.error);
-  } else {
-    console.log('[runBubbleFlowCommon] Execution result error:', result.error);
-  }
-
   // Track token usage if available
   if (result.summary?.tokenUsageByModel) {
     await trackTokenUsage(options.userId, result.summary.tokenUsageByModel);

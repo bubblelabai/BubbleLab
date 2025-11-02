@@ -28,7 +28,7 @@ async function main() {
   const limit = 10;
 
   // Step 5: Set the credentials
-  runner.injector.injectCredentials(runner.getParsedBubbles(), [], {
+  runner.injector.injectCredentials([], {
     [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY,
   });
 

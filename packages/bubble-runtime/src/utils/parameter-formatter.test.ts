@@ -70,10 +70,17 @@ describe('parameter-formatter', () => {
       throw new Error('Yfinance bubble not found');
     }
     // Check if subject of email contains string literal
-    expect(yfinanceBubble.parameters[2].value).toBe("`Your Automated Financial Analysis for ${ticker.toUpperCase()}`");
-    const result = buildParametersObject(yfinanceBubble.parameters, undefined, false);
-    expect(result).toContain("subject: `Your Automated Financial Analysis for ${ticker.toUpperCase()}`");
-  
+    expect(yfinanceBubble.parameters[2].value).toBe(
+      '`Your Automated Financial Analysis for ${ticker.toUpperCase()}`'
+    );
+    const result = buildParametersObject(
+      yfinanceBubble.parameters,
+      undefined,
+      false
+    );
+    expect(result).toContain(
+      'subject: `Your Automated Financial Analysis for ${ticker.toUpperCase()}`'
+    );
   });
 
   it('should format parameters correctly for simple http', async () => {
@@ -94,7 +101,11 @@ describe('parameter-formatter', () => {
     expect(httpBubble.parameters[1].name).toBe('method');
     expect(httpBubble.parameters[1].value).toBe('GET');
 
-    const result = buildParametersObject(httpBubble.parameters, undefined, false);
+    const result = buildParametersObject(
+      httpBubble.parameters,
+      undefined,
+      false
+    );
     expect(result).toContain("method: 'GET'");
   });
 
@@ -105,7 +116,7 @@ describe('parameter-formatter', () => {
         '      url: "https://example.com",',
         '      method: "GET"',
         '    });',
-        '    let resp = await httpRequest.action();'
+        '    let resp = await httpRequest.action();',
       ];
 
       const bubble = {
@@ -116,10 +127,10 @@ describe('parameter-formatter', () => {
         location: { startLine: 1, endLine: 4 },
         parameters: [
           { name: 'url', value: 'https://example.com', type: 'string' },
-          { name: 'method', value: 'GET', type: 'string' }
+          { name: 'method', value: 'GET', type: 'string' },
         ],
         hasActionCall: false,
-        dependencyGraph: { name: 'http', dependencies: [] }
+        dependencyGraph: { name: 'http', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -127,7 +138,7 @@ describe('parameter-formatter', () => {
       // Should have replaced the multi-line instantiation with single line
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const httpRequest = new HttpBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('variableId: 123');
       expect(lines[1]).toContain('let resp = await httpRequest.action()');
     });
@@ -138,7 +149,7 @@ describe('parameter-formatter', () => {
         '      url: "https://example.com",',
         '      method: "GET"',
         '    })',
-        '    let resp = await httpRequest.action();'
+        '    let resp = await httpRequest.action();',
       ];
 
       const bubble = {
@@ -149,10 +160,10 @@ describe('parameter-formatter', () => {
         location: { startLine: 1, endLine: 4 },
         parameters: [
           { name: 'url', value: 'https://example.com', type: 'string' },
-          { name: 'method', value: 'GET', type: 'string' }
+          { name: 'method', value: 'GET', type: 'string' },
         ],
         hasActionCall: false,
-        dependencyGraph: { name: 'http', dependencies: [] }
+        dependencyGraph: { name: 'http', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -160,7 +171,7 @@ describe('parameter-formatter', () => {
       // Should have replaced the multi-line instantiation with single line
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const httpRequest = new HttpBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('variableId: 456');
       expect(lines[1]).toContain('let resp = await httpRequest.action()');
     });
@@ -171,7 +182,7 @@ describe('parameter-formatter', () => {
         '      url: "https://example.com",',
         '      method: "POST"',
         '    }).action();',
-        '    console.log(result);'
+        '    console.log(result);',
       ];
 
       const bubble = {
@@ -182,10 +193,10 @@ describe('parameter-formatter', () => {
         location: { startLine: 1, endLine: 4 },
         parameters: [
           { name: 'url', value: 'https://example.com', type: 'string' },
-          { name: 'method', value: 'POST', type: 'string' }
+          { name: 'method', value: 'POST', type: 'string' },
         ],
         hasActionCall: true,
-        dependencyGraph: { name: 'http', dependencies: [] }
+        dependencyGraph: { name: 'http', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -193,7 +204,7 @@ describe('parameter-formatter', () => {
       // Should have replaced and preserved await and action call
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('await new HttpBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('variableId: 789');
       expect(lines[0]).toContain('.action()');
       expect(lines[1]).toContain('console.log(result)');
@@ -205,7 +216,7 @@ describe('parameter-formatter', () => {
         '        const bubble = new TestBubble({',
         '          param: "value"',
         '        });',
-        '      }'
+        '      }',
       ];
 
       const bubble = {
@@ -214,11 +225,9 @@ describe('parameter-formatter', () => {
         variableName: 'bubble',
         variableId: 111,
         location: { startLine: 2, endLine: 4 },
-        parameters: [
-          { name: 'param', value: 'value', type: 'string' }
-        ],
+        parameters: [{ name: 'param', value: 'value', type: 'string' }],
         hasActionCall: false,
-        dependencyGraph: { name: 'test', dependencies: [] }
+        dependencyGraph: { name: 'test', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -227,7 +236,7 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(3);
       expect(lines[0]).toContain('if (condition)');
       expect(lines[1]).toContain('        const bubble = new TestBubble({');
-      expect(lines[1]).toContain('logger: this.logger');
+      expect(lines[1]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[2]).toContain('      }');
     });
 
@@ -236,7 +245,7 @@ describe('parameter-formatter', () => {
         '    await new HttpBubble({',
         '      url: "https://example.com"',
         '    }).action();',
-        '    console.log("done");'
+        '    console.log("done");',
       ];
 
       const bubble = {
@@ -246,10 +255,10 @@ describe('parameter-formatter', () => {
         variableId: 999,
         location: { startLine: 1, endLine: 3 },
         parameters: [
-          { name: 'url', value: 'https://example.com', type: 'string' }
+          { name: 'url', value: 'https://example.com', type: 'string' },
         ],
         hasActionCall: true,
-        dependencyGraph: { name: 'http', dependencies: [] }
+        dependencyGraph: { name: 'http', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -257,7 +266,7 @@ describe('parameter-formatter', () => {
       // Should handle anonymous bubble
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('await new HttpBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('.action()');
       expect(lines[1]).toContain('console.log("done")');
     });
@@ -268,7 +277,7 @@ describe('parameter-formatter', () => {
         '      model: "gpt-4",',
         '      tools: [{ name: "web-search" }],',
         '      temperature: 0.7',
-        '    });'
+        '    });',
       ];
 
       const bubble = {
@@ -280,17 +289,17 @@ describe('parameter-formatter', () => {
         parameters: [
           { name: 'model', value: 'gpt-4', type: 'string' },
           { name: 'tools', value: [{ name: 'web-search' }], type: 'array' },
-          { name: 'temperature', value: 0.7, type: 'number' }
+          { name: 'temperature', value: 0.7, type: 'number' },
         ],
         hasActionCall: false,
-        dependencyGraph: { name: 'ai-agent', dependencies: [] }
+        dependencyGraph: { name: 'ai-agent', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
 
       expect(lines.length).toBe(1);
       expect(lines[0]).toContain('const agent = new AIAgentBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('variableId: 222');
     });
 
@@ -305,7 +314,7 @@ describe('parameter-formatter', () => {
         '        "OPENAI_CRED": "test-key"',
         '      }',
         '    }, {logger: this.logger, variableId: 333});',
-        '    const result = await agent.action();'
+        '    const result = await agent.action();',
       ];
 
       const bubble = {
@@ -317,10 +326,14 @@ describe('parameter-formatter', () => {
         parameters: [
           { name: 'message', value: 'Updated message', type: 'string' },
           { name: 'model', value: { model: 'gpt-4' }, type: 'object' },
-          { name: 'credentials', value: { OPENAI_CRED: 'test-key' }, type: 'object' }
+          {
+            name: 'credentials',
+            value: { OPENAI_CRED: 'test-key' },
+            type: 'object',
+          },
         ],
         hasActionCall: false,
-        dependencyGraph: { name: 'ai-agent', dependencies: [] }
+        dependencyGraph: { name: 'ai-agent', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -328,7 +341,7 @@ describe('parameter-formatter', () => {
       // Should have replaced the multi-line instantiation with single line
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const agent = new AIAgentBubble({');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[0]).toContain('variableId: 333');
       expect(lines[1]).toContain('const result = await agent.action()');
     });
@@ -343,7 +356,7 @@ describe('parameter-formatter', () => {
         '        "ANTHROPIC_CRED": "key2"',
         '      }',
         '    }, {logger: this.logger, variableId: 412, dependencyGraph: {...}});',
-        '    const result = await weatherAgent.action();'
+        '    const result = await weatherAgent.action();',
       ];
 
       const bubble = {
@@ -354,10 +367,14 @@ describe('parameter-formatter', () => {
         location: { startLine: 1, endLine: 7 },
         parameters: [
           { name: 'message', value: 'Updated weather query', type: 'string' },
-          { name: 'credentials', value: { OPENAI_CRED: 'key1', ANTHROPIC_CRED: 'key2' }, type: 'object' }
+          {
+            name: 'credentials',
+            value: { OPENAI_CRED: 'key1', ANTHROPIC_CRED: 'key2' },
+            type: 'object',
+          },
         ],
         hasActionCall: false,
-        dependencyGraph: { name: 'ai-agent', dependencies: [] }
+        dependencyGraph: { name: 'ai-agent', dependencies: [] },
       } as any;
 
       replaceBubbleInstantiation(lines, bubble);
@@ -365,7 +382,7 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const weatherAgent = new AIAgentBubble({');
       expect(lines[0]).toContain('Updated weather query');
-      expect(lines[0]).toContain('logger: this.logger');
+      expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
       expect(lines[1]).toContain('const result = await weatherAgent.action()');
     });
   });
