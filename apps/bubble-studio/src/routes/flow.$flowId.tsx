@@ -14,13 +14,13 @@ function FlowRoute() {
 
   // Redirect if not signed in
   if (!isSignedIn) {
-    navigate({ to: '/new', replace: true });
+    navigate({ to: '/home', replace: true });
     return null;
   }
 
   // Validate flowId is a number
   if (isNaN(parsedFlowId)) {
-    navigate({ to: '/home', replace: true });
+    navigate({ to: '/flows', replace: true });
     return null;
   }
 

@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
 
 export const Route = createFileRoute('/')({
@@ -8,14 +7,13 @@ export const Route = createFileRoute('/')({
 
 function IndexRoute() {
   const navigate = useNavigate();
-  const { isSignedIn } = useAuth();
 
   useEffect(() => {
     navigate({
-      to: isSignedIn ? '/home' : '/new',
+      to: '/home',
       replace: true,
     });
-  }, [isSignedIn, navigate]);
+  }, [navigate]);
 
   return null;
 }

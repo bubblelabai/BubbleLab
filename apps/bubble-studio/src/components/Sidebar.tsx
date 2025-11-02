@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="mt-2">
           <div className="relative group">
             <Link
-              to="/new"
+              to="/home"
               activeProps={{
                 className:
                   'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="mt-2">
           <div className="relative group">
             <Link
-              to="/home"
+              to="/flows"
               activeProps={{
                 className:
                   'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
