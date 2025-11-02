@@ -382,9 +382,8 @@ export class BubbleInjector {
   injectBubbleLoggingAndReinitializeBubbleParameters() {
     // STEP 1: Inject `__bubbleFlowSelf = this;` at the beginning of handle method
     // This must be done FIRST so that bubble instantiations can use __bubbleFlowSelf.logger
+
     this.bubbleScript.showScript('[BubbleInjector] Before injectSelfCapture');
-    this.loggerInjector.injectSelfCapture();
-    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
 
     // Normalize to single-line instantiations and refresh AST
     this.reapplyBubbleInstantiations();
@@ -395,6 +394,9 @@ export class BubbleInjector {
     // Inject logging based on the current AST/locations to avoid placement inside params
     this.loggerInjector.injectLogging();
     this.bubbleScript.showScript('[BubbleInjector] After injectLogging');
+
+    this.loggerInjector.injectSelfCapture();
+    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */

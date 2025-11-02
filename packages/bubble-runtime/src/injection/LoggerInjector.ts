@@ -170,7 +170,6 @@ export class LoggerInjector {
       [selfCapture],
       handleMethodLocation.startLine + 1
     );
-    this.bubbleScript.reparseAST();
     this.bubbleScript.showScript(
       '[LoggerInjector] After injectSelfCapture in opening brace match'
     );
