@@ -1,5 +1,5 @@
 // @ts-expect-error - Bun test types
-import { describe, it, expect, beforeAll, mock } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { CredentialValidator } from './credential-validator.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CredentialEncryption } from '../utils/encryption.js';
@@ -44,17 +44,6 @@ describe('CredentialValidator', () => {
     });
 
     it('should validate Slack credentials', async () => {
-      // Mock the Slack API call to return success
-      const mockFetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-type', 'application/json']]),
-          json: () => Promise.resolve({ ok: true }),
-        })
-      );
-      global.fetch = mockFetch as any;
-
       const result = await CredentialValidator.validateCredential(
         CredentialType.SLACK_CRED,
         'xoxb-test-token',
@@ -67,20 +56,6 @@ describe('CredentialValidator', () => {
     });
 
     it('should validate AI credentials (OpenAI)', async () => {
-      // Mock OpenAI API call with proper response structure
-      const mockFetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-type', 'application/json']]),
-          json: () =>
-            Promise.resolve({
-              choices: [{ message: { content: 'Hello!' } }],
-            }),
-        })
-      );
-      global.fetch = mockFetch as any;
-
       const result = await CredentialValidator.validateCredential(
         CredentialType.OPENAI_CRED,
         'sk-test-key',
@@ -88,7 +63,8 @@ describe('CredentialValidator', () => {
       );
 
       expect(result.bubbleName).toBe('ai-agent');
-      // Note: The actual validation might still fail due to API structure differences
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     it('should validate database credentials', async () => {
@@ -122,17 +98,6 @@ describe('CredentialValidator', () => {
     it('should decrypt and validate credential', async () => {
       const testValue = 'test-credential-value';
       const encrypted = await CredentialEncryption.encrypt(testValue);
-
-      // Mock successful validation
-      const mockFetch = mock(() =>
-        Promise.resolve({
-          ok: true,
-          status: 200,
-          headers: new Map([['content-type', 'application/json']]),
-          json: () => Promise.resolve({ ok: true }),
-        })
-      );
-      global.fetch = mockFetch as any;
 
       const result = await CredentialValidator.validateEncryptedCredential(
         CredentialType.SLACK_CRED,

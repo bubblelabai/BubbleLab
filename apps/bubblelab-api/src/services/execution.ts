@@ -130,12 +130,6 @@ async function runBubbleFlowCommon(
   // Run
   const enhancedPayload = { ...payload, userId: options.userId };
   const result = await runner.runAll(enhancedPayload);
-  if (options.streamCallback) {
-    console.log('[runBubbleFlowCommon] Result error:', result.error);
-  } else {
-    console.log('[runBubbleFlowCommon] Execution result error:', result.error);
-  }
-
   // Track token usage if available
   if (result.summary?.tokenUsageByModel) {
     await trackTokenUsage(options.userId, result.summary.tokenUsageByModel);

@@ -201,7 +201,6 @@ export async function executeBubbleFlowWithTracking(
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
-
     return {
       executionId: execResult[0].id,
       success: false,

@@ -176,11 +176,6 @@ describe('BubbleFlow Parameters Integration', () => {
       },
     };
 
-    console.log(
-      'Updating bubble parameters:',
-      JSON.stringify(updateParams, null, 2)
-    );
-
     const updateResponse = await TestApp.put(
       `/bubble-flow/${createdBubbleFlowId}`,
       {
@@ -225,9 +220,10 @@ describe('BubbleFlow Parameters Integration', () => {
     // Stream should complete
     expect(streamText.includes('event: stream_complete')).toBe(true);
 
-    expect(executeAgainResponse.status).toBe(200);
     const executeAgainResult =
       (await executeAgainResponse.json()) as ExecuteBubbleFlowResponse;
+
+    expect(executeAgainResult.success).toBe(true);
 
     // Verify that both executions were successful
     expect(executeResult.success).toBe(true);
