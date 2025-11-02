@@ -477,12 +477,39 @@ importers:
         specifier: ^2.4.2
         version: 2.4.2
     devDependencies:
+      '@bubblelab/bubble-core':
+        specifier: workspace:*
+        version: link:../bubble-core
+      '@bubblelab/bubble-runtime':
+        specifier: workspace:*
+        version: link:../bubble-runtime
+      '@bubblelab/shared-schemas':
+        specifier: workspace:*
+        version: link:../bubble-shared-schemas
+      '@bubblelab/ts-scope-manager':
+        specifier: workspace:*
+        version: link:../bubble-scope-manager
       '@types/node':
         specifier: ^20.12.12
         version: 20.19.19
       '@types/prompts':
         specifier: ^2.4.9
         version: 2.4.9
+      '@vitest/ui':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4)
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.6.1
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.6
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
 
   tools/eslint-config:
     dependencies:
@@ -8735,6 +8762,13 @@ packages:
         integrity: sha512-tE7ztYzXHIeyvc7N+hR3oi7FIbf/NIjVP9hmAt3yMXzrQ072/fpjGLx2GxNxGxUl5V73MEqYzioOMoVhGMJ5cA==,
       }
     engines: { node: '>=10' }
+
+  dotenv@16.6.1:
+    resolution:
+      {
+        integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==,
+      }
+    engines: { node: '>=12' }
 
   dotenv@17.2.3:
     resolution:
@@ -23435,6 +23469,8 @@ snapshots:
   dot-prop@6.0.1:
     dependencies:
       is-obj: 2.0.0
+
+  dotenv@16.6.1: {}
 
   dotenv@17.2.3: {}
 

@@ -30,7 +30,21 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@bubblelab/bubble-core": "workspace:*",
+    "@bubblelab/bubble-runtime": "workspace:*",
+    "@bubblelab/shared-schemas": "workspace:*",
+    "@bubblelab/ts-scope-manager": "workspace:*",
     "@types/node": "^20.12.12",
-    "@types/prompts": "^2.4.9"
+    "@types/prompts": "^2.4.9",
+    "@vitest/ui": "^3.2.4",
+    "dotenv": "^16.4.5",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   }
 }
