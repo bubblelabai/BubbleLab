@@ -326,6 +326,14 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
+
+    it('should execute a flow with a function outside the handler', async () => {
+      const testScript = getFixture('function-outside-flow');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+    });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
       const bubbles = runner.getParsedBubbles();

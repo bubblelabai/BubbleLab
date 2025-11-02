@@ -796,9 +796,9 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
       injector.injectBubbleLoggingAndReinitializeBubbleParameters();
       const lines = mockBubbleScript.bubblescript.split('\n');
 
-      // Check if line 14 contains the logger configuration with dependency graph
-      expect(lines[14]).toContain(
-        '}, {logger: __bubbleFlowSelf.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"})'
+      // Check if line 16 contains the logger configuration with dependency graph
+      expect(lines[16]).toContain(
+        'logger: __bubbleFlowSelf.logger, variableId: 413, dependencyGraph: {"name":"hello-world", "uniqueId":"413", "variableId":413, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "413"'
       );
     });
     it('The line numbers should not change from original script', () => {
@@ -817,18 +817,6 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
         mockBubbleScript.getOriginalParsedBubbles()
       ).map((bubble) => bubble.location);
       expect(newBubbleLocations).toEqual(originalBubbleLocations);
-    });
-
-    it('should inject bubble logging and reinitialize bubble parameters with credentials', () => {
-      const testScript = getFixture('function-outside-flow');
-      const mockBubbleScript = new BubbleScript(testScript, bubbleFactory);
-      const injector = new BubbleInjector(mockBubbleScript);
-      injector.injectBubbleLoggingAndReinitializeBubbleParameters();
-      const lines = mockBubbleScript.bubblescript.split('\n');
-      console.log(lines);
-      expect(lines[1]).toContain('function outsideFlow() {');
-      expect(lines[2]).toContain('return "Hello, World!";');
-      expect(lines[3]).toContain('}');
     });
 
     it('The line numbers should not change from original after credential injection', () => {

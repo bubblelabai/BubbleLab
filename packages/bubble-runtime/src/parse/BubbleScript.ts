@@ -64,7 +64,7 @@ export class BubbleScript {
       this.ast,
       this.scopeManager
     );
-
+    this.handleMethodLocation = parseResult.handleMethodLocation;
     this.parsedBubbles = parseResult.bubbles;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
