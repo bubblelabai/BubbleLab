@@ -77,7 +77,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
         displayName: 'Google Drive',
         defaultScopes: [
           'https://www.googleapis.com/auth/drive.file',
-          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/documents',
+          'https://www.googleapis.com/auth/spreadsheets',
         ],
         description: 'Access Google Drive files and folders',
       },
