@@ -1,11 +1,6 @@
 import { useMemo, memo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import {
-  getCacheKey,
-  evictCacheIfNeeded,
-  jsonCache,
-  syntaxHighlightJson,
-} from '../../utils/executionLogsFormatUtils';
+import { getCacheKey } from '../../utils/executionLogsFormatUtils';
 
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
@@ -95,6 +90,45 @@ function parseJSONString(str: string): unknown | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Detect URLs in text and convert them to React components with clickable links
+ * Similar to makeLinksClickable but returns React components
+ */
+function renderStringWithLinks(text: string): React.ReactNode {
+  const urlRegex = /(https?:\/\/[^\s"<>]+)/g;
+  const parts = text.split(urlRegex);
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        // Check if part is a URL by checking if it starts with http:// or https://
+        const isUrl = part.startsWith('http://') || part.startsWith('https://');
+        if (isUrl) {
+          // Sanitize href to prevent javascript: and dangerous data URLs
+          const safeHref =
+            !part.toLowerCase().startsWith('javascript:') &&
+            !part.toLowerCase().startsWith('data:text/html') &&
+            !part.toLowerCase().startsWith('data:application/javascript')
+              ? part
+              : undefined;
+          return (
+            <a
+              key={index}
+              href={safeHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              {part}
+            </a>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </>
+  );
 }
 
 /**
@@ -252,28 +286,48 @@ function renderStringValue(
       <div className={containerClass}>
         <ReactMarkdown
           components={{
-            img: ({ src, alt }) => (
-              <img
-                src={src}
-                alt={alt}
-                className="max-w-full h-auto rounded my-2"
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            ),
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                {children}
-              </a>
-            ),
+            img: ({ src, alt }) => {
+              // Sanitize src to prevent javascript: and dangerous data URLs
+              const safeSrc =
+                src &&
+                !src.toLowerCase().startsWith('javascript:') &&
+                !src.toLowerCase().startsWith('data:text/html') &&
+                !src.toLowerCase().startsWith('data:application/javascript')
+                  ? src
+                  : undefined;
+              return (
+                <img
+                  src={safeSrc}
+                  alt={alt}
+                  className="max-w-full h-auto rounded my-2"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              );
+            },
+            a: ({ href, children }) => {
+              // Sanitize href to prevent javascript: and dangerous data URLs
+              const safeHref =
+                href &&
+                !href.toLowerCase().startsWith('javascript:') &&
+                !href.toLowerCase().startsWith('data:text/html') &&
+                !href.toLowerCase().startsWith('data:application/javascript')
+                  ? href
+                  : undefined;
+              return (
+                <a
+                  href={safeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 underline"
+                >
+                  {children}
+                </a>
+              );
+            },
             code: ({ className, children }) => {
               const isInlineCode = !className;
               return isInlineCode ? (
@@ -297,28 +351,48 @@ function renderStringValue(
       <div className={containerClass}>
         <ReactMarkdown
           components={{
-            img: ({ src, alt }) => (
-              <img
-                src={src}
-                alt={alt}
-                className="max-w-full h-auto rounded my-2"
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            ),
-            a: ({ href, children }) => (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                {children}
-              </a>
-            ),
+            img: ({ src, alt }) => {
+              // Sanitize src to prevent javascript: and dangerous data URLs
+              const safeSrc =
+                src &&
+                !src.toLowerCase().startsWith('javascript:') &&
+                !src.toLowerCase().startsWith('data:text/html') &&
+                !src.toLowerCase().startsWith('data:application/javascript')
+                  ? src
+                  : undefined;
+              return (
+                <img
+                  src={safeSrc}
+                  alt={alt}
+                  className="max-w-full h-auto rounded my-2"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              );
+            },
+            a: ({ href, children }) => {
+              // Sanitize href to prevent javascript: and dangerous data URLs
+              const safeHref =
+                href &&
+                !href.toLowerCase().startsWith('javascript:') &&
+                !href.toLowerCase().startsWith('data:text/html') &&
+                !href.toLowerCase().startsWith('data:application/javascript')
+                  ? href
+                  : undefined;
+              return (
+                <a
+                  href={safeHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 underline"
+                >
+                  {children}
+                </a>
+              );
+            },
             code: ({ className, children }) => {
               const isInlineCode = !className;
               return isInlineCode ? (
@@ -390,19 +464,28 @@ function renderStringValue(
     );
   }
 
-  // Regular string - truncate if too long
+  // Regular string - detect and highlight URLs, then truncate if too long
+  const stringWithLinks = (
+    <span className="text-gray-200">"{renderStringWithLinks(value)}"</span>
+  );
+  const previewStringWithLinks = (
+    <span className="text-gray-200">
+      "{renderStringWithLinks(displayValue)}"
+    </span>
+  );
+
   if (shouldTruncate) {
     return (
       <TruncatedContent
-        fullContent={<span className="text-gray-200">"{value}"</span>}
-        previewContent={<span className="text-gray-200">"{displayValue}"</span>}
+        fullContent={stringWithLinks}
+        previewContent={previewStringWithLinks}
         fullLength={originalLength}
         previewLength={MAX_PREVIEW_LENGTH}
       />
     );
   }
 
-  return <span className="text-gray-200">"{value}"</span>;
+  return stringWithLinks;
 }
 
 /**
@@ -548,81 +631,35 @@ export const JsonRenderer = memo(function JsonRenderer({
   timestamp?: string;
 }) {
   const rendered = useMemo(() => {
-    // Check if data contains JSON strings, markdown/HTML content
-    // If so, use the enhanced renderer, otherwise use JSON highlighting
-    const hasSpecialContent = (val: unknown): boolean => {
-      if (typeof val === 'string') {
-        return isJSONString(val) || isMarkdown(val) || isHTML(val);
-      }
-      if (Array.isArray(val)) {
-        return val.some(hasSpecialContent);
-      }
-      if (val && typeof val === 'object') {
-        return Object.values(val).some(hasSpecialContent);
-      }
-      return false;
-    };
-
-    if (hasSpecialContent(data)) {
-      // Use enhanced renderer for markdown/HTML content
-      // Generate cache key for enhanced renderer
-      let cacheKey: string;
-      try {
-        const jsonString = JSON.stringify(data);
-        cacheKey = getCacheKey(jsonString, {
-          flowId,
-          executionId,
-          timestamp,
-        });
-      } catch {
-        // If serialization fails, render without cache
-        return renderValue(data);
-      }
-
-      // Check cache first
-      if (enhancedRendererCache.has(cacheKey)) {
-        return enhancedRendererCache.get(cacheKey)!;
-      }
-
-      // Render and cache the result
-      const rendered = renderValue(data);
-
-      // Cache the result (with size limit)
-      evictEnhancedCacheIfNeeded();
-      enhancedRendererCache.set(cacheKey, rendered);
-
-      return rendered;
-    }
-
-    // Fallback to JSON syntax highlighting for regular JSON
-    let jsonString: string;
+    // Always use enhanced renderer for consistent nested structure with border lines
+    // Generate cache key for enhanced renderer
+    let cacheKey: string;
     try {
-      jsonString = JSON.stringify(data, null, 2);
-    } catch (error) {
-      jsonString = `[Error serializing data: ${error instanceof Error ? error.message : String(error)}]`;
+      const jsonString = JSON.stringify(data);
+      cacheKey = getCacheKey(jsonString, {
+        flowId,
+        executionId,
+        timestamp,
+      });
+    } catch {
+      // If serialization fails, render without cache
+      return renderValue(data);
     }
-
-    // Use hash-based cache key (with optional context for better locality)
-    const cacheKey = getCacheKey(jsonString, {
-      flowId,
-      executionId,
-      timestamp,
-    });
 
     // Check cache first
-    if (jsonCache.has(cacheKey)) {
-      const cached = jsonCache.get(cacheKey)!;
-      return <span dangerouslySetInnerHTML={{ __html: cached }} />;
+    if (enhancedRendererCache.has(cacheKey)) {
+      return enhancedRendererCache.get(cacheKey)!;
     }
 
-    // Apply syntax highlighting
-    const highlighted = syntaxHighlightJson(jsonString);
+    // Render and cache the result
+    // This will show the nested structure with border lines for all JSON
+    const rendered = renderValue(data);
 
     // Cache the result (with size limit)
-    evictCacheIfNeeded();
-    jsonCache.set(cacheKey, highlighted);
+    evictEnhancedCacheIfNeeded();
+    enhancedRendererCache.set(cacheKey, rendered);
 
-    return <span dangerouslySetInnerHTML={{ __html: highlighted }} />;
+    return rendered;
   }, [data, flowId, executionId, timestamp]);
 
   return <>{rendered}</>;

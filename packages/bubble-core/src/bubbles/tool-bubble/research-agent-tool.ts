@@ -28,7 +28,6 @@ const ResearchAgentToolParamsSchema = z.object({
     'Model to use for the research agent (default: google/gemini-2.5-pro)'
   )
     .default('google/gemini-2.5-pro')
-    .optional()
     .describe(
       'Model to use for the research agent (default: google/gemini-2.5-pro)'
     ),
@@ -181,7 +180,7 @@ export class ResearchAgentTool extends ToolBubble<
             { name: 'web-search-tool' },
             { name: 'web-scrape-tool' },
             { name: 'web-crawl-tool' },
-            { name: 'web-extract-tool' },
+            // { name: 'web-extract-tool' },
             { name: 'reddit-scrape-tool' },
           ],
           maxIterations,

@@ -216,7 +216,7 @@ export default function AllEventsView({
                 {sortedGlobalEvents.map((event, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-start gap-3 px-3 py-2 rounded border-l-2 transition-colors ${
+                    className={`px-3 rounded border-l-2 transition-colors  ${
                       event.lineNumber === currentLine
                         ? 'bg-yellow-500/5 border-yellow-500'
                         : event.type === 'error' || event.type === 'fatal'
@@ -226,29 +226,31 @@ export default function AllEventsView({
                             : 'bg-[#161b22] border-transparent hover:bg-[#1c2128]'
                     }`}
                   >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getEventIcon(event)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 min-w-0">
-                        <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                          {makeLinksClickable(event.message)}
-                        </p>
-                        <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                          {formatTimestamp(event.timestamp)}
-                        </span>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        {getEventIcon(event)}
                       </div>
-                      {event.additionalData &&
-                        Object.keys(event.additionalData).length > 0 && (
-                          <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                            <JsonRenderer
-                              data={event.additionalData}
-                              flowId={flowId}
-                              timestamp={event.timestamp}
-                            />
-                          </pre>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3 min-w-0">
+                          <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                            {makeLinksClickable(event.message)}
+                          </p>
+                          <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                            {formatTimestamp(event.timestamp)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                    {event.additionalData &&
+                      Object.keys(event.additionalData).length > 0 && (
+                        <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                          <JsonRenderer
+                            data={event.additionalData}
+                            flowId={flowId}
+                            timestamp={event.timestamp}
+                          />
+                        </pre>
+                      )}
                   </div>
                 ))}
               </div>
@@ -274,35 +276,37 @@ export default function AllEventsView({
               return (
                 <div className="py-2">
                   <div
-                    className={`flex items-start gap-3 px-3 py-2 rounded border-l-2 ${
+                    className={`px-3 py-2 rounded border-l-2 ${
                       event.lineNumber === currentLine
                         ? 'bg-yellow-500/5 border-yellow-500'
                         : 'bg-[#161b22] border-transparent'
                     }`}
                   >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getEventIcon(event)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 min-w-0">
-                        <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                          {makeLinksClickable(event.message)}
-                        </p>
-                        <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                          {formatTimestamp(event.timestamp)}
-                        </span>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        {getEventIcon(event)}
                       </div>
-                      {event.additionalData &&
-                        Object.keys(event.additionalData).length > 0 && (
-                          <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                            <JsonRenderer
-                              data={event.additionalData}
-                              flowId={flowId}
-                              timestamp={event.timestamp}
-                            />
-                          </pre>
-                        )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3 min-w-0">
+                          <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                            {makeLinksClickable(event.message)}
+                          </p>
+                          <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                            {formatTimestamp(event.timestamp)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
+                    {event.additionalData &&
+                      Object.keys(event.additionalData).length > 0 && (
+                        <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                          <JsonRenderer
+                            data={event.additionalData}
+                            flowId={flowId}
+                            timestamp={event.timestamp}
+                          />
+                        </pre>
+                      )}
                   </div>
                 </div>
               );
@@ -339,36 +343,38 @@ export default function AllEventsView({
                   {selectedEvent ? (
                     <div className="flex-1 py-2">
                       <div
-                        className={`flex items-start gap-3 px-3 py-2 rounded border-l-2 ${
+                        className={`px-3 py-2 rounded border-l-2 ${
                           selectedEvent.lineNumber === currentLine
                             ? 'bg-yellow-500/5 border-yellow-500'
                             : 'bg-[#161b22] border-transparent'
                         }`}
                       >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getEventIcon(selectedEvent)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-3 min-w-0">
-                            <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                              {makeLinksClickable(selectedEvent.message)}
-                            </p>
-                            <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                              {formatTimestamp(selectedEvent.timestamp)}
-                            </span>
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getEventIcon(selectedEvent)}
                           </div>
-                          {selectedEvent.additionalData &&
-                            Object.keys(selectedEvent.additionalData).length >
-                              0 && (
-                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                                <JsonRenderer
-                                  data={selectedEvent.additionalData}
-                                  flowId={flowId}
-                                  timestamp={selectedEvent.timestamp}
-                                />
-                              </pre>
-                            )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3 min-w-0">
+                              <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                                {makeLinksClickable(selectedEvent.message)}
+                              </p>
+                              <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                {formatTimestamp(selectedEvent.timestamp)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                        {selectedEvent.additionalData &&
+                          Object.keys(selectedEvent.additionalData).length >
+                            0 && (
+                            <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                              <JsonRenderer
+                                data={selectedEvent.additionalData}
+                                flowId={flowId}
+                                timestamp={selectedEvent.timestamp}
+                              />
+                            </pre>
+                          )}
                       </div>
                     </div>
                   ) : (
