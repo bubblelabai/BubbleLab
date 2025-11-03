@@ -89,9 +89,14 @@ export default {
         }
 
         // Fallback: name-based checking
+        // Include XyzBubble and XyzTool (our tool bubbles), exclude DynamicStructuredTool (LangChain)
         if (!isBubbleClass) {
+          const endsWithBubble = className.endsWith('Bubble');
+          const endsWithTool =
+            className.endsWith('Tool') && !className.includes('Structured');
+
           isBubbleClass =
-            (className.endsWith('Bubble') || className.endsWith('Tool')) &&
+            (endsWithBubble || endsWithTool) &&
             !className.includes('Error') &&
             !className.includes('Exception') &&
             !className.includes('Validation');

@@ -361,7 +361,8 @@ export class InstagramTool extends ToolBubble<
           timeout: 180000, // 3 minutes
           credentials,
         },
-        this.context
+        this.context,
+        'scrape_hashtag_apify'
       );
 
     const apifyResult = await scrape_hashtag_apify.action();
@@ -466,7 +467,8 @@ export class InstagramTool extends ToolBubble<
         timeout: 180000, // 3 minutes
         credentials: this.params.credentials,
       },
-      this.context
+      this.context,
+      'scrape_profile_apify'
     );
 
     const apifyResult = await scrape_profile_apify.action();

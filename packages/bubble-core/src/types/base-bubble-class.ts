@@ -139,14 +139,14 @@ export abstract class BaseBubble<
     const children = parentNode?.dependencies || [];
     const counters = { ...(parentContext.__uniqueIdCounters__ || {}) };
 
-    let suffix: string;
     let selectedChild: DependencyGraphNode | undefined = undefined;
 
     // Use ordinal counter as before
     const counterKey = `${currentId || 'ROOT'}|${this.name}`;
     const ordinal = (counters[counterKey] || 0) + 1;
+    const suffix = `#${ordinal}`;
+
     counters[counterKey] = ordinal;
-    suffix = `#${ordinal}`;
     // Try to select the nth child by name for an exact uniqueId match
     const sameNameChildren = children.filter((c) => c.name === this.name);
     selectedChild = sameNameChildren[ordinal - 1];

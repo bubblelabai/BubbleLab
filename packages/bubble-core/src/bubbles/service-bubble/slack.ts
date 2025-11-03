@@ -1122,9 +1122,10 @@ export class SlackBubble<
     params: T = {
       operation: 'list_channels',
     } as T,
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
   }
 
   protected async performAction(
