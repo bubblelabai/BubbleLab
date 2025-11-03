@@ -84,8 +84,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
       [CredentialType.GMAIL_CRED]: {
         displayName: 'Gmail',
-        defaultScopes: ['https://mail.google.com/'],
-        description: 'Access Gmail for reading, sending, and managing emails',
+        defaultScopes: ['https://www.googleapis.com/auth/gmail.send'],
+        description: 'Access Gmail for sending emails',
       },
       [CredentialType.GOOGLE_SHEETS_CRED]: {
         displayName: 'Google Sheets',

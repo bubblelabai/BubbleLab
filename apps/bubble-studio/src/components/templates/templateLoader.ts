@@ -148,23 +148,23 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Personal Assistant',
     isPopular: true,
   },
-  {
-    id: 'gmail-reply',
-    name: 'Gmail Reply Assistant (Gmail)',
-    prompt:
-      'List important unread emails, draft smart context-aware replies, and create Gmail drafts in-thread',
-    code: gmailReplyTemplate.templateCode,
-    category: 'Personal Assistant',
-  },
-  {
-    id: 'gmail-labeling',
-    name: 'Gmail Labeling Assistant (Gmail)',
-    prompt:
-      'Auto-label emails into categories (Newsletters, Social, Updates, Receipts, Support, Personal)',
-    code: gmailLabelingTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: false,
-  },
+  // {
+  //   id: 'gmail-reply',
+  //   name: 'Gmail Reply Assistant (Gmail)',
+  //   prompt:
+  //     'List important unread emails, draft smart context-aware replies, and create Gmail drafts in-thread',
+  //   code: gmailReplyTemplate.templateCode,
+  //   category: 'Personal Assistant',
+  // },
+  // {
+  //   id: 'gmail-labeling',
+  //   name: 'Gmail Labeling Assistant (Gmail)',
+  //   prompt:
+  //     'Auto-label emails into categories (Newsletters, Social, Updates, Receipts, Support, Personal)',
+  //   code: gmailLabelingTemplate.templateCode,
+  //   category: 'Personal Assistant',
+  //   isPopular: false,
+  // },
   // {
   //   id: 'techweek-calendar',
   //   name: 'LA Tech Week Personalized Calendar (Firecrawl, Google Spreadsheet, Gmail)',
