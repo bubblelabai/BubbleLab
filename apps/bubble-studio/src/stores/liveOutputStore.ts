@@ -20,16 +20,10 @@ export type OrderedItem =
 
 /**
  * Discriminated union type for tab selection in LiveOutput
- * - warnings: Show all warning events
- * - errors: Show all error/fatal events
- * - info: Show all info/debug/trace events
+ * - results: Show all global events (info, warnings, errors) chronologically
  * - item: Show a specific bubble group or global event by index
  */
-export type TabType =
-  | { kind: 'warnings' }
-  | { kind: 'errors' }
-  | { kind: 'info' }
-  | { kind: 'item'; index: number };
+export type TabType = { kind: 'results' } | { kind: 'item'; index: number };
 
 /**
  * Bubble group metadata for tab generation
@@ -51,7 +45,7 @@ interface FlowLiveOutputState {
 
   /**
    * Currently selected/highlighted tab
-   * Default: { kind: 'warnings' }
+   * Default: { kind: 'results' }
    */
   selectedTab: TabType;
 
@@ -83,6 +77,12 @@ interface FlowLiveOutputState {
    * @param variableId - The variableId of the bubble to select (e.g., 'var_123')
    */
   selectBubbleInConsole: (variableId: string) => void;
+
+  /**
+   * Select the Results tab (programmatic selection)
+   * Opens the output panel and switches to the Results tab
+   */
+  selectResultsInConsole: () => void;
 
   /**
    * Reset state to initial values
@@ -142,11 +142,12 @@ interface FlowLiveOutputState {
  * Initial/empty state for when flowId is null
  */
 const emptyState: FlowLiveOutputState = {
-  selectedTab: { kind: 'warnings' },
+  selectedTab: { kind: 'results' },
   selectedEventIndexByVariableId: {},
   setSelectedTab: () => {},
   setSelectedEventIndex: () => {},
   selectBubbleInConsole: () => {},
+  selectResultsInConsole: () => {},
   reset: () => {},
   getAllEvents: () => [],
   getWarningLogs: () => [],
@@ -219,7 +220,7 @@ function getOrderedItemsFromEvents(events: StreamingLogEvent[]): OrderedItem[] {
 function createLiveOutputStore(flowId: number) {
   return create<FlowLiveOutputState>((set, get) => ({
     // Initial state
-    selectedTab: { kind: 'warnings' },
+    selectedTab: { kind: 'results' },
     selectedEventIndexByVariableId: {},
 
     // Actions
@@ -254,9 +255,16 @@ function createLiveOutputStore(flowId: number) {
       }
     },
 
+    selectResultsInConsole: () => {
+      // Open the output panel
+      useUIStore.getState().setConsolidatedPanelTab('output');
+      // Set the selected tab to Results
+      get().setSelectedTab({ kind: 'results' });
+    },
+
     reset: () =>
       set({
-        selectedTab: { kind: 'warnings' },
+        selectedTab: { kind: 'results' },
         selectedEventIndexByVariableId: {},
       }),
 
@@ -319,13 +327,16 @@ function createLiveOutputStore(flowId: number) {
     getEventsForTab: (tab: TabType) => {
       const events = get().getAllEvents();
 
-      if (tab.kind === 'warnings') {
-        return events.filter((e) => e.type === 'warn');
-      } else if (tab.kind === 'errors') {
-        return events.filter((e) => e.type === 'error' || e.type === 'fatal');
-      } else if (tab.kind === 'info') {
+      if (tab.kind === 'results') {
+        // Return all global events (info, debug, trace, warn, error, fatal) chronologically
         return events.filter(
-          (e) => e.type === 'info' || e.type === 'debug' || e.type === 'trace'
+          (e) =>
+            e.type === 'info' ||
+            e.type === 'debug' ||
+            e.type === 'trace' ||
+            e.type === 'warn' ||
+            e.type === 'error' ||
+            e.type === 'fatal'
         );
       } else if (tab.kind === 'item') {
         const orderedItems = get().getOrderedItems();

@@ -67,7 +67,8 @@ export function useRunExecution(
   const { data: currentFlow } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
-  const { selectBubbleInConsole } = useLiveOutput(flowId);
+  const { selectBubbleInConsole, selectResultsInConsole } =
+    useLiveOutput(flowId);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -207,12 +208,16 @@ export function useRunExecution(
 
             if (eventData.type === 'execution_complete') {
               getExecutionStore(flowId).stopExecution();
+              // Switch to Results tab and scroll to bottom
+              selectResultsInConsole();
               options.onComplete?.();
               return true;
             }
 
             if (eventData.type === 'stream_complete') {
               getExecutionStore(flowId).stopExecution();
+              // Switch to Results tab and scroll to bottom
+              selectResultsInConsole();
               options.onComplete?.();
               return true;
             }
@@ -313,6 +318,7 @@ export function useRunExecution(
       queryClient,
       setExecutionHighlight,
       selectBubbleInConsole,
+      selectResultsInConsole,
     ]
   );
 

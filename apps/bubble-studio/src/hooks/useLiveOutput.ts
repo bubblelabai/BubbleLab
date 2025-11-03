@@ -65,6 +65,16 @@ export function useLiveOutput(flowId: number | null) {
     liveOutputStore?.getState().selectBubbleInConsole(variableId);
   };
 
+  /**
+   * Select the Results tab (programmatic selection)
+   * Opens the output panel and switches to the Results tab
+   * Wrapper around store action for convenience
+   */
+  const selectResultsInConsole = () => {
+    if (flowId === null) return;
+    liveOutputStore?.getState().selectResultsInConsole();
+  };
+
   // ============= NON-REACTIVE GETTERS (use .getState(), no subscription) =============
   // These methods read current state without subscribing to updates
 
@@ -108,6 +118,7 @@ export function useLiveOutput(flowId: number | null) {
     setSelectedTab,
     setSelectedEventIndex,
     selectBubbleInConsole: selectBubbleInConsole,
+    selectResultsInConsole: selectResultsInConsole,
 
     // ============= NON-REACTIVE GETTERS =============
     // These use .getState() internally and do NOT cause re-renders
