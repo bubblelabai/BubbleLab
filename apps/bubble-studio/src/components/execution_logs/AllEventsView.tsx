@@ -132,64 +132,6 @@ export default function AllEventsView({
     return true;
   };
 
-  // Auto-scroll to selected tab when it changes (vertical scrolling)
-  useEffect(() => {
-    if (!tabsRef.current) return;
-
-    // Find the selected tab button
-    const tabContainer = tabsRef.current;
-    const selectedTabIndex = allTabs.findIndex((tab) =>
-      isTabSelected(tab.type)
-    );
-
-    if (selectedTabIndex === -1) return;
-
-    // Get the selected tab button element
-    const tabButtons = tabContainer.querySelectorAll('button');
-    const selectedButton = tabButtons[selectedTabIndex];
-
-    if (selectedButton) {
-      // Calculate scroll position to center the selected tab vertically
-      const containerHeight = tabContainer.clientHeight;
-      const buttonTop = selectedButton.offsetTop;
-      const buttonHeight = selectedButton.offsetHeight;
-      const scrollTop = buttonTop - containerHeight / 2 + buttonHeight / 2;
-
-      // Smooth scroll to the selected tab
-      tabContainer.scrollTo({
-        top: Math.max(0, scrollTop),
-        behavior: 'smooth',
-      });
-    }
-  }, [selectedTab, allTabs]);
-
-  // Auto-switch to Results tab when execution completes
-  useEffect(() => {
-    // Only switch if we're currently on a bubble tab and execution just completed
-    if (!isRunning && selectedTab.kind === 'item') {
-      // Switch to Results tab
-      setSelectedTab({ kind: 'results' });
-    }
-  }, [isRunning, selectedTab.kind, setSelectedTab]);
-
-  // Auto-scroll to bottom when Results tab is selected after execution completes
-  useEffect(() => {
-    const hasExecutionComplete = events.some(
-      (e) => e.type === 'execution_complete' || e.type === 'stream_complete'
-    );
-
-    if (
-      selectedTab.kind === 'results' &&
-      hasExecutionComplete &&
-      eventsEndRef.current
-    ) {
-      // Small delay to ensure DOM is updated with latest events
-      setTimeout(() => {
-        eventsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 200);
-    }
-  }, [selectedTab, events]);
-
   return (
     <div className="flex h-full bg-[#0d1117]">
       {/* Vertical Sidebar with Tabs */}
@@ -253,9 +195,32 @@ export default function AllEventsView({
               );
             }
 
+            // Separate execution_complete events and sort them to appear first
+            const executionCompleteEvents = globalEvents
+              .filter((e) => e.type === 'execution_complete')
+              .sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime()
+              );
+
+            const otherGlobalEvents = globalEvents
+              .filter((e) => e.type !== 'execution_complete')
+              .sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime()
+              );
+
+            // Combine: execution_complete first, then others chronologically
+            const sortedGlobalEvents = [
+              ...executionCompleteEvents,
+              ...otherGlobalEvents,
+            ];
+
             return (
               <div className="py-2 space-y-2">
-                {globalEvents.map((event, idx) => (
+                {sortedGlobalEvents.map((event, idx) => (
                   <div
                     key={idx}
                     className={`flex items-start gap-3 px-3 py-2 rounded border-l-2 transition-colors ${
