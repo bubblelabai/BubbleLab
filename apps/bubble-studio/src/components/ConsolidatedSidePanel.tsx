@@ -118,6 +118,7 @@ export function ConsolidatedSidePanel() {
                 events={executionState.events}
                 currentLine={executionState.currentLine}
                 executionStats={executionState.getExecutionStats()}
+                isRunning={executionState.isRunning}
               />
             ) : (
               <div className="h-full flex items-center justify-center">
