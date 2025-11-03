@@ -5,7 +5,6 @@ import {
   formatTimestamp,
   makeLinksClickable,
   getEventIcon,
-  getEventColor,
 } from '../../utils/executionLogsFormatUtils';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
 import AllEventsView from './AllEventsView';
@@ -62,7 +61,6 @@ export default function LiveOutput({
             orderedItems={orderedItems}
             currentLine={currentLine}
             getEventIcon={getEventIcon}
-            getEventColor={getEventColor}
             formatTimestamp={formatTimestamp}
             makeLinksClickable={makeLinksClickable}
             renderJson={JsonRenderer}

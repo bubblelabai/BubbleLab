@@ -71,7 +71,7 @@ function isJSONString(str: string): boolean {
   const unescaped = unescapeContent(str.trim());
 
   // Check if it starts with JSON-like structures
-  const startsWithJson = /^[\s]*[{\[]/.test(unescaped);
+  const startsWithJson = /^[\s]*(?:\{|\[)/.test(unescaped);
   if (!startsWithJson) {
     return false;
   }
@@ -574,7 +574,7 @@ export const JsonRenderer = memo(function JsonRenderer({
           executionId,
           timestamp,
         });
-      } catch (error) {
+      } catch {
         // If serialization fails, render without cache
         return renderValue(data);
       }

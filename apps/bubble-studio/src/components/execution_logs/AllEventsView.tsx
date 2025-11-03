@@ -1,10 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import {
-  PlayIcon,
-  ExclamationTriangleIcon,
-  ExclamationCircleIcon,
-  InformationCircleIcon,
-} from '@heroicons/react/24/solid';
+import React, { useRef } from 'react';
+import { PlayIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
 import { getVariableNameForDisplay } from '../../utils/bubbleUtils';
@@ -24,7 +19,6 @@ interface AllEventsViewProps {
   >;
   currentLine: number | null;
   getEventIcon: (event: StreamingLogEvent) => React.ReactElement;
-  getEventColor: (event: StreamingLogEvent) => string;
   formatTimestamp: (timestamp: string) => string;
   makeLinksClickable: (text: string | null) => (string | React.ReactElement)[];
   renderJson: React.ComponentType<{
@@ -44,7 +38,6 @@ export default function AllEventsView({
   orderedItems,
   currentLine,
   getEventIcon,
-  getEventColor,
   formatTimestamp,
   makeLinksClickable,
   renderJson: JsonRenderer,
