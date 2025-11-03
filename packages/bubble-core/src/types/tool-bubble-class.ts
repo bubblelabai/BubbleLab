@@ -31,8 +31,8 @@ export abstract class ToolBubble<
 {
   public readonly type = 'tool' as const;
 
-  constructor(params: unknown, context?: BubbleContext) {
-    super(params, context);
+  constructor(params: unknown, context?: BubbleContext, instanceId?: string) {
+    super(params, context, instanceId);
   }
 
   // Static method - returns LangChain tool with credentials injected

@@ -13,8 +13,8 @@ export abstract class ServiceBubble<
   public readonly type = 'service' as const;
   public authType?: 'oauth' | 'apikey' | 'none' | 'connection-string';
 
-  constructor(params: unknown, context?: BubbleContext) {
-    super(params, context);
+  constructor(params: unknown, context?: BubbleContext, instanceId?: string) {
+    super(params, context, instanceId);
   }
 
   public abstract testCredential(): Promise<boolean>;

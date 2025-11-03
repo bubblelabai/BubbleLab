@@ -40,8 +40,9 @@ export abstract class BaseBubble<
   protected readonly params: TParams;
   protected context?: BubbleContext;
   public previousResult: BubbleResult<BubbleOperationResult> | undefined;
+  protected readonly instanceId?: string;
 
-  constructor(params: unknown, context?: BubbleContext) {
+  constructor(params: unknown, context?: BubbleContext, instanceId?: string) {
     // Use static properties from the class - typed as required static metadata
     const ctor = this.constructor as typeof BaseBubble & {
       readonly bubbleName: BubbleName;
@@ -59,6 +60,7 @@ export abstract class BaseBubble<
     this.shortDescription = ctor.shortDescription;
     this.longDescription = ctor.longDescription;
     this.alias = ctor.alias;
+    this.instanceId = instanceId;
 
     try {
       this.params = this.schema.parse(params) as TParams;
@@ -95,9 +97,10 @@ export abstract class BaseBubble<
 
   /**
    * Compute child context based on dependency graph and current unique id.
-   * Finds the node matching currentUniqueId, then determines this child's unique id as
-   * `${currentUniqueId}.${this.name}#k` for the next ordinal k, and assigns the variableId from
-   * the dependency graph if present, otherwise keeps parent's variableId.
+   * Finds the node matching currentUniqueId, then determines this child's unique id as:
+   * - If instanceId is provided: `${currentUniqueId}.${this.name}#${instanceId}`
+   * - Otherwise: `${currentUniqueId}.${this.name}#k` for the next ordinal k
+   * Assigns the variableId from the dependency graph if present, otherwise keeps parent's variableId.
    */
   private computeChildContext(parentContext: BubbleContext): BubbleContext {
     const graph = parentContext.dependencyGraph;
@@ -132,30 +135,46 @@ export abstract class BaseBubble<
       };
     }
 
-    // Determine this bubble's ordinal under the parent using a counter map
+    // Determine this bubble's identifier under the parent
     const children = parentNode?.dependencies || [];
-    const counterKey = `${currentId || 'ROOT'}|${this.name}`;
     const counters = { ...(parentContext.__uniqueIdCounters__ || {}) };
+
+    let suffix: string;
+    let selectedChild: DependencyGraphNode | undefined = undefined;
+
+    // Use ordinal counter as before
+    const counterKey = `${currentId || 'ROOT'}|${this.name}`;
     const ordinal = (counters[counterKey] || 0) + 1;
     counters[counterKey] = ordinal;
+    suffix = `#${ordinal}`;
     // Try to select the nth child by name for an exact uniqueId match
     const sameNameChildren = children.filter((c) => c.name === this.name);
-    const selectedChild = sameNameChildren[ordinal - 1];
+    selectedChild = sameNameChildren[ordinal - 1];
+
     const childUniqueId =
       (selectedChild as unknown as { uniqueId?: string })?.uniqueId ||
       (currentId
-        ? `${currentId}.${this.name}#${ordinal}`
-        : `${this.name}#${ordinal}`);
+        ? `${currentId}.${this.name}${suffix}`
+        : `${this.name}${suffix}`);
 
     // Try to find a matching child node to get variableId; fallback to parent's
-    const matchingChild =
-      (selectedChild as unknown as {
-        variableId?: number;
-        uniqueId?: string;
-      }) ||
-      children.find(
+    let matchingChild = children.find(
+      (c) => c.variableName === this.instanceId
+    );
+    console.debug(
+      `[BaseBubble] ${this.name}.computeChildContext: Matching child by variableName:`,
+      matchingChild
+    );
+    // if no match is found fallback to || c.uniqueId === childUniqueId || c.name === this.name
+    if (!matchingChild) {
+      matchingChild = children.find(
         (c) => c.uniqueId === childUniqueId || c.name === this.name
       );
+      console.debug(
+        `[BaseBubble] ${this.name}.computeChildContext: Matching child by uniqueId:`,
+        matchingChild
+      );
+    }
     const childVariableId =
       (matchingChild && typeof matchingChild.variableId === 'number'
         ? matchingChild.variableId

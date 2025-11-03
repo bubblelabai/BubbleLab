@@ -25,8 +25,8 @@ export abstract class WorkflowBubble<
 {
   public readonly type = 'workflow' as const;
 
-  constructor(params: unknown, context?: BubbleContext) {
-    super(params, context);
+  constructor(params: unknown, context?: BubbleContext, instanceId?: string) {
+    super(params, context, instanceId);
   }
 
   /**
