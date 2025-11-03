@@ -1,107 +1,58 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { HomePage } from '@/pages/HomePage';
-import { useAuth } from '@/hooks/useAuth';
-import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
+import { createFileRoute } from '@tanstack/react-router';
+import { DashboardPage } from '@/pages/DashboardPage';
 import { useGenerationStore } from '@/stores/generationStore';
-import { useOutputStore } from '@/stores/outputStore';
-import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
-import { toast } from 'react-toastify';
+import { useFlowGeneration } from '@/hooks/useFlowGeneration';
+import { useUIStore } from '@/stores/uiStore';
+import { usePromptFromURL } from '@/hooks/usePromptFromURL';
+
+interface HomeRouteSearch {
+  showSignIn?: boolean;
+  prompt?: string;
+}
 
 export const Route = createFileRoute('/home')({
-  component: HomeRoute,
+  component: NewFlowPage,
+  validateSearch: (search: Record<string, unknown>): HomeRouteSearch => {
+    return {
+      showSignIn: search.showSignIn === true || search.showSignIn === 'true',
+      prompt: typeof search.prompt === 'string' ? search.prompt : undefined,
+    };
+  },
 });
 
-function HomeRoute() {
-  const navigate = useNavigate();
-  const { isSignedIn } = useAuth();
-  const deleteBubbleFlowMutation = useDeleteBubbleFlow();
-  const { isStreaming } = useGenerationStore();
-  const { setOutput } = useOutputStore();
-  const { data: bubbleFlowList } = useBubbleFlowList();
+function NewFlowPage() {
+  const { showSignIn, prompt } = Route.useSearch();
+  const {
+    generationPrompt,
+    selectedPreset,
+    setGenerationPrompt,
+    isStreaming,
+    setSelectedPreset,
+  } = useGenerationStore();
 
-  // Redirect to /new if not signed in
-  if (!isSignedIn) {
-    // Open up sign in modal by passing showSignIn param
-    navigate({ to: '/new', search: { showSignIn: true }, replace: true });
-    return null;
-  }
+  const { closeSidebar } = useUIStore();
+  const { generateCode: generateCodeFromHook } = useFlowGeneration();
 
-  const navigationLockToastId = 'sidebar-navigation-lock';
+  // Handle prompt from URL with authentication check
+  const { showSignInModal } = usePromptFromURL({ prompt });
 
-  const notifyNavigationLocked = () => {
-    if (!toast.isActive(navigationLockToastId)) {
-      toast.info(
-        'Flow generation in progress. Please wait until it completes before navigating.',
-        {
-          toastId: navigationLockToastId,
-          autoClose: 3000,
-        }
-      );
-    }
-  };
+  // Wrapper function that calls the hook's generateCode with proper parameters
+  const generateCode = async () => {
+    // Hide the sidebar so the IDE has maximum space during a new generation
+    closeSidebar();
 
-  const handleFlowSelect = (flowId: number) => {
-    if (isStreaming) {
-      notifyNavigationLocked();
-      return;
-    }
-    navigate({ to: '/flow/$flowId', params: { flowId: flowId.toString() } });
-  };
-
-  const handleFlowDelete = async (flowId: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    if (isStreaming) {
-      notifyNavigationLocked();
-      return;
-    }
-
-    // Show confirmation dialog
-    const flowName = bubbleFlowList?.bubbleFlows.find(
-      (flow) => flow.id === flowId
-    )?.name;
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${flowName}"?\n\nThis action cannot be undone.`
-    );
-
-    if (confirmed) {
-      try {
-        console.log('[deleteFlow] Deleting flow with ID:', flowId);
-
-        // Use the delete mutation with optimistic updates
-        await deleteBubbleFlowMutation.mutateAsync(flowId);
-
-        console.log('[deleteFlow] Flow deletion completed successfully');
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
-        console.error('[deleteFlow] Error deleting flow:', error);
-
-        setOutput(
-          (prev) =>
-            prev + `\n❌ Failed to delete flow "${flowName}": ${errorMessage}`
-        );
-      }
-    }
-  };
-
-  const handleNavigateToDashboard = () => {
-    if (isStreaming) {
-      notifyNavigationLocked();
-      return;
-    }
-    navigate({ to: '/new' });
+    await generateCodeFromHook(generationPrompt, selectedPreset);
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
-      <div className="flex-1 min-h-0">
-        <HomePage
-          onFlowSelect={handleFlowSelect}
-          onFlowDelete={handleFlowDelete}
-          onNavigateToDashboard={handleNavigateToDashboard}
-        />
-      </div>
-    </div>
+    <DashboardPage
+      isStreaming={isStreaming}
+      generationPrompt={generationPrompt}
+      setGenerationPrompt={setGenerationPrompt}
+      selectedPreset={selectedPreset}
+      setSelectedPreset={setSelectedPreset}
+      onGenerateCode={generateCode}
+      autoShowSignIn={showSignIn || showSignInModal}
+    />
   );
 }

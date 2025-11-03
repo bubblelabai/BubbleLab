@@ -1,21 +1,30 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useAuth } from '@/hooks/useAuth';
 import { useEffect } from 'react';
+
+interface IndexRouteSearch {
+  prompt?: string;
+}
 
 export const Route = createFileRoute('/')({
   component: IndexRoute,
+  validateSearch: (search: Record<string, unknown>): IndexRouteSearch => {
+    return {
+      prompt: typeof search.prompt === 'string' ? search.prompt : undefined,
+    };
+  },
 });
 
 function IndexRoute() {
   const navigate = useNavigate();
-  const { isSignedIn } = useAuth();
+  const { prompt } = Route.useSearch();
 
   useEffect(() => {
     navigate({
-      to: isSignedIn ? '/home' : '/new',
+      to: '/home',
+      search: { prompt },
       replace: true,
     });
-  }, [isSignedIn, navigate]);
+  }, [navigate, prompt]);
 
   return null;
 }

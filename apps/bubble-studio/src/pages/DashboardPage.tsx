@@ -63,6 +63,19 @@ export function DashboardPage({
       return '';
     }
   });
+  const [savedPresetIndex, setSavedPresetIndex] = useState<number>(() => {
+    // Load saved preset index from localStorage on initialization
+    try {
+      const saved = localStorage.getItem('savedPresetIndex');
+      return saved ? parseInt(saved, 10) : -1;
+    } catch (error) {
+      console.warn(
+        'Failed to load saved preset index from localStorage:',
+        error
+      );
+      return -1;
+    }
+  });
   const [pendingGeneration, setPendingGeneration] = useState<boolean>(false);
   const [pendingJsonImport, setPendingJsonImport] = useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -105,12 +118,39 @@ export function DashboardPage({
     if (isSignedIn && savedPrompt) {
       setShowSignInModal(false);
       setGenerationPrompt(savedPrompt);
-      setSavedPrompt(''); // Clear the saved prompt after restoring
-      localStorage.removeItem('savedPrompt'); // Also clear from localStorage
+
+      // If this was a template click, restore the preset and trigger generation
+      if (savedPresetIndex !== -1) {
+        setSelectedPreset(savedPresetIndex);
+        setPendingGeneration(true);
+
+        // Track template click
+        const template = getTemplateByIndex(savedPresetIndex);
+        if (template) {
+          trackTemplate({
+            action: 'click',
+            templateId: template.id,
+            templateName: template.name,
+            templateCategory: template.category,
+          });
+        }
+      }
+
+      // Clear saved state
+      setSavedPrompt('');
+      setSavedPresetIndex(-1);
+      localStorage.removeItem('savedPrompt');
+      localStorage.removeItem('savedPresetIndex');
     } else if (isSignedIn) {
       setShowSignInModal(false);
     }
-  }, [isSignedIn, savedPrompt, setGenerationPrompt]);
+  }, [
+    isSignedIn,
+    savedPrompt,
+    savedPresetIndex,
+    setGenerationPrompt,
+    setSelectedPreset,
+  ]);
 
   // Clear generation prompt when "Prompt" or "Import JSON" category is selected
   useEffect(() => {
@@ -248,9 +288,14 @@ export function DashboardPage({
                     if (selectedPreset !== -1) {
                       setSelectedPreset(-1);
                     }
-                    if (!e.target.value.trim() && savedPrompt) {
+                    if (
+                      !e.target.value.trim() &&
+                      (savedPrompt || savedPresetIndex !== -1)
+                    ) {
                       setSavedPrompt('');
+                      setSavedPresetIndex(-1);
                       localStorage.removeItem('savedPrompt');
+                      localStorage.removeItem('savedPresetIndex');
                     }
                   }}
                   onInput={(e) => autoResize(e.currentTarget)}
@@ -334,9 +379,14 @@ export function DashboardPage({
                     if (selectedPreset !== -1) {
                       setSelectedPreset(-1);
                     }
-                    if (!e.target.value.trim() && savedPrompt) {
+                    if (
+                      !e.target.value.trim() &&
+                      (savedPrompt || savedPresetIndex !== -1)
+                    ) {
                       setSavedPrompt('');
+                      setSavedPresetIndex(-1);
                       localStorage.removeItem('savedPrompt');
+                      localStorage.removeItem('savedPresetIndex');
                     }
                   }}
                   onInput={(e) => autoResize(e.currentTarget)}
@@ -444,6 +494,11 @@ export function DashboardPage({
                         if (preset.prompt.trim()) {
                           setSavedPrompt(preset.prompt);
                           localStorage.setItem('savedPrompt', preset.prompt);
+                          setSavedPresetIndex(originalIndex);
+                          localStorage.setItem(
+                            'savedPresetIndex',
+                            originalIndex.toString()
+                          );
                         }
                         setShowSignInModal(true);
                         return;

@@ -14,7 +14,7 @@ function CredentialsRoute() {
   // Redirect if not signed in
   if (!isSignedIn) {
     // Open up sign in modal
-    navigate({ to: '/new', search: { showSignIn: true }, replace: true });
+    navigate({ to: '/home', search: { showSignIn: true }, replace: true });
     return null;
   }
 

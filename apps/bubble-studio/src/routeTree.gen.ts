@@ -9,20 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NewRouteImport } from './routes/new'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as FlowsRouteImport } from './routes/flows'
 import { Route as CredentialsRouteImport } from './routes/credentials'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FlowFlowIdRouteImport } from './routes/flow.$flowId'
 
-const NewRoute = NewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlowsRoute = FlowsRouteImport.update({
+  id: '/flows',
+  path: '/flows',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CredentialsRoute = CredentialsRouteImport.update({
@@ -44,55 +44,55 @@ const FlowFlowIdRoute = FlowFlowIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
-  '/new': typeof NewRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
-  '/new': typeof NewRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
-  '/new': typeof NewRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/credentials' | '/home' | '/new' | '/flow/$flowId'
+  fullPaths: '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/credentials' | '/home' | '/new' | '/flow/$flowId'
-  id: '__root__' | '/' | '/credentials' | '/home' | '/new' | '/flow/$flowId'
+  to: '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
+  id: '__root__' | '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CredentialsRoute: typeof CredentialsRoute
+  FlowsRoute: typeof FlowsRoute
   HomeRoute: typeof HomeRoute
-  NewRoute: typeof NewRoute
   FlowFlowIdRoute: typeof FlowFlowIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/new': {
-      id: '/new'
-      path: '/new'
-      fullPath: '/new'
-      preLoaderRoute: typeof NewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/home': {
       id: '/home'
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flows': {
+      id: '/flows'
+      path: '/flows'
+      fullPath: '/flows'
+      preLoaderRoute: typeof FlowsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/credentials': {
@@ -122,8 +122,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CredentialsRoute: CredentialsRoute,
+  FlowsRoute: FlowsRoute,
   HomeRoute: HomeRoute,
-  NewRoute: NewRoute,
   FlowFlowIdRoute: FlowFlowIdRoute,
 }
 export const routeTree = rootRouteImport
