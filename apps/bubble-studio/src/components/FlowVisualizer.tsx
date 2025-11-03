@@ -831,7 +831,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           // setCenter will center the given coordinates in the viewport
           // To position the node 20% from left instead of centered (50%), we shift the center point right
           const viewportWidth = window.innerWidth;
-          const horizontalShift = (viewportWidth * 0.3) / zoom; // Shift right to position node on left
+          const horizontalShift = (viewportWidth * 0.15) / zoom; // Shift right to position node on left
 
           setCenter(
             entryNode.position.x + horizontalShift,
