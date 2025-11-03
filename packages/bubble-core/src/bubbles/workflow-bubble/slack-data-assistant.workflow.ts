@@ -244,7 +244,8 @@ export class SlackDataAssistantWorkflow extends WorkflowBubble<
               limit: 100, // Get up to 100 messages in the thread
               credentials: this.params.credentials,
             },
-            this.context
+            this.context,
+            'threadReplies'
           );
 
           const threadResult = await threadReplies.action();
@@ -279,7 +280,8 @@ export class SlackDataAssistantWorkflow extends WorkflowBubble<
                           user: msg.user,
                           credentials: this.params.credentials,
                         },
-                        this.context
+                        this.context,
+                        'userInfo'
                       );
 
                       const userResult = await userInfo.action();
@@ -537,7 +539,8 @@ After running your queries, provide a comprehensive answer to the user's questio
           thread_ts: this.params.slackThreadTs,
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'slackSender'
       );
 
       const slackResult = await slackSender.action();
@@ -580,7 +583,8 @@ After running your queries, provide a comprehensive answer to the user's questio
             thread_ts: this.params.slackThreadTs,
             credentials: this.params.credentials,
           },
-          this.context
+          this.context,
+          'errorSender'
         );
 
         await errorSender.action();

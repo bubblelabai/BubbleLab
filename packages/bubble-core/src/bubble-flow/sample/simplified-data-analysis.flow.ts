@@ -102,20 +102,24 @@ Write a SQL query to answer the user's question. Return only the query between \
 
       // Step 4: Send intelligent Slack notification using WorkflowBubble
       // This replaces 50+ lines of manual Slack channel discovery, AI formatting, and message sending
-      const slackNotification = await new SlackNotifierWorkflowBubble({
-        contentToFormat: JSON.stringify(queryResult.data, null, 2),
-        originalUserQuery: userQuery,
-        targetChannel: 'staging-bot', // User-friendly channel name (no # needed)
-        messageTitle: '📊 Data Analysis Results',
-        messageStyle: 'professional',
-        includeFormatting: true,
-        maxMessageLength: 3000,
-        aiModel: {
-          model: 'google/gemini-2.5-flash',
-          temperature: 0.3,
-          maxTokens: 1000,
+      const slackNotification = await new SlackNotifierWorkflowBubble(
+        {
+          contentToFormat: JSON.stringify(queryResult.data, null, 2),
+          originalUserQuery: userQuery,
+          targetChannel: 'staging-bot', // User-friendly channel name (no # needed)
+          messageTitle: '📊 Data Analysis Results',
+          messageStyle: 'professional',
+          includeFormatting: true,
+          maxMessageLength: 3000,
+          aiModel: {
+            model: 'google/gemini-2.5-flash',
+            temperature: 0.3,
+            maxTokens: 1000,
+          },
         },
-      }).action();
+        undefined,
+        'slackNotification'
+      ).action();
 
       console.log(
         `🎉 Analysis complete! Message sent to #${slackNotification.data?.messageInfo?.channelName}`
@@ -154,15 +158,25 @@ Write a SQL query to answer the user's question. Return only the query between \
       // Even error handling is simplified with WorkflowBubbles!
       // Send error notification to Slack automatically
       try {
-        await new SlackNotifierWorkflowBubble({
-          contentToFormat: `Error in data analysis workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          originalUserQuery:
-            (payload.body?.userQuery as string) || 'Unknown query',
-          targetChannel: 'staging-bot',
-          messageTitle: '⚠️ Data Analysis Error',
-          messageStyle: 'concise',
-          includeFormatting: true,
-        }).action();
+        const errorNotification = await new SlackNotifierWorkflowBubble(
+          {
+            contentToFormat: `Error in data analysis workflow: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            originalUserQuery:
+              (payload.body?.userQuery as string) || 'Unknown query',
+            targetChannel: 'staging-bot',
+            messageTitle: '⚠️ Data Analysis Error',
+            messageStyle: 'concise',
+            includeFormatting: true,
+          },
+          undefined,
+          'errorNotification'
+        ).action();
+        if (!errorNotification.success) {
+          console.error(
+            'Failed to send error notification:',
+            errorNotification.error
+          );
+        }
       } catch (notificationError) {
         console.error('Failed to send error notification:', notificationError);
       }

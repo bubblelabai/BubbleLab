@@ -139,9 +139,10 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
 
   constructor(
     params: z.input<typeof BubbleFlowGeneratorParamsSchema>,
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
     this.bubbleFactory = new BubbleFactory();
   }
 
@@ -186,7 +187,8 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
         maxIterations: 10,
         credentials,
       },
-      this.context
+      this.context,
+      'validationAgent'
     );
 
     const validationRun = streamingCallback
@@ -309,7 +311,8 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
         maxIterations: 5,
         credentials,
       },
-      this.context
+      this.context,
+      'summarizeAgent'
     );
 
     console.log('[BubbleFlowGenerator] Starting summarizeAgent...');
@@ -468,7 +471,8 @@ ${VALIDATION_PROCESS}`;
           maxIterations: MAX_ITERATIONS,
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'aiAgent'
       );
 
       // Generate the code
@@ -811,7 +815,8 @@ ${VALIDATION_PROCESS}`;
           maxIterations: MAX_ITERATIONS,
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'aiAgent'
       );
 
       // Generate the code with streaming

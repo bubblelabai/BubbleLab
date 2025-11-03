@@ -301,9 +301,10 @@ export class AIAgentBubble extends ServiceBubble<
       message: 'Hello, how are you?',
       systemPrompt: 'You are a helpful AI assistant',
     },
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
     this.beforeToolCallHook = params.beforeToolCall;
     this.afterToolCallHook = params.afterToolCall;
     this.streamingCallback = params.streamingCallback;

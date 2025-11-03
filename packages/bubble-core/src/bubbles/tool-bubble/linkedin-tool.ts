@@ -405,7 +405,8 @@ export class LinkedInTool extends ToolBubble<
           timeout: 180000, // 3 minutes
           credentials: params.credentials,
         },
-        this.context
+        this.context,
+        'linkedinPostScraper'
       );
 
     const apifyResult = await linkedinPostScraper.action();
@@ -608,7 +609,8 @@ export class LinkedInTool extends ToolBubble<
           timeout: 180000,
           credentials: params.credentials,
         },
-        this.context
+        this.context,
+        'linkedinPostSearcher'
       );
 
     const apifyResult = await linkedinPostSearcher.action();

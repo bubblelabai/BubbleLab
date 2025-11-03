@@ -185,9 +185,10 @@ export class YouTubeTool extends ToolBubble<
       searchQueries: ['AI tutorials'],
       maxResults: 20,
     },
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
   }
 
   async performAction(): Promise<YouTubeToolResult> {
@@ -283,7 +284,8 @@ export class YouTubeTool extends ToolBubble<
         timeout: 180000,
         credentials: this.params.credentials,
       },
-      this.context
+      this.context,
+      'searchVideo'
     );
 
     const result = await searchVideo.action();
@@ -321,7 +323,8 @@ export class YouTubeTool extends ToolBubble<
           timeout: 120000,
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'transcriptScraper'
       );
 
     const result = await transcriptScraper.action();
@@ -378,7 +381,8 @@ export class YouTubeTool extends ToolBubble<
         timeout: 180000,
         credentials: this.params.credentials,
       },
-      this.context
+      this.context,
+      'channelScraper'
     );
 
     const result = await channelScraper.action();

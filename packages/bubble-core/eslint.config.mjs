@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 // Import our custom rules
 import noNullContextRule from './eslint-rules/no-null-context.js';
 import requireCronScheduleRule from './eslint-rules/require-cron-schedule.js';
+import requireInstanceIdRule from './eslint-rules/require-instance-id.js';
 
 export default [
   js.configs.recommended,
@@ -23,12 +24,14 @@ export default [
         rules: {
           'no-null-context': noNullContextRule,
           'require-cron-schedule': requireCronScheduleRule,
+          'require-instance-id': requireInstanceIdRule,
         },
       },
     },
     rules: {
       'bubble-core/no-null-context': 'error',
       'bubble-core/require-cron-schedule': 'error',
+      'bubble-core/require-instance-id': 'error',
     },
   },
   {

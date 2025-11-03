@@ -186,8 +186,12 @@ export class SlackNotifierWorkflowBubble extends WorkflowBubble<
   static readonly alias = 'notify-slack';
   static readonly type = 'workflow' as const;
 
-  constructor(params: SlackNotifierParamsInput, context?: BubbleContext) {
-    super(params, context);
+  constructor(
+    params: SlackNotifierParamsInput,
+    context?: BubbleContext,
+    instanceId?: string
+  ) {
+    super(params, context, instanceId);
   }
 
   protected async performAction(): Promise<SlackNotifierResult> {
@@ -295,15 +299,16 @@ export class SlackNotifierWorkflowBubble extends WorkflowBubble<
     credentials?: CredentialOptions
   ) {
     try {
-      const slackBubble = new SlackBubble(
+      const slackChannelFinderBubble = new SlackBubble(
         {
           operation: 'list_channels',
           ...(credentials && { credentials }),
         },
-        this.context
+        this.context,
+        'slackChannelFinderBubble'
       );
 
-      const channelsResult = await slackBubble.action();
+      const channelsResult = await slackChannelFinderBubble.action();
 
       if (!channelsResult.success) {
         return {
@@ -450,17 +455,18 @@ Remember: Your goal is to help your colleagues understand and act on information
     credentials?: CredentialOptions
   ) {
     try {
-      const slackBubble = new SlackBubble(
+      const slackNotifierBubble = new SlackBubble(
         {
           operation: 'send_message',
           channel: channelId,
           text: message,
           ...(credentials && { credentials }),
         },
-        this.context
+        this.context,
+        'slackNotifierBubble'
       );
 
-      const sendResult = await slackBubble.action();
+      const sendResult = await slackNotifierBubble.action();
 
       if (!sendResult.success) {
         return {

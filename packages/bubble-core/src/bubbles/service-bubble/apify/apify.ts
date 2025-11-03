@@ -161,8 +161,12 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
   `;
   static readonly alias = 'scrape';
 
-  constructor(params: TypedApifyParamsInput<T>, context?: BubbleContext) {
-    super(params as TypedApifyParams<T>, context);
+  constructor(
+    params: TypedApifyParamsInput<T>,
+    context?: BubbleContext,
+    instanceId?: string
+  ) {
+    super(params as TypedApifyParams<T>, context, instanceId);
   }
 
   protected chooseCredential(): string | undefined {
