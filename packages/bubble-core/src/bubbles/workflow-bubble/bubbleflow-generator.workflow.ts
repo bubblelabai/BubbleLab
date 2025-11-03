@@ -139,9 +139,10 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
 
   constructor(
     params: z.input<typeof BubbleFlowGeneratorParamsSchema>,
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
     this.bubbleFactory = new BubbleFactory();
   }
 
