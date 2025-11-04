@@ -11,6 +11,58 @@ import {
 } from '@heroicons/react/24/solid';
 
 /**
+ * Sanitize HTML to prevent JavaScript execution
+ * Removes script tags, event handlers, and other dangerous content
+ */
+export function sanitizeHtml(html: string): string {
+  if (!html || typeof html !== 'string') {
+    return html;
+  }
+
+  // Use DOM API for safer parsing
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+
+  // Remove script tags and their content
+  const scripts = tempDiv.querySelectorAll('script');
+  scripts.forEach((script) => script.remove());
+
+  // Remove event handlers from all elements
+  const allElements = tempDiv.querySelectorAll('*');
+  allElements.forEach((el) => {
+    // Remove all attributes that start with 'on'
+    Array.from(el.attributes).forEach((attr) => {
+      if (attr.name.startsWith('on') && attr.name.length > 2) {
+        el.removeAttribute(attr.name);
+      }
+      // Remove javascript: protocol from href, src, etc.
+      if (
+        (attr.name === 'href' || attr.name === 'src') &&
+        attr.value.toLowerCase().startsWith('javascript:')
+      ) {
+        el.removeAttribute(attr.name);
+      }
+      // Remove dangerous data URLs
+      if (
+        attr.name === 'href' ||
+        attr.name === 'src' ||
+        attr.name === 'action'
+      ) {
+        const value = attr.value.toLowerCase();
+        if (
+          value.startsWith('data:text/html') ||
+          value.startsWith('data:application/javascript')
+        ) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+  });
+
+  return tempDiv.innerHTML;
+}
+
+/**
  * Format ISO timestamp to locale time string
  */
 export function formatTimestamp(timestamp: string): string {
@@ -116,6 +168,7 @@ function truncateJson(json: string, maxLength: number): string {
  * Returns HTML string with span elements and color classes
  * Optimized with pre-compiled regex patterns
  * For large JSON, shows a preview with truncation indicator
+ * Output is sanitized to prevent XSS attacks
  */
 export function syntaxHighlightJson(json: string): string {
   // Early return for empty strings
@@ -160,13 +213,15 @@ export function syntaxHighlightJson(json: string): string {
   if (isTruncated) {
     const sizeKB = Math.round(json.length / 1024);
     const previewKB = Math.round(PREVIEW_LENGTH / 1024);
-    return (
+    const result =
       highlighted +
-      `\n\n<span class="text-yellow-400 italic">... (preview only, ${previewKB}KB of ${sizeKB}KB total)</span>`
-    );
+      `\n\n<span class="text-yellow-400 italic">... (preview only, ${previewKB}KB of ${sizeKB}KB total)</span>`;
+    // Sanitize the output to prevent any potential XSS
+    return sanitizeHtml(result);
   }
 
-  return highlighted;
+  // Sanitize the output to prevent any potential XSS
+  return sanitizeHtml(highlighted);
 }
 
 /**

@@ -24,8 +24,6 @@ import * as personalTemplate from './template_codes/personalAssistant';
 import * as financialTemplate from './template_codes/financialAdvisor';
 import * as databaseTemplate from './template_codes/databaseMetricsAssistant';
 import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
-import * as gmailReplyTemplate from './template_codes/gmailReplyAssistant';
-import * as gmailLabelingTemplate from './template_codes/gmailLabeling';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
 import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';

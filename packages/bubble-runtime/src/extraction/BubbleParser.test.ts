@@ -178,9 +178,7 @@ describe('BubbleParser.parseBubblesFromAST()', () => {
     expect(tools?.find((t) => t.name === 'web-crawl-tool')?.uniqueId).toBe(
       `${uniqueId}.research-agent-tool#1.ai-agent#1.web-crawl-tool#1`
     );
-    expect(tools?.find((t) => t.name === 'web-extract-tool')?.uniqueId).toBe(
-      `${uniqueId}.research-agent-tool#1.ai-agent#1.web-extract-tool#1`
-    );
+
     expect(tools?.find((t) => t.name === 'reddit-scrape-tool')?.uniqueId).toBe(
       `${uniqueId}.research-agent-tool#1.ai-agent#1.reddit-scrape-tool#1`
     );

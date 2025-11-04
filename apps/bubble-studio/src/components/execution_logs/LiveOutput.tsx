@@ -5,7 +5,6 @@ import {
   formatTimestamp,
   makeLinksClickable,
   getEventIcon,
-  getEventColor,
 } from '../../utils/executionLogsFormatUtils';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
 import AllEventsView from './AllEventsView';
@@ -20,12 +19,14 @@ interface LiveOutputProps {
     bubblesProcessed: number;
   };
   flowId?: number | null;
+  isRunning?: boolean;
 }
 
 export default function LiveOutput({
   events: propsEvents = [],
   currentLine: propsCurrentLine = null,
   flowId = null,
+  isRunning = false,
 }: LiveOutputProps) {
   const [localEvents] = useState<StreamingLogEvent[]>([]);
 
@@ -60,7 +61,6 @@ export default function LiveOutput({
             orderedItems={orderedItems}
             currentLine={currentLine}
             getEventIcon={getEventIcon}
-            getEventColor={getEventColor}
             formatTimestamp={formatTimestamp}
             makeLinksClickable={makeLinksClickable}
             renderJson={JsonRenderer}
@@ -68,6 +68,7 @@ export default function LiveOutput({
             events={events}
             warningCount={warningCount}
             errorCount={errorCount}
+            isRunning={isRunning}
           />
         )}
       </div>

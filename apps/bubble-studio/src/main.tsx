@@ -16,9 +16,14 @@ import {
 } from './env';
 import { dark } from '@clerk/themes';
 import { analytics } from './services/analytics';
+import { patchDOMForGoogleTranslate } from './utils/googleTranslateFix';
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
+
+// Patch DOM methods to handle Google Translate mutations
+// This prevents React from crashing when Google Translate modifies the DOM
+patchDOMForGoogleTranslate();
 
 const PUBLISHABLE_KEY = CLERK_PUBLISHABLE_KEY;
 if (!PUBLISHABLE_KEY && !DISABLE_AUTH) {

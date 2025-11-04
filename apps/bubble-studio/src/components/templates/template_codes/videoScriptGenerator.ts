@@ -10,8 +10,8 @@
 //   - Determine video discovery method (search vs specific URLs)
 //
 // PHASE 2: Video Discovery & Transcript Extraction
-//   - Search YouTube for top 5-8 videos OR use provided URLs
-//   - Extract FULL transcripts from each video (parallel execution)
+//   - Search YouTube for top 5 videos OR use provided URLs
+//   - Extract FULL transcripts from each video (sequential execution)
 //   - Gather video metadata (titles, engagement, duration)
 //
 // PHASE 3: AI Pattern Analysis
@@ -229,7 +229,7 @@ Extract and return JSON:
 
     if (specificVideoUrls && specificVideoUrls.length > 0) {
       // Use provided URLs
-      videoUrls = specificVideoUrls.slice(0, 8); // Max 8 videos
+      videoUrls = specificVideoUrls.slice(0, 5); // Max 5 videos
 
       // Get metadata for these videos
       const metadataSearch = new YouTubeTool({
@@ -240,7 +240,7 @@ Extract and return JSON:
       const metadataResult = await metadataSearch.action();
 
       if (metadataResult.success && metadataResult.data?.videos) {
-        videoMetadata = metadataResult.data.videos.filter(v => v.url).slice(0, 8);
+        videoMetadata = metadataResult.data.videos.filter(v => v.url).slice(0, 5);
         videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
       }
     } else {
@@ -248,7 +248,7 @@ Extract and return JSON:
       const youtubeSearch = new YouTubeTool({
         operation: 'searchVideos',
         searchQueries: [topic],
-        maxResults: 8,
+        maxResults: 5,
       });
 
       const searchResult = await youtubeSearch.action();
@@ -257,7 +257,7 @@ Extract and return JSON:
         throw new Error(\`Failed to find videos for topic: \${topic}\`);
       }
 
-      videoMetadata = searchResult.data.videos.filter(v => v.url).slice(0, 8);
+      videoMetadata = searchResult.data.videos.filter(v => v.url).slice(0, 5);
       videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
     }
 
@@ -265,8 +265,10 @@ Extract and return JSON:
       throw new Error('No valid video URLs found for analysis');
     }
 
-    // Extract transcripts from all videos in PARALLEL
-    const transcriptPromises = videoUrls.map(async (url) => {
+    // Extract transcripts from all videos SEQUENTIALLY (to avoid Apify memory limits)
+    const videosWithTranscripts: VideoWithTranscript[] = [];
+    
+    for (const url of videoUrls) {
       try {
         const transcriptTool = new YouTubeTool({
           operation: 'getTranscript',
@@ -279,7 +281,7 @@ Extract and return JSON:
           // Find matching metadata
           const metadata = videoMetadata.find(v => v.url === url);
 
-          return {
+          videosWithTranscripts.push({
             title: metadata?.title || 'Unknown Title',
             url: url,
             duration: metadata?.duration || null,
@@ -287,19 +289,13 @@ Extract and return JSON:
             channelName: metadata?.channelName || null,
             transcript: result.data.fullTranscriptText,
             transcriptWithTimestamps: result.data.transcript || [],
-          };
+          });
         }
-        return null;
       } catch (error) {
         console.error(\`Failed to get transcript for \${url}:\`, error);
-        return null;
+        // Continue with next video instead of failing completely
       }
-    });
-
-    const transcriptResults = await Promise.all(transcriptPromises);
-    const videosWithTranscripts: VideoWithTranscript[] = transcriptResults.filter(
-      (result): result is VideoWithTranscript => result !== null
-    );
+    }
 
     if (videosWithTranscripts.length === 0) {
       throw new Error('Failed to extract transcripts from any videos. Try different videos or topics.');
