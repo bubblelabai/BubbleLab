@@ -10,6 +10,27 @@ import {
   cleanUpObjectForDisplayAndStorage,
 } from '@bubblelab/shared-schemas';
 import type { ExecutionResult } from '@bubblelab/shared-schemas';
+// Local fallback until shared-schemas dist is rebuilt
+function prepareForStorage(value: unknown): unknown {
+  try {
+    const json = JSON.stringify(value);
+    const sizeBytes = Buffer.byteLength(json, 'utf8');
+    const ONE_MB = 1024 * 1024;
+    if (sizeBytes > ONE_MB) {
+      console.warn(
+        `[bubble-flow] Value size (${sizeBytes} bytes) exceeds 1MB. Storing preview only.`
+      );
+      const preview = json.slice(0, 4096);
+      return `response truncated due to size, preview ::: first ${preview.length} characters :: ${preview}`;
+    }
+    return value;
+  } catch (_e) {
+    console.warn(
+      '[bubble-flow] Failed to serialize value for size check. Storing preview only.'
+    );
+    return 'response truncated due to size, preview ::: first 0 characters ::';
+  }
+}
 import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
 import { verifyMonthlyLimit } from './subscription-validation.js';
