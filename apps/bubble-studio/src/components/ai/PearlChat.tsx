@@ -40,6 +40,9 @@ import {
   compressPngToBase64,
 } from '../../utils/fileUtils';
 
+// Cap additional context sent to the model to 1MB (UTF-8 bytes)
+const MAX_CONTEXT_BYTES = 1024 * 1024;
+
 // Display event types for chronological rendering
 type DisplayEvent =
   | { type: 'llm_thinking' }
