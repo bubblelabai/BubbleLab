@@ -24,6 +24,7 @@ import {
   ArrowUp,
   Paperclip,
   X,
+  Info,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import {
@@ -39,6 +40,8 @@ import {
   readTextFile,
   compressPngToBase64,
 } from '../../utils/fileUtils';
+import { simplifyObjectForContext } from '../../utils/executionLogsFormatUtils';
+import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -84,6 +87,7 @@ export function PearlChat() {
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
   const { editor } = useEditor();
+  const bubbleDetail = useBubbleDetail(selectedFlowId);
 
   // General chat mutation with streaming
   const pearlChat = usePearlStream();
@@ -365,6 +369,27 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
+    // Get bubble output logs from execution events
+    const outputLogs = allEvents.filter(
+      (e) => e.type === 'bubble_execution_complete'
+    );
+
+    const outputContext =
+      outputLogs.length > 0
+        ? `\n\nBubble Outputs (${outputLogs.length} bubbles executed):\n${outputLogs
+            .map((log: StreamingLogEvent, idx: number) => {
+              // Use bubbleDetail to get the proper variable name
+              const variableId = log.variableId;
+              const bubbleName = variableId
+                ? bubbleDetail.getVariableNameForDisplay(variableId, allEvents)
+                : 'unknown';
+              const result = log.additionalData?.result;
+              const simplifiedResult = simplifyObjectForContext(result);
+              return `${idx + 1}. ${bubbleName}: ${simplifiedResult}`;
+            })
+            .join('\n')}`
+        : '';
+
     const executionInputs = Object.fromEntries(
       Object.entries(executionState?.executionInputs || {}).map(
         ([key, value]) => [key, value]
@@ -394,7 +419,7 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
-    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${outputContext}${inputSchemaContext}${credentialsContext}`;
 
     trackAIAssistant({ action: 'send_message', message: userMessage.content });
     pearlChat.mutate(
@@ -534,6 +559,9 @@ export function PearlChat() {
                       {message.resultType === 'code' && (
                         <Check className="w-4 h-4 text-green-400" />
                       )}
+                      {message.resultType === 'answer' && (
+                        <Info className="w-4 h-4 text-blue-400" />
+                      )}
                       {message.resultType === 'reject' && (
                         <AlertCircle className="w-4 h-4 text-red-400" />
                       )}
@@ -541,6 +569,7 @@ export function PearlChat() {
                         Assistant
                         {message.resultType === 'code' && ' - Code Generated'}
                         {message.resultType === 'question' && ' - Question'}
+                        {message.resultType === 'answer' && ' - Answer'}
                         {message.resultType === 'reject' && ' - Error'}
                       </span>
                     </div>
