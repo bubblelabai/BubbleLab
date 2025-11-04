@@ -181,84 +181,37 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
   },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
-// Helper function to parse and format error messages for user-friendly display
-const parseErrorMessage = (error: unknown): string => {
-  let rawMessage = '';
-
-  // Extract the raw error message from various formats
+// Helper to extract clean error message from API error
+const getErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') {
-    // Handle "HTTP XXX: {json}" format - strip the HTTP prefix
-    const httpPrefixMatch = error.match(/^HTTP \d+:\s*/);
-    let cleanError = error;
-    if (httpPrefixMatch) {
-      cleanError = error.substring(httpPrefixMatch[0].length);
-    }
-
-    // Try to parse if it's a JSON string
-    try {
-      const parsed = JSON.parse(cleanError);
-      rawMessage = String(
-        parsed.details || parsed.error || parsed.message || cleanError
-      );
-    } catch {
-      // Not JSON, check if we can extract a readable message
-      const jsonMatch = cleanError.match(/\{.*\}/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          rawMessage = String(
-            parsed.details || parsed.error || parsed.message || cleanError
-          );
-        } catch {
-          rawMessage = cleanError;
-        }
-      } else {
-        rawMessage = cleanError;
+    // Try to parse if it contains JSON (from api.ts: "HTTP 400: {...}")
+    const jsonMatch = error.match(/HTTP \d+:\s*(\{.*\})/);
+    if (jsonMatch) {
+      try {
+        const errorData = JSON.parse(jsonMatch[1]);
+        return errorData.error || errorData.message || error;
+      } catch {
+        return error;
       }
     }
-  } else if (error instanceof Error) {
-    rawMessage = error.message;
-  } else if (typeof error === 'object' && error !== null) {
-    const errorObj = error as Record<string, unknown>;
-    rawMessage = String(
-      errorObj.details ||
-        errorObj.error ||
-        errorObj.message ||
-        'An unexpected error occurred'
-    );
-  } else {
-    return 'An unexpected error occurred';
+    return error;
   }
 
-  // Clean up the message to extract only the essential part
-  // Pattern 1: Extract message after "error: XXX " (e.g., "error: 401 Incorrect API key")
-  const errorCodeMatch = rawMessage.match(/error:\s*\d+\s+([^.]+)/i);
-  if (errorCodeMatch) {
-    let extractedMsg = errorCodeMatch[1].trim();
-    // Remove anything after common stop phrases
-    extractedMsg = extractedMsg.split(/\.\s*You can find/i)[0];
-    extractedMsg = extractedMsg.split(/\.\s*Troubleshooting/i)[0];
-    return extractedMsg.trim();
-  }
-
-  // Pattern 2: Remove URLs from the message
-  let cleanedMsg = rawMessage.replace(/https?:\/\/[^\s]+/g, '').trim();
-
-  // Pattern 3: Remove "You can find..." and everything after
-  cleanedMsg = cleanedMsg.split(/\.\s*You can find/i)[0];
-
-  // Pattern 4: Remove "Troubleshooting URL..." and everything after
-  cleanedMsg = cleanedMsg.split(/\.\s*Troubleshooting/i)[0];
-
-  // Pattern 5: If message is still too long (>150 chars), extract first sentence
-  if (cleanedMsg.length > 150) {
-    const firstSentence = cleanedMsg.split(/\.\s+/)[0];
-    if (firstSentence) {
-      cleanedMsg = firstSentence;
+  if (error instanceof Error) {
+    // Check if error.message contains JSON
+    const jsonMatch = error.message.match(/HTTP \d+:\s*(\{.*\})/);
+    if (jsonMatch) {
+      try {
+        const errorData = JSON.parse(jsonMatch[1]);
+        return errorData.error || errorData.message || error.message;
+      } catch {
+        return error.message;
+      }
     }
+    return error.message;
   }
 
-  return cleanedMsg.trim() || 'An unexpected error occurred';
+  return 'An unexpected error occurred';
 };
 
 // Helper function to map credential types to service names for icon resolution
@@ -489,9 +442,7 @@ export function CreateCredentialModal({
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {error && (
               <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-                <p className="text-sm text-red-200">
-                  {parseErrorMessage(error)}
-                </p>
+                <p className="text-sm text-red-200">{getErrorMessage(error)}</p>
               </div>
             )}
 
@@ -747,7 +698,7 @@ function EditCredentialModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-              <p className="text-sm text-red-200">{error}</p>
+              <p className="text-sm text-red-200">{getErrorMessage(error)}</p>
             </div>
           )}
 
