@@ -371,5 +371,94 @@ export function getEventColor(event: StreamingLogEvent): string {
   }
 }
 
+/**
+ * Simplify and truncate object for context to avoid overwhelming LLM
+ * Based on limits from JsonRenderer.tsx
+ * @param value - Value to simplify (can be any type)
+ * @returns Truncated JSON string without spacing
+ */
+export function simplifyObjectForContext(value: unknown): string {
+  const MAX_STRING_LENGTH = 1000; // More aggressive truncation for context
+  const MAX_DEPTH = 5; // Reduced depth for context
+  const MAX_ARRAY_ITEMS = 5; // Fewer array items for context
+  const MAX_OBJECT_KEYS = 10; // Fewer object keys for context
+
+  function simplifyValue(val: unknown, currentDepth: number): unknown {
+    // Stop at max depth
+    if (currentDepth >= MAX_DEPTH) {
+      return '...(max depth)';
+    }
+
+    // Handle null/undefined
+    if (val === null || val === undefined) {
+      return val;
+    }
+
+    // Handle strings - truncate if too long
+    if (typeof val === 'string') {
+      if (val.length > MAX_STRING_LENGTH) {
+        return val.substring(0, MAX_STRING_LENGTH) + '...(truncated)';
+      }
+      return val;
+    }
+
+    // Handle primitives
+    if (
+      typeof val === 'number' ||
+      typeof val === 'boolean' ||
+      typeof val === 'bigint'
+    ) {
+      return val;
+    }
+
+    // Handle arrays
+    if (Array.isArray(val)) {
+      const simplified = val
+        .slice(0, MAX_ARRAY_ITEMS)
+        .map((item) => simplifyValue(item, currentDepth + 1));
+
+      if (val.length > MAX_ARRAY_ITEMS) {
+        simplified.push(`...(${val.length - MAX_ARRAY_ITEMS} more items)`);
+      }
+
+      return simplified;
+    }
+
+    // Handle objects
+    if (typeof val === 'object') {
+      const entries = Object.entries(val);
+      const simplified: Record<string, unknown> = {};
+
+      // Take first N keys
+      for (let i = 0; i < Math.min(entries.length, MAX_OBJECT_KEYS); i++) {
+        const [key, value] = entries[i];
+        simplified[key] = simplifyValue(value, currentDepth + 1);
+      }
+
+      // Add indicator if there are more keys
+      if (entries.length > MAX_OBJECT_KEYS) {
+        simplified['...'] = `(${entries.length - MAX_OBJECT_KEYS} more keys)`;
+      }
+
+      return simplified;
+    }
+
+    // Fallback for other types
+    return String(val);
+  }
+
+  try {
+    const simplified = simplifyValue(value, 0);
+    // Return as JSON string without spacing
+    return JSON.stringify(simplified);
+  } catch (error) {
+    // If serialization fails, return error message
+    return JSON.stringify({
+      error: 'Failed to serialize value',
+      type: typeof value,
+    });
+  }
+}
+
 // Export cache-related functions for use in JsonRenderer component
 export { getCacheKey, evictCacheIfNeeded, jsonCache };
