@@ -365,7 +365,7 @@ function renderStringValue(
       : 'prose prose-invert prose-sm max-w-none my-2';
 
     const markdownComponents = {
-      img: ({ src, alt, ...props }: any) => {
+      img: ({ src, alt, ...props }: React.ComponentProps<'img'>) => {
         const safeSrc =
           src &&
           !src.toLowerCase().startsWith('javascript:') &&
@@ -387,7 +387,7 @@ function renderStringValue(
           />
         );
       },
-      a: ({ href, children, ...props }: any) => {
+      a: ({ href, children, ...props }: React.ComponentProps<'a'>) => {
         const safeHref =
           href &&
           !href.toLowerCase().startsWith('javascript:') &&
@@ -407,7 +407,11 @@ function renderStringValue(
           </a>
         );
       },
-      code: ({ className, children, ...props }: any) => {
+      code: ({
+        className,
+        children,
+        ...props
+      }: React.ComponentProps<'code'>) => {
         const isInlineCode = !className;
         return isInlineCode ? (
           <code {...props} className="bg-gray-800 px-1 py-0.5 rounded text-xs">
