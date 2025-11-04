@@ -216,14 +216,14 @@ export default function AllEventsView({
                 {sortedGlobalEvents.map((event, idx) => (
                   <div
                     key={idx}
-                    className={`px-3 rounded border-l-2 transition-colors  ${
+                    className={`px-3 rounded border-l-2 transition-colors ${
                       event.lineNumber === currentLine
-                        ? 'bg-yellow-500/5 border-yellow-500'
+                        ? 'border-yellow-500'
                         : event.type === 'error' || event.type === 'fatal'
-                          ? 'bg-[#161b22] border-red-500/50 hover:bg-[#1c2128]'
+                          ? 'border-red-500/50'
                           : event.type === 'warn'
-                            ? 'bg-[#161b22] border-yellow-500/50 hover:bg-[#1c2128]'
-                            : 'bg-[#161b22] border-transparent hover:bg-[#1c2128]'
+                            ? 'border-yellow-500/50'
+                            : 'border-transparent'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -278,8 +278,8 @@ export default function AllEventsView({
                   <div
                     className={`px-3 py-2 rounded border-l-2 ${
                       event.lineNumber === currentLine
-                        ? 'bg-yellow-500/5 border-yellow-500'
-                        : 'bg-[#161b22] border-transparent'
+                        ? 'border-yellow-500'
+                        : 'border-transparent'
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -345,8 +345,8 @@ export default function AllEventsView({
                       <div
                         className={`px-3 py-2 rounded border-l-2 ${
                           selectedEvent.lineNumber === currentLine
-                            ? 'bg-yellow-500/5 border-yellow-500'
-                            : 'bg-[#161b22] border-transparent'
+                            ? 'border-yellow-500'
+                            : 'border-transparent'
                         }`}
                       >
                         <div className="flex items-start gap-3">
