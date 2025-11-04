@@ -53,9 +53,9 @@ export const PearlRequestSchema = z.object({
  */
 export const PearlResponseSchema = z.object({
   type: z
-    .enum(['code', 'question', 'reject'])
+    .enum(['code', 'question', 'answer', 'reject'])
     .describe(
-      'Type of response: code (generated workflow), question (needs clarification), reject (infeasible request)'
+      'Type of response: code (generated workflow), question (needs clarification), answer (provides information/guidance), reject (infeasible request)'
     ),
 
   message: z
@@ -104,7 +104,7 @@ export const PearlResponseSchema = z.object({
  * Internal agent response format (JSON mode output from AI)
  */
 export const PearlAgentOutputSchema = z.object({
-  type: z.enum(['code', 'question', 'reject']),
+  type: z.enum(['code', 'question', 'answer', 'reject']),
   message: z.string(),
   snippet: z.string().optional(),
 });

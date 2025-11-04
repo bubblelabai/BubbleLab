@@ -24,6 +24,7 @@ import {
   ArrowUp,
   Paperclip,
   X,
+  Info,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import {
@@ -537,6 +538,9 @@ export function PearlChat() {
                       {message.resultType === 'code' && (
                         <Check className="w-4 h-4 text-green-400" />
                       )}
+                      {message.resultType === 'answer' && (
+                        <Info className="w-4 h-4 text-blue-400" />
+                      )}
                       {message.resultType === 'reject' && (
                         <AlertCircle className="w-4 h-4 text-red-400" />
                       )}
@@ -544,6 +548,7 @@ export function PearlChat() {
                         Assistant
                         {message.resultType === 'code' && ' - Code Generated'}
                         {message.resultType === 'question' && ' - Question'}
+                        {message.resultType === 'answer' && ' - Answer'}
                         {message.resultType === 'reject' && ' - Error'}
                       </span>
                     </div>
