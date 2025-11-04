@@ -40,9 +40,6 @@ import {
   compressPngToBase64,
 } from '../../utils/fileUtils';
 
-// Cap additional context sent to the model to 1MB (UTF-8 bytes)
-const MAX_CONTEXT_BYTES = 1024 * 1024;
-
 // Display event types for chronological rendering
 type DisplayEvent =
   | { type: 'llm_thinking' }
@@ -368,21 +365,11 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
-    console.log(
-      'Test truncate',
-      cleanUpObjectForDisplayAndStorage(
-        'This is a test string to be truncated',
-        100
-      )
-    );
-
     const executionInputs = Object.fromEntries(
       Object.entries(executionState?.executionInputs || {}).map(
         ([key, value]) => [key, value]
       )
     );
-
-    console.log('[PearlChat] executionInputs', executionInputs);
 
     const truncatedExecutionInputs = Object.fromEntries(
       Object.entries(executionInputs).map(([key, value]) => [
