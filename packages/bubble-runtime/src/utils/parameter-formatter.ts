@@ -41,16 +41,31 @@ export function buildParametersObject(
   }
 
   // Handle single variable parameter + credentials case (e.g., new GoogleDriveBubble(params) with injected credentials)
+  // IMPORTANT: Only apply spread pattern when the variable parameter represents the ENTIRE first argument,
+  // not when it's a property from an object literal like { url: ycUrl }.
+  // The parser sets source='first-arg' for parameters that represent the entire first argument,
+  // and source='object-property' for parameters that came from object literal properties.
+  const nonCredentialParams = parameters.filter(
+    (p) => p.name !== 'credentials'
+  );
+  const credentialsParam = parameters.find(
+    (p) => p.name === 'credentials' && p.type === 'object'
+  );
+
   if (
-    parameters.length === 2 &&
-    parameters.some((p) => p.type === 'variable') &&
-    parameters.some((p) => p.name === 'credentials' && p.type === 'object')
+    credentialsParam &&
+    nonCredentialParams.length === 1 &&
+    nonCredentialParams[0].type === 'variable'
   ) {
-    const paramsParam = parameters.find((p) => p.type === 'variable');
-    const credentialsParam = parameters.find(
-      (p) => p.name === 'credentials' && p.type === 'object'
-    );
-    if (paramsParam && credentialsParam) {
+    const paramsParam = nonCredentialParams[0];
+
+    // Only spread if the parameter source is 'first-arg' (represents entire first argument),
+    // or if source is undefined (backward compatibility) and name is 'arg0' (parser's fallback).
+    const shouldSpread =
+      paramsParam.source === 'first-arg' ||
+      (paramsParam.source === undefined && paramsParam.name === 'arg0');
+
+    if (shouldSpread) {
       const paramsValue = formatParameterValue(
         paramsParam.value,
         paramsParam.type

@@ -334,6 +334,22 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
+    it('should execute a flow with a parameter as a variable', async () => {
+      const testScript = getFixture('para-with-variable-alias');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      // Inject credentials
+      runner.injector.injectCredentials([], getUserCredential());
+      const result = await runner.runAll({
+        ycUrl: 'https://www.ycombinator.com/companies?batch=Fall%202025',
+      });
+
+      // Expect code to not spread the url
+      expect(runner.bubbleScript.bubblescript).not.toContain('...ycUrl');
+      expect(result).toBeDefined();
+      expect(result.success || !result.error?.includes('url: Required')).toBe(
+        true
+      );
+    });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
       const bubbles = runner.getParsedBubbles();

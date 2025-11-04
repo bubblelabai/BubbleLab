@@ -33,6 +33,7 @@ export const fixtures = {
   yfinance: '',
   'cron-test': '',
   'techweek-scrape': '',
+  'para-with-variable-alias': '',
   'starter-flow': '',
   'emails-complex': '',
   'content-creation': '',

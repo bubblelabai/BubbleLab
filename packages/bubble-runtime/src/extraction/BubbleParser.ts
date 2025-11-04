@@ -1394,6 +1394,7 @@ export class BubbleParser {
                 name,
                 ...value,
                 location,
+                source: 'object-property', // Parameter came from an object literal property
               });
             }
           } else if (prop.type === 'SpreadElement') {
@@ -1418,6 +1419,7 @@ export class BubbleParser {
               name: spreadName,
               ...value,
               location,
+              source: 'object-property', // Spread element within ObjectExpression
             });
           }
         }
@@ -1440,6 +1442,7 @@ export class BubbleParser {
           name: argName,
           ...value,
           location,
+          source: 'first-arg', // Parameter represents the entire first argument
         });
       }
     }

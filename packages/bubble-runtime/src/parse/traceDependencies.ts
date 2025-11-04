@@ -163,14 +163,14 @@ function extractFromNewExpression(
         if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
           const name = prop.name.text;
           const value = extractParameterValue(prop.initializer, sourceFile);
-          parameters.push({ name, ...value });
+          parameters.push({ name, ...value, source: 'object-property' });
         } else if (
           ts.isShorthandPropertyAssignment(prop) &&
           ts.isIdentifier(prop.name)
         ) {
           const name = prop.name.text;
           const value = extractParameterValue(prop.name, sourceFile);
-          parameters.push({ name, ...value });
+          parameters.push({ name, ...value, source: 'object-property' });
         } else if (ts.isSpreadAssignment(prop)) {
           // Spread properties like {...params}
           const spreadExpr = prop.expression;
@@ -178,14 +178,18 @@ function extractFromNewExpression(
           const spreadName = ts.isIdentifier(spreadExpr)
             ? spreadExpr.text
             : 'spread';
-          parameters.push({ name: spreadName, ...value });
+          parameters.push({
+            name: spreadName,
+            ...value,
+            source: 'object-property',
+          });
         }
       }
     } else {
       // Handle single variable parameter (e.g., new GoogleDriveBubble(config))
       const value = extractParameterValue(firstArg, sourceFile);
       const argName = ts.isIdentifier(firstArg) ? firstArg.text : 'arg0';
-      parameters.push({ name: argName, ...value });
+      parameters.push({ name: argName, ...value, source: 'first-arg' });
     }
   }
 
