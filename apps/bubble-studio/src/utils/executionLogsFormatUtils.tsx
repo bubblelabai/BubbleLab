@@ -455,7 +455,9 @@ export function simplifyObjectForContext(value: unknown): string {
     // If serialization fails, return error message
     return JSON.stringify({
       error: 'Failed to serialize value',
+      value: value,
       type: typeof value,
+      errorMessage: error instanceof Error ? error.message : String(error),
     });
   }
 }
