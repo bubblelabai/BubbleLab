@@ -615,29 +615,29 @@ import {
   BubbleFlow,
 
   // Service Bubbles (Connects to external services)
-  HelloWorldBubble,
-  AIAgentBubble,
-  PostgreSQLBubble,
-  SlackBubble,
-  ResendBubble,
-  GoogleDriveBubble,
-  GoogleSheetsBubble,
-  GoogleCalendarBubble,
-  GmailBubble,
-  SlackFormatterAgentBubble,
-  HttpBubble,
-  StorageBubble,
-  ApifyBubble,
+  HelloWorldBubble, // bubble name: 'hello-world'
+  AIAgentBubble, // bubble name: 'ai-agent'
+  PostgreSQLBubble, // bubble name: 'postgresql'
+  SlackBubble, // bubble name: 'slack'
+  ResendBubble, // bubble name: 'resend'
+  GoogleDriveBubble, // bubble name: 'google-drive'
+  GoogleSheetsBubble, // bubble name: 'google-sheets'
+  GoogleCalendarBubble, // bubble name: 'google-calendar'
+  GmailBubble, // bubble name: 'gmail'
+  SlackFormatterAgentBubble, // bubble name: 'slack-formatter-agent'
+  HttpBubble, // bubble name: 'http'
+  StorageBubble, // bubble name: 'storage'
+  ApifyBubble, // bubble name: 'apify'
 
   // Tool Bubbles (Perform useful actions)
-  ResearchAgentTool,
-  RedditScrapeTool,
-  WebScrapeTool,
-  WebCrawlTool,
-  WebSearchTool,
-  InstagramTool,
-  LinkedInTool,
-  YouTubeTool,
+  ResearchAgentTool, // bubble name: 'research-agent-tool'
+  RedditScrapeTool, // bubble name: 'reddit-scrape-tool'
+  WebScrapeTool, // bubble name: 'web-scrape-tool'
+  WebCrawlTool, // bubble name: 'web-crawl-tool'
+  WebSearchTool, // bubble name: 'web-search-tool'
+  InstagramTool, // bubble name: 'instagram-tool'
+  LinkedInTool, // bubble name: 'linkedin-tool'
+  YouTubeTool, // bubble name: 'youtube-tool'
 
   // Event Types (How the workflow is triggered)
   type WebhookEvent,

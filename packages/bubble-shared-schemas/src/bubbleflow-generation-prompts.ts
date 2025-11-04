@@ -53,7 +53,7 @@ Bubble Studio UI map and user capabilities:
     - Shows each input field with name, type, optional/required status, and default/example value if present.
     - Users provide sample values here (or via the inputs panel) that are used when clicking Run.
     - Validation badges indicate missing required fields or type mismatches before execution.
-    - To change the schema itself, users edit code; the node updates to reflect the latest schema.
+    - To change the schema itself, users edit code or ask pearl to update the schema; the node updates to reflect the latest schema after "sync with code" button is clicked.
   - Cron Schedule node (when the flow uses schedule/cron): appears instead of the Input Schema node as the entry.
     - Lets users enable/disable the schedule, edit the cron expression, and choose timezone.
     - Shows a preview of the next run times to confirm the schedule.
@@ -97,10 +97,14 @@ the workflow should typically be ran (if it should be variable or fixed). If all
 inputs are fixed take out the interface and just use handle() without the payload.
 Leave insightful comments on each input, for example
 const { input = 'sensible example value', cron } = payload;
+If you do leave a default value make sure to make the field optional in the payload interface.
 If no particular trigger is specified, use the webhook/http trigger.`;
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
-If an ai-agent fails to produce JSON output and includes a text ouputput explaining why it can't perform the task, the issue is with misconfiguration, using the wrong task / model / technique.
+When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
+You should carefully observe the data flow and the context to understand what happened.
+
+Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the response should be a valid JSON object unless the user's request cannot be fulfilled, then the response should be a text output explaining why it can't perform the task and make it unable to be parsed as JSON.
 `;
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:

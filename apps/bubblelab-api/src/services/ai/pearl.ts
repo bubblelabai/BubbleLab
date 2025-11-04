@@ -19,6 +19,7 @@ import {
   INPUT_SCHEMA_INSTRUCTIONS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
+  COMMON_DEBUGGING_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -120,14 +121,21 @@ CRITICAL CODE GENERATION RULES:
 7. The validation tool will validate your complete workflow code
 8. If validation fails, fix the code and try again until validation passes
 
+
+# INFORMATION FOR INPUT SCHEMA:
 ${INPUT_SCHEMA_INSTRUCTIONS}
 
+# BUBBLE SPECIFIC INSTRUCTIONS:
 ${BUBBLE_SPECIFIC_INSTRUCTIONS}
 
-CONTEXT:
+
+# DEBUGGING INSTRUCTIONS:
+${COMMON_DEBUGGING_INSTRUCTIONS}
+
+# CONTEXT:
 User: ${userName}
 
-Template Code:
+# TEMPLATE CODE:
 ${bubbleFactory.generateBubbleFlowBoilerplate()}
 
 
