@@ -57,6 +57,20 @@ export interface BubbleParameter {
   name: string;
   value: string | number | boolean | Record<string, unknown> | unknown[]; // Raw string representation of the value
   type: BubbleParameterType;
+  /**
+   * Source of the parameter - indicates whether it came from an object literal property
+   * or represents the entire first argument. Used to determine if spread pattern should be applied.
+   * Ex.
+   * const abc = '1234567890';
+   * new GoogleDriveBubble({
+   *   fileId: abc,
+   * })
+   *source: 'object-property',
+
+   * source = 'first-arg'
+   * new GoogleDriveBubble(args)
+   */
+  source?: 'object-property' | 'first-arg';
 }
 
 // Parsed bubble from backend parser (matches backend ParsedBubble interface)
@@ -138,6 +152,12 @@ export const BubbleParameterSchema = z.object({
     ])
     .describe('The value of the parameter'),
   type: BubbleParameterTypeSchema,
+  source: z
+    .enum(['object-property', 'first-arg'])
+    .optional()
+    .describe(
+      'Source of the parameter - indicates if it came from an object literal property or represents the entire first argument'
+    ),
 });
 
 export const BubbleNodeTypeSchema = z.enum([
