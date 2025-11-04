@@ -5,7 +5,7 @@ import { getCacheKey } from '../../utils/executionLogsFormatUtils';
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
 const MAX_PREVIEW_LENGTH = 10000; // ~10KB preview
-const MAX_DEPTH = 6; // Maximum nesting depth
+const MAX_DEPTH = 10; // Maximum nesting depth
 const MAX_ARRAY_ITEMS = 10; // Maximum array items to show
 const MAX_OBJECT_KEYS = 20; // Maximum object keys to show
 
@@ -242,7 +242,7 @@ function TruncatedContent({
           {fullContentFactory()}
           <button
             onClick={() => setIsExpanded(false)}
-            className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline cursor-pointer"
+            className="mt-2 text-xs text-gray-400 hover:text-white underline cursor-pointer"
           >
             Show less ({sizeKB}KB)
           </button>
@@ -255,7 +255,7 @@ function TruncatedContent({
           </div>
           <button
             onClick={() => setIsExpanded(true)}
-            className="mt-1 text-xs text-blue-400 hover:text-blue-300 underline cursor-pointer"
+            className="mt-1 text-xs text-gray-400 hover:text-white underline cursor-pointer"
           >
             Show full content ({sizeKB}KB)
           </button>
@@ -401,7 +401,7 @@ function renderStringValue(
             href={safeHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline"
+            className="text-gray-300 hover:text-white underline"
           >
             {children}
           </a>
@@ -479,8 +479,8 @@ function renderStringValue(
       ? unescapeContent(displayValue)
       : unescaped;
     const containerClass = isInline
-      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-blue-400 [&_a]:hover:text-blue-300 [&_a]:underline'
-      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-blue-400 [&_a]:hover:text-blue-300 [&_a]:underline';
+      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline'
+      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline';
 
     const htmlContentFactory = () => (
       <div
@@ -572,11 +572,11 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   if (typeof value === 'number') {
-    return <span className="text-orange-300">{value}</span>;
+    return <span className="text-white">{value}</span>;
   }
 
   if (typeof value === 'boolean') {
-    return <span className="text-blue-400">{String(value)}</span>;
+    return <span className="text-gray-100">{String(value)}</span>;
   }
 
   if (Array.isArray(value)) {
@@ -627,7 +627,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
       <div className="ml-4 border-l border-gray-700 pl-2 py-1">
         {entries.slice(0, keysToShow).map(([key, val]) => (
           <div key={key} className="my-1.5">
-            <span className="text-purple-300">"{key}"</span>
+            <span className="text-gray-400">"{key}"</span>
             <span className="text-gray-500">:</span>{' '}
             {typeof val === 'string' &&
             (isJSONString(val) || isMarkdown(val) || isHTML(val)) ? (

@@ -41,6 +41,9 @@ export const TOOL_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   'Research Agent': '/integrations/research-agent.png',
   'AI Agent': '/integrations/ai-agent.png',
   Storage: '/integrations/storage.png',
+  'Web Search': '/integrations/web-search.png',
+  'Web Scrape': '/integrations/web-scrape.png',
+  'Web Crawl': '/integrations/web-crawl.png',
 });
 
 // Expose curated lists for UI sections
@@ -105,6 +108,18 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   ai: 'AI Agent',
   storage: 'Storage',
   'storage-tool': 'Storage',
+  'web-search': 'Web Search',
+  'web-search-tool': 'Web Search',
+  websearch: 'Web Search',
+  search: 'Web Search',
+  'web-scrape': 'Web Scrape',
+  'web-scrape-tool': 'Web Scrape',
+  webscrape: 'Web Scrape',
+  scrape: 'Web Scrape',
+  'web-crawl': 'Web Crawl',
+  'web-crawl-tool': 'Web Crawl',
+  webcrawl: 'Web Crawl',
+  crawl: 'Web Crawl',
 });
 
 function normalize(value: string): string {
@@ -181,6 +196,9 @@ export function findLogoForBubble(
     [/\bresearch\s*agent\b|\bresearch-agent\b/, 'Research Agent'],
     [/\bai\s*agent\b|\bai-agent\b/, 'AI Agent'],
     [/\bstorage\b/, 'Storage'],
+    [/\bweb\s*search\b|\bweb-search\b/, 'Web Search'],
+    [/\bweb\s*scrape\b|\bweb-scrape\b/, 'Web Scrape'],
+    [/\bweb\s*crawl\b|\bweb-crawl\b/, 'Web Crawl'],
   ];
 
   const allLogos = { ...SERVICE_LOGOS, ...TOOL_LOGOS };
