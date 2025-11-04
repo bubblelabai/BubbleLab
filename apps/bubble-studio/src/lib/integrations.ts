@@ -23,6 +23,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   YouTube: '/integrations/youtube.svg',
   Instagram: '/integrations/instagram.svg',
   Apify: '/integrations/apify.svg',
+  GitHub: '/integrations/github.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -61,6 +62,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'YouTube', file: SERVICE_LOGOS['YouTube'] },
   { name: 'Instagram', file: SERVICE_LOGOS['Instagram'] },
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
+  { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
 ];
 
 export const AI_MODELS: IntegrationLogo[] = [
@@ -100,6 +102,7 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   youtube: 'YouTube',
   instagram: 'Instagram',
   apify: 'Apify',
+  github: 'GitHub',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -189,6 +192,7 @@ export function findLogoForBubble(
     [/\byoutube\b/, 'YouTube'],
     [/\binstagram\b/, 'Instagram'],
     [/\bapify\b/, 'Apify'],
+    [/\bgithub\b/, 'GitHub'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
@@ -251,6 +255,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       slackbubble: 'slack-bubble',
       slackformatteragentbubble: 'slack-formatter-agent-bubble',
       storagebubble: 'storage-bubble',
+      githubbubble: 'github-bubble',
     }
   );
 
@@ -290,6 +295,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     'slack-formatter-agent': 'slack-formatter-agent-bubble',
     slackformatteragent: 'slack-formatter-agent-bubble',
     storage: 'storage-bubble',
+    github: 'github-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants

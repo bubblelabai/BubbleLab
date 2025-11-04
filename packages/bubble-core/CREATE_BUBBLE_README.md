@@ -518,7 +518,7 @@ Create manual test files in `manual-tests/` directory for testing with real API 
 
 ## 🚀 **NEW BUBBLE REGISTRATION CHECKLIST**
 
-When creating a new bubble, you must update these **11 locations** for full system integration:
+When creating a new bubble, you must update these **12 locations** for full system integration:
 
 ### 1. **Credential Types** (if using new credentials)
 📍 **File:** `packages/shared-schemas/src/types.ts`
@@ -691,6 +691,51 @@ export { YourServiceBubble } from './bubbles/service-bubble/your-service.js';
 export type { YourServiceParamsInput } from './bubbles/service-bubble/your-service.js';
 ```
 
+### 12. **Logo Integration** (Optional but recommended for UI)
+📍 **File:** `apps/bubble-studio/src/lib/integrations.ts`
+
+Add your service logo to display in the credentials page and bubble UI:
+
+```typescript
+// 1. Add to SERVICE_LOGOS
+export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
+  // ... existing logos
+  YourService: '/integrations/your-service.svg', // Use placeholder path until logo added
+});
+
+// 2. Add to INTEGRATIONS array
+export const INTEGRATIONS: IntegrationLogo[] = [
+  // ... existing integrations
+  { name: 'YourService', file: SERVICE_LOGOS['YourService'] },
+];
+
+// 3. Add to NAME_ALIASES (for case-insensitive matching)
+const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  // ... existing aliases
+  yourservice: 'YourService',
+  'your-service': 'YourService',
+});
+
+// 4. Add regex matcher to findLogoForBubble
+const orderedMatchers: Array<[RegExp, string]> = [
+  // ... existing matchers
+  [/\byourservice\b|\byour-service\b/, 'YourService'],
+];
+
+// 5. Add docs mapping (optional - for future docs support)
+const SERVICE_DOCS_BY_CLASS: Readonly<Record<string, string>> = Object.freeze({
+  // ... existing docs
+  yourservicebubble: 'your-service-bubble',
+});
+```
+
+📍 **Logo File:** `apps/bubble-studio/public/integrations/your-service.svg`
+
+**Note:** Use a placeholder path in `integrations.ts` first (e.g., `/integrations/placeholder.svg`). Add the actual logo SVG file later. The logo will display:
+- In credentials dropdown/list
+- Next to bubble instances in flows
+- In documentation (future)
+
 ## 🔧 **Environment Variables Setup**
 
 Add these to your `.env` file:
@@ -713,6 +758,7 @@ After making all updates:
 - [ ] **BubbleFlow works**: Create test BubbleFlow using your bubble
 - [ ] **AI agents can use**: Tool bubbles appear in AI agent tool list
 - [ ] **Available in generator**: Bubble appears in `listBubblesForCodeGenerator()` for flow building
+- [ ] **Logo displays**: Service logo appears in credentials page and bubble UI (optional)
 
 ## 🎯 **Quick Validation Test**
 
@@ -745,6 +791,7 @@ console.log('✅ Bubble created successfully');
 6. **"Build error about missing credential in CREDENTIAL_CONFIGURATION_MAP"** → Check credential config map (#2)
 7. **TypeScript errors** → Check type definitions (#1, #6)
 8. **Build failures** → Check all import/export statements (#9, #11)
+9. **"Logo not displaying"** → Check `integrations.ts` and ensure logo file exists (#12)
 
 ---
 
