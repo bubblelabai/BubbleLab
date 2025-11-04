@@ -64,7 +64,6 @@ export function cleanUpObjectForDisplayAndStorage(
   obj: unknown,
   maxBytes: number = 1024 * 1024
 ): unknown {
-  console.log('[cleanUpObjectForDisplayAndStorage] obj', obj);
   const storageResult = prepareForStorage(obj, { maxBytes });
   if (storageResult.truncated) {
     return storageResult.preview;
