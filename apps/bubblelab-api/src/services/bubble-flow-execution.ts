@@ -5,7 +5,10 @@ import {
   runBubbleFlowWithStreaming,
   type StreamingExecutionOptions,
 } from './execution.js';
-import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
+import {
+  ParsedBubbleWithInfo,
+  cleanUpObjectForDisplayAndStorage,
+} from '@bubblelab/shared-schemas';
 import type { ExecutionResult } from '@bubblelab/shared-schemas';
 import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
@@ -27,6 +30,8 @@ export interface ExecutionOptions {
   systemCredentials?: Record<string, string>;
   appType?: AppType;
 }
+
+// Use shared prepareForStorage for payload and result
 
 /**
  * Executes a BubbleFlow triggered by webhook and updates execution counters
@@ -119,7 +124,7 @@ export async function executeBubbleFlowWithTracking(
     );
     await db.insert(bubbleFlowExecutions).values({
       bubbleFlowId,
-      payload,
+      payload: cleanUpObjectForDisplayAndStorage(payload),
       status: 'error',
       error:
         'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
@@ -145,7 +150,7 @@ export async function executeBubbleFlowWithTracking(
     .insert(bubbleFlowExecutions)
     .values({
       bubbleFlowId,
-      payload,
+      payload: cleanUpObjectForDisplayAndStorage(payload),
       status: 'running',
       code: flow.originalCode,
     })
@@ -166,8 +171,9 @@ export async function executeBubbleFlowWithTracking(
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result:
-          JSON.stringify(result.data) || 'Execution completed without logging',
+        result: cleanUpObjectForDisplayAndStorage(
+          result.data ?? 'Execution completed without logging'
+        ),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),
@@ -240,7 +246,7 @@ export async function runBubbleFlowWithLogging(
     // Create a new execution record with error
     await db.insert(bubbleFlowExecutions).values({
       bubbleFlowId,
-      payload,
+      payload: cleanUpObjectForDisplayAndStorage(payload),
       status: 'error',
       error:
         'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
@@ -266,7 +272,7 @@ export async function runBubbleFlowWithLogging(
     .insert(bubbleFlowExecutions)
     .values({
       bubbleFlowId,
-      payload,
+      payload: cleanUpObjectForDisplayAndStorage(payload),
       status: 'running',
       code: flow.originalCode,
     })
@@ -300,10 +306,10 @@ export async function runBubbleFlowWithLogging(
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result: {
+        result: cleanUpObjectForDisplayAndStorage({
           data: result.data,
           ...result.summary,
-        },
+        }),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),

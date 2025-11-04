@@ -12,6 +12,7 @@ import {
   type AvailableModel,
   type StreamingEvent,
   type StreamingLogEvent,
+  cleanUpObjectForDisplayAndStorage,
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
@@ -364,10 +365,25 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
+    const executionInputs = Object.fromEntries(
+      Object.entries(executionState?.executionInputs || {}).map(
+        ([key, value]) => [key, value]
+      )
+    );
+
+    const truncatedExecutionInputs = Object.fromEntries(
+      Object.entries(executionInputs).map(([key, value]) => [
+        key,
+        cleanUpObjectForDisplayAndStorage(value, 100),
+      ])
+    );
+
     // Get input schema and credentials context
     const inputSchemaContext = executionState?.executionInputs
-      ? `\n\nUser's provided input:\n${JSON.stringify(executionState.executionInputs, null, 2)}`
+      ? `\n\nUser's provided input:\n ${JSON.stringify(truncatedExecutionInputs, null, 2)}`
       : '';
+
+    // For each value truncate to 100 characters
 
     const credentialsContext =
       pendingCredentials && Object.keys(pendingCredentials).length > 0
@@ -378,12 +394,7 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
-    const fileContext =
-      uploadedFiles.length > 0
-        ? `\n\nAttached Files:\n${uploadedFiles.map((f) => `\n${f.name}:\n${f.content}`).join('\n\n---\n')}`
-        : '';
-
-    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}${fileContext}`;
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
 
     trackAIAssistant({ action: 'send_message', message: userMessage.content });
     pearlChat.mutate(
@@ -394,7 +405,7 @@ export function PearlChat() {
         availableVariables: [],
         currentCode: '',
         model: selectedModel,
-        additionalContext,
+        additionalContext: additionalContext,
         onEvent: handleEvent,
       },
       {
