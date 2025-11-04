@@ -6,7 +6,7 @@ import {
   isAllowedType,
   isTextLike,
   readTextFile,
-  compressPngToBase64,
+  compressImageToBase64,
 } from '../utils/fileUtils';
 import AutoResizeTextarea from './AutoResizeTextarea';
 
@@ -55,7 +55,7 @@ function InputFieldsRenderer({
     if (!isAllowedType(file)) {
       setError(
         fieldName,
-        'Unsupported file type. Allowed: html, csv, txt, png'
+        'Unsupported file type. Allowed: html, csv, txt, png, jpg'
       );
       return;
     }
@@ -73,8 +73,8 @@ function InputFieldsRenderer({
         onInputChange(fieldName, text);
         setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
       } else {
-        // PNG path: compress client-side, convert to base64 (no data URL prefix)
-        const base64 = await compressPngToBase64(file);
+        // Image path: compress client-side, convert to base64 (no data URL prefix)
+        const base64 = await compressImageToBase64(file);
         const approxBytes = Math.floor((base64.length * 3) / 4);
         if (approxBytes > MAX_BYTES) {
           setError(
@@ -589,12 +589,12 @@ function InputFieldsRenderer({
                       ) : (
                         <label
                           className="cursor-pointer group"
-                          title="Upload file (txt, csv, html, png)"
+                          title="Upload file (txt, csv, html, png, jpg)"
                         >
                           <input
                             type="file"
                             className="hidden"
-                            accept=".html,.csv,.txt,image/png"
+                            accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
                             disabled={isExecuting}
                             aria-label={`Upload file for ${field.name}`}
                             onChange={(e) => {

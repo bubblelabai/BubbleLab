@@ -559,8 +559,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
             {Math.round(MAX_TOTAL_SIZE_BYTES / 1024)}KB)
           </div>
           <div className="text-xs text-gray-400">
-            This content is too large to render safely. Consider filtering or
-            paginating the data.
+            This content is too large to render safely.
           </div>
         </div>
       );

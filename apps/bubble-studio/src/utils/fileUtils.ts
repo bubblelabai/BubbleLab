@@ -12,6 +12,13 @@ export function isAllowedType(file: File): boolean {
   if (name.endsWith('.csv')) return true;
   if (name.endsWith('.txt')) return true;
   if (mime === 'image/png' || name.endsWith('.png')) return true;
+  if (
+    mime === 'image/jpeg' ||
+    mime === 'image/jpg' ||
+    name.endsWith('.jpg') ||
+    name.endsWith('.jpeg')
+  )
+    return true;
   return false;
 }
 
@@ -86,6 +93,62 @@ export async function compressPngToBase64(
         maxWidthOrHeight: currentMax,
         useWebWorker: true,
         fileType: 'image/png',
+      });
+    }
+
+    const base64DataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(fr.error);
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(blob);
+    });
+    return dataURLToBase64(base64DataUrl);
+  } catch (error) {
+    throw new Error(
+      `Failed to compress image: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Compress a PNG or JPEG by downscaling dimensions and exporting as the corresponding format, then return base64 (no data URL prefix).
+ */
+export async function compressImageToBase64(
+  file: File,
+  options: CompressPngOptions = {}
+): Promise<string> {
+  const {
+    maxBytes = MAX_BYTES,
+    initialMaxDimension = 2000,
+    minMaxDimension = 600,
+    stepRatio = 0.85,
+  } = options;
+
+  const inputMime = file.type.toLowerCase();
+  const targetType =
+    inputMime === 'image/jpeg' || inputMime === 'image/jpg'
+      ? 'image/jpeg'
+      : 'image/png';
+
+  try {
+    const compressed = await imageCompression(file, {
+      maxSizeMB: maxBytes / (1024 * 1024),
+      maxWidthOrHeight: initialMaxDimension,
+      useWebWorker: true,
+      fileType: targetType,
+    });
+
+    let blob: Blob = compressed;
+    let currentMax = initialMaxDimension;
+    while (blob.size > maxBytes) {
+      const next = Math.floor(currentMax * stepRatio);
+      if (next < minMaxDimension || next === currentMax) break;
+      currentMax = next;
+      blob = await imageCompression(file, {
+        maxSizeMB: maxBytes / (1024 * 1024),
+        maxWidthOrHeight: currentMax,
+        useWebWorker: true,
+        fileType: targetType,
       });
     }
 
