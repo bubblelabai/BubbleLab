@@ -12,7 +12,7 @@ import {
   type AvailableModel,
   type StreamingEvent,
   type StreamingLogEvent,
-  prepareForStorage,
+  cleanUpObjectForDisplayAndStorage,
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
@@ -368,10 +368,35 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
+    console.log(
+      'Test truncate',
+      cleanUpObjectForDisplayAndStorage(
+        'This is a test string to be truncated',
+        100
+      )
+    );
+
+    const executionInputs = Object.fromEntries(
+      Object.entries(executionState?.executionInputs || {}).map(
+        ([key, value]) => [key, value]
+      )
+    );
+
+    console.log('[PearlChat] executionInputs', executionInputs);
+
+    const truncatedExecutionInputs = Object.fromEntries(
+      Object.entries(executionInputs).map(([key, value]) => [
+        key,
+        cleanUpObjectForDisplayAndStorage(value, 100),
+      ])
+    );
+
     // Get input schema and credentials context
     const inputSchemaContext = executionState?.executionInputs
-      ? `\n\nUser's provided input:\n${JSON.stringify(executionState.executionInputs, null, 2)}`
+      ? `\n\nUser's provided input:\n ${JSON.stringify(truncatedExecutionInputs, null, 2)}`
       : '';
+
+    // For each value truncate to 100 characters
 
     const credentialsContext =
       pendingCredentials && Object.keys(pendingCredentials).length > 0
@@ -382,18 +407,7 @@ export function PearlChat() {
             .join('\n')}`
         : '';
 
-    const fileContext =
-      uploadedFiles.length > 0
-        ? `\n\nAttached Files:\n${uploadedFiles.map((f) => `\n${f.name}:\n${f.content}`).join('\n\n---\n')}`
-        : '';
-
-    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}${fileContext}`;
-    const limitedAdditionalContext = String(
-      prepareForStorage(additionalContext, {
-        maxBytes: MAX_CONTEXT_BYTES,
-        previewBytes: 4096,
-      })
-    );
+    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}`;
 
     trackAIAssistant({ action: 'send_message', message: userMessage.content });
     pearlChat.mutate(
@@ -404,7 +418,7 @@ export function PearlChat() {
         availableVariables: [],
         currentCode: '',
         model: selectedModel,
-        additionalContext: limitedAdditionalContext,
+        additionalContext: additionalContext,
         onEvent: handleEvent,
       },
       {
