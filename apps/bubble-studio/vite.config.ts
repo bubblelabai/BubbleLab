@@ -14,6 +14,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['monaco-editor'],
+    esbuildOptions: {
+      target: 'esnext',
+    },
   },
   server: {
     fs: {

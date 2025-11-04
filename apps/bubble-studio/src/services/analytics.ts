@@ -188,6 +188,7 @@ export interface AIAssistantEventProps {
     | 'send_message'
     | 'receive_response'
     | 'accept_response';
+  message: string;
   messageLength?: number;
   responseLength?: number;
   conversationTurn?: number;
@@ -197,6 +198,7 @@ export interface AIAssistantEventProps {
 export function trackAIAssistant(props: AIAssistantEventProps): void {
   analytics.track('ai_assistant', {
     action: props.action,
+    message: props.message,
     message_length: props.messageLength,
     response_length: props.responseLength,
     conversation_turn: props.conversationTurn,

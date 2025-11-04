@@ -385,6 +385,7 @@ export function PearlChat() {
 
     const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}${fileContext}`;
 
+    trackAIAssistant({ action: 'send_message', message: userMessage.content });
     pearlChat.mutate(
       {
         userRequest: userMessage.content,
@@ -418,7 +419,10 @@ export function PearlChat() {
           setMessages((prev) => [...prev, assistantMessage]);
           setActiveToolCallIds(new Set());
 
-          trackAIAssistant({ action: 'receive_response' });
+          trackAIAssistant({
+            action: 'receive_response',
+            message: assistantMessage.content,
+          });
         },
         onError: (error) => {
           const errorMessage: ChatMessage = {
@@ -442,7 +446,7 @@ export function PearlChat() {
 
   const handleReplace = (code: string, messageId: string) => {
     editor.replaceAllContent(code);
-    trackAIAssistant({ action: 'accept_response' });
+    trackAIAssistant({ action: 'accept_response', message: code || '' });
     toast.success('Workflow updated!');
 
     // Mark message as updated
