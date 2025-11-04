@@ -26,6 +26,9 @@ export enum CredentialType {
   GMAIL_CRED = 'GMAIL_CRED',
   GOOGLE_SHEETS_CRED = 'GOOGLE_SHEETS_CRED',
   GOOGLE_CALENDAR_CRED = 'GOOGLE_CALENDAR_CRED',
+
+  // Development Platform Credentials
+  GITHUB_TOKEN = 'GITHUB_TOKEN',
 }
 
 // Define all bubble names as a union type for type safety
@@ -65,4 +68,5 @@ export type BubbleName =
   | 'apify'
   | 'instagram-tool'
   | 'linkedin-tool'
-  | 'youtube-tool';
+  | 'youtube-tool'
+  | 'github';

@@ -53,6 +53,8 @@ export type {
   ActorSchema,
 } from './bubbles/service-bubble/apify/types.js';
 export type { APIFY_ACTOR_SCHEMAS } from './bubbles/service-bubble/apify/apify-scraper.schema.js';
+export { GithubBubble } from './bubbles/service-bubble/github.js';
+export type { GithubParamsInput } from './bubbles/service-bubble/github.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';

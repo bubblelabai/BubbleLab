@@ -147,6 +147,7 @@ export class BubbleFactory {
       'instagram-tool',
       'linkedin-tool',
       'youtube-tool',
+      'github',
     ];
   }
 
@@ -181,6 +182,7 @@ export class BubbleFactory {
       './bubbles/service-bubble/google-calendar.js'
     );
     const { ApifyBubble } = await import('./bubbles/service-bubble/apify');
+    const { GithubBubble } = await import('./bubbles/service-bubble/github.js');
     const { BubbleFlowGeneratorWorkflow } = await import(
       './bubbles/workflow-bubble/bubbleflow-generator.workflow.js'
     );
@@ -268,6 +270,7 @@ export class BubbleFactory {
       GoogleCalendarBubble as BubbleClassWithMetadata
     );
     this.register('apify', ApifyBubble as BubbleClassWithMetadata);
+    this.register('github', GithubBubble as BubbleClassWithMetadata);
     this.register(
       'bubbleflow-generator',
       BubbleFlowGeneratorWorkflow as BubbleClassWithMetadata
