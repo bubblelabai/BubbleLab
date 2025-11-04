@@ -188,71 +188,239 @@ export default function AllEventsView({
               );
             }
 
-            // Separate execution_complete events and sort them to appear first
-            const executionCompleteEvents = globalEvents
-              .filter((e) => e.type === 'execution_complete')
+            // Separate execution_complete events and other events
+            const executionCompleteEvents = globalEvents.filter(
+              (e) => e.type === 'execution_complete'
+            );
+
+            const errorEvents = globalEvents
+              .filter((e) => e.type === 'error' || e.type === 'fatal')
               .sort(
                 (a, b) =>
                   new Date(a.timestamp).getTime() -
                   new Date(b.timestamp).getTime()
               );
 
-            const otherGlobalEvents = globalEvents
-              .filter((e) => e.type !== 'execution_complete')
+            const warningEvents = globalEvents
+              .filter((e) => e.type === 'warn')
               .sort(
                 (a, b) =>
                   new Date(a.timestamp).getTime() -
                   new Date(b.timestamp).getTime()
               );
 
-            // Combine: execution_complete first, then others chronologically
-            const sortedGlobalEvents = [
-              ...executionCompleteEvents,
-              ...otherGlobalEvents,
-            ];
+            const infoEvents = globalEvents
+              .filter(
+                (e) =>
+                  e.type === 'info' || e.type === 'debug' || e.type === 'trace'
+              )
+              .sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime()
+              );
 
             return (
-              <div className="py-2 space-y-2">
-                {sortedGlobalEvents.map((event, idx) => (
-                  <div
-                    key={idx}
-                    className={`px-3 rounded border-l-2 transition-colors ${
-                      event.lineNumber === currentLine
-                        ? 'border-yellow-500'
-                        : event.type === 'error' || event.type === 'fatal'
-                          ? 'border-red-500/50'
-                          : event.type === 'warn'
-                            ? 'border-yellow-500/50'
-                            : 'border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {getEventIcon(event)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-3 min-w-0">
-                          <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                            {makeLinksClickable(event.message)}
-                          </p>
-                          <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                            {formatTimestamp(event.timestamp)}
-                          </span>
+              <div className="py-3 space-y-6">
+                {/* Execution Output - Prominent */}
+                {executionCompleteEvents.length > 0 && (
+                  <div className="px-4">
+                    <h3 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      Execution Output
+                    </h3>
+                    <div className="space-y-3">
+                      {executionCompleteEvents.map((event, idx) => (
+                        <div
+                          key={idx}
+                          className="border border-blue-500/30 rounded-lg bg-blue-500/5 p-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {getEventIcon(event)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-3 min-w-0">
+                                <p className="text-sm text-gray-200 break-words flex-1 min-w-0 font-medium">
+                                  {makeLinksClickable(event.message)}
+                                </p>
+                                <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
+                                  {formatTimestamp(event.timestamp)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {event.additionalData &&
+                            Object.keys(event.additionalData).length > 0 && (
+                              <pre className="json-output text-xs mt-3 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                <JsonRenderer
+                                  data={event.additionalData}
+                                  flowId={flowId}
+                                  timestamp={event.timestamp}
+                                />
+                              </pre>
+                            )}
                         </div>
-                      </div>
+                      ))}
                     </div>
-                    {event.additionalData &&
-                      Object.keys(event.additionalData).length > 0 && (
-                        <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                          <JsonRenderer
-                            data={event.additionalData}
-                            flowId={flowId}
-                            timestamp={event.timestamp}
-                          />
-                        </pre>
-                      )}
                   </div>
-                ))}
+                )}
+
+                {/* Errors - If any */}
+                {errorEvents.length > 0 && (
+                  <div className="px-4">
+                    <h3 className="text-xs font-medium text-red-400 mb-2 uppercase tracking-wide">
+                      Errors ({errorEvents.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {errorEvents.map((event, idx) => (
+                        <div
+                          key={idx}
+                          className="px-3 py-2 rounded border-l-2 border-red-500/50"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {getEventIcon(event)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-3 min-w-0">
+                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
+                                  {makeLinksClickable(event.message)}
+                                </p>
+                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                  {formatTimestamp(event.timestamp)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {event.additionalData &&
+                            Object.keys(event.additionalData).length > 0 && (
+                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                <JsonRenderer
+                                  data={event.additionalData}
+                                  flowId={flowId}
+                                  timestamp={event.timestamp}
+                                />
+                              </pre>
+                            )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Warnings - If any */}
+                {warningEvents.length > 0 && (
+                  <div className="px-4">
+                    <h3 className="text-xs font-medium text-yellow-400 mb-2 uppercase tracking-wide">
+                      Warnings ({warningEvents.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {warningEvents.map((event, idx) => (
+                        <div
+                          key={idx}
+                          className="px-3 py-2 rounded border-l-2 border-yellow-500/50"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-0.5">
+                              {getEventIcon(event)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-3 min-w-0">
+                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
+                                  {makeLinksClickable(event.message)}
+                                </p>
+                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                  {formatTimestamp(event.timestamp)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {event.additionalData &&
+                            Object.keys(event.additionalData).length > 0 && (
+                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                <JsonRenderer
+                                  data={event.additionalData}
+                                  flowId={flowId}
+                                  timestamp={event.timestamp}
+                                />
+                              </pre>
+                            )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info/Debug - Collapsed by default */}
+                {infoEvents.length > 0 && (
+                  <div className="px-4">
+                    <details className="group">
+                      <summary className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide cursor-pointer hover:text-gray-400 flex items-center gap-2">
+                        <svg
+                          className="w-3 h-3 transition-transform group-open:rotate-90"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                        Diagnostic Logs ({infoEvents.length})
+                      </summary>
+                      <div className="space-y-2 mt-2">
+                        {infoEvents.map((event, idx) => (
+                          <div
+                            key={idx}
+                            className="px-3 py-2 rounded border-l-2 border-transparent"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                {getEventIcon(event)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3 min-w-0">
+                                  <p className="text-xs text-gray-400 break-words flex-1 min-w-0">
+                                    {makeLinksClickable(event.message)}
+                                  </p>
+                                  <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                    {formatTimestamp(event.timestamp)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {event.additionalData &&
+                              Object.keys(event.additionalData).length > 0 && (
+                                <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                  <JsonRenderer
+                                    data={event.additionalData}
+                                    flowId={flowId}
+                                    timestamp={event.timestamp}
+                                  />
+                                </pre>
+                              )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
               </div>
             );
           }
