@@ -339,6 +339,14 @@ declare global {
     // Store editor instance in Zustand
     setEditorInstance(editor);
 
+    // Prevent Google Translate from modifying the editor DOM
+    const editorDomNode = editor.getDomNode();
+    if (editorDomNode) {
+      editorDomNode.classList.add('notranslate');
+      editorDomNode.setAttribute('translate', 'no');
+      console.log('✅ Added notranslate attributes to Monaco editor DOM');
+    }
+
     // Track cursor position changes
     editor.onDidChangeCursorPosition((e) => {
       setCursorPosition({
@@ -692,7 +700,10 @@ ${cleanedTypes.replace(/^/gm, '  ')}
   }, [executionHighlightRange]);
 
   return (
-    <div className="relative monaco-editor-container">
+    <div
+      className="relative monaco-editor-container notranslate"
+      translate="no"
+    >
       {isLoading && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-10">
           <div className="text-blue-400 text-sm flex items-center gap-2">
