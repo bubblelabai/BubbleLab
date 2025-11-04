@@ -518,7 +518,7 @@ Create manual test files in `manual-tests/` directory for testing with real API 
 
 ## 🚀 **NEW BUBBLE REGISTRATION CHECKLIST**
 
-When creating a new bubble, you must update these **8 locations** for full system integration:
+When creating a new bubble, you must update these **11 locations** for full system integration:
 
 ### 1. **Credential Types** (if using new credentials)
 📍 **File:** `packages/shared-schemas/src/types.ts`
@@ -532,7 +532,22 @@ export enum CredentialType {
 }
 ```
 
-### 2. **Credential Environment Mapping**
+### 2. **Credential Configuration Map**
+📍 **File:** `packages/shared-schemas/src/bubble-definition-schema.ts`
+
+```typescript
+export const CREDENTIAL_CONFIGURATION_MAP: Record<
+  CredentialType,
+  Record<string, BubbleParameterType>
+> = {
+  // ... existing mappings
+  [CredentialType.YOUR_SERVICE_TOKEN]: {}, // Empty object if no special configs needed
+};
+```
+
+**Note:** Most credentials just need an empty object `{}`. Only add configurations if your service needs special options (like PostgreSQL's `ignoreSSL`).
+
+### 3. **Credential Environment Mapping**
 📍 **File:** `packages/shared-schemas/src/credential-schema.ts`
 
 ```typescript
@@ -543,7 +558,26 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
 };
 ```
 
-### 3. **Bubble-to-Credential Mapping**
+### 4. **Frontend Credential Configuration** (Required for UI)
+📍 **File:** `apps/bubble-studio/src/pages/CredentialsPage.tsx`
+
+```typescript
+// Add to CREDENTIAL_TYPE_CONFIG object:
+[CredentialType.YOUR_SERVICE_TOKEN]: {
+  label: 'Your Service Name',
+  description: 'API key/token for Your Service (what it does)',
+  placeholder: 'your_token_format...',
+  namePlaceholder: 'My Service Token',
+  credentialConfigurations: {},
+}
+
+// Add to typeToServiceMap in getServiceNameForCredentialType():
+[CredentialType.YOUR_SERVICE_TOKEN]: 'YourService',
+```
+
+**Why this matters:** Without this, users will get `Cannot read properties of undefined (reading 'namePlaceholder')` error when adding credentials in the UI.
+
+### 5. **Bubble-to-Credential Mapping**
 📍 **File:** `packages/shared-schemas/src/credential-schema.ts`
 
 ```typescript
@@ -556,7 +590,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
 };
 ```
 
-### 4. **Bubble Name Type Definition**
+### 6. **Bubble Name Type Definition**
 📍 **File:** `packages/shared-schemas/src/types.ts`
 
 ```typescript
@@ -566,19 +600,42 @@ export type BubbleName =
   | 'your-bubble-name'; // Add your bubble name here
 ```
 
-### 5. **System Credential Auto-Injection** (if credentials should be auto-injected)
+### 7. **Backend Credential Test Parameters** (Required for validation)
+📍 **File:** `apps/bubblelab-api/src/services/credential-validator.ts`
+
+```typescript
+// In the createTestParameters method, add your credential type:
+private static createTestParameters(
+  credentialType: CredentialType
+): Record<string, unknown> {
+  const baseParams: Record<string, unknown> = {};
+  switch (credentialType) {
+    // ... existing cases
+    case CredentialType.YOUR_SERVICE_TOKEN:
+      baseParams.operation = 'your_test_operation'; // Use a simple operation for testing
+      break;
+  }
+  return baseParams;
+}
+```
+
+**Why this matters:** The backend needs minimal valid parameters to instantiate your bubble for credential validation. Without this, you'll get `ZodError: expected object, received undefined` when adding credentials.
+
+### 8. **System Credential Auto-Injection** (Optional - if credentials should be auto-injected)
 📍 **File:** `apps/bubblelab-api/src/services/bubble-flow-parser.ts`
 
 ```typescript
 export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   // ... existing credentials
-  // Add your credentials for auto-injection
+  // Add your credentials for auto-injection (only if you want them available without user setup)
   CredentialType.YOUR_SERVICE_ACCESS_KEY,
   CredentialType.YOUR_SERVICE_SECRET_KEY,
 ]);
 ```
 
-### 6. **Bubble Factory Registration**
+**Note:** Only add to SYSTEM_CREDENTIALS if the credential should be automatically available (like AI model keys). Most service-specific credentials should NOT be auto-injected.
+
+### 9. **Bubble Factory Registration**
 📍 **File:** `packages/bubble-core/src/bubble-factory.ts`
 
 ```typescript
@@ -606,7 +663,7 @@ AIAgentBubble,
 YourServiceBubble, // Add here too
 ```
 
-### 7. **Code Generator List** (⚠️ REQUIRED for BubbleFlow generation)
+### 10. **Code Generator List** (⚠️ REQUIRED for BubbleFlow generation)
 📍 **File:** `packages/bubble-core/src/bubble-factory.ts`
 
 ```typescript
@@ -625,7 +682,7 @@ listBubblesForCodeGenerator(): BubbleName[] {
 
 **Why this matters:** Without adding your bubble to `listBubblesForCodeGenerator()`, it won't appear in the BubbleFlow generator UI or be available when AI generates flows. Users won't be able to discover or use your bubble when building flows.
 
-### 8. **Main Package Export**
+### 11. **Main Package Export**
 📍 **File:** `packages/bubble-core/src/index.ts`
 
 ```typescript
@@ -651,6 +708,7 @@ After making all updates:
 - [ ] **Types compile**: Run `pnpm run typecheck`
 - [ ] **Build succeeds**: Run `pnpm run build`
 - [ ] **Bubble registered**: Check `factory.list()` includes your bubble name
+- [ ] **Frontend credential config**: Verify you can add credential without errors in UI
 - [ ] **Credentials auto-inject**: Test that credentials are automatically provided
 - [ ] **BubbleFlow works**: Create test BubbleFlow using your bubble
 - [ ] **AI agents can use**: Tool bubbles appear in AI agent tool list
@@ -679,11 +737,14 @@ console.log('✅ Bubble created successfully');
 
 ## 🚨 **Common Integration Issues**
 
-1. **"Bubble not found in factory"** → Check factory registration (#6)
-2. **"Bubble not visible in flow builder"** → Check `listBubblesForCodeGenerator()` (#7)
-3. **"Credentials not injected"** → Check system credentials (#5)
-4. **TypeScript errors** → Check type definitions (#1, #4)
-5. **Build failures** → Check all import/export statements (#6, #8)
+1. **"Cannot read properties of undefined (reading 'namePlaceholder')"** → Check frontend credential config (#4)
+2. **"ZodError: expected object, received undefined" when adding credential** → Check backend test parameters (#7)
+3. **"Bubble not found in factory"** → Check factory registration (#9)
+4. **"Bubble not visible in flow builder"** → Check `listBubblesForCodeGenerator()` (#10)
+5. **"Credentials not injected"** → Check system credentials (#8)
+6. **"Build error about missing credential in CREDENTIAL_CONFIGURATION_MAP"** → Check credential config map (#2)
+7. **TypeScript errors** → Check type definitions (#1, #6)
+8. **Build failures** → Check all import/export statements (#9, #11)
 
 ---
 
