@@ -12,6 +12,7 @@ import {
   type AvailableModel,
   type StreamingEvent,
   type StreamingLogEvent,
+  prepareForStorage,
 } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
@@ -38,6 +39,9 @@ import {
   readTextFile,
   compressPngToBase64,
 } from '../../utils/fileUtils';
+
+// Cap additional context sent to the model to 1MB (UTF-8 bytes)
+const MAX_CONTEXT_BYTES = 1024 * 1024;
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -384,6 +388,12 @@ export function PearlChat() {
         : '';
 
     const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${inputSchemaContext}${credentialsContext}${fileContext}`;
+    const limitedAdditionalContext = String(
+      prepareForStorage(additionalContext, {
+        maxBytes: MAX_CONTEXT_BYTES,
+        previewBytes: 4096,
+      })
+    );
 
     trackAIAssistant({ action: 'send_message', message: userMessage.content });
     pearlChat.mutate(
@@ -394,7 +404,7 @@ export function PearlChat() {
         availableVariables: [],
         currentCode: '',
         model: selectedModel,
-        additionalContext,
+        additionalContext: limitedAdditionalContext,
         onEvent: handleEvent,
       },
       {
