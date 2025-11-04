@@ -181,37 +181,22 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
   },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
-// Helper to extract clean error message from API error
+// Helper to extract error message from API error
 const getErrorMessage = (error: unknown): string => {
-  if (typeof error === 'string') {
-    // Try to parse if it contains JSON (from api.ts: "HTTP 400: {...}")
-    const jsonMatch = error.match(/HTTP \d+:\s*(\{.*\})/);
-    if (jsonMatch) {
-      try {
-        const errorData = JSON.parse(jsonMatch[1]);
-        return errorData.error || errorData.message || error;
-      } catch {
-        return error;
-      }
+  const errorStr = error instanceof Error ? error.message : String(error);
+
+  // Extract JSON from "HTTP 400: {...}" format
+  const jsonMatch = errorStr.match(/HTTP \d+:\s*(\{.*\})/);
+  if (jsonMatch) {
+    try {
+      const data = JSON.parse(jsonMatch[1]);
+      return data.error || data.message || errorStr;
+    } catch {
+      return errorStr;
     }
-    return error;
   }
 
-  if (error instanceof Error) {
-    // Check if error.message contains JSON
-    const jsonMatch = error.message.match(/HTTP \d+:\s*(\{.*\})/);
-    if (jsonMatch) {
-      try {
-        const errorData = JSON.parse(jsonMatch[1]);
-        return errorData.error || errorData.message || error.message;
-      } catch {
-        return error.message;
-      }
-    }
-    return error.message;
-  }
-
-  return 'An unexpected error occurred';
+  return errorStr || 'An unexpected error occurred';
 };
 
 // Helper function to map credential types to service names for icon resolution
