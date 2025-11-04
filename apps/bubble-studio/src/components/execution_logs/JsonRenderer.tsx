@@ -5,9 +5,15 @@ import { getCacheKey } from '../../utils/executionLogsFormatUtils';
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
 const MAX_PREVIEW_LENGTH = 10000; // ~10KB preview
-const MAX_DEPTH = 10; // Maximum nesting depth
-const MAX_ARRAY_ITEMS = 50; // Maximum array items to show
-const MAX_OBJECT_KEYS = 50; // Maximum object keys to show
+const MAX_DEPTH = 6; // Maximum nesting depth
+const MAX_ARRAY_ITEMS = 10; // Maximum array items to show
+const MAX_OBJECT_KEYS = 20; // Maximum object keys to show
+
+// Performance limits - skip expensive rendering for content beyond these
+const MAX_MARKDOWN_LENGTH = 20000; // Skip markdown parsing beyond 20KB
+const MAX_HTML_LENGTH = 20000; // Skip HTML rendering beyond 20KB
+const MAX_JSON_STRING_LENGTH = 100000; // Skip nested JSON parsing beyond 100KB
+const MAX_TOTAL_SIZE_BYTES = 500000; // ~500KB total size limit before skipping rendering
 
 /**
  * Detect if a string contains markdown patterns
@@ -132,6 +138,43 @@ function renderStringWithLinks(text: string): React.ReactNode {
 }
 
 /**
+ * Estimate the approximate size in bytes of a value
+ */
+function estimateSize(value: unknown): number {
+  if (value === null || value === undefined) {
+    return 4; // "null" string
+  }
+
+  if (typeof value === 'string') {
+    return value.length * 2; // Rough estimate: 2 bytes per char
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return 8; // Rough estimate
+  }
+
+  if (Array.isArray(value)) {
+    let size = 2; // "[]"
+    for (let i = 0; i < Math.min(value.length, 100); i++) {
+      size += estimateSize(value[i]);
+    }
+    return size;
+  }
+
+  if (typeof value === 'object') {
+    let size = 2; // "{}"
+    const entries = Object.entries(value);
+    for (let i = 0; i < Math.min(entries.length, 100); i++) {
+      const [key, val] = entries[i];
+      size += key.length * 2 + estimateSize(val);
+    }
+    return size;
+  }
+
+  return String(value).length * 2;
+}
+
+/**
  * Truncate a string intelligently at a good break point
  */
 function truncateString(
@@ -170,14 +213,15 @@ function truncateString(
 
 /**
  * Component for truncated content with expand functionality
+ * Uses lazy rendering - only creates full content when expanded to avoid performance issues
  */
 function TruncatedContent({
-  fullContent,
+  fullContentFactory,
   previewContent,
   fullLength,
   previewLength,
 }: {
-  fullContent: React.ReactNode;
+  fullContentFactory: () => React.ReactNode; // Lazy factory function
   previewContent: React.ReactNode;
   fullLength: number;
   previewLength: number;
@@ -185,7 +229,7 @@ function TruncatedContent({
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (fullLength <= previewLength) {
-    return <>{fullContent}</>;
+    return <>{previewContent}</>;
   }
 
   const sizeKB = Math.round(fullLength / 1024);
@@ -195,7 +239,7 @@ function TruncatedContent({
     <div>
       {isExpanded ? (
         <>
-          {fullContent}
+          {fullContentFactory()}
           <button
             onClick={() => setIsExpanded(false)}
             className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline cursor-pointer"
@@ -223,6 +267,7 @@ function TruncatedContent({
 
 /**
  * Render a string value - either as JSON, markdown, HTML, or regular string
+ * Includes early bailouts for large content to prevent performance issues
  */
 function renderStringValue(
   value: string,
@@ -241,12 +286,30 @@ function renderStringValue(
     isTruncated = result.isTruncated;
   }
 
+  // Early bailout: Skip expensive parsing for very large JSON strings
+  if (originalLength > MAX_JSON_STRING_LENGTH) {
+    const previewString = (
+      <span className="text-gray-200">
+        "{renderStringWithLinks(displayValue)}"
+      </span>
+    );
+    const sizeKB = Math.round(originalLength / 1024);
+    return (
+      <div>
+        {previewString}
+        <div className="mt-2 text-xs text-yellow-400 italic">
+          Content too large to parse ({sizeKB}KB). Showing preview only.
+        </div>
+      </div>
+    );
+  }
+
   // Check if it's a JSON string first (highest priority)
   if (isJSONString(value)) {
     const parsed = parseJSONString(value);
     if (parsed !== null) {
       const previewParsed = isTruncated ? parseJSONString(displayValue) : null;
-      const content = (
+      const contentFactory = () => (
         <div className="ml-2 border-l-2 border-blue-600/30 pl-2 py-1">
           {renderValue(parsed, depth + 1)}
         </div>
@@ -256,24 +319,43 @@ function renderStringValue(
           {renderValue(previewParsed, depth + 1)}
         </div>
       ) : (
-        content
+        contentFactory()
       );
 
       return isTruncated ? (
         <TruncatedContent
-          fullContent={content}
+          fullContentFactory={contentFactory}
           previewContent={previewContent}
           fullLength={originalLength}
           previewLength={MAX_PREVIEW_LENGTH}
         />
       ) : (
-        content
+        contentFactory()
       );
     }
   }
 
-  // Check if it's markdown
+  // Check if it's markdown - skip parsing if too large
   if (isMarkdown(value)) {
+    // Skip expensive markdown parsing for very large content
+    if (originalLength > MAX_MARKDOWN_LENGTH) {
+      const previewString = (
+        <span className="text-gray-200">
+          "{renderStringWithLinks(displayValue)}"
+        </span>
+      );
+      const sizeKB = Math.round(originalLength / 1024);
+      return (
+        <div>
+          {previewString}
+          <div className="mt-2 text-xs text-yellow-400 italic">
+            Markdown content too large to render ({sizeKB}KB). Showing preview
+            only.
+          </div>
+        </div>
+      );
+    }
+
     const unescaped = unescapeContent(value);
     const previewUnescaped = isTruncated
       ? unescapeContent(displayValue)
@@ -282,66 +364,69 @@ function renderStringValue(
       ? 'prose prose-invert prose-sm max-w-none inline-block'
       : 'prose prose-invert prose-sm max-w-none my-2';
 
-    const markdownContent = (
+    const markdownComponents = {
+      img: ({ src, alt, ...props }: any) => {
+        const safeSrc =
+          src &&
+          !src.toLowerCase().startsWith('javascript:') &&
+          !src.toLowerCase().startsWith('data:text/html') &&
+          !src.toLowerCase().startsWith('data:application/javascript')
+            ? src
+            : undefined;
+        return (
+          <img
+            {...props}
+            src={safeSrc}
+            alt={alt}
+            className="max-w-full h-auto rounded my-2"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+          />
+        );
+      },
+      a: ({ href, children, ...props }: any) => {
+        const safeHref =
+          href &&
+          !href.toLowerCase().startsWith('javascript:') &&
+          !href.toLowerCase().startsWith('data:text/html') &&
+          !href.toLowerCase().startsWith('data:application/javascript')
+            ? href
+            : undefined;
+        return (
+          <a
+            {...props}
+            href={safeHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline"
+          >
+            {children}
+          </a>
+        );
+      },
+      code: ({ className, children, ...props }: any) => {
+        const isInlineCode = !className;
+        return isInlineCode ? (
+          <code {...props} className="bg-gray-800 px-1 py-0.5 rounded text-xs">
+            {children}
+          </code>
+        ) : (
+          <code
+            {...props}
+            className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto"
+          >
+            {children}
+          </code>
+        );
+      },
+    };
+
+    const markdownContentFactory = () => (
       <div className={containerClass}>
-        <ReactMarkdown
-          components={{
-            img: ({ src, alt }) => {
-              // Sanitize src to prevent javascript: and dangerous data URLs
-              const safeSrc =
-                src &&
-                !src.toLowerCase().startsWith('javascript:') &&
-                !src.toLowerCase().startsWith('data:text/html') &&
-                !src.toLowerCase().startsWith('data:application/javascript')
-                  ? src
-                  : undefined;
-              return (
-                <img
-                  src={safeSrc}
-                  alt={alt}
-                  className="max-w-full h-auto rounded my-2"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-              );
-            },
-            a: ({ href, children }) => {
-              // Sanitize href to prevent javascript: and dangerous data URLs
-              const safeHref =
-                href &&
-                !href.toLowerCase().startsWith('javascript:') &&
-                !href.toLowerCase().startsWith('data:text/html') &&
-                !href.toLowerCase().startsWith('data:application/javascript')
-                  ? href
-                  : undefined;
-              return (
-                <a
-                  href={safeHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 underline"
-                >
-                  {children}
-                </a>
-              );
-            },
-            code: ({ className, children }) => {
-              const isInlineCode = !className;
-              return isInlineCode ? (
-                <code className="bg-gray-800 px-1 py-0.5 rounded text-xs">
-                  {children}
-                </code>
-              ) : (
-                <code className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto">
-                  {children}
-                </code>
-              );
-            },
-          }}
-        >
+        <ReactMarkdown components={markdownComponents}>
           {unescaped}
         </ReactMarkdown>
       </div>
@@ -349,85 +434,46 @@ function renderStringValue(
 
     const previewMarkdown = isTruncated ? (
       <div className={containerClass}>
-        <ReactMarkdown
-          components={{
-            img: ({ src, alt }) => {
-              // Sanitize src to prevent javascript: and dangerous data URLs
-              const safeSrc =
-                src &&
-                !src.toLowerCase().startsWith('javascript:') &&
-                !src.toLowerCase().startsWith('data:text/html') &&
-                !src.toLowerCase().startsWith('data:application/javascript')
-                  ? src
-                  : undefined;
-              return (
-                <img
-                  src={safeSrc}
-                  alt={alt}
-                  className="max-w-full h-auto rounded my-2"
-                  loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-              );
-            },
-            a: ({ href, children }) => {
-              // Sanitize href to prevent javascript: and dangerous data URLs
-              const safeHref =
-                href &&
-                !href.toLowerCase().startsWith('javascript:') &&
-                !href.toLowerCase().startsWith('data:text/html') &&
-                !href.toLowerCase().startsWith('data:application/javascript')
-                  ? href
-                  : undefined;
-              return (
-                <a
-                  href={safeHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 underline"
-                >
-                  {children}
-                </a>
-              );
-            },
-            code: ({ className, children }) => {
-              const isInlineCode = !className;
-              return isInlineCode ? (
-                <code className="bg-gray-800 px-1 py-0.5 rounded text-xs">
-                  {children}
-                </code>
-              ) : (
-                <code className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto">
-                  {children}
-                </code>
-              );
-            },
-          }}
-        >
+        <ReactMarkdown components={markdownComponents}>
           {previewUnescaped}
         </ReactMarkdown>
       </div>
     ) : (
-      markdownContent
+      markdownContentFactory()
     );
 
     return isTruncated ? (
       <TruncatedContent
-        fullContent={markdownContent}
+        fullContentFactory={markdownContentFactory}
         previewContent={previewMarkdown}
         fullLength={originalLength}
         previewLength={MAX_PREVIEW_LENGTH}
       />
     ) : (
-      markdownContent
+      markdownContentFactory()
     );
   }
 
-  // Check if it's HTML
+  // Check if it's HTML - skip rendering if too large
   if (isHTML(value)) {
+    // Skip expensive HTML rendering for very large content
+    if (originalLength > MAX_HTML_LENGTH) {
+      const previewString = (
+        <span className="text-gray-200">
+          "{renderStringWithLinks(displayValue)}"
+        </span>
+      );
+      const sizeKB = Math.round(originalLength / 1024);
+      return (
+        <div>
+          {previewString}
+          <div className="mt-2 text-xs text-yellow-400 italic">
+            HTML content too large to render ({sizeKB}KB). Showing preview only.
+          </div>
+        </div>
+      );
+    }
+
     const unescaped = unescapeContent(value);
     const previewUnescaped = isTruncated
       ? unescapeContent(displayValue)
@@ -436,7 +482,7 @@ function renderStringValue(
       ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-blue-400 [&_a]:hover:text-blue-300 [&_a]:underline'
       : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-blue-400 [&_a]:hover:text-blue-300 [&_a]:underline';
 
-    const htmlContent = (
+    const htmlContentFactory = () => (
       <div
         className={containerClass}
         dangerouslySetInnerHTML={{ __html: unescaped }}
@@ -449,23 +495,23 @@ function renderStringValue(
         dangerouslySetInnerHTML={{ __html: previewUnescaped }}
       />
     ) : (
-      htmlContent
+      htmlContentFactory()
     );
 
     return isTruncated ? (
       <TruncatedContent
-        fullContent={htmlContent}
+        fullContentFactory={htmlContentFactory}
         previewContent={previewHtml}
         fullLength={originalLength}
         previewLength={MAX_PREVIEW_LENGTH}
       />
     ) : (
-      htmlContent
+      htmlContentFactory()
     );
   }
 
   // Regular string - detect and highlight URLs, then truncate if too long
-  const stringWithLinks = (
+  const stringWithLinksFactory = () => (
     <span className="text-gray-200">"{renderStringWithLinks(value)}"</span>
   );
   const previewStringWithLinks = (
@@ -477,7 +523,7 @@ function renderStringValue(
   if (shouldTruncate) {
     return (
       <TruncatedContent
-        fullContent={stringWithLinks}
+        fullContentFactory={stringWithLinksFactory}
         previewContent={previewStringWithLinks}
         fullLength={originalLength}
         previewLength={MAX_PREVIEW_LENGTH}
@@ -485,14 +531,38 @@ function renderStringValue(
     );
   }
 
-  return stringWithLinks;
+  return stringWithLinksFactory();
 }
 
 /**
  * Recursively render data with special handling for markdown/HTML
  * Preserves JSON structure while rendering markdown/HTML fields inline
+ * Includes size checks to prevent performance issues with large content
  */
 function renderValue(value: unknown, depth: number = 0): React.ReactNode {
+  // Early bailout: Skip rendering if content is too large
+  if (depth === 0) {
+    const estimatedSize = estimateSize(value);
+    if (estimatedSize > MAX_TOTAL_SIZE_BYTES) {
+      const sizeKB = Math.round(estimatedSize / 1024);
+      return (
+        <div className="p-4 border border-yellow-600/50 rounded bg-yellow-900/10">
+          <div className="text-yellow-400 font-semibold mb-2">
+            Content too large to render
+          </div>
+          <div className="text-xs text-yellow-300/80 mb-2">
+            Estimated size: {sizeKB}KB (limit:{' '}
+            {Math.round(MAX_TOTAL_SIZE_BYTES / 1024)}KB)
+          </div>
+          <div className="text-xs text-gray-400">
+            This content is too large to render safely. Consider filtering or
+            paginating the data.
+          </div>
+        </div>
+      );
+    }
+  }
+
   if (value === null || value === undefined) {
     return <span className="text-red-300">null</span>;
   }
