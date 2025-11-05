@@ -42,6 +42,7 @@ import {
 } from '../../utils/fileUtils';
 import { simplifyObjectForContext } from '../../utils/executionLogsFormatUtils';
 import { useBubbleDetail } from '../../hooks/useBubbleDetail';
+import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -577,7 +578,11 @@ export function PearlChat() {
                       <>
                         {message.content && (
                           <div className="prose prose-invert prose-sm max-w-none mb-2 text-[13px]">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                            <ReactMarkdown
+                              components={sharedMarkdownComponents}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
                           </div>
                         )}
                         {message.code && (
@@ -606,7 +611,9 @@ export function PearlChat() {
                       </>
                     ) : (
                       <div className="prose prose-invert prose-sm max-w-none text-[13px]">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <ReactMarkdown components={sharedMarkdownComponents}>
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     )}
                   </div>
@@ -787,7 +794,9 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
           <div className="text-xs prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown>{event.content}</ReactMarkdown>
+            <ReactMarkdown components={sharedMarkdownComponents}>
+              {event.content}
+            </ReactMarkdown>
           </div>
         </div>
       );

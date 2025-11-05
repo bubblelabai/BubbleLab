@@ -18,6 +18,7 @@ import {
   VALIDATION_PROCESS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
+  BUBBLE_STUDIO_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -300,11 +301,62 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
       {
         name: 'Flow Summary Agent',
         message:
-          `You are summarizeAgent. Analyze the provided validated BubbleFlow TypeScript code and:
-1) Output a concise human-readable summary of what a user needs to do to use this flow (credentials, setup, trigger, expected outputs).
-2) Extract and output a JSON Schema describing the input payload (types and required fields) of the flow. under the key inputsSchema.\n\nReturn a JSON object of the shape: { "summary": string, "inputsSchema": string } where inputsSchema is a JSON Schema string.\n\nCODE:\n\n\n` +
-          validatedCode,
-        systemPrompt: `Return only a strict JSON object with keys summary and inputsSchema. inputsSchema must be a JSON Schema string for the flow's input. Do not include markdown. For the input schema, directly use the schema payload: CustomWebhookPayload, don't add any other fields that the user is to provide at minimum, don't worry about any fields of WebhookEvent.`,
+          `You are summarizeAgent. Analyze the provided validated BubbleFlow TypeScript and generate a user-friendly summary.
+
+IMPORTANT: Users will test this flow in Bubble Studio UI by manually filling in a form, NOT by making HTTP webhook requests. Write the summary from this perspective.
+
+Required output structure (JSON):
+{
+  "summary": "Markdown formatted summary following the pattern below",
+  "inputsSchema": "JSON Schema string for the flow's input"
+}
+
+SUMMARY PATTERN (follow this structure exactly):
+
+**[Flow Name]**
+
+[One-sentence description of what the flow does]
+
+**Required Credentials:**
+- [Service 1] ([permissions])
+- [Service 2] ([permissions])
+
+**Setup Before Testing:**
+1. [Practical preparation step 1]
+2. [Practical preparation step 2]
+
+**To Test This Flow:**
+Provide these inputs in the form:
+- **[inputField1]**: [Clear description with examples]
+- **[inputField2]**: [Clear description with examples]
+
+**What Happens When You Run:**
+1. [Step-by-step execution description]
+2. [...]
+3. [...]
+
+**Output You'll See:**
+\`\`\`json
+{
+  [Example JSON output that will appear in console]
+}
+\`\`\`
+
+[Additional note about where to check results if applicable]
+
+EXAMPLE (Reddit Lead Generation):
+
+{
+  "summary": "**Reddit Lead Generation Flow**\\n\\nAutomatically discovers potential leads from Reddit and saves them to Google Sheets with AI-generated outreach messages.\\n\\n**Required Credentials:**\\n- Google Sheets (read & write access)\\n- Reddit (read access)\\n\\n**Setup Before Testing:**\\n1. Create a Google Spreadsheet to store your leads\\n2. Copy the spreadsheet ID from the URL (the long string between /d/ and /edit)\\n\\n**To Test This Flow:**\\nProvide these inputs in the form:\\n- **spreadsheetId**: Paste your Google Sheets ID\\n- **subreddit**: Enter subreddit name without r/ (e.g., \\"entrepreneur\\", \\"startups\\")\\n- **searchCriteria**: Describe your ideal lead (e.g., \\"people frustrated with current automation tools\\")\\n\\n**What Happens When You Run:**\\n1. Checks your spreadsheet for existing contacts to avoid duplicates\\n2. Scrapes 50 recent posts from your target subreddit\\n3. AI analyzes posts and identifies 10 new potential leads matching your criteria\\n4. Generates personalized, empathetic outreach messages for each lead\\n5. Adds new contacts to your spreadsheet with: Name, Post Link, Message, Date, and Status\\n\\n**Output You'll See:**\\n\`\`\`json\\n{\\n  \\"message\\": \\"Successfully added 10 new contacts to the spreadsheet.\\",\\n  \\"newContactsAdded\\": 10\\n}\\n\`\`\`\\n\\nCheck your Google Sheet to see the new leads with ready-to-use outreach messages!",
+  "inputsSchema": "{\\"type\\":\\"object\\",\\"properties\\":{\\"spreadsheetId\\":{\\"type\\":\\"string\\",\\"description\\":\\"Google Sheets spreadsheet ID where leads will be stored\\"},\\"subreddit\\":{\\"type\\":\\"string\\",\\"description\\":\\"The subreddit to scrape for potential leads (e.g., \\\\\\"n8n\\\\\\", \\\\\\"entrepreneur\\\\\\")\\"},\\"searchCriteria\\":{\\"type\\":\\"string\\",\\"description\\":\\"Description of what type of users to identify (e.g., \\\\\\"expressing frustration with workflow automation tools\\\\\\")\\"}}},\\"required\\":[\\"spreadsheetId\\",\\"subreddit\\",\\"searchCriteria\\"]}"
+}
+
+${BUBBLE_STUDIO_INSTRUCTIONS}
+
+CODE TO ANALYZE:
+
+` + validatedCode,
+        systemPrompt: `You MUST follow the exact summary pattern provided. Focus on the UI testing perspective - users will fill in a form, not make HTTP requests. For inputsSchema, extract from CustomWebhookPayload interface (exclude WebhookEvent base fields). Return strict JSON with keys "summary" and "inputsSchema" only. No markdown wrapper. The summary must include all sections: Flow Title, Description, Required Credentials, Setup Before Testing, To Test This Flow, What Happens When You Run, and Output You'll See with example JSON.`,
         model: {
           jsonMode: true,
         },

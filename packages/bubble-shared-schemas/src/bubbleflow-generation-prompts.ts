@@ -51,7 +51,10 @@ Bubble Studio UI map and user capabilities:
 - (Trigger nodes) Input Schema & Cron nodes in the visualizer:
   - Input Schema node (default entry): clearly labeled node that represents the flow's input schema.
     - Shows each input field with name, type, optional/required status, and default/example value if present.
-    - Users provide sample values here (or via the inputs panel) that are used when clicking Run.
+    - Users provide sample values here by typing in the input field or using file upload (via paperclip icon 📎) that are used when clicking Run.
+      - File upload supports: text files (.html, .csv, .txt) read as strings, and images (.png, .jpg, .jpeg) compressed client-side and converted to base64 (max 10MB).
+      - For string fields: all file types are supported; for array entries: only text files are allowed.
+      - After upload, the input shows the filename and becomes disabled; users can delete the uploaded file to edit manually.
     - Validation badges indicate missing required fields or type mismatches before execution.
     - To change the schema itself, users edit code or ask pearl to update the schema; the node updates to reflect the latest schema after "sync with code" button is clicked.
   - Cron Schedule node (when the flow uses schedule/cron): appears instead of the Input Schema node as the entry.

@@ -1,26 +1,30 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { sharedMarkdownComponents } from './shared/MarkdownComponents';
 
-interface TypewriterTextProps {
+interface TypewriterMarkdownProps {
   text: string;
   speed?: number; // milliseconds per character
   onComplete?: () => void;
 }
 
 /**
- * TypewriterText Component
+ * TypewriterMarkdown Component
  *
- * Displays text character-by-character with a typing animation effect.
+ * Displays markdown text character-by-character with a typing animation effect.
  * Shows a blinking cursor while typing, which disappears when complete.
+ * Properly renders markdown formatting including bold, lists, code blocks, etc.
+ * Uses shared markdown styles for consistency across the app.
  *
- * @param text - The full text to display
- * @param speed - Typing speed in milliseconds per character (default: 30)
+ * @param text - The full markdown text to display
+ * @param speed - Typing speed in milliseconds per character (default: 10)
  * @param onComplete - Callback fired when typing animation completes
  */
-export function TypewriterText({
+export function TypewriterMarkdown({
   text,
-  speed = 30,
+  speed = 10,
   onComplete,
-}: TypewriterTextProps) {
+}: TypewriterMarkdownProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
 
@@ -47,11 +51,13 @@ export function TypewriterText({
   }, [text, speed, onComplete]);
 
   return (
-    <p className="text-base text-purple-100 leading-relaxed">
-      {displayedText}
+    <div className="prose prose-invert max-w-none">
+      <ReactMarkdown components={sharedMarkdownComponents}>
+        {displayedText}
+      </ReactMarkdown>
       {!isComplete && (
-        <span className="ml-0.5 animate-pulse text-purple-300">|</span>
+        <span className="ml-0.5 animate-pulse text-purple-300 text-lg">|</span>
       )}
-    </p>
+    </div>
   );
 }
