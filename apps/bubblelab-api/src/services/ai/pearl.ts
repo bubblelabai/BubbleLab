@@ -188,281 +188,327 @@ export async function runPearl(
   apiStreamingCallback?: StreamingCallback
 ): Promise<PearlResponse> {
   console.debug('[Pearl] User request:', request.userRequest);
-  try {
-    const bubbleFactory = new BubbleFactory();
-    await bubbleFactory.registerDefaults();
 
-    // Build system prompt and conversation messages
-    const systemPrompt = await buildSystemPrompt(request.userName);
-    const conversationMessages = buildConversationMessages(request);
+  const MAX_RETRIES = 3;
+  let lastError: string | undefined;
 
-    // State to preserve original code and validation results across hook calls
-    let savedOriginalCode: string | undefined;
-    let savedValidationResult:
-      | {
-          valid: boolean;
-          errors: string[];
-          bubbleParameters: Record<number, ParsedBubbleWithInfo>;
-          inputSchema: Record<string, unknown>;
-          requiredCredentials?: Record<string, CredentialType[]>;
-        }
-      | undefined;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    console.debug(`[Pearl] Attempt ${attempt}/${MAX_RETRIES}`);
 
-    // Create hooks for validation tool
-    const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
-      if (context.toolName === 'bubbleflow-validation-tool') {
-        console.debug(
-          '[GeneralChat] Pre-hook: Intercepting validation tool call'
-        );
+    try {
+      const bubbleFactory = new BubbleFactory();
+      await bubbleFactory.registerDefaults();
 
-        // Extract code from tool input
-        const code = (context.toolInput as { code?: string })?.code;
+      // Build system prompt and conversation messages
+      const systemPrompt = await buildSystemPrompt(request.userName);
+      const conversationMessages = buildConversationMessages(request);
 
-        if (!code) {
-          console.warn('[GeneralChat] No code found in tool input');
-          return {
-            messages: context.messages,
-            toolInput: context.toolInput as Record<string, unknown>,
-          };
-        }
-        savedOriginalCode = code;
-        return {
-          messages: context.messages,
-          toolInput: { code },
-        };
-      }
+      // State to preserve original code and validation results across hook calls
+      let savedOriginalCode: string | undefined;
+      let savedValidationResult:
+        | {
+            valid: boolean;
+            errors: string[];
+            bubbleParameters: Record<number, ParsedBubbleWithInfo>;
+            inputSchema: Record<string, unknown>;
+            requiredCredentials?: Record<string, CredentialType[]>;
+          }
+        | undefined;
 
-      return {
-        messages: context.messages,
-        toolInput: context.toolInput as Record<string, unknown>,
-      };
-    };
+      // Create hooks for validation tool
+      const beforeToolCall: ToolHookBefore = async (
+        context: ToolHookContext
+      ) => {
+        if (context.toolName === 'bubbleflow-validation-tool') {
+          console.debug(
+            '[GeneralChat] Pre-hook: Intercepting validation tool call'
+          );
 
-    const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
-      if (context.toolName === 'bubbleflow-validation-tool') {
-        console.log('[GeneralChat] Post-hook: Checking validation result');
+          // Extract code from tool input
+          const code = (context.toolInput as { code?: string })?.code;
 
-        try {
-          const validationResult: ValidationAndExtractionResult = context
-            .toolOutput?.data as ValidationAndExtractionResult;
-
-          if (validationResult.valid === true) {
-            console.debug(
-              '[GeneralChat] Validation passed! Signaling completion.'
-            );
-
-            const code = savedOriginalCode || '';
-
-            // Save validation result for later use
-            savedValidationResult = {
-              valid: validationResult.valid || false,
-              errors: validationResult.errors || [],
-              bubbleParameters: validationResult.bubbleParameters || [],
-              inputSchema: validationResult.inputSchema || {},
-              requiredCredentials: validationResult.requiredCredentials,
-            };
-
-            // Extract message from AI
-            let message = 'Workflow code generated and validated successfully';
-            const lastAIMessage = [...context.messages]
-              .reverse()
-              .find(
-                (msg) =>
-                  msg.constructor.name === 'AIMessage' ||
-                  msg.constructor.name === 'AIMessageChunk'
-              );
-            if (lastAIMessage) {
-              const messageContent = lastAIMessage.content;
-
-              if (typeof messageContent === 'string' && messageContent.trim()) {
-                // Check if message is parsable JSON
-                const result = parseJsonWithFallbacks(messageContent);
-                if (result.success && result.parsed) {
-                  message = (result.parsed as { message: string }).message;
-                } else {
-                  message = messageContent;
-                }
-              } else if (Array.isArray(messageContent)) {
-                const textBlock = messageContent.find(
-                  (block: unknown) =>
-                    typeof block === 'object' &&
-                    block !== null &&
-                    'type' in block &&
-                    block.type === 'text' &&
-                    'text' in block
-                );
-
-                if (
-                  textBlock &&
-                  typeof textBlock === 'object' &&
-                  'text' in textBlock
-                ) {
-                  const text = (textBlock as { text: string }).text;
-                  if (text.trim()) {
-                    message = text;
-                  }
-
-                  // Check if message is parsable JSON
-                  const result = parseJsonWithFallbacks(message);
-                  if (result.success && result.response) {
-                    const parsed = result.parsed;
-                    message = (parsed as { message: string }).message;
-                  }
-                }
-              }
-
-              // Construct the JSON response
-              const response = {
-                type: 'code',
-                message,
-                snippet: code,
-              };
-
-              // Inject the response into the AI message
-              lastAIMessage.content = JSON.stringify(response);
-            }
-
-            savedOriginalCode = undefined;
-
+          if (!code) {
+            console.warn('[GeneralChat] No code found in tool input');
             return {
               messages: context.messages,
-              shouldStop: true,
+              toolInput: context.toolInput as Record<string, unknown>,
             };
           }
-
-          console.debug('[GeneralChat] Validation failed, agent will retry');
-          console.log('[GeneralChat] Errors:', validationResult.errors);
-        } catch (error) {
-          console.warn(
-            '[GeneralChat] Failed to parse validation result:',
-            error
-          );
+          savedOriginalCode = code;
+          return {
+            messages: context.messages,
+            toolInput: { code },
+          };
         }
-      }
 
-      return { messages: context.messages };
-    };
-
-    // Create AI agent with hooks
-    const agent = new AIAgentBubble({
-      name: 'Pearl - Workflow Builder',
-      message: JSON.stringify(conversationMessages) || request.userRequest,
-      systemPrompt,
-      streaming: true,
-      streamingCallback: (event) => {
-        return apiStreamingCallback?.(event);
-      },
-      model: {
-        model: request.model,
-        temperature: 1,
-        jsonMode: true,
-      },
-      tools: [
-        {
-          name: 'list-bubbles-tool',
-          credentials: credentials || {},
-        },
-        {
-          name: 'get-bubble-details-tool',
-          credentials: credentials || {},
-        },
-      ],
-      customTools: [
-        {
-          name: 'bubbleflow-validation-tool',
-          description: 'Calculates sales tax for a given amount',
-          schema: {
-            code: z.string().describe('Code to validate'),
-          },
-          func: async (input: Record<string, unknown>) => {
-            const validationResult = await validateAndExtract(
-              input.code as string,
-              bubbleFactory
-            );
-            return {
-              data: {
-                valid: validationResult.valid,
-                errors: validationResult.errors,
-                bubbleParameters: validationResult.bubbleParameters,
-                inputSchema: validationResult.inputSchema,
-              },
-            };
-          },
-        },
-      ],
-      maxIterations: 20,
-      credentials,
-      beforeToolCall,
-      afterToolCall,
-    });
-    const result = await agent.action();
-    if (!result.success) {
-      return {
-        type: 'reject',
-        message: result.error || 'Agent execution failed',
-        success: false,
-        error: result.error,
+        return {
+          messages: context.messages,
+          toolInput: context.toolInput as Record<string, unknown>,
+        };
       };
-    }
 
-    // Parse the agent's JSON response
-    let agentOutput: PearlAgentOutput;
-    try {
-      const responseText = result.data?.response || '';
-      agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
+      const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
+        if (context.toolName === 'bubbleflow-validation-tool') {
+          console.log('[GeneralChat] Post-hook: Checking validation result');
 
-      if (!agentOutput.type || !agentOutput.message) {
+          try {
+            const validationResult: ValidationAndExtractionResult = context
+              .toolOutput?.data as ValidationAndExtractionResult;
+
+            if (validationResult.valid === true) {
+              console.debug(
+                '[GeneralChat] Validation passed! Signaling completion.'
+              );
+
+              const code = savedOriginalCode || '';
+
+              // Save validation result for later use
+              savedValidationResult = {
+                valid: validationResult.valid || false,
+                errors: validationResult.errors || [],
+                bubbleParameters: validationResult.bubbleParameters || [],
+                inputSchema: validationResult.inputSchema || {},
+                requiredCredentials: validationResult.requiredCredentials,
+              };
+
+              // Extract message from AI
+              let message =
+                'Workflow code generated and validated successfully';
+              const lastAIMessage = [...context.messages]
+                .reverse()
+                .find(
+                  (msg) =>
+                    msg.constructor.name === 'AIMessage' ||
+                    msg.constructor.name === 'AIMessageChunk'
+                );
+              if (lastAIMessage) {
+                const messageContent = lastAIMessage.content;
+
+                if (
+                  typeof messageContent === 'string' &&
+                  messageContent.trim()
+                ) {
+                  // Check if message is parsable JSON
+                  const result = parseJsonWithFallbacks(messageContent);
+                  if (result.success && result.parsed) {
+                    message = (result.parsed as { message: string }).message;
+                  } else {
+                    message = messageContent;
+                  }
+                } else if (Array.isArray(messageContent)) {
+                  const textBlock = messageContent.find(
+                    (block: unknown) =>
+                      typeof block === 'object' &&
+                      block !== null &&
+                      'type' in block &&
+                      block.type === 'text' &&
+                      'text' in block
+                  );
+
+                  if (
+                    textBlock &&
+                    typeof textBlock === 'object' &&
+                    'text' in textBlock
+                  ) {
+                    const text = (textBlock as { text: string }).text;
+                    if (text.trim()) {
+                      message = text;
+                    }
+
+                    // Check if message is parsable JSON
+                    const result = parseJsonWithFallbacks(message);
+                    if (result.success && result.response) {
+                      const parsed = result.parsed;
+                      message = (parsed as { message: string }).message;
+                    }
+                  }
+                }
+
+                // Construct the JSON response
+                const response = {
+                  type: 'code',
+                  message,
+                  snippet: code,
+                };
+
+                // Inject the response into the AI message
+                lastAIMessage.content = JSON.stringify(response);
+              }
+
+              savedOriginalCode = undefined;
+
+              return {
+                messages: context.messages,
+                shouldStop: true,
+              };
+            }
+
+            console.debug('[GeneralChat] Validation failed, agent will retry');
+            console.log('[GeneralChat] Errors:', validationResult.errors);
+          } catch (error) {
+            console.warn(
+              '[GeneralChat] Failed to parse validation result:',
+              error
+            );
+          }
+        }
+
+        return { messages: context.messages };
+      };
+
+      // Create AI agent with hooks
+      const agent = new AIAgentBubble({
+        name: 'Pearl - Workflow Builder',
+        message: JSON.stringify(conversationMessages) || request.userRequest,
+        systemPrompt,
+        streaming: true,
+        streamingCallback: (event) => {
+          return apiStreamingCallback?.(event);
+        },
+        model: {
+          model: request.model,
+          temperature: 1,
+          jsonMode: true,
+        },
+        tools: [
+          {
+            name: 'list-bubbles-tool',
+            credentials: credentials || {},
+          },
+          {
+            name: 'get-bubble-details-tool',
+            credentials: credentials || {},
+          },
+        ],
+        customTools: [
+          {
+            name: 'bubbleflow-validation-tool',
+            description: 'Calculates sales tax for a given amount',
+            schema: {
+              code: z.string().describe('Code to validate'),
+            },
+            func: async (input: Record<string, unknown>) => {
+              const validationResult = await validateAndExtract(
+                input.code as string,
+                bubbleFactory
+              );
+              return {
+                data: {
+                  valid: validationResult.valid,
+                  errors: validationResult.errors,
+                  bubbleParameters: validationResult.bubbleParameters,
+                  inputSchema: validationResult.inputSchema,
+                },
+              };
+            },
+          },
+        ],
+        maxIterations: 20,
+        credentials,
+        beforeToolCall,
+        afterToolCall,
+      });
+      const result = await agent.action();
+      if (!result.success) {
         return {
           type: 'reject',
-          message: 'Error parsing agent response',
+          message: result.error || 'Agent execution failed',
           success: false,
+          error: result.error,
         };
       }
-      if (agentOutput.type === 'code' && agentOutput.snippet) {
-        return {
-          type: 'code',
-          message: agentOutput.message,
-          snippet: agentOutput.snippet,
-          bubbleParameters: savedValidationResult?.bubbleParameters,
-          inputSchema: savedValidationResult?.inputSchema,
-          requiredCredentials: savedValidationResult?.requiredCredentials,
-          success: true,
-        };
-      } else if (agentOutput.type === 'question') {
-        return {
-          type: 'question',
-          message: agentOutput.message,
-          success: true,
-        };
-      } else if (agentOutput.type === 'answer') {
-        return {
-          type: 'answer',
-          message: agentOutput.message,
-          success: true,
-        };
-      } else {
+
+      // Parse the agent's JSON response
+      let agentOutput: PearlAgentOutput;
+      try {
+        const responseText = result.data?.response || '';
+        agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
+
+        if (!agentOutput.type || !agentOutput.message) {
+          console.error('[Pearl] Error parsing agent response:', responseText);
+          lastError = 'Error parsing agent response';
+
+          if (attempt < MAX_RETRIES) {
+            console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
+            continue;
+          }
+
+          return {
+            type: 'reject',
+            message: 'Error parsing agent response',
+            success: false,
+          };
+        }
+        if (agentOutput.type === 'code' && agentOutput.snippet) {
+          return {
+            type: 'code',
+            message: agentOutput.message,
+            snippet: agentOutput.snippet,
+            bubbleParameters: savedValidationResult?.bubbleParameters,
+            inputSchema: savedValidationResult?.inputSchema,
+            requiredCredentials: savedValidationResult?.requiredCredentials,
+            success: true,
+          };
+        } else if (agentOutput.type === 'question') {
+          return {
+            type: 'question',
+            message: agentOutput.message,
+            success: true,
+          };
+        } else if (agentOutput.type === 'answer') {
+          return {
+            type: 'answer',
+            message: agentOutput.message,
+            success: true,
+          };
+        } else {
+          return {
+            type: 'reject',
+            message: agentOutput.message,
+            success: true,
+          };
+        }
+      } catch (error) {
+        console.error('[Pearl] Failed to parse agent output:', error);
+        lastError =
+          error instanceof Error ? error.message : 'Unknown parsing error';
+
+        if (attempt < MAX_RETRIES) {
+          console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
+          continue;
+        }
+
         return {
           type: 'reject',
-          message: agentOutput.message,
-          success: true,
+          message: 'Failed to parse agent response',
+          success: false,
+          error:
+            error instanceof Error ? error.message : 'Unknown parsing error',
         };
       }
     } catch (error) {
-      console.error('[Pearl] Failed to parse agent output:', error);
+      console.error('[Pearl] Error during execution:', error);
+      lastError = error instanceof Error ? error.message : 'Unknown error';
+
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
+        continue;
+      }
+
       return {
         type: 'reject',
-        message: 'Failed to parse agent response',
+        message: 'An error occurred while processing your request',
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown parsing error',
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  } catch (error) {
-    console.error('[GeneralChat] Error during execution:', error);
-    return {
-      type: 'reject',
-      message: 'An error occurred while processing your request',
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
   }
+
+  // If all retries failed, return with the last error
+  return {
+    type: 'reject',
+    message: `Failed after ${MAX_RETRIES} attempts: ${lastError || 'Unknown error'}`,
+    success: false,
+    error: lastError,
+  };
 }
