@@ -28,11 +28,12 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), forEach(), or other callback functions.
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
-17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow.
+17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow. Be specific and make sure no same variable name is used for different bubbles. Bad name: slackNotifier, good name: slackOnChannelErrorNotifier.
+18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
 export const BUBBLE_STUDIO_INSTRUCTIONS = `
-Bubble Studio UI map and user capabilities:
+Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for users to create, edit, and manage their flows. It has the following pages and UI map and user capabilities:
 
 - Pages and navigation (You are located inside the flow screen in Bubble Studio):
   - Home: generate a new flow from a natural-language prompt or import JSON.
@@ -42,7 +43,7 @@ Bubble Studio UI map and user capabilities:
 
   **Important**: There are a set of system credentials that automatically used to run flow if no user credentials are provided, they are handled by bubble studio they are optional to run a flow.
   System credentials are:
-  ${SYSTEM_CREDENTIALS}
+  ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
 
 - Panels:
   - Sidebar (left): app navigation and account controls.
@@ -118,7 +119,7 @@ Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the re
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
-2. When using the resend bubble, do not set the from parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 `;
 
 /**

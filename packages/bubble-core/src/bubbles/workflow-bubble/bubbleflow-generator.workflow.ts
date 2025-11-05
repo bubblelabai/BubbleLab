@@ -301,7 +301,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
       {
         name: 'Flow Summary Agent',
         message:
-          `You are summarizeAgent. Analyze the provided validated BubbleFlow TypeScript and generate a user-friendly summary.
+          `You are summarizeAgent for Bubble Lab. Analyze the provided validated BubbleFlow TypeScript and generate a user-friendly summary.
 
 IMPORTANT: Users will test this flow in Bubble Studio UI by manually filling in a form, NOT by making HTTP webhook requests. Write the summary from this perspective.
 
@@ -317,9 +317,6 @@ SUMMARY PATTERN (follow this structure exactly):
 
 [One-sentence description of what the flow does]
 
-**Required Credentials:**
-- [Service 1] ([permissions])
-- [Service 2] ([permissions])
 
 **Setup Before Testing:**
 1. [Practical preparation step 1]
@@ -347,7 +344,7 @@ Provide these inputs in the form:
 EXAMPLE (Reddit Lead Generation):
 
 {
-  "summary": "**Reddit Lead Generation Flow**\\n\\nAutomatically discovers potential leads from Reddit and saves them to Google Sheets with AI-generated outreach messages.\\n\\n**Required Credentials:**\\n- Google Sheets (read & write access)\\n- Reddit (read access)\\n\\n**Setup Before Testing:**\\n1. Create a Google Spreadsheet to store your leads\\n2. Copy the spreadsheet ID from the URL (the long string between /d/ and /edit)\\n\\n**To Test This Flow:**\\nProvide these inputs in the form:\\n- **spreadsheetId**: Paste your Google Sheets ID\\n- **subreddit**: Enter subreddit name without r/ (e.g., \\"entrepreneur\\", \\"startups\\")\\n- **searchCriteria**: Describe your ideal lead (e.g., \\"people frustrated with current automation tools\\")\\n\\n**What Happens When You Run:**\\n1. Checks your spreadsheet for existing contacts to avoid duplicates\\n2. Scrapes 50 recent posts from your target subreddit\\n3. AI analyzes posts and identifies 10 new potential leads matching your criteria\\n4. Generates personalized, empathetic outreach messages for each lead\\n5. Adds new contacts to your spreadsheet with: Name, Post Link, Message, Date, and Status\\n\\n**Output You'll See:**\\n\`\`\`json\\n{\\n  \\"message\\": \\"Successfully added 10 new contacts to the spreadsheet.\\",\\n  \\"newContactsAdded\\": 10\\n}\\n\`\`\`\\n\\nCheck your Google Sheet to see the new leads with ready-to-use outreach messages!",
+  "summary": "**Reddit Lead Generation Flow**\\n\\nAutomatically discovers potential leads from Reddit and saves them to Google Sheets with AI-generated outreach messages.\\n\\n**Setup Before Testing:**\\n1. Create a Google Spreadsheet to store your leads\\n2. Copy the spreadsheet ID from the URL (the long string between /d/ and /edit)\\n\\n**To Test This Flow:**\\nProvide these inputs in the form:\\n- **spreadsheetId**: Paste your Google Sheets ID\\n- **subreddit**: Enter subreddit name without r/ (e.g., \\"entrepreneur\\", \\"startups\\")\\n- **searchCriteria**: Describe your ideal lead (e.g., \\"people frustrated with current automation tools\\")\\n\\n**What Happens When You Run:**\\n1. Checks your spreadsheet for existing contacts to avoid duplicates\\n2. Scrapes 50 recent posts from your target subreddit\\n3. AI analyzes posts and identifies 10 new potential leads matching your criteria\\n4. Generates personalized, empathetic outreach messages for each lead\\n5. Adds new contacts to your spreadsheet with: Name, Post Link, Message, Date, and Status\\n\\n**Output You'll See:**\\n\`\`\`json\\n{\\n  \\"message\\": \\"Successfully added 10 new contacts to the spreadsheet.\\",\\n  \\"newContactsAdded\\": 10\\n}\\n\`\`\`\\n\\nCheck your Google Sheet to see the new leads with ready-to-use outreach messages!",
   "inputsSchema": "{\\"type\\":\\"object\\",\\"properties\\":{\\"spreadsheetId\\":{\\"type\\":\\"string\\",\\"description\\":\\"Google Sheets spreadsheet ID where leads will be stored\\"},\\"subreddit\\":{\\"type\\":\\"string\\",\\"description\\":\\"The subreddit to scrape for potential leads (e.g., \\\\\\"n8n\\\\\\", \\\\\\"entrepreneur\\\\\\")\\"},\\"searchCriteria\\":{\\"type\\":\\"string\\",\\"description\\":\\"Description of what type of users to identify (e.g., \\\\\\"expressing frustration with workflow automation tools\\\\\\")\\"}}},\\"required\\":[\\"spreadsheetId\\",\\"subreddit\\",\\"searchCriteria\\"]}"
 }
 
@@ -445,6 +442,7 @@ ${CRITICAL_INSTRUCTIONS}
 ${BUBBLE_SPECIFIC_INSTRUCTIONS}
 
 ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}
+
 
 ${VALIDATION_PROCESS}`;
   }
