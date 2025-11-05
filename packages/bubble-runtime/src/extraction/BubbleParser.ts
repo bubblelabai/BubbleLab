@@ -55,7 +55,7 @@ export class BubbleParser {
 
     // Find main BubbleFlow class and all its instance methods
     const mainClass = this.findMainBubbleFlowClass(ast);
-    let instanceMethodsLocation: Record<
+    const instanceMethodsLocation: Record<
       string,
       {
         startLine: number;
