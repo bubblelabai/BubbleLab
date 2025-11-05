@@ -42,6 +42,7 @@ import {
 } from '../../utils/fileUtils';
 import { simplifyObjectForContext } from '../../utils/executionLogsFormatUtils';
 import { useBubbleDetail } from '../../hooks/useBubbleDetail';
+import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
 
 // Display event types for chronological rendering
 type DisplayEvent =
@@ -528,7 +529,7 @@ export function PearlChat() {
                 /* User Message */
                 <div className="p-3 flex justify-end">
                   <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-[13px] text-gray-900">
                       {message.content}
                     </div>
                   </div>
@@ -576,8 +577,12 @@ export function PearlChat() {
                     {message.resultType === 'code' ? (
                       <>
                         {message.content && (
-                          <div className="prose prose-invert prose-sm max-w-none mb-2 text-[13px]">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          <div className="prose prose-invert prose-sm max-w-none mb-2 [&_*]:text-[13px]">
+                            <ReactMarkdown
+                              components={sharedMarkdownComponents}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
                           </div>
                         )}
                         {message.code && (
@@ -605,8 +610,10 @@ export function PearlChat() {
                         )}
                       </>
                     ) : (
-                      <div className="prose prose-invert prose-sm max-w-none text-[13px]">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
+                        <ReactMarkdown components={sharedMarkdownComponents}>
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     )}
                   </div>
@@ -783,11 +790,17 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
       );
 
     case 'think':
+      // Don't render if content is empty or whitespace only
+      if (!event.content.trim()) {
+        return null;
+      }
       return (
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
-          <div className="text-xs prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown>{event.content}</ReactMarkdown>
+          <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
+            <ReactMarkdown components={sharedMarkdownComponents}>
+              {event.content}
+            </ReactMarkdown>
           </div>
         </div>
       );

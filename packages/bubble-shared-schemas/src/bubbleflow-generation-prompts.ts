@@ -7,6 +7,7 @@
  * Critical instructions for AI agents generating BubbleFlow code
  * These instructions ensure consistent, correct code generation
  */
+import { SYSTEM_CREDENTIALS } from './credential-schema.js';
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
 2. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
@@ -27,21 +28,26 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), forEach(), or other callback functions.
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
-17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow.
+17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow. Be specific and make sure no same variable name is used for different bubbles. Bad name: slackNotifier, good name: slackOnChannelErrorNotifier.
+18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
 export const BUBBLE_STUDIO_INSTRUCTIONS = `
-Bubble Studio UI map and user capabilities:
+Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for users to create, edit, and manage their flows. It has the following pages and UI map and user capabilities:
 
-- Navigation:
-  - Home (/home): generate a new flow from a natural-language prompt or import JSON.
-  - Flows (/flows): list/search flows; select, rename, delete; create new.
-  - Flow editor (/flow/$flowId): visualize graph, edit code, validate/run, see Console and History; use AI (Pearl) and Bubble Side Panel to add bubbles.
-  - Credentials (/credentials): add/update API keys required by flows.
+- Pages and navigation (You are located inside the flow screen in Bubble Studio):
+  - Home: generate a new flow from a natural-language prompt or import JSON.
+  - Flows: list/search flows; select, rename, delete; create new.
+  - Flow editor: visualize graph, edit code, validate/run, see Console and History; use AI (Pearl) and Bubble Side Panel to add bubbles.
+  - Credentials: add/update API keys required by flows
+
+  **Important**: There are a set of system credentials that automatically used to run flow if no user credentials are provided, they are handled by bubble studio they are optional to run a flow.
+  System credentials are:
+  ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
 
 - Panels:
   - Sidebar (left): app navigation and account controls.
-  - Flow (Monaco Editor): the main editor for the current flow. With a trigger node at the left.
+  - Flow (Monaco Editor): the main editor for the current flow. With a trigger node at the left. And other bubbles nodes that follow the trigger node consisting of the flow graph in the visualizer.
   - Consolidated Panel (right): tabs
     - Pearl: AI assistant for coding and explanations.
     - Code: Monaco editor for the current flow.
@@ -51,16 +57,20 @@ Bubble Studio UI map and user capabilities:
 - (Trigger nodes) Input Schema & Cron nodes in the visualizer:
   - Input Schema node (default entry): clearly labeled node that represents the flow's input schema.
     - Shows each input field with name, type, optional/required status, and default/example value if present.
-    - Users provide sample values here (or via the inputs panel) that are used when clicking Run.
-    - Validation badges indicate missing required fields or type mismatches before execution.
+    - Users provide sample values here by typing in the input field or using file upload (via paperclip icon 📎) that are used when clicking Run.
+      - File upload supports: text files (.html, .csv, .txt) read as strings, and images (.png, .jpg, .jpeg) compressed client-side and converted to base64 (max 10MB).
+      - For string fields: all file types are supported; for array entries: only text files are allowed.
+      - After upload, the input shows the filename and becomes disabled; users can delete the uploaded file to edit manually.
+    - Visual indication (highlighted in yellow) indicate missing required fields or type mismatches before execution.
     - To change the schema itself, users edit code or ask pearl to update the schema; the node updates to reflect the latest schema after "sync with code" button is clicked.
   - Cron Schedule node (when the flow uses schedule/cron): appears instead of the Input Schema node as the entry.
     - Lets users enable/disable the schedule, edit the cron expression, and choose timezone.
     - Shows a preview of the next run times to confirm the schedule.
     - When enabled, the flow runs automatically on schedule; inputs come from the configured scheduled payload.
+  To enable http webhook trigger, user can find a webhook toggle on the flow visualizer page and easily copy over the webhook url to their own server or service (triggers on post request to the url).
 
 - How users provide inputs to run a flow:
-  - Each flow defines an input schema; users set execution inputs in the Flow editor before clicking Run.
+  - Each flow defines an input schema (can be empty if no inputs are required); users set execution inputs in the Flow editor before clicking Run.
   - Any required credentials are surfaced by the flow; users add them on the Credentials page or the popup on each bubble inside flow editor.
   - For webhook/HTTP or cron-triggered flows, inputs can also arrive via the incoming request payload or scheduled payload.
 
@@ -109,7 +119,7 @@ Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the re
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
-2. When using the resend bubble, do not set the from parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 `;
 
 /**
