@@ -26,12 +26,16 @@ export class BubbleScript {
     number,
     { startLine: number; startCol: number; endLine: number; endCol: number }
   >; // Maps Variable.$id to location
-  private handleMethodLocation: {
-    startLine: number;
-    endLine: number;
-    definitionStartLine: number;
-    bodyStartLine: number;
-  } | null;
+  public instanceMethodsLocation: Record<
+    string,
+    {
+      startLine: number;
+      endLine: number;
+      definitionStartLine: number;
+      bodyStartLine: number;
+      invocationLines: number[];
+    }
+  >;
   private bubbleScript: string;
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
@@ -69,7 +73,7 @@ export class BubbleScript {
       this.ast,
       this.scopeManager
     );
-    this.handleMethodLocation = parseResult.handleMethodLocation;
+    this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.parsedBubbles = parseResult.bubbles;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
@@ -108,7 +112,7 @@ export class BubbleScript {
 
     this.parsedBubbles = parseResult.bubbles;
     this.originalParsedBubbles = parseResult.bubbles;
-    this.handleMethodLocation = parseResult.handleMethodLocation;
+    this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
@@ -136,10 +140,15 @@ export class BubbleScript {
         `Bubble ${bubble.bubbleName} location: ${bubble.location.startLine}-${bubble.location.endLine}`
       );
     }
-    // Print handle method location
-    console.debug(
-      `Handle method location: ${this.handleMethodLocation?.bodyStartLine}-${this.handleMethodLocation?.endLine}`
-    );
+    // Print instance methods locations
+    console.debug('Instance methods locations:');
+    for (const [methodName, location] of Object.entries(
+      this.instanceMethodsLocation
+    )) {
+      console.debug(
+        `  ${methodName}: ${location.bodyStartLine}-${location.endLine} (invocations: ${location.invocationLines.join(', ')})`
+      );
+    }
     console.debug('---------------------------------');
     console.debug(`##################`);
   }
@@ -513,7 +522,27 @@ export class BubbleScript {
     definitionStartLine: number;
     bodyStartLine: number;
   } | null {
-    return this.handleMethodLocation;
+    // Backward compatibility: return handle method from instanceMethodsLocation
+    const handleMethod = this.instanceMethodsLocation['handle'];
+    if (handleMethod) {
+      return {
+        startLine: handleMethod.startLine,
+        endLine: handleMethod.endLine,
+        definitionStartLine: handleMethod.definitionStartLine,
+        bodyStartLine: handleMethod.bodyStartLine,
+      };
+    }
+    return null;
+  }
+
+  getInstanceMethodLocation(methodName: string): {
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+    invocationLines: number[];
+  } | null {
+    return this.instanceMethodsLocation[methodName] || null;
   }
 
   /**

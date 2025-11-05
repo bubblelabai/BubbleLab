@@ -308,16 +308,18 @@ describe('BubbleRunner correctly runs and plans', () => {
           result.error?.includes('API')
       ).toBe(true);
     });
-    it('should inject credentials into a flow with a google drive complex', async () => {
-      const testScript = getFixture('google-drive-complex');
+    it('should execute a flow with a class method and log', async () => {
+      const testScript = getFixture('flow-with-class-method-and-log');
       const runner = new BubbleRunner(testScript, bubbleFactory);
-      // inject credentials
-      const credentialsResult = runner.injector.injectCredentials(
-        [],
-        getUserCredential()
-      );
-      expect(credentialsResult.success).toBe(true);
-      // Expect either success or no cr
+      const result = await runner.runAll({
+        email: 'test@example.com',
+        job_description: 'test job description',
+      });
+      expect(result).toBeDefined();
+      expect(
+        result.success ||
+          result.error?.includes('Both scraping and search failed')
+      ).toBe(true);
     });
     it('should execute a flow with a method inside the handler', async () => {
       const testScript = getFixture('method-inside-handler');
@@ -347,6 +349,15 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(runner.bubbleScript.bubblescript).not.toContain('...ycUrl');
       expect(result).toBeDefined();
       expect(result.success || !result.error?.includes('url: Required')).toBe(
+        true
+      );
+    });
+    it('should execute a flow with a google drive complex', async () => {
+      const testScript = getFixture('google-drive-complex');
+      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      expect(result.success || result.error?.includes('credentials')).toBe(
         true
       );
     });
