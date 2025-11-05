@@ -7,32 +7,32 @@ import type { Components } from 'react-markdown';
 export const sharedMarkdownComponents: Components = {
   // Headings
   h1: ({ children }) => (
-    <h1 className="text-xl md:text-2xl font-bold text-gray-100 mb-4">
+    <h1 className="text-xl md:text-2xl font-bold text-gray-100 mb-2">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="text-lg md:text-xl font-bold text-gray-100 mb-3">
+    <h2 className="text-lg md:text-xl font-bold text-gray-100 mb-2">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="text-base md:text-lg font-semibold text-gray-200 mb-2">
+    <h3 className="text-base md:text-lg font-semibold text-gray-200 mb-1.5">
       {children}
     </h3>
   ),
   // Paragraphs
   p: ({ children }) => (
-    <p className="text-base text-gray-300 leading-relaxed mb-4">{children}</p>
+    <p className="text-base text-gray-300 leading-relaxed mb-2">{children}</p>
   ),
   // Lists
   ul: ({ children }) => (
-    <ul className="list-disc list-inside space-y-2 mb-4 text-base text-gray-300">
+    <ul className="list-disc list-inside space-y-1 mb-2 text-base text-gray-300">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal list-inside space-y-2 mb-4 text-base text-gray-300">
+    <ol className="list-decimal list-inside space-y-1 mb-2 text-base text-gray-300">
       {children}
     </ol>
   ),
@@ -50,14 +50,14 @@ export const sharedMarkdownComponents: Components = {
       );
     }
     return (
-      <code className="block bg-gray-900/50 text-gray-300 p-4 rounded-lg text-sm font-mono overflow-x-auto mb-4">
+      <code className="block bg-gray-900/50 text-gray-300 p-4 rounded-lg text-sm font-mono overflow-x-auto mb-2">
         {children}
       </code>
     );
   },
   // Pre blocks (wraps code blocks)
   pre: ({ children }) => (
-    <pre className="bg-gray-900/50 rounded-lg overflow-x-auto mb-4">
+    <pre className="bg-gray-900/50 rounded-lg overflow-x-auto mb-2">
       {children}
     </pre>
   ),
@@ -78,7 +78,7 @@ export const sharedMarkdownComponents: Components = {
   ),
   // Blockquotes
   blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-purple-500 pl-4 py-2 my-4 text-gray-400 italic">
+    <blockquote className="border-l-4 border-purple-500 pl-4 py-2 my-2 text-gray-400 italic">
       {children}
     </blockquote>
   ),

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
 import { useNavigate } from '@tanstack/react-router';
@@ -21,6 +21,7 @@ import {
  * - Auto-shows when isStreaming === true
  * - Reads output directly from outputStore
  * - No props needed - self-contained component
+ * - Hides generation messages immediately when streaming completes
  *
  * Success case: Auto-dismisses when navigation occurs
  * Error case: Shows error with close button for retry
@@ -35,11 +36,22 @@ export function GenerationOutputOverlay() {
   const { output, clearOutput } = useOutputStore();
   const navigate = useNavigate();
   const outputEndRef = useRef<HTMLDivElement>(null);
+  const [summaryComplete, setSummaryComplete] = useState(false);
 
   // Auto-scroll to bottom when new output arrives
   useEffect(() => {
     outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [output]);
+
+  // Reset summary complete state when a new generation starts
+  // Set to true immediately when streaming completes to hide generation messages
+  useEffect(() => {
+    if (isStreaming) {
+      setSummaryComplete(false);
+    } else if (!isStreaming && generationResult) {
+      setSummaryComplete(true);
+    }
+  }, [isStreaming, generationResult]);
 
   // Don't show if not streaming and no output and no result
   if (!isStreaming && !output && !generationResult) return null;
@@ -186,38 +198,42 @@ export function GenerationOutputOverlay() {
           </button>
         </div>
 
-        {/* Output Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 sm:space-y-3 thin-scrollbar">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mb-2 sm:mb-3" />
-              <p className="text-sm sm:text-base">Initializing generation...</p>
-            </div>
-          ) : (
-            messages.map((line, index) => {
-              const messageInfo = parseMessageType(line);
+        {/* Output Content - Hide when summary is complete */}
+        {!summaryComplete && (
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 sm:space-y-3 thin-scrollbar">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mb-2 sm:mb-3" />
+                <p className="text-sm sm:text-base">
+                  Initializing generation...
+                </p>
+              </div>
+            ) : (
+              messages.map((line, index) => {
+                const messageInfo = parseMessageType(line);
 
-              if (messageInfo.type === 'empty') return null;
+                if (messageInfo.type === 'empty') return null;
 
-              return (
-                <div
-                  key={index}
-                  className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border ${messageInfo.bgColor} ${messageInfo.borderColor} animate-in slide-in-from-left-2 duration-200`}
-                >
-                  <div className={messageInfo.color}>{messageInfo.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`${messageInfo.color} text-sm sm:text-base font-medium leading-relaxed break-words`}
-                    >
-                      {line.replace(/✅|❌|🎯|🚀/g, '').trim()}
-                    </p>
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border ${messageInfo.bgColor} ${messageInfo.borderColor} animate-in slide-in-from-left-2 duration-200`}
+                  >
+                    <div className={messageInfo.color}>{messageInfo.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`${messageInfo.color} text-sm sm:text-base font-medium leading-relaxed break-words`}
+                      >
+                        {line.replace(/✅|❌|🎯|🚀/g, '').trim()}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-          <div ref={outputEndRef} />
-        </div>
+                );
+              })
+            )}
+            <div ref={outputEndRef} />
+          </div>
+        )}
 
         {/* Footer - only show when not streaming */}
         {!isStreaming && (
