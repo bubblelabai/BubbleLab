@@ -16,6 +16,26 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  properties?: Record<
+    string,
+    {
+      type?: string;
+      description?: string;
+      default?: unknown;
+      required?: boolean;
+      properties?: Record<
+        string,
+        {
+          type?: string;
+          description?: string;
+          default?: unknown;
+          required?: boolean;
+        }
+      >;
+      requiredProperties?: string[];
+    }
+  >;
+  requiredProperties?: string[];
 }
 
 interface InputFieldsRendererProps {
@@ -267,10 +287,12 @@ function InputFieldsRenderer({
       {schemaFields.map((field) => {
         const isNumber = field.type === 'number';
         const isArray = field.type === 'array';
+        const isObject = field.type === 'object' && field.properties;
         const currentValue = inputValues[field.name] as
           | string
           | number
           | string[]
+          | Record<string, unknown>
           | undefined;
         const isMissing =
           field.required &&
@@ -297,7 +319,9 @@ function InputFieldsRenderer({
                     ? '• text'
                     : field.type === 'array'
                       ? '• list'
-                      : `• ${field.type}`}
+                      : field.type === 'object'
+                        ? '• object'
+                        : `• ${field.type}`}
                 </span>
               )}
             </label>
@@ -462,6 +486,412 @@ function InputFieldsRenderer({
                     {fieldErrors[field.name]}
                   </div>
                 )}
+              </div>
+            ) : isObject ? (
+              <div className="space-y-2">
+                <div className="bg-neutral-900/50 rounded border border-neutral-700 p-3 space-y-3">
+                  {field.properties &&
+                    Object.entries(field.properties).map(
+                      ([propName, propSchema]) => {
+                        const objectValue =
+                          typeof currentValue === 'object' &&
+                          currentValue !== null &&
+                          !Array.isArray(currentValue)
+                            ? (currentValue as Record<string, unknown>)
+                            : {};
+                        const propValue = objectValue[propName];
+                        const propRequired = propSchema.required || false;
+                        const propIsMissing =
+                          propRequired &&
+                          (propValue === undefined ||
+                            propValue === '' ||
+                            (Array.isArray(propValue) &&
+                              propValue.length === 0)) &&
+                          propSchema.default === undefined;
+
+                        const handleObjectPropertyChange = (
+                          nestedPropName: string,
+                          value: unknown
+                        ) => {
+                          const currentObj =
+                            typeof currentValue === 'object' &&
+                            currentValue !== null &&
+                            !Array.isArray(currentValue)
+                              ? { ...(currentValue as Record<string, unknown>) }
+                              : {};
+                          currentObj[nestedPropName] = value;
+                          onInputChange(field.name, currentObj);
+                        };
+
+                        // Check if this property is also an object
+                        const isNestedObject =
+                          propSchema.type === 'object' && propSchema.properties;
+
+                        return (
+                          <div
+                            key={propName}
+                            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
+                          >
+                            <label className="block text-xs font-semibold text-neutral-300 mb-1">
+                              {propName}
+                              {propRequired && (
+                                <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
+                                  REQUIRED
+                                </span>
+                              )}
+                              {propSchema.type && (
+                                <span className="ml-2 text-[10px] font-normal text-neutral-500">
+                                  {propSchema.type === 'string'
+                                    ? '• text'
+                                    : propSchema.type === 'array'
+                                      ? '• list'
+                                      : propSchema.type === 'number'
+                                        ? '• number'
+                                        : propSchema.type === 'object'
+                                          ? '• object'
+                                          : `• ${propSchema.type}`}
+                                </span>
+                              )}
+                            </label>
+                            {propSchema.description && (
+                              <div className="text-[10px] text-neutral-500 mb-1.5">
+                                {propSchema.description}
+                              </div>
+                            )}
+                            {isNestedObject ? (
+                              // Recursively render nested object
+                              <div className="mt-2 bg-neutral-800/50 rounded border border-neutral-600 p-2.5 space-y-2.5">
+                                {propSchema.properties &&
+                                  Object.entries(propSchema.properties).map(
+                                    ([nestedPropName, nestedPropSchema]) => {
+                                      const nestedObjectValue =
+                                        typeof propValue === 'object' &&
+                                        propValue !== null &&
+                                        !Array.isArray(propValue)
+                                          ? (propValue as Record<
+                                              string,
+                                              unknown
+                                            >)
+                                          : {};
+                                      const nestedPropValue =
+                                        nestedObjectValue[nestedPropName];
+                                      const nestedPropRequired =
+                                        nestedPropSchema.required || false;
+                                      const nestedPropIsMissing =
+                                        nestedPropRequired &&
+                                        (nestedPropValue === undefined ||
+                                          nestedPropValue === '' ||
+                                          (Array.isArray(nestedPropValue) &&
+                                            nestedPropValue.length === 0)) &&
+                                        nestedPropSchema.default === undefined;
+
+                                      const handleNestedObjectPropertyChange = (
+                                        deepPropName: string,
+                                        value: unknown
+                                      ) => {
+                                        const nestedObj =
+                                          typeof propValue === 'object' &&
+                                          propValue !== null &&
+                                          !Array.isArray(propValue)
+                                            ? {
+                                                ...(propValue as Record<
+                                                  string,
+                                                  unknown
+                                                >),
+                                              }
+                                            : {};
+                                        nestedObj[deepPropName] = value;
+                                        handleObjectPropertyChange(
+                                          propName,
+                                          nestedObj
+                                        );
+                                      };
+
+                                      return (
+                                        <div
+                                          key={nestedPropName}
+                                          className="pb-2 border-b border-neutral-600/30 last:border-b-0 last:pb-0"
+                                        >
+                                          <label className="block text-[11px] font-semibold text-neutral-400 mb-1">
+                                            {nestedPropName}
+                                            {nestedPropRequired && (
+                                              <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
+                                                REQUIRED
+                                              </span>
+                                            )}
+                                            {nestedPropSchema.type && (
+                                              <span className="ml-2 text-[9px] font-normal text-neutral-600">
+                                                {nestedPropSchema.type ===
+                                                'string'
+                                                  ? '• text'
+                                                  : nestedPropSchema.type ===
+                                                      'array'
+                                                    ? '• list'
+                                                    : nestedPropSchema.type ===
+                                                        'number'
+                                                      ? '• number'
+                                                      : `• ${nestedPropSchema.type}`}
+                                              </span>
+                                            )}
+                                          </label>
+                                          {nestedPropSchema.description && (
+                                            <div className="text-[9px] text-neutral-600 mb-1.5">
+                                              {nestedPropSchema.description}
+                                            </div>
+                                          )}
+                                          {nestedPropSchema.type ===
+                                          'number' ? (
+                                            <div className="flex items-center">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const numValue =
+                                                    typeof nestedPropValue ===
+                                                    'number'
+                                                      ? nestedPropValue
+                                                      : 0;
+                                                  handleNestedObjectPropertyChange(
+                                                    nestedPropName,
+                                                    numValue - 1
+                                                  );
+                                                }}
+                                                disabled={isExecuting}
+                                                aria-label={`Decrease ${nestedPropName}`}
+                                                className="p-1 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-500 transition-colors"
+                                              >
+                                                <Minus className="w-2.5 h-2.5" />
+                                              </button>
+                                              <input
+                                                type="text"
+                                                value={
+                                                  typeof nestedPropValue ===
+                                                    'string' ||
+                                                  typeof nestedPropValue ===
+                                                    'number'
+                                                    ? nestedPropValue
+                                                    : ''
+                                                }
+                                                onChange={(e) => {
+                                                  const val = e.target.value;
+                                                  if (
+                                                    val === '' ||
+                                                    val === '-'
+                                                  ) {
+                                                    handleNestedObjectPropertyChange(
+                                                      nestedPropName,
+                                                      val
+                                                    );
+                                                  } else {
+                                                    const numVal = Number(val);
+                                                    if (!isNaN(numVal)) {
+                                                      handleNestedObjectPropertyChange(
+                                                        nestedPropName,
+                                                        numVal
+                                                      );
+                                                    }
+                                                  }
+                                                }}
+                                                placeholder={
+                                                  nestedPropSchema.default !==
+                                                  undefined
+                                                    ? String(
+                                                        nestedPropSchema.default
+                                                      )
+                                                    : nestedPropSchema.description ||
+                                                      `Enter ${nestedPropName}...`
+                                                }
+                                                disabled={isExecuting}
+                                                className={`flex-1 px-2 py-1 text-[11px] bg-neutral-900 border-t border-b ${
+                                                  nestedPropIsMissing
+                                                    ? 'border-amber-500 focus:border-amber-400'
+                                                    : 'border-neutral-500 focus:border-blue-500'
+                                                } text-neutral-100 placeholder-neutral-500 text-center focus:outline-none focus:ring-1 ${
+                                                  nestedPropIsMissing
+                                                    ? 'focus:ring-amber-500/50'
+                                                    : 'focus:ring-blue-500/50'
+                                                } disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const numValue =
+                                                    typeof nestedPropValue ===
+                                                    'number'
+                                                      ? nestedPropValue
+                                                      : 0;
+                                                  handleNestedObjectPropertyChange(
+                                                    nestedPropName,
+                                                    numValue + 1
+                                                  );
+                                                }}
+                                                disabled={isExecuting}
+                                                aria-label={`Increase ${nestedPropName}`}
+                                                className="p-1 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-500 transition-colors"
+                                              >
+                                                <Plus className="w-2.5 h-2.5" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <AutoResizeTextarea
+                                              value={
+                                                typeof nestedPropValue ===
+                                                  'string' ||
+                                                typeof nestedPropValue ===
+                                                  'number'
+                                                  ? String(nestedPropValue)
+                                                  : ''
+                                              }
+                                              onChange={(
+                                                e: React.ChangeEvent<HTMLTextAreaElement>
+                                              ) => {
+                                                handleNestedObjectPropertyChange(
+                                                  nestedPropName,
+                                                  e.target.value
+                                                );
+                                              }}
+                                              placeholder={
+                                                nestedPropSchema.default !==
+                                                undefined
+                                                  ? String(
+                                                      nestedPropSchema.default
+                                                    )
+                                                  : nestedPropSchema.description ||
+                                                    `Enter ${nestedPropName}...`
+                                              }
+                                              disabled={isExecuting}
+                                              className={`w-full px-2 py-1 text-[11px] bg-neutral-900 border ${
+                                                nestedPropIsMissing
+                                                  ? 'border-amber-500 focus:border-amber-400'
+                                                  : 'border-neutral-500 focus:border-blue-500'
+                                              } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                                                nestedPropIsMissing
+                                                  ? 'focus:ring-amber-500/50'
+                                                  : 'focus:ring-blue-500/50'
+                                              } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none`}
+                                            />
+                                          )}
+                                        </div>
+                                      );
+                                    }
+                                  )}
+                              </div>
+                            ) : propSchema.type === 'number' ? (
+                              <div className="flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const numValue =
+                                      typeof propValue === 'number'
+                                        ? propValue
+                                        : 0;
+                                    handleObjectPropertyChange(
+                                      propName,
+                                      numValue - 1
+                                    );
+                                  }}
+                                  disabled={isExecuting}
+                                  aria-label={`Decrease ${propName}`}
+                                  className="p-1.5 bg-neutral-800 hover:bg-neutral-700 disabled:bg-neutral-900 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                                <input
+                                  type="text"
+                                  value={
+                                    typeof propValue === 'string' ||
+                                    typeof propValue === 'number'
+                                      ? propValue
+                                      : ''
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '' || val === '-') {
+                                      handleObjectPropertyChange(propName, val);
+                                    } else {
+                                      const numVal = Number(val);
+                                      if (!isNaN(numVal)) {
+                                        handleObjectPropertyChange(
+                                          propName,
+                                          numVal
+                                        );
+                                      }
+                                    }
+                                  }}
+                                  placeholder={
+                                    propSchema.default !== undefined
+                                      ? String(propSchema.default)
+                                      : propSchema.description ||
+                                        `Enter ${propName}...`
+                                  }
+                                  disabled={isExecuting}
+                                  className={`flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
+                                    propIsMissing
+                                      ? 'border-amber-500 focus:border-amber-400'
+                                      : 'border-neutral-600 focus:border-blue-500'
+                                  } text-neutral-100 placeholder-neutral-500 text-center focus:outline-none focus:ring-1 ${
+                                    propIsMissing
+                                      ? 'focus:ring-amber-500/50'
+                                      : 'focus:ring-blue-500/50'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed transition-all`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const numValue =
+                                      typeof propValue === 'number'
+                                        ? propValue
+                                        : 0;
+                                    handleObjectPropertyChange(
+                                      propName,
+                                      numValue + 1
+                                    );
+                                  }}
+                                  disabled={isExecuting}
+                                  aria-label={`Increase ${propName}`}
+                                  className="p-1.5 bg-neutral-800 hover:bg-neutral-700 disabled:bg-neutral-900 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <AutoResizeTextarea
+                                value={
+                                  typeof propValue === 'string' ||
+                                  typeof propValue === 'number'
+                                    ? String(propValue)
+                                    : ''
+                                }
+                                onChange={(
+                                  e: React.ChangeEvent<HTMLTextAreaElement>
+                                ) => {
+                                  handleObjectPropertyChange(
+                                    propName,
+                                    e.target.value
+                                  );
+                                }}
+                                placeholder={
+                                  propSchema.default !== undefined
+                                    ? String(propSchema.default)
+                                    : propSchema.description ||
+                                      `Enter ${propName}...`
+                                }
+                                disabled={isExecuting}
+                                className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                                  propIsMissing
+                                    ? 'border-amber-500 focus:border-amber-400'
+                                    : 'border-neutral-600 focus:border-blue-500'
+                                } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                                  propIsMissing
+                                    ? 'focus:ring-amber-500/50'
+                                    : 'focus:ring-blue-500/50'
+                                } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none`}
+                              />
+                            )}
+                          </div>
+                        );
+                      }
+                    )}
+                </div>
               </div>
             ) : isNumber ? (
               <div className="flex items-center">
