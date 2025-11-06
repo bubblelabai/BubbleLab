@@ -1,10 +1,13 @@
 import React, { useRef } from 'react';
 import { PlayIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
+import { Sparkles } from 'lucide-react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
 import { getVariableNameForDisplay } from '../../utils/bubbleUtils';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
+import { usePearlChatStore } from '../../hooks/usePearlChatStore';
+import { useUIStore } from '../../stores/uiStore';
 import type { TabType } from '../../stores/liveOutputStore';
 
 interface AllEventsViewProps {
@@ -58,6 +61,10 @@ export default function AllEventsView({
     selectedEventIndexByVariableId,
     setSelectedEventIndex,
   } = useLiveOutput(flowId);
+
+  // Pearl chat integration for error fixing
+  const pearl = usePearlChatStore(flowId);
+  const { openConsolidatedPanelWith } = useUIStore();
 
   const eventsEndRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -201,6 +208,18 @@ export default function AllEventsView({
                   new Date(b.timestamp).getTime()
               );
 
+            // Handler for "Fix with Pearl" CTA
+            const handleFixWithPearl = () => {
+              if (!flowId || errorEvents.length === 0) return;
+              const prompt = `I'm seeing error(s) in my workflow execution: Can you help me fix these errors?`;
+
+              // Trigger Pearl generation (component doesn't subscribe to Pearl state)
+              pearl.startGeneration(prompt);
+
+              // Open Pearl panel
+              openConsolidatedPanelWith('pearl');
+            };
+
             const warningEvents = globalEvents
               .filter((e) => e.type === 'warn')
               .sort(
@@ -281,9 +300,19 @@ export default function AllEventsView({
                 {/* Errors - If any */}
                 {errorEvents.length > 0 && (
                   <div className="px-4">
-                    <h3 className="text-xs font-medium text-red-400 mb-2 uppercase tracking-wide">
-                      Errors ({errorEvents.length})
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-medium text-red-400 uppercase tracking-wide">
+                        Errors ({errorEvents.length})
+                      </h3>
+                      <button
+                        onClick={handleFixWithPearl}
+                        disabled={pearl.isPending}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Fix with Pearl
+                      </button>
+                    </div>
                     <div className="space-y-2">
                       {errorEvents.map((event, idx) => (
                         <div
