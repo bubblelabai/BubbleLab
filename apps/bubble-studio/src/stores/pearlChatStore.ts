@@ -57,7 +57,7 @@ interface PearlChatState {
 // Factory pattern - per flow
 const stores = new Map<number, ReturnType<typeof createPearlChatStore>>();
 
-// @ts-ignore - flowId is not used in this store
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createPearlChatStore(flowId: number) {
   return create<PearlChatState>((set) => ({
     messages: [],
