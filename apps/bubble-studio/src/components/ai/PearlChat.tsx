@@ -11,7 +11,6 @@ import type { DisplayEvent } from '../../stores/pearlChatStore';
 import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
-import { type ChatMessage } from './type';
 import {
   Check,
   AlertCircle,
