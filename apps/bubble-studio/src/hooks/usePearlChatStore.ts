@@ -244,7 +244,6 @@ export function usePearlChatStore(flowId: number | null) {
         >,
       };
 
-
       storeState.addMessage(assistantMessage);
       storeState.clearToolCalls();
 
@@ -317,7 +316,7 @@ export function usePearlChatStore(flowId: number | null) {
     storeState.clearToolCalls();
 
     // Build conversation history from current messages
-    const conversationHistory = storeState.messages.map((msg) => ({
+    const conversationMessages = storeState.messages.map((msg) => ({
       role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
       content: msg.content,
     }));
@@ -338,7 +337,7 @@ export function usePearlChatStore(flowId: number | null) {
     pearlMutation.mutate({
       userRequest: userMessage.content,
       userName: 'User',
-      conversationHistory,
+      conversationHistory: conversationMessages,
       availableVariables: [],
       currentCode: fullCode,
       model: 'openrouter/z-ai/glm-4.6',
