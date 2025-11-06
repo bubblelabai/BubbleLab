@@ -244,7 +244,6 @@ export function usePearlChatStore(flowId: number | null) {
         >,
       };
 
-      console.log('[Done gen]!!!!!! assistantMessage', assistantMessage);
 
       storeState.addMessage(assistantMessage);
       storeState.clearToolCalls();
