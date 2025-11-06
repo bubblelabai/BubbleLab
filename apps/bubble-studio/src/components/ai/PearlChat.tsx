@@ -37,6 +37,7 @@ import {
 } from '../../utils/fileUtils';
 import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
+import { CodeDiffView } from './CodeDiffView';
 
 export function PearlChat() {
   // UI-only state
@@ -372,7 +373,7 @@ export function PearlChat() {
                     {message.resultType === 'code' ? (
                       <>
                         {message.content && (
-                          <div className="prose prose-invert prose-sm max-w-none mb-2 [&_*]:text-[13px]">
+                          <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
                             <ReactMarkdown
                               components={sharedMarkdownComponents}
                             >
@@ -381,31 +382,18 @@ export function PearlChat() {
                           </div>
                         )}
                         {message.code && (
-                          <>
-                            <pre className="text-xs text-gray-300 overflow-x-auto max-h-96 overflow-y-auto thin-scrollbar mb-2 p-2 bg-black/30 rounded">
-                              {message.code}
-                            </pre>
-                            {updatedMessageIds.has(message.id) ? (
-                              <div className="w-full py-2 px-4 bg-gray-600 text-white font-medium rounded-lg flex items-center justify-center gap-2">
-                                <Check className="w-4 h-4" />
-                                Workflow Updated
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() =>
-                                  handleReplace(
-                                    message.code!,
-                                    message.id,
-                                    message.bubbleParameters
-                                  )
-                                }
-                                className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                              >
-                                <Check className="w-4 h-4" />
-                                Update Workflow
-                              </button>
-                            )}
-                          </>
+                          <CodeDiffView
+                            originalCode={editor.getCode() || ''}
+                            modifiedCode={message.code}
+                            isAccepted={updatedMessageIds.has(message.id)}
+                            onAccept={() =>
+                              handleReplace(
+                                message.code!,
+                                message.id,
+                                message.bubbleParameters
+                              )
+                            }
+                          />
                         )}
                       </>
                     ) : (
