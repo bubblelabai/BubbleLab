@@ -31,12 +31,16 @@ export class BubbleParser {
     scopeManager: ScopeManager
   ): {
     bubbles: Record<number, ParsedBubbleWithInfo>;
-    handleMethodLocation: {
-      startLine: number;
-      endLine: number;
-      definitionStartLine: number;
-      bodyStartLine: number;
-    } | null;
+    instanceMethodsLocation: Record<
+      string,
+      {
+        startLine: number;
+        endLine: number;
+        definitionStartLine: number;
+        bodyStartLine: number;
+        invocationLines: number[];
+      }
+    >;
   } {
     // Build registry lookup from bubble-core
     const classNameToInfo = buildClassNameLookup(bubbleFactory);
@@ -49,8 +53,35 @@ export class BubbleParser {
     const nodes: Record<number, ParsedBubbleWithInfo> = {};
     const errors: string[] = [];
 
-    // Find handle method location
-    const handleMethodLocation = this.findHandleMethodLocation(ast);
+    // Find main BubbleFlow class and all its instance methods
+    const mainClass = this.findMainBubbleFlowClass(ast);
+    const instanceMethodsLocation: Record<
+      string,
+      {
+        startLine: number;
+        endLine: number;
+        definitionStartLine: number;
+        bodyStartLine: number;
+        invocationLines: number[];
+      }
+    > = {};
+
+    if (mainClass) {
+      const methods = this.findAllInstanceMethods(mainClass);
+      const methodNames = methods.map((m) => m.methodName);
+      const invocations = this.findMethodInvocations(ast, methodNames);
+
+      // Combine method locations with invocation lines
+      for (const method of methods) {
+        instanceMethodsLocation[method.methodName] = {
+          startLine: method.startLine,
+          endLine: method.endLine,
+          definitionStartLine: method.definitionStartLine,
+          bodyStartLine: method.bodyStartLine,
+          invocationLines: invocations[method.methodName] || [],
+        };
+      }
+    }
 
     // Visit AST nodes to find bubble instantiations
     this.visitNode(ast, nodes, classNameToInfo, scopeManager);
@@ -114,7 +145,7 @@ export class BubbleParser {
 
     return {
       bubbles: nodes,
-      handleMethodLocation,
+      instanceMethodsLocation,
     };
   }
 
@@ -846,161 +877,207 @@ export class BubbleParser {
     }
     return null;
   }
+
   /**
-   * Find the handle method location in the AST
+   * Find the main class that extends BubbleFlow
    */
-  private findHandleMethodLocation(ast: TSESTree.Program): {
-    startLine: number;
-    endLine: number;
-    definitionStartLine: number;
-    bodyStartLine: number;
-  } | null {
+  private findMainBubbleFlowClass(
+    ast: TSESTree.Program
+  ): TSESTree.ClassDeclaration | null {
     for (const statement of ast.body) {
-      // Look for function declarations named 'handle'
-      if (
-        statement.type === 'FunctionDeclaration' &&
-        statement.id?.name === 'handle'
-      ) {
-        const definitionStart = statement.loc?.start.line || -1;
-        const bodyStart = statement.body?.loc?.start.line || definitionStart;
-        return {
-          startLine: definitionStart,
-          endLine: statement.loc?.end.line || -1,
-          definitionStartLine: definitionStart,
-          bodyStartLine: bodyStart,
-        };
-      }
+      let classDecl: TSESTree.ClassDeclaration | null = null;
 
-      // Look for exported function declarations: export function handle() {}
-      if (
-        statement.type === 'ExportNamedDeclaration' &&
-        statement.declaration?.type === 'FunctionDeclaration' &&
-        statement.declaration.id?.name === 'handle'
-      ) {
-        const decl = statement.declaration;
-        const definitionStart = decl.loc?.start.line || -1;
-        const bodyStart = decl.body?.loc?.start.line || definitionStart;
-        return {
-          startLine: definitionStart,
-          endLine: decl.loc?.end.line || -1,
-          definitionStartLine: definitionStart,
-          bodyStartLine: bodyStart,
-        };
-      }
-
-      // Look for variable declarations with function expressions: const handle = () => {}
-      if (statement.type === 'VariableDeclaration') {
-        for (const declarator of statement.declarations) {
-          if (
-            declarator.type === 'VariableDeclarator' &&
-            declarator.id.type === 'Identifier' &&
-            declarator.id.name === 'handle' &&
-            (declarator.init?.type === 'FunctionExpression' ||
-              declarator.init?.type === 'ArrowFunctionExpression')
-          ) {
-            const init = declarator.init;
-            const definitionStart = declarator.loc?.start.line || -1;
-            const bodyStart =
-              init.type === 'FunctionExpression'
-                ? init.body?.loc?.start.line || definitionStart
-                : init.body?.loc?.start.line || definitionStart;
-            return {
-              startLine: definitionStart,
-              endLine: init.loc?.end.line || -1,
-              definitionStartLine: definitionStart,
-              bodyStartLine: bodyStart,
-            };
-          }
-        }
-      }
-
-      // Look for exported variable declarations: export const handle = () => {}
-      if (
-        statement.type === 'ExportNamedDeclaration' &&
-        statement.declaration?.type === 'VariableDeclaration'
-      ) {
-        for (const declarator of statement.declaration.declarations) {
-          if (
-            declarator.type === 'VariableDeclarator' &&
-            declarator.id.type === 'Identifier' &&
-            declarator.id.name === 'handle' &&
-            (declarator.init?.type === 'FunctionExpression' ||
-              declarator.init?.type === 'ArrowFunctionExpression')
-          ) {
-            const init = declarator.init;
-            const definitionStart = declarator.loc?.start.line || -1;
-            const bodyStart =
-              init.type === 'FunctionExpression'
-                ? init.body?.loc?.start.line || definitionStart
-                : init.body?.loc?.start.line || definitionStart;
-            return {
-              startLine: definitionStart,
-              endLine: init.loc?.end.line || -1,
-              definitionStartLine: definitionStart,
-              bodyStartLine: bodyStart,
-            };
-          }
-        }
-      }
-
-      // Look for exported class declarations with handle method
+      // Check exported class declarations
       if (
         statement.type === 'ExportNamedDeclaration' &&
         statement.declaration?.type === 'ClassDeclaration'
       ) {
-        const handleMethod = this.findHandleMethodInClass(
-          statement.declaration
-        );
-        if (handleMethod) {
-          return handleMethod;
-        }
+        classDecl = statement.declaration;
+      }
+      // Check non-exported class declarations
+      else if (statement.type === 'ClassDeclaration') {
+        classDecl = statement;
       }
 
-      // Look for class declarations with handle method
-      if (statement.type === 'ClassDeclaration') {
-        const handleMethod = this.findHandleMethodInClass(statement);
-        if (handleMethod) {
-          return handleMethod;
+      if (classDecl) {
+        // Check if this class extends BubbleFlow
+        if (classDecl.superClass) {
+          const superClass = classDecl.superClass;
+
+          // Handle simple identifier like extends BubbleFlow
+          if (
+            superClass.type === 'Identifier' &&
+            superClass.name === 'BubbleFlow'
+          ) {
+            return classDecl;
+          }
+
+          // Handle generic type like BubbleFlow<'webhook/http'>
+          // Check if it's a TSTypeReference with type parameters
+          // Use type assertion since TSESTree types may not fully expose this
+          if ((superClass as any).type === 'TSTypeReference') {
+            const typeName = (superClass as any).typeName;
+            if (
+              typeName &&
+              typeName.type === 'Identifier' &&
+              typeName.name === 'BubbleFlow'
+            ) {
+              return classDecl;
+            }
+          }
         }
-      }
-    }
-
-    return null; // Handle method not found
-  }
-
-  /**
-   * Find handle method within a class declaration
-   */
-  private findHandleMethodInClass(
-    classDeclaration: TSESTree.ClassDeclaration
-  ): {
-    startLine: number;
-    endLine: number;
-    definitionStartLine: number;
-    bodyStartLine: number;
-  } | null {
-    if (!classDeclaration.body) return null;
-
-    for (const member of classDeclaration.body.body) {
-      if (
-        member.type === 'MethodDefinition' &&
-        member.key.type === 'Identifier' &&
-        member.key.name === 'handle' &&
-        member.value.type === 'FunctionExpression'
-      ) {
-        const definitionStart = member.loc?.start.line || -1;
-        const bodyStart = member.value.body?.loc?.start.line || definitionStart;
-        const definitionEnd = member.loc?.end.line || -1;
-        return {
-          startLine: definitionStart,
-          endLine: definitionEnd,
-          definitionStartLine: definitionStart,
-          bodyStartLine: bodyStart,
-        };
       }
     }
 
     return null;
+  }
+
+  /**
+   * Extract all instance methods from a class
+   */
+  private findAllInstanceMethods(
+    classDeclaration: TSESTree.ClassDeclaration
+  ): Array<{
+    methodName: string;
+    startLine: number;
+    endLine: number;
+    definitionStartLine: number;
+    bodyStartLine: number;
+  }> {
+    const methods: Array<{
+      methodName: string;
+      startLine: number;
+      endLine: number;
+      definitionStartLine: number;
+      bodyStartLine: number;
+    }> = [];
+
+    if (!classDeclaration.body) return methods;
+
+    for (const member of classDeclaration.body.body) {
+      // Only process instance methods (not static, not getters/setters)
+      if (
+        member.type === 'MethodDefinition' &&
+        !member.static &&
+        member.kind === 'method' &&
+        member.key.type === 'Identifier' &&
+        member.value.type === 'FunctionExpression'
+      ) {
+        const methodName = member.key.name;
+        const definitionStart = member.loc?.start.line || -1;
+        const bodyStart = member.value.body?.loc?.start.line || definitionStart;
+        const definitionEnd = member.loc?.end.line || -1;
+
+        methods.push({
+          methodName,
+          startLine: definitionStart,
+          endLine: definitionEnd,
+          definitionStartLine: definitionStart,
+          bodyStartLine: bodyStart,
+        });
+      }
+    }
+
+    return methods;
+  }
+
+  /**
+   * Find all method invocations in the AST
+   */
+  private findMethodInvocations(
+    ast: TSESTree.Program,
+    methodNames: string[]
+  ): Record<string, number[]> {
+    const invocations: Record<string, Set<number>> = {};
+    const methodNameSet = new Set(methodNames);
+    const visitedNodes = new WeakSet<TSESTree.Node>();
+
+    // Initialize invocations map with Sets to avoid duplicates
+    for (const methodName of methodNames) {
+      invocations[methodName] = new Set<number>();
+    }
+
+    const visitNode = (node: TSESTree.Node): void => {
+      // Skip if already visited to avoid duplicate processing
+      if (visitedNodes.has(node)) {
+        return;
+      }
+      visitedNodes.add(node);
+
+      // Look for CallExpression nodes
+      if (node.type === 'CallExpression') {
+        const callee = node.callee;
+
+        // Check if it's a method call: this.methodName()
+        if (callee.type === 'MemberExpression') {
+          const object = callee.object;
+          const property = callee.property;
+
+          // Check if it's this.methodName() or await this.methodName()
+          if (
+            object.type === 'ThisExpression' &&
+            property.type === 'Identifier' &&
+            methodNameSet.has(property.name)
+          ) {
+            const lineNumber = node.loc?.start.line;
+            if (lineNumber) {
+              invocations[property.name].add(lineNumber);
+            }
+          }
+        }
+      }
+
+      // Also check for await this.methodName()
+      if (node.type === 'AwaitExpression' && node.argument) {
+        visitNode(node.argument);
+      }
+
+      // Recursively visit child nodes
+      this.visitChildNodesForInvocations(node, visitNode);
+    };
+
+    visitNode(ast);
+
+    // Convert Sets to sorted Arrays
+    const result: Record<string, number[]> = {};
+    for (const [methodName, lineSet] of Object.entries(invocations)) {
+      result[methodName] = Array.from(lineSet).sort((a, b) => a - b);
+    }
+
+    return result;
+  }
+
+  /**
+   * Helper to recursively visit child nodes for finding invocations
+   */
+  private visitChildNodesForInvocations(
+    node: TSESTree.Node,
+    visitor: (node: TSESTree.Node) => void
+  ): void {
+    const visitValue = (value: unknown): void => {
+      if (value && typeof value === 'object') {
+        if (Array.isArray(value)) {
+          value.forEach(visitValue);
+        } else if ('type' in value && typeof value.type === 'string') {
+          // This is likely an AST node
+          visitor(value as TSESTree.Node);
+        } else {
+          // This is a regular object, recurse into its properties
+          Object.values(value).forEach(visitValue);
+        }
+      }
+    };
+
+    // Get all property values of the node, excluding metadata properties
+    const nodeObj = node as unknown as Record<string, unknown>;
+    for (const [key, value] of Object.entries(nodeObj)) {
+      // Skip metadata properties that aren't part of the AST structure
+      if (key === 'parent' || key === 'loc' || key === 'range') {
+        continue;
+      }
+
+      visitValue(value);
+    }
   }
 
   /**

@@ -41,6 +41,7 @@ export const fixtures = {
   'function-outside-flow': '',
   'param-as-var': '',
   'method-inside-handler': '',
+  'flow-with-class-method-and-log': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
@@ -65,8 +66,8 @@ export function getFixture(name: FixtureName): string {
 
 export function getUserCredential(): Partial<Record<CredentialType, string>> {
   return {
-    [CredentialType.FIRECRAWL_API_KEY]: env.FIRECRAWL_API_KEY,
-    [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY,
+    [CredentialType.FIRECRAWL_API_KEY]: 'test-firecrawl-key',
+    [CredentialType.GOOGLE_GEMINI_CRED]: 'test-google-gemini-key',
     [CredentialType.OPENAI_CRED]: 'test-openai-key',
     [CredentialType.ANTHROPIC_CRED]: 'test-anthropic-key',
     [CredentialType.DATABASE_CRED]: 'test-database-key',

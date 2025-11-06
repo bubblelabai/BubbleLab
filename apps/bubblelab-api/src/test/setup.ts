@@ -1,3 +1,5 @@
+process.env.CRON_SCHEDULER_ENABLED = 'false';
+
 // @ts-expect-error bun:test is not in TypeScript definitions
 import { beforeEach, beforeAll, afterAll } from 'bun:test';
 import { migrate } from 'drizzle-orm/libsql/migrator';

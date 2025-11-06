@@ -154,29 +154,67 @@ export class LoggerInjector {
   }
 
   /**
-   * Inject `const __bubbleFlowSelf = this;` at the beginning of the handle method body
+   * Inject `const __bubbleFlowSelf = this;` at the beginning of all instance method bodies
    * This captures `this` in a lexical variable that works at any nesting level
    * This should be called BEFORE reapplyBubbleInstantiations so bubble instantiations can use __bubbleFlowSelf.logger
    */
   injectSelfCapture(): void {
-    const handleMethodLocation = this.bubbleScript.getHandleMethodLocation();
+    // Reparse AST first to get updated method locations after script modifications
+    this.bubbleScript.reparseAST();
+    const instanceMethodsLocation = this.bubbleScript.instanceMethodsLocation;
 
-    if (!handleMethodLocation) {
+    if (
+      !instanceMethodsLocation ||
+      Object.keys(instanceMethodsLocation).length === 0
+    ) {
       console.warn(
-        'Handle method location not found, skipping __bubbleFlowSelf injection'
+        'Instance methods location not found, skipping __bubbleFlowSelf injection'
       );
       return;
     }
 
-    // Inject self capture at body start line (after opening brace)
-    // bodyStartLine is the line with the opening brace, so inject on the next line
-    const selfCapture = `  const __bubbleFlowSelf = this;`;
-    this.bubbleScript.injectLines(
-      [selfCapture],
-      handleMethodLocation.bodyStartLine + 1
+    // Process methods in reverse order of bodyStartLine to avoid line number shifts
+    const methods = Object.entries(instanceMethodsLocation).sort(
+      (a, b) => b[1].bodyStartLine - a[1].bodyStartLine
     );
+
+    for (const [, location] of methods) {
+      // Get the indentation from the method body start line
+      const lines = this.bubbleScript.currentBubbleScript.split('\n');
+      const bodyStartLineIndex = location.bodyStartLine - 1;
+
+      if (bodyStartLineIndex >= 0 && bodyStartLineIndex < lines.length) {
+        const bodyStartLine = lines[bodyStartLineIndex];
+
+        // Check if __bubbleFlowSelf already exists in this method to avoid duplicates
+        const methodStartIndex = location.startLine - 1;
+        const methodEndIndex = Math.min(location.endLine, lines.length);
+        const methodBodyLines = lines.slice(methodStartIndex, methodEndIndex);
+        const methodBody = methodBodyLines.join('\n');
+
+        if (methodBody.includes('const __bubbleFlowSelf = this;')) {
+          // Already injected, skip
+          continue;
+        }
+
+        // Extract indentation from the line (usually 2 spaces for method body)
+        const match = bodyStartLine.match(/^(\s*)/);
+        const indentation = match ? match[1] : '  ';
+
+        // Add one level of indentation for the injected statement
+        const selfCapture = `${indentation}  const __bubbleFlowSelf = this;`;
+
+        // Inject self capture at body start line (after opening brace)
+        // bodyStartLine is the line with the opening brace, so inject on the next line
+        this.bubbleScript.injectLines(
+          [selfCapture],
+          location.bodyStartLine + 1
+        );
+      }
+    }
+    this.bubbleScript.reparseAST();
     this.bubbleScript.showScript(
-      '[LoggerInjector] After injectSelfCapture in opening brace match'
+      '[LoggerInjector] After injectSelfCapture in all methods'
     );
   }
 
