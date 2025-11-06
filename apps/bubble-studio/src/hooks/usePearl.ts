@@ -66,36 +66,54 @@ export function usePearl() {
 }
 
 /**
+ * Options for configuring usePearlStream callbacks
+ */
+export interface UsePearlStreamOptions {
+  flowId?: number | null;
+  onSuccess?: (result: PearlResponse) => void;
+  onError?: (error: Error) => void;
+  onEvent?: (event: StreamingEvent) => void;
+}
+
+/**
  * React Query mutation hook for Pearl AI chat with streaming
  * This provides real-time event streaming for all AI processing events
+ * with built-in success/error handling
  *
  * Usage:
  * ```typescript
- * const pearlStreamMutation = usePearlStream();
+ * const pearlStreamMutation = usePearlStream({
+ *   flowId,
+ *   onEvent: (event) => {
+ *     // Handle each streaming event chronologically
+ *     console.log('Event:', event);
+ *   },
+ *   onSuccess: (result) => {
+ *     // Handle successful completion
+ *     console.log('Final result:', result);
+ *   },
+ *   onError: (error) => {
+ *     // Handle errors
+ *     console.error('Stream error:', error);
+ *   }
+ * });
  *
  * const handleGenerate = async () => {
  *   pearlStreamMutation.mutate({
  *     userRequest: 'Create a workflow that sends emails',
  *     userName: 'User',
  *     conversationHistory: [],
- *     onEvent: (event) => {
- *       // Handle each streaming event chronologically
- *       console.log('Event:', event);
- *     },
- *   }, {
- *     onSuccess: (result) => console.log('Final result:', result),
  *   });
  * };
  * ```
  */
-export function usePearlStream() {
+export function usePearlStream(options?: UsePearlStreamOptions) {
+  const { flowId, onSuccess, onError, onEvent } = options ?? {};
+
   return useMutation({
-    mutationFn: async (
-      request: PearlRequest & {
-        onEvent?: (event: StreamingEvent) => void;
-      }
-    ): Promise<PearlResponse> => {
-      const { onEvent, ...pearlRequest } = request;
+    mutationKey: ['pearlStream', flowId ?? -1],
+    mutationFn: async (request: PearlRequest): Promise<PearlResponse> => {
+      const pearlRequest = request;
 
       // Get full code from editor
       const state = useEditorStore.getState();
@@ -177,6 +195,16 @@ export function usePearlStream() {
       }
 
       return finalResult;
+    },
+    onSuccess: (result) => {
+      // Call the provided onSuccess callback if it exists
+      onSuccess?.(result);
+    },
+    onError: (error) => {
+      // Call the provided onError callback if it exists
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
+      onError?.(errorInstance);
     },
   });
 }

@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+
+# General information about bubble lab, project structure, etc.
+@README.md
+
+# How to create bubble 
+@packages/bubble-core/CREATE_BUBBLE_README.md
+
+# Condensed definition of all bubbles (building/ bundling is required)
+@apps/bubble-studio/public/bubbles.json
+
+# How bubble flow is supposed to be generated
+@packages/bubble-shared-schemas/src/bubbleflow-generation-prompts.ts
+---

@@ -31,6 +31,7 @@ import {
   AIMessage,
   type BaseMessage,
   StreamingCallback,
+  AvailableTool,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -39,7 +40,6 @@ import {
   ValidationAndExtractionResult,
 } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
-
 /**
  * Build the system prompt for General Chat agent
  */
@@ -86,13 +86,13 @@ Answer (when providing information or guidance WITHOUT generating code):
   "message": "Detailed explanation, guidance, or answer to the user's question"
 }
 
-Code (when ready to generate workflow):
+Code (when ready to PROPOSE workflow changes):
 {
   "type": "code",
-  "message": "Brief explanation of what the workflow does"
+  "message": "Brief explanation of what the workflow does and what changes you are proposing"
 }
 
-Then call the validation tool with the code
+Then call validate-and-suggest-workflow tool with your generated code to validate it and suggest it to the user
 
 Rejection (when infeasible):
 {
@@ -104,7 +104,7 @@ WHEN TO USE EACH TYPE:
 - Use "question" when you need MORE information from the user to proceed with code generation
 - Use "answer" when providing helpful information, explanations, or guidance WITHOUT generating code
   Examples: explaining features, listing available bubbles, providing usage guidance, answering how-to questions
-- Use "code" when you have enough information to generate a complete workflow
+- Use "code" when you have enough information to PROPOSE a complete workflow (you are NOT editing/executing, only suggesting for user review)
 - Use "reject" when the request is infeasible or outside your capabilities
 
 CRITICAL CODE GENERATION RULES:
@@ -219,16 +219,19 @@ export async function runPearl(
       const beforeToolCall: ToolHookBefore = async (
         context: ToolHookContext
       ) => {
-        if (context.toolName === 'bubbleflow-validation-tool') {
+        if (
+          context.toolName ===
+          ('validate-and-suggest-workflow' as AvailableTool)
+        ) {
           console.debug(
-            '[GeneralChat] Pre-hook: Intercepting validation tool call'
+            '[Pearl] Pre-hook: Intercepting validate-and-suggest-workflow tool call'
           );
 
           // Extract code from tool input
           const code = (context.toolInput as { code?: string })?.code;
 
           if (!code) {
-            console.warn('[GeneralChat] No code found in tool input');
+            console.warn('[Pearl] No code found in tool input');
             return {
               messages: context.messages,
               toolInput: context.toolInput as Record<string, unknown>,
@@ -248,17 +251,18 @@ export async function runPearl(
       };
 
       const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
-        if (context.toolName === 'bubbleflow-validation-tool') {
-          console.log('[GeneralChat] Post-hook: Checking validation result');
+        if (
+          context.toolName ===
+          ('validate-and-suggest-workflow' as AvailableTool)
+        ) {
+          console.log('[Pearl] Post-hook: Checking validation result');
 
           try {
             const validationResult: ValidationAndExtractionResult = context
               .toolOutput?.data as ValidationAndExtractionResult;
 
             if (validationResult.valid === true) {
-              console.debug(
-                '[GeneralChat] Validation passed! Signaling completion.'
-              );
+              console.debug('[Pearl] Validation passed! Signaling completion.');
 
               const code = savedOriginalCode || '';
 
@@ -343,13 +347,10 @@ export async function runPearl(
               };
             }
 
-            console.debug('[GeneralChat] Validation failed, agent will retry');
-            console.log('[GeneralChat] Errors:', validationResult.errors);
+            console.debug('[Pearl] Validation failed, agent will retry');
+            console.log('[Pearl] Errors:', validationResult.errors);
           } catch (error) {
-            console.warn(
-              '[GeneralChat] Failed to parse validation result:',
-              error
-            );
+            console.warn('[Pearl] Failed to parse validation result:', error);
           }
         }
 
@@ -382,10 +383,15 @@ export async function runPearl(
         ],
         customTools: [
           {
-            name: 'bubbleflow-validation-tool',
-            description: 'Calculates sales tax for a given amount',
+            name: 'validate-and-suggest-workflow',
+            description:
+              'Validates your generated BubbleFlow workflow code and suggests it to the user for review. This tool checks code correctness (syntax, structure, bubble usage) and prepares it for user approval. You are PROPOSING changes, not executing them - the user will review and decide whether to accept your suggested workflow. Returns validation results including errors, bubble parameters, input schema, and required credentials. If validation passes, your code suggestion will be presented to the user.',
             schema: {
-              code: z.string().describe('Code to validate'),
+              code: z
+                .string()
+                .describe(
+                  'Complete TypeScript workflow code to validate and suggest (must include imports, class definition, and handle method)'
+                ),
             },
             func: async (input: Record<string, unknown>) => {
               const validationResult = await validateAndExtract(

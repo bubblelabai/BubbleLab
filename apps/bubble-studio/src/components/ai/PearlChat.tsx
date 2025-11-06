@@ -6,17 +6,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
-import { usePearlStream } from '../../hooks/usePearl';
-import {
-  ParsedBubbleWithInfo,
-  type AvailableModel,
-  type StreamingEvent,
-  type StreamingLogEvent,
-  cleanUpObjectForDisplayAndStorage,
-} from '@bubblelab/shared-schemas';
+import { usePearlChatStore } from '../../hooks/usePearlChatStore';
+import type { DisplayEvent } from '../../stores/pearlChatStore';
+import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
 import { trackAIAssistant } from '../../services/analytics';
-import { type ChatMessage } from './type';
 import {
   Check,
   AlertCircle,
@@ -25,12 +19,13 @@ import {
   Paperclip,
   X,
   Info,
+  Sparkles,
+  Calendar,
+  Webhook,
+  HelpCircle,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
-import {
-  useExecutionStore,
-  getExecutionStore,
-} from '../../stores/executionStore';
+import { useExecutionStore } from '../../stores/executionStore';
 import ReactMarkdown from 'react-markdown';
 import {
   MAX_BYTES,
@@ -40,67 +35,39 @@ import {
   readTextFile,
   compressPngToBase64,
 } from '../../utils/fileUtils';
-import { simplifyObjectForContext } from '../../utils/executionLogsFormatUtils';
-import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
-
-// Display event types for chronological rendering
-type DisplayEvent =
-  | { type: 'llm_thinking' }
-  | {
-      type: 'tool_start';
-      tool: string;
-      input: unknown;
-      callId: string;
-      startTime: number;
-    }
-  | {
-      type: 'tool_complete';
-      tool: string;
-      output: unknown;
-      duration: number;
-      callId: string;
-    }
-  | { type: 'token'; content: string }
-  | { type: 'think'; content: string };
+import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 
 export function PearlChat() {
+  // UI-only state
   const [prompt, setPrompt] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<
     Array<{ name: string; content: string }>
   >([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // List of event lists - eventsList[0] corresponds to events for first assistant response, etc.
-  // During streaming, we append to the last array in eventsList
-  const [eventsList, setEventsList] = useState<DisplayEvent[][]>([]);
-  const [activeToolCallIds, setActiveToolCallIds] = useState<Set<string>>(
-    new Set()
-  );
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
     new Set()
   );
 
-  // Fixed model - users cannot change this currently
-  const selectedModel: AvailableModel = 'openrouter/z-ai/glm-4.6';
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
   const { editor } = useEditor();
-  const bubbleDetail = useBubbleDetail(selectedFlowId);
-
-  // General chat mutation with streaming
-  const pearlChat = usePearlStream();
   const pendingCredentials = useExecutionStore(
     selectedFlowId,
     (state) => state.pendingCredentials
   );
+  const { data: flowData } = useBubbleFlow(selectedFlowId);
+
+  // Pearl store hook - subscribes to state and provides generation API
+
+  const pearl = usePearlChatStore(selectedFlowId);
 
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, eventsList, pearlChat.isPending]);
+  }, [pearl.messages, pearl.eventsList, pearl.isPending]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -154,334 +121,24 @@ export function PearlChat() {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleEvent = (event: StreamingEvent) => {
-    switch (event.type) {
-      case 'llm_start':
-        // Show thinking indicator when LLM starts and no active tool calls
-        setEventsList((prev) => {
-          const lastIndex = prev.length - 1;
-          const hasActiveTools = activeToolCallIds.size > 0;
-          if (!hasActiveTools && lastIndex >= 0) {
-            const updated = [...prev];
-            updated[lastIndex] = [
-              ...updated[lastIndex],
-              { type: 'llm_thinking' },
-            ];
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'llm_complete':
-        // Remove thinking indicator when LLM completes
-        setEventsList((prev) => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0) {
-            const updated = [...prev];
-            updated[lastIndex] = updated[lastIndex].filter(
-              (e) => e.type !== 'llm_thinking'
-            );
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'tool_start':
-        setActiveToolCallIds((prev) => new Set(prev).add(event.data.callId));
-        setEventsList((prev) => {
-          if (!prev || prev.length === 0) return prev;
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0) {
-            const updated = [...prev];
-            updated[lastIndex] = [
-              ...updated[lastIndex].filter((e) => e.type !== 'llm_thinking'), // Remove thinking when tool starts
-              {
-                type: 'tool_start',
-                tool: event.data.tool,
-                input: event.data.input,
-                callId: event.data.callId,
-                startTime: Date.now(),
-              },
-            ];
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'tool_complete':
-        setActiveToolCallIds((prev) => {
-          const next = new Set(prev);
-          next.delete(event.data.callId);
-          return next;
-        });
-        setEventsList((prev) => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0) {
-            const updated = [...prev];
-            // Find and replace the tool_start event with tool_complete
-            updated[lastIndex] = updated[lastIndex].map((e) =>
-              e.type === 'tool_start' && e.callId === event.data.callId
-                ? {
-                    type: 'tool_complete',
-                    tool: event.data.tool,
-                    output: event.data.output,
-                    duration: event.data.duration,
-                    callId: event.data.callId,
-                  }
-                : e
-            );
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'think':
-        setEventsList((prev) => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0) {
-            const updated = [...prev];
-            updated[lastIndex] = [
-              ...updated[lastIndex],
-              { type: 'think', content: event.data.content },
-            ];
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'token':
-        setEventsList((prev) => {
-          const lastIndex = prev.length - 1;
-          if (lastIndex >= 0) {
-            const updated = [...prev];
-            const currentEvents = updated[lastIndex];
-            const lastEvent = currentEvents[currentEvents.length - 1];
-
-            // Accumulate tokens - merge with last token event if exists
-            if (lastEvent?.type === 'token') {
-              updated[lastIndex] = [
-                ...currentEvents.slice(0, -1),
-                {
-                  type: 'token',
-                  content: lastEvent.content + event.data.content,
-                },
-              ];
-            } else {
-              updated[lastIndex] = [
-                ...currentEvents,
-                { type: 'token', content: event.data.content },
-              ];
-            }
-            return updated;
-          }
-          return prev;
-        });
-        break;
-
-      case 'complete':
-      case 'error':
-        // These are handled by mutation callbacks
-        break;
-    }
-  };
-
   const handleGenerate = () => {
     if (!prompt.trim() && uploadedFiles.length === 0) {
       return;
     }
 
-    // Build user message content - include file info if uploaded
-    let userContent = prompt.trim();
-    if (uploadedFiles.length > 0) {
-      const fileInfo = uploadedFiles
-        .map((f) => {
-          const fileType = f.name.toLowerCase().endsWith('.png')
-            ? 'image (base64)'
-            : 'text';
-          return `${f.name} (${fileType})`;
-        })
-        .join(', ');
+    // Call Pearl store to start generation
+    pearl.startGeneration(prompt, uploadedFiles);
 
-      userContent = userContent
-        ? `${userContent}\n\n[Attached files: ${fileInfo}]`
-        : `[Processing attached files: ${fileInfo}]`;
-    }
-
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: userContent,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Create new empty events array for this turn
-    setEventsList((prev) => [...prev, []]);
-
-    // Clear input and files
+    // Clear UI state
     setPrompt('');
     setUploadedFiles([]);
-    setActiveToolCallIds(new Set());
-
-    // Build conversation history from messages
-    const conversationHistory = messages.map((msg) => ({
-      role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
-      content: msg.content,
-    }));
-
-    // Get user's timezone information
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const currentTime = new Date().toLocaleString('en-US', {
-      timeZone: userTimezone,
-      dateStyle: 'full',
-      timeStyle: 'long',
-    });
-
-    // Get error logs from current execution for context (non-reactive, no subscription)
-    const executionState = selectedFlowId
-      ? getExecutionStore(selectedFlowId)
-      : null;
-    const allEvents = executionState?.events || [];
-    const errorLogs = allEvents.filter(
-      (e) => e.type === 'error' || e.type === 'fatal'
-    );
-
-    const timeZoneContext = `\n\nUser's timezone: ${userTimezone}`;
-
-    const currentTimeContext = `\n\nCurrent time: ${currentTime}`;
-
-    const errorContext =
-      errorLogs.length > 0
-        ? `\n\nRecent Execution Errors (${errorLogs.length} errors):\n${errorLogs
-            .map((log: StreamingLogEvent, idx: number) => {
-              const timestamp = new Date(log.timestamp).toLocaleTimeString();
-              return `${idx + 1}. [${timestamp}] ${log.type.toUpperCase()}: ${log.message}${
-                log.additionalData
-                  ? `\n   Additional Info: ${JSON.stringify(log.additionalData)}`
-                  : ''
-              }`;
-            })
-            .join('\n')}`
-        : '';
-
-    // Get bubble output logs from execution events
-    const outputLogs = allEvents.filter(
-      (e) => e.type === 'bubble_execution_complete'
-    );
-
-    const outputContext =
-      outputLogs.length > 0
-        ? `\n\nBubble Outputs (${outputLogs.length} bubbles executed):\n${outputLogs
-            .map((log: StreamingLogEvent, idx: number) => {
-              // Use bubbleDetail to get the proper variable name
-              const variableId = log.variableId;
-              const bubbleName = variableId
-                ? bubbleDetail.getVariableNameForDisplay(variableId, allEvents)
-                : 'unknown';
-              const result = log.additionalData?.result;
-              const simplifiedResult = simplifyObjectForContext(result);
-              return `${idx + 1}. ${bubbleName}: ${simplifiedResult}`;
-            })
-            .join('\n')}`
-        : '';
-
-    const executionInputs = Object.fromEntries(
-      Object.entries(executionState?.executionInputs || {}).map(
-        ([key, value]) => [key, value]
-      )
-    );
-
-    const truncatedExecutionInputs = Object.fromEntries(
-      Object.entries(executionInputs).map(([key, value]) => [
-        key,
-        cleanUpObjectForDisplayAndStorage(value, 100),
-      ])
-    );
-
-    // Get input schema and credentials context
-    const inputSchemaContext = executionState?.executionInputs
-      ? `\n\nUser's provided input:\n ${JSON.stringify(truncatedExecutionInputs, null, 2)}`
-      : '';
-
-    // For each value truncate to 100 characters
-
-    const credentialsContext =
-      pendingCredentials && Object.keys(pendingCredentials).length > 0
-        ? `\n\nAvailable Credentials/Integrations:\n${Object.keys(
-            pendingCredentials
-          )
-            .map((key) => `- ${key}`)
-            .join('\n')}`
-        : '';
-
-    const additionalContext = `${timeZoneContext}${currentTimeContext}${errorContext}${outputContext}${inputSchemaContext}${credentialsContext}`;
-
-    trackAIAssistant({ action: 'send_message', message: userMessage.content });
-    pearlChat.mutate(
-      {
-        userRequest: userMessage.content,
-        userName: 'User', // TODO: Get from auth context
-        conversationHistory,
-        availableVariables: [],
-        currentCode: '',
-        model: selectedModel,
-        additionalContext: additionalContext,
-        onEvent: handleEvent,
-      },
-      {
-        onSuccess: (result) => {
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content: result.message || '',
-            code:
-              result.type === 'code' && result.snippet
-                ? result.snippet
-                : undefined,
-            resultType: result.type,
-            timestamp: new Date(),
-            bubbleParameters: result.bubbleParameters as Record<
-              string,
-              ParsedBubbleWithInfo
-            >,
-          };
-
-          // Events are already in eventsList, just add assistant message
-          setMessages((prev) => [...prev, assistantMessage]);
-          setActiveToolCallIds(new Set());
-
-          trackAIAssistant({
-            action: 'receive_response',
-            message: assistantMessage.content,
-          });
-        },
-        onError: (error) => {
-          const errorMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            type: 'assistant',
-            content:
-              error instanceof Error
-                ? error.message
-                : 'Failed to generate response',
-            resultType: 'reject',
-            timestamp: new Date(),
-          };
-
-          // Events are already in eventsList, just add error message
-          setMessages((prev) => [...prev, errorMessage]);
-          setActiveToolCallIds(new Set());
-        },
-      }
-    );
   };
 
-  const handleReplace = (code: string, messageId: string) => {
+  const handleReplace = (
+    code: string,
+    messageId: string,
+    bubbleParameters?: Record<string, ParsedBubbleWithInfo>
+  ) => {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response', message: code || '' });
     toast.success('Workflow updated!');
@@ -490,9 +147,9 @@ export function PearlChat() {
     setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
 
     // Update all workflow data from Pearl response
-    if (pearlChat.data?.bubbleParameters) {
+    if (bubbleParameters) {
       validateCodeMutation.mutateAsync({
-        code: pearlChat.data.snippet!,
+        code: code,
         flowId: selectedFlowId!,
         credentials: pendingCredentials,
         syncInputsWithFlow: true,
@@ -504,24 +161,162 @@ export function PearlChat() {
     closeSidePanel();
   };
 
+  // Generate contextual suggestions based on trigger type
+  const getQuickStartSuggestions = (): Array<{
+    label: string;
+    prompt: string;
+    icon: React.ReactNode;
+    description: string;
+  }> => {
+    const triggerType = flowData?.eventType;
+
+    const baseSuggestions = [
+      {
+        label: 'How to run this flow?',
+        prompt: 'How do I run this flow?',
+        icon: <HelpCircle className="w-4 h-4" />,
+        description:
+          'Learn how to run and provide the right inputs to the flow',
+      },
+    ];
+
+    // Add trigger-specific conversion suggestions
+    if (triggerType === 'webhook/http') {
+      return [
+        ...baseSuggestions,
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    } else if (triggerType === 'schedule/cron') {
+      return [
+        ...baseSuggestions,
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+      ];
+    } else if (triggerType?.startsWith('slack/')) {
+      return [
+        ...baseSuggestions,
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    } else if (triggerType?.startsWith('gmail/')) {
+      return [
+        ...baseSuggestions,
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    }
+
+    // Default suggestions for unknown/unset trigger types
+    return [
+      ...baseSuggestions,
+      {
+        label: 'Convert to webhook',
+        prompt: 'Help me convert this flow to be triggered by a webhook',
+        icon: <Webhook className="w-4 h-4" />,
+        description: 'Trigger via HTTP requests',
+      },
+      {
+        label: 'Convert to schedule',
+        prompt: 'Help me convert this flow to run on a schedule',
+        icon: <Calendar className="w-4 h-4" />,
+        description: 'Run automatically at specific times',
+      },
+    ];
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setPrompt(suggestion);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
-        {messages.length === 0 && !pearlChat.isPending && (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm space-y-2">
-            <p className="text-center">
-              Start a conversation with Pearl to modify or debug your workflow
-            </p>
+        {pearl.messages.length === 0 && !pearl.isPending && (
+          <div className="flex flex-col items-center justify-center h-full px-4 py-8">
+            {/* Header */}
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-500/30 mb-3">
+                <Sparkles className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-base font-medium text-gray-200 mb-1">
+                Chat with Pearl
+              </h3>
+              <p className="text-sm text-gray-400">
+                Get help modifying, debugging, or understanding your workflow
+              </p>
+            </div>
+
+            {/* Quick Start Suggestions */}
+            <div className="w-full max-w-md space-y-2">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3 px-1">
+                Quick Actions
+              </div>
+              {getQuickStartSuggestions().map((suggestion, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => handleSuggestionClick(suggestion.prompt)}
+                  className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                      {suggestion.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                        {suggestion.label}
+                      </div>
+                      <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                        {suggestion.description}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Render messages: user → events → assistant → user → events → assistant */}
-        {messages.map((message, index) => {
+        {pearl.messages.map((message, index) => {
           // Calculate assistant index (how many assistant messages we've seen so far)
           const assistantIndex =
-            messages.slice(0, index + 1).filter((m) => m.type === 'assistant')
-              .length - 1;
+            pearl.messages
+              .slice(0, index + 1)
+              .filter((m) => m.type === 'assistant').length - 1;
 
           return (
             <div key={message.id}>
@@ -538,11 +333,11 @@ export function PearlChat() {
                 /* Assistant Response: Events then Message */
                 <>
                   {/* Events (if any) */}
-                  {eventsList[assistantIndex] &&
-                    eventsList[assistantIndex].length > 0 && (
+                  {pearl.eventsList[assistantIndex] &&
+                    pearl.eventsList[assistantIndex].length > 0 && (
                       <div className="p-3">
                         <div className="space-y-2">
-                          {eventsList[assistantIndex].map(
+                          {pearl.eventsList[assistantIndex].map(
                             (event, eventIndex) => (
                               <EventDisplay
                                 key={`${message.id}-event-${eventIndex}`}
@@ -598,7 +393,11 @@ export function PearlChat() {
                             ) : (
                               <button
                                 onClick={() =>
-                                  handleReplace(message.code!, message.id)
+                                  handleReplace(
+                                    message.code!,
+                                    message.id,
+                                    message.bubbleParameters
+                                  )
                                 }
                                 className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                               >
@@ -624,9 +423,9 @@ export function PearlChat() {
         })}
 
         {/* Current streaming events (for the active turn) */}
-        {pearlChat.isPending && eventsList.length > 0 && (
+        {pearl.isPending && pearl.eventsList.length > 0 && (
           <div className="p-3">
-            {eventsList[eventsList.length - 1].length > 0 ? (
+            {pearl.eventsList[pearl.eventsList.length - 1].length > 0 ? (
               <>
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
@@ -635,12 +434,14 @@ export function PearlChat() {
                   </span>
                 </div>
                 <div className="space-y-2">
-                  {eventsList[eventsList.length - 1].map((event, index) => (
-                    <EventDisplay
-                      key={`current-event-${index}`}
-                      event={event}
-                    />
-                  ))}
+                  {pearl.eventsList[pearl.eventsList.length - 1].map(
+                    (event, index) => (
+                      <EventDisplay
+                        key={`current-event-${index}`}
+                        event={event}
+                      />
+                    )
+                  )}
                 </div>
               </>
             ) : (
@@ -678,7 +479,7 @@ export function PearlChat() {
                   <button
                     type="button"
                     onClick={() => handleDeleteFile(index)}
-                    disabled={pearlChat.isPending}
+                    disabled={pearl.isPending}
                     className="p-0.5 hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     aria-label={`Delete ${file.name}`}
                   >
@@ -695,12 +496,12 @@ export function PearlChat() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
               className={`bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10 disabled:opacity-50 disabled:cursor-not-allowed`}
-              disabled={pearlChat.isPending}
+              disabled={pearl.isPending}
               onKeyDown={(e) => {
                 if (
                   e.key === 'Enter' &&
                   e.ctrlKey &&
-                  !pearlChat.isPending &&
+                  !pearl.isPending &&
                   (prompt.trim() || uploadedFiles.length > 0)
                 ) {
                   handleGenerate();
@@ -714,7 +515,7 @@ export function PearlChat() {
                   className="hidden"
                   accept=".html,.csv,.txt,image/png"
                   multiple
-                  disabled={pearlChat.isPending}
+                  disabled={pearl.isPending}
                   aria-label="Upload files"
                   onChange={(e) => {
                     handleFileChange(e.target.files);
@@ -724,7 +525,7 @@ export function PearlChat() {
                 />
                 <Paperclip
                   className={`w-5 h-5 transition-colors ${
-                    pearlChat.isPending
+                    pearl.isPending
                       ? 'text-gray-600 cursor-not-allowed'
                       : uploadedFiles.length > 0
                         ? 'text-gray-300'
@@ -743,16 +544,16 @@ export function PearlChat() {
                 onClick={handleGenerate}
                 disabled={
                   (!prompt.trim() && uploadedFiles.length === 0) ||
-                  pearlChat.isPending
+                  pearl.isPending
                 }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   (!prompt.trim() && uploadedFiles.length === 0) ||
-                  pearlChat.isPending
+                  pearl.isPending
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                 }`}
               >
-                {pearlChat.isPending ? (
+                {pearl.isPending ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <ArrowUp className="w-5 h-5" />
@@ -761,7 +562,7 @@ export function PearlChat() {
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
                   (!prompt.trim() && uploadedFiles.length === 0) ||
-                  pearlChat.isPending
+                  pearl.isPending
                     ? 'text-gray-500/60'
                     : 'text-gray-400'
                 }`}
