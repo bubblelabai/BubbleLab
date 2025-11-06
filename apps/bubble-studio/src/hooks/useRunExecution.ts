@@ -226,6 +226,7 @@ export function useRunExecution(
             if (eventData.type === 'fatal') {
               getExecutionStore(flowId).setError(eventData.message);
               getExecutionStore(flowId).stopExecution();
+              selectResultsInConsole();
 
               // First try to use the variableId from the error event
               if (eventData.variableId !== undefined) {
