@@ -23,6 +23,7 @@ import {
   cleanUpObjectForDisplayAndStorage,
 } from '@bubblelab/shared-schemas';
 import { usePearlStream } from './usePearl';
+import { useIsMutating } from '@tanstack/react-query';
 import { getPearlChatStore, type DisplayEvent } from '../stores/pearlChatStore';
 import type { ChatMessage } from '../components/ai/type';
 import { useEditor } from './useEditor';
@@ -209,9 +210,6 @@ function handleStreamingEvent(
  */
 export function usePearlChatStore(flowId: number | null) {
   // IMPORTANT: Always call hooks in the same order (React Rules of Hooks)
-  // Mutation for API calls - must be called unconditionally
-  const pearlMutation = usePearlStream();
-
   // Gather dependencies - must be called unconditionally
   const { editor } = useEditor();
   const bubbleDetail = useBubbleDetail(flowId);
@@ -220,6 +218,62 @@ export function usePearlChatStore(flowId: number | null) {
   // This ensures hooks are called in consistent order
   const store = getPearlChatStore(flowId ?? -1);
 
+  // Mutation for API calls with built-in success/error handling
+  const pearlMutation = usePearlStream({
+    flowId,
+    onEvent: (event: StreamingEvent) => {
+      if (store) {
+        handleStreamingEvent(event, store);
+      }
+    },
+    onSuccess: (result) => {
+      if (!store) return;
+
+      const storeState = store.getState();
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: result.message || '',
+        code:
+          result.type === 'code' && result.snippet ? result.snippet : undefined,
+        resultType: result.type,
+        timestamp: new Date(),
+        bubbleParameters: result.bubbleParameters as Record<
+          string,
+          ParsedBubbleWithInfo
+        >,
+      };
+
+      console.log('[Done gen]!!!!!! assistantMessage', assistantMessage);
+
+      storeState.addMessage(assistantMessage);
+      storeState.clearToolCalls();
+
+      trackAIAssistant({
+        action: 'receive_response',
+        message: assistantMessage.content,
+      });
+    },
+    onError: (error) => {
+      if (!store) return;
+
+      const storeState = store.getState();
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content:
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate response',
+        resultType: 'reject',
+        timestamp: new Date(),
+      };
+
+      storeState.addMessage(errorMessage);
+      storeState.clearToolCalls();
+    },
+  });
+
   // Subscribe to state using the store as a hook
   // Store is guaranteed to exist (never null)
   const messages = store((s) => s.messages);
@@ -227,121 +281,71 @@ export function usePearlChatStore(flowId: number | null) {
   const activeToolCallIds = store((s) => s.activeToolCallIds);
 
   // ===== Main Generation Function =====
-  const startGeneration = useCallback(
-    (
-      prompt: string,
-      uploadedFiles: Array<{ name: string; content: string }> = []
-    ) => {
-      if (!store || !flowId) return;
+  const startGeneration = (
+    prompt: string,
+    uploadedFiles: Array<{ name: string; content: string }> = []
+  ) => {
+    if (!store || !flowId) return;
 
-      // Build user message
-      let userContent = prompt.trim();
-      if (uploadedFiles.length > 0) {
-        const fileInfo = uploadedFiles
-          .map((f) => {
-            const fileType = f.name.toLowerCase().endsWith('.png')
-              ? 'image (base64)'
-              : 'text';
-            return `${f.name} (${fileType})`;
-          })
-          .join(', ');
+    // Build user message
+    let userContent = prompt.trim();
+    if (uploadedFiles.length > 0) {
+      const fileInfo = uploadedFiles
+        .map((f) => {
+          const fileType = f.name.toLowerCase().endsWith('.png')
+            ? 'image (base64)'
+            : 'text';
+          return `${f.name} (${fileType})`;
+        })
+        .join(', ');
 
-        userContent = userContent
-          ? `${userContent}\n\n[Attached files: ${fileInfo}]`
-          : `[Processing attached files: ${fileInfo}]`;
-      }
+      userContent = userContent
+        ? `${userContent}\n\n[Attached files: ${fileInfo}]`
+        : `[Processing attached files: ${fileInfo}]`;
+    }
 
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'user',
-        content: userContent,
-        timestamp: new Date(),
-      };
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: userContent,
+      timestamp: new Date(),
+    };
 
-      // Update store state
-      const storeState = store.getState();
-      storeState.addMessage(userMessage);
-      storeState.startNewTurn();
-      storeState.clearToolCalls();
+    // Update store state
+    const storeState = store.getState();
+    storeState.addMessage(userMessage);
+    storeState.startNewTurn();
+    storeState.clearToolCalls();
 
-      // Build conversation history from current messages
-      const conversationHistory = storeState.messages.map((msg) => ({
-        role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
-        content: msg.content,
-      }));
+    // Build conversation history from current messages
+    const conversationHistory = storeState.messages.map((msg) => ({
+      role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
+      content: msg.content,
+    }));
 
-      // Build context (timezone, errors, outputs, credentials)
-      const context = buildAdditionalContext(flowId, bubbleDetail);
+    // Build context (timezone, errors, outputs, credentials)
+    const context = buildAdditionalContext(flowId, bubbleDetail);
 
-      // Get editor code
-      const fullCode = editor?.getCode() || '';
+    // Get editor code
+    const fullCode = editor?.getCode() || '';
 
-      // Track analytics
-      trackAIAssistant({
-        action: 'send_message',
-        message: userMessage.content,
-      });
+    // Track analytics
+    trackAIAssistant({
+      action: 'send_message',
+      message: userMessage.content,
+    });
 
-      // Call mutation
-      pearlMutation.mutate(
-        {
-          userRequest: userMessage.content,
-          userName: 'User',
-          conversationHistory,
-          availableVariables: [],
-          currentCode: fullCode,
-          model: 'openrouter/z-ai/glm-4.6',
-          additionalContext: context,
-          onEvent: (event: StreamingEvent) => {
-            handleStreamingEvent(event, store);
-          },
-        },
-        {
-          onSuccess: (result) => {
-            const assistantMessage: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              type: 'assistant',
-              content: result.message || '',
-              code:
-                result.type === 'code' && result.snippet
-                  ? result.snippet
-                  : undefined,
-              resultType: result.type,
-              timestamp: new Date(),
-              bubbleParameters: result.bubbleParameters as Record<
-                string,
-                ParsedBubbleWithInfo
-              >,
-            };
-
-            storeState.addMessage(assistantMessage);
-            storeState.clearToolCalls();
-
-            trackAIAssistant({
-              action: 'receive_response',
-              message: assistantMessage.content,
-            });
-          },
-          onError: (error) => {
-            const errorMessage: ChatMessage = {
-              id: (Date.now() + 1).toString(),
-              type: 'assistant',
-              content:
-                error instanceof Error
-                  ? error.message
-                  : 'Failed to generate response',
-              resultType: 'reject',
-              timestamp: new Date(),
-            };
-
-            storeState.addMessage(errorMessage);
-            storeState.clearToolCalls();
-          },
-        }
-      );
-    },
-    [store, flowId, pearlMutation, editor, bubbleDetail]
-  );
+    // Call mutation (onSuccess/onError handled by usePearlStream)
+    pearlMutation.mutate({
+      userRequest: userMessage.content,
+      userName: 'User',
+      conversationHistory,
+      availableVariables: [],
+      currentCode: fullCode,
+      model: 'openrouter/z-ai/glm-4.6',
+      additionalContext: context,
+    });
+  };
 
   // ===== Clear messages =====
   const clearMessages = useCallback(() => {
@@ -352,6 +356,14 @@ export function usePearlChatStore(flowId: number | null) {
   const reset = useCallback(() => {
     store?.getState().reset();
   }, [store]);
+
+  // Derive shared pending based on mutationKey so multiple components stay in sync
+  const isMutating = useIsMutating({
+    mutationKey: ['pearlStream', flowId ?? -1],
+  });
+  const isPending = isMutating > 0;
+  const isError = pearlMutation.isError;
+  const error = pearlMutation.error;
 
   return {
     // State (components can subscribe)
@@ -365,8 +377,10 @@ export function usePearlChatStore(flowId: number | null) {
     reset,
 
     // Mutation state (for loading indicators)
-    isPending: pearlMutation.isPending,
-    isError: pearlMutation.isError,
-    error: pearlMutation.error,
+    isPending,
+    isError,
+    error,
+
+    pearlMutation,
   };
 }

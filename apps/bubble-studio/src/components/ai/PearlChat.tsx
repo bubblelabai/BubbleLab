@@ -56,6 +56,7 @@ export function PearlChat() {
   );
 
   // Pearl store hook - subscribes to state and provides generation API
+
   const pearl = usePearlChatStore(selectedFlowId);
 
   // Auto-scroll to bottom when conversation changes
