@@ -214,7 +214,6 @@ export default function AllEventsView({
               const prompt = `I'm seeing error(s) in my workflow execution: Can you help me fix these errors?`;
 
               // Trigger Pearl generation (component doesn't subscribe to Pearl state)
-
               pearl.startGeneration(prompt);
 
               // Open Pearl panel
