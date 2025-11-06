@@ -179,6 +179,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       ignoreSSL: false,
     },
   },
+  [CredentialType.GITHUB_TOKEN]: {
+    label: 'GitHub',
+    description:
+      'Personal Access Token for GitHub API (read repos, PRs, issues)',
+    placeholder: 'github_pat...',
+    namePlaceholder: 'My GitHub Token',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -220,6 +228,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GMAIL_CRED]: 'Gmail',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',
     [CredentialType.GOOGLE_CALENDAR_CRED]: 'Google Calendar',
+    [CredentialType.GITHUB_TOKEN]: 'GitHub',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

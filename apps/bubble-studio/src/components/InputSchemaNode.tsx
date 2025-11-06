@@ -12,6 +12,26 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  properties?: Record<
+    string,
+    {
+      type?: string;
+      description?: string;
+      default?: unknown;
+      required?: boolean;
+      properties?: Record<
+        string,
+        {
+          type?: string;
+          description?: string;
+          default?: unknown;
+          required?: boolean;
+        }
+      >;
+      requiredProperties?: string[];
+    }
+  >;
+  requiredProperties?: string[];
 }
 
 interface InputSchemaNodeData {
@@ -48,6 +68,63 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       .filter((field) => field.required)
       .filter((field) => {
         const value = executionInputs[field.name];
+        // For object types, check if it's an object and has required properties
+        if (field.type === 'object' && field.properties) {
+          if (typeof value !== 'object' || value === null) {
+            return field.default === undefined;
+          }
+          // Check if required nested properties are missing (including nested objects)
+          if (field.requiredProperties) {
+            const missingNested = field.requiredProperties.filter(
+              (propName) => {
+                const propValue = (value as Record<string, unknown>)[propName];
+                const isEmpty =
+                  propValue === undefined ||
+                  propValue === '' ||
+                  (Array.isArray(propValue) && propValue.length === 0);
+                const propField = field.properties?.[propName];
+
+                // If this property is also an object, check its required properties
+                if (
+                  propField?.type === 'object' &&
+                  propField.properties &&
+                  propField.requiredProperties
+                ) {
+                  if (
+                    typeof propValue !== 'object' ||
+                    propValue === null ||
+                    Array.isArray(propValue)
+                  ) {
+                    return isEmpty && propField.default === undefined;
+                  }
+                  // Check nested required properties
+                  const nestedMissing = propField.requiredProperties.filter(
+                    (nestedPropName) => {
+                      const nestedPropValue = (
+                        propValue as Record<string, unknown>
+                      )[nestedPropName];
+                      const nestedIsEmpty =
+                        nestedPropValue === undefined ||
+                        nestedPropValue === '' ||
+                        (Array.isArray(nestedPropValue) &&
+                          nestedPropValue.length === 0);
+                      const nestedPropField =
+                        propField.properties?.[nestedPropName];
+                      return (
+                        nestedIsEmpty && nestedPropField?.default === undefined
+                      );
+                    }
+                  );
+                  return nestedMissing.length > 0;
+                }
+
+                return isEmpty && propField?.default === undefined;
+              }
+            );
+            return missingNested.length > 0;
+          }
+          return false;
+        }
         const isEmpty =
           value === undefined ||
           value === '' ||

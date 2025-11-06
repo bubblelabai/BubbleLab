@@ -45,6 +45,10 @@ console.log(
   '  - OPENROUTER_API_KEY:',
   process.env.OPENROUTER_API_KEY ? '✓ loaded' : '✗ not found'
 );
+console.log(
+  '  - GITHUB_TOKEN:',
+  process.env.GITHUB_TOKEN ? '✓ loaded' : '✗ not found'
+);
 console.log('');
 
 // Type definitions for environment variables (optional but recommended)
@@ -60,6 +64,7 @@ declare global {
       OPENROUTER_API_KEY?: string;
       FIRECRAWL_API_KEY?: string;
       RESEND_API_KEY?: string;
+      GITHUB_TOKEN?: string;
     }
   }
 }

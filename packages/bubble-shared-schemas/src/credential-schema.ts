@@ -22,6 +22,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GMAIL_CRED]: '',
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
   [CredentialType.GOOGLE_CALENDAR_CRED]: '',
+  [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
 };
 
 /** Used by bubblelab studio */
@@ -222,6 +223,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'instagram-tool': [CredentialType.APIFY_CRED],
   'linkedin-tool': [CredentialType.APIFY_CRED],
   'youtube-tool': [CredentialType.APIFY_CRED],
+  github: [CredentialType.GITHUB_TOKEN],
 };
 
 // POST /credentials - Create credential schema

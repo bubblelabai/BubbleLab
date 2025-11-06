@@ -426,6 +426,16 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       required?: boolean;
       description?: string;
       default?: unknown;
+      properties?: Record<
+        string,
+        {
+          type?: string;
+          description?: string;
+          default?: unknown;
+          required?: boolean;
+        }
+      >;
+      requiredProperties?: string[];
     };
     const parsedFields: SimpleField[] = (() => {
       if (!inputsSchema) return [];
@@ -437,8 +447,116 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         const props = schema.properties || {};
         return Object.entries(props).map(([name, val]: [string, unknown]) => {
           const valObj = val as
-            | { type?: string; description?: string; default?: unknown }
+            | {
+                type?: string;
+                description?: string;
+                default?: unknown;
+                properties?: Record<
+                  string,
+                  {
+                    type?: string;
+                    description?: string;
+                    default?: unknown;
+                  }
+                >;
+                required?: string[];
+              }
             | undefined;
+
+          // Handle object types with properties (including nested objects)
+          if (valObj?.type === 'object' && valObj.properties) {
+            const objectRequired = Array.isArray(valObj.required)
+              ? valObj.required
+              : [];
+
+            // Recursively process nested properties
+            const processProperties = (
+              props: Record<string, unknown>
+            ): Record<
+              string,
+              {
+                type?: string;
+                description?: string;
+                default?: unknown;
+                required?: boolean;
+                properties?: Record<
+                  string,
+                  {
+                    type?: string;
+                    description?: string;
+                    default?: unknown;
+                    required?: boolean;
+                  }
+                >;
+                requiredProperties?: string[];
+              }
+            > => {
+              return Object.entries(props).reduce(
+                (acc, [propName, propValue]) => {
+                  const propSchema = propValue as {
+                    type?: string;
+                    description?: string;
+                    default?: unknown;
+                    properties?: Record<string, unknown>;
+                    required?: string[];
+                  };
+
+                  // If this property is also an object, recursively process it
+                  if (propSchema.type === 'object' && propSchema.properties) {
+                    const nestedRequired = Array.isArray(propSchema.required)
+                      ? propSchema.required
+                      : [];
+                    acc[propName] = {
+                      type: propSchema.type,
+                      description: propSchema.description,
+                      default: propSchema.default,
+                      required: objectRequired.includes(propName),
+                      properties: processProperties(propSchema.properties),
+                      requiredProperties: nestedRequired,
+                    };
+                  } else {
+                    acc[propName] = {
+                      type: propSchema?.type,
+                      description: propSchema?.description,
+                      default: propSchema?.default,
+                      required: objectRequired.includes(propName),
+                    };
+                  }
+                  return acc;
+                },
+                {} as Record<
+                  string,
+                  {
+                    type?: string;
+                    description?: string;
+                    default?: unknown;
+                    required?: boolean;
+                    properties?: Record<
+                      string,
+                      {
+                        type?: string;
+                        description?: string;
+                        default?: unknown;
+                        required?: boolean;
+                      }
+                    >;
+                    requiredProperties?: string[];
+                  }
+                >
+              );
+            };
+
+            return {
+              name,
+              type: valObj.type,
+              required: req.includes(name),
+              description: valObj.description,
+              default: valObj.default,
+              properties: processProperties(valObj.properties),
+              requiredProperties: objectRequired,
+            };
+          }
+
           return {
             name,
             type: valObj?.type,

@@ -162,6 +162,11 @@ export class CredentialValidator {
           model: 'google/gemini-2.5-flash',
         };
         break;
+      case CredentialType.GITHUB_TOKEN:
+        baseParams.operation = 'get_repository';
+        baseParams.owner = 'octocat';
+        baseParams.repo = 'Hello-World';
+        break;
       default:
         break;
     }
