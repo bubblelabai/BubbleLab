@@ -99,23 +99,43 @@ export function DashboardPage({
 
     setIsCreatingFromScratch(true);
     try {
-      // Create a minimal empty flow template
-      const emptyFlowCode = `import { BubbleFlow, type WebhookEvent } from '@bubblelab/bubble-core';
+      // Create a minimal empty flow template with a simple AI agent example
+      const emptyFlowCode = `import { BubbleFlow, AIAgentBubble, type WebhookEvent } from '@bubblelab/bubble-core';
 
 export interface Output {
-  message: string;
+  response: string;
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
-  input: string;
+  query?: string;
 }
 
 export class UntitledFlow extends BubbleFlow<'webhook/http'> {
   async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const { input = 'example value' } = payload;
-    
+    const { query = 'What is the top news headline?' } = payload;
+
+    // Simple AI agent that responds to user queries with web search
+    const agent = new AIAgentBubble({
+      message: query,
+      systemPrompt: 'You are a helpful assistant.',
+      tools: [
+        {
+          name: 'web-search-tool',
+          config: {
+            limit: 1,
+          },
+        },
+      ],
+    });
+
+    const result = await agent.action();
+
+    if (!result.success) {
+      throw new Error(\`AI Agent failed: \${result.error}\`);
+    }
+
     return {
-      message: \`Received input: \${input}\`,
+      response: result.data.response,
     };
   }
 }

@@ -200,6 +200,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                     // Rename Input
                     <div className="flex items-center gap-2">
                       <input
+                        title="Rename Flow"
                         ref={inputRef}
                         type="text"
                         value={newFlowName}

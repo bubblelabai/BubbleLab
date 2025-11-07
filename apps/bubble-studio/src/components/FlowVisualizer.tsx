@@ -1062,39 +1062,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     );
   }
 
-  if (Object.keys(bubbleParameters).length === 0) {
-    return (
-      <div
-        className="h-full flex items-center justify-center"
-        style={{ backgroundColor: '#1e1e1e' }}
-      >
-        <div className="text-center">
-          <p className="text-gray-400 text-lg mb-2">No bubbles to display</p>
-          <p className="text-gray-500 text-sm mb-4">
-            The flow code needs to be validated to extract bubble parameters
-          </p>
-          {onValidate && (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onValidate}
-                disabled={isExecuting}
-                className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Sync with code
-              </button>
-              {hasUnsavedChanges && (
-                <div className="bg-orange-500/20 border border-orange-500/50 px-3 py-1 rounded-lg text-xs font-medium text-orange-300">
-                  Unsaved changes
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Note: We no longer early return when there are no bubbles
+  // The entry node (InputSchemaNode or CronScheduleNode) should always be visible
 
   return (
     <div
