@@ -1,7 +1,15 @@
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { SignedIn, SignedOut } from './AuthComponents';
-import { ChevronUpIcon, ChevronDownIcon, Play, FileJson2 } from 'lucide-react';
+import {
+  ChevronUpIcon,
+  ChevronDownIcon,
+  Play,
+  FileJson2,
+  Edit2,
+  Check,
+  X,
+} from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/FlowVisualizer';
 import { FlowGeneration } from '@/components/FlowGeneration';
@@ -18,6 +26,7 @@ import { getFlowNameFromCode } from '@/utils/codeParser';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useRunExecution } from '@/hooks/useRunExecution';
 import { filterEmptyInputs } from '@/utils/inputUtils';
+import { useRenameFlow } from '@/hooks/useRenameFlow';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 
@@ -59,6 +68,21 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
     limit: 50,
+  });
+
+  // ============= Rename Flow Hook =============
+  const {
+    isRenaming,
+    newFlowName,
+    setNewFlowName,
+    inputRef,
+    startRename,
+    submitRename,
+    cancelRename,
+    handleKeyDown,
+  } = useRenameFlow({
+    flowId,
+    currentName: currentFlow?.name,
   });
 
   // Sync flow code to editor when flow changes
@@ -172,9 +196,54 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
               if (!name) return null;
               return (
                 <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold text-gray-100 font-sans truncate max-w-[50vw]">
-                    {name}
-                  </h2>
+                  {isRenaming && flowId ? (
+                    // Rename Input
+                    <div className="flex items-center gap-2">
+                      <input
+                        title="Rename Flow"
+                        ref={inputRef}
+                        type="text"
+                        value={newFlowName}
+                        onChange={(e) => setNewFlowName(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
+                        style={{ minWidth: '200px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={submitRename}
+                        className="p-1 rounded hover:bg-gray-700/50 text-green-400 hover:text-green-300"
+                        title="Confirm (Enter)"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRename}
+                        className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-300"
+                        title="Cancel (Esc)"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Flow Name Display
+                    <>
+                      <h2 className="text-lg font-semibold text-gray-100 font-sans truncate max-w-[50vw]">
+                        {name}
+                      </h2>
+                      {flowId && currentFlow && (
+                        <button
+                          type="button"
+                          onClick={startRename}
+                          className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
+                          title="Rename Flow"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
+                  )}
                   {hasPrompt && (
                     <button
                       onClick={togglePrompt}

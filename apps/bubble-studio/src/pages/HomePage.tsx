@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, MoreHorizontal, Edit2, Check, Search } from 'lucide-react';
+import { Trash2, MoreHorizontal, Edit2, Check, X, Search } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
-import { bubbleFlowApi } from '../services/bubbleFlowApi';
-import { useQueryClient } from '@tanstack/react-query';
+import { useRenameFlow } from '../hooks/useRenameFlow';
 import { CronToggle } from '../components/CronToggle';
 
 export interface HomePageProps {
@@ -22,15 +21,28 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
-  const [newFlowName, setNewFlowName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const queryClient = useQueryClient();
 
   const allFlows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  // Find the flow being renamed to get its current name
+  const renamingFlow = allFlows.find((f) => f.id === renamingFlowId);
+
+  // Use the rename hook for the currently renaming flow
+  const {
+    newFlowName,
+    setNewFlowName,
+    inputRef,
+    submitRename,
+    cancelRename,
+    handleKeyDown,
+  } = useRenameFlow({
+    flowId: renamingFlowId ?? undefined,
+    currentName: renamingFlow?.name,
+  });
 
   // Filter flows based on search query
   const flows = allFlows.filter((flow) => {
@@ -62,33 +74,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   ) => {
     event.stopPropagation();
     setRenamingFlowId(flowId);
-    setNewFlowName(currentName);
     setOpenMenuId(null);
-  };
-
-  const handleRenameSubmit = async (flowId: number) => {
-    if (!newFlowName.trim()) {
-      return;
-    }
-
-    try {
-      await bubbleFlowApi.updateBubbleFlowName(flowId, newFlowName.trim());
-
-      // Invalidate and refetch both the flow list and the individual flow details
-      queryClient.invalidateQueries({ queryKey: ['bubbleFlowList'] });
-      queryClient.invalidateQueries({ queryKey: ['bubbleFlow', flowId] });
-
-      setRenamingFlowId(null);
-      setNewFlowName('');
-    } catch (error) {
-      console.error('Failed to rename flow:', error);
-    }
-  };
-
-  const handleRenameKeyDown = (event: React.KeyboardEvent, flowId: number) => {
-    if (event.key === 'Enter') {
-      handleRenameSubmit(flowId);
-    }
   };
 
   // Close menu when clicking outside
@@ -102,14 +88,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Focus input when entering rename mode
-  useEffect(() => {
-    if (renamingFlowId !== null && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [renamingFlowId]);
 
   // Show loading state if data hasn't loaded yet OR if actively loading
   const isLoading = loading || bubbleFlowListResponse === undefined;
@@ -277,20 +255,41 @@ export const HomePage: React.FC<HomePageProps> = ({
                           type="text"
                           value={newFlowName}
                           onChange={(e) => setNewFlowName(e.target.value)}
-                          onKeyDown={(e) => handleRenameKeyDown(e, flow.id)}
+                          onKeyDown={async (e) => {
+                            e.stopPropagation();
+                            const success = await handleKeyDown(e);
+                            if (success || e.key === 'Escape') {
+                              setRenamingFlowId(null);
+                            }
+                          }}
                           onClick={(e) => e.stopPropagation()}
                           className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
                         />
                         <button
                           type="button"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            handleRenameSubmit(flow.id);
+                            const success = await submitRename();
+                            if (success) {
+                              setRenamingFlowId(null);
+                            }
                           }}
-                          className="p-1 rounded hover:bg-gray-700/50 text-gray-300"
-                          title="Confirm"
+                          className="p-1 rounded hover:bg-gray-700/50 text-green-400 hover:text-green-300"
+                          title="Confirm (Enter)"
                         >
                           <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            cancelRename();
+                            setRenamingFlowId(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-300"
+                          title="Cancel (Esc)"
+                        >
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (

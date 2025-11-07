@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ArrowUp, Pencil, FileDown } from 'lucide-react';
+import { ArrowUp, Pencil, FileDown, Plus } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import {
   INTEGRATIONS,
   AI_MODELS,
@@ -51,6 +53,8 @@ export function DashboardPage({
   autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
+  const navigate = useNavigate();
+  const createBubbleFlowMutation = useCreateBubbleFlow();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>('Prompt');
@@ -78,11 +82,84 @@ export function DashboardPage({
   });
   const [pendingGeneration, setPendingGeneration] = useState<boolean>(false);
   const [pendingJsonImport, setPendingJsonImport] = useState<boolean>(false);
+  const [isCreatingFromScratch, setIsCreatingFromScratch] =
+    useState<boolean>(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const isGenerateDisabled = useMemo(
     () => isStreaming || !generationPrompt?.trim(),
     [isStreaming, generationPrompt]
   );
+
+  // Handler for "Build from Scratch" button
+  const handleBuildFromScratch = async () => {
+    if (!isSignedIn) {
+      setShowSignInModal(true);
+      return;
+    }
+
+    setIsCreatingFromScratch(true);
+    try {
+      // Create a minimal empty flow template with a simple AI agent example
+      const emptyFlowCode = `import { BubbleFlow, AIAgentBubble, type WebhookEvent } from '@bubblelab/bubble-core';
+
+export interface Output {
+  response: string;
+}
+
+export interface CustomWebhookPayload extends WebhookEvent {
+  query?: string;
+}
+
+export class UntitledFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { query = 'What is the top news headline?' } = payload;
+
+    // Simple AI agent that responds to user queries with web search
+    const agent = new AIAgentBubble({
+      message: query,
+      systemPrompt: 'You are a helpful assistant.',
+      tools: [
+        {
+          name: 'web-search-tool',
+          config: {
+            limit: 1,
+          },
+        },
+      ],
+    });
+
+    const result = await agent.action();
+
+    if (!result.success) {
+      throw new Error(\`AI Agent failed: \${result.error}\`);
+    }
+
+    return {
+      response: result.data.response,
+    };
+  }
+}
+`;
+
+      const createResult = await createBubbleFlowMutation.mutateAsync({
+        name: 'Untitled',
+        description: 'Empty flow created from scratch',
+        code: emptyFlowCode,
+        prompt: '',
+        eventType: 'webhook/http',
+        webhookActive: false,
+      });
+
+      // Navigate to the newly created flow
+      navigate({
+        to: '/flow/$flowId',
+        params: { flowId: String(createResult.id) },
+      });
+    } catch (error) {
+      console.error('Failed to create empty flow:', error);
+      setIsCreatingFromScratch(false);
+    }
+  };
 
   // no-op
 
@@ -272,6 +349,29 @@ export function DashboardPage({
                 {category}
               </button>
             ))}
+            {/* Build from Scratch - Last button */}
+            <button
+              type="button"
+              onClick={handleBuildFromScratch}
+              disabled={isStreaming || isCreatingFromScratch}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
+                isStreaming || isCreatingFromScratch
+                  ? 'bg-gray-700/40 text-gray-500 cursor-not-allowed'
+                  : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+              }`}
+            >
+              {isCreatingFromScratch ? (
+                <>
+                  <span className="inline-block animate-spin">⚙</span>
+                  Creating Empty Flow...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" />
+                  Build from Scratch
+                </>
+              )}
+            </button>
           </div>
 
           {/* Templates Grid */}
