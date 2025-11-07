@@ -2,6 +2,7 @@ import * as ts from 'typescript';
 import { parseBubbleFlow } from './bubbleflow-parser.js';
 import type { BubbleFactory } from '../bubble-factory.js';
 import type { ParsedBubble } from '@bubblelab/shared-schemas';
+import { enhanceErrorMessage } from '@bubblelab/shared-schemas';
 
 export interface ValidationResult {
   valid: boolean;
@@ -125,9 +126,13 @@ export async function validateBubbleFlow(
             diagnostic.messageText,
             '\n'
           );
-          return `Line ${line + 1}, Column ${character + 1}: ${message}`;
+          return `Line ${line + 1}, Column ${character + 1}: ${enhanceErrorMessage(message)}`;
         }
-        return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+        const message = ts.flattenDiagnosticMessageText(
+          diagnostic.messageText,
+          '\n'
+        );
+        return enhanceErrorMessage(message);
       });
 
       return {

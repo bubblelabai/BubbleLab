@@ -445,4 +445,202 @@ export class GoogleDriveFileOrganizerFlow extends BubbleFlow<'webhook/http'> {
     expect(result.success).toBe(true);
     expect(result.data?.valid).toBe(true);
   });
+
+  it('should show enhanced error message for invalid trigger event type', async () => {
+    const invalidTriggerCode = `
+import { z } from 'zod';
+
+import {
+  BubbleFlow,
+  AIAgentBubble,
+  GoogleCalendarBubble,
+  SlackBubble,
+  type GmailNewEmailEvent,
+} from '@bubblelab/bubble-core';
+
+// Define the structure for the output of the workflow
+export interface Output {
+  message: string;
+  eventId?: string;
+}
+
+// Main class for the email processing and event creation workflow
+export class EmailToCalendarAgent extends BubbleFlow<'gmail/new-email'> {
+  async handle(payload: GmailNewEmailEvent): Promise<Output> {
+    // Extract the email body content. It might be in payload.body.data or nested in parts.
+    const emailBody = this.extractEmailBody(payload);
+
+    if (!emailBody) {
+      this.logger?.warn('Could not extract a readable body from the email.');
+      return { message: 'Could not extract email body.' };
+    }
+
+    // Use an AI agent to analyze the email content
+    const emailAnalysisAgent = new AIAgentBubble({
+      model: {
+        model: 'google/gemini-2.5-pro',
+        jsonMode: true,
+      },
+      systemPrompt: \`
+        You are an intelligent assistant that analyzes emails to determine if a meeting or event needs to be scheduled.
+        Your task is to extract the event details from the email content.
+        - If an event is proposed, extract the summary (title), description, location, start time, and end time.
+        - Times should be in ISO 8601 format (e.g., "2024-09-15T14:00:00-07:00").
+        - Also, extract a list of attendee emails.
+        - Respond with a JSON object containing these details.
+        - If no event needs to be scheduled, respond with a JSON object: { "createEvent": false }.
+        - Example output for a valid event:
+          {
+            "createEvent": true,
+            "summary": "Project Kick-off",
+            "description": "Initial meeting to discuss project goals.",
+            "location": "Virtual / Google Meet",
+            "startTime": "2024-09-15T14:00:00-07:00",
+            "endTime": "2024-09-15T15:00:00-07:00",
+            "attendees": ["test@example.com"]
+          }
+      \`,
+      message: \`Analyze the following email content: \${emailBody}\`,
+    });
+
+    const analysisResult = await emailAnalysisAgent.action();
+
+    if (!analysisResult.success || !analysisResult.data?.response) {
+      this.logger?.error('AI agent failed to analyze the email.', new Error(analysisResult.error));
+      return { message: 'AI agent analysis failed.' };
+    }
+
+    // Safely parse the AI's JSON response
+    let eventDetails;
+    try {
+      eventDetails = JSON.parse(analysisResult.data.response);
+    } catch (error) {
+      this.logger?.error('Failed to parse AI agent JSON response.', error as Error);
+      return { message: 'Failed to parse AI response.' };
+    }
+
+    // Proceed only if the AI determines an event should be created
+    if (!eventDetails.createEvent) {
+      return { message: 'No event creation required for this email.' };
+    }
+
+    const { summary, description, location, startTime, endTime, attendees } = eventDetails;
+
+    // Validate that essential event details are present
+    if (!summary || !startTime || !endTime) {
+        this.logger?.warn('AI agent did not provide enough details to create an event.', { details: eventDetails });
+        return { message: 'Insufficient event details from AI.' };
+    }
+
+    // Send a Slack message to ask for permission before creating the event
+    // NOTE: In a real-world scenario, this would involve interactive components (buttons)
+    // and a separate webhook to handle the user's response. For simplicity, this
+    // implementation just notifies the user and proceeds.
+    const permissionRequester = new SlackBubble({
+      operation: 'send_message',
+      channel: 'general', // Change to your desired channel
+      text: \`An email was received that suggests a calendar event.
+*Subject:* \${this.findHeader(payload.headers, 'Subject')}
+*Summary:* \${summary}
+*Time:* \${startTime} - \${endTime}
+*Attendees:* \${attendees?.join(', ') || 'None'}
+A calendar event will be created based on this.\`,
+    });
+
+    await permissionRequester.action();
+
+    // Create the Google Calendar event
+    const eventCreator = new GoogleCalendarBubble({
+      operation: 'create_event',
+      summary,
+      description,
+      location,
+      start: {
+        dateTime: startTime,
+        timeZone: 'UTC', // Defaulting to UTC, could be dynamic
+      },
+      end: {
+        dateTime: endTime,
+        timeZone: 'UTC', // Defaulting to UTC, could be dynamic
+      },
+      attendees: attendees?.map((email: string) => ({ email })) || [],
+    });
+
+    const eventResult = await eventCreator.action();
+
+    if (!eventResult.success || !eventResult.data?.event?.id) {
+      this.logger?.error('Failed to create Google Calendar event.', new Error(eventResult.error));
+      return { message: 'Failed to create calendar event.' };
+    }
+
+    this.logger?.info(\`Successfully created event with ID: \${eventResult.data.event.id}\`);
+
+    return {
+      message: 'Successfully analyzed email and created calendar event.',
+      eventId: eventResult.data.event.id,
+    };
+  }
+
+  /**
+   * Extracts the body content from a Gmail payload.
+   * It handles different MIME types and encodings.
+   */
+  private extractEmailBody(email: GmailNewEmailEvent | GmailNewEmailEvent['parts'][0]): string | null {
+    const { parts, body, mimeType } = email;
+
+    if (mimeType === 'text/plain' && body?.data) {
+      return Buffer.from(body.data, 'base64').toString('utf-8');
+    }
+
+    if (parts) {
+      for (const part of parts) {
+        if (part.mimeType === 'text/plain' && part.body?.data) {
+          return Buffer.from(part.body.data, 'base64').toString('utf-8');
+        }
+        // Recursive call for nested parts
+        if (part.parts) {
+            const nestedBody = this.extractEmailBody(part);
+            if (nestedBody) return nestedBody;
+        }
+      }
+    }
+    
+    // Fallback for emails that might not have a text/plain part but have a body
+    if (body?.data) {
+        return Buffer.from(body.data, 'base64').toString('utf-8');
+    }
+    return null;
+  }
+  
+  /**
+   * Finds a specific header value from the Gmail payload.
+   */
+  private findHeader(headers: { name: string; value: string }[], name: string): string {
+    const header = headers.find((h) => h.name.toLowerCase() === name.toLowerCase());
+    return header ? header.value : 'No Subject';
+  }
+}
+`;
+
+    const validationTool = new BubbleFlowValidationTool({
+      code: invalidTriggerCode,
+      options: { includeDetails: true, strictMode: true },
+    });
+
+    const result = await validationTool.action();
+
+    // Expect it to be invalid
+    expect(result.success).toBe(false);
+    expect(result.data?.valid).toBe(false);
+    expect(result.data?.errors).toBeDefined();
+    expect(result.data?.errors?.length).toBeGreaterThan(0);
+
+    // Check that the error message includes the enhanced hint with available trigger event types
+    const errorMessages = result.data?.errors?.join('\n') || '';
+    console.log(errorMessages);
+    expect(errorMessages).toContain('Available trigger event types');
+    expect(errorMessages).toContain("'slack/bot_mentioned'");
+    expect(errorMessages).toContain("'schedule/cron'");
+    expect(errorMessages).toContain("'webhook/http'");
+  });
 });

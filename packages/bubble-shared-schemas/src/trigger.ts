@@ -1,7 +1,5 @@
 export interface BubbleTriggerEventRegistry {
   'slack/bot_mentioned': SlackMentionEvent;
-  'slack/message_received': SlackMessageReceivedEvent;
-  'gmail/email_received': GmailEmailEvent;
   'schedule/cron': CronEvent;
   'webhook/http': WebhookEvent;
 }
@@ -10,8 +8,6 @@ export interface BubbleTriggerEventRegistry {
 // This allows us to validate event types at runtime
 export const BUBBLE_TRIGGER_EVENTS = {
   'slack/bot_mentioned': true,
-  'slack/message_received': true,
-  'gmail/email_received': true,
   'schedule/cron': true,
   'webhook/http': true,
 } as const satisfies Record<keyof BubbleTriggerEventRegistry, true>;
@@ -87,10 +83,6 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   text: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
   subtype?: string;
-}
-
-export interface GmailEmailEvent extends BubbleTriggerEvent {
-  email: string;
 }
 
 /**
