@@ -1,5 +1,7 @@
 // Load environment variables first
 import './config/env.js';
+import { env } from './config/env.js';
+import { posthog } from './services/posthog.js';
 
 import { runMigrations } from './db/migrate.js';
 import { seedDevUser } from './db/seed-dev-user.js';
@@ -181,6 +183,12 @@ logMemoryUsage();
 fetch('https://api.ipify.org?format=json')
   .then((response) => response.json())
   .then((data) => console.log('Current IP:', (data as { ip: string }).ip));
+// Initialize PostHog error tracking
+posthog.init({
+  apiKey: env.POSTHOG_API_KEY || '',
+  host: env.POSTHOG_HOST,
+  enabled: env.POSTHOG_ENABLED,
+});
 
 // Start cron scheduler (in-process)
 startCronScheduler();

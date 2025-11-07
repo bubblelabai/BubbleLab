@@ -53,10 +53,16 @@ import {
   runBubbleFlowWithLogging,
   executeBubbleFlowWithTracking,
 } from '../services/bubble-flow-execution.js';
-import { BubbleScript, validateAndExtract } from '@bubblelab/bubble-runtime';
+import {
+  BubbleScript,
+  validateAndExtract,
+  ValidationResult,
+} from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../services/bubble-factory-instance.js';
 import { BubbleLogger } from '@bubblelab/bubble-core';
 import { trackModelTokenUsage } from '../services/token-tracking.js';
+import { posthog } from 'src/services/posthog.js';
+import { BubbleResult } from '@bubblelab/bubble-core';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -1026,6 +1032,29 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         // Generate the code with streaming
         const result = await generator.actionWithStreaming(
           async (event: StreamingEvent) => {
+            // Capture validation events for analytics
+            if (
+              event.type === 'tool_complete' &&
+              event.data.tool === 'bubbleflow-validation-tool'
+            ) {
+              try {
+                const output = event.data
+                  .output as BubbleResult<ValidationResult>;
+                // Check if validation failed
+                if (output.data.errors && output.data.errors.length > 0) {
+                  posthog.captureValidationError({
+                    userId,
+                    code: event.data.input.input
+                      ? JSON.parse(event.data.input.input).code
+                      : '',
+                    errorMessages: output.data.errors || [],
+                    source: 'ai_generation',
+                  });
+                }
+              } catch (error) {
+                console.error('[API] Error capturing validation event:', error);
+              }
+            }
             await stream.writeSSE({
               data: JSON.stringify(event),
               event: event.type,
@@ -1096,8 +1125,26 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
         // Track token usage
         trackModelTokenUsage(userId, 'google/gemini-2.5-pro', tokenUsage);
+        posthog.captureEvent(
+          {
+            userId,
+            prompt: prompt,
+          },
+          'bubble_flow_generation_success'
+        );
       } catch (error) {
         console.error('[API] Streaming generation error:', error);
+        posthog.captureErrorEvent(
+          error,
+          {
+            userId,
+            requestPath: c.req.path,
+            requestMethod: c.req.method,
+            prompt: prompt,
+          },
+          'bubble_flow_generation_error'
+        );
+
         await stream.writeSSE({
           data: JSON.stringify({
             type: 'error',

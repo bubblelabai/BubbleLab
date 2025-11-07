@@ -10,6 +10,8 @@ import { runPearl } from '../services/ai/pearl.js';
 import { env } from '../config/env.js';
 import { CredentialType } from '../schemas/index.js';
 import type { StreamingEvent } from '@bubblelab/shared-schemas';
+import { posthog } from 'src/services/posthog.js';
+import { getUserId } from 'src/middleware/auth.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -104,8 +106,28 @@ app.openapi(pearlRoute, async (c) => {
         }),
         event: 'stream_complete',
       });
+      posthog.captureEvent(
+        {
+          userId: getUserId(c),
+          requestPath: c.req.path,
+          requestMethod: c.req.method,
+          prompt: request.userRequest,
+          result: result,
+        },
+        'pearl_success'
+      );
     } catch (error) {
       console.error('[API] Pearl streaming error:', error);
+      posthog.captureErrorEvent(
+        error,
+        {
+          userId: getUserId(c),
+          requestPath: c.req.path,
+          requestMethod: c.req.method,
+          prompt: request.userRequest,
+        },
+        'pearl_error'
+      );
       await stream.writeSSE({
         data: JSON.stringify({
           type: 'error',

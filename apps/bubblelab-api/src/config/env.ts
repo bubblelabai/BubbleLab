@@ -78,6 +78,9 @@ export const env = {
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
+  POSTHOG_HOST: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
+  POSTHOG_ENABLED: process.env.POSTHOG_ENABLED === 'true',
   isDev:
     process.env.BUBBLE_ENV?.toLowerCase() === 'dev' ||
     process.env.BUBBLE_ENV?.toLowerCase() === 'test',
@@ -106,4 +109,7 @@ console.log('🔧 Environment variables loaded:', {
   GOOGLE_OAUTH_CLIENT_SECRET: env.GOOGLE_OAUTH_CLIENT_SECRET
     ? '✅ Set'
     : '❌ Missing',
+  POSTHOG_API_KEY: env.POSTHOG_API_KEY ? '✅ Set' : '❌ Missing',
+  POSTHOG_HOST: env.POSTHOG_HOST,
+  POSTHOG_ENABLED: env.POSTHOG_ENABLED ? '✅ Enabled' : '❌ Disabled',
 });

@@ -187,8 +187,6 @@ export async function runPearl(
   credentials?: Partial<Record<CredentialType, string>>,
   apiStreamingCallback?: StreamingCallback
 ): Promise<PearlResponse> {
-  console.debug('[Pearl] User request:', request.userRequest);
-
   const MAX_RETRIES = 3;
   let lastError: string | undefined;
 
