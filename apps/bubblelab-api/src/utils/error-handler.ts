@@ -1,5 +1,7 @@
 import type { Context } from 'hono';
 import type { OpenAPIHono } from '@hono/zod-openapi';
+import { posthog } from '../services/posthog.js';
+import { getUserId } from '../middleware/auth.js';
 
 // Validation error hook for intercepting Zod validation errors
 export const validationErrorHook = (result: any, c: Context) => {
@@ -56,7 +58,26 @@ export function setupErrorHandler(app: OpenAPIHono) {
       );
     }
 
-    // Handle other errors
+    // Handle other errors (500-level)
+    // Track critical errors in PostHog
+    try {
+      let userId: string | undefined;
+      try {
+        userId = getUserId(c);
+      } catch {
+        // User not authenticated - that's okay for error tracking
+        userId = undefined;
+      }
+      posthog.captureErrorEvent(err, {
+        userId,
+        requestPath: c.req.path,
+        requestMethod: c.req.method,
+      });
+    } catch (trackingError) {
+      // Silently fail - don't let error tracking break error handling
+      console.error('[PostHog] Failed to track error:', trackingError);
+    }
+
     return c.json(
       {
         error: 'Internal server error',

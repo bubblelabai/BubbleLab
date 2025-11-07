@@ -73,7 +73,9 @@ export type StreamingEvent =
       type: 'tool_complete';
       data: {
         tool: string;
-        input: unknown;
+        input: {
+          input: string;
+        };
         output: unknown;
         duration: number;
         callId: string;

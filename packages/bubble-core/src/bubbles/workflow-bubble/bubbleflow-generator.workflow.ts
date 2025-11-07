@@ -806,7 +806,7 @@ ${VALIDATION_PROCESS}`;
           callId: 'discovery-1',
           tool: 'bubble-discovery',
           input: {
-            action: 'listing_available_bubbles',
+            input: 'listing_available_bubbles',
           },
           output: {
             availableBubbles: availableBubbles.length,
@@ -833,7 +833,7 @@ ${VALIDATION_PROCESS}`;
         type: 'tool_complete',
         data: {
           tool: 'template-generation',
-          input: { action: 'generating_boilerplate' },
+          input: { input: 'generating_boilerplate' },
           callId: 'template-1',
           output: { templateGenerated: true, length: boilerplate.length },
           duration: 50,
@@ -1046,7 +1046,7 @@ ${VALIDATION_PROCESS}`;
           type: 'tool_complete',
           data: {
             tool: 'validation-agent',
-            input: { action: 'validating_generated_code' },
+            input: { input: 'validating_generated_code' },
             callId: 'validation-agent-1',
             output: { success: validated },
             duration: 100,
@@ -1082,7 +1082,7 @@ ${VALIDATION_PROCESS}`;
             data: {
               callId: 'summary-agent-1',
               tool: 'summary-agent',
-              input: { action: 'generating_summary_and_schema' },
+              input: { input: 'generating_summary_and_schema' },
               output: {
                 summaryGenerated: !!summary,
                 schemaGenerated: !!inputsSchema,
@@ -1134,7 +1134,7 @@ ${VALIDATION_PROCESS}`;
           data: {
             callId: 'summary-agent-final',
             tool: 'summary-agent',
-            input: { action: 'generating_summary_and_schema' },
+            input: { input: 'generating_summary_and_schema' },
             output: {
               summaryGenerated: !!summary,
               schemaGenerated: !!inputsSchema,
