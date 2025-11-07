@@ -145,16 +145,26 @@ class PostHogService {
     }
   }
 
-  captureEvent(event: string, properties?: Record<string, unknown>): void {
+  captureEvent(
+    context?: {
+      userId?: string;
+      requestPath?: string;
+      requestMethod?: string;
+      bubbleFlowId?: number;
+      executionId?: number;
+      [key: string]: unknown;
+    },
+    event?: string
+  ): void {
     if (!this.enabled || !this.initialized || !this.client) {
       return;
     }
 
     try {
       this.client.capture({
-        distinctId: 'backend-server',
-        event: event,
-        properties: properties,
+        distinctId: context?.userId || 'backend-server',
+        event: event || 'event',
+        properties: context,
       });
     } catch (err) {
       console.error('[PostHog] Failed to capture event:', err);
