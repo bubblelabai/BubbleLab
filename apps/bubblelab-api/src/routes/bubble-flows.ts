@@ -1122,13 +1122,27 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
         // Track token usage
         trackModelTokenUsage(userId, 'google/gemini-2.5-pro', tokenUsage);
-        posthog.captureEvent(
-          {
-            userId,
-            prompt: prompt,
-          },
-          'bubble_flow_generation_success'
-        );
+        if (actualIsValid) {
+          posthog.captureEvent(
+            {
+              userId,
+              prompt: prompt,
+              code: result.generatedCode,
+            },
+            'bubble_flow_generation_success'
+          );
+        } else {
+          posthog.captureErrorEvent(
+            result.error,
+            {
+              userId,
+              prompt: prompt,
+              code: result.generatedCode,
+              error: result.error,
+            },
+            'bubble_flow_generation_failed'
+          );
+        }
       } catch (error) {
         console.error('[API] Streaming generation error:', error);
         posthog.captureErrorEvent(

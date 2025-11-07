@@ -112,7 +112,7 @@ app.openapi(pearlRoute, async (c) => {
           requestPath: c.req.path,
           requestMethod: c.req.method,
           prompt: request.userRequest,
-          result: result,
+          code: result.snippet,
         },
         'pearl_success'
       );
