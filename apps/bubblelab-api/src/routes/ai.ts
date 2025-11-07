@@ -121,11 +121,10 @@ app.openapi(pearlRoute, async (c) => {
       posthog.captureErrorEvent(
         error,
         {
+          userId: getUserId(c),
           requestPath: c.req.path,
           requestMethod: c.req.method,
           prompt: request.userRequest,
-          message:
-            error instanceof Error ? error.message : 'Unknown streaming error',
         },
         'pearl_error'
       );
