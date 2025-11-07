@@ -1041,14 +1041,16 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 const output = event.data
                   .output as BubbleResult<ValidationResult>;
                 // Check if validation failed
-                posthog.captureValidationError({
-                  userId,
-                  code: event.data.input.input
-                    ? JSON.parse(event.data.input.input).code
-                    : '',
-                  errorMessages: output.data.errors || [],
-                  source: 'ai_generation',
-                });
+                if (output.data.errors && output.data.errors.length > 0) {
+                  posthog.captureValidationError({
+                    userId,
+                    code: event.data.input.input
+                      ? JSON.parse(event.data.input.input).code
+                      : '',
+                    errorMessages: output.data.errors || [],
+                    source: 'ai_generation',
+                  });
+                }
               } catch (error) {
                 console.error('[API] Error capturing validation event:', error);
               }

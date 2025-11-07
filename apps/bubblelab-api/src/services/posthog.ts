@@ -91,7 +91,6 @@ class PostHogService {
     }
 
     try {
-      console.log('[PostHog] Capturing validation error:', properties);
       this.client.capture({
         distinctId: properties.userId || 'anonymous',
         event: 'validation_error',
