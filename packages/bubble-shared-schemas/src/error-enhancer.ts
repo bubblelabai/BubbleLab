@@ -67,13 +67,6 @@ export function enhanceErrorMessage(errorMessage: string): string {
   ) {
     const hint =
       `\nLogMetadata interface properties:\n` +
-      `- flowName: string (required)\n` +
-      `- variableId?: number (optional)\n` +
-      `- lineNumber?: number (optional)\n` +
-      `- functionName?: string (optional)\n` +
-      `- bubbleName?: string (optional)\n` +
-      `- variableName?: string (optional)\n` +
-      `- operationType?: 'bubble_instantiation' | 'bubble_execution' | 'variable_assignment' | 'condition' | 'loop_iteration' | 'script' | 'bubble_execution_complete' (optional)\n` +
       `- additionalData?: Record<string, unknown> (optional)\n` +
       `\nTo add custom data, use the additionalData property.`;
     enhanced = enhanced + hint;
