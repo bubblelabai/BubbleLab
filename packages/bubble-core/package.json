@@ -47,7 +47,7 @@
     "@langchain/google-genai": "^0.2.15",
     "@langchain/langgraph": "^0.3.10",
     "@langchain/openai": "^0.6.2",
-    "@mendable/firecrawl-js": "^3.2.1",
+    "@mendable/firecrawl-js": "^4.5.0",
     "@types/pg": "^8.15.4",
     "@typescript-eslint/typescript-estree": "8.46.0",
     "chart.js": "^4.5.0",

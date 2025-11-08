@@ -29,10 +29,16 @@ const WebSearchToolParamsSchema = z.object({
     .describe('The search query to execute'),
   limit: z
     .number()
-    .min(1, 'Minimum number of search results to return is 1')
-    .max(5, 'Maximum number of search results to return is 5')
-    .default(3)
+    .max(50, 'Maximum number of search results to return is 20')
+    .default(10)
     .describe('Maximum number of search results to return'),
+
+  categories: z
+    .array(z.enum(['research', 'pdf', 'github']))
+    .default([])
+    .describe(
+      'Categories to find most relevant search results (research, pdf, github)'
+    ),
   location: z
     .string()
     .optional()
@@ -57,6 +63,7 @@ const WebSearchToolResultSchema = z.object({
   query: z.string().describe('The original search query'),
   totalResults: z.number().describe('Number of results returned'),
   searchEngine: z.string().describe('Search engine used (Firecrawl)'),
+  creditsUsed: z.number().describe('Number of credits used'),
   success: z.boolean().describe('Whether the search was successful'),
   error: z.string().describe('Error message if search failed'),
 });
@@ -71,7 +78,6 @@ export class WebSearchTool extends ToolBubble<
   WebSearchToolResult
 > {
   // Delay between searches in milliseconds
-  private static readonly SEARCH_DELAY = 2000;
 
   // Required static metadata
   static readonly bubbleName: BubbleName = 'web-search-tool';
@@ -110,16 +116,11 @@ export class WebSearchTool extends ToolBubble<
   async performAction(context?: BubbleContext): Promise<WebSearchToolResult> {
     void context; // Context available but not currently used
 
-    // Wait for the configured delay before performing the search
-    await new Promise((resolve) =>
-      setTimeout(resolve, WebSearchTool.SEARCH_DELAY)
-    );
-
     const { query, limit, location } = this.params;
 
     try {
-      // Validate limit range
-      const limitedResults = Math.min(Math.max(limit, 1), 20);
+      // Limit should be multiple of 10
+      const limitedResults = Math.ceil(limit / 10) * 10;
 
       // Get Firecrawl API key from credentials
       const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
@@ -137,11 +138,6 @@ export class WebSearchTool extends ToolBubble<
         limit: limitedResults,
         // Default sources to web search
         sources: ['web'],
-        // Default scrape options for better content extraction
-        scrapeOptions: {
-          formats: ['markdown'],
-          onlyMainContent: true,
-        },
       };
 
       // Add optional parameters if provided
@@ -193,6 +189,7 @@ export class WebSearchTool extends ToolBubble<
         query,
         totalResults: results.length,
         searchEngine: 'Firecrawl',
+        creditsUsed: Math.floor(limitedResults / 10),
         success: true,
         error: '',
       };
@@ -205,6 +202,7 @@ export class WebSearchTool extends ToolBubble<
       return {
         results: [],
         query,
+        creditsUsed: 0,
         totalResults: 0,
         searchEngine: 'Firecrawl',
         success: false,

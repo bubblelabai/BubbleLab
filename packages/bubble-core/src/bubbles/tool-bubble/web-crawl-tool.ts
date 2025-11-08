@@ -79,6 +79,7 @@ const WebCrawlToolResultSchema = z.object({
     )
     .describe('Array of crawled pages with content'),
   totalPages: z.number().describe('Total number of pages crawled'),
+  creditsUsed: z.number().describe('Number of credits used'),
 
   // Metadata
   metadata: z
@@ -247,6 +248,7 @@ export class WebCrawlTool extends ToolBubble<
       return {
         url,
         success: false,
+        creditsUsed: 0,
         error: errorMessage,
         pages: [],
         totalPages: 0,
@@ -330,6 +332,7 @@ export class WebCrawlTool extends ToolBubble<
     return {
       url,
       pages,
+      creditsUsed: pages.length,
       totalPages: pages.length,
       success: true,
       error: '',

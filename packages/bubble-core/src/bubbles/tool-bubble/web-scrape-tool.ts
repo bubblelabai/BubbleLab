@@ -6,32 +6,32 @@ import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 
 // Action types for browser automation (Gemini-compatible: avoid const/anyOf)
-const ActionSchema = z.object({
-  type: z
-    .enum(['wait', 'click', 'write', 'press', 'scroll', 'executeJavascript'])
-    .describe('Action type to perform'),
-  milliseconds: z
-    .number()
-    .optional()
-    .describe('Time to wait in milliseconds (for wait)'),
-  selector: z
-    .string()
-    .optional()
-    .describe('CSS selector to interact with (wait/click/write/scroll)'),
-  text: z.string().optional().describe('Text to write (for write)'),
-  key: z
-    .string()
-    .optional()
-    .describe('Key to press (e.g., "Enter") (for press)'),
-  direction: z
-    .enum(['up', 'down'])
-    .optional()
-    .describe('Scroll direction (for scroll)'),
-  script: z
-    .string()
-    .optional()
-    .describe('JavaScript code (for executeJavascript)'),
-});
+// const ActionSchema = z.object({
+//   type: z
+//     .enum(['wait', 'click', 'write', 'press', 'scroll', 'executeJavascript'])
+//     .describe('Action type to perform'),
+//   milliseconds: z
+//     .number()
+//     .optional()
+//     .describe('Time to wait in milliseconds (for wait)'),
+//   selector: z
+//     .string()
+//     .optional()
+//     .describe('CSS selector to interact with (wait/click/write/scroll)'),
+//   text: z.string().optional().describe('Text to write (for write)'),
+//   key: z
+//     .string()
+//     .optional()
+//     .describe('Key to press (e.g., "Enter") (for press)'),
+//   direction: z
+//     .enum(['up', 'down'])
+//     .optional()
+//     .describe('Scroll direction (for scroll)'),
+//   script: z
+//     .string()
+//     .optional()
+//     .describe('JavaScript code (for executeJavascript)'),
+// });
 
 // Simple, focused parameters with optional advanced features
 const WebScrapeToolParamsSchema = z.object({
@@ -43,28 +43,6 @@ const WebScrapeToolParamsSchema = z.object({
     .enum(['markdown'])
     .default('markdown')
     .describe('Content format to extract (default: markdown)'),
-  onlyMainContent: z
-    .boolean()
-    .default(true)
-    .describe('Extract only main content, filtering out navigation/footers'),
-  actions: z
-    .array(ActionSchema)
-    .optional()
-    .describe(
-      'Optional browser actions for authentication/navigation (e.g., login flows)'
-    ),
-  headers: z
-    .record(z.string())
-    .optional()
-    .describe('Optional HTTP headers (e.g., for session cookies)'),
-  waitFor: z
-    .number()
-    .min(0)
-    .max(30000)
-    .default(3000)
-    .describe(
-      'Time to wait for dynamic content in milliseconds (default: 3000)'
-    ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -79,6 +57,7 @@ const WebScrapeToolResultSchema = z.object({
   format: z.string().describe('Format of the returned content'),
   success: z.boolean().describe('Whether the scraping was successful'),
   error: z.string().describe('Error message if scraping failed'),
+  creditsUsed: z.number().describe('Number of credits used'),
   metadata: z
     .object({
       statusCode: z.number().optional(),
@@ -138,8 +117,7 @@ export class WebScrapeTool extends ToolBubble<
   }
 
   async performAction(): Promise<WebScrapeToolResult> {
-    const { url, format, onlyMainContent, actions, headers, waitFor } =
-      this.params;
+    const { url, format } = this.params;
     const startTime = Date.now();
 
     try {
@@ -156,32 +134,13 @@ export class WebScrapeTool extends ToolBubble<
 
       console.log('[WebScrapeTool] Scraping URL:', url, 'with format:', format);
 
-      // Configure scraping options
-      const scrapeOptions: any = {
-        formats: [format],
-        onlyMainContent,
-        // Sensible defaults for most use cases
-        removeBase64Images: true,
-        waitFor,
-      };
-
-      // Add optional parameters if provided
-      if (actions && actions.length > 0) {
-        console.log(
-          '[WebScrapeTool] Using browser actions:',
-          actions.length,
-          'steps'
-        );
-        scrapeOptions.actions = actions;
-      }
-
-      if (headers) {
-        console.log('[WebScrapeTool] Using custom headers');
-        scrapeOptions.headers = headers;
-      }
-
       // Execute scrape
-      const response = await firecrawl.scrape(url, scrapeOptions);
+      const response = await firecrawl.scrape(url, {
+        formats: [format],
+        // Sensible defaults for most use cases
+        maxAge: 172800000,
+        parsers: ['pdf'],
+      });
 
       // Extract content based on format
       let content: string;
@@ -238,6 +197,8 @@ export class WebScrapeTool extends ToolBubble<
         content: content.trim(),
         title,
         url,
+        // Per page 1 credit
+        creditsUsed: 1,
         format,
         success: true,
         error: '',
@@ -259,6 +220,7 @@ export class WebScrapeTool extends ToolBubble<
         format,
         success: false,
         error: errorMessage,
+        creditsUsed: 0,
         metadata: {
           loadTime: Date.now() - startTime,
         },

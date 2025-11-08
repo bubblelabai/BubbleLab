@@ -22,7 +22,6 @@ import {
 } from '@bubblelab/shared-schemas';
 import { trackTokenUsage } from './token-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
-import { sanitizeParams } from '@bubblelab/shared-schemas';
 
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
