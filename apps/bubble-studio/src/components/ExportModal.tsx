@@ -512,7 +512,7 @@ export function ExportModal({
                         <div className="flex items-center gap-2 mb-1">
                           <Package className="w-4 h-4 text-gray-400" />
                           <span className="text-sm font-medium text-gray-200">
-                            Integration Instructions
+                            Integrate into other apps
                           </span>
                         </div>
                         <p className="text-xs text-gray-400">

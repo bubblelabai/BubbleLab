@@ -2,7 +2,7 @@ import { db } from '../db/index.js';
 import { bubbleFlows } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { AppType } from '../config/clerk-apps.js';
-import { runBubbleFlowWithLogging } from './bubble-flow-execution.js';
+import { executeBubbleFlowWithTracking } from './bubble-flow-execution.js';
 import {
   parseCronExpression,
   validateCronExpression,
@@ -139,7 +139,7 @@ export class CronScheduler {
       );
 
       this.logger.debug?.(`[cron] transformedPayload`, transformedPayload);
-      runBubbleFlowWithLogging(f.id, transformedPayload, {
+      executeBubbleFlowWithTracking(f.id, transformedPayload, {
         userId: f.userId,
         appType: AppType.BUBBLE_LAB,
       })

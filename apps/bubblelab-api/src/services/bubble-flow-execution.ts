@@ -70,156 +70,10 @@ export async function executeBubbleFlowViaWebhook(
 }
 
 /**
- * Executes a BubbleFlow and handles the database operations
+ * Executes a BubbleFlow and handles the database operations.
+ * Supports both streaming and non-streaming execution.
  */
 export async function executeBubbleFlowWithTracking(
-  bubbleFlowId: number,
-  payload: ExecutionPayload,
-  options: ExecutionOptions
-): Promise<ExecutionResult> {
-  // find the user in the user table and get the app type of the user
-  const user = await db.query.users.findFirst({
-    where: and(eq(users.clerkId, options.userId)),
-  });
-
-  if (!user) {
-    throw new Error('Invalid user');
-  }
-
-  const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
-    options.userId,
-    (user.appType as AppType) || AppType.BUBBLE_LAB
-  );
-
-  // Get BubbleFlow from database (only if it belongs to the user)
-  const flow = await db.query.bubbleFlows.findFirst({
-    where: and(
-      eq(bubbleFlows.id, bubbleFlowId),
-      eq(bubbleFlows.userId, options.userId)
-    ),
-  });
-
-  if (!flow) {
-    throw new Error(
-      'Something went wrong, please recreate the flow. If the problem persists, please contact Nodex support.'
-    );
-  }
-  if (!allowed) {
-    //Create a new execution record with error
-    // Execute flow with special payload that includes the monthly limit error message
-    const specialPayload = {
-      ...payload,
-      monthlyLimitError:
-        'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-        currentUsage +
-        ', limit: ' +
-        limit,
-    };
-    await runBubbleFlow(
-      flow.originalCode!, // Use original TypeScript code
-      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-      specialPayload,
-      {
-        userId: options.userId,
-      }
-    );
-    await db.insert(bubbleFlowExecutions).values({
-      bubbleFlowId,
-      payload: cleanUpObjectForDisplayAndStorage(payload),
-      status: 'error',
-      error:
-        'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-        currentUsage +
-        ', limit: ' +
-        limit,
-      code: flow.originalCode,
-    });
-
-    return {
-      executionId: 0,
-      success: false,
-      error:
-        'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-        currentUsage +
-        ', limit: ' +
-        limit,
-    };
-  }
-
-  // Create execution record
-  const execResult = await db
-    .insert(bubbleFlowExecutions)
-    .values({
-      bubbleFlowId,
-      payload: cleanUpObjectForDisplayAndStorage(payload),
-      status: 'running',
-      code: flow.originalCode,
-    })
-    .returning();
-
-  try {
-    // Execute the flow using the pre-processed code from database
-    const result = await runBubbleFlow(
-      flow.originalCode!, // Use original TypeScript code
-      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-      payload,
-      {
-        userId: options.userId,
-      }
-    );
-
-    // Update execution record
-    await db
-      .update(bubbleFlowExecutions)
-      .set({
-        result: cleanUpObjectForDisplayAndStorage(
-          result.data ?? 'Execution completed without logging'
-        ),
-        error: result.success ? null : result.error,
-        status: result.success ? 'success' : 'error',
-        completedAt: new Date(),
-      })
-      .where(eq(bubbleFlowExecutions.id, execResult[0].id));
-
-    // Increase monthly usage count
-    await db
-      .update(users)
-      .set({
-        monthlyUsageCount: sql`${users.monthlyUsageCount} + 1`,
-      })
-      .where(eq(users.clerkId, options.userId));
-
-    return {
-      executionId: execResult[0].id,
-      success: result.success,
-      data: result.data,
-      error: result.error,
-    };
-  } catch (error) {
-    // Update execution record with error
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    await db
-      .update(bubbleFlowExecutions)
-      .set({
-        result: null,
-        error: errorMessage,
-        status: 'error',
-        completedAt: new Date(),
-      })
-      .where(eq(bubbleFlowExecutions.id, execResult[0].id));
-    return {
-      executionId: execResult[0].id,
-      success: false,
-      error: errorMessage,
-    };
-  }
-}
-
-/**
- * Executes a BubbleFlow with live streaming and handles the database operations
- */
-export async function runBubbleFlowWithLogging(
   bubbleFlowId: number,
   payload: ExecutionPayload,
   options: StreamingExecutionOptions
@@ -232,6 +86,7 @@ export async function runBubbleFlowWithLogging(
   if (!user) {
     throw new Error('Invalid user');
   }
+
   const appType = user.appType as AppType;
   const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
     options.userId,
@@ -289,7 +144,7 @@ export async function runBubbleFlowWithLogging(
     .returning();
 
   try {
-    // Execute the flow using streaming execution
+    // Execute the flow - use streaming if callback provided, otherwise standard execution
     let result: ExecutionResult;
     if (options.streamCallback) {
       result = await runBubbleFlowWithStreaming(
@@ -317,10 +172,11 @@ export async function runBubbleFlowWithLogging(
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result: cleanUpObjectForDisplayAndStorage({
-          data: result.data,
-          ...result.summary,
-        }),
+        result: cleanUpObjectForDisplayAndStorage(
+          options.streamCallback
+            ? { data: result.data, ...result.summary }
+            : (result.data ?? 'Execution completed without logging')
+        ),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),
@@ -338,7 +194,9 @@ export async function runBubbleFlowWithLogging(
     return {
       executionId: execResult[0].id,
       success: result.success,
-      data: result.summary || 'Execution completed without logging',
+      data: options.streamCallback
+        ? result.summary || 'Execution completed without logging'
+        : result.data,
       error: result.error,
     };
   } catch (error) {

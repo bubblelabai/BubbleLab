@@ -13,7 +13,7 @@ import {
 } from '../schemas/webhooks.js';
 import {
   executeBubbleFlowViaWebhook,
-  runBubbleFlowWithLogging,
+  executeBubbleFlowWithTracking,
 } from '../services/bubble-flow-execution.js';
 import { eq } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
@@ -202,7 +202,7 @@ app.openapi(webhookStreamRoute, async (c) => {
   try {
     return streamSSE(c, async (stream) => {
       try {
-        await runBubbleFlowWithLogging(webhook.bubbleFlowId, requestBody, {
+        await executeBubbleFlowWithTracking(webhook.bubbleFlowId, requestBody, {
           userId: webhook.userId,
           useWebhookLogger: true,
           streamCallback: async (event) => {

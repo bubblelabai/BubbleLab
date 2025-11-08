@@ -49,10 +49,7 @@ import {
   validationErrorHook,
 } from '../utils/error-handler.js';
 import { verifyMonthlyLimit } from '../services/subscription-validation.js';
-import {
-  runBubbleFlowWithLogging,
-  executeBubbleFlowWithTracking,
-} from '../services/bubble-flow-execution.js';
+import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
 import {
   BubbleScript,
   validateAndExtract,
@@ -342,7 +339,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
 
     return streamSSE(c, async (stream) => {
       try {
-        await runBubbleFlowWithLogging(id, triggerEvent, {
+        await executeBubbleFlowWithTracking(id, triggerEvent, {
           userId,
           appType,
           streamCallback: async (event) => {
