@@ -83,7 +83,7 @@ export function transformWebhookPayload(
         ...basePayload,
         method,
         headers,
-        ...(rawBody.body as Record<string, unknown>),
+        ...(rawBody as Record<string, unknown>),
       };
       return result;
     }

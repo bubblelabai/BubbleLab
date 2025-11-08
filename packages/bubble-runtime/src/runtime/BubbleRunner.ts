@@ -10,6 +10,7 @@ import {
   LogLevel,
 } from '@bubblelab/bubble-core';
 import { StreamingBubbleLogger } from '@bubblelab/bubble-core';
+import { WebhookStreamLogger } from '@bubblelab/bubble-core';
 import type { StreamCallback } from '@bubblelab/shared-schemas';
 import {
   BubbleValidationError,
@@ -35,6 +36,7 @@ export interface BubbleRunnerOptions {
   enableLineByLineLogging?: boolean;
   enableBubbleLogging?: boolean;
   streamCallback?: StreamCallback;
+  useWebhookLogger?: boolean;
 }
 
 export class BubbleRunner {
@@ -80,13 +82,23 @@ export class BubbleRunner {
 
     // Initialize logger if enabled
     if (this.options.streamCallback) {
-      // Use streaming logger when stream callback is provided
-      this.logger = new StreamingBubbleLogger('BubbleFlow', {
-        minLevel: this.options.logLevel || LogLevel.INFO,
-        enableTiming: true,
-        enableMemoryTracking: true,
-        streamCallback: this.options.streamCallback,
-      });
+      // Use webhook logger for terminal-friendly output when requested
+      if (this.options.useWebhookLogger) {
+        this.logger = new WebhookStreamLogger('BubbleFlow', {
+          minLevel: this.options.logLevel || LogLevel.INFO,
+          enableTiming: true,
+          enableMemoryTracking: true,
+          streamCallback: this.options.streamCallback,
+        });
+      } else {
+        // Use streaming logger when stream callback is provided
+        this.logger = new StreamingBubbleLogger('BubbleFlow', {
+          minLevel: this.options.logLevel || LogLevel.INFO,
+          enableTiming: true,
+          enableMemoryTracking: true,
+          streamCallback: this.options.streamCallback,
+        });
+      }
     } else {
       // Use regular logger
       this.logger = new BubbleLogger('BubbleFlow', {
@@ -493,7 +505,10 @@ export class BubbleRunner {
       );
 
       // Log execution completion for streaming
-      if (this.logger instanceof StreamingBubbleLogger) {
+      if (
+        this.logger instanceof StreamingBubbleLogger ||
+        this.logger instanceof WebhookStreamLogger
+      ) {
         this.logger.logExecutionComplete(true, result);
       }
 
@@ -523,7 +538,10 @@ export class BubbleRunner {
         );
 
         // Log execution failure for streaming
-        if (this.logger instanceof StreamingBubbleLogger) {
+        if (
+          this.logger instanceof StreamingBubbleLogger ||
+          this.logger instanceof WebhookStreamLogger
+        ) {
           this.logger.logExecutionComplete(
             false,
             undefined,
@@ -555,7 +573,10 @@ export class BubbleRunner {
         );
 
         // Log execution failure for streaming
-        if (this.logger instanceof StreamingBubbleLogger) {
+        if (
+          this.logger instanceof StreamingBubbleLogger ||
+          this.logger instanceof WebhookStreamLogger
+        ) {
           this.logger.logExecutionComplete(
             false,
             undefined,
@@ -587,7 +608,10 @@ export class BubbleRunner {
         );
 
         // Log execution failure for streaming
-        if (this.logger instanceof StreamingBubbleLogger) {
+        if (
+          this.logger instanceof StreamingBubbleLogger ||
+          this.logger instanceof WebhookStreamLogger
+        ) {
           this.logger.logExecutionComplete(
             false,
             undefined,
@@ -611,7 +635,10 @@ export class BubbleRunner {
         );
 
         // Log execution failure for streaming
-        if (this.logger instanceof StreamingBubbleLogger) {
+        if (
+          this.logger instanceof StreamingBubbleLogger ||
+          this.logger instanceof WebhookStreamLogger
+        ) {
           this.logger.logExecutionComplete(false, undefined, safeError);
         }
 

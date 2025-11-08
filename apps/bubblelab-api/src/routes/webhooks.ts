@@ -13,7 +13,7 @@ import {
 } from '../schemas/webhooks.js';
 import {
   executeBubbleFlowViaWebhook,
-  runBubbleFlowWithLogging,
+  executeBubbleFlowWithTracking,
 } from '../services/bubble-flow-execution.js';
 import { eq } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
@@ -98,7 +98,7 @@ app.openapi(webhookRoute, async (c) => {
     return c.json(
       {
         error: 'Webhook inactive',
-        details: `Webhook for path '${path}' is not active`,
+        details: `Webhook for path '${path}' is not active, please activate it via the toggle on Bubble Studio on the flow page.`,
       },
       403
     );
@@ -202,11 +202,14 @@ app.openapi(webhookStreamRoute, async (c) => {
   try {
     return streamSSE(c, async (stream) => {
       try {
-        await runBubbleFlowWithLogging(webhook.bubbleFlowId, requestBody, {
+        await executeBubbleFlowWithTracking(webhook.bubbleFlowId, requestBody, {
           userId: webhook.userId,
+          useWebhookLogger: true,
           streamCallback: async (event) => {
+            // For terminal-friendly output, just send the message directly
+            // instead of wrapping it in JSON
             await stream.writeSSE({
-              data: JSON.stringify(event),
+              data: event.message,
               event: event.type,
               id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             });
