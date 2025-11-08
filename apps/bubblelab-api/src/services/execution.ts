@@ -22,6 +22,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import { trackTokenUsage } from './token-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
+import { sanitizeParams } from '@bubblelab/shared-schemas';
 
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
@@ -115,16 +116,6 @@ async function runBubbleFlowCommon(
         data: undefined,
       };
     }
-  }
-
-  // Emit bubble parameters when streaming
-  if (options.streamCallback) {
-    options.streamCallback({
-      type: 'bubble_parameters_update',
-      timestamp: new Date().toISOString(),
-      message: 'Bubble parameters updated',
-      bubbleParameters: runner.bubbleScript.getOriginalParsedBubbles(),
-    });
   }
 
   // Run

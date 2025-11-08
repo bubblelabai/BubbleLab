@@ -224,9 +224,18 @@ export async function runBubbleFlowWithLogging(
   payload: ExecutionPayload,
   options: StreamingExecutionOptions
 ): Promise<ExecutionResult> {
+  // find the user in the user table and get the app type of the user
+  const user = await db.query.users.findFirst({
+    where: and(eq(users.clerkId, options.userId)),
+  });
+
+  if (!user) {
+    throw new Error('Invalid user');
+  }
+  const appType = user.appType as AppType;
   const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
     options.userId,
-    options.appType ?? AppType.NODEX
+    appType || AppType.BUBBLE_LAB
   );
 
   // Get BubbleFlow from database (only if it belongs to the user)

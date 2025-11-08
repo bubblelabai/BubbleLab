@@ -13,7 +13,7 @@ import {
   BubbleValidationError,
   BubbleExecutionError,
 } from './bubble-errors.js';
-import { sanitizeParams } from '../utils/param-helper.js';
+import { sanitizeParams } from '@bubblelab/shared-schemas';
 
 /**
  * Abstract base class for all bubble types
