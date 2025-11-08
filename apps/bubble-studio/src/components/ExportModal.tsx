@@ -199,6 +199,53 @@ export function ExportModal({
     }
   };
 
+  const handleCopyLLMInstructions = async () => {
+    try {
+      let instructions = `# LLM Integration Instructions for ${flowName || 'BubbleFlow'}\n\n`;
+
+      instructions += `## Flow Code\n\n\`\`\`typescript\n${code}\n\`\`\`\n\n`;
+
+      if (flowData?.webhook_url) {
+        instructions += `## Webhook Endpoints\n\n`;
+        instructions += `### Webhook Stream (Real-time logs)\n`;
+        instructions += `- **URL**: \`${flowData.webhook_url}/stream\`\n`;
+        instructions += `- **Method**: POST\n`;
+        instructions += `- **Headers**: Content-Type: application/json\n`;
+        instructions += `- **Authentication**: None required\n`;
+        instructions += `- **Use case**: Watch execution in real-time, perfect for debugging\n\n`;
+
+        instructions += `**Example:**\n\`\`\`bash\n`;
+        const streamDataString = JSON.stringify(mockData, null, 2);
+        instructions += `curl -X POST \\\n  -H "Content-Type: application/json" \\\n  -d '${streamDataString}' \\\n  "${flowData.webhook_url}/stream"\n\`\`\`\n\n`;
+
+        instructions += `### Webhook (JSON response)\n`;
+        instructions += `- **URL**: \`${flowData.webhook_url}\`\n`;
+        instructions += `- **Method**: POST\n`;
+        instructions += `- **Headers**: Content-Type: application/json\n`;
+        instructions += `- **Authentication**: None required\n`;
+        instructions += `- **Use case**: Get final result as JSON, perfect for API integrations\n\n`;
+
+        instructions += `**Example:**\n\`\`\`bash\n`;
+        const dataString = JSON.stringify(mockData, null, 2);
+        instructions += `curl -X POST \\\n  -H "Content-Type: application/json" \\\n  -d '${dataString}' \\\n  "${flowData.webhook_url}"\n\`\`\`\n\n`;
+      }
+
+      if (inputsSchema) {
+        instructions += `## Input Schema\n\n\`\`\`json\n${inputsSchema}\n\`\`\`\n\n`;
+      }
+
+      instructions += `## Integration Notes\n`;
+      instructions += `- This is a TypeScript workflow that can be executed via the webhook endpoints above\n`;
+      instructions += `- No authentication is required for webhook endpoints\n`;
+      instructions += `- Use the stream endpoint for real-time monitoring\n`;
+      instructions += `- Use the standard endpoint for getting the final JSON result\n`;
+
+      await handleCopyToClipboard(instructions, 'llm-instructions');
+    } catch (error) {
+      console.error('Failed to copy LLM instructions:', error);
+    }
+  };
+
   // Intentionally not computing code size/count here to avoid unused vars
 
   // Setup instructions
@@ -457,31 +504,237 @@ export function ExportModal({
           {activeTab === 'api' && (
             <div className="p-6 space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-200 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-gray-400" /> API Usage Guide
-                </h3>
-
-                <p className="text-sm text-gray-400">
-                  Use this cURL command to retrieve your flow details via the
-                  API
-                </p>
-
-                {/* Get Flow Details */}
-                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                  {/* Terminal Header */}
-                  <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <TerminalSquare className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-200">
-                        Get flow details
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                {/* LLM Integration Instructions */}
+                {flowData?.webhook_url && (
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Package className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-200">
+                            Integration Instructions
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          Copy complete integration guide with code and webhook
+                          endpoints
+                        </p>
+                      </div>
                       <button
-                        onClick={handleCopyCurlGetWithToken}
+                        onClick={handleCopyLLMInstructions}
                         className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-200 border border-purple-600/50 hover:border-purple-500/70 rounded text-sm font-medium transition-all flex items-center gap-2"
                       >
-                        {copiedSetup === 'curl-get-token' ? (
+                        {copiedSetup === 'llm-instructions' ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-4 h-4" />
+                            Copy prompt
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 pt-2 border-t border-[#30363d]">
+                      <span className="text-xs text-gray-500">Works with:</span>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src="/integrations/claude.png"
+                          alt="Claude"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="Claude"
+                        />
+                        <img
+                          src="/integrations/bolt.jpg"
+                          alt="Bolt"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="Bolt"
+                        />
+                        <img
+                          src="/integrations/cursor.png"
+                          alt="Cursor"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="Cursor"
+                        />
+                        <img
+                          src="/integrations/lovable.png"
+                          alt="Lovable"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="Lovable"
+                        />
+                        <img
+                          src="/integrations/replit.png"
+                          alt="Replit"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="Replit"
+                        />
+                        <img
+                          src="/integrations/v0.png"
+                          alt="v0"
+                          className="w-5 h-5 opacity-70 hover:opacity-100 transition-opacity rounded"
+                          title="v0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Webhook Endpoints Section - Show both if webhook is available */}
+                {flowData?.webhook_url && (
+                  <div className="space-y-3">
+                    {/* Webhook Stream Option */}
+                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
+                      <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d]">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <TerminalSquare className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm font-medium text-gray-200">
+                                Webhook Stream
+                              </span>
+                              <span className="text-xs text-gray-500 bg-[#0d1117] px-2 py-0.5 rounded">
+                                /stream
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              Real-time streaming logs • No authentication •
+                              Perfect for terminal/debugging
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleCopyWebhookStreamCurl}
+                            className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] text-gray-300 hover:text-gray-100 border border-[#30363d] hover:border-gray-500 rounded text-sm font-medium transition-all flex items-center gap-2"
+                          >
+                            {copiedSetup === 'curl-webhook-stream' ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <code
+                          className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                          style={{
+                            fontFamily:
+                              "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
+                          }}
+                        >
+                          {(() => {
+                            const dataString = JSON.stringify(
+                              mockData,
+                              null,
+                              2
+                            );
+                            return `curl -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '${dataString}' \\
+  "${flowData.webhook_url}/stream"`;
+                          })()}
+                        </code>
+                      </div>
+                    </div>
+
+                    {/* Webhook Non-Stream Option */}
+                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
+                      <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d]">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Workflow className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm font-medium text-gray-200">
+                                Webhook
+                              </span>
+                              <span className="text-xs text-gray-500 bg-[#0d1117] px-2 py-0.5 rounded">
+                                Standard
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              JSON response on completion • No authentication •
+                              Perfect for API integrations
+                            </p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              const dataString = JSON.stringify(
+                                mockData,
+                                null,
+                                2
+                              );
+                              const cmd = `curl -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '${dataString}' \\
+  "${flowData.webhook_url}"`;
+                              await handleCopyToClipboard(
+                                cmd,
+                                'curl-webhook-normal'
+                              );
+                            }}
+                            className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] text-gray-300 hover:text-gray-100 border border-[#30363d] hover:border-gray-500 rounded text-sm font-medium transition-all flex items-center gap-2"
+                          >
+                            {copiedSetup === 'curl-webhook-normal' ? (
+                              <>
+                                <Check className="w-4 h-4" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copy
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <code
+                          className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                          style={{
+                            fontFamily:
+                              "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
+                          }}
+                        >
+                          {(() => {
+                            const dataString = JSON.stringify(
+                              mockData,
+                              null,
+                              2
+                            );
+                            return `curl -X POST \\
+  -H "Content-Type: application/json" \\
+  -d '${dataString}' \\
+  "${flowData.webhook_url}"`;
+                          })()}
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback for flows without webhook */}
+                {!flowData?.webhook_url && (
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
+                    <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <TerminalSquare className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-200">
+                          Execute flow with API token
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleCopyCurlExecuteWithToken}
+                        className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-200 border border-purple-600/50 hover:border-purple-500/70 rounded text-sm font-medium transition-all flex items-center gap-2"
+                      >
+                        {copiedSetup === 'curl-execute-token' ? (
                           <>
                             <Check className="w-4 h-4" />
                             Copied!
@@ -494,173 +747,31 @@ export function ExportModal({
                         )}
                       </button>
                     </div>
-                  </div>
-                  {/* Terminal Content */}
-                  <div className="p-4">
-                    <code
-                      className="text-sm text-gray-300 break-words"
-                      style={{
-                        fontFamily:
-                          "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
-                      }}
-                    >{`curl -H "Authorization: Bearer $TOKEN" ${API_BASE_URL}/bubble-flow/${flowId || '<FLOW_ID>'}`}</code>
-                  </div>
-                </div>
-
-                {/* Explanation for webhook vs API */}
-                {flowData?.webhook_url && (
-                  <div className="text-sm text-gray-400">
-                    🎯 <strong className="text-gray-300">Webhook Stream</strong>{' '}
-                    - Execute without authentication, perfect for external
-                    integrations and real-time monitoring.
-                  </div>
-                )}
-
-                {/* Execute Flow */}
-                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                  {/* Terminal Header */}
-                  <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <TerminalSquare className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-200">
-                        {flowData?.webhook_url
-                          ? 'Execute via webhook stream'
-                          : 'Execute flow'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={
-                          flowData?.webhook_url
-                            ? handleCopyWebhookStreamCurl
-                            : handleCopyCurlExecuteWithToken
-                        }
-                        className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-200 border border-purple-600/50 hover:border-purple-500/70 rounded text-sm font-medium transition-all flex items-center gap-2"
+                    <div className="p-4">
+                      <code
+                        className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                        style={{
+                          fontFamily:
+                            "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
+                        }}
                       >
-                        {(
-                          flowData?.webhook_url
-                            ? copiedSetup === 'curl-webhook-stream'
-                            : copiedSetup === 'curl-execute-token'
-                        ) ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4" />
-                            {flowData?.webhook_url
-                              ? 'Copy webhook stream'
-                              : 'Copy with token'}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  {/* Terminal Content */}
-                  <div className="p-4">
-                    <code
-                      className="text-sm text-gray-300 break-words whitespace-pre-wrap"
-                      style={{
-                        fontFamily:
-                          "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
-                      }}
-                    >
-                      {(() => {
-                        // If flow has a webhook URL, show that instead of the API endpoint
-                        if (flowData?.webhook_url) {
+                        {(() => {
+                          const id = flowId || '<FLOW_ID>';
                           const dataString = JSON.stringify(mockData, null, 2);
                           return `curl -X POST \\
-  -H "Content-Type: application/json" \\
-  -d '${dataString}' \\
-  "${flowData.webhook_url}/stream"`;
-                        }
-
-                        // Fallback to API endpoint if no webhook URL
-                        const id = flowId || '<FLOW_ID>';
-                        const dataString = JSON.stringify(mockData, null, 2);
-                        return `curl -X POST \\
   -H "Content-Type: application/json" \\
   -H "Accept: text/event-stream" \\
   -H "Authorization: Bearer $TOKEN" \\
   -d '${dataString}' \\
   "${API_BASE_URL}/bubble-flow/${id}/execute-stream"`;
-                      })()}
-                    </code>
-                  </div>
-                </div>
-
-                {/* Secondary: Authentication token */}
-                <details className="group">
-                  <summary className="cursor-pointer list-none">
-                    <div className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 transition-colors">
-                      <KeyRound className="w-4 h-4" />
-                      <span>Authentication token</span>
-                      <svg
-                        className="w-4 h-4 transition-transform group-open:rotate-180"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </div>
-                  </summary>
-                  <div className="mt-3 bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                    <p className="text-xs text-gray-400 mb-3">
-                      Need your authentication token separately?
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleCopyApiToken}
-                        className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] border border-[#30363d] hover:border-gray-500 rounded text-xs font-medium text-gray-300 hover:text-gray-100 transition-all flex items-center gap-2"
-                      >
-                        {copiedSetup === 'token' ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy API Token
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={handleCopySetTokenCommand}
-                        className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] border border-[#30363d] hover:border-gray-500 rounded text-xs font-medium text-gray-300 hover:text-gray-100 transition-all flex items-center gap-2"
-                      >
-                        {copiedSetup === 'set-token' ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy shell command
-                          </>
-                        )}
-                      </button>
+                        })()}
+                      </code>
                     </div>
                   </div>
-                </details>
+                )}
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-[#1a1a1a] px-6 py-4 border-t border-[#30363d]">
-          <div className="text-xs text-gray-500">
-            Open source • No vendor lock-in • Run anywhere
-          </div>
         </div>
       </div>
     </div>

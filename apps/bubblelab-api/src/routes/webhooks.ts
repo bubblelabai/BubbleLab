@@ -98,7 +98,7 @@ app.openapi(webhookRoute, async (c) => {
     return c.json(
       {
         error: 'Webhook inactive',
-        details: `Webhook for path '${path}' is not active`,
+        details: `Webhook for path '${path}' is not active, please activate it via the toggle on Bubble Studio on the flow page.`,
       },
       403
     );
