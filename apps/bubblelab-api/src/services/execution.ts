@@ -31,13 +31,17 @@ export interface ExecutionOptions {
 
 export interface StreamingExecutionOptions extends ExecutionOptions {
   streamCallback?: StreamCallback;
+  useWebhookLogger?: boolean;
 }
 
 async function runBubbleFlowCommon(
   bubbleScript: string,
   bubbleParameters: Record<string, ParsedBubbleWithInfo>,
   payload: BubbleTriggerEvent,
-  options: ExecutionOptions & { streamCallback?: StreamCallback }
+  options: ExecutionOptions & {
+    streamCallback?: StreamCallback;
+    useWebhookLogger?: boolean;
+  }
 ): Promise<ExecutionResult> {
   const bubbleFactory = await getBubbleFactory();
 
@@ -48,6 +52,7 @@ async function runBubbleFlowCommon(
     enableLineByLineLogging: Boolean(options.streamCallback),
     enableBubbleLogging: Boolean(options.streamCallback),
     streamCallback: options.streamCallback,
+    useWebhookLogger: options.useWebhookLogger,
   });
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection

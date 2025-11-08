@@ -101,4 +101,5 @@ export interface BubbleContext {
 // Type constraint for service bubble parameters that require credentials
 export type ServiceBubbleParams<T = unknown> = T & {
   credentials?: CredentialOptions;
+  retries?: number;
 };

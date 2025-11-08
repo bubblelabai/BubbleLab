@@ -109,6 +109,7 @@ export {
   type LoggerConfig,
 } from './logging/BubbleLogger.js';
 export { StreamingBubbleLogger } from './logging/StreamingBubbleLogger.js';
+export { WebhookStreamLogger } from './logging/WebhookStreamLogger.js';
 
 // Re-export MockDataGenerator from shared-schemas for convenience
 export { MockDataGenerator } from '@bubblelab/shared-schemas';

@@ -299,6 +299,7 @@ export async function runBubbleFlowWithLogging(
         {
           userId: options.userId,
           streamCallback: options.streamCallback,
+          useWebhookLogger: options.useWebhookLogger,
         }
       );
     } else {

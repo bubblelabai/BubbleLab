@@ -204,9 +204,12 @@ app.openapi(webhookStreamRoute, async (c) => {
       try {
         await runBubbleFlowWithLogging(webhook.bubbleFlowId, requestBody, {
           userId: webhook.userId,
+          useWebhookLogger: true,
           streamCallback: async (event) => {
+            // For terminal-friendly output, just send the message directly
+            // instead of wrapping it in JSON
             await stream.writeSSE({
-              data: JSON.stringify(event),
+              data: event.message,
               event: event.type,
               id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             });
