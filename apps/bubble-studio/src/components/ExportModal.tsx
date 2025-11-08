@@ -110,42 +110,6 @@ export function ExportModal({
     }
   };
 
-  const handleCopyApiToken = async () => {
-    try {
-      const token = await refreshToken();
-      if (!token) {
-        console.error('No token available to copy');
-        return;
-      }
-      await handleCopyToClipboard(token, 'token');
-    } catch (error) {
-      console.error('Failed to copy API token:', error);
-    }
-  };
-
-  const handleCopySetTokenCommand = async () => {
-    try {
-      const token = await refreshToken();
-      if (!token) return;
-      const cmd = `export TOKEN='${token}'`;
-      await handleCopyToClipboard(cmd, 'set-token');
-    } catch (error) {
-      console.error('Failed to copy set-token command:', error);
-    }
-  };
-
-  const handleCopyCurlGetWithToken = async () => {
-    try {
-      const token = await refreshToken();
-      if (!token) return;
-      const id = flowId || '<FLOW_ID>';
-      const cmd = `curl -H "Authorization: Bearer ${token}" ${API_BASE_URL}/bubble-flow/${id}`;
-      await handleCopyToClipboard(cmd, 'curl-get-token');
-    } catch (error) {
-      console.error('Failed to copy cURL get with token:', error);
-    }
-  };
-
   const handleCopyCurlExecuteWithToken = async () => {
     try {
       const token = await refreshToken();
