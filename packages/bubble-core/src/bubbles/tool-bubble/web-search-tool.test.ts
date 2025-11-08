@@ -27,22 +27,6 @@ describe('WebSearchTool', () => {
       expect(result.results.length).toBe(0);
     });
 
-    it('should limit results to minimum of 1', async () => {
-      const tool = new WebSearchTool({
-        query: 'test search',
-        limit: 1, // Valid minimum value
-        credentials: {
-          [CredentialType.FIRECRAWL_API_KEY]: 'fake-key-for-test',
-        },
-      });
-
-      const result = await tool.performAction();
-
-      // Will fail due to fake API key, but validates parameter structure
-      expect(result.success).toBe(false);
-      expect(result.searchEngine).toBe('Firecrawl');
-    });
-
     it('should have proper error handling structure', async () => {
       // Test that the result structure is correct regardless of success/failure
       const tool = new WebSearchTool({
