@@ -31,9 +31,8 @@ export function enhanceErrorMessage(errorMessage: string): string {
   }
 
   // Pattern 3: BubbleError type errors
-  // Matches: "Type 'X' is not assignable to type 'BubbleError'" or similar
-  const bubbleErrorPattern =
-    /(?:is not assignable to|does not satisfy|is missing) (?:type )?'BubbleError'/;
+  // Matches whenever "BubbleError" appears in the error message
+  const bubbleErrorPattern = /BubbleError/;
   if (bubbleErrorPattern.test(enhanced)) {
     const hint =
       `\nBubbleError is a class with the following properties:\n` +
@@ -60,17 +59,23 @@ export function enhanceErrorMessage(errorMessage: string): string {
   }
 
   // Pattern 5: LogMetadata type assignment errors
-  // Matches: "Type 'X' is not assignable to type 'LogMetadata'" or similar
-  // We only allow additional data to be part of AI agent's context for simplicity
-  const logMetadataTypePattern =
-    /(?:is not assignable to|does not satisfy|is missing) (?:type )?'(?:Partial<)?LogMetadata(?:>)?'/;
+  // Matches whenever "LogMetadata" appears in the error message
+  const logMetadataTypePattern = /LogMetadata/;
   if (
     logMetadataTypePattern.test(enhanced) &&
     !enhanced.includes('Available properties:')
   ) {
     const hint =
       `\nLogMetadata interface properties:\n` +
-      `- additionalData?: Record<string, unknown>`;
+      `- flowName: string (required)\n` +
+      `- variableId?: number (optional)\n` +
+      `- lineNumber?: number (optional)\n` +
+      `- functionName?: string (optional)\n` +
+      `- bubbleName?: string (optional)\n` +
+      `- variableName?: string (optional)\n` +
+      `- operationType?: 'bubble_instantiation' | 'bubble_execution' | 'variable_assignment' | 'condition' | 'loop_iteration' | 'script' | 'bubble_execution_complete' (optional)\n` +
+      `- additionalData?: Record<string, unknown> (optional)\n` +
+      `\nTo add custom data, use the additionalData property.`;
     enhanced = enhanced + hint;
   }
 
