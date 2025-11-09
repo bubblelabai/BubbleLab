@@ -123,7 +123,11 @@ async function runBubbleFlowCommon(
   }
 
   // Run
-  const enhancedPayload = { ...payload, userId: options.userId };
+  // Use unique field name to avoid conflicts with user-provided userId/userid/user_id
+  const enhancedPayload = {
+    ...payload,
+    bubble_lab_clerk_user_id: options.userId,
+  };
   const result = await runner.runAll(enhancedPayload);
   // Track token usage if available
   if (result.summary?.tokenUsageByModel) {
@@ -346,10 +350,11 @@ export async function executeBubbleFlow(
       }
     });
 
-    // Auto-inject userId into payload
+    // Auto-inject bubble_lab_clerk_user_id into payload
+    // Use unique field name to avoid conflicts with user-provided userId/userid/user_id
     const enhancedPayload = {
       ...payload,
-      userId: options.userId, // Always include userId in the payload
+      bubble_lab_clerk_user_id: options.userId,
     };
 
     const flowInstance = func.call(

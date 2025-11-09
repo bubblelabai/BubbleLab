@@ -246,8 +246,8 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
         };
       };
       
-      // Extract userId from top-level payload (auto-injected by execution service)
-      const userId = payload.userId;
+      // Extract bubble_lab_clerk_user_id from top-level payload (auto-injected by execution service)
+      const userId = payload.bubble_lab_clerk_user_id;
       
       // Use payload description if provided, otherwise use template default
       const finalOutputDescription = (typeof payloadOutputDescription === 'string' && payloadOutputDescription) || ${JSON.stringify(outputDescription)};
