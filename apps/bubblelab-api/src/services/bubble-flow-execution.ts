@@ -21,6 +21,7 @@ export interface ExecutionPayload {
   timestamp: string;
   path: string;
   method?: string;
+  executionId: string;
   headers?: Record<string, string>;
   body?: unknown;
   [key: string]: unknown; // Allow additional properties for BubbleTriggerEvent compatibility

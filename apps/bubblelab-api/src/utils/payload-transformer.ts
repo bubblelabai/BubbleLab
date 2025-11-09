@@ -2,7 +2,6 @@ import type {
   BubbleTriggerEventRegistry,
   SlackEventWrapper,
   SlackAppMentionEvent,
-  SlackMessageEvent,
 } from '@bubblelab/shared-schemas';
 
 /**
@@ -20,6 +19,7 @@ export function transformWebhookPayload(
   const basePayload = {
     type: eventType,
     timestamp: new Date().toISOString(),
+    executionId: crypto.randomUUID(),
     path,
     body: rawBody, // Always include the original body for compatibility
   };
@@ -39,31 +39,6 @@ export function transformWebhookPayload(
         thread_ts: event?.thread_ts,
       };
       return result;
-    }
-
-    case 'slack/message_received': {
-      // Transform Slack message event
-      const slackBody = rawBody as SlackEventWrapper;
-      const event = slackBody.event as SlackMessageEvent;
-
-      return {
-        ...basePayload,
-        slack_event: slackBody,
-        channel: event?.channel,
-        user: event?.user,
-        text: event?.text,
-        channel_type: event?.channel_type,
-        subtype: event?.subtype,
-      };
-    }
-
-    case 'gmail/email_received': {
-      // For Gmail events, we expect the email data in the body
-      const emailBody = rawBody as { email: string };
-      return {
-        ...basePayload,
-        email: emailBody.email,
-      };
     }
 
     case 'schedule/cron': {

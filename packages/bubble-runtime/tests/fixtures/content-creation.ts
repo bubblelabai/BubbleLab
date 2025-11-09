@@ -70,7 +70,6 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
     const explodingTopicsScraper = new WebScrapeTool({
       url: 'https://www.explodingtopics.com',
       format: 'markdown',
-      onlyMainContent: true,
     });
 
     const scrapeResult = await explodingTopicsScraper.action();

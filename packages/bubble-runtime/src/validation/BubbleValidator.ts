@@ -1,5 +1,6 @@
 import path from 'path';
 import ts from 'typescript';
+import { enhanceErrorMessage } from '@bubblelab/shared-schemas';
 
 type DiagnosticsResult = {
   success: boolean;
@@ -168,7 +169,7 @@ class LanguageServiceTypechecker {
         ts.sys.newLine
       );
       const code = d.code ? `TS${d.code}: ` : '';
-      const entry = `${code}${message}`;
+      const entry = `${code}${enhanceErrorMessage(message)}`;
       if (lineErrors[line]) {
         lineErrors[line] = `${lineErrors[line]}\n${entry}`;
       } else {

@@ -17,6 +17,7 @@ export const AvailableTools = z.enum([
   'list-bubbles-tool',
   'get-bubble-details-tool',
   'bubbleflow-validation-tool',
+  'code-edit-tool',
   'chart-js-tool',
   'sql-query-tool',
 ] as const satisfies readonly BubbleName[]);

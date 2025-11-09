@@ -24,6 +24,7 @@ import { pathToFileURL } from 'url';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 export interface VariableState {
   value: unknown;
@@ -472,6 +473,7 @@ export class BubbleRunner {
       // Create default webhook payload if none provided
       const webhookPayload: WebhookEvent = {
         type: 'webhook/http',
+        executionId: randomUUID(),
         timestamp: new Date().toISOString(),
         path: '/webhook',
         body: {},

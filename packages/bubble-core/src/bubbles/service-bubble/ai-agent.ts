@@ -111,9 +111,14 @@ const CustomToolSchema = z.object({
       'Description of what the tool does - helps the AI know when to use it'
     ),
   schema: z
-    .record(z.string(), z.unknown())
+    .union([
+      z.record(z.string(), z.unknown()),
+      z.custom<z.ZodTypeAny>(
+        (val) => val && typeof val === 'object' && '_def' in val
+      ),
+    ])
     .describe(
-      'Zod schema object defining the tool parameters. Example: { amount: z.number().describe("Amount to calculate tax on"), rate: z.number().describe("Tax rate") }'
+      'Zod schema object defining the tool parameters. Can be either a plain object (e.g., { amount: z.number() }) or a Zod object directly (e.g., z.object({ amount: z.number() })).'
     ),
   func: z
     .function()
@@ -576,10 +581,24 @@ export class AIAgentBubble extends ServiceBubble<
           `🛠️ [AIAgent] Initializing custom tool: ${customTool.name}`
         );
 
+        // Handle both plain object and Zod object schemas
+        let schema: z.ZodTypeAny;
+        if (
+          customTool.schema &&
+          typeof customTool.schema === 'object' &&
+          '_def' in customTool.schema
+        ) {
+          // Already a Zod schema object, use it directly
+          schema = customTool.schema as z.ZodTypeAny;
+        } else {
+          // Plain object, convert to Zod object
+          schema = z.object(customTool.schema as z.ZodRawShape) as z.ZodTypeAny;
+        }
+
         const dynamicTool = new DynamicStructuredTool({
           name: customTool.name,
           description: customTool.description,
-          schema: z.object(customTool.schema as z.ZodRawShape) as z.ZodTypeAny,
+          schema: schema,
           func: customTool.func as (input: any) => Promise<any>,
         } as any);
 
@@ -1121,7 +1140,7 @@ export class AIAgentBubble extends ServiceBubble<
       const response = finalMessage?.content || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await formatFinalResponse(
+      const formattedResult = formatFinalResponse(
         response,
         this.params.model.model,
         jsonMode

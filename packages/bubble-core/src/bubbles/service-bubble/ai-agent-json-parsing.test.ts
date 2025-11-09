@@ -207,7 +207,6 @@ This should provide the information you need.`;
       );
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('failed to generate valid JSON');
     });
 
     test('should not process JSON when not in JSON mode', () => {

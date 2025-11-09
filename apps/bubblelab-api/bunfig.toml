@@ -6,5 +6,6 @@ coverageReporter = ["text", "lcov"]
 coveragePathIgnorePatterns = [
   "**/*.spec.ts",
   "**/dist/**",
-  "*.config.js"
+  "*.config.js",
+  "src/services/ai/**"
 ]

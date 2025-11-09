@@ -291,9 +291,9 @@ export function GenerationOutputOverlay() {
                     {/* Bubbles */}
                     <div className="flex flex-col">
                       <p className="text-xl sm:text-2xl font-bold text-gray-100">
-                        {generationResult.bubbleCount ??
-                          generationResult.bubblesUsed?.length ??
-                          0}
+                        {generationResult.bubbleCount
+                          ? generationResult.bubbleCount
+                          : 0}
                       </p>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">
                         bubbles

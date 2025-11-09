@@ -60,6 +60,7 @@ export type BubbleName =
   | 'generate-document-workflow'
   | 'parse-document-workflow'
   | 'bubbleflow-validation-tool'
+  | 'code-edit-tool'
   | 'storage'
   | 'google-drive'
   | 'gmail'

@@ -43,6 +43,10 @@ const WebScrapeToolParamsSchema = z.object({
     .enum(['markdown'])
     .default('markdown')
     .describe('Content format to extract (default: markdown)'),
+  onlyMainContent: z
+    .boolean()
+    .default(true)
+    .describe('Extract only main content, filtering out navigation/footers'),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()

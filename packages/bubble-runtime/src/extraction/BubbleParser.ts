@@ -814,15 +814,6 @@ export class BubbleParser {
         },
       };
     }
-    if (eventKey === 'gmail/email_received') {
-      return {
-        type: 'object',
-        properties: {
-          email: { type: 'string' },
-        },
-        required: ['email'],
-      };
-    }
     if (eventKey === 'schedule/cron') {
       return {
         type: 'object',

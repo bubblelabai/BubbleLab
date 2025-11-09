@@ -277,33 +277,46 @@ Return JSON:
     // PHASE 3: NEWS-FIRST RESEARCH - Scrape fresh news to find emerging phenomena
     // ========================================================================
 
-    // STEP 3.1: Scrape FRESH news sources in parallel (prioritize recent content)
-    const scrapingPromises = [
-      // Google Trends (what's trending RIGHT NOW)
-      new WebScrapeTool({
+    // STEP 3.1: Scrape FRESH news sources sequentially (prioritize recent content)
+    const scrapeResults: Array<{ success: boolean; data?: { content: string }; error?: string }> = [];
+
+    // Google Trends (what's trending RIGHT NOW)
+    try {
+      const googleTrendsResult = await new WebScrapeTool({
         url: 'https://trends.google.com/trends/trendingsearches/daily',
         format: 'markdown',
         onlyMainContent: true,
-      }).action(),
+      }).action();
+      scrapeResults.push(googleTrendsResult);
+    } catch (error) {
+      scrapeResults.push({ success: false, error: 'Failed to scrape Google Trends' });
+    }
 
-      // Exploding Topics (emerging topics)
-      new WebScrapeTool({
+    // Exploding Topics (emerging topics)
+    try {
+      const explodingTopicsResult = await new WebScrapeTool({
         url: 'https://www.explodingtopics.com',
         format: 'markdown',
         onlyMainContent: true,
-      }).action(),
+      }).action();
+      scrapeResults.push(explodingTopicsResult);
+    } catch (error) {
+      scrapeResults.push({ success: false, error: 'Failed to scrape Exploding Topics' });
+    }
 
-      // AI-suggested FRESH news sources (priority)
-      ...researchPlan.newsSourceUrls.map((site) =>
-        new WebScrapeTool({
+    // AI-suggested FRESH news sources (priority)
+    for (const site of researchPlan.newsSourceUrls) {
+      try {
+        const newsResult = await new WebScrapeTool({
           url: site.url,
           format: 'markdown',
           onlyMainContent: true,
-        }).action()
-      ),
-    ];
-
-    const scrapeResults = await Promise.all(scrapingPromises);
+        }).action();
+        scrapeResults.push(newsResult);
+      } catch (error) {
+        scrapeResults.push({ success: false, error: \`Failed to scrape \${site.url}\` });
+      }
+    }
 
     // Combine all scraped news content
     const allNewsContent = scrapeResults

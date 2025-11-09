@@ -3,6 +3,85 @@
  */
 
 /**
+ * Check if input has an incomplete code block (opening fence but no closing fence)
+ */
+function hasIncompleteCodeBlock(input: string): boolean {
+  const codeFencePattern = /```(?:json)?\s*\n?/g;
+  const matches = [...input.matchAll(codeFencePattern)];
+
+  if (matches.length === 0) return false;
+
+  // Count opening and closing fences
+  let openCount = 0;
+  let closeCount = 0;
+
+  for (const match of matches) {
+    const afterMatch = input.slice(match.index! + match[0].length);
+    // Check if there's a closing fence after this opening fence
+    const closingFenceIndex = afterMatch.search(/```/);
+    if (closingFenceIndex !== -1) {
+      closeCount++;
+    } else {
+      openCount++;
+    }
+  }
+
+  // If we have more opening fences than closing fences, it's incomplete
+  return openCount > closeCount;
+}
+
+/**
+ * Check if JSON appears to be embedded in markdown documentation
+ */
+function isJsonEmbeddedInDocumentation(input: string): boolean {
+  // Check for markdown formatting indicators
+  const hasMarkdownFormatting =
+    input.includes('**') ||
+    input.includes('*') ||
+    input.includes('#') ||
+    input.includes('1.') || // numbered lists
+    input.includes('-') || // bullet lists
+    input.includes('`'); // inline code
+
+  if (!hasMarkdownFormatting) return false;
+
+  // Check if there's a code block (complete or incomplete)
+  const hasCodeBlock = input.includes('```');
+
+  if (!hasCodeBlock) return false;
+
+  // Check if there's substantial text content before or after the code block
+  // This indicates it's documentation, not just a JSON response with markdown formatting
+  const lines = input.split('\n');
+  const codeBlockStartIndex = input.indexOf('```');
+  const codeBlockEndIndex = input.lastIndexOf('```');
+
+  // Count non-empty lines before and after code block
+  let linesBefore = 0;
+  let linesAfter = 0;
+  let currentIndex = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineStart = currentIndex;
+    const lineEnd = currentIndex + line.length;
+
+    if (lineStart < codeBlockStartIndex && line.trim().length > 0) {
+      linesBefore++;
+    } else if (lineEnd > codeBlockEndIndex + 3 && line.trim().length > 0) {
+      // +3 for the closing ```
+      linesAfter++;
+    }
+
+    currentIndex = lineEnd + 1; // +1 for the newline character
+  }
+
+  // If there are multiple lines of documentation text before or after the code block,
+  // it's likely documentation, not a JSON response
+  return linesBefore > 2 || linesAfter > 2;
+}
+
+/**
  * Strip markdown code fences and return inner content.
  */
 function stripCodeFences(input: string): string {
@@ -321,6 +400,28 @@ function removeTrailingCommasOutsideStrings(input: string): string {
  * Extract JSON from mixed text/JSON responses with robust cleanup
  */
 export function extractAndCleanJSON(input: string): string | null {
+  // Check for incomplete code blocks - if found and input looks like documentation,
+  // reject it to avoid extracting JSON from markdown documentation
+  if (hasIncompleteCodeBlock(input)) {
+    // If input has markdown formatting (bullets, headers, multiple lines), it's likely documentation
+    const hasMarkdownFormatting =
+      input.includes('**') ||
+      input.includes('*') ||
+      input.includes('#') ||
+      (input.split('\n').length > 5 && input.includes('```'));
+
+    if (hasMarkdownFormatting) {
+      // This looks like documentation with an incomplete code block - reject it
+      return null;
+    }
+  }
+
+  // Check for complete code blocks embedded in documentation
+  // This catches cases where JSON is in a code block but surrounded by documentation text
+  if (isJsonEmbeddedInDocumentation(input)) {
+    return null;
+  }
+
   const stripped = stripCodeFences(input);
 
   // Preferred: scan/extract top-level JSON
@@ -522,6 +623,40 @@ export function parseJsonWithFallbacks(finalResponse: string): {
   success: boolean;
   error?: string;
 } {
+  // Check for incomplete code blocks - if found and input looks like documentation,
+  // reject it early to avoid extracting JSON from markdown documentation
+  if (hasIncompleteCodeBlock(finalResponse)) {
+    // If input has markdown formatting (bullets, headers, multiple lines), it's likely documentation
+    const hasMarkdownFormatting =
+      finalResponse.includes('**') ||
+      finalResponse.includes('*') ||
+      finalResponse.includes('#') ||
+      (finalResponse.split('\n').length > 5 && finalResponse.includes('```'));
+
+    if (hasMarkdownFormatting) {
+      // This looks like documentation with an incomplete code block - reject it
+      return {
+        response: finalResponse,
+        parsed: null,
+        success: false,
+        error:
+          'AI Agent failed to generate valid JSON. Input appears to be markdown documentation with an incomplete code block, not valid JSON.',
+      };
+    }
+  }
+
+  // Check for complete code blocks embedded in documentation
+  // This catches cases where JSON is in a code block but surrounded by documentation text
+  if (isJsonEmbeddedInDocumentation(finalResponse)) {
+    return {
+      response: finalResponse,
+      parsed: null,
+      success: false,
+      error:
+        'AI Agent failed to generate valid JSON. Input appears to be markdown documentation with a code block, not valid JSON.',
+    };
+  }
+
   const attempts = [
     // Attempt 1: Try parsing the original response as-is
     () => {
