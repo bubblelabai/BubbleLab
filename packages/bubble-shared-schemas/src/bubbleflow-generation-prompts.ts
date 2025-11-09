@@ -30,6 +30,7 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
 17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow. Be specific and make sure no same variable name is used for different bubbles. Bad name: slackNotifier, good name: slackOnChannelErrorNotifier.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
 export const BUBBLE_STUDIO_INSTRUCTIONS = `

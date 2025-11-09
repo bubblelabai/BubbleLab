@@ -35,12 +35,30 @@ export function enhanceErrorMessage(errorMessage: string): string {
   const bubbleErrorPattern = /BubbleError/;
   if (bubbleErrorPattern.test(enhanced)) {
     const hint =
-      `\nBubbleError is a class with the following properties:\n` +
-      `- message: string (required, from Error)\n` +
-      `- variableId?: number (optional)\n` +
-      `- bubbleName?: string (optional)\n` +
-      `- cause?: Error (optional)\n` +
-      `Use: new BubbleError(message, { variableId?, bubbleName?, cause? })`;
+      `\nBubbleLogger.error() method signature:\n` +
+      `- this.logger?.error(message: string, error?: BubbleError, metadata?: Partial<LogMetadata>)\n` +
+      `\nIMPORTANT: The second parameter must be a BubbleError instance, NOT a string!\n` +
+      `\n❌ INCORRECT: this.logger?.error("msg1", "msg2")\n` +
+      `❌ INCORRECT: this.logger?.error(msg1, msg2) // where msg2 is a string\n` +
+      `\n✅ CORRECT: this.logger?.error("Error message")\n` +
+      `✅ CORRECT: this.logger?.error("Error message", bubbleError)\n` +
+      `✅ CORRECT: this.logger?.error("Error message", bubbleError, { variableId: 1 })\n` +
+      `\nBubbleError minimal interface:\n` +
+      `- message: string (from Error)\n` +
+      `- variableId?: number\n` +
+      `- bubbleName?: string\n` +
+      `\nCreating a BubbleError:\n` +
+      `- new BubbleError("Error message", { variableId?: number, bubbleName?: string })\n` +
+      `- new BubbleValidationError("Validation failed", { variableId?: number, bubbleName?: string, validationErrors?: string[] })\n` +
+      `- new BubbleExecutionError("Execution failed", { variableId?: number, bubbleName?: string, executionPhase?: 'instantiation' | 'execution' | 'validation' })\n` +
+      `\nLogMetadata minimal interface (for metadata parameter):\n` +
+      `- variableId?: number\n` +
+      `- bubbleName?: string\n` +
+      `- lineNumber?: number\n` +
+      `- additionalData?: Record<string, unknown>\n` +
+      `\nExample usage:\n` +
+      `- this.logger?.error("Bubble execution failed", new BubbleError("Details", { variableId: 1, bubbleName: "MyBubble" }))\n` +
+      `- this.logger?.error("Error occurred", undefined, { variableId: 1, additionalData: { custom: "data" } })`;
     enhanced = enhanced + hint;
   }
 

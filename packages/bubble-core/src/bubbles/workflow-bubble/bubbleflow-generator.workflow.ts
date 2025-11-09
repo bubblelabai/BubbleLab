@@ -64,7 +64,7 @@ const AI_MODEL_CONFIG = {
   temperature: 0.3,
 } as const;
 
-const MAX_ITERATIONS = 100;
+const MAX_ITERATIONS = 50;
 
 const TOOL_NAMES = {
   VALIDATION: 'bubbleflow-validation-tool',
@@ -79,7 +79,7 @@ WORKFLOW:
 2. Use get-bubble-details-tool for each bubble to understand proper usage
 3. Write complete code using exact patterns from bubble details
 4. Call createWorkflow with your complete code - it will validate and return errors if any
-5. If validation fails, use editWorkflow to fix the errors iteratively
+5. If validation fails, use editWorkflow to fix the errors iteratively, DO NOT use createWorkflow as it is not very efficient after the first call.
 6. Keep calling editWorkflow until validation passes
 7. Do not provide a response until your code is fully validated
 
@@ -485,13 +485,13 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               name: 'createWorkflow',
               description:
                 'Create and validate a complete BubbleFlow workflow. This tool validates your TypeScript code and returns validation results. ALWAYS use this tool first before editWorkflow. Returns validation errors if code is invalid.',
-              schema: {
+              schema: z.object({
                 code: z
                   .string()
                   .describe(
                     'Complete TypeScript workflow code to validate (must include imports, class definition, and handle method)'
                   ),
-              },
+              }),
               func: async (input: Record<string, unknown>) => {
                 const code = input.code as string;
                 const validationResult = await validateBubbleFlow(
@@ -512,7 +512,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               name: 'editWorkflow',
               description:
                 'Edit existing workflow code using Morph Fast Apply. Use this ONLY after createWorkflow has been called. Provide precise edits with "// ... existing code ..." markers. Returns both the updated code AND new validation errors.',
-              schema: {
+              schema: z.object({
                 instructions: z
                   .string()
                   .describe(
@@ -523,7 +523,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
                   .describe(
                     "Specify ONLY the precise lines of code that you wish to edit. NEVER specify or write out unchanged code. Instead, represent all unchanged code using the comment of the language you're editing in - example: // ... existing code ... "
                   ),
-              },
+              }),
               func: async (input: Record<string, unknown>) => {
                 const instructions = input.instructions as string;
                 const codeEdit = input.codeEdit as string;

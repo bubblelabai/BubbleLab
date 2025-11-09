@@ -248,8 +248,6 @@ export class BubbleFlowValidationTool extends ToolBubble<
         this.bubbleFactory
       );
 
-      console.log(validationResult);
-
       if (!validationResult.valid) {
         return {
           valid: false,
