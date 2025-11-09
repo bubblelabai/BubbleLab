@@ -319,15 +319,17 @@ export class EditBubbleFlowTool extends ToolBubble<
         modelName: morphModel ?? 'morph/morph-v3-large',
       };
 
-      this.context?.logger?.logTokenUsage(
-        tokenUsage,
-        `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
-        {
-          bubbleName: 'code-edit-tool',
-          variableId: this.context?.variableId,
-          operationType: 'bubble_execution',
-        }
-      );
+      if (this.context?.logger) {
+        this.context.logger.logTokenUsage(
+          tokenUsage,
+          `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
+          {
+            bubbleName: 'code-edit-tool',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
 
       const mergedCode = responseData.choices?.[0]?.message?.content;
 

@@ -824,8 +824,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     );
     const bubbleParametersChanged = prevBubbleKeys !== currentBubbleKeys;
 
-    // Structure changed if flow ID changed OR bubbleParameters changed
-    const structureChanged = flowIdChanged || bubbleParametersChanged;
+    // Check if eventType changed (affects entry node type and edge connections)
+    const eventTypeChanged =
+      prevFlowRef.current?.eventType !== currentFlow?.eventType;
+
+    // Structure changed if flow ID changed OR bubbleParameters changed OR eventType changed
+    const structureChanged =
+      flowIdChanged || bubbleParametersChanged || eventTypeChanged;
 
     const expandedChanged =
       prevExpandedRootIdsRef.current.length !== expandedRootIds.length ||

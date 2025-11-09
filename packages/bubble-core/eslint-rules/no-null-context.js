@@ -97,6 +97,19 @@ export default {
           const hasContextNullCheck = (expr) => {
             if (!expr) return false;
 
+            // Check for optional chaining: this.context?.property
+            if (expr.type === 'ChainExpression') {
+              const expression = expr.expression;
+              if (
+                expression.type === 'MemberExpression' &&
+                expression.object.type === 'MemberExpression' &&
+                expression.object.object.type === 'ThisExpression' &&
+                expression.object.property.name === 'context'
+              ) {
+                return true;
+              }
+            }
+
             // Check for simple binary expression: this.context !== null
             if (
               expr.type === 'BinaryExpression' &&
