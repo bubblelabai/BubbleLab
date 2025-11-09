@@ -319,8 +319,6 @@ export class EditBubbleFlowTool extends ToolBubble<
         modelName: morphModel ?? 'morph/morph-v3-large',
       };
 
-      console.log('Token usage:', tokenUsage);
-
       this.context?.logger?.logTokenUsage(
         tokenUsage,
         `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
