@@ -276,9 +276,60 @@ export class EditBubbleFlowTool extends ToolBubble<
       }
 
       // Parse the response from OpenRouter
-      const responseData = result.data.json as {
+      // OpenRouter follows OpenAI API format with 'usage' object containing prompt_tokens, completion_tokens, total_tokens
+      type OpenRouterResponse = {
         choices?: Array<{ message?: { content?: string } }>;
+        usage?: {
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          total_tokens?: number;
+        };
+        // Some providers may also include usage_metadata
+        usage_metadata?: {
+          input_tokens?: number;
+          output_tokens?: number;
+          total_tokens?: number;
+        };
       };
+
+      const responseData = result.data.json as OpenRouterResponse;
+
+      // Extract token usage - OpenRouter uses 'usage' field (OpenAI format)
+      // Fallback to usage_metadata if present (some providers use this)
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let totalTokens = 0;
+
+      if (responseData.usage) {
+        // OpenAI format: usage.prompt_tokens, usage.completion_tokens
+        inputTokens = responseData.usage.prompt_tokens ?? 0;
+        outputTokens = responseData.usage.completion_tokens ?? 0;
+        totalTokens = responseData.usage.total_tokens ?? 0;
+      } else if (responseData.usage_metadata) {
+        // Alternative format: usage_metadata.input_tokens, usage_metadata.output_tokens
+        inputTokens = responseData.usage_metadata.input_tokens ?? 0;
+        outputTokens = responseData.usage_metadata.output_tokens ?? 0;
+        totalTokens = responseData.usage_metadata.total_tokens ?? 0;
+      }
+
+      const tokenUsage = {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        modelName: morphModel ?? 'morph/morph-v3-large',
+      };
+
+      console.log('Token usage:', tokenUsage);
+
+      this.context?.logger?.logTokenUsage(
+        tokenUsage,
+        `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
+        {
+          bubbleName: 'code-edit-tool',
+          variableId: this.context?.variableId,
+          operationType: 'bubble_execution',
+        }
+      );
 
       const mergedCode = responseData.choices?.[0]?.message?.content;
 
