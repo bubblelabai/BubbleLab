@@ -71,6 +71,7 @@ export { ListBubblesTool } from './bubbles/tool-bubble/list-bubbles-tool.js';
 export { GetBubbleDetailsTool } from './bubbles/tool-bubble/get-bubble-details-tool.js';
 export { SQLQueryTool } from './bubbles/tool-bubble/sql-query-tool.js';
 export { BubbleFlowValidationTool } from './bubbles/tool-bubble/bubbleflow-validation-tool.js';
+export { EditBubbleFlowTool } from './bubbles/tool-bubble/code-edit-tool.js';
 export { WebSearchTool } from './bubbles/tool-bubble/web-search-tool.js';
 export { WebScrapeTool } from './bubbles/tool-bubble/web-scrape-tool.js';
 export { WebCrawlTool } from './bubbles/tool-bubble/web-crawl-tool.js';

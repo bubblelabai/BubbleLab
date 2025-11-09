@@ -211,6 +211,9 @@ export class BubbleFactory {
     const { BubbleFlowValidationTool } = await import(
       './bubbles/tool-bubble/bubbleflow-validation-tool.js'
     );
+    const { EditBubbleFlowTool } = await import(
+      './bubbles/tool-bubble/code-edit-tool.js'
+    );
     const { WebSearchTool } = await import(
       './bubbles/tool-bubble/web-search-tool.js'
     );
@@ -320,6 +323,10 @@ export class BubbleFactory {
     this.register(
       'bubbleflow-validation-tool',
       BubbleFlowValidationTool as BubbleClassWithMetadata
+    );
+    this.register(
+      'code-edit-tool',
+      EditBubbleFlowTool as BubbleClassWithMetadata
     );
     this.register('web-search-tool', WebSearchTool as BubbleClassWithMetadata);
     this.register('web-scrape-tool', WebScrapeTool as BubbleClassWithMetadata);

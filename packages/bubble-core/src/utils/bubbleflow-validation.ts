@@ -4,10 +4,18 @@ import type { BubbleFactory } from '../bubble-factory.js';
 import type { ParsedBubble } from '@bubblelab/shared-schemas';
 import { enhanceErrorMessage } from '@bubblelab/shared-schemas';
 
+export interface VariableTypeInfo {
+  name: string;
+  type: string;
+  line: number;
+  column: number;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors?: string[];
   bubbleParameters?: Record<string, ParsedBubble>;
+  variableTypes?: VariableTypeInfo[];
 }
 
 // Language Service-based validator (persistent across calls for performance)
@@ -114,8 +122,14 @@ export async function validateBubbleFlow(
       ...syntacticDiagnostics,
       ...semanticDiagnostics,
     ].filter((d) => d.code !== 6133);
-
+    // Additional validation: Check if it extends BubbleFlow
+    // Get source file from language service for AST analysis
+    const program = languageService.getProgram();
+    const sourceFile = program?.getSourceFile(fileName);
     if (diagnostics.length > 0) {
+      const variableTypes = sourceFile
+        ? extractVariableTypes(sourceFile, program)
+        : [];
       const errors = diagnostics.map((diagnostic) => {
         if (diagnostic.file && diagnostic.start !== undefined) {
           const { line, character } = ts.getLineAndCharacterOfPosition(
@@ -138,13 +152,9 @@ export async function validateBubbleFlow(
       return {
         valid: false,
         errors,
+        variableTypes,
       };
     }
-
-    // Additional validation: Check if it extends BubbleFlow
-    // Get source file from language service for AST analysis
-    const program = languageService.getProgram();
-    const sourceFile = program?.getSourceFile(fileName);
 
     if (!sourceFile) {
       return {
@@ -168,9 +178,15 @@ export async function validateBubbleFlow(
       };
     }
 
+    // Extract type definitions for all variables
+    const variableTypes = sourceFile
+      ? extractVariableTypes(sourceFile, program)
+      : [];
+
     return {
       valid: true,
       bubbleParameters: parseResult.bubbles,
+      variableTypes,
     };
   } catch (error) {
     return {
@@ -233,4 +249,232 @@ function validateBubbleFlowClass(sourceFile: ts.SourceFile): ValidationResult {
     valid: errors.length === 0,
     errors: errors.length > 0 ? errors : undefined,
   };
+}
+
+/**
+ * Expands a type to show its full structure, not just the type name
+ */
+function expandTypeString(
+  type: ts.Type,
+  typeChecker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  visited: Set<ts.Type> = new Set()
+): string {
+  // Prevent infinite recursion
+  if (visited.has(type)) {
+    return typeChecker.typeToString(type);
+  }
+  visited.add(type);
+
+  // Get the base type string
+  const baseTypeString = typeChecker.typeToString(type);
+
+  // If it's an object type, expand it to show properties
+  if (type.isClassOrInterface() || type.getSymbol()) {
+    const symbol = type.getSymbol();
+    if (symbol) {
+      // Check if it's a type alias or interface that we should expand
+      const declarations = symbol.getDeclarations();
+      if (declarations && declarations.length > 0) {
+        const declaration = declarations[0];
+
+        // If it's a type alias, try to get the aliased type
+        if (ts.isTypeAliasDeclaration(declaration)) {
+          const aliasedType = typeChecker.getTypeAtLocation(declaration.type);
+          if (aliasedType !== type) {
+            const expanded = expandTypeString(
+              aliasedType,
+              typeChecker,
+              sourceFile,
+              visited
+            );
+            // Only use expanded if it's different and more detailed
+            if (
+              expanded !== baseTypeString &&
+              expanded.length > baseTypeString.length
+            ) {
+              return expanded;
+            }
+          }
+        }
+      }
+    }
+
+    // For object types, try to get a more detailed representation
+    const properties = type.getProperties();
+    if (properties.length > 0) {
+      // Check if the type string is just the name (not expanded)
+      // If it's a simple name without braces, try to expand it
+      if (
+        !baseTypeString.includes('{') &&
+        !baseTypeString.includes('[') &&
+        !baseTypeString.includes('|')
+      ) {
+        // Try to get the expanded type by checking the type's structure
+        const expandedParts: string[] = [];
+
+        for (const prop of properties.slice(0, 20)) {
+          // Limit to 20 properties to avoid huge output
+          const propDeclaration =
+            prop.valueDeclaration || prop.getDeclarations()?.[0] || sourceFile;
+          const propType = typeChecker.getTypeOfSymbolAtLocation(
+            prop,
+            propDeclaration
+          );
+          const propTypeString = expandTypeString(
+            propType,
+            typeChecker,
+            sourceFile,
+            new Set(visited)
+          );
+          const optional = prop.getFlags() & ts.SymbolFlags.Optional ? '?' : '';
+          expandedParts.push(`${prop.getName()}${optional}: ${propTypeString}`);
+        }
+
+        if (expandedParts.length > 0) {
+          const remaining =
+            properties.length > 20 ? `... ${properties.length - 20} more` : '';
+          return `{ ${expandedParts.join('; ')}${remaining ? `; ${remaining}` : ''} }`;
+        }
+      }
+    }
+  }
+
+  // For union types, expand each member
+  if (type.isUnion()) {
+    const unionTypes = type.types.map((t) =>
+      expandTypeString(t, typeChecker, sourceFile, new Set(visited))
+    );
+    return unionTypes.join(' | ');
+  }
+
+  // For intersection types, expand each member
+  if (type.isIntersection()) {
+    const intersectionTypes = type.types.map((t) =>
+      expandTypeString(t, typeChecker, sourceFile, new Set(visited))
+    );
+    return intersectionTypes.join(' & ');
+  }
+
+  return baseTypeString;
+}
+
+/**
+ * Extracts type definitions for all variables in the source file
+ */
+function extractVariableTypes(
+  sourceFile: ts.SourceFile,
+  program: ts.Program | undefined
+): VariableTypeInfo[] {
+  if (!program) {
+    return [];
+  }
+
+  const typeChecker = program.getTypeChecker();
+  const variableTypes: VariableTypeInfo[] = [];
+
+  function visit(node: ts.Node) {
+    // Extract variable declarations
+    if (ts.isVariableDeclaration(node)) {
+      const name = node.name;
+      if (ts.isIdentifier(name)) {
+        const variableName = name.text;
+        const type = typeChecker.getTypeAtLocation(node);
+        const typeString = expandTypeString(type, typeChecker, sourceFile);
+
+        // Get position information
+        const position = name.getStart(sourceFile);
+        const { line, character } = ts.getLineAndCharacterOfPosition(
+          sourceFile,
+          position
+        );
+
+        variableTypes.push({
+          name: variableName,
+          type: typeString,
+          line: line + 1,
+          column: character + 1,
+        });
+      } else if (
+        ts.isObjectBindingPattern(name) ||
+        ts.isArrayBindingPattern(name)
+      ) {
+        // Handle destructuring patterns (e.g., const { a, b } = ... or const [a, b] = ...)
+        name.elements.forEach((element) => {
+          if (ts.isBindingElement(element) && element.name) {
+            if (ts.isIdentifier(element.name)) {
+              const variableName = element.name.text;
+              const type = typeChecker.getTypeAtLocation(element);
+              const typeString = expandTypeString(
+                type,
+                typeChecker,
+                sourceFile
+              );
+
+              const position = element.name.getStart(sourceFile);
+              const { line, character } = ts.getLineAndCharacterOfPosition(
+                sourceFile,
+                position
+              );
+
+              variableTypes.push({
+                name: variableName,
+                type: typeString,
+                line: line + 1,
+                column: character + 1,
+              });
+            }
+          }
+        });
+      }
+    }
+
+    // Extract function parameters
+    if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+      const parameterName = node.name.text;
+      const type = typeChecker.getTypeAtLocation(node);
+      const typeString = expandTypeString(type, typeChecker, sourceFile);
+
+      const position = node.name.getStart(sourceFile);
+      const { line, character } = ts.getLineAndCharacterOfPosition(
+        sourceFile,
+        position
+      );
+
+      variableTypes.push({
+        name: parameterName,
+        type: typeString,
+        line: line + 1,
+        column: character + 1,
+      });
+    }
+
+    // Extract class properties
+    if (ts.isPropertyDeclaration(node) && node.name) {
+      if (ts.isIdentifier(node.name)) {
+        const propertyName = node.name.text;
+        const type = typeChecker.getTypeAtLocation(node);
+        const typeString = expandTypeString(type, typeChecker, sourceFile);
+
+        const position = node.name.getStart(sourceFile);
+        const { line, character } = ts.getLineAndCharacterOfPosition(
+          sourceFile,
+          position
+        );
+
+        variableTypes.push({
+          name: propertyName,
+          type: typeString,
+          line: line + 1,
+          column: character + 1,
+        });
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+
+  return variableTypes;
 }

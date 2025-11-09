@@ -472,6 +472,7 @@ export class BubbleRunner {
       // Create default webhook payload if none provided
       const webhookPayload: WebhookEvent = {
         type: 'webhook/http',
+        executionId: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
         path: '/webhook',
         body: {},

@@ -15,57 +15,25 @@ import {
   GenerationResultSchema,
   type GenerationResult,
   CRITICAL_INSTRUCTIONS,
-  VALIDATION_PROCESS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
+  type ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
   type StreamingCallback,
+  type ToolHookContext,
+  type ToolHookBefore,
+  type ToolHookAfter,
 } from '../service-bubble/ai-agent.js';
-import { ToolMessage } from '@langchain/core/messages';
+import { type AvailableTool } from '../../types/available-tools.js';
 import { BubbleFactory } from '../../bubble-factory.js';
-
-// Type for validation tool result
-interface ValidationResult {
-  valid: boolean;
-  bubbleCount?: number;
-  bubbles?: Array<{
-    variableName: string;
-    bubbleName: string;
-    className: string;
-    hasAwait: boolean;
-    hasActionCall: boolean;
-    parameterCount: number;
-  }>;
-  metadata?: {
-    validatedAt: string;
-    codeLength: number;
-    strictMode: boolean;
-  };
-  success: boolean;
-  error: string;
-  errors?: string[];
-}
-
-// Type for tool call result
-interface ToolCallResult {
-  tool: string;
-  input: unknown;
-  output: ToolMessage | ValidationResult | unknown;
-}
-
-/**
- * Extract unique bubble names from validation result
- */
-function extractBubbleNames(validationResult?: ValidationResult): string[] {
-  if (!validationResult?.bubbles) {
-    return [];
-  }
-  const bubbleNames = validationResult.bubbles.map((b) => b.bubbleName);
-  return Array.from(new Set(bubbleNames));
-}
+import {
+  validateBubbleFlow,
+  type ValidationResult as BubbleFlowValidationResult,
+} from '../../utils/bubbleflow-validation.js';
+import { EditBubbleFlowTool } from '../tool-bubble/code-edit-tool.js';
 
 /**
  * Parameters schema for the simple BubbleFlow generator
@@ -86,13 +54,17 @@ type BubbleFlowGeneratorParams = z.output<
   typeof BubbleFlowGeneratorParamsSchema
 >;
 
+type BubbleFlowGeneratorParamsParsed = BubbleFlowGeneratorParams & {
+  streamingCallback?: StreamingCallback;
+};
+
 // Shared constants and prompts
 const AI_MODEL_CONFIG = {
   model: 'google/gemini-2.5-pro',
   temperature: 0.3,
 } as const;
 
-const MAX_ITERATIONS = 20;
+const MAX_ITERATIONS = 100;
 
 const TOOL_NAMES = {
   VALIDATION: 'bubbleflow-validation-tool',
@@ -103,11 +75,28 @@ const TOOL_NAMES = {
 const SYSTEM_PROMPT_BASE = `You are an expert TypeScript developer who specializes in creating BubbleFlow workflows. Generate clean, well-structured code that follows best practices.
 
 WORKFLOW:
-1. First identify bubbles needed from the available list
+1. First identify bubbles needed using list-bubbles-tool
 2. Use get-bubble-details-tool for each bubble to understand proper usage
-3. Write code using exact patterns from bubble details
-4. Use bubbleflow-validation iteratively until valid
-5. Do not provide a response until your code is fully validated`;
+3. Write complete code using exact patterns from bubble details
+4. Call createWorkflow with your complete code - it will validate and return errors if any
+5. If validation fails, use editWorkflow to fix the errors iteratively
+6. Keep calling editWorkflow until validation passes
+7. Do not provide a response until your code is fully validated
+
+
+IMPORTANT TOOL USAGE:
+- ALWAYS start with createWorkflow (not editWorkflow) to create the initial code
+- Use editWorkflow ONLY to fix validation errors from createWorkflow
+- When using editWorkflow, highlight the changes necessary and adds comments to indicate where unchanged code has been skipped. For example:
+// ... existing code ...
+{{ edit_1 }}
+// ... existing code ...
+{{ edit_2 }}
+// ... existing code ...
+Often this will mean that the start/end of the file will be skipped, but that's okay! Rewrite the entire file ONLY if specifically requested. Always provide a brief explanation of the updates, unless the user specifically requests only the code.
+These edit codeblocks are also read by a less intelligent language model, colloquially called the apply model, to update the file. To help specify the edit to the apply model, you will be very careful when generating the codeblock to not introduce ambiguity. You will specify all unchanged regions (code and comments) of the file with "// ... existing code ..." comment markers. This will ensure the apply model will not delete existing unchanged code or comments when editing the file.
+- editWorkflow will return both the updated code AND new validation errors
+`;
 
 // CRITICAL_INSTRUCTIONS and VALIDATION_PROCESS are now imported from @bubblelab/shared-schemas
 
@@ -138,158 +127,16 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
   static readonly alias = 'generate-flow';
 
   private bubbleFactory: BubbleFactory;
+  private streamingCallback: StreamingCallback | undefined;
 
   constructor(
-    params: z.input<typeof BubbleFlowGeneratorParamsSchema>,
+    params: BubbleFlowGeneratorParamsParsed,
     context?: BubbleContext,
     instanceId?: string
   ) {
     super(params, context, instanceId);
     this.bubbleFactory = new BubbleFactory();
-  }
-
-  private async runValidationAgent(
-    code: string,
-    credentials?: Partial<Record<CredentialType, string>>,
-    streamingCallback?: StreamingCallback
-  ): Promise<{
-    validatedCode: string;
-    isValid: boolean;
-    validationError: string;
-    toolCalls?: unknown[];
-    bubblesUsed: string[];
-  }> {
-    const validationAgent = new AIAgentBubble(
-      {
-        name: 'Validation Agent',
-        message:
-          `You are a validationAgent. Validate the provided BubbleFlow TypeScript code using the bubbleflow-validation tool. ` +
-          `If validation fails, fix the code and validate again until it passes with valid: true. ` +
-          `Return ONLY the final validated TypeScript code with no markdown. If needed, use the list-bubbles-tool to get the list of available bubbles and bubble details to get the correct parameters and usage.\n\n` +
-          `CODE:\n\n\n` +
-          code,
-        systemPrompt:
-          `You must use the bubbleflow-validation tool to validate code. Repeat validation/fix until valid. ` +
-          `Do not explain anything. Output only the final TypeScript code when validation passes.`,
-        model: AI_MODEL_CONFIG,
-        tools: [
-          {
-            name: TOOL_NAMES.VALIDATION,
-            credentials: credentials || {},
-          },
-          {
-            name: TOOL_NAMES.BUBBLE_DETAILS,
-            credentials: credentials || {},
-          },
-          {
-            name: TOOL_NAMES.LIST_BUBBLES,
-            credentials: credentials || {},
-          },
-        ],
-        maxIterations: 10,
-        credentials,
-      },
-      this.context,
-      'validationAgent'
-    );
-
-    const validationRun = streamingCallback
-      ? await validationAgent.actionWithStreaming(streamingCallback)
-      : await validationAgent.action();
-    let validatedCode = code;
-    let isValid = false;
-    let validationError = 'Validation agent failed';
-    let bubblesUsed: string[] = [];
-    // Handle both streaming (direct response) and non-streaming (wrapped in data) results
-    const isStreamingResult = 'response' in validationRun;
-    const response = isStreamingResult
-      ? validationRun.response
-      : validationRun.data?.response;
-    const toolCalls = isStreamingResult
-      ? validationRun.toolCalls
-      : validationRun.data?.toolCalls;
-
-    if (validationRun.success && response) {
-      validatedCode = response
-        .replace(/```typescript/g, '')
-        .replace(/```/g, '')
-        .trim();
-
-      if (toolCalls && toolCalls.length > 0) {
-        const lastToolCall = toolCalls[toolCalls.length - 1] as ToolCallResult;
-
-        if (
-          (lastToolCall.tool === TOOL_NAMES.VALIDATION ||
-            lastToolCall.tool === 'bubbleflow-validation') &&
-          lastToolCall.output
-        ) {
-          try {
-            let validationContent: string;
-            if (lastToolCall.output instanceof ToolMessage) {
-              const content = lastToolCall.output.content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (
-              typeof lastToolCall.output === 'object' &&
-              lastToolCall.output !== null &&
-              'content' in lastToolCall.output
-            ) {
-              const content = (lastToolCall.output as ToolMessage).content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (typeof lastToolCall.output === 'string') {
-              validationContent = lastToolCall.output;
-            } else {
-              validationContent = JSON.stringify(lastToolCall.output);
-            }
-
-            const parsedResult = JSON.parse(validationContent);
-            console.log(
-              '[BubbleFlowGenerator] Raw validation result structure:',
-              {
-                hasData: !!parsedResult.data,
-                hasTopLevelValid: 'valid' in parsedResult,
-                hasNestedValid:
-                  parsedResult.data && 'valid' in parsedResult.data,
-              }
-            );
-
-            // Unwrap the result if it's wrapped in a data object
-            const validationResult: ValidationResult =
-              parsedResult.data || parsedResult;
-
-            isValid = validationResult.valid === true;
-            validationError =
-              validationResult.error ||
-              (validationResult.errors && validationResult.errors.join('; ')) ||
-              '';
-
-            // Extract bubble names from validation result
-            bubblesUsed = extractBubbleNames(validationResult);
-
-            console.log(
-              '[BubbleFlowGenerator] ✅ Validation parsed - valid:',
-              isValid,
-              'error:',
-              validationError || 'none',
-              'bubblesUsed:',
-              bubblesUsed
-            );
-          } catch (e) {
-            isValid = true;
-            validationError = '';
-          }
-        }
-      }
-    }
-
-    return {
-      validatedCode,
-      isValid,
-      validationError,
-      toolCalls,
-      bubblesUsed,
-    };
+    this.streamingCallback = params.streamingCallback;
   }
 
   private async runSummarizeAgent(
@@ -389,12 +236,7 @@ CODE TO ANALYZE:
     if (summarizeRun.success && response) {
       try {
         const raw = response.trim();
-        console.log('[BubbleFlowGenerator] Raw summarizeAgent response:', raw);
         const parsed = JSON.parse(raw);
-        console.log(
-          '[BubbleFlowGenerator] Parsed summarizeAgent response:',
-          parsed
-        );
         summary = typeof parsed.summary === 'string' ? parsed.summary : '';
         inputsSchema =
           typeof parsed.inputsSchema === 'string' ? parsed.inputsSchema : '';
@@ -441,31 +283,7 @@ ${CRITICAL_INSTRUCTIONS}
 
 ${BUBBLE_SPECIFIC_INSTRUCTIONS}
 
-${AI_AGENT_BEHAVIOR_INSTRUCTIONS}
-
-
-${VALIDATION_PROCESS}`;
-  }
-
-  private createStreamingSystemPrompt(
-    boilerplate: string,
-    bubbleDescriptions: string
-  ): string {
-    return `${SYSTEM_PROMPT_BASE}
-
-Here's the boilerplate template you should use as a starting point:
-\`\`\`typescript
-${boilerplate}
-\`\`\`
-
-Available bubbles in the system:
-${bubbleDescriptions}
-
-${CRITICAL_INSTRUCTIONS}
-
-${AI_AGENT_BEHAVIOR_INSTRUCTIONS}
-
-${VALIDATION_PROCESS}`;
+${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
   }
 
   protected async performAction(
@@ -479,6 +297,15 @@ ${VALIDATION_PROCESS}`;
     try {
       console.log('[BubbleFlowGenerator] Registering defaults...');
       await this.bubbleFactory.registerDefaults();
+
+      // State to preserve current code and validation results across hook calls
+      let currentCode: string | undefined;
+      let savedValidationResult:
+        | {
+            valid: boolean;
+            errors: string[];
+          }
+        | undefined;
 
       // Get available bubbles info
       console.log('[BubbleFlowGenerator] Getting available bubbles...');
@@ -496,9 +323,139 @@ ${VALIDATION_PROCESS}`;
       console.log('[BubbleFlowGenerator] Generating boilerplate template...');
       const boilerplate = this.bubbleFactory.generateBubbleFlowBoilerplate();
 
-      // Create AI agent with validation tool attached
+      // Create hooks for the custom tools
+      const beforeToolCall: ToolHookBefore = async (
+        context: ToolHookContext
+      ) => {
+        if (context.toolName === ('createWorkflow' as AvailableTool)) {
+          console.debug(
+            '[BubbleFlowGenerator] Pre-hook: createWorkflow called'
+          );
+          const code = (context.toolInput as { code?: string })?.code;
+          if (code) {
+            currentCode = code;
+          }
+        } else if (context.toolName === ('editWorkflow' as AvailableTool)) {
+          console.debug('[BubbleFlowGenerator] Pre-hook: editWorkflow called');
+          // Update currentCode with the initial code from the tool input
+          const input = context.toolInput as {
+            codeEdit?: string;
+            instructions?: string;
+          };
+          console.debug(
+            '[BubbleFlowGenerator] EditWorkflow codeEdit:',
+            input.codeEdit
+          );
+          console.debug(
+            '[BubbleFlowGenerator] EditWorkflow instructions:',
+            input.instructions
+          );
+        }
+
+        return {
+          messages: context.messages,
+          toolInput: context.toolInput as Record<string, unknown>,
+        };
+      };
+
+      const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
+        if (context.toolName === ('createWorkflow' as AvailableTool)) {
+          console.log('[BubbleFlowGenerator] Post-hook: createWorkflow result');
+
+          try {
+            const validationResult: BubbleFlowValidationResult & {
+              bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
+              inputSchema?: Record<string, unknown>;
+            } = context.toolOutput?.data as BubbleFlowValidationResult & {
+              bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
+              inputSchema?: Record<string, unknown>;
+            };
+
+            if (validationResult.valid === true) {
+              console.debug(
+                '[BubbleFlowGenerator] Validation passed! Signaling completion.'
+              );
+
+              // Save validation result for later use
+              savedValidationResult = {
+                valid: validationResult.valid || false,
+                errors: validationResult.errors || [],
+              };
+
+              return {
+                messages: context.messages,
+                shouldStop: true,
+              };
+            }
+
+            console.debug(
+              '[BubbleFlowGenerator] Validation failed, agent will retry'
+            );
+            console.debug(
+              '[BubbleFlowGenerator] Validation errors:',
+              validationResult.errors
+            );
+          } catch (error) {
+            console.warn(
+              '[BubbleFlowGenerator] Failed to parse validation result:',
+              error
+            );
+          }
+        } else if (context.toolName === ('editWorkflow' as AvailableTool)) {
+          console.log('[BubbleFlowGenerator] Post-hook: editWorkflow result');
+
+          try {
+            const editResult = context.toolOutput?.data as {
+              mergedCode?: string;
+              applied?: boolean;
+              validationResult?: {
+                valid: boolean;
+                errors: string[];
+              };
+            };
+
+            if (editResult.mergedCode) {
+              currentCode = editResult.mergedCode;
+            }
+
+            if (editResult.validationResult?.valid === true) {
+              console.debug(
+                '[BubbleFlowGenerator] Edit successful and validation passed!'
+              );
+
+              // Save validation result for later use
+              savedValidationResult = {
+                valid: editResult.validationResult.valid || false,
+                errors: editResult.validationResult.errors || [],
+              };
+
+              return {
+                messages: context.messages,
+                shouldStop: true,
+              };
+            }
+
+            console.debug(
+              '[BubbleFlowGenerator] Edit applied, validation failed, will retry'
+            );
+            console.debug(
+              '[BubbleFlowGenerator] Validation errors:',
+              editResult.validationResult?.errors
+            );
+          } catch (error) {
+            console.warn(
+              '[BubbleFlowGenerator] Failed to parse edit result:',
+              error
+            );
+          }
+        }
+
+        return { messages: context.messages };
+      };
+
+      // Create AI agent with custom tools
       console.log(
-        '[BubbleFlowGenerator] Creating AI agent with validation tool...'
+        '[BubbleFlowGenerator] Creating AI agent with custom tools...'
       );
       const aiAgent = new AIAgentBubble(
         {
@@ -514,35 +471,131 @@ ${VALIDATION_PROCESS}`;
 
           tools: [
             {
-              name: TOOL_NAMES.VALIDATION,
+              name: TOOL_NAMES.BUBBLE_DETAILS,
               credentials: this.params.credentials || {},
             },
             {
-              name: TOOL_NAMES.BUBBLE_DETAILS,
+              name: TOOL_NAMES.LIST_BUBBLES,
               credentials: this.params.credentials || {},
+            },
+          ],
+
+          customTools: [
+            {
+              name: 'createWorkflow',
+              description:
+                'Create and validate a complete BubbleFlow workflow. This tool validates your TypeScript code and returns validation results. ALWAYS use this tool first before editWorkflow. Returns validation errors if code is invalid.',
+              schema: {
+                code: z
+                  .string()
+                  .describe(
+                    'Complete TypeScript workflow code to validate (must include imports, class definition, and handle method)'
+                  ),
+              },
+              func: async (input: Record<string, unknown>) => {
+                const code = input.code as string;
+                const validationResult = await validateBubbleFlow(
+                  code,
+                  this.bubbleFactory
+                );
+
+                return {
+                  data: {
+                    variableTypes: validationResult.variableTypes,
+                    valid: validationResult.valid,
+                    errors: validationResult.errors,
+                  },
+                };
+              },
+            },
+            {
+              name: 'editWorkflow',
+              description:
+                'Edit existing workflow code using Morph Fast Apply. Use this ONLY after createWorkflow has been called. Provide precise edits with "// ... existing code ..." markers. Returns both the updated code AND new validation errors.',
+              schema: {
+                instructions: z
+                  .string()
+                  .describe(
+                    'A single sentence instruction describing what you are going to do for the sketched edit. This is used to assist the less intelligent model in applying the edit. Use the first person to describe what you are going to do. Use it to disambiguate uncertainty in the edit.'
+                  ),
+                codeEdit: z
+                  .string()
+                  .describe(
+                    "Specify ONLY the precise lines of code that you wish to edit. NEVER specify or write out unchanged code. Instead, represent all unchanged code using the comment of the language you're editing in - example: // ... existing code ... "
+                  ),
+              },
+              func: async (input: Record<string, unknown>) => {
+                const instructions = input.instructions as string;
+                const codeEdit = input.codeEdit as string;
+
+                // Use the EditBubbleFlowTool to apply edits
+                const editTool = new EditBubbleFlowTool(
+                  {
+                    initialCode: currentCode,
+                    instructions,
+                    codeEdit,
+                    credentials: this.params.credentials,
+                  },
+                  this.context
+                );
+
+                const editResult = await editTool.action();
+
+                if (!editResult.success || !editResult.data) {
+                  return {
+                    data: {
+                      mergedCode: currentCode,
+                      applied: false,
+                      validationResult: {
+                        valid: false,
+                        errors: [editResult.error || 'Edit failed'],
+                      },
+                    },
+                  };
+                }
+
+                const mergedCode = editResult.data.mergedCode;
+                currentCode = mergedCode;
+
+                // Validate the merged code
+                const validationResult = await validateBubbleFlow(
+                  mergedCode,
+                  this.bubbleFactory
+                );
+
+                return {
+                  data: {
+                    mergedCode,
+                    applied: editResult.data.applied,
+                    validationResult: {
+                      valid: validationResult.valid,
+                      errors: validationResult.errors,
+                    },
+                  },
+                };
+              },
             },
           ],
 
           maxIterations: MAX_ITERATIONS,
           credentials: this.params.credentials,
+          beforeToolCall,
+          afterToolCall,
+          streamingCallback: this.streamingCallback,
         },
         this.context,
         'aiAgent'
       );
 
       // Generate the code
-      console.log('[BubbleFlowGenerator] Starting AI agent execution...');
       const result = await aiAgent.action();
 
       console.log('[BubbleFlowGenerator] AI agent execution completed');
       console.log('[BubbleFlowGenerator] Result success:', result.success);
       console.log('[BubbleFlowGenerator] Result error:', result.error);
-      console.log(
-        '[BubbleFlowGenerator] Response length:',
-        result.data?.response?.length || 0
-      );
-      if (!result.success || !result.data?.response) {
-        console.log('[BubbleFlowGenerator] AI agent failed or no response');
+
+      if (!result.success || !currentCode) {
+        console.log('[BubbleFlowGenerator] AI agent failed');
         return {
           toolCalls: [],
           generatedCode: '',
@@ -551,187 +604,31 @@ ${VALIDATION_PROCESS}`;
           error: result.error || 'Failed to generate code',
           summary: '',
           inputsSchema: '',
-          bubblesUsed: [],
         };
       }
 
-      console.log('[BubbleFlowGenerator] Processing AI response...');
-      const generatedCode = result.data.response
-        .replace(/```typescript/g, '')
-        .replace(/```/g, '')
-        .trim();
+      // Get the generated code from currentCode (set by hooks)
+      const generatedCode = currentCode || '';
+      const isValid = savedValidationResult?.valid ?? false;
+      const validationError = savedValidationResult?.errors.join('; ') ?? '';
 
-      // Check if the AI made any tool calls and get validation from the last one
-      let isValid = true;
-      let validationError = '';
-      let bubblesUsed: string[] = [];
-
-      let needsValidationAgent = false;
-
-      if (result.data.toolCalls && result.data.toolCalls.length > 0) {
-        console.log(
-          '[BubbleFlowGenerator] Found',
-          result.data.toolCalls.length,
-          'tool calls'
-        );
-
-        // Get the last tool call (should be the validation)
-        const lastToolCall = result.data.toolCalls[
-          result.data.toolCalls.length - 1
-        ] as ToolCallResult;
-        console.log('[BubbleFlowGenerator] Last tool call:', lastToolCall.tool);
-
-        if (
-          (lastToolCall.tool === TOOL_NAMES.VALIDATION ||
-            lastToolCall.tool === 'bubbleflow-validation') &&
-          lastToolCall.output
-        ) {
-          console.log('[BubbleFlowGenerator] Using validation tool result');
-          try {
-            // Handle ToolMessage object with content property
-            let validationContent: string;
-
-            if (lastToolCall.output instanceof ToolMessage) {
-              const content = lastToolCall.output.content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (
-              typeof lastToolCall.output === 'object' &&
-              lastToolCall.output !== null &&
-              'content' in lastToolCall.output
-            ) {
-              const content = (lastToolCall.output as ToolMessage).content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (typeof lastToolCall.output === 'string') {
-              validationContent = lastToolCall.output;
-            } else {
-              console.log(
-                '[BubbleFlowGenerator] Unexpected output type:',
-                typeof lastToolCall.output
-              );
-              validationContent = JSON.stringify(lastToolCall.output);
-            }
-
-            const parsedResult = JSON.parse(validationContent);
-
-            console.log(
-              '[BubbleFlowGenerator] 🔍 Validation tool output structure:',
-              {
-                hasData: !!parsedResult.data,
-                hasTopLevelValid: 'valid' in parsedResult,
-                hasNestedValid:
-                  parsedResult.data && 'valid' in parsedResult.data,
-                topLevelValid: parsedResult.valid,
-                nestedValid: parsedResult.data?.valid,
-              }
-            );
-
-            // Unwrap the result if it's wrapped in a data object
-            // The ToolBubble base class wraps results in { success, data, error }
-            const validationResult: ValidationResult =
-              parsedResult.data || parsedResult;
-
-            isValid = validationResult.valid === true;
-            validationError =
-              validationResult.error ||
-              (validationResult.errors && validationResult.errors.join('; ')) ||
-              '';
-
-            // Extract bubble names from validation result
-            bubblesUsed = extractBubbleNames(validationResult);
-
-            console.log(
-              '[BubbleFlowGenerator] ✅ Validation result - valid:',
-              isValid,
-              'needsAgent:',
-              !isValid,
-              'bubblesUsed:',
-              bubblesUsed
-            );
-
-            // If validation ran but code is still invalid, trigger validationAgent to self-heal
-            if (!isValid) {
-              console.log(
-                '[BubbleFlowGenerator] ⚠️ Validation FAILED, will spawn validation agent. Errors:',
-                validationError
-              );
-              needsValidationAgent = true;
-            } else {
-              console.log(
-                '[BubbleFlowGenerator] ✓ Validation PASSED, no validation agent needed'
-              );
-            }
-          } catch (parseError) {
-            console.log(
-              '[BubbleFlowGenerator] Failed to parse validation output:',
-              parseError
-            );
-            // Fallback to assuming valid if we can't parse
-            isValid = true;
-          }
-        } else {
-          console.log(
-            '[BubbleFlowGenerator] No validation tool call found from AI agent - will run validationAgent'
-          );
-          needsValidationAgent = true;
-        }
-      } else {
-        console.log(
-          '[BubbleFlowGenerator] No tool calls found - will run validationAgent'
-        );
-        needsValidationAgent = true;
-      }
-
-      if (needsValidationAgent) {
-        console.log(
-          '[BubbleFlowGenerator] Spawning validationAgent to validate code...'
-        );
-        const {
-          validatedCode,
-          isValid: validated,
-          validationError: vErr,
-          bubblesUsed: validationBubbles,
-        } = await this.runValidationAgent(
-          generatedCode,
-          this.params.credentials
-        );
-        isValid = validated;
-        validationError = vErr;
-        bubblesUsed = validationBubbles;
-        const { summary, inputsSchema } = isValid
-          ? await this.runSummarizeAgent(validatedCode, this.params.credentials)
-          : { summary: '', inputsSchema: '' };
-        return {
-          toolCalls: result.data.toolCalls,
-          generatedCode: validatedCode,
-          isValid,
-          success: true,
-          error: validationError,
-          summary,
-          inputsSchema,
-          bubblesUsed,
-        };
-      }
-
-      console.log('[BubbleFlowGenerator] Generation completed');
-      console.log('[BubbleFlowGenerator] Validation status:', isValid);
-      console.log('[BubbleFlowGenerator] Validation error:', validationError);
-
-      // Always return success=true if we got code, but include validation status
-      // This allows the IDE to display the code even if validation failed
+      // Run summarize agent if validation passed
       const { summary, inputsSchema } = isValid
-        ? await this.runSummarizeAgent(generatedCode, this.params.credentials)
+        ? await this.runSummarizeAgent(
+            generatedCode,
+            this.params.credentials,
+            this.streamingCallback
+          )
         : { summary: '', inputsSchema: '' };
+
       return {
-        toolCalls: result.data.toolCalls,
+        toolCalls: result.data?.toolCalls || [],
         generatedCode,
         isValid,
-        success: true, // Always true if we have code
-        error: validationError, // Include validation error for reference
+        success: true,
+        error: validationError,
         summary,
         inputsSchema,
-        bubblesUsed,
       };
     } catch (error) {
       console.error('[BubbleFlowGenerator] Error during generation:', error);
@@ -746,442 +643,6 @@ ${VALIDATION_PROCESS}`;
             : 'Unknown error during generation',
         summary: '',
         inputsSchema: '',
-        bubblesUsed: [],
-      };
-    }
-  }
-
-  /**
-   * Execute the workflow with streaming support for real-time code generation feedback
-   */
-  public async actionWithStreaming(
-    streamingCallback: StreamingCallback,
-    context?: BubbleContext
-  ): Promise<GenerationResult> {
-    void context;
-
-    console.log(
-      '[BubbleFlowGenerator] Starting streaming generation process with prompt: ' +
-        this.params.prompt
-    );
-    console.log('[BubbleFlowGenerator] Prompt:', this.params.prompt);
-
-    try {
-      await streamingCallback({
-        type: 'start',
-        data: {
-          message: `Generating BubbleFlow code for: ${this.params.prompt}`,
-          maxIterations: MAX_ITERATIONS,
-          timestamp: new Date().toISOString(),
-        },
-      });
-
-      console.log('[BubbleFlowGenerator] Registering defaults...');
-      await this.bubbleFactory.registerDefaults();
-
-      // Get available bubbles info
-      console.log('[BubbleFlowGenerator] Getting available bubbles...');
-      const availableBubbles = this.bubbleFactory.listBubblesForCodeGenerator();
-      console.log('[BubbleFlowGenerator] Available bubbles:', availableBubbles);
-
-      await streamingCallback({
-        type: 'tool_start',
-        data: {
-          tool: 'bubble-discovery',
-          input: { action: 'listing_available_bubbles' },
-          callId: 'discovery-1',
-        },
-      });
-
-      const bubbleDescriptions = availableBubbles
-        .map((name) => {
-          const metadata = this.bubbleFactory.getMetadata(name);
-          return `- ${name}: ${metadata?.shortDescription || 'No description'}`;
-        })
-        .join('\n');
-
-      await streamingCallback({
-        type: 'tool_complete',
-        data: {
-          callId: 'discovery-1',
-          tool: 'bubble-discovery',
-          input: {
-            input: 'listing_available_bubbles',
-          },
-          output: {
-            availableBubbles: availableBubbles.length,
-            descriptions: bubbleDescriptions,
-          },
-          duration: 100,
-        },
-      });
-
-      // Get boilerplate template
-      console.log('[BubbleFlowGenerator] Generating boilerplate template...');
-      const boilerplate = this.bubbleFactory.generateBubbleFlowBoilerplate();
-
-      await streamingCallback({
-        type: 'tool_start',
-        data: {
-          tool: 'template-generation',
-          input: { action: 'generating_boilerplate' },
-          callId: 'template-1',
-        },
-      });
-
-      await streamingCallback({
-        type: 'tool_complete',
-        data: {
-          tool: 'template-generation',
-          input: { input: 'generating_boilerplate' },
-          callId: 'template-1',
-          output: { templateGenerated: true, length: boilerplate.length },
-          duration: 50,
-        },
-      });
-
-      // Create AI agent with validation tool attached
-      console.log(
-        '[BubbleFlowGenerator] Creating AI agent with validation tool...'
-      );
-      const aiAgent = new AIAgentBubble(
-        {
-          name: 'Bubble Flow Generator Agent',
-          message: `Generate a complete BubbleFlow TypeScript class based on this request: "${this.params.prompt}"`,
-
-          systemPrompt: this.createStreamingSystemPrompt(
-            boilerplate,
-            bubbleDescriptions
-          ),
-
-          model: AI_MODEL_CONFIG,
-
-          tools: [
-            {
-              name: TOOL_NAMES.VALIDATION,
-              credentials: this.params.credentials || {},
-            },
-            {
-              name: TOOL_NAMES.BUBBLE_DETAILS,
-              credentials: this.params.credentials || {},
-            },
-          ],
-
-          maxIterations: MAX_ITERATIONS,
-          credentials: this.params.credentials,
-        },
-        this.context,
-        'aiAgent'
-      );
-
-      // Generate the code with streaming
-      console.log(
-        '[BubbleFlowGenerator] Starting AI agent execution with streaming...'
-      );
-      const result = await aiAgent.actionWithStreaming(streamingCallback);
-
-      console.log('[BubbleFlowGenerator] AI agent execution completed');
-      console.log('[BubbleFlowGenerator] Result success:', result.success);
-
-      if (!result.success || !result.response) {
-        console.log('[BubbleFlowGenerator] AI agent failed or no response');
-        return {
-          toolCalls: result.toolCalls,
-          generatedCode: '',
-          isValid: false,
-          success: false,
-          error: result.error || 'Failed to generate code',
-          summary: '',
-          inputsSchema: '',
-          bubblesUsed: [],
-        };
-      }
-
-      let generatedCode = result.response
-        .replace(/```typescript/g, '')
-        .replace(/```/g, '')
-        .trim();
-
-      // Check validation status from tool calls
-      let isValid = true;
-      let validationError = '';
-      let bubblesUsed: string[] = [];
-
-      console.log('[BubbleFlowGenerator] Checking validation status...');
-
-      let needsValidationAgent = false;
-
-      if (result.toolCalls && result.toolCalls.length > 0) {
-        // Get the last tool call (should be the validation)
-        const lastToolCall = result.toolCalls[
-          result.toolCalls.length - 1
-        ] as ToolCallResult;
-
-        if (
-          (lastToolCall.tool === TOOL_NAMES.VALIDATION ||
-            lastToolCall.tool === 'bubbleflow-validation') &&
-          lastToolCall.output
-        ) {
-          try {
-            // Handle ToolMessage object with content property
-            let validationContent: string;
-            console.log(
-              '[BubbleFlowGenerator] Last tool call output:',
-              lastToolCall.input
-            );
-            // Parse the input as a JSON object
-            const input = JSON.parse(
-              (lastToolCall.input as ToolCallResult).input as string
-            );
-            generatedCode = input.code;
-
-            if (lastToolCall.output instanceof ToolMessage) {
-              const content = lastToolCall.output.content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (
-              typeof lastToolCall.output === 'object' &&
-              lastToolCall.output !== null &&
-              'content' in lastToolCall.output
-            ) {
-              const content = (lastToolCall.output as ToolMessage).content;
-              validationContent =
-                typeof content === 'string' ? content : JSON.stringify(content);
-            } else if (typeof lastToolCall.output === 'string') {
-              validationContent = lastToolCall.output;
-            } else {
-              console.log(
-                '[BubbleFlowGenerator] Unexpected output type:',
-                typeof lastToolCall.output
-              );
-              validationContent = JSON.stringify(lastToolCall.output);
-            }
-
-            const parsedResult = JSON.parse(validationContent);
-
-            console.log(
-              '[BubbleFlowGenerator] 🔍 Validation agent output structure:',
-              {
-                hasData: !!parsedResult.data,
-                hasTopLevelValid: 'valid' in parsedResult,
-                hasNestedValid:
-                  parsedResult.data && 'valid' in parsedResult.data,
-                topLevelValid: parsedResult.valid,
-                nestedValid: parsedResult.data?.valid,
-              }
-            );
-
-            // Unwrap the result if it's wrapped in a data object
-            const validationResult: ValidationResult =
-              parsedResult.data || parsedResult;
-
-            isValid = validationResult.valid === true;
-            validationError =
-              validationResult.error ||
-              (validationResult.errors && validationResult.errors.join('; ')) ||
-              '';
-
-            // Extract bubble names from validation result
-            bubblesUsed = extractBubbleNames(validationResult);
-
-            console.log(
-              '[BubbleFlowGenerator] ✅ Validation agent result - valid:',
-              isValid,
-              'bubblesUsed:',
-              bubblesUsed
-            );
-
-            if (!isValid) {
-              console.log(
-                '[BubbleFlowGenerator] ⚠️ Validation agent says INVALID, will try again. First error:',
-                validationResult.errors?.[0]?.substring(0, 100)
-              );
-              needsValidationAgent = true;
-            } else {
-              console.log(
-                '[BubbleFlowGenerator] ✓ Validation agent says VALID'
-              );
-            }
-          } catch (parseError) {
-            console.log('Failed to parse validation output:', parseError);
-            console.log('Raw output:', lastToolCall.output);
-            isValid = true; // Fallback
-          }
-        } else {
-          // No validation tool call found - run a dedicated validationAgent
-          console.log(
-            '[BubbleFlowGenerator] No validation tool call found - will run validationAgent'
-          );
-          needsValidationAgent = true;
-        }
-      } else {
-        console.log(
-          '[BubbleFlowGenerator] No tool calls found - will run validationAgent'
-        );
-        needsValidationAgent = true;
-      }
-
-      if (needsValidationAgent) {
-        await streamingCallback({
-          type: 'tool_start',
-          data: {
-            tool: 'validation-agent',
-            input: { action: 'validating_generated_code' },
-            callId: 'validation-agent-1',
-          },
-        });
-
-        const {
-          validatedCode,
-          isValid: validated,
-          validationError: vErr,
-          bubblesUsed: validationBubbles,
-        } = await this.runValidationAgent(
-          generatedCode,
-          this.params.credentials,
-          streamingCallback
-        );
-
-        await streamingCallback({
-          type: 'tool_complete',
-          data: {
-            tool: 'validation-agent',
-            input: { input: 'validating_generated_code' },
-            callId: 'validation-agent-1',
-            output: { success: validated },
-            duration: 100,
-          },
-        });
-
-        isValid = validated;
-        validationError = vErr;
-        bubblesUsed = validationBubbles;
-
-        let summary = '';
-        let inputsSchema = '';
-        if (isValid) {
-          await streamingCallback({
-            type: 'tool_start',
-            data: {
-              tool: 'summary-agent',
-              input: { action: 'generating_summary_and_schema' },
-              callId: 'summary-agent-1',
-            },
-          });
-
-          const summaryResult = await this.runSummarizeAgent(
-            validatedCode,
-            this.params.credentials,
-            streamingCallback
-          );
-          summary = summaryResult.summary;
-          inputsSchema = summaryResult.inputsSchema;
-
-          await streamingCallback({
-            type: 'tool_complete',
-            data: {
-              callId: 'summary-agent-1',
-              tool: 'summary-agent',
-              input: { input: 'generating_summary_and_schema' },
-              output: {
-                summaryGenerated: !!summary,
-                schemaGenerated: !!inputsSchema,
-              },
-              duration: 100,
-            },
-          });
-        }
-        return {
-          toolCalls: result.toolCalls,
-          generatedCode: validatedCode,
-          isValid,
-          success: true,
-          error: validationError,
-          summary,
-          inputsSchema,
-          bubblesUsed,
-        };
-      }
-
-      console.log('[BubbleFlowGenerator] Streaming generation completed');
-      console.log('[BubbleFlowGenerator] Validation status:', isValid);
-      console.log('[BubbleFlowGenerator] Validation error:', validationError);
-
-      // Note: Bubble parameters extraction is now handled at the route level
-
-      let summary = '';
-      let inputsSchema = '';
-      if (isValid) {
-        await streamingCallback({
-          type: 'tool_start',
-          data: {
-            tool: 'summary-agent',
-            input: { action: 'generating_summary_and_schema' },
-            callId: 'summary-agent-final',
-          },
-        });
-
-        const summaryResult = await this.runSummarizeAgent(
-          generatedCode,
-          this.params.credentials,
-          streamingCallback
-        );
-        summary = summaryResult.summary;
-        inputsSchema = summaryResult.inputsSchema;
-
-        await streamingCallback({
-          type: 'tool_complete',
-          data: {
-            callId: 'summary-agent-final',
-            tool: 'summary-agent',
-            input: { input: 'generating_summary_and_schema' },
-            output: {
-              summaryGenerated: !!summary,
-              schemaGenerated: !!inputsSchema,
-            },
-            duration: 100,
-          },
-        });
-      }
-      return {
-        toolCalls: result.toolCalls,
-        generatedCode,
-        isValid,
-        success: true,
-        error: validationError,
-        summary,
-        inputsSchema,
-        bubblesUsed,
-      };
-    } catch (error) {
-      console.error(
-        '[BubbleFlowGenerator] Error during streaming generation:',
-        error
-      );
-
-      await streamingCallback({
-        type: 'error',
-        data: {
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Unknown error during generation',
-          recoverable: true, // Mark workflow errors as recoverable
-        },
-      });
-
-      return {
-        toolCalls: [],
-        generatedCode: '',
-        isValid: false,
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unknown error during generation',
-        summary: '',
-        inputsSchema: '',
-        bubblesUsed: [],
       };
     }
   }

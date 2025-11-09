@@ -398,6 +398,57 @@ export class NoActionFlow extends BubbleFlow<'webhook/http'> {
         expect(helloBubble.hasActionCall).toBe(false);
         expect(helloBubble.hasAwait).toBe(false);
       });
+
+      it('should extract variable type definitions', async () => {
+        const code = `
+import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';
+
+export class TypeExtractionFlow extends BubbleFlow<'webhook/http'> {
+  constructor() {
+    super('type-extraction', 'Testing variable type extraction');
+  }
+  
+  async handle(payload: { name: string; age: number }): Promise<{ result: string }> {
+    const message: string = 'Hello';
+    const count = 42;
+    const aiResult = await new AIAgentBubble({
+      message: message,
+      model: { model: 'google/gemini-2.5-flash' },
+    }).action();
+    
+    return { result: aiResult.data?.response ?? 'No response' };
+  }
+}`;
+
+        const result = await validateBubbleFlow(code, bubbleFactory);
+
+        expect(result.valid).toBe(true);
+        expect(result.variableTypes).toBeDefined();
+        expect(result.variableTypes!.length).toBeGreaterThan(0);
+
+        // Check that we extracted types for variables
+        const variableTypes = result.variableTypes!;
+        const messageVar = variableTypes.find((v) => v.name === 'message');
+        const countVar = variableTypes.find((v) => v.name === 'count');
+        const aiResultVar = variableTypes.find((v) => v.name === 'aiResult');
+        const payloadVar = variableTypes.find((v) => v.name === 'payload');
+
+        expect(messageVar).toBeDefined();
+        expect(messageVar?.type).toContain('string');
+        expect(messageVar?.line).toBeGreaterThan(0);
+
+        expect(countVar).toBeDefined();
+        expect(countVar?.type).toContain('number');
+        expect(countVar?.line).toBeGreaterThan(0);
+
+        expect(aiResultVar).toBeDefined();
+        expect(aiResultVar?.type).toBeDefined();
+        expect(aiResultVar?.line).toBeGreaterThan(0);
+
+        expect(payloadVar).toBeDefined();
+        expect(payloadVar?.type).toBeDefined();
+        expect(payloadVar?.line).toBeGreaterThan(0);
+      });
     });
   });
 });

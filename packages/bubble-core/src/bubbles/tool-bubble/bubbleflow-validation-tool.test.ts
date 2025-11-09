@@ -629,12 +629,15 @@ A calendar event will be created based on this.\`,
 
     const result = await validationTool.action();
 
+    console.log(result.data?.variableTypes);
+
     // Expect it to be invalid
     expect(result.success).toBe(false);
     expect(result.data?.valid).toBe(false);
     expect(result.data?.errors).toBeDefined();
     expect(result.data?.errors?.length).toBeGreaterThan(0);
-
+    expect(result.data?.variableTypes).toBeDefined();
+    expect(result.data?.variableTypes?.length).toBeGreaterThan(0);
     // Check that the error message includes the enhanced hint with available trigger event types
     const errorMessages = result.data?.errors?.join('\n') || '';
     console.log(errorMessages);

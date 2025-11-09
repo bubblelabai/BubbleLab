@@ -56,10 +56,6 @@ export const GenerationResultSchema = z.object({
     .string()
     .default('')
     .describe('JSON Schema (string) representing the inputs of the flow'),
-  bubblesUsed: z
-    .array(z.string())
-    .default([])
-    .describe('List of bubble names used in the generated flow'),
   tokenUsage: TokenUsageSchema.optional().openapi({
     description: 'Token usage statistics for the generation',
   }),

@@ -110,6 +110,16 @@ const BubbleFlowValidationToolResultSchema = z.object({
           .describe('Number of parameters passed to the bubble'),
       })
     )
+    .optional(),
+  variableTypes: z
+    .array(
+      z.object({
+        name: z.string().describe('Variable name'),
+        type: z.string().describe('Variable type'),
+        line: z.number().describe('Line number'),
+        column: z.number().describe('Column number'),
+      })
+    )
     .optional()
     .describe('Details about each bubble found'),
 
@@ -221,6 +231,7 @@ export class BubbleFlowValidationTool extends ToolBubble<
         return {
           valid: false,
           errors: ['Code cannot be empty'],
+          variableTypes: [],
           metadata: {
             validatedAt: new Date().toISOString(),
             codeLength: 0,
@@ -237,10 +248,13 @@ export class BubbleFlowValidationTool extends ToolBubble<
         this.bubbleFactory
       );
 
+      console.log(validationResult);
+
       if (!validationResult.valid) {
         return {
           valid: false,
           errors: validationResult.errors || ['Unknown validation error'],
+          variableTypes: validationResult.variableTypes || [],
           metadata: {
             validatedAt: new Date().toISOString(),
             codeLength: code.length,
@@ -262,6 +276,7 @@ export class BubbleFlowValidationTool extends ToolBubble<
           return {
             valid: false,
             errors: parseResult.errors || ['Failed to parse bubble details'],
+            variableTypes: validationResult.variableTypes || [],
             metadata: {
               validatedAt: new Date().toISOString(),
               codeLength: code.length,
@@ -290,6 +305,7 @@ export class BubbleFlowValidationTool extends ToolBubble<
         valid: true,
         bubbleCount,
         bubbles: bubbleDetails,
+        variableTypes: validationResult.variableTypes || [],
         metadata: {
           validatedAt: new Date().toISOString(),
           codeLength: code.length,

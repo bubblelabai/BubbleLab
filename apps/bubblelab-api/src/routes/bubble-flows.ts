@@ -7,10 +7,7 @@ import {
   bubbleFlowExecutions,
   users,
 } from '../db/schema.js';
-import {
-  GenerationResult,
-  type StreamingEvent,
-} from '@bubblelab/shared-schemas';
+import { type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
@@ -26,7 +23,7 @@ import {
 import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
-import { BubbleFlowGeneratorWorkflow } from '@bubblelab/bubble-core';
+import { runBoba } from '../services/ai/boba.js';
 import {
   createBubbleFlowRoute,
   executeBubbleFlowRoute,
@@ -56,7 +53,6 @@ import {
   ValidationResult,
 } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../services/bubble-factory-instance.js';
-import { BubbleLogger } from '@bubblelab/bubble-core';
 import { trackModelTokenUsage } from '../services/token-tracking.js';
 import { posthog } from 'src/services/posthog.js';
 import { BubbleResult } from '@bubblelab/bubble-core';
@@ -332,6 +328,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
     const triggerEvent = {
       type: 'webhook/http' as const,
       timestamp: new Date().toISOString(),
+      executionId: crypto.randomUUID(),
       path: `/execute-bubble-flow/${id}`,
       body: userPayload,
       ...userPayload,
@@ -1009,12 +1006,10 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   try {
     const { prompt } = c.req.valid('json');
 
-    const logger = new BubbleLogger('BubbleFlowGeneratorWorkflow');
-
     return streamSSE(c, async (stream) => {
       try {
-        // Create BubbleFlowGeneratorWorkflow instance
-        const generator = new BubbleFlowGeneratorWorkflow(
+        // Use runBoba to generate the code with streaming
+        const generationResult = await runBoba(
           {
             prompt,
             credentials: {
@@ -1022,12 +1017,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 process.env.GOOGLE_API_KEY || '',
             },
           },
-          {
-            logger: logger,
-          }
-        );
-        // Generate the code with streaming
-        const result = await generator.actionWithStreaming(
           async (event: StreamingEvent) => {
             // Capture validation events for analytics
             if (
@@ -1052,6 +1041,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 console.error('[API] Error capturing validation event:', error);
               }
             }
+            // Stream events to client
             await stream.writeSSE({
               data: JSON.stringify(event),
               event: event.type,
@@ -1059,48 +1049,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             });
           }
         );
-
-        let actualIsValid = result.isValid;
-
-        if (result.generatedCode && result.generatedCode.trim()) {
-          try {
-            const validationResult = await validateBubbleFlow(
-              result.generatedCode
-            );
-
-            result.inputsSchema = JSON.stringify(validationResult.inputSchema);
-
-            if (validationResult.valid && validationResult.bubbleParameters) {
-              actualIsValid = true;
-            } else {
-              // Keep the AI's validation result if our parsing failed
-              actualIsValid = result.isValid;
-            }
-          } catch (parseError) {
-            console.error('[API] Error parsing bubble parameters:', parseError);
-            // Keep the AI's validation result if our parsing failed
-            actualIsValid = result.isValid;
-          }
-        }
-
-        // Get token usage before sending final events
-        const tokenUsage = logger.getTokenUsage();
-
-        const generationResult: GenerationResult = {
-          generatedCode: result.generatedCode,
-          summary: result.summary,
-          inputsSchema: result.inputsSchema,
-          isValid: actualIsValid,
-          success: result.success,
-          error: result.error,
-          toolCalls: result.toolCalls,
-          bubblesUsed: result.bubblesUsed,
-          tokenUsage,
-          bubbleCount: result.bubblesUsed.length,
-          codeLength: result.generatedCode.length,
-        };
-
-        console.log('[API] Generation result:', generationResult);
 
         // Send final result with code generation summary and extracted bubble parameters
         await stream.writeSSE({
@@ -1121,24 +1069,32 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         });
 
         // Track token usage
-        trackModelTokenUsage(userId, 'google/gemini-2.5-pro', tokenUsage);
-        if (actualIsValid) {
+        trackModelTokenUsage(
+          userId,
+          'google/gemini-2.5-pro',
+          generationResult.tokenUsage || {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+          }
+        );
+        if (generationResult.isValid) {
           posthog.captureEvent(
             {
               userId,
               prompt: prompt,
-              code: result.generatedCode,
+              code: generationResult.generatedCode,
             },
             'bubble_flow_generation_success'
           );
         } else {
           posthog.captureErrorEvent(
-            result.error,
+            generationResult.error,
             {
               userId,
               prompt: prompt,
-              code: result.generatedCode,
-              error: result.error,
+              code: generationResult.generatedCode,
+              error: generationResult.error,
             },
             'bubble_flow_generation_failed'
           );
