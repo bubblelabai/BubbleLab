@@ -1,4 +1,10 @@
+<div align="center">
+
+<img src="./apps/bubble-studio/public/favicon.ico" alt="Bubble Lab Logo" width="120" height="120">
+
 # Bubble Lab
+
+### Open-source agentic workflow automation builder with full observability and exportability.
 
 [![Discord](https://img.shields.io/discord/1411776181476266184?color=7289da&label=Discord&logo=discord&logoColor=ffffff)](https://discord.com/invite/PkJvcU2myV)
 [![Docs](https://img.shields.io/badge/Docs-📘%20Documentation-blue)](https://docs.bubblelab.ai/intro)
@@ -8,15 +14,21 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/bubblelabai/BubbleLab/pulls)
 
-Open-source agentic workflow automation builder with full observability and exportability.
+---
 
+![Bubble Studio](./demo-pic.png)
+
+</div>
+
+## 📋 Overview
+[**Bubble Lab**](https://www.bubblelab.ai/) is an AI-native workflow automation platform built for developers who need full control, transparency, and type safety. Unlike traditional workflow builders that lock you into proprietary JSON nodes, Bubble Lab compiles everything into clean, production-ready TypeScript that you can own, debug, and deploy anywhere.
+
+**Key Features:**
 - Orchestrate workflows in TypeScript with visual feedback side-by-side
 - Built-in AI Assistant to instantly spin up a workflow and amend as needed
 - Import existing N8N workflow
 - Full observability
 - Export workflows directly to your JS/TS backend
-
-![Bubble Studio](./demo-pic.png)
 
 ## 🚀 Quick Start
 
