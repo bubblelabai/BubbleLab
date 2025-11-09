@@ -114,7 +114,6 @@ export function formatFinalResponse(
     finalResponse = formatGeminiImageResponse(finalResponse);
   } else if (jsonMode && typeof finalResponse === 'string') {
     // Handle JSON mode: use the improved utility function
-    console.log('[AIAgent] Parsing JSON response:', finalResponse);
     const result = parseJsonWithFallbacks(finalResponse);
 
     if (!result.success) {
