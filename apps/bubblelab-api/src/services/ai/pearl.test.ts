@@ -863,6 +863,10 @@ describe.skip('Pearl Sanity Test', () => {
   }, 60000);
 });
 describe('Pearl critical test', () => {
+  // Skips if no API keys are available
+  if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
+    return;
+  }
   const testResults: Array<{
     testName: string;
     passes: number;

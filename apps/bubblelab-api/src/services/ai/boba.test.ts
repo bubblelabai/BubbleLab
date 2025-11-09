@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { validateBubbleFlow } from '@bubblelab/bubble-runtime';
 import { runBoba } from './boba.js';
+import { env } from '../../config/env.js';
 
 const PROMPT_LISTS = {
   'email-workflow': `Create a workflow that sends an email to user@example.com with subject "Hello" and body "Welcome to our platform!"`,
@@ -452,6 +453,9 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
 
 describe('Boba All Prompts Test Suite', () => {
   it('should run all prompts in parallel and report statistics', async () => {
+    if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
+      return;
+    }
     const totalRuns = 1;
     const requiredPasses = 1;
 
