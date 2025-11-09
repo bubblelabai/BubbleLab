@@ -282,6 +282,7 @@ app.openapi(executeBubbleFlowRoute, async (c) => {
     const triggerEvent = {
       type: 'webhook/http' as const,
       timestamp: new Date().toISOString(),
+      executionId: crypto.randomUUID(),
       path: `/execute-bubble-flow/${id}`,
       body: userPayload,
       ...userPayload,

@@ -2,7 +2,6 @@ import type {
   BubbleTriggerEventRegistry,
   SlackEventWrapper,
   SlackAppMentionEvent,
-  SlackMessageEvent,
 } from '@bubblelab/shared-schemas';
 
 /**

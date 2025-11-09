@@ -16,7 +16,6 @@
 
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
-import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { HttpBubble } from '../service-bubble/http.js';
 
@@ -163,9 +162,7 @@ export class EditBubbleFlowTool extends ToolBubble<
   /**
    * Main action method - performs code edit merging
    */
-  async performAction(
-    context?: BubbleContext
-  ): Promise<EditBubbleFlowToolResult> {
+  async performAction(): Promise<EditBubbleFlowToolResult> {
     try {
       // Extract parameters
       const { initialCode, instructions, codeEdit, morphModel } = this.params;
@@ -257,7 +254,7 @@ export class EditBubbleFlowTool extends ToolBubble<
           },
           timeout: 60000, // 60 second timeout for code generation
         },
-        context
+        this.context
       );
 
       // Execute the HTTP request
