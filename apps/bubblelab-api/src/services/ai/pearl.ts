@@ -410,7 +410,7 @@ export async function runPearl(
 
               // Use the EditBubbleFlowTool to apply edits
               // If no currentCode exists, use boilerplate as initial code
-              const initialCode = currentCode;
+              const initialCode = currentCode || codeEdit;
 
               const editTool = new EditBubbleFlowTool(
                 {

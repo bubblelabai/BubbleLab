@@ -65,7 +65,7 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
     - Visual indication (highlighted in yellow) indicate missing required fields or type mismatches before execution.
     - To change the schema itself, users edit code or ask pearl to update the schema; the node updates to reflect the latest schema after "sync with code" button is clicked.
   - Cron Schedule node (when the flow uses schedule/cron): appears instead of the Input Schema node as the entry.
-    - Lets users enable/disable the schedule, edit the cron expression, and choose timezone.
+    - Lets users enable/disable the schedule, edit the cron expression and shows the time in the user's timezone.
     - Shows a preview of the next run times to confirm the schedule.
     - When enabled, the flow runs automatically on schedule; inputs come from the configured scheduled payload.
   To enable http webhook trigger, user can find a webhook toggle on the flow visualizer page and easily copy over the webhook url to their own server or service (triggers on post request to the url).
@@ -109,7 +109,7 @@ inputs are fixed take out the interface and just use handle() without the payloa
 Leave insightful comments on each input, for example
 const { input = 'sensible example value', cron } = payload;
 If you do leave a default value make sure to make the field optional in the payload interface.
-When setting schedule, you must take into account of the timezone of the user and convert it to UTC offset! The cron expression is in UTC timezone.
+When setting schedule, you must take into account of the timezone of the user (don't worry about daylight time, just whatever the current timezone currently) and convert it to UTC offset! The cron expression is in UTC timezone.
 If no particular trigger is specified, use the webhook/http trigger.`;
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `

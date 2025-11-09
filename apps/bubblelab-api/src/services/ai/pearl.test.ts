@@ -857,13 +857,6 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
 // ============================================================================
 
 describe.skip('Pearl Sanity Test', () => {
-  afterAll(async () => {
-    // Wait for logger to upload logs before test ends
-    console.log('Waiting for logger to finish uploading logs...');
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    console.log('Logger upload complete, test ending');
-  });
-
   it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
     const testCase = simpleEmailWorkflowTestCase;
     await runTestCase(testCase);
