@@ -164,6 +164,95 @@ This should provide the information you need.`;
       agent = createAIAgent();
     });
 
+    test('should handle LangChain AIMessage array response with direct text property', () => {
+      const input = [
+        {
+          text: '<div align="center">\n  <h1 align="center">Bubble Lab</h1>\n',
+          message: {
+            lc: 1,
+            type: 'constructor',
+            id: ['langchain_core', 'messages', 'AIMessage'],
+            kwargs: {
+              content: [
+                {
+                  type: 'text',
+                  text: '<div align="center">\n  <h1 align="center">Bubble Lab</h1>\n',
+                },
+              ],
+            },
+          },
+        },
+        {
+          text: '![Discord](https://img.shields.io/discord/1411776181476266184?color=7289da&label=Discord&logo=discord&logoColor=ffffff)',
+          message: {
+            lc: 1,
+            type: 'constructor',
+            id: ['langchain_core', 'messages', 'AIMessage'],
+            kwargs: {
+              content: [
+                {
+                  type: 'text',
+                  text: '![Discord](https://img.shields.io/discord/1411776181476266184?color=7289da&label=Discord&logo=discord&logoColor=ffffff)',
+                },
+              ],
+            },
+          },
+        },
+      ];
+      const result = formatFinalResponse(
+        input,
+        'google/gemini-2.5-flash',
+        false
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.response).toContain('Bubble Lab');
+      expect(result.response).toContain('Discord');
+    });
+
+    test('should handle LangChain AIMessage array response with nested message structure', () => {
+      const input = [
+        {
+          message: {
+            lc: 1,
+            type: 'constructor',
+            id: ['langchain_core', 'messages', 'AIMessage'],
+            kwargs: {
+              content: [
+                {
+                  type: 'text',
+                  text: 'First chunk of text',
+                },
+              ],
+            },
+          },
+        },
+        {
+          message: {
+            lc: 1,
+            type: 'constructor',
+            id: ['langchain_core', 'messages', 'AIMessage'],
+            kwargs: {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Second chunk of text',
+                },
+              ],
+            },
+          },
+        },
+      ];
+      const result = formatFinalResponse(
+        input,
+        'google/gemini-2.5-flash',
+        false
+      );
+
+      expect(result.error).toBeUndefined();
+      expect(result.response).toBe('First chunk of textSecond chunk of text');
+    });
+
     test('should handle valid JSON in JSON mode', async () => {
       const input = '{"result": "success"}';
       const result = formatFinalResponse(input, 'google/gemini-2.5-flash');

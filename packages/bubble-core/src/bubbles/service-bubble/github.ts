@@ -492,20 +492,19 @@ const GithubParamsSchema = z.discriminatedUnion('operation', [
 
 // Define the result schemas for different GitHub operations
 const GithubResultSchema = z.discriminatedUnion('operation', [
-  z.object({
-    operation: z.literal('get_file'),
-    success: z.boolean().describe('Whether the operation succeeded'),
-    error: z.string().describe('Error message if operation failed'),
-    data: GithubFileContentSchema.optional().describe(
-      'File content information'
-    ),
-  }),
+  z
+    .object({
+      operation: z.literal('get_file'),
+      success: z.boolean().describe('Whether the operation succeeded'),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GithubFileContentSchema.partial()),
 
   z.object({
     operation: z.literal('get_directory'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    data: z
+    contents: z
       .array(GithubFileContentSchema)
       .optional()
       .describe('Array of directory contents'),
@@ -515,59 +514,59 @@ const GithubResultSchema = z.discriminatedUnion('operation', [
     operation: z.literal('list_pull_requests'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    data: z
+    pull_requests: z
       .array(GithubPullRequestSchema)
       .optional()
       .describe('Array of pull requests'),
   }),
 
-  z.object({
-    operation: z.literal('get_pull_request'),
-    success: z.boolean().describe('Whether the operation succeeded'),
-    error: z.string().describe('Error message if operation failed'),
-    data: GithubPullRequestSchema.optional().describe('Pull request details'),
-  }),
+  z
+    .object({
+      operation: z.literal('get_pull_request'),
+      success: z.boolean().describe('Whether the operation succeeded'),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GithubPullRequestSchema.partial()),
 
-  z.object({
-    operation: z.literal('create_pr_comment'),
-    success: z.boolean().describe('Whether the operation succeeded'),
-    error: z.string().describe('Error message if operation failed'),
-    data: GithubCommentSchema.optional().describe(
-      'Created comment information'
-    ),
-  }),
+  z
+    .object({
+      operation: z.literal('create_pr_comment'),
+      success: z.boolean().describe('Whether the operation succeeded'),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GithubCommentSchema.partial()),
 
   z.object({
     operation: z.literal('list_repositories'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    data: z
+    repositories: z
       .array(GithubRepositorySchema)
       .optional()
       .describe('Array of repositories'),
   }),
 
-  z.object({
-    operation: z.literal('get_repository'),
-    success: z.boolean().describe('Whether the operation succeeded'),
-    error: z.string().describe('Error message if operation failed'),
-    data: GithubRepositorySchema.optional().describe('Repository details'),
-  }),
+  z
+    .object({
+      operation: z.literal('get_repository'),
+      success: z.boolean().describe('Whether the operation succeeded'),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GithubRepositorySchema.partial()),
 
-  z.object({
-    operation: z.literal('create_issue_comment'),
-    success: z.boolean().describe('Whether the operation succeeded'),
-    error: z.string().describe('Error message if operation failed'),
-    data: GithubCommentSchema.optional().describe(
-      'Created comment information'
-    ),
-  }),
+  z
+    .object({
+      operation: z.literal('create_issue_comment'),
+      success: z.boolean().describe('Whether the operation succeeded'),
+      error: z.string().describe('Error message if operation failed'),
+    })
+    .merge(GithubCommentSchema.partial()),
 
   z.object({
     operation: z.literal('list_issues'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    data: z.array(GithubIssueSchema).optional().describe('Array of issues'),
+    issues: z.array(GithubIssueSchema).optional().describe('Array of issues'),
   }),
 ]);
 
@@ -826,7 +825,7 @@ export class GithubBubble<
         operation: 'get_file',
         success: true,
         error: '',
-        data: validatedData,
+        ...validatedData,
       };
     } catch (error) {
       return {
@@ -886,7 +885,7 @@ export class GithubBubble<
         operation: 'get_directory',
         success: true,
         error: '',
-        data: validatedData,
+        contents: validatedData,
       };
     } catch (error) {
       return {
@@ -949,7 +948,7 @@ export class GithubBubble<
         operation: 'list_pull_requests',
         success: true,
         error: '',
-        data: validatedData,
+        pull_requests: validatedData,
       };
     } catch (error) {
       return {
@@ -1006,7 +1005,7 @@ export class GithubBubble<
         operation: 'get_pull_request',
         success: true,
         error: '',
-        data: validatedData,
+        ...validatedData,
       };
     } catch (error) {
       return {
@@ -1066,7 +1065,7 @@ export class GithubBubble<
         operation: 'create_pr_comment',
         success: true,
         error: '',
-        data: validatedData,
+        ...validatedData,
       };
     } catch (error) {
       return {
@@ -1127,7 +1126,7 @@ export class GithubBubble<
         operation: 'list_repositories',
         success: true,
         error: '',
-        data: validatedData,
+        repositories: validatedData,
       };
     } catch (error) {
       return {
@@ -1184,7 +1183,7 @@ export class GithubBubble<
         operation: 'get_repository',
         success: true,
         error: '',
-        data: validatedData,
+        ...validatedData,
       };
     } catch (error) {
       return {
@@ -1244,7 +1243,7 @@ export class GithubBubble<
         operation: 'create_issue_comment',
         success: true,
         error: '',
-        data: validatedData,
+        ...validatedData,
       };
     } catch (error) {
       return {
@@ -1307,7 +1306,7 @@ export class GithubBubble<
         operation: 'list_issues',
         success: true,
         error: '',
-        data: validatedData,
+        issues: validatedData,
       };
     } catch (error) {
       return {

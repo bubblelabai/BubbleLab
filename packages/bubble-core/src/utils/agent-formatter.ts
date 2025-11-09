@@ -1,3 +1,4 @@
+import { MessageContent } from '@langchain/core/messages';
 import { parseJsonWithFallbacks } from './json-parsing';
 import type { LLMResult } from '@langchain/core/outputs';
 /**
@@ -26,7 +27,7 @@ export function extractAndStreamThinkingTokens(
         ?.__raw_response,
     ];
 
-    let rawResponse: any = null;
+    let rawResponse: unknown = null;
     for (const path of possiblePaths) {
       if (path) {
         rawResponse = path;
@@ -35,7 +36,12 @@ export function extractAndStreamThinkingTokens(
     }
 
     if (rawResponse) {
-      if (rawResponse.choices && Array.isArray(rawResponse.choices)) {
+      if (
+        typeof rawResponse === 'object' &&
+        rawResponse !== null &&
+        'choices' in rawResponse &&
+        Array.isArray(rawResponse.choices)
+      ) {
         for (const choice of rawResponse.choices) {
           let reasoning: string | undefined;
           if (choice.delta?.reasoning) {
@@ -72,7 +78,7 @@ export function extractAndStreamThinkingTokens(
  * Format final response with special handling for Gemini image models and JSON mode
  */
 export function formatFinalResponse(
-  response: string | unknown,
+  response: MessageContent,
   modelName: string,
   jsonMode?: boolean
 ): { response: string; error?: string } {
@@ -89,23 +95,77 @@ export function formatFinalResponse(
     typeof response === 'string' ? response.length : 'N/A (object)'
   );
   if (Array.isArray(response)) {
+    // Collect all text chunks from the array
+    const textChunks: string[] = [];
+
     for (const item of response) {
+      if (!item || typeof item !== 'object') {
+        continue;
+      }
+
+      let text: string | undefined;
+
+      // Check for standard format: item.type === 'text' && item.text (more specific, check first)
       if (
-        item &&
-        typeof item === 'object' &&
         'type' in item &&
-        item.type === 'text'
+        item.type === 'text' &&
+        'text' in item &&
+        typeof item.text === 'string'
       ) {
+        text = item.text;
+      }
+      // Check for direct text property (LangChain AIMessage format)
+      else if ('text' in item && typeof item.text === 'string') {
+        text = item.text;
+      }
+      // Check for nested LangChain message structure: item.message.kwargs.content[0].text
+      else if (
+        'message' in item &&
+        item.message &&
+        typeof item.message === 'object' &&
+        'kwargs' in item.message &&
+        item.message.kwargs &&
+        typeof item.message.kwargs === 'object' &&
+        'content' in item.message.kwargs &&
+        Array.isArray(item.message.kwargs.content) &&
+        item.message.kwargs.content.length > 0
+      ) {
+        const firstContent = item.message.kwargs.content[0];
+        if (
+          firstContent &&
+          typeof firstContent === 'object' &&
+          'type' in firstContent &&
+          firstContent.type === 'text' &&
+          'text' in firstContent &&
+          typeof firstContent.text === 'string'
+        ) {
+          text = firstContent.text;
+        }
+      }
+
+      if (text) {
+        textChunks.push(text);
+      }
+    }
+
+    // If we collected text chunks, combine them and try to parse
+    if (textChunks.length > 0) {
+      const combinedText = textChunks.join('');
+
+      // If jsonMode is enabled, try to parse the combined text as JSON
+      if (jsonMode) {
         try {
-          const result = parseJsonWithFallbacks(item.text);
+          const result = parseJsonWithFallbacks(combinedText);
           if (result.success) {
             return { response: result.response };
           }
         } catch {
-          // Continue to next item if not valid JSON
-          continue;
+          // Continue to return combined text if not valid JSON
         }
       }
+
+      // Return the combined text (even if not JSON)
+      return { response: combinedText };
     }
   }
 

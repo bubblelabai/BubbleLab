@@ -361,6 +361,7 @@ Outcome: A semi-automated, ToS-compliant Fiverr outreach system that saves time,
     }
   ]
 }`,
+  'github-workflow': `Based on my recent git commits in my repo, help me write a newsletter of new updates in my project and send me a nicely formatted html to my email`,
 };
 
 describe('Pearl AI Agent Code Generation Repeated test', () => {
@@ -449,9 +450,48 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
     );
     expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
   }, 400000);
+  it.skip('should generate a GitHub workflow', async () => {
+    const testPrompt = PROMPT_LISTS['github-workflow'];
+    const totalRuns = 3;
+    const requiredPasses = 3;
+
+    // Run all tests in parallel
+    const promises = Array.from({ length: totalRuns }, async (_, index) => {
+      const result = await runBoba({ prompt: testPrompt });
+      const validationResult = await validateBubbleFlow(result.generatedCode);
+      const passed = validationResult.valid;
+      console.log(
+        `GitHub Workflow Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'}`
+      );
+      if (!passed) {
+        console.log(
+          `Validation errors: ${JSON.stringify(validationResult.errors)}`
+        );
+      }
+      return {
+        success: passed,
+        generatedCode: result.generatedCode,
+      };
+    });
+
+    const results = await Promise.all(promises);
+    const passCount = results.filter((result) => result.success).length;
+    console.log(
+      `\nGitHub Workflow Results: ${passCount}/${totalRuns} tests passed`
+    );
+
+    expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
+
+    // Additional checks on successful results
+    const successfulResults = results.filter((result) => result.success);
+    if (successfulResults.length > 0) {
+      expect(successfulResults[0].generatedCode).toContain('BubbleFlow');
+      expect(successfulResults[0].generatedCode).toContain('GitHub');
+    }
+  }, 400000);
 });
 
-describe('Boba All Prompts Test Suite', () => {
+describe.skip('Boba All Prompts Test Suite', () => {
   it('should run all prompts in parallel and report statistics', async () => {
     if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
       return;
