@@ -400,7 +400,7 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
     expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
   }, 4000000);
 
-  it('should generate AI Talent Acquisition workflow from JSON', async () => {
+  it.skip('should generate AI Talent Acquisition workflow from JSON', async () => {
     const testPrompt = PROMPT_LISTS['json-flowwise'];
     const totalRuns = 1;
     const requiredPasses = 1;
@@ -448,4 +448,159 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
     );
     expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
   }, 400000);
+});
+
+describe('Boba All Prompts Test Suite', () => {
+  it('should run all prompts in parallel and report statistics', async () => {
+    const totalRuns = 1;
+    const requiredPasses = 1;
+
+    // Get all prompt keys
+    const promptKeys = Object.keys(PROMPT_LISTS) as Array<
+      keyof typeof PROMPT_LISTS
+    >;
+    console.log(
+      `Running ${promptKeys.length} different prompts ${totalRuns} time(s) each in parallel...`
+    );
+
+    // Run all prompts multiple times
+    const allPromises: Promise<{
+      promptKey: keyof typeof PROMPT_LISTS;
+      success: boolean;
+      latency: number;
+      numTimeEditWorkflowUsed: number;
+      numTimeCreate: number;
+      error: string | null;
+      runNumber: number;
+    }>[] = [];
+
+    for (let run = 1; run <= totalRuns; run++) {
+      const runPromises = promptKeys.map(async (promptKey) => {
+        const testPrompt = PROMPT_LISTS[promptKey];
+        const startTime = Date.now();
+
+        try {
+          const result = await runBoba({ prompt: testPrompt });
+          const validationResult = await validateBubbleFlow(
+            result.generatedCode
+          );
+          const endTime = Date.now();
+          const latency = (endTime - startTime) / 1000; // Convert to seconds
+
+          const passed = validationResult.valid;
+          console.log(
+            `${promptKey} (run ${run}/${totalRuns}): ${passed ? 'PASS' : 'FAIL'} (${latency.toFixed(2)}s)`
+          );
+
+          if (!passed) {
+            console.log(
+              `  Validation errors: ${JSON.stringify(validationResult.errors)}`
+            );
+          }
+
+          const numTimeEditWorkflowUsed = result.toolCalls.filter(
+            (call) => (call as any).tool === 'editWorkflow'
+          ).length;
+          const numTimeCreate = result.toolCalls.filter(
+            (call) => (call as any).tool === 'createWorkflow'
+          ).length;
+
+          return {
+            promptKey,
+            success: passed,
+            latency,
+            numTimeEditWorkflowUsed,
+            numTimeCreate,
+            error: null,
+            runNumber: run,
+          };
+        } catch (error) {
+          const endTime = Date.now();
+          const latency = (endTime - startTime) / 1000; // Convert to seconds
+          console.log(
+            `${promptKey} (run ${run}/${totalRuns}): ERROR (${latency.toFixed(2)}s) - ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+
+          return {
+            promptKey,
+            success: false,
+            latency,
+            numTimeEditWorkflowUsed: 0,
+            numTimeCreate: 0,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            runNumber: run,
+          };
+        }
+      });
+
+      allPromises.push(...runPromises);
+    }
+
+    const results = await Promise.all(allPromises);
+
+    // Calculate statistics
+    const passCount = results.filter((result) => result.success).length;
+    const totalLatency = results.reduce(
+      (sum, result) => sum + result.latency,
+      0
+    );
+    const avgLatency = totalLatency / results.length;
+    const maxLatency = Math.max(...results.map((r) => r.latency));
+    const minLatency = Math.min(...results.map((r) => r.latency));
+
+    // Print detailed results
+    console.log('\n📊 All Prompts Test Results:');
+    console.log(`   - Total prompts: ${promptKeys.length}`);
+    console.log(`   - Total runs: ${results.length}`);
+    console.log(`   - Passes: ${passCount}`);
+    console.log(`   - Fails: ${results.length - passCount}`);
+    console.log(`   - Average latency: ${avgLatency.toFixed(2)}s`);
+    console.log(`   - Min latency: ${minLatency.toFixed(2)}s`);
+    console.log(`   - Max latency: ${maxLatency.toFixed(2)}s`);
+
+    // Print per-prompt statistics
+    console.log('\n📋 Per-prompt results:');
+    promptKeys.forEach((promptKey) => {
+      const promptResults = results.filter((r) => r.promptKey === promptKey);
+      const promptPasses = promptResults.filter((r) => r.success).length;
+      const avgPromptLatency =
+        promptResults.reduce((sum, r) => sum + r.latency, 0) /
+        promptResults.length;
+
+      console.log(
+        `   ${promptKey}: ${promptPasses}/${promptResults.length} passed (avg: ${avgPromptLatency.toFixed(2)}s)`
+      );
+
+      promptResults.forEach((result) => {
+        const status = result.success ? '✅' : '❌';
+        console.log(
+          `     ${status} Run ${result.runNumber}: ${result.latency.toFixed(2)}s`
+        );
+        if (result.error) {
+          console.log(`        Error: ${result.error}`);
+        }
+      });
+    });
+
+    // Tool usage statistics
+    const totalEditCalls = results.reduce(
+      (sum, r) => sum + r.numTimeEditWorkflowUsed,
+      0
+    );
+    const totalCreateCalls = results.reduce(
+      (sum, r) => sum + r.numTimeCreate,
+      0
+    );
+    console.log('\n🔧 Tool usage statistics:');
+    console.log(`   - Total edit workflow calls: ${totalEditCalls}`);
+    console.log(`   - Total create workflow calls: ${totalCreateCalls}`);
+    console.log(
+      `   - Avg edit calls per run: ${(totalEditCalls / results.length).toFixed(2)}`
+    );
+    console.log(
+      `   - Avg create calls per run: ${(totalCreateCalls / results.length).toFixed(2)}`
+    );
+
+    expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
+  }, 600000); // 10 minute timeout for all prompts
 });

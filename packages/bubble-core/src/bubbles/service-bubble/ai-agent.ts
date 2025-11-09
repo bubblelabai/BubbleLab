@@ -1140,7 +1140,7 @@ export class AIAgentBubble extends ServiceBubble<
       const response = finalMessage?.content || 'No response generated';
 
       // Use shared formatting method
-      const formattedResult = await formatFinalResponse(
+      const formattedResult = formatFinalResponse(
         response,
         this.params.model.model,
         jsonMode

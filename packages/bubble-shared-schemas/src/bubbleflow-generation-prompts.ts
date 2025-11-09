@@ -109,6 +109,7 @@ inputs are fixed take out the interface and just use handle() without the payloa
 Leave insightful comments on each input, for example
 const { input = 'sensible example value', cron } = payload;
 If you do leave a default value make sure to make the field optional in the payload interface.
+When setting schedule, you must take into account of the timezone of the user and convert it to UTC offset! The cron expression is in UTC timezone.
 If no particular trigger is specified, use the webhook/http trigger.`;
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
@@ -134,28 +135,36 @@ PART 1: WHEN TO USE RESEARCH-AGENT-TOOL
 ═══════════════════════════════════════════════════════════════════
 
 ALWAYS use research-agent-tool when:
-✓ The task requires gathering information from the internet
-✓ The task is hard, complex, or not well-defined
-✓ You need current, up-to-date information not in your training data
-✓ The task involves multi-step research across multiple web sources
-✓ You need to synthesize information from various online sources
+✓ The task is COMPLEX, AMBIGUOUS, or NOT WELL-DEFINED
+✓ You need to DISCOVER and SYNTHESIZE information from MULTIPLE unknown sources
+✓ The task requires STRATEGIC RESEARCH and INTELLIGENT DECISION-MAKING about what/where to scrape
+✓ You need to EXPLORE and COMPARE multiple websites or data sources
 ✓ The user asks for market research, competitive analysis, or trend analysis
-✓ You need to find specific data points (prices, statistics, news) from the web
-✓ The task requires scraping or crawling websites for structured data
+✓ You need to FIND and AGGREGATE specific data points from various unclear sources
+✓ The scraping targets are NOT explicitly specified and need to be discovered
 
 Examples of tasks that REQUIRE research-agent-tool:
-- "Find the top 10 competitors for [company] and compare their pricing"
-- "Research current trends in [industry] and provide a summary"
-- "Gather product specifications from [website]"
-- "Find recent news articles about [topic] from the last week"
-- "Get user reviews and ratings for [product] across multiple sites"
-- "Research best practices for [technology] from developer blogs"
+- "Find the top 10 competitors for [company] and compare their pricing" (need to discover who competitors are + where their pricing is)
+- "Research current trends in [industry] and provide a summary" (need to discover sources and synthesize)
+- "Get user reviews and ratings for [product] across multiple sites" (need to find which sites have reviews)
+- "Research best practices for [technology] from developer blogs" (need to discover relevant blogs)
+- "Find companies in the AI space that raised funding this month" (ambiguous - need to discover sources)
 
 DO NOT use research-agent-tool when:
+✗ The scraping target is SPECIFIC and WELL-DEFINED (e.g., "scrape YC companies list", "scrape Hacker News front page")
+✗ The task is a SIMPLE, DIRECT scrape of a known URL or website
 ✗ The task only requires deterministic logic or data transformation
-✗ All necessary information is already provided in the input/context
+✗ All necessary information (URLs, targets) is already provided in the input/context
 ✗ The task is about code generation, formatting, or internal operations
 ✗ Simple database queries or API calls can solve the problem
+✗ The task can be broken down into deterministic steps that can be executed in a loop or batch
+
+Examples of tasks that should use DIRECT scraping tools (scrape-tool, scrape-site-tool):
+- "Scrape the YC companies list from ycombinator.com/companies"
+- "Get the front page of Hacker News"
+- "Scrape product details from [specific-product-url]"
+- "Extract all links from [specific-page]"
+- "Crawl documentation site starting from [url]"
 
 ═══════════════════════════════════════════════════════════════════
 PART 2: MODEL SELECTION BY TASK TYPE

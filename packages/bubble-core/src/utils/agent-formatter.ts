@@ -37,13 +37,22 @@ export function extractAndStreamThinkingTokens(
     if (rawResponse) {
       if (rawResponse.choices && Array.isArray(rawResponse.choices)) {
         for (const choice of rawResponse.choices) {
+          let reasoning: string | undefined;
           if (choice.delta?.reasoning) {
             // Stream thinking tokens for Grok models
-            return choice.delta.reasoning;
+            reasoning = choice.delta.reasoning;
           }
           // Also check for reasoning in the choice itself (not just delta)
-          if (choice.reasoning) {
-            return choice.reasoning;
+          else if (choice.reasoning) {
+            reasoning = choice.reasoning;
+          }
+
+          // Strip <think> and </think> tags from the reasoning content
+          if (reasoning) {
+            return reasoning
+              .replace(/<think>/gi, '')
+              .replace(/<\/think>/gi, '')
+              .trim();
           }
         }
       } else {
@@ -105,12 +114,13 @@ export function formatFinalResponse(
     finalResponse = formatGeminiImageResponse(finalResponse);
   } else if (jsonMode && typeof finalResponse === 'string') {
     // Handle JSON mode: use the improved utility function
+    console.log('[AIAgent] Parsing JSON response:', finalResponse);
     const result = parseJsonWithFallbacks(finalResponse);
 
     if (!result.success) {
       return {
         response: result.response,
-        error: `AI Agent failed to generate valid JSON. Post-processing attempted but JSON is still malformed. Original response: ${finalResponse}`,
+        error: `${finalResponse}`,
       };
     }
 

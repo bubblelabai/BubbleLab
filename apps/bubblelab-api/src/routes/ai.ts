@@ -106,16 +106,29 @@ app.openapi(pearlRoute, async (c) => {
         }),
         event: 'stream_complete',
       });
-      posthog.captureEvent(
-        {
-          userId: getUserId(c),
-          requestPath: c.req.path,
-          requestMethod: c.req.method,
-          prompt: request.userRequest,
-          code: result.snippet,
-        },
-        'pearl_success'
-      );
+      if (result.success) {
+        posthog.captureEvent(
+          {
+            userId: getUserId(c),
+            requestPath: c.req.path,
+            requestMethod: c.req.method,
+            prompt: request.userRequest,
+            code: result.snippet,
+          },
+          'pearl_success'
+        );
+      } else {
+        posthog.captureErrorEvent(
+          result.error,
+          {
+            userId: getUserId(c),
+            requestPath: c.req.path,
+            requestMethod: c.req.method,
+            prompt: request.userRequest,
+          },
+          'pearl_error'
+        );
+      }
     } catch (error) {
       console.error('[API] Pearl streaming error:', error);
       posthog.captureErrorEvent(

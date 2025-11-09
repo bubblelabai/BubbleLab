@@ -43,7 +43,7 @@ import { getBubbleFactory } from '../bubble-factory-instance.js';
  */
 async function buildSystemPrompt(userName: string): Promise<string> {
   const bubbleFactory = await getBubbleFactory();
-  return `You are Pearl, an AI Builder Agent specializing in creating editing completed Bubble Lab workflows (called BubbleFlow).
+  return `You are Pearl, an AI Builder Agent specializing in editing completed Bubble Lab workflows (called BubbleFlow).
   You reside inside bubblelab-studio, the frontend of Bubble Lab.
   ${BUBBLE_STUDIO_INSTRUCTIONS}
 
@@ -67,7 +67,7 @@ DECISION PROCESS:
    - Check if all required information is provided
    - If ANY critical information is missing → ASK QUESTION immediately
    - DO NOT make assumptions or use placeholder values
-   - If request is clear and feasible → GENERATE COMPLETE WORKFLOW CODE and call validation tool
+   - If request is clear and feasible → PROPOSE workflow changes and call editWorkflow tool to validate it
 
 OUTPUT FORMAT (JSON):
 You MUST respond in JSON format with one of these structures:
@@ -105,21 +105,15 @@ WHEN TO USE EACH TYPE:
 - Use "code" when you have enough information to PROPOSE a complete workflow (you are NOT editing/executing, only suggesting for user review)
 - Use "reject" when the request is infeasible or outside your capabilities
 
-CRITICAL CODE GENERATION RULES:
-1. Generate COMPLETE workflow code including:
-   - All necessary imports from @bubblelab/bubble-core, and any additional bubble imports if needed
-   - A class that extends BubbleFlow<'webhook/http'> or BubbleFlow<'cron/schedule'> depending on the user's request or whether the task is suitable for a cron schedule.
-   - A handle() method with the workflow logic
-   - Proper error handling and return values
-2. Find available bubbles using the list-bubbles-tool, this will contain the bubble identifiers and descriptions.
-3. For each bubble, use the get-bubble-details-tool with the bubble identifier to understand the proper usage
-4. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
-5. Access data from context variables and parameters
-6. When you generate code (type: "code"), you MUST immediately call editWorkflow tool with your complete code
-7. The editWorkflow tool will validate your complete workflow code and return validation errors if any
-8. If validation fails, use editWorkflow to fix the errors iteratively
-9. Keep calling editWorkflow until validation passes
-10. Do not provide a response until your code is fully validated
+CRITICAL CODE EDIT RULES:
+1. Find available bubbles using the list-bubbles-tool, this will contain the bubble identifiers and descriptions.
+2. For each bubble, use the get-bubble-details-tool with the bubble identifier to understand the proper usage
+3. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
+4. Access data from context variables and parameters
+5. The editWorkflow tool will validate your complete workflow code and return validation errors if any
+6. If validation fails, use editWorkflow to fix the errors iteratively
+7. Keep calling editWorkflow until validation passes
+8. Do not provide a response until your code is fully validated
 
 IMPORTANT TOOL USAGE:
 - When using editWorkflow, highlight the changes necessary and adds comments to indicate where unchanged code has been skipped. For example:
@@ -130,6 +124,7 @@ IMPORTANT TOOL USAGE:
 // ... existing code ...
 Often this will mean that the start/end of the file will be skipped, but that's okay! Rewrite the entire file ONLY if specifically requested. Always provide a brief explanation of the updates, unless the user specifically requests only the code.
 These edit codeblocks are also read by a less intelligent language model, colloquially called the apply model, to update the file. To help specify the edit to the apply model, you will be very careful when generating the codeblock to not introduce ambiguity. You will specify all unchanged regions (code and comments) of the file with "// ... existing code ..." comment markers. This will ensure the apply model will not delete existing unchanged code or comments when editing the file.
+- KEEP THE EDIT MINIMAL
 - editWorkflow will return both the updated code AND new validation errors
 
 
@@ -148,11 +143,7 @@ User: ${userName}
 
 # TEMPLATE CODE:
 ${bubbleFactory.generateBubbleFlowBoilerplate()}
-
-
-\`\`\`
-
-Remember: You are building COMPLETE workflows that can include multiple integrations and complex logic!`;
+`;
 }
 
 /**
@@ -196,9 +187,10 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
 export async function runPearl(
   request: PearlRequest,
   credentials?: Partial<Record<CredentialType, string>>,
-  apiStreamingCallback?: StreamingCallback
+  apiStreamingCallback?: StreamingCallback,
+  maxRetries?: number
 ): Promise<PearlResponse> {
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = maxRetries || 3;
   let lastError: string | undefined;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -478,20 +470,27 @@ export async function runPearl(
         afterToolCall,
       });
       const result = await agent.action();
-      if (!result.success) {
+
+      if (!result.success && result.data?.response) {
+        // Default to answer type if agent execution failed (likely due to JSON parsing error of response)
         return {
-          type: 'reject',
-          message: result.error || 'Agent execution failed',
-          success: false,
-          error: result.error,
+          type: 'answer',
+          message: result.data?.response,
+          success: true,
         };
       }
 
       // Parse the agent's JSON response
       let agentOutput: PearlAgentOutput;
+      const responseText = result.data?.response || '';
       try {
-        const responseText = result.data?.response || '';
-        agentOutput = PearlAgentOutputSchema.parse(JSON.parse(responseText));
+        console.log('[Pearl] Agent response:', responseText);
+        // Try to parse as object first, then as array (take first element)
+        let parsedResponse = JSON.parse(responseText);
+        if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
+          parsedResponse = parsedResponse[0];
+        }
+        agentOutput = PearlAgentOutputSchema.parse(parsedResponse);
 
         if (!agentOutput.type || !agentOutput.message) {
           console.error('[Pearl] Error parsing agent response:', responseText);
@@ -504,13 +503,18 @@ export async function runPearl(
 
           return {
             type: 'reject',
-            message: 'Error parsing agent response',
+            message:
+              'Error parsing agent response, original response: ' +
+              responseText,
             success: false,
           };
         }
         if (agentOutput.type === 'code') {
-          // Use currentCode if available, otherwise use snippet from agent output
           const finalCode = currentCode;
+          if (applyModelInstructions.length == 0) {
+            console.error('[Pearl] Did not generate any code');
+            continue;
+          }
           return {
             type: 'code',
             message: agentOutput.message,
@@ -526,7 +530,10 @@ export async function runPearl(
             message: agentOutput.message,
             success: true,
           };
-        } else if (agentOutput.type === 'answer') {
+        } else if (
+          agentOutput.type === 'answer' ||
+          agentOutput.type === 'text'
+        ) {
           return {
             type: 'answer',
             message: agentOutput.message,
@@ -540,18 +547,21 @@ export async function runPearl(
           };
         }
       } catch (error) {
-        console.error('[Pearl] Failed to parse agent output:', error);
         lastError =
           error instanceof Error ? error.message : 'Unknown parsing error';
 
         if (attempt < MAX_RETRIES) {
-          console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
+          console.warn(
+            `[Pearl] Retrying due to error: ${error instanceof Error ? error.message : 'Unknown error'} (${attempt}/${MAX_RETRIES})`
+          );
           continue;
         }
 
         return {
           type: 'reject',
-          message: 'Failed to parse agent response',
+          message:
+            'Failed to parse agent response, original response: ' +
+            responseText,
           success: false,
           error:
             error instanceof Error ? error.message : 'Unknown parsing error',
@@ -562,7 +572,9 @@ export async function runPearl(
       lastError = error instanceof Error ? error.message : 'Unknown error';
 
       if (attempt < MAX_RETRIES) {
-        console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
+        console.warn(
+          `[Pearl] Retrying due to error: ${error instanceof Error ? error.message : 'Unknown error'} (${attempt}/${MAX_RETRIES})`
+        );
         continue;
       }
 

@@ -702,3 +702,64 @@ describe('JSON Parsing Utilities', () => {
     });
   });
 });
+
+describe('JSON Parsing for pearl responses', () => {
+  test('should handle invalid JSON with nested content inside', () => {
+    // This is markdown documentation with an incomplete code block (missing closing backticks)
+    // The JSON parser should NOT extract this as valid JSON since it's embedded in markdown
+    const input = `To run this flow, you have two main options:
+
+1.  **Run Manually in the Editor (for testing):**
+    *   On the right side of the screen, you'll see the **Input Schema** panel for the trigger.
+    *   There's an input field labeled \`query\`. You can type any question you want the AI to answer.
+    *   If you leave it blank, it will use the default question: "What is the top news headline?".
+    *   Click the **"Run"** button at the top right. The flow will execute, and you'll see the AI's response in the **Console** tab.
+
+2.  **Trigger via Webhook:**
+    *   You can also run this flow by sending an HTTP POST request to its unique webhook URL.
+    *   You can find the webhook URL on the flow visualizer page.
+    *   Send a POST request to that URL with a JSON body like this:
+        \`\`\`json
+        {
+          "query": "What are the latest developments in AI?"
+        }`;
+
+    const result = parseJsonWithFallbacks(input);
+
+    // This should fail because the content is markdown documentation, not JSON
+    // The code block is incomplete (missing closing backticks), so it should not be parsed as valid JSON
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+    expect(result.error).toContain('incomplete code block');
+  });
+
+  test('should reject markdown documentation with complete code block', () => {
+    // This is markdown documentation with a complete code block
+    // The JSON parser should NOT extract this as valid JSON since it's embedded in markdown documentation
+    const input = `This workflow is triggered by an HTTP request. You have two main ways to run it:
+
+1.  **From the Bubble Studio Editor (Easiest):**
+    *   On the right side of the screen, you'll see a visualization of your flow. The first node is the "Input Schema".
+    *   You can enter a question into the \`query\` input field. If you leave it blank, it will use the default: "What is the top news headline?".
+    *   Click the "Run" button at the top right of the editor.
+    *   The execution logs and the final response from the AI agent will appear in the "Console" tab.
+
+2.  **Via a Webhook URL:**
+    *   You can also trigger this flow by sending an HTTP POST request from another application.
+    *   First, enable the webhook trigger using the toggle switch in the flow editor.
+    *   Copy the unique webhook URL provided.
+    *   Send a POST request to that URL with a JSON body like this:
+        \`\`\`json
+        {
+          "query": "Your question here"
+        }
+        \`\`\``;
+
+    const result = parseJsonWithFallbacks(input);
+
+    // This should fail because the content is markdown documentation, not JSON
+    // Even though the code block is complete, it's still embedded in documentation text
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+});

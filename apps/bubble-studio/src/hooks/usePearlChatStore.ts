@@ -178,12 +178,36 @@ function handleStreamingEvent(
       );
       break;
 
-    case 'think':
-      state.addEventToCurrentTurn({
-        type: 'think',
-        content: event.data.content,
-      });
+    case 'think': {
+      // Clean up thinking content by removing any JSON response at the end
+      let thinkingContent = event.data.content;
+
+      // Try to detect and remove JSON objects from thinking content
+      // The LLM sometimes includes the final JSON response in the thinking
+      try {
+        // Look for JSON patterns like {"type": "answer", "message": "..."}
+        const jsonMatch = thinkingContent.match(
+          /\{[\s\S]*"type"[\s\S]*"message"[\s\S]*\}/
+        );
+        if (jsonMatch) {
+          // Remove the JSON and any trailing content
+          thinkingContent = thinkingContent
+            .substring(0, jsonMatch.index)
+            .trim();
+        }
+      } catch {
+        // If parsing fails, use the content as-is
+      }
+
+      // Only add thinking event if there's actual content after cleanup
+      if (thinkingContent) {
+        state.addEventToCurrentTurn({
+          type: 'think',
+          content: thinkingContent,
+        });
+      }
       break;
+    }
 
     case 'token':
       state.updateLastEvent((events: DisplayEvent[]) => {
@@ -230,10 +254,23 @@ export function usePearlChatStore(flowId: number | null) {
       if (!store) return;
 
       const storeState = store.getState();
+
+      // Sometimes the backend returns a JSON string in the message field
+      // Try to parse it and extract the actual message
+      let messageContent = result.message || '';
+      try {
+        const parsed = JSON.parse(messageContent.trim());
+        if (parsed && typeof parsed === 'object' && 'message' in parsed) {
+          messageContent = parsed.message;
+        }
+      } catch {
+        // Not a JSON string, use as-is
+      }
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: result.message || '',
+        content: messageContent,
         code:
           result.type === 'code' && result.snippet ? result.snippet : undefined,
         resultType: result.type,

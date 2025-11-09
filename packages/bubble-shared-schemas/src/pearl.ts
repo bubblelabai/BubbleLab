@@ -104,7 +104,7 @@ export const PearlResponseSchema = z.object({
  * Internal agent response format (JSON mode output from AI)
  */
 export const PearlAgentOutputSchema = z.object({
-  type: z.enum(['code', 'question', 'answer', 'reject']),
+  type: z.enum(['code', 'question', 'answer', 'reject', 'text']),
   message: z.string(),
   snippet: z.string().optional(),
 });
