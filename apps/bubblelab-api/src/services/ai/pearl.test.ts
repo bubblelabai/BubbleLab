@@ -16,50 +16,7 @@ interface PearlTestCase {
   request: PearlRequest;
   snippetContains: string[];
   snippetMatches: RegExp[];
-}
-
-/**
- * Test case for rejection scenarios
- */
-interface PearlRejectTestCase {
-  request: PearlRequest;
-  expectedType: 'reject' | 'question';
-  messageContains?: string[];
-}
-
-/**
- * Test case definition (without model specified)
- */
-interface PearlTestCaseDefinition {
-  request: Omit<PearlRequest, 'model'>;
-  snippetContains: string[];
-  snippetMatches: RegExp[];
-}
-
-/**
- * Reject test case definition (without model specified)
- */
-interface PearlRejectTestCaseDefinition {
-  request: Omit<PearlRequest, 'model'>;
-  expectedType: 'reject' | 'question';
-  messageContains?: string[];
-}
-
-/**
- * Helper to create a test case from a definition with a specific model
- */
-function createTestCase(
-  definition: PearlTestCaseDefinition,
-  model: AvailableModel
-): PearlTestCase {
-  return {
-    request: {
-      ...definition.request,
-      model,
-    },
-    snippetContains: definition.snippetContains,
-    snippetMatches: definition.snippetMatches,
-  };
+  expectedType: 'code' | 'question' | 'answer' | 'reject';
 }
 
 /**
@@ -96,56 +53,6 @@ async function runTestCase(testCase: PearlTestCase) {
   }
 }
 
-/**
- * Helper to create a reject test case from a definition with a specific model
- */
-function createRejectTestCase(
-  definition: PearlRejectTestCaseDefinition,
-  model: AvailableModel
-): PearlRejectTestCase {
-  return {
-    request: {
-      ...definition.request,
-      model,
-    },
-    expectedType: definition.expectedType,
-    messageContains: definition.messageContains,
-  };
-}
-
-/**
- * Test helper to execute and validate a reject/question test case
- */
-async function runRejectTestCase(testCase: PearlRejectTestCase) {
-  console.log('Running reject test case:', testCase.request.userRequest);
-
-  // Execute Pearl agent
-  const result = await runPearl(testCase.request, {
-    [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY!,
-    [CredentialType.OPENAI_CRED]: env.OPENAI_API_KEY!,
-    [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY!,
-  });
-
-  console.log('Pearl result:', JSON.stringify(result, null, 2));
-
-  // Validate basic fields
-  expect(result.success).toBe(true);
-  expect(result.type).toBe(testCase.expectedType);
-  expect(result.message).toBeDefined();
-
-  // Validate message contains expected strings
-  if (testCase.messageContains) {
-    for (const text of testCase.messageContains) {
-      expect(result.message).toContain(text);
-    }
-  }
-
-  // Wait for logger to upload logs before test ends
-  console.log('Waiting for logger to finish uploading logs...');
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-  console.log('Logger upload complete, test ending');
-}
-
 // ============================================================================
 // TEST CASE DEFINITIONS
 // Add new test cases here
@@ -154,25 +61,113 @@ async function runRejectTestCase(testCase: PearlRejectTestCase) {
 /**
  * Simple test case: Generate a basic workflow that sends an email
  */
-function createSimpleEmailWorkflowTestCase(): PearlTestCaseDefinition {
-  // Get boiler plate
-  return {
-    request: {
-      availableVariables: [],
-      userRequest:
-        'Create a workflow that sends an email to user@example.com with subject "Hello" and body "Welcome to our platform!"',
-      userName: 'Test User',
-      conversationHistory: [],
-    },
-    snippetContains: [
-      'BubbleFlow',
-      'user@example.com',
-      'Hello',
-      'Welcome to our platform!',
+const simpleEmailWorkflowTestCase: PearlTestCase = {
+  request: {
+    availableVariables: [],
+    userRequest:
+      'Create a workflow that sends an email to user@example.com with subject "Hello" and body "Welcome to our platform!"',
+    userName: 'Test User',
+    conversationHistory: [],
+    model: 'google/gemini-2.5-pro',
+  },
+  snippetContains: [
+    'BubbleFlow',
+    'user@example.com',
+    'Hello',
+    'Welcome to our platform!',
+  ],
+  snippetMatches: [/class.*extends BubbleFlow/i, /async handle/i],
+  expectedType: 'code',
+};
+
+/**
+ * Test case: User asking how to run an existing workflow
+ */
+const howToRunWorkflowTestCase: PearlTestCase = {
+  request: {
+    model: 'google/gemini-2.5-pro',
+    availableVariables: [
+      {
+        name: 'WebhookEvent',
+        type: '(alias) interface WebhookEvent\nimport WebhookEvent',
+        kind: 'const',
+      },
+      {
+        name: 'Output',
+        type: 'interface Output',
+        kind: 'const',
+      },
+      {
+        name: 'CustomWebhookPayload',
+        type: 'interface CustomWebhookPayload',
+        kind: 'const',
+      },
+      {
+        name: 'UntitledFlow',
+        type: 'class UntitledFlow',
+        kind: 'const',
+      },
+      {
+        name: 'agent',
+        type: 'AIAgentBubble',
+        kind: 'const',
+      },
+      {
+        name: 'result',
+        type: 'const result: BubbleResult<{\n    response: string;\n    toolCalls: {\n        tool: string;\n        input?: unknown;\n        output?: unknown;\n    }[];\n    iterations: number;\n    error: string;\n    success: boolean;\n}>',
+        kind: 'const',
+      },
     ],
-    snippetMatches: [/class.*extends BubbleFlow/i, /async handle/i],
-  };
+    userRequest: 'How do I run this flow?',
+    userName: 'Test User',
+    conversationHistory: [],
+    currentCode: `import { BubbleFlow, AIAgentBubble, type WebhookEvent } from '@bubblelab/bubble-core';
+
+export interface Output {
+  response: string;
 }
+
+export interface CustomWebhookPayload extends WebhookEvent {
+  query?: string;
+}
+
+export class UntitledFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { query = 'What is the top news headline?' } = payload;
+    this.logger?.error("fdfd")
+    // Simple AI agent that responds to user queries with web search
+    const agent = new AIAgentBubble({
+      message: query,
+      systemPrompt: 'You are a helpful assistant.',
+      tools: [
+        {
+          name: 'web-search-tool',
+          config: {
+            limit: 1,
+          },
+        },
+      ],
+    });
+
+    const result = await agent.action();
+
+    if (!result.success) {
+      throw new Error(\`AI Agent failed: \${result.error}\`);
+    }
+
+    return {
+      response: result.data.response,
+    };
+  }
+}
+`,
+    additionalContext:
+      "\n\nUser's timezone: America/Los_Angeles\n\nCurrent time: Sunday, November 9, 2025 at 3:37:48 AM PST\n\nUser's provided input:\n {}",
+  },
+  expectedType: 'answer',
+  snippetMatches: [],
+  snippetContains: ['webhook', 'HTTP', 'deploy'],
+};
 
 // ============================================================================
 // TEST SUITE
@@ -187,7 +182,7 @@ describe('Pearl AI Agent', () => {
   });
 
   it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
-    const testCase = createSimpleEmailWorkflowTestCase();
-    await runTestCase(createTestCase(testCase, 'openrouter/z-ai/glm-4.6'));
+    const testCase = simpleEmailWorkflowTestCase;
+    await runTestCase(testCase);
   }, 60000);
 });
