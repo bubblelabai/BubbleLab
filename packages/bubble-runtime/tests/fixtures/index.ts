@@ -16,6 +16,7 @@ export const fixtures = {
   'reddit-lead-finder': '',
   'image-generation-flow': '',
   'hello-world-multiple': '',
+  'flow-with-spread-and-para': '',
   'mulitple-action-calls': '',
   'reddit-scraper': '',
   'test-script': '',

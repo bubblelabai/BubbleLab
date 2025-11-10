@@ -68,10 +68,17 @@ export interface BubbleParameter {
    * })
    *source: 'object-property',
 
+   new GoogleDriveBubble({
+      url: 'https://www.google.com',
+   *   ...args,
+   * })
+   * source: 'spread',
+
    * source = 'first-arg'
    * new GoogleDriveBubble(args)
    */
-  source?: 'object-property' | 'first-arg';
+
+  source?: 'object-property' | 'first-arg' | 'spread';
 }
 
 // Parsed bubble from backend parser (matches backend ParsedBubble interface)

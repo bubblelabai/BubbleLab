@@ -192,4 +192,123 @@ describe('BubbleParser.parseBubblesFromAST()', () => {
       `${uniqueId}.research-agent-tool#1.ai-agent#1.web-crawl-tool#1.ai-agent#1`
     );
   });
+
+  it('should parse bubble with single variable parameter (case 1: new Bubble(params))', async () => {
+    const testScript = getFixture('param-as-var');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+
+    // Find the GoogleDriveBubble with single variable parameter
+    const googleDriveBubble = Object.values(parseResult.bubbles).find(
+      (bubble) =>
+        bubble.bubbleName === 'google-drive' &&
+        bubble.variableName === 'uploadBubble'
+    );
+
+    expect(googleDriveBubble).toBeDefined();
+    expect(googleDriveBubble?.parameters).toHaveLength(1);
+    expect(googleDriveBubble?.parameters[0].source).toBe('first-arg');
+    expect(googleDriveBubble?.parameters[0].name).toBe('params');
+    expect(googleDriveBubble?.parameters[0].type).toBe('variable');
+  });
+
+  it('should parse bubble with object literal properties (case 2: new Bubble({ fe: fee }))', async () => {
+    const testScript = getFixture('hello-world');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+
+    // Find the HelloWorldBubble with object literal properties
+    const helloWorldBubble = Object.values(parseResult.bubbles).find(
+      (bubble) =>
+        bubble.bubbleName === 'hello-world' &&
+        bubble.variableName === 'greeting'
+    );
+
+    expect(helloWorldBubble).toBeDefined();
+    expect(helloWorldBubble?.parameters.length).toBeGreaterThan(0);
+    // All parameters should have source: 'object-property'
+    helloWorldBubble?.parameters.forEach((param) => {
+      expect(param.source).toBe('object-property');
+    });
+    // Should have message and name parameters
+    const messageParam = helloWorldBubble?.parameters.find(
+      (p) => p.name === 'message'
+    );
+    const nameParam = helloWorldBubble?.parameters.find(
+      (p) => p.name === 'name'
+    );
+    expect(messageParam).toBeDefined();
+    expect(nameParam).toBeDefined();
+  });
+
+  it('should parse bubble with spread and parameter (case 3: new Bubble({ fe: fee, ...something }))', async () => {
+    const testScript = getFixture('flow-with-spread-and-para');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+
+    // Find the SlackBubble with spread and parameters
+    const slackBubble = Object.values(parseResult.bubbles).find(
+      (bubble) =>
+        bubble.bubbleName === 'slack' && bubble.variableName === 'slackNotifier'
+    );
+
+    expect(slackBubble).toBeDefined();
+    // Should have operation, channel (object-property) and slackMessage (spread)
+    const operationParam = slackBubble?.parameters.find(
+      (p) => p.name === 'operation'
+    );
+    const channelParam = slackBubble?.parameters.find(
+      (p) => p.name === 'channel'
+    );
+    const slackMessageParam = slackBubble?.parameters.find(
+      (p) => p.name === 'slackMessage'
+    );
+
+    expect(operationParam).toBeDefined();
+    expect(operationParam?.source).toBe('object-property');
+    expect(channelParam).toBeDefined();
+    expect(channelParam?.source).toBe('object-property');
+    expect(slackMessageParam).toBeDefined();
+    expect(slackMessageParam?.source).toBe('spread');
+    expect(slackMessageParam?.type).toBe('variable');
+  });
 });
