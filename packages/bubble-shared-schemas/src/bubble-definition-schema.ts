@@ -46,18 +46,33 @@ export const BUBBLE_NAMES_WITH_CONTEXT_INJECTION = [
   'slack-data-assistant',
 ];
 
-// Bubble parameter from backend parser (matches backend BubbleParameter interface)
-export interface BubbleParameter {
-  location?: {
-    startLine: number;
-    startCol: number;
-    endLine: number;
-    endCol: number;
-  };
-  variableId?: number;
-  name: string;
-  value: string | number | boolean | Record<string, unknown> | unknown[]; // Raw string representation of the value
-  type: BubbleParameterType;
+// Zod schemas for validation and type inference
+export const BubbleParameterTypeSchema = z.nativeEnum(BubbleParameterType);
+
+export const BubbleParameterSchema = z.object({
+  location: z.optional(
+    z.object({
+      startLine: z.number(),
+      startCol: z.number(),
+      endLine: z.number(),
+      endCol: z.number(),
+    })
+  ),
+  variableId: z
+    .number()
+    .optional()
+    .describe('The variable id of the parameter'),
+  name: z.string().describe('The name of the parameter'),
+  value: z
+    .union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.record(z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .describe('The value of the parameter'),
+  type: BubbleParameterTypeSchema,
   /**
    * Source of the parameter - indicates whether it came from an object literal property
    * or represents the entire first argument. Used to determine if spread pattern should be applied.
@@ -66,20 +81,27 @@ export interface BubbleParameter {
    * new GoogleDriveBubble({
    *   fileId: abc,
    * })
-   *source: 'object-property',
-
-   new GoogleDriveBubble({
-      url: 'https://www.google.com',
+   * source: 'object-property',
+   *
+   * new GoogleDriveBubble({
+   *   url: 'https://www.google.com',
    *   ...args,
    * })
    * source: 'spread',
-
+   *
    * source = 'first-arg'
    * new GoogleDriveBubble(args)
    */
+  source: z
+    .enum(['object-property', 'first-arg', 'spread'])
+    .optional()
+    .describe(
+      'Source of the parameter - indicates if it came from an object literal property, represents the entire first argument, or came from a spread operator'
+    ),
+});
 
-  source?: 'object-property' | 'first-arg' | 'spread';
-}
+// Bubble parameter from backend parser (derived from Zod schema - single source of truth)
+export type BubbleParameter = z.infer<typeof BubbleParameterSchema>;
 
 // Parsed bubble from backend parser (matches backend ParsedBubble interface)
 export interface ParsedBubble {
@@ -132,41 +154,6 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
     endCol: number;
   };
 }
-
-// Zod schemas for validation and type inference
-export const BubbleParameterTypeSchema = z.nativeEnum(BubbleParameterType);
-
-export const BubbleParameterSchema = z.object({
-  location: z.optional(
-    z.object({
-      startLine: z.number(),
-      startCol: z.number(),
-      endLine: z.number(),
-      endCol: z.number(),
-    })
-  ),
-  variableId: z
-    .number()
-    .optional()
-    .describe('The variable id of the parameter'),
-  name: z.string().describe('The name of the parameter'),
-  value: z
-    .union([
-      z.string(),
-      z.number(),
-      z.boolean(),
-      z.record(z.unknown()),
-      z.array(z.unknown()),
-    ])
-    .describe('The value of the parameter'),
-  type: BubbleParameterTypeSchema,
-  source: z
-    .enum(['object-property', 'first-arg'])
-    .optional()
-    .describe(
-      'Source of the parameter - indicates if it came from an object literal property or represents the entire first argument'
-    ),
-});
 
 export const BubbleNodeTypeSchema = z.enum([
   'service',
@@ -226,7 +213,8 @@ export const ParsedBubbleWithInfoSchema = z.object({
 export type BubbleParameterTypeInferred = z.infer<
   typeof BubbleParameterTypeSchema
 >;
-export type BubbleParameterInferred = z.infer<typeof BubbleParameterSchema>;
+// Keep for backwards compatibility - now just an alias
+export type BubbleParameterInferred = BubbleParameter;
 export type BubbleNodeTypeInferred = z.infer<typeof BubbleNodeTypeSchema>;
 export type DependencyGraphNodeInferred = z.infer<
   typeof DependencyGraphNodeSchema
