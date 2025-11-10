@@ -1487,7 +1487,7 @@ export class BubbleParser {
               name: spreadName,
               ...value,
               location,
-              source: 'object-property', // Spread element within ObjectExpression
+              source: 'spread', // Changed from 'object-property' to 'spread'
             });
           }
         }

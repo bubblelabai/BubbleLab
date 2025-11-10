@@ -336,22 +336,6 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
-    it('should execute a flow with a parameter as a variable', async () => {
-      const testScript = getFixture('para-with-variable-alias');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
-      // Inject credentials
-      runner.injector.injectCredentials([], getUserCredential());
-      const result = await runner.runAll({
-        ycUrl: 'https://www.ycombinator.com/companies?batch=Fall%202025',
-      });
-
-      // Expect code to not spread the url
-      expect(runner.bubbleScript.bubblescript).not.toContain('...ycUrl');
-      expect(result).toBeDefined();
-      expect(result.success || !result.error?.includes('url: Required')).toBe(
-        true
-      );
-    });
     it('should execute a flow with a google drive complex', async () => {
       const testScript = getFixture('google-drive-complex');
       const runner = new BubbleRunner(testScript, bubbleFactory);
@@ -360,6 +344,41 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result.success || result.error?.includes('credentials')).toBe(
         true
       );
+    });
+    describe('Parameter parsing and formatting - final script checks', () => {
+      it('case 1: single variable parameter (new Bubble(params)) formats with spread when credentials injected', async () => {
+        const testScript = getFixture('param-as-var');
+        const runner = new BubbleRunner(testScript, bubbleFactory);
+        // Inject any available user credentials to trigger credential insertion
+        runner.injector.injectCredentials([], getUserCredential());
+        // Normalize instantiations and logging to update script string
+        runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+        const code = runner.bubbleScript.bubblescript;
+        // Expect GoogleDriveBubble to use spread of the params variable + credentials
+        expect(code).toMatch(
+          /new\s+GoogleDriveBubble\(\{\s*\.\.\.[A-Za-z_$][\w$]*,\s*credentials:\s*\{/
+        );
+      });
+
+      it('case 2: object literal properties (new Bubble({ fe: fee })) remain as name: value, not spread', async () => {
+        const testScript = getFixture('para-with-variable-alias');
+        const runner = new BubbleRunner(testScript, bubbleFactory);
+        // Normalize to single-line instantiations
+        runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+        const code = runner.bubbleScript.bubblescript;
+        // Should render inline object with properties and no spreads
+        expect(code).not.toContain('...ycUrl');
+      });
+
+      it('case 3: spread and parameter (new Bubble({ fe: fee, ...something })) preserves spread', async () => {
+        const testScript = getFixture('flow-with-spread-and-para');
+        const runner = new BubbleRunner(testScript, bubbleFactory);
+        runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+        // expect ..({ operation: 'send_message', channel: channel, ...slackMessage }
+        expect(runner.bubbleScript.bubblescript).toContain(
+          "({ operation: 'send_message', channel: channel, ...slackMessage }"
+        );
+      });
     });
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);

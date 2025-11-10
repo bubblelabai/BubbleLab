@@ -40,11 +40,6 @@ export function buildParametersObject(
     return paramValue;
   }
 
-  // Handle single variable parameter + credentials case (e.g., new GoogleDriveBubble(params) with injected credentials)
-  // IMPORTANT: Only apply spread pattern when the variable parameter represents the ENTIRE first argument,
-  // not when it's a property from an object literal like { url: ycUrl }.
-  // The parser sets source='first-arg' for parameters that represent the entire first argument,
-  // and source='object-property' for parameters that came from object literal properties.
   const nonCredentialParams = parameters.filter(
     (p) => p.name !== 'credentials'
   );
@@ -52,6 +47,13 @@ export function buildParametersObject(
     (p) => p.name === 'credentials' && p.type === 'object'
   );
 
+  // Separate spreads from regular properties
+  const spreadParams = nonCredentialParams.filter((p) => p.source === 'spread');
+  const regularParams = nonCredentialParams.filter(
+    (p) => p.source !== 'spread'
+  );
+
+  // Handle single variable parameter + credentials case (existing logic)
   if (
     credentialsParam &&
     nonCredentialParams.length === 1 &&
@@ -88,12 +90,28 @@ export function buildParametersObject(
     }
   }
 
-  const paramEntries = parameters.map((param) => {
+  // Build parameter entries: regular properties first, then spreads
+  const regularEntries = regularParams.map((param) => {
     const value = formatParameterValue(param.value, param.type);
     return `${param.name}: ${value}`;
   });
 
-  const paramsString = `{\n    ${paramEntries.join(',\n    ')}\n  }`;
+  const spreadEntries = spreadParams.map((param) => {
+    const value = formatParameterValue(param.value, param.type);
+    return `...${value}`;
+  });
+
+  // Combine all entries: regular properties, spreads, then credentials
+  const allEntries = [...regularEntries, ...spreadEntries];
+  if (credentialsParam) {
+    const credentialsValue = formatParameterValue(
+      credentialsParam.value,
+      credentialsParam.type
+    );
+    allEntries.push(`credentials: ${credentialsValue}`);
+  }
+
+  const paramsString = `{\n    ${allEntries.join(',\n    ')}\n  }`;
 
   // Only add the logger configuration if explicitly requested
   if (includeLoggerConfig) {
