@@ -7,6 +7,7 @@
 
 import {
   type GenerationResult,
+  CREDENTIAL_ENV_MAP,
   CredentialType,
 } from '@bubblelab/shared-schemas';
 import {
@@ -15,6 +16,7 @@ import {
   type StreamingCallback,
 } from '@bubblelab/bubble-core';
 import { validateBubbleFlow } from '../validation.js';
+import { env } from 'src/config/env.js';
 
 export interface BobaRequest {
   prompt: string;
@@ -37,6 +39,28 @@ export async function runBoba(
   apiStreamingCallback?: StreamingCallback
 ): Promise<GenerationResult> {
   const { prompt, credentials } = request;
+
+  if (!env.OPENROUTER_API_KEY) {
+    return {
+      summary: '',
+      inputsSchema: '',
+      toolCalls: [],
+      generatedCode: '',
+      isValid: false,
+      success: false,
+      error: `OpenRouter API key is required to run (for apply model), please make sure the environment variable ${CREDENTIAL_ENV_MAP[CredentialType.OPENROUTER_CRED]} is set, please obtain one https://openrouter.ai/settings/keys.`,
+    };
+  } else if (!env.GOOGLE_API_KEY) {
+    return {
+      summary: '',
+      inputsSchema: '',
+      toolCalls: [],
+      generatedCode: '',
+      isValid: false,
+      success: false,
+      error: `Google API key is required to run (for main generation model), please make sure the environment variable ${CREDENTIAL_ENV_MAP[CredentialType.GOOGLE_GEMINI_CRED]} is set, please obtain one https://console.cloud.google.com/apis/credentials.`,
+    };
+  }
 
   // Create logger for token tracking
   const logger = new BubbleLogger('BubbleFlowGeneratorWorkflow');

@@ -20,6 +20,7 @@ import {
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
   COMMON_DEBUGGING_INSTRUCTIONS,
+  CREDENTIAL_ENV_MAP,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -38,6 +39,7 @@ import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
+import { env } from 'src/config/env.js';
 /**
  * Build the system prompt for General Chat agent
  */
@@ -190,6 +192,13 @@ export async function runPearl(
   apiStreamingCallback?: StreamingCallback,
   maxRetries?: number
 ): Promise<PearlResponse> {
+  if (!env.OPENROUTER_API_KEY) {
+    return {
+      type: 'reject',
+      message: `OpenRouter API key is required to run Pearl, please make sure the environment variable ${CREDENTIAL_ENV_MAP[CredentialType.OPENROUTER_CRED]} is set, please obtain one https://openrouter.ai/settings/keys to run Pearl.`,
+      success: false,
+    };
+  }
   const MAX_RETRIES = maxRetries || 3;
   let lastError: string | undefined;
 
