@@ -27,6 +27,7 @@ import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
 import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
+import * as githubPRCommenterTemplate from './template_codes/githubPRCommenter';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -77,7 +78,15 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Marketing',
     isPopular: true,
   },
-
+  {
+    id: 'github-pr-commenter',
+    name: 'GitHub PR Commenter (GitHub, AI Agent)',
+    prompt:
+      'Automatically analyze pull requests and post intelligent title/body suggestions based on COMMIT.md file',
+    code: githubPRCommenterTemplate.templateCode,
+    category: 'Project Management',
+    isPopular: true,
+  },
   {
     id: 'video-script-generator',
     name: 'Video Script Generator (YouTube, Email)',
