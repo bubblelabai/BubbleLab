@@ -82,7 +82,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'github-pr-commenter',
     name: 'GitHub PR Commenter (GitHub, AI Agent)',
     prompt:
-      'Automatically analyze pull requests and post intelligent title/body suggestions based on COMMIT.md file',
+      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
     code: githubPRCommenterTemplate.templateCode,
     category: 'Project Management',
     isPopular: true,
