@@ -138,6 +138,7 @@ export class WebSearchTool extends ToolBubble<
         limit: limitedResults,
         // Default sources to web search
         sources: ['web'],
+        timeout: 30000,
       };
 
       // Add optional parameters if provided
