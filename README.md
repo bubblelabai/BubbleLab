@@ -16,14 +16,22 @@
 
 ---
 
-![Bubble Studio](./demo-pic.png)
+### Editing Flows
+
+![Editing Flow](./showcase/editing-flow.gif)
+
+### Running Flows
+
+![Running Flow](./showcase/running-flow.gif)
 
 </div>
 
 ## 📋 Overview
+
 [**Bubble Lab**](https://www.bubblelab.ai/) is an AI-native workflow automation platform built for developers who need full control, transparency, and type safety. Unlike traditional workflow builders that lock you into proprietary JSON nodes, Bubble Lab compiles everything into clean, production-ready TypeScript that you can own, debug, and deploy anywhere.
 
 **Key Features:**
+
 - Orchestrate workflows in TypeScript with visual feedback side-by-side
 - Built-in AI Assistant to instantly spin up a workflow and amend as needed
 - Import existing N8N workflow
@@ -187,6 +195,14 @@ BubbleLab is built on a modular architecture with the following core packages:
 
 ## 🔨 Building from Source
 
+### Prerequisites
+
+- **[Bun](https://bun.sh)** - Required for running the backend API server
+- **[pnpm](https://pnpm.io)** - Package manager for monorepo management
+- **Node.js** - v18 or higher
+
+### Quick Start
+
 Run Bubble Studio locally in **2 commands**:
 
 ```bash
@@ -261,6 +277,40 @@ VITE_DISABLE_AUTH=true  # Dev mode: no auth needed
 BUBBLE_ENV=dev  # Creates mock user automatically
 DATABASE_URL=file:./dev.db  # SQLite
 ```
+
+#### API Keys & Credentials
+
+The following API keys are optional but enable specific features. Add them to `apps/bubblelab-api/.env`:
+
+```bash
+# AI Model Providers (both required for AI-powered flow generation)
+OPENAI_API_KEY=           # OpenAI API key for GPT models
+GOOGLE_API_KEY=           # Google AI API key for Gemini models (required for flow generation)
+OPENROUTER_API_KEY=       # OpenRouter API key for multi-model support (required for flow generation)
+
+# Communication & Storage
+RESEND_API_KEY=           # Resend API key for email notifications
+FIRE_CRAWL_API_KEY=       # FireCrawl API key for web scraping
+
+# Authentication (optional, only needed for production mode)
+CLERK_SECRET_KEY_BUBBLELAB=  # Clerk secret key for authentication
+
+# OAuth (optional)
+GOOGLE_OAUTH_CLIENT_ID=      # Google OAuth client ID
+GOOGLE_OAUTH_CLIENT_SECRET=  # Google OAuth client secret
+
+# Cloud Storage (optional)
+CLOUDFLARE_R2_ACCESS_KEY=    # Cloudflare R2 access key
+CLOUDFLARE_R2_SECRET_KEY=    # Cloudflare R2 secret key
+CLOUDFLARE_R2_ACCOUNT_ID=    # Cloudflare R2 account ID
+
+# Other
+PYTHON_PATH=              # Custom Python path (optional)
+CREDENTIAL_ENCRYPTION_KEY=8VfrrosUTORJghTDpdTKG7pvfD721ChyFt97m3Art1Y=  # Encryption key for storing user credentials
+BUBBLE_CONNECTING_STRING_URL=  # Database connection string (optional, defaults to SQLite)
+```
+
+**Note:** AI-powered flow generation requires both `GOOGLE_API_KEY` and `OPENROUTER_API_KEY` to be configured. Without these, you can still use Bubble Studio to manually build workflows, but the AI assistant features will be unavailable.
 
 ### Additional Commands
 
