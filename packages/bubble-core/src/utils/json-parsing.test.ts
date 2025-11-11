@@ -763,7 +763,7 @@ describe('JSON Parsing for pearl responses', () => {
     expect(result.error).toBeDefined();
   });
 
-  test('should parse valid JSON response from AI assistant', () => {
+  test('should parse valid JSON response from AI assistant with mardown formatting inside', () => {
     // This is a valid JSON response that should be parsed successfully
     const input = `{
   "type": "answer",
@@ -771,7 +771,25 @@ describe('JSON Parsing for pearl responses', () => {
 }`;
 
     const result = parseJsonWithFallbacks(input);
+    expect(result.success).toBe(true);
+  });
 
+  test('should successfully parse complex AI-generated JSON response', () => {
+    // This is a real AI-generated JSON response that should parse successfully
+    const input = `{
+  "summary": "**Calendar Summary Flow**\\n\\nAutomatically fetches your upcoming Google Calendar events, summarizes them using AI, and sends a concise email summary to a specified recipient.\\n\\n**Setup Before Testing:**\\n1. Ensure your Google account is connected to Bubble Lab with the necessary permissions to access your primary calendar.\\n2. Ensure Resend credentials are set up in Bubble Lab, or use the default system credentials if available.\\n\\n**To Test This Flow:**\\nProvide these inputs in the form:\\n- **email**: Enter the email address where you want to receive your weekly calendar summary (e.g., \\"your.name@example.com\\").\\n\\n**What Happens When You Run:**\\n1. The flow first determines the current date and time, then calculates the date exactly seven days from now.\\n2. It then connects to your Google Calendar and retrieves all events scheduled within that 7-day period from your primary calendar, sorted by their start time.\\n3. If no upcoming events are found for the next seven days, the flow will conclude with a message indicating no events were found.\\n4. If events are found, these events are then sent to an AI agent, powered by the Google Gemini 2.5 Flash model. The AI is instructed to act as an expert in summarizing calendar events into a concise, human-readable email format.\\n5. The AI processes the event details and generates a friendly, comprehensive email summary.\\n6. Finally, the flow uses Resend to send an email to the \`email\` address you provided. This email will have the subject \\"Your Weekly Calendar Summary\\" and contain the AI-generated summary in its HTML body.\\n\\n**Output You'll See:**\\n\`\`\`json\\n{\\n  \\"message\\": \\"Calendar summary sent to [provided email address]\\"\\n}\\n\`\`\`\\n\\nCheck your inbox for the weekly calendar summary email!",
+  "inputsSchema": "{\\"type\\":\\"object\\",\\"properties\\":{\\"email\\":{\\"type\\":\\"string\\",\\"description\\":\\"The email address to send the calendar summary to.\\"}},\\"required\\":[\\"email\\"]}",
+  "bubbleDescriptions": {
+    "420": "This **Google Calendar** bubble is configured to fetch upcoming events from your primary Google Calendar. Specifically, it uses the \`list_events\` operation. It dynamically sets \`time_min\` and \`time_max\` to cover a 7-day period starting from the moment the flow runs, ensuring you get a summary of your immediate future. The \`single_events: true\` parameter ensures that any recurring events are expanded and listed individually, and \`order_by: 'startTime'\` arranges them chronologically for a clear overview. This bubble's role is to gather all the raw event data that will be processed in the subsequent steps.",
+    "423": "The **AI Agent** bubble is responsible for summarizing the fetched calendar events. It utilizes the \`google/gemini-2.5-flash\` model, known for its efficiency in text generation. A \`systemPrompt\` is provided, instructing the AI to act as an 'expert at summarizing calendar events into a concise, human-readable email format.' The \`message\` parameter passes the \`JSON.stringify\`'d list of events from the Google Calendar bubble to the AI, ensuring all details are included for summarization. This bubble transforms the raw event data into a friendly, digestible summary suitable for an email.",
+    "426": "The **Resend** bubble is the final step in the workflow, responsible for sending the AI-generated calendar summary via email. It performs the \`send_email\` operation. The \`to\` parameter is dynamically set to the \`email\` address provided as an input to the flow, ensuring the summary reaches the correct recipient. The \`subject\` is set to 'Your Weekly Calendar Summary,' making the email's purpose clear. The \`html\` parameter constructs the email body, embedding the AI-generated \`summary\` within a \`pre\` tag for clean formatting. This bubble ensures the summarized information is delivered effectively to the user."
+  }
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+    console.log('[JSON Parsing] Result:', result);
+
+    // This should succeed - it's valid JSON with complex nested content
     expect(result.success).toBe(true);
   });
 });

@@ -32,8 +32,18 @@ function hasIncompleteCodeBlock(input: string): boolean {
 
 /**
  * Check if JSON appears to be embedded in markdown documentation
+ * Only rejects if there's substantial documentation text outside the JSON structure
  */
 function isJsonEmbeddedInDocumentation(input: string): boolean {
+  // First, check if the input is valid JSON as-is (not embedded in documentation)
+  try {
+    JSON.parse(input);
+    // If original input is valid JSON, it's not documentation
+    return false;
+  } catch {
+    // Not parseable as-is, continue checking
+  }
+
   // Check for markdown formatting indicators
   const hasMarkdownFormatting =
     input.includes('**') ||
@@ -78,7 +88,30 @@ function isJsonEmbeddedInDocumentation(input: string): boolean {
 
   // If there are multiple lines of documentation text before or after the code block,
   // it's likely documentation, not a JSON response
-  return linesBefore > 2 || linesAfter > 2;
+  // Even if JSON inside the code block can be parsed, if there's substantial text outside,
+  // it's still documentation
+  if (linesBefore > 2 || linesAfter > 2) {
+    return true;
+  }
+
+  // If there's no substantial documentation text outside, try to parse the JSON
+  // If we can successfully parse it, it's valid JSON (even if it contains markdown in strings)
+  const stripped = stripCodeFences(input);
+  const scanned = extractTopLevelJson(stripped);
+  if (scanned) {
+    try {
+      const cleaned = postProcessJSON(scanned);
+      JSON.parse(cleaned);
+      // If we can parse it and there's no substantial documentation text, it's valid JSON
+      return false;
+    } catch {
+      // JSON extraction found something but it's not parseable
+      // Continue to check if it's documentation
+    }
+  }
+
+  // If we can't parse JSON and there's markdown formatting, it's likely documentation
+  return true;
 }
 
 /**
