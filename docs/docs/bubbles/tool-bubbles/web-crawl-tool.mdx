@@ -11,9 +11,8 @@ import TabItem from '@theme/TabItem';
 import { WebCrawlTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebCrawlTool({
-  url: 'https://nodejs.org',
-  maxPages: 10,
-  crawlDepth: 2,
+
+  url: 'example',
   credentials: {
     [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
   },
@@ -81,6 +80,9 @@ const result = await new WebCrawlTool({
 
   <dt><code>totalPages</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Total number of pages crawled</dd>
+
+  <dt><code>creditsUsed</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Number of credits used</dd>
 
   <dt><code>metadata</code> <em>object</em> </dt>
   <dd>Additional metadata about the crawl operation</dd>

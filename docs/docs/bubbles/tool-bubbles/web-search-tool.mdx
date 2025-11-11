@@ -11,10 +11,10 @@ import TabItem from '@theme/TabItem';
 import { WebSearchTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebSearchTool({
-  query: 'latest Node.js LTS release notes',
-  limit: 3,
+
+  query: 'example',
   credentials: {
-    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```
@@ -36,6 +36,9 @@ const result = await new WebSearchTool({
 
   <dt><code>limit</code> <em>number</em> </dt>
   <dd>Maximum number of search results to return</dd>
+
+  <dt><code>categories</code> <em>'research' | 'pdf' | 'github'[]</em> </dt>
+  <dd>Categories to find most relevant search results (research, pdf, github)</dd>
 
   <dt><code>location</code> <em>string</em> </dt>
   <dd>Location parameter for search results (e.g., "us", "uk")</dd>
@@ -62,6 +65,9 @@ const result = await new WebSearchTool({
 
   <dt><code>searchEngine</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Search engine used (Firecrawl)</dd>
+
+  <dt><code>creditsUsed</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Number of credits used</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Whether the search was successful</dd>

@@ -736,6 +736,25 @@ const SERVICE_DOCS_BY_CLASS: Readonly<Record<string, string>> = Object.freeze({
 - Next to bubble instances in flows
 - In documentation (future)
 
+## 📚 **Generate Documentation**
+
+After creating your bubble, generate its documentation:
+
+```bash
+# Generate docs for your specific bubble
+pnpm tsx scripts/generate-bubble-docs.ts --only your-bubble-name
+
+# Or update all bubble docs
+pnpm tsx scripts/generate-bubble-docs.ts
+```
+
+This creates/updates MDX documentation in `docs/docs/bubbles/` with:
+- Quick Start examples
+- Input/Output schemas with detailed parameter descriptions
+- Operation-specific documentation for multi-operation bubbles
+
+**Note:** For existing docs, only the "Operation Details" section is updated (Quick Start is preserved). Use `--force` to regenerate everything.
+
 ## 🔧 **Environment Variables Setup**
 
 Add these to your `.env` file:

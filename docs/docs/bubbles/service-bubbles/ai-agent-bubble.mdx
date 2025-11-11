@@ -11,12 +11,10 @@ import TabItem from '@theme/TabItem';
 import { AIAgentBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new AIAgentBubble({
-  message: "Summarize today's top 3 Node.js headlines and include links.",
-  tools: [{ name: 'web-search-tool', config: { maxResults: 5 } }],
-  model: { model: 'google/gemini-2.5-flash', temperature: 0.5 },
+
+  message: 'example',
   credentials: {
-    [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY as string,
-    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```

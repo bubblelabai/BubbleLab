@@ -11,12 +11,10 @@ import TabItem from '@theme/TabItem';
 import { PostgreSQLBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new PostgreSQLBubble({
-  query: 'SELECT id, email FROM users WHERE active = $1 LIMIT 10',
-  parameters: [true],
-  allowedOperations: ['SELECT'],
+
+  query: null,
   credentials: {
-    [CredentialType.DATABASE_CRED]: process.env
-      .BUBBLE_CONNECTING_STRING_URL as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```

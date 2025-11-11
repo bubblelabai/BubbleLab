@@ -12,17 +12,8 @@ import { StorageBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new StorageBubble({
   operation: 'getUploadUrl',
-  bucketName: 'user-uploads',
-  fileName: 'avatar.png',
-  accountId: process.env.CLOUDFLARE_R2_ACCOUNT_ID as string,
-  contentType: 'image/png',
   credentials: {
-    [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: process.env
-      .CLOUDFLARE_R2_ACCESS_KEY as string,
-    [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: process.env
-      .CLOUDFLARE_R2_SECRET_KEY as string,
-    [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: process.env
-      .CLOUDFLARE_R2_ACCOUNT_ID as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```
@@ -243,8 +234,8 @@ const result = await new StorageBubble({
   <dt><code>operation</code> <em>'updateFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Update/replace file content</dd>
 
-  <dt><code>bucketName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>Name of the R2 bucket</dd>
+  <dt><code>bucketName</code> <em>string</em> </dt>
+  <dd></dd>
 
   <dt><code>fileName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Name of the file to update</dd>
@@ -273,13 +264,13 @@ const result = await new StorageBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'updateFile'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>Update/replace file content</dd>
+  <dd>Update/replace file content and generate a new secure filename for the file</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Whether the operation was successful</dd>
 
   <dt><code>fileName</code> <em>string</em> </dt>
-  <dd>Name of the updated file</dd>
+  <dd>Secure filename for the updated file (different from the original filename)</dd>
 
   <dt><code>updated</code> <em>boolean</em> </dt>
   <dd>Whether the file was successfully updated</dd>

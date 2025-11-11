@@ -9,11 +9,13 @@ import TabItem from '@theme/TabItem';
 
 ```typescript
 import { RedditScrapeTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new RedditScrapeTool({
-  subreddit: 'programming',
-  sort: 'top',
-  timeFilter: 'day',
-  limit: 25,
+
+  subreddit: null,
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
 }).action();
 ```
 
@@ -29,11 +31,11 @@ const result = await new RedditScrapeTool({
 
 <div className="schema-card">
 <dl>
-  <dt><code>subreddit</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>Name of the subreddit to scrape (without r/ prefix)</dd>
+  <dt><code>subreddit</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name of the subreddit to scrape (with or without r/ prefix)</dd>
 
   <dt><code>limit</code> <em>number</em> </dt>
-  <dd>Maximum number of posts to fetch (1-500, default: 25)</dd>
+  <dd>Maximum number of posts to fetch (1-1000, default: 25)</dd>
 
   <dt><code>sort</code> <em>'hot' | 'new' | 'top' | 'rising'</em> </dt>
   <dd>Sorting method for posts (default: hot)</dd>

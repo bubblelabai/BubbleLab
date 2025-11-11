@@ -1,0 +1,85 @@
+# Code Edit Tool
+
+Applies code edits to BubbleFlow files using Morph Fast Apply
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { EditBubbleFlowTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new EditBubbleFlowTool({
+
+  initialCode: 'example',
+  instructions: 'example',
+  codeEdit: 'example',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `execute`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>initialCode</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The original code to be edited</dd>
+
+  <dt><code>instructions</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>A single sentence instruction in first person describing what changes are being made (e.g., "I am adding error handling to the user auth and removing the old auth functions"). Used to help disambiguate uncertainty in the edit.</dd>
+
+  <dt><code>codeEdit</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The code changes to apply. Specify ONLY the precise lines of code that you wish to edit. Use "// ... existing code ..." to represent unchanged sections. DO NOT omit spans of pre-existing code without using the marker, as this may cause inadvertent deletion.</dd>
+
+  <dt><code>morphModel</code> <em>string</em> </dt>
+  <dd>Morph model to use for applying edits via OpenRouter</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Credentials (HIDDEN from AI - injected at runtime)</dd>
+
+  <dt><code>config</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>Configuration for the edit tool (HIDDEN from AI - injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>mergedCode</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The final code after applying edits</dd>
+
+  <dt><code>applied</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the edit was successfully applied</dd>
+
+  <dt><code>diff</code> <em>string</em> </dt>
+  <dd>Unified diff showing the changes made (if available)</dd>
+
+  <dt><code>metadata</code> <em>object</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the edit operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if edit failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

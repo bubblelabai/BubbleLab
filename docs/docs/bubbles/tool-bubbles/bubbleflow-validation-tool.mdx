@@ -9,8 +9,13 @@ import TabItem from '@theme/TabItem';
 
 ```typescript
 import { BubbleFlowValidationTool } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new BubbleFlowValidationTool({
-  code: "export const flow = () => 'hello'",
+
+  code: 'example',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
 }).action();
 ```
 
@@ -56,6 +61,9 @@ const result = await new BubbleFlowValidationTool({
   <dd>Number of bubbles found in the code</dd>
 
   <dt><code>bubbles</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>variableTypes</code> <em>object[]</em> </dt>
   <dd>Details about each bubble found</dd>
 
   <dt><code>metadata</code> <em>object</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>

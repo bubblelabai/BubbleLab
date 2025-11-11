@@ -12,12 +12,8 @@ import { ResendBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new ResendBubble({
   operation: 'send_email',
-  from: 'noreply@yourdomain.com',
-  to: ['user@example.com'],
-  subject: 'Verify your email',
-  text: 'Click the link to verify your email address.',
   credentials: {
-    [CredentialType.RESEND_CRED]: process.env.RESEND_API_KEY as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```

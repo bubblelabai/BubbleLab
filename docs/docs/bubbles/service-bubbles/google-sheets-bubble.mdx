@@ -12,11 +12,8 @@ import { GoogleSheetsBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleSheetsBubble({
   operation: 'read_values',
-  spreadsheet_id: '1AbcDEFghiJKLmnopQrsTUVwxyz1234567890',
-  range: 'Sheet1!A1:C10',
   credentials: {
-    [CredentialType.GOOGLE_SHEETS_CRED]: process.env
-      .GOOGLE_SHEETS_CRED as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```
