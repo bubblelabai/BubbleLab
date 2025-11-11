@@ -12,7 +12,7 @@ import { WebCrawlTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebCrawlTool({
 
-  url: 'example',
+  url: 'example', // The root URL to crawl and extract content from
   credentials: {
     [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
   },

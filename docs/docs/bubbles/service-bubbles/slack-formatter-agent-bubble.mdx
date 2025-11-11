@@ -12,7 +12,7 @@ import { SlackFormatterAgentBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new SlackFormatterAgentBubble({
 
-  message: 'example',
+  message: 'example', // The message or question to send to the AI agent
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

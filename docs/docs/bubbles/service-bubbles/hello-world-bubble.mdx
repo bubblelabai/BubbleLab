@@ -12,7 +12,7 @@ import { HelloWorldBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new HelloWorldBubble({
 
-  name: 'example',
+  name: 'example', // Name to include in the greeting message
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

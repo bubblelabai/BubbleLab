@@ -12,9 +12,9 @@ import { WebExtractTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebExtractTool({
 
-  url: 'example',
-  prompt: 'example',
-  schema: 'example',
+  url: 'example', // The URL to extract structured data from
+  prompt: 'example', // Detailed prompt describing what data to extract from the web page
+  schema: 'example', // JSON schema string defining the structure of the data to extract
   credentials: {
     [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
   },

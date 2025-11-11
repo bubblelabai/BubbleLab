@@ -12,7 +12,7 @@ import { WebScrapeTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebScrapeTool({
 
-  url: 'example',
+  url: 'example', // The URL to scrape content from
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

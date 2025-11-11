@@ -12,7 +12,7 @@ import { HttpBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new HttpBubble({
 
-  url: 'example',
+  url: 'example', // The URL to make the HTTP request to
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

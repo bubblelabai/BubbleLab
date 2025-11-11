@@ -428,7 +428,11 @@ function renderExampleForOp(
   );
 
   const props = requiredEntries
-    .map(([k, v]) => `  ${k}: ${guessValueForType(v.type)},`)
+    .map(([k, v]) => {
+      const value = guessValueForType(v.type);
+      const comment = v.description ? ` // ${v.description}` : '';
+      return `  ${k}: ${value},${comment}`;
+    })
     .join('\n');
 
   // Determine credential type based on bubble name
@@ -501,7 +505,11 @@ function renderQuickStart(bubble: BubbleClass): string {
 
   // Generate sample properties
   const sampleProps = requiredFields
-    .map(([k, v]) => `  ${k}: ${guessValueForType(v.type)},`)
+    .map(([k, v]) => {
+      const value = guessValueForType(v.type);
+      const comment = v.description ? ` // ${v.description}` : '';
+      return `  ${k}: ${value},${comment}`;
+    })
     .join('\n');
 
   // Determine if this is a discriminated union (has operations)

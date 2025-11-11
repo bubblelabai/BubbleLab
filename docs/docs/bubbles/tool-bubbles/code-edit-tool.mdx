@@ -12,9 +12,9 @@ import { EditBubbleFlowTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new EditBubbleFlowTool({
 
-  initialCode: 'example',
-  instructions: 'example',
-  codeEdit: 'example',
+  initialCode: 'example', // The original code to be edited
+  instructions: 'example', // A single sentence instruction in first person describing what changes are being made (e.g., "I am adding error handling to the user auth and removing the old auth functions"). Used to help disambiguate uncertainty in the edit.
+  codeEdit: 'example', // The code changes to apply. Specify ONLY the precise lines of code that you wish to edit. Use "// ... existing code ..." to represent unchanged sections. DO NOT omit spans of pre-existing code without using the marker, as this may cause inadvertent deletion.
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

@@ -12,7 +12,7 @@ import { WebSearchTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebSearchTool({
 
-  query: 'example',
+  query: 'example', // The search query to execute
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

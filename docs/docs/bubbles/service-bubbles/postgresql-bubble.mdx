@@ -12,7 +12,7 @@ import { PostgreSQLBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new PostgreSQLBubble({
 
-  query: null,
+  query: null, // SQL query to execute against the PostgreSQL database (use parameterized queries with $1, $2, etc.)
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
