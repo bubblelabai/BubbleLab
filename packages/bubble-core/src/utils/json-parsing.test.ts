@@ -762,4 +762,16 @@ describe('JSON Parsing for pearl responses', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
   });
+
+  test('should parse valid JSON response from AI assistant', () => {
+    // This is a valid JSON response that should be parsed successfully
+    const input = `{
+  "type": "answer",
+  "message": "Your Reddit flow is set up as a webhook HTTP trigger, so you can run it in two ways:\\n\\n## Method 1: Manual Run in the UI\\n1. In the Flow editor, you'll see an Input Schema node on the left side\\n2. You need to provide values for these required fields:\\n   - \`spreadsheetId\`: The ID of your Google Sheet (e.g., '1ABC123_xyz')\\n   - \`subreddit\`: The subreddit name (e.g., 'startups')\\n   - \`searchCriteria\`: Your criteria for finding leads (e.g., 'looking for marketing tools')\\n3. Click the \\"Run\\" button to execute the flow\\n4. Monitor the Console tab for real-time logs and the History tab for past executions\\n\\n## Method 2: Webhook HTTP Trigger\\n1. In the flow visualizer, toggle the webhook option to enable it\\n2. Copy the webhook URL that appears\\n3. Send a POST request to that URL with this JSON payload:\\n\`\`\`json\\n{\\n  \\"spreadsheetId\\": \\"your-sheet-id\\",\\n  \\"subreddit\\": \\"target-subreddit\\", \\n  \\"searchCriteria\\": \\"your criteria\\"\\n}\\n\`\`\`\\n4. The flow will automatically execute when the webhook receives the request\\n\\n## Important Notes:\\n- Make sure you have the necessary credentials set up:\\n  - Google Sheets API access (for spreadsheet operations)\\n  - Optional system credentials will be used if not provided\\n- The flow reads existing contacts from Column A to avoid duplicates\\n- Results will include the name, link, personalized message, date, and status for each new contact\\n\\nYour current input shows \`{}\` (empty), so you'll need to provide the three required fields to run the flow successfully."
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+
+    expect(result.success).toBe(true);
+  });
 });

@@ -293,7 +293,7 @@ export class StorageBubble<
     - Generate presigned upload URLs for client-side file uploads
     - Get secure download URLs for file retrieval with authentication  
     - Delete files from R2 buckets
-    - Update/replace files in R2 buckets
+    - Update/replace files in R2 buckets (supports base64 encoded content for binary files like images)
     - Manage file access with time-limited URLs
   `;
   static readonly alias = 'r2';
@@ -539,12 +539,28 @@ export class StorageBubble<
     const baseName = params.fileName.replace(/\.[^/.]+$/, ''); // Remove extension
     const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
     const secureFileName = `${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
+
+    // Handle base64 encoded content
+    let bodyContent: Buffer | string;
+    const isBase64 = this.isBase64(params.fileContent);
+
+    if (isBase64) {
+      // Extract base64 content (remove data URL prefix if present)
+      const base64Data = params.fileContent.replace(/^data:[^;]+;base64,/, '');
+      bodyContent = Buffer.from(base64Data, 'base64');
+      console.log('[StorageBubble] Decoded base64 content to Buffer');
+    } else {
+      // Treat as plain text
+      bodyContent = params.fileContent;
+      console.log('[StorageBubble] Treating content as plain text');
+    }
+
     // For R2/S3, update is the same as upload - it replaces the entire object
     const command = new PutObjectCommand({
       Bucket: params.bucketName,
       Key: secureFileName,
       ContentType: params.contentType,
-      Body: params.fileContent,
+      Body: bodyContent,
     });
 
     await this.s3Client.send(command);
@@ -557,6 +573,34 @@ export class StorageBubble<
       contentType: params.contentType,
       error: '',
     };
+  }
+
+  /**
+   * Helper method to detect if a string is base64 encoded
+   */
+  private isBase64(str: string): boolean {
+    try {
+      // Check if it's a data URL (e.g., "data:image/png;base64,...")
+      if (str.startsWith('data:') && str.includes('base64,')) {
+        return true;
+      }
+
+      // Check if it's pure base64 (valid base64 characters, proper length)
+      const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (base64Regex.test(str) && str.length > 0) {
+        // Try to decode and re-encode to verify it's valid base64
+        try {
+          const decoded = Buffer.from(str, 'base64').toString('base64');
+          return decoded === str;
+        } catch {
+          return false;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   private async getMultipleUploadUrls(

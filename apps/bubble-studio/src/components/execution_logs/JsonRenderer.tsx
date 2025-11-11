@@ -1,6 +1,9 @@
 import { useMemo, memo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { getCacheKey } from '../../utils/executionLogsFormatUtils';
+import {
+  getCacheKey,
+  simplifyObjectForContext,
+} from '../../utils/executionLogsFormatUtils';
 
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
@@ -549,17 +552,39 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
     const estimatedSize = estimateSize(value);
     if (estimatedSize > MAX_TOTAL_SIZE_BYTES) {
       const sizeKB = Math.round(estimatedSize / 1024);
+      const limitKB = Math.round(MAX_TOTAL_SIZE_BYTES / 1024);
+
+      // Create a preview version of the data using existing simplifyObjectForContext
+      let previewData: unknown;
+      try {
+        const simplifiedJson = simplifyObjectForContext(value);
+        previewData = JSON.parse(simplifiedJson);
+      } catch {
+        // If parsing fails, use a minimal preview
+        previewData = { error: 'Failed to create preview' };
+      }
+
       return (
-        <div className="p-4 border border-yellow-600/50 rounded bg-yellow-900/10">
-          <div className="text-yellow-400 font-semibold mb-2">
-            Content too large to render
+        <div>
+          {/* Warning message */}
+          <div className="p-4 border border-yellow-600/50 rounded bg-yellow-900/10 mb-4">
+            <div className="text-yellow-400 font-semibold mb-2">
+              Content too large to render
+            </div>
+            <div className="text-xs text-yellow-300/80 mb-2">
+              Estimated size: {sizeKB}KB (limit: {limitKB}KB)
+            </div>
+            <div className="text-xs text-gray-400">
+              This content is too large to render safely.
+            </div>
           </div>
-          <div className="text-xs text-yellow-300/80 mb-2">
-            Estimated size: {sizeKB}KB (limit:{' '}
-            {Math.round(MAX_TOTAL_SIZE_BYTES / 1024)}KB)
-          </div>
-          <div className="text-xs text-gray-400">
-            This content is too large to render safely.
+
+          {/* Preview content */}
+          <div className="opacity-75">
+            <div className="text-xs text-gray-500 mb-2 italic">
+              Preview (trimmed):
+            </div>
+            {renderValue(previewData, depth + 1)}
           </div>
         </div>
       );

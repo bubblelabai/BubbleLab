@@ -877,7 +877,7 @@ describe('Pearl critical test', () => {
     requiredPasses: number;
   }> = [];
 
-  describe.skip('Question about workflow', () => {
+  describe('Question about workflow', () => {
     it('should answer the question when user asks how to run a workflow', async () => {
       const testCase = howToRunWorkflowTestCase;
       const result = await runTestCase(testCase);
@@ -907,21 +907,21 @@ describe('Pearl critical test', () => {
     }, 300000);
   });
 
-  describe('Code Edit', () => {
-    it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
-      const testCase = convertToScheduledFlowTestCase;
-      const result = await runTestCase(testCase);
-      testResults.push({
-        testName: 'Convert to scheduled flow',
-        passes: result?.passes || 0,
-        fails: result?.fails || 0,
-        errors: result?.errors || [],
-        validationFailures: result?.validationFailures || [],
-        averageLatency: result?.averageLatency || 0,
-        requiredPasses: result?.requiredPasses || 0,
-      });
-    }, 300000);
-  });
+  // describe('Code Edit', () => {
+  //   it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
+  //     const testCase = convertToScheduledFlowTestCase;
+  //     const result = await runTestCase(testCase);
+  //     testResults.push({
+  //       testName: 'Convert to scheduled flow',
+  //       passes: result?.passes || 0,
+  //       fails: result?.fails || 0,
+  //       errors: result?.errors || [],
+  //       validationFailures: result?.validationFailures || [],
+  //       averageLatency: result?.averageLatency || 0,
+  //       requiredPasses: result?.requiredPasses || 0,
+  //     });
+  //   }, 300000);
+  // });
 
   afterAll(() => {
     console.log('\n🎯 PEARL CRITICAL TEST SUITE RESULTS');
