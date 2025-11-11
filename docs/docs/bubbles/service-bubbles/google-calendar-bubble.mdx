@@ -11,16 +11,9 @@ import TabItem from '@theme/TabItem';
 import { GoogleCalendarBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleCalendarBubble({
-  operation: 'create_event',
-  calendar_id: 'primary',
-  summary: 'Weekly Sync',
-  start: { dateTime: '2025-09-18T10:00:00-07:00' },
-  end: { dateTime: '2025-09-18T10:30:00-07:00' },
-  attendees: [{ email: 'teammate@example.com' }],
-  conference: true,
+  operation: 'list_calendars',
   credentials: {
-    [CredentialType.GOOGLE_CALENDAR_CRED]: process.env
-      .GOOGLE_CALENDAR_CRED as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```

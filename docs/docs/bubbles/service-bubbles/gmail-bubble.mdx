@@ -12,11 +12,8 @@ import { GmailBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GmailBubble({
   operation: 'send_email',
-  to: ['recipient@example.com'],
-  subject: 'Welcome!',
-  body_text: 'Hi there — your account is ready. Enjoy!',
   credentials: {
-    [CredentialType.GMAIL_CRED]: process.env.GMAIL_CRED as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```
@@ -119,6 +116,9 @@ const result = await new GmailBubble({
 
   <dt><code>page_token</code> <em>string</em> </dt>
   <dd>Token for pagination to get next page</dd>
+
+  <dt><code>include_details</code> <em>boolean</em> </dt>
+  <dd>Whether to fetch full message details including snippet, headers, and body</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
   <dd>Object mapping credential types to values (injected at runtime)</dd>
@@ -667,6 +667,210 @@ const result = await new GmailBubble({
 
   <dt><code>result_size_estimate</code> <em>number</em> </dt>
   <dd>Estimated total number of results</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_labels`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all labels in mailbox</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all labels in mailbox</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the label list was retrieved successfully</dd>
+
+  <dt><code>labels</code> <em>object[]</em> </dt>
+  <dd>List of labels (both system and user labels)</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_label`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_label'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new custom label</dd>
+
+  <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Label name (display name)</dd>
+
+  <dt><code>label_list_visibility</code> <em>'labelShow' | 'labelShowIfUnread' | 'labelHide'</em> </dt>
+  <dd>Visibility in label list</dd>
+
+  <dt><code>message_list_visibility</code> <em>'show' | 'hide'</em> </dt>
+  <dd>Visibility in message list</dd>
+
+  <dt><code>background_color</code> <em>string</em> </dt>
+  <dd>Background color in hex format (e.g., #000000)</dd>
+
+  <dt><code>text_color</code> <em>string</em> </dt>
+  <dd>Text color in hex format (e.g., #ffffff)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_label'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new custom label</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the label was created successfully</dd>
+
+  <dt><code>label</code> <em>object</em> </dt>
+  <dd>Created label details</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `modify_message_labels`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'modify_message_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add or remove labels from a message</dd>
+
+  <dt><code>message_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Gmail message ID to modify</dd>
+
+  <dt><code>add_label_ids</code> <em>string[]</em> </dt>
+  <dd>List of label IDs to add (max 100)</dd>
+
+  <dt><code>remove_label_ids</code> <em>string[]</em> </dt>
+  <dd>List of label IDs to remove (max 100)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'modify_message_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add or remove labels from a message</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the labels were modified successfully</dd>
+
+  <dt><code>message_id</code> <em>string</em> </dt>
+  <dd>Modified message ID</dd>
+
+  <dt><code>label_ids</code> <em>string[]</em> </dt>
+  <dd>Current label IDs after modification</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `modify_thread_labels`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'modify_thread_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add or remove labels from all messages in a thread</dd>
+
+  <dt><code>thread_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Gmail thread ID to modify</dd>
+
+  <dt><code>add_label_ids</code> <em>string[]</em> </dt>
+  <dd>List of label IDs to add to all messages in thread (max 100)</dd>
+
+  <dt><code>remove_label_ids</code> <em>string[]</em> </dt>
+  <dd>List of label IDs to remove from all messages in thread (max 100)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'modify_thread_labels'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add or remove labels from all messages in a thread</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the thread labels were modified successfully</dd>
+
+  <dt><code>thread_id</code> <em>string</em> </dt>
+  <dd>Modified thread ID</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>

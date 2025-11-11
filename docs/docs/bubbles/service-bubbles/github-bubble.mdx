@@ -1,0 +1,718 @@
+# Github Bubble
+
+GitHub API integration for repository operations
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { GithubBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new GithubBubble({
+  operation: 'get_file',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `get_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get the contents of a file from a GitHub repository</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>path</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Path to the file in the repository (e.g., src/index.ts)</dd>
+
+  <dt><code>ref</code> <em>string</em> </dt>
+  <dd>Git reference (branch, tag, or commit SHA). Defaults to the default branch</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>File name</dd>
+
+  <dt><code>path</code> <em>string</em> </dt>
+  <dd>Full path to the file in the repository</dd>
+
+  <dt><code>sha</code> <em>string</em> </dt>
+  <dd>Git SHA hash of the file</dd>
+
+  <dt><code>size</code> <em>number</em> </dt>
+  <dd>File size in bytes</dd>
+
+  <dt><code>url</code> <em>string</em> </dt>
+  <dd>API URL for this file</dd>
+
+  <dt><code>html_url</code> <em>string</em> </dt>
+  <dd>Web URL to view the file on GitHub</dd>
+
+  <dt><code>git_url</code> <em>string</em> </dt>
+  <dd>Git URL for the file object</dd>
+
+  <dt><code>download_url</code> <em>string</em> </dt>
+  <dd>Direct download URL for the file</dd>
+
+  <dt><code>type</code> <em>'file' | 'dir' | 'symlink' | 'submodule'</em> </dt>
+  <dd>Type of the content</dd>
+
+  <dt><code>content</code> <em>string</em> </dt>
+  <dd>Base64 encoded content (for files)</dd>
+
+  <dt><code>encoding</code> <em>string</em> </dt>
+  <dd>Encoding type (usually base64)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_directory`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_directory'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get the contents of a directory from a GitHub repository</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>path</code> <em>string</em> </dt>
+  <dd>Path to the directory in the repository (empty string for root)</dd>
+
+  <dt><code>ref</code> <em>string</em> </dt>
+  <dd>Git reference (branch, tag, or commit SHA). Defaults to the default branch</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_directory'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>contents</code> <em>object[]</em> </dt>
+  <dd>Array of directory contents</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_pull_requests`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_pull_requests'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List pull requests in a GitHub repository</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>state</code> <em>'open' | 'closed' | 'all'</em> </dt>
+  <dd>Filter by PR state</dd>
+
+  <dt><code>sort</code> <em>'created' | 'updated' | 'popularity' | 'long-running'</em> </dt>
+  <dd>Sort order for results</dd>
+
+  <dt><code>direction</code> <em>'asc' | 'desc'</em> </dt>
+  <dd>Sort direction</dd>
+
+  <dt><code>per_page</code> <em>number</em> </dt>
+  <dd>Number of results per page (1-100)</dd>
+
+  <dt><code>page</code> <em>number</em> </dt>
+  <dd>Page number for pagination</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_pull_requests'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>pull_requests</code> <em>object[]</em> </dt>
+  <dd>Array of pull requests</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_pull_request`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_pull_request'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific pull request</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>pull_number</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Pull request number</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_pull_request'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>id</code> <em>number</em> </dt>
+  <dd>Pull request ID</dd>
+
+  <dt><code>node_id</code> <em>string</em> </dt>
+  <dd>GraphQL node ID</dd>
+
+  <dt><code>number</code> <em>number</em> </dt>
+  <dd>Pull request number</dd>
+
+  <dt><code>state</code> <em>'open' | 'closed'</em> </dt>
+  <dd>Pull request state</dd>
+
+  <dt><code>title</code> <em>string</em> </dt>
+  <dd>Pull request title</dd>
+
+  <dt><code>body</code> <em>string</em> </dt>
+  <dd>Pull request description</dd>
+
+  <dt><code>created_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when PR was created</dd>
+
+  <dt><code>updated_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when PR was last updated</dd>
+
+  <dt><code>closed_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when PR was closed</dd>
+
+  <dt><code>merged_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when PR was merged</dd>
+
+  <dt><code>user</code> <em>object</em> </dt>
+  <dd>Pull request author</dd>
+
+  <dt><code>html_url</code> <em>string</em> </dt>
+  <dd>Web URL to view the PR</dd>
+
+  <dt><code>draft</code> <em>boolean</em> </dt>
+  <dd>Whether this is a draft PR</dd>
+
+  <dt><code>head</code> <em>object</em> </dt>
+  <dd>Source branch information</dd>
+
+  <dt><code>base</code> <em>object</em> </dt>
+  <dd>Target branch information</dd>
+
+  <dt><code>merged</code> <em>boolean</em> </dt>
+  <dd>Whether the PR has been merged (may not be present in list responses)</dd>
+
+  <dt><code>mergeable</code> <em>boolean</em> </dt>
+  <dd>Whether the PR can be merged (may not be present in list responses)</dd>
+
+  <dt><code>mergeable_state</code> <em>string</em> </dt>
+  <dd>Mergeable state (clean, unstable, dirty, etc.)</dd>
+
+  <dt><code>comments</code> <em>number</em> </dt>
+  <dd>Number of comments</dd>
+
+  <dt><code>review_comments</code> <em>number</em> </dt>
+  <dd>Number of review comments</dd>
+
+  <dt><code>commits</code> <em>number</em> </dt>
+  <dd>Number of commits</dd>
+
+  <dt><code>additions</code> <em>number</em> </dt>
+  <dd>Lines added</dd>
+
+  <dt><code>deletions</code> <em>number</em> </dt>
+  <dd>Lines deleted</dd>
+
+  <dt><code>changed_files</code> <em>number</em> </dt>
+  <dd>Number of files changed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_pr_comment`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_pr_comment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add a comment to a pull request</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>pull_number</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Pull request number</dd>
+
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Comment text content (supports GitHub Markdown)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_pr_comment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>id</code> <em>number</em> </dt>
+  <dd>Comment ID</dd>
+
+  <dt><code>node_id</code> <em>string</em> </dt>
+  <dd>GraphQL node ID</dd>
+
+  <dt><code>body</code> <em>string</em> </dt>
+  <dd>Comment text content</dd>
+
+  <dt><code>user</code> <em>object</em> </dt>
+  <dd>Comment author information</dd>
+
+  <dt><code>created_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when comment was created</dd>
+
+  <dt><code>updated_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when comment was last updated</dd>
+
+  <dt><code>html_url</code> <em>string</em> </dt>
+  <dd>Web URL to view the comment</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_repositories`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_repositories'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List repositories for the authenticated user</dd>
+
+  <dt><code>visibility</code> <em>'all' | 'public' | 'private'</em> </dt>
+  <dd>Filter by repository visibility</dd>
+
+  <dt><code>affiliation</code> <em>'owner' | 'collaborator' | 'organization_member'</em> </dt>
+  <dd>Filter by user affiliation</dd>
+
+  <dt><code>sort</code> <em>'created' | 'updated' | 'pushed' | 'full_name'</em> </dt>
+  <dd>Sort order for results</dd>
+
+  <dt><code>direction</code> <em>'asc' | 'desc'</em> </dt>
+  <dd>Sort direction</dd>
+
+  <dt><code>per_page</code> <em>number</em> </dt>
+  <dd>Number of results per page (1-100)</dd>
+
+  <dt><code>page</code> <em>number</em> </dt>
+  <dd>Page number for pagination</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_repositories'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>repositories</code> <em>object[]</em> </dt>
+  <dd>Array of repositories</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_repository`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_repository'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get detailed information about a specific repository</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_repository'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>id</code> <em>number</em> </dt>
+  <dd>Repository ID</dd>
+
+  <dt><code>node_id</code> <em>string</em> </dt>
+  <dd>GraphQL node ID</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>Repository name</dd>
+
+  <dt><code>full_name</code> <em>string</em> </dt>
+  <dd>Full repository name (owner/repo)</dd>
+
+  <dt><code>private</code> <em>boolean</em> </dt>
+  <dd>Whether the repository is private</dd>
+
+  <dt><code>owner</code> <em>object</em> </dt>
+  <dd>Repository owner information</dd>
+
+  <dt><code>html_url</code> <em>string</em> </dt>
+  <dd>Repository web URL</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>Repository description</dd>
+
+  <dt><code>fork</code> <em>boolean</em> </dt>
+  <dd>Whether this is a fork</dd>
+
+  <dt><code>created_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when repository was created</dd>
+
+  <dt><code>updated_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when repository was last updated</dd>
+
+  <dt><code>pushed_at</code> <em>string</em> </dt>
+  <dd>ISO datetime of last push</dd>
+
+  <dt><code>size</code> <em>number</em> </dt>
+  <dd>Repository size in KB</dd>
+
+  <dt><code>stargazers_count</code> <em>number</em> </dt>
+  <dd>Number of stars</dd>
+
+  <dt><code>watchers_count</code> <em>number</em> </dt>
+  <dd>Number of watchers</dd>
+
+  <dt><code>language</code> <em>string</em> </dt>
+  <dd>Primary programming language</dd>
+
+  <dt><code>forks_count</code> <em>number</em> </dt>
+  <dd>Number of forks</dd>
+
+  <dt><code>open_issues_count</code> <em>number</em> </dt>
+  <dd>Number of open issues</dd>
+
+  <dt><code>default_branch</code> <em>string</em> </dt>
+  <dd>Default branch name</dd>
+
+  <dt><code>visibility</code> <em>string</em> </dt>
+  <dd>Repository visibility (public, private, internal)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_issue_comment`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_issue_comment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add a comment to an issue</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>issue_number</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Issue number</dd>
+
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Comment text content (supports GitHub Markdown)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_issue_comment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>id</code> <em>number</em> </dt>
+  <dd>Comment ID</dd>
+
+  <dt><code>node_id</code> <em>string</em> </dt>
+  <dd>GraphQL node ID</dd>
+
+  <dt><code>body</code> <em>string</em> </dt>
+  <dd>Comment text content</dd>
+
+  <dt><code>user</code> <em>object</em> </dt>
+  <dd>Comment author information</dd>
+
+  <dt><code>created_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when comment was created</dd>
+
+  <dt><code>updated_at</code> <em>string</em> </dt>
+  <dd>ISO datetime when comment was last updated</dd>
+
+  <dt><code>html_url</code> <em>string</em> </dt>
+  <dd>Web URL to view the comment</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_issues`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_issues'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List issues in a GitHub repository</dd>
+
+  <dt><code>owner</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository owner (username or organization name)</dd>
+
+  <dt><code>repo</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Repository name</dd>
+
+  <dt><code>state</code> <em>'open' | 'closed' | 'all'</em> </dt>
+  <dd>Filter by issue state</dd>
+
+  <dt><code>labels</code> <em>string</em> </dt>
+  <dd>Filter by labels (comma-separated list)</dd>
+
+  <dt><code>sort</code> <em>'created' | 'updated' | 'comments'</em> </dt>
+  <dd>Sort order for results</dd>
+
+  <dt><code>direction</code> <em>'asc' | 'desc'</em> </dt>
+  <dd>Sort direction</dd>
+
+  <dt><code>per_page</code> <em>number</em> </dt>
+  <dd>Number of results per page (1-100)</dd>
+
+  <dt><code>page</code> <em>number</em> </dt>
+  <dd>Page number for pagination</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_issues'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation succeeded</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>issues</code> <em>object[]</em> </dt>
+  <dd>Array of issues</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

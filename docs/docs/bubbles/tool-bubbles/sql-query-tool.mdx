@@ -11,12 +11,11 @@ import TabItem from '@theme/TabItem';
 import { SQLQueryTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new SQLQueryTool({
-  query:
-    "SELECT id, email FROM users WHERE created_at > NOW() - INTERVAL '7 days'",
-  reasoning: 'Get recent signups for weekly report.',
+
+  query: 'example', // SQL query to execute (SELECT, WITH, EXPLAIN, ANALYZE, SHOW, DESCRIBE only)
+  reasoning: 'example', // Explain why you're running this specific query and what you hope to learn from it
   credentials: {
-    [CredentialType.DATABASE_CRED]: process.env
-      .BUBBLE_CONNECTING_STRING_URL as string,
+    [CredentialType.DATABASE_CRED]: process.env.DATABASE_URL as string,
   },
 }).action();
 ```

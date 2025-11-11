@@ -12,11 +12,8 @@ import { GoogleDriveBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleDriveBubble({
   operation: 'upload_file',
-  name: 'report.txt',
-  content: 'Quarterly report contents',
-  mimeType: 'text/plain',
   credentials: {
-    [CredentialType.GOOGLE_DRIVE_CRED]: process.env.GOOGLE_DRIVE_CRED as string,
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },
 }).action();
 ```
@@ -394,6 +391,57 @@ const result = await new GoogleDriveBubble({
 
   <dt><code>share_link</code> <em>string</em> </dt>
   <dd>Shareable link to the file</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `move_file`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'move_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Move a file or folder to a different location in Google Drive</dd>
+
+  <dt><code>file_id</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Google Drive file or folder ID to move</dd>
+
+  <dt><code>new_parent_folder_id</code> <em>string</em> </dt>
+  <dd>ID of the new parent folder (moves to root if not provided)</dd>
+
+  <dt><code>remove_parent_folder_id</code> <em>string</em> </dt>
+  <dd>ID of the parent folder to remove (removes from all parents if not provided)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'move_file'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Move a file or folder to a different location in Google Drive</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the file was moved successfully</dd>
+
+  <dt><code>file</code> <em>object</em> </dt>
+  <dd>Updated file metadata after move</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>

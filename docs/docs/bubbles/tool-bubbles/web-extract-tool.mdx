@@ -11,9 +11,10 @@ import TabItem from '@theme/TabItem';
 import { WebExtractTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new WebExtractTool({
-  url: 'https://store.example.com/product/123',
-  prompt: 'Extract product name, price, and image URLs.',
-  schema: '{"name":"string","price":"number","images":["string"]}',
+
+  url: 'example', // The URL to extract structured data from
+  prompt: 'example', // Detailed prompt describing what data to extract from the web page
+  schema: 'example', // JSON schema string defining the structure of the data to extract
   credentials: {
     [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
   },

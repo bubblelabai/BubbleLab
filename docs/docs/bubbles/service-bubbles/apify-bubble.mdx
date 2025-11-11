@@ -12,8 +12,8 @@ import { ApifyBubble } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new ApifyBubble({
 
-  actorId: 'example',
-  input: null,
+  actorId: 'example', // The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc.
+  input: null, // Input parameters for the actor. Structure depends on the specific actor being used.
   credentials: {
     [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
   },

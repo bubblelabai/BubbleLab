@@ -9,10 +9,13 @@ import TabItem from '@theme/TabItem';
 
 ```typescript
 import { HttpBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new HttpBubble({
-  url: 'https://api.github.com/repos/nodejs/node',
-  method: 'GET',
-  headers: { Accept: 'application/vnd.github+json' },
+
+  url: 'example', // The URL to make the HTTP request to
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
 }).action();
 ```
 
