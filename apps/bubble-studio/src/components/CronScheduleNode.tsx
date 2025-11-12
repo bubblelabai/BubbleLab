@@ -364,6 +364,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
         type="source"
         position={Position.Right}
         id="right"
+        isConnectable={false}
         className={`w-3 h-3 ${isExecuting ? 'bg-purple-400' : isActive ? 'bg-purple-400' : 'bg-neutral-500'}`}
         style={{ right: -6 }}
       />

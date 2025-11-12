@@ -230,6 +230,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="target"
         position={Position.Left}
         id="left"
+        isConnectable={false}
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ left: -6 }}
       />
@@ -237,6 +238,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="source"
         position={Position.Right}
         id="right"
+        isConnectable={false}
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ right: -6 }}
       />
@@ -245,6 +247,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="source"
         position={Position.Bottom}
         id="bottom"
+        isConnectable={false}
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ bottom: -6 }}
       />
@@ -253,6 +256,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         type="target"
         position={Position.Top}
         id="top"
+        isConnectable={false}
         className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
         style={{ top: -6 }}
       />

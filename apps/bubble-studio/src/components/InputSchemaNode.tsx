@@ -165,6 +165,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         type="source"
         position={Position.Right}
         id="right"
+        isConnectable={false}
         className={`w-3 h-3 ${isExecuting ? 'bg-blue-400' : 'bg-blue-400'}`}
         style={{ right: -6 }}
       />
