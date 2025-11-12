@@ -204,6 +204,17 @@ declare module 'zod' {
 }
 `;
 
+// Namespace merge to support z.infer<>, z.input<>, z.output<>
+// This namespace will merge with the 'z' const exported from the 'zod' module
+// This allows: import { z } from 'zod'; type X = z.infer<typeof schema>;
+const zodNamespaceMerge = `
+declare namespace z {
+  type infer<T extends import('zod').ZodTypeAny> = T['_output'];
+  type input<T extends import('zod').ZodTypeAny> = T['_input'];
+  type output<T extends import('zod').ZodTypeAny> = T['_output'];
+}
+`;
+
 // JSON Schema to Zod converter types
 const jsonSchemaConverterTypes = `
 declare global {
@@ -277,6 +288,13 @@ export async function loadMonacoTypes(
       'file:///node_modules/zod/index.d.ts'
     );
     console.log('✅ Loaded Zod type definitions');
+
+    // Load Zod namespace merge for z.infer support
+    monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
+      zodNamespaceMerge,
+      'file:///node_modules/zod/namespace.d.ts'
+    );
+    console.log('✅ Loaded Zod namespace merge (z.infer support)');
 
     // Load JSON Schema to Zod converter types
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(

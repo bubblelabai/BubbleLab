@@ -106,6 +106,12 @@ export class GetBubbleDetailsTool extends ToolBubble<
       );
     }
 
+    // Get the actual bubble class to extract its class name
+    const BubbleClass = this.factory.get(this.params.bubbleName as BubbleName);
+    const className = BubbleClass
+      ? (BubbleClass as unknown as { name: string }).name
+      : this.toPascalCase(metadata.name) + 'Bubble'; // Fallback
+
     // Format schema for AI consumption
     // const schemaProperties = JSON.stringify(zodToJsonSchema(metadata.schema));
 
@@ -115,6 +121,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
     // Create formatted description for AI agents
     const usageExample = this.generateUsageExample({
       name: metadata.name,
+      className,
       schema: metadata.schema,
       resultSchema: metadata.resultSchema,
     });
@@ -281,6 +288,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
 
   private generateUsageExample(metadata: {
     name: string;
+    className: string;
     schema: unknown;
     resultSchema?: unknown;
   }): string {
@@ -316,6 +324,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
 
   private generateOperationExamples(metadata: {
     name: string;
+    className: string;
     schema: unknown;
     resultSchema?: unknown;
   }): string[] {
@@ -363,7 +372,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
                 const variableName = `${this.toCamelCase(metadata.name)}_${operationName.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
                 lines.push(
-                  `const ${variableName} = new ${this.toPascalCase(metadata.name)}Bubble({`
+                  `const ${variableName} = new ${metadata.className}({`
                 );
 
                 // Generate parameters for this specific operation
@@ -445,6 +454,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
 
   private generateSingleExample(metadata: {
     name: string;
+    className: string;
     schema: unknown;
     resultSchema?: unknown;
   }): string[] {
@@ -455,7 +465,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
     const exampleParams = this.generateExampleParams(metadata.schema);
 
     lines.push(
-      `const ${this.toCamelCase(metadata.name)} = new ${this.toPascalCase(metadata.name)}Bubble({`
+      `const ${this.toCamelCase(metadata.name)} = new ${metadata.className}({`
     );
 
     if (exampleParams.length > 0) {
@@ -801,6 +811,46 @@ export class GetBubbleDetailsTool extends ToolBubble<
         return `"${enumValues[0]}" // options: ${enumValues.map((v) => `"${v}"`).join(', ')}`;
       }
       return `"${enumValues[0]}"`;
+    } else if (def.typeName === 'ZodUnion') {
+      // For unions, try to find the most descriptive option
+      const options = def.options as z.ZodTypeAny[];
+      if (options.length === 0) {
+        return null;
+      }
+
+      // Prefer objects, then arrays, then other complex types over primitives
+      const optionPriority = (option: z.ZodTypeAny): number => {
+        const optionDef = option._def;
+        if (optionDef.typeName === 'ZodObject') return 4;
+        if (optionDef.typeName === 'ZodArray') return 3;
+        if (optionDef.typeName === 'ZodAny') return 2; // z.any() can represent schemas
+        if (optionDef.typeName === 'ZodString') return 1;
+        return 0;
+      };
+
+      // Sort options by priority (highest first)
+      const sortedOptions = [...options].sort(
+        (a, b) => optionPriority(b) - optionPriority(a)
+      );
+
+      // Try each option in priority order
+      for (const option of sortedOptions) {
+        const example = this.generateExampleValue(option);
+        if (example !== null) {
+          // For z.any(), show a simple schema example
+          if (option._def.typeName === 'ZodAny') {
+            return `z.object({ result: z.array(z.object({ trend: z.string().describe('An array of trends') })) }) // Zod schema object or JSON schema string`;
+          }
+          // For other types, show the example with union indicator if multiple options
+          if (options.length > 1) {
+            return `${example} // union: ${options.map((opt) => opt._def.typeName).join(' | ')}`;
+          }
+          return example;
+        }
+      }
+
+      // Fallback: show first option as string representation
+      return `"example" // union type`;
     } else if (def.typeName === 'ZodDiscriminatedUnion') {
       // For discriminated unions, generate a proper example object from the first option
       const options = def.options as z.ZodTypeAny[];
