@@ -153,6 +153,7 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
     endLine: number;
     endCol: number;
   };
+  description?: string;
 }
 
 export const BubbleNodeTypeSchema = z.enum([
@@ -207,6 +208,7 @@ export const ParsedBubbleWithInfoSchema = z.object({
     endLine: z.number(),
     endCol: z.number(),
   }),
+  description: z.string().optional(),
 });
 
 // Inferred types from Zod schemas

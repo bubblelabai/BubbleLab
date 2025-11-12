@@ -508,6 +508,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
               <h3 className="text-sm font-semibold text-neutral-100 truncate">
                 {bubble.variableName}
               </h3>
+              {bubble.description && (
+                <p className="text-xs text-neutral-400 mt-1.5 line-clamp-2">
+                  {bubble.description}
+                </p>
+              )}
               {/* <p className="text-xs text-neutral-400 truncate mt-1">
                 {bubble.bubbleName}
               </p> */}

@@ -266,7 +266,42 @@ describe('BubbleParser.parseBubblesFromAST()', () => {
     expect(messageParam).toBeDefined();
     expect(nameParam).toBeDefined();
   });
-
+  it('should parse bubble with comments in the code', async () => {
+    const testScript = getFixture('complex-workflow');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+    console.log(parseResult.bubbles);
+    expect(parseResult.bubbles).toBeDefined();
+    expect(Object.keys(parseResult.bubbles).length).toBeGreaterThan(0);
+    // First bubble  by index 0 should  have comment of
+    const firstBubble = Object.values(parseResult.bubbles)[0];
+    expect(firstBubble).toBeDefined();
+    expect(firstBubble?.description).toBeDefined();
+    expect(firstBubble?.description).toBe(
+      'This posts the user count to the database'
+    );
+    const secondBubble = Object.values(parseResult.bubbles)[1];
+    expect(secondBubble).toBeDefined();
+    expect(secondBubble?.description).toBeDefined();
+    expect(secondBubble?.description).toBe('This sends a message to the user');
+    const thirdBubble = Object.values(parseResult.bubbles)[2];
+    expect(thirdBubble).toBeDefined();
+    expect(thirdBubble?.description).toBeDefined();
+    expect(thirdBubble?.description).toBe('This says hello to the user');
+  });
   it('should parse bubble with spread and parameter (case 3: new Bubble({ fe: fee, ...something }))', async () => {
     const testScript = getFixture('flow-with-spread-and-para');
     const bubbleParser = new BubbleParser(testScript);

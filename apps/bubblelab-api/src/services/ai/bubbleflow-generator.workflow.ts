@@ -8,8 +8,8 @@
  */
 
 import { z } from 'zod';
-import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
-import type { BubbleContext } from '../../types/bubble.js';
+import { WorkflowBubble } from '@bubblelab/bubble-core';
+import type { BubbleContext } from '@bubblelab/bubble-core';
 import {
   CredentialType,
   GenerationResultSchema,
@@ -26,14 +26,14 @@ import {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
-} from '../service-bubble/ai-agent.js';
-import { type AvailableTool } from '../../types/available-tools.js';
-import { BubbleFactory } from '../../bubble-factory.js';
+  type AvailableTool,
+} from '@bubblelab/bubble-core';
 import {
-  validateBubbleFlow,
-  type ValidationResult as BubbleFlowValidationResult,
-} from '../../utils/bubbleflow-validation.js';
-import { EditBubbleFlowTool } from '../tool-bubble/code-edit-tool.js';
+  validateAndExtract,
+  ValidationAndExtractionResult,
+} from '@bubblelab/bubble-runtime';
+import { EditBubbleFlowTool } from '@bubblelab/bubble-core';
+import { BubbleFactory } from '@bubblelab/bubble-core';
 
 /**
  * Parameters schema for the simple BubbleFlow generator
@@ -131,11 +131,12 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
 
   constructor(
     params: BubbleFlowGeneratorParamsParsed,
+    bubbleFactory: BubbleFactory,
     context?: BubbleContext,
     instanceId?: string
   ) {
     super(params, context, instanceId);
-    this.bubbleFactory = new BubbleFactory();
+    this.bubbleFactory = bubbleFactory;
     this.streamingCallback = params.streamingCallback;
   }
 
@@ -143,7 +144,10 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
     validatedCode: string,
     credentials?: Partial<Record<CredentialType, string>>,
     streamingCallback?: StreamingCallback
-  ): Promise<{ summary: string; inputsSchema: string }> {
+  ): Promise<{
+    summary: string;
+    inputsSchema: string;
+  }> {
     const summarizeAgent = new AIAgentBubble(
       {
         name: 'Flow Summary Agent',
@@ -200,7 +204,9 @@ ${BUBBLE_STUDIO_INSTRUCTIONS}
 CODE TO ANALYZE:
 
 ` + validatedCode,
-        systemPrompt: `You MUST follow the exact summary pattern provided. Focus on the UI testing perspective - users will fill in a form, not make HTTP requests. For inputsSchema, extract from CustomWebhookPayload interface (exclude WebhookEvent base fields). Return strict JSON with keys "summary" and "inputsSchema" only. No markdown wrapper. The summary must include all sections: Flow Title, Description, Required Credentials, Setup Before Testing, To Test This Flow, What Happens When You Run, and Output You'll See with example JSON.`,
+        systemPrompt: `You MUST follow the exact summary pattern provided. Focus on the UI testing perspective - users will fill in a form, not make HTTP requests. For inputsSchema, extract from CustomWebhookPayload interface (exclude WebhookEvent base fields).
+
+Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. The summary must include all sections: Flow Title, Description, Required Credentials, Setup Before Testing, To Test This Flow, What Happens When You Run, and Output You'll See with example JSON.`,
         model: {
           jsonMode: true,
         },
@@ -240,6 +246,7 @@ CODE TO ANALYZE:
         summary = typeof parsed.summary === 'string' ? parsed.summary : '';
         inputsSchema =
           typeof parsed.inputsSchema === 'string' ? parsed.inputsSchema : '';
+
         console.log('[BubbleFlowGenerator] Extracted summary and schema:', {
           summary,
           inputsSchema,
@@ -295,15 +302,13 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
     console.log('[BubbleFlowGenerator] Prompt:', this.params.prompt);
 
     try {
-      console.log('[BubbleFlowGenerator] Registering defaults...');
-      await this.bubbleFactory.registerDefaults();
-
       // State to preserve current code and validation results across hook calls
       let currentCode: string | undefined;
       let savedValidationResult:
         | {
             valid: boolean;
             errors: string[];
+            bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
           }
         | undefined;
 
@@ -328,13 +333,14 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
         context: ToolHookContext
       ) => {
         if (context.toolName === ('createWorkflow' as AvailableTool)) {
-          console.debug(
-            '[BubbleFlowGenerator] Pre-hook: createWorkflow called'
-          );
           const code = (context.toolInput as { code?: string })?.code;
           if (code) {
             currentCode = code;
           }
+          console.debug(
+            '[BubbleFlowGenerator] Pre-hook: createWorkflow called with code:',
+            code
+          );
         } else if (context.toolName === ('editWorkflow' as AvailableTool)) {
           console.debug('[BubbleFlowGenerator] Pre-hook: editWorkflow called');
           // Update currentCode with the initial code from the tool input
@@ -363,14 +369,16 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
           console.log('[BubbleFlowGenerator] Post-hook: createWorkflow result');
 
           try {
-            const validationResult: BubbleFlowValidationResult & {
-              bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
-              inputSchema?: Record<string, unknown>;
-            } = context.toolOutput?.data as BubbleFlowValidationResult & {
-              bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
-              inputSchema?: Record<string, unknown>;
-            };
-
+            console.log(
+              '[BubbleFlowGenerator] Tool output data for create tool call hooks:',
+              context.toolOutput
+            );
+            const validationResult: ValidationAndExtractionResult =
+              context.toolOutput as unknown as ValidationAndExtractionResult;
+            console.log(
+              '[BubbleFlowGenerator] Validation result after create tool call hooks:',
+              validationResult
+            );
             if (validationResult.valid === true) {
               console.debug(
                 '[BubbleFlowGenerator] Validation passed! Signaling completion.'
@@ -380,6 +388,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               savedValidationResult = {
                 valid: validationResult.valid || false,
                 errors: validationResult.errors || [],
+                bubbleParameters: validationResult.bubbleParameters,
               };
 
               return {
@@ -411,6 +420,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               validationResult?: {
                 valid: boolean;
                 errors: string[];
+                bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
               };
             };
 
@@ -427,6 +437,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               savedValidationResult = {
                 valid: editResult.validationResult.valid || false,
                 errors: editResult.validationResult.errors || [],
+                bubbleParameters: editResult.validationResult.bubbleParameters,
               };
 
               return {
@@ -494,18 +505,17 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
               }),
               func: async (input: Record<string, unknown>) => {
                 const code = input.code as string;
-                const validationResult = await validateBubbleFlow(
+
+                console.log('[BubbleFlowGenerator] Validating code:', code);
+                const validationResult = await validateAndExtract(
                   code,
                   this.bubbleFactory
                 );
-
-                return {
-                  data: {
-                    variableTypes: validationResult.variableTypes,
-                    valid: validationResult.valid,
-                    errors: validationResult.errors,
-                  },
-                };
+                console.log(
+                  '[BubbleFlowGenerator] Validation result after create:',
+                  validationResult
+                );
+                return validationResult;
               },
             },
             {
@@ -558,7 +568,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
                 currentCode = mergedCode;
 
                 // Validate the merged code
-                const validationResult = await validateBubbleFlow(
+                const validationResult = await validateAndExtract(
                   mergedCode,
                   this.bubbleFactory
                 );
@@ -570,6 +580,9 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
                     validationResult: {
                       valid: validationResult.valid,
                       errors: validationResult.errors,
+                      bubbleParameters: validationResult.bubbleParameters as
+                        | Record<number, ParsedBubbleWithInfo>
+                        | undefined,
                     },
                   },
                 };
