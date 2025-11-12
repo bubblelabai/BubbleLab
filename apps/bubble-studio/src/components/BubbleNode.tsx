@@ -241,15 +241,15 @@ function BubbleNode({ data }: BubbleNodeProps) {
         />
         {isCompleted && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
             style={{
               left: '0',
               backgroundColor: hasError
                 ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(236, 72, 153, 0.9)',
-              borderColor: hasError ? '#dc2626' : '#ec4899',
+                : 'rgba(245, 245, 244, 0.95)',
+              borderColor: hasError ? '#dc2626' : 'rgba(212, 212, 211, 0.8)',
               borderWidth: '1.5px',
-              color: '#ffffff',
+              color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -279,15 +279,15 @@ function BubbleNode({ data }: BubbleNodeProps) {
         />
         {isCompleted && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+            className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
             style={{
               right: '0',
               backgroundColor: hasError
                 ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(34, 197, 94, 0.9)',
-              borderColor: hasError ? '#dc2626' : '#22c55e',
+                : 'rgba(23, 23, 23, 0.95)',
+              borderColor: hasError ? '#dc2626' : 'rgba(64, 64, 64, 0.8)',
               borderWidth: '1.5px',
-              color: '#ffffff',
+              color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
             }}
             onClick={(e) => {
               e.stopPropagation();
