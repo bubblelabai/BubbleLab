@@ -82,7 +82,7 @@ export function formatFinalResponse(
   modelName: string,
   jsonMode?: boolean
 ): { response: string; error?: string } {
-  let finalResponse =
+  const finalResponse =
     typeof response === 'string' ? response : JSON.stringify(response);
   // If response is an array, look for first parsable JSON in text
 
