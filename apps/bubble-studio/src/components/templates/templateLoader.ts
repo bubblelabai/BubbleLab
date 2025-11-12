@@ -22,7 +22,7 @@ import * as videoScriptTemplate from './template_codes/videoScriptGenerator';
 import * as redditTemplate from './template_codes/redditLeadGeneration';
 import * as personalTemplate from './template_codes/personalAssistant';
 import * as financialTemplate from './template_codes/financialAdvisor';
-import * as databaseTemplate from './template_codes/databaseMetricsAssistant';
+import * as databaseTemplate from './template_codes/chatWithYourDatabase';
 import * as dailyNewsTemplate from './template_codes/dailyNewsDigest';
 import * as contentCreationTemplate from './template_codes/contentCreationTrends';
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
@@ -105,10 +105,10 @@ export const TEMPLATES: TemplateDefinition[] = [
     isPopular: true,
   },
   {
-    id: 'database-metrics',
-    name: 'Database Metrics Assistant (Postgres, Gmail)',
+    id: 'chat-with-database',
+    name: 'Chat With Your Database (Postgres, Gmail)',
     prompt:
-      'Analyze my database daily, surface key metrics and trends, and email a report',
+      'Ask questions about your database and get AI-powered insights and reports via email',
     code: databaseTemplate.templateCode,
     category: 'Project Management',
   },

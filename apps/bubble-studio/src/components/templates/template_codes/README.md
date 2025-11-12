@@ -10,7 +10,7 @@ This directory contains individual template files for the BubbleFlow IDE. Each t
 - `personalAssistant.ts` - Personal assistant template (placeholder)
 - `financialAdvisor.ts` - Financial advisor template (placeholder)
 - `recruitingAssistant.ts` - Recruiting assistant template (placeholder)
-- `databaseMetricsAssistant.ts` - Database metrics assistant template (placeholder)
+- `chatWithYourDatabase.ts` - Chat with your database template (placeholder)
 - `nanobananaImagePipeline.ts` - Nanobanana image pipeline template (placeholder)
 
 The main `templateLoader.ts` file imports all templates and maintains the registry.
