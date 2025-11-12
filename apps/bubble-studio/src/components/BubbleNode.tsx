@@ -97,11 +97,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
 
-  // Subscribe to selected event index reactively (causes re-render when changed)
+  // Subscribe to selected event index and tab reactively (causes re-render when changed)
   const selectedEventIndexByVariableId = useLiveOutputStore(
     flowId,
     (s) => s.selectedEventIndexByVariableId
   );
+  const selectedTab = useLiveOutputStore(flowId, (s) => s.selectedTab);
   const selectedEventIndex = selectedEventIndexByVariableId[bubbleId];
 
   // Get total event count for this bubble to determine if we're on first/last
@@ -114,10 +115,20 @@ function BubbleNode({ data }: BubbleNodeProps) {
     bubbleGroup && bubbleGroup.kind === 'group' ? bubbleGroup.events.length : 0;
   const lastEventIndex = Math.max(0, totalEvents - 1);
 
+  // Check if this bubble is the one currently being viewed in console
+  const activeItem =
+    selectedTab.kind === 'item' ? orderedItems[selectedTab.index] : null;
+  const isThisBubbleActiveInConsole =
+    activeItem?.kind === 'group' && activeItem.name === bubbleId;
+
   // Determine if Input or Output button should be highlighted
-  const isInputSelected = selectedEventIndex === 0;
+  // Only highlight if this bubble is the active one in the console
+  const isInputSelected =
+    isThisBubbleActiveInConsole && selectedEventIndex === 0;
   const isOutputSelected =
-    selectedEventIndex === lastEventIndex && totalEvents > 0;
+    isThisBubbleActiveInConsole &&
+    selectedEventIndex === lastEventIndex &&
+    totalEvents > 0;
 
   // Determine bubble-specific state
   const isHighlighted =
