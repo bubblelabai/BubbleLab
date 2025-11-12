@@ -82,7 +82,7 @@ export function formatFinalResponse(
   modelName: string,
   jsonMode?: boolean
 ): { response: string; error?: string } {
-  let finalResponse =
+  const finalResponse =
     typeof response === 'string' ? response : JSON.stringify(response);
   // If response is an array, look for first parsable JSON in text
 
@@ -94,6 +94,22 @@ export function formatFinalResponse(
     '[AIAgent] Response length:',
     typeof response === 'string' ? response.length : 'N/A (object)'
   );
+  // Special handling for Gemini image models that return images in inlineData format
+  if (modelName.includes('gemini') && modelName.includes('image')) {
+    return { response: formatGeminiImageResponse(finalResponse) };
+  } else if (jsonMode && typeof finalResponse === 'string') {
+    // Handle JSON mode: use the improved utility function
+    const result = parseJsonWithFallbacks(finalResponse);
+
+    if (!result.success) {
+      return {
+        response: result.response,
+        error: `${finalResponse}`,
+      };
+    }
+
+    return { response: result.response };
+  }
   if (Array.isArray(response)) {
     // Collect all text chunks from the array
     const textChunks: string[] = [];
@@ -167,23 +183,6 @@ export function formatFinalResponse(
       // Return the combined text (even if not JSON)
       return { response: combinedText };
     }
-  }
-
-  // Special handling for Gemini image models that return images in inlineData format
-  if (modelName.includes('gemini') && modelName.includes('image')) {
-    finalResponse = formatGeminiImageResponse(finalResponse);
-  } else if (jsonMode && typeof finalResponse === 'string') {
-    // Handle JSON mode: use the improved utility function
-    const result = parseJsonWithFallbacks(finalResponse);
-
-    if (!result.success) {
-      return {
-        response: result.response,
-        error: `${finalResponse}`,
-      };
-    }
-
-    return { response: result.response };
   }
 
   console.log(

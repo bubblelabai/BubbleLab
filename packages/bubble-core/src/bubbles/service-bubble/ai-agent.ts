@@ -1145,7 +1145,6 @@ export class AIAgentBubble extends ServiceBubble<
         this.params.model.model,
         jsonMode
       );
-
       // If there's an error from formatting (e.g., invalid JSON), return early
       if (formattedResult.error) {
         return {

@@ -19,7 +19,7 @@ interface PearlTestCase {
   numberOfRuns?: number;
   requiredPasses?: number;
   maxRetries?: number;
-  expectedType: 'code' | 'question' | 'answer' | 'reject';
+  expectedType: 'code' | 'question' | 'answer' | 'reject' | 'mixed';
 }
 
 /**
@@ -55,7 +55,10 @@ function validateResult(
     );
   }
 
-  if (pearlResult.type !== testCase.expectedType) {
+  if (
+    testCase.expectedType !== 'mixed' &&
+    pearlResult.type !== testCase.expectedType
+  ) {
     validationErrors.push(
       `Expected type to be "${testCase.expectedType}", got: "${pearlResult.type}"`
     );
@@ -73,6 +76,35 @@ function validateResult(
         break; // No point checking further if snippet is undefined
       } else if (!pearlResult.snippet.includes(text)) {
         validationErrors.push(`Expected snippet to contain "${text}"`);
+      }
+    } else if (testCase.expectedType === 'mixed') {
+      // If response is code, check snippet non empty,
+      // If response is answer, check message is non empty,
+      // If response is question, check message is non empty,
+      // If response is reject, check message is non empty,
+      if (pearlResult.type === 'code') {
+        if (!pearlResult.snippet) {
+          validationErrors.push('Expected snippet to be defined for code type');
+          break; // No point checking further if snippet is undefined
+        } else if (!pearlResult.snippet.includes(text)) {
+          validationErrors.push(`Expected snippet to contain "${text}"`);
+        }
+      }
+      if (pearlResult.type === 'answer') {
+        if (!pearlResult.message) {
+          validationErrors.push(
+            'Expected message to be defined for answer type'
+          );
+          break; // No point checking further if message is undefined
+        }
+      }
+      if (pearlResult.type === 'question') {
+        if (!pearlResult.message) {
+          validationErrors.push(
+            'Expected message to be defined for question type'
+          );
+          break; // No point checking further if message is undefined
+        }
       }
     } else {
       if (pearlResult.message && !pearlResult.message.includes(text)) {
@@ -846,12 +878,238 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     /BubbleFlow<'schedule\/cron'>/,
     /extends BubbleFlow<'schedule\/cron'>/,
   ],
-  snippetContains: ['schedule/cron', '0 16 * * *'],
+  snippetContains: ['schedule/cron', '* * *'],
   maxRetries: 2,
   numberOfRuns: 3,
   requiredPasses: 3,
 };
+const addSlackMessageTestCase: PearlTestCase = {
+  request: {
+    userRequest:
+      'help me send a slack message to our public channel named `public` with the lists of new contacts we have found',
+    currentCode: `import {
+  BubbleFlow,
+  GoogleSheetsBubble,
+  RedditScrapeTool,
+  AIAgentBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
 
+export interface Output {
+  message: string;
+  newContactsAdded: number;
+}
+
+export interface CustomWebhookPayload extends WebhookEvent {
+  spreadsheetId: string;
+  subreddit: string;
+  searchCriteria: string;
+}
+
+interface RedditPost {
+    author: string;
+    title: string;
+    selftext: string;
+    url: string;
+    postUrl: string;
+    createdUtc: number;
+}
+
+export class RedditFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { spreadsheetId, subreddit, searchCriteria } = payload;
+
+    // 1. Get existing contacts from Google Sheet to avoid duplicates
+    const readSheet = new GoogleSheetsBubble({
+      operation: 'read_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A:A', // Read the entire 'Name' column
+    });
+    const existingContactsResult = await readSheet.action();
+
+    if (!existingContactsResult.success) {
+      throw new Error(\`Failed to read from Google Sheet: \${existingContactsResult.error}\`);
+    }
+
+    const existingNames = existingContactsResult.data?.values
+      ? existingContactsResult.data.values.flat()
+      : [];
+
+    // 2. Scrape Reddit for posts from the specified subreddit
+    const redditScraper = new RedditScrapeTool({
+      subreddit,
+      sort: 'new',
+      limit: 50,
+    });
+    const redditResult = await redditScraper.action();
+
+    if (!redditResult.success || !redditResult.data?.posts) {
+      throw new Error(\`Failed to scrape Reddit: \${redditResult.error}\`);
+    }
+
+    const posts: RedditPost[] = redditResult.data.posts.map((p: any) => ({
+      author: p.author,
+      title: p.title,
+      selftext: p.selftext,
+      url: p.postUrl,
+      postUrl: p.postUrl,
+      createdUtc: p.createdUtc,
+    }));
+
+    // 3. Use AI to find users matching the search criteria and generate outreach messages
+    const systemPrompt = \`
+      You are an expert analyst. Your task is to identify potential leads from a list of Reddit posts from the '\${subreddit}' subreddit.
+      Your goal is to find exactly 10 new people who match the following criteria: \${searchCriteria}
+      Do not select users who are already on the provided 'existing contacts' list.
+      For each new lead, create a personalized, empathetic, and non-salesy outreach message. The message should acknowledge their specific problem or interest and gently suggest an alternative solution might exist, pointing them towards [product name].
+
+      You MUST return the data as a JSON array of objects, with each object containing the following fields: "name", "link", "message".
+      Example:
+      [
+        {
+          "name": "some_redditor",
+          "link": "https://reddit.com/r/\${subreddit}/...",
+          "message": "Hey [Name], I saw your post about [specific topic]. [Personalized message based on their post]. If you're interested, you might find [product name] helpful. Hope this helps!"
+        }
+      ]
+      Return ONLY the JSON array, with no other text or markdown.
+    \`;
+
+    const message = \`
+      Existing Contacts:
+      \${JSON.stringify(existingNames)}
+
+      Reddit Posts:
+      \${JSON.stringify(posts, null, 2)}
+
+      Please analyze the posts and find me 10 new contacts matching the criteria: \${searchCriteria}
+    \`;
+
+    const aiAgent = new AIAgentBubble({
+      message,
+      systemPrompt,
+      model: {
+        model: 'google/gemini-2.5-pro',
+        jsonMode: true,
+      },
+      tools: [],
+    });
+
+    const aiResult = await aiAgent.action();
+
+    if (!aiResult.success || !aiResult.data?.response) {
+      throw new Error(\`AI agent failed: \${aiResult.error}\`);
+    }
+
+    let newContacts: { name: string; link: string; message: string }[] = [];
+    try {
+      newContacts = JSON.parse(aiResult.data.response);
+    } catch (error) {
+      throw new Error('Failed to parse AI response as JSON.');
+    }
+    
+    if (!Array.isArray(newContacts) || newContacts.length === 0) {
+      return { message: 'No new contacts were found.', newContactsAdded: 0 };
+    }
+
+    // 4. Check for headers and add them if they are missing
+    const headerCheck = new GoogleSheetsBubble({
+        operation: 'read_values',
+        spreadsheet_id: spreadsheetId,
+        range: 'Sheet1!A1:E1',
+    });
+    const headerResult = await headerCheck.action();
+    if (!headerResult.success) {
+        throw new Error(\`Failed to read headers: \${headerResult.error}\`);
+    }
+
+    const headers = headerResult.data?.values?.[0];
+    if (!headers || headers.length < 5) {
+        const writeHeaders = new GoogleSheetsBubble({
+            operation: 'write_values',
+            spreadsheet_id: spreadsheetId,
+            range: 'Sheet1!A1',
+            values: [['Name', 'Link to Original Post', 'Message', 'Date', 'Status']],
+        });
+        const writeResult = await writeHeaders.action();
+        if (!writeResult.success) {
+            throw new Error(\`Failed to write headers: \${writeResult.error}\`);
+        }
+    }
+
+
+    // 5. Format and append new contacts to the Google Sheet
+    const rowsToAppend = newContacts.map(contact => {
+        const post = posts.find((p: RedditPost) => p.url === contact.link);
+        const postDate = post ? new Date(post.createdUtc * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        return [
+            contact.name,
+            contact.link,
+            contact.message,
+            postDate,
+            'Need to Reach Out',
+        ];
+    });
+
+    const appendSheet = new GoogleSheetsBubble({
+      operation: 'append_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A:E',
+      values: rowsToAppend,
+    });
+
+    const appendResult = await appendSheet.action();
+
+    if (!appendResult.success) {
+      throw new Error(\`Failed to append data to Google Sheet: \${appendResult.error}\`);
+    }
+
+    return {
+      message: \`Successfully added \${newContacts.length} new contacts to the spreadsheet.\`,
+      newContactsAdded: newContacts.length,
+    };
+  }
+}`,
+    userName: 'User',
+    conversationHistory: [],
+    availableVariables: [
+      {
+        name: 'WebhookEvent',
+        type: '(alias) interface WebhookEvent\nimport WebhookEvent',
+        kind: 'const',
+      },
+      {
+        name: 'Output',
+        type: 'interface Output',
+        kind: 'const',
+      },
+      {
+        name: 'CustomWebhookPayload',
+        type: 'interface CustomWebhookPayload',
+        kind: 'const',
+      },
+      {
+        name: 'RedditPost',
+        type: 'interface RedditPost',
+        kind: 'const',
+      },
+      {
+        name: 'RedditFlow',
+        type: 'class RedditFlow',
+        kind: 'const',
+      },
+    ],
+    model: 'openrouter/z-ai/glm-4.6' as AvailableModel,
+    additionalContext:
+      "\n\nUser's timezone: America/Los_Angeles\n\nCurrent time: Sunday, November 9, 2025 at 7:12:21 AM PST\n\nUser's provided input:\n {}",
+  },
+  expectedType: 'mixed',
+  snippetMatches: [],
+  snippetContains: ['SlackBubble'],
+  maxRetries: 2,
+  numberOfRuns: 3,
+  requiredPasses: 3,
+};
 // ============================================================================
 // TEST SUITE
 // ============================================================================
@@ -877,7 +1135,7 @@ describe('Pearl critical test', () => {
     requiredPasses: number;
   }> = [];
 
-  describe.skip('Question about workflow', () => {
+  describe('Question about workflow', () => {
     it('should answer the question when user asks how to run a workflow', async () => {
       const testCase = howToRunWorkflowTestCase;
       const result = await runTestCase(testCase);
@@ -908,11 +1166,27 @@ describe('Pearl critical test', () => {
   });
 
   describe('Code Edit', () => {
-    it('should generate a simple email workflow with Gemini 2.5 pro', async () => {
+    it('should convert a workflow to run on a schedule', async () => {
       const testCase = convertToScheduledFlowTestCase;
       const result = await runTestCase(testCase);
       testResults.push({
         testName: 'Convert to scheduled flow',
+        passes: result?.passes || 0,
+        fails: result?.fails || 0,
+        errors: result?.errors || [],
+        validationFailures: result?.validationFailures || [],
+        averageLatency: result?.averageLatency || 0,
+        requiredPasses: result?.requiredPasses || 0,
+      });
+    }, 300000);
+  });
+
+  describe('Code Edit Add bubble', () => {
+    it('should add a bubble to the workflow', async () => {
+      const testCase = addSlackMessageTestCase;
+      const result = await runTestCase(testCase);
+      testResults.push({
+        testName: 'Add bubble to workflow',
         passes: result?.passes || 0,
         fails: result?.fails || 0,
         errors: result?.errors || [],

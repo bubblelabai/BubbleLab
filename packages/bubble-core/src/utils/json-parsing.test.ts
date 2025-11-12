@@ -762,4 +762,44 @@ describe('JSON Parsing for pearl responses', () => {
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
   });
+
+  test('should parse valid JSON response from AI assistant with markdown formatting inside', () => {
+    // This is a valid JSON response that should be parsed successfully
+    const input = `{
+  "type": "answer",
+  "message": "Your Reddit flow is set up as a webhook HTTP trigger, so you can run it in two ways:\\n\\n## Method 1: Manual Run in the UI\\n1. In the Flow editor, you'll see an Input Schema node on the left side\\n2. You need to provide values for these required fields:\\n   - \`spreadsheetId\`: The ID of your Google Sheet (e.g., '1ABC123_xyz')\\n   - \`subreddit\`: The subreddit name (e.g., 'startups')\\n   - \`searchCriteria\`: Your criteria for finding leads (e.g., 'looking for marketing tools')\\n3. Click the \\"Run\\" button to execute the flow\\n4. Monitor the Console tab for real-time logs and the History tab for past executions\\n\\n## Method 2: Webhook HTTP Trigger\\n1. In the flow visualizer, toggle the webhook option to enable it\\n2. Copy the webhook URL that appears\\n3. Send a POST request to that URL with this JSON payload:\\n\`\`\`json\\n{\\n  \\"spreadsheetId\\": \\"your-sheet-id\\",\\n  \\"subreddit\\": \\"target-subreddit\\", \\n  \\"searchCriteria\\": \\"your criteria\\"\\n}\\n\`\`\`\\n4. The flow will automatically execute when the webhook receives the request\\n\\n## Important Notes:\\n- Make sure you have the necessary credentials set up:\\n  - Google Sheets API access (for spreadsheet operations)\\n  - Optional system credentials will be used if not provided\\n- The flow reads existing contacts from Column A to avoid duplicates\\n- Results will include the name, link, personalized message, date, and status for each new contact\\n\\nYour current input shows \`{}\` (empty), so you'll need to provide the three required fields to run the flow successfully."
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+    expect(result.success).toBe(true);
+  });
+
+  test('should successfully parse complex AI-generated JSON response', () => {
+    // This is a real AI-generated JSON response that should parse successfully
+    const input = `{
+  "summary": "**Calendar Summary Flow**\\n\\nAutomatically fetches your upcoming Google Calendar events, summarizes them using AI, and sends a concise email summary to a specified recipient.\\n\\n**Setup Before Testing:**\\n1. Ensure your Google account is connected to Bubble Lab with the necessary permissions to access your primary calendar.\\n2. Ensure Resend credentials are set up in Bubble Lab, or use the default system credentials if available.\\n\\n**To Test This Flow:**\\nProvide these inputs in the form:\\n- **email**: Enter the email address where you want to receive your weekly calendar summary (e.g., \\"your.name@example.com\\").\\n\\n**What Happens When You Run:**\\n1. The flow first determines the current date and time, then calculates the date exactly seven days from now.\\n2. It then connects to your Google Calendar and retrieves all events scheduled within that 7-day period from your primary calendar, sorted by their start time.\\n3. If no upcoming events are found for the next seven days, the flow will conclude with a message indicating no events were found.\\n4. If events are found, these events are then sent to an AI agent, powered by the Google Gemini 2.5 Flash model. The AI is instructed to act as an expert in summarizing calendar events into a concise, human-readable email format.\\n5. The AI processes the event details and generates a friendly, comprehensive email summary.\\n6. Finally, the flow uses Resend to send an email to the \`email\` address you provided. This email will have the subject \\"Your Weekly Calendar Summary\\" and contain the AI-generated summary in its HTML body.\\n\\n**Output You'll See:**\\n\`\`\`json\\n{\\n  \\"message\\": \\"Calendar summary sent to [provided email address]\\"\\n}\\n\`\`\`\\n\\nCheck your inbox for the weekly calendar summary email!",
+  "inputsSchema": "{\\"type\\":\\"object\\",\\"properties\\":{\\"email\\":{\\"type\\":\\"string\\",\\"description\\":\\"The email address to send the calendar summary to.\\"}},\\"required\\":[\\"email\\"]}",
+  "bubbleDescriptions": {
+    "420": "This **Google Calendar** bubble is configured to fetch upcoming events from your primary Google Calendar. Specifically, it uses the \`list_events\` operation. It dynamically sets \`time_min\` and \`time_max\` to cover a 7-day period starting from the moment the flow runs, ensuring you get a summary of your immediate future. The \`single_events: true\` parameter ensures that any recurring events are expanded and listed individually, and \`order_by: 'startTime'\` arranges them chronologically for a clear overview. This bubble's role is to gather all the raw event data that will be processed in the subsequent steps.",
+    "423": "The **AI Agent** bubble is responsible for summarizing the fetched calendar events. It utilizes the \`google/gemini-2.5-flash\` model, known for its efficiency in text generation. A \`systemPrompt\` is provided, instructing the AI to act as an 'expert at summarizing calendar events into a concise, human-readable email format.' The \`message\` parameter passes the \`JSON.stringify\`'d list of events from the Google Calendar bubble to the AI, ensuring all details are included for summarization. This bubble transforms the raw event data into a friendly, digestible summary suitable for an email.",
+    "426": "The **Resend** bubble is the final step in the workflow, responsible for sending the AI-generated calendar summary via email. It performs the \`send_email\` operation. The \`to\` parameter is dynamically set to the \`email\` address provided as an input to the flow, ensuring the summary reaches the correct recipient. The \`subject\` is set to 'Your Weekly Calendar Summary,' making the email's purpose clear. The \`html\` parameter constructs the email body, embedding the AI-generated \`summary\` within a \`pre\` tag for clean formatting. This bubble ensures the summarized information is delivered effectively to the user."
+  }
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+    console.log('[JSON Parsing] Result:', result);
+
+    // This should succeed - it's valid JSON with complex nested content
+    expect(result.success).toBe(true);
+  });
+
+  test('should parse valid JSON response with webhook flow instructions', () => {
+    const input = `\n\n{
+  "type": "answer",
+  "message": "You can run this webhook-based flow in several ways:\\n\\n**Option 1: Using the Run Button in Flow Editor**\\n1. In the Flow editor, you'll see an \\"Input Schema\\" node for your webhook\\n2. Enter a test value for the \`query\` field (e.g., \\"What's the weather like today?\\")\\n3. Click the \\"Run\\" button to test the flow locally\\n4. View the results in the Console panel\\n\\n**Option 2: Using the Webhook URL**\\n1. In the flow visualizer, look for the webhook toggle/URL section\\n2. Copy the webhook URL provided\\n3. Send a POST request to that URL with your data:\\n   \`\`\`json\\n   {\\n     \\"query\\": \\"Your question here\\"\\n   }\\n   \`\`\`\\n4. The flow will respond with the AI agent's answer\\n\\n**Option 3: Testing with cURL**\\n\`\`\`bash\\ncurl -X POST YOUR_WEBHOOK_URL \\\\\\n  -H \\"Content-Type: application/json\\" \\\\\\n  -d '{\\\"query\\\": \\\"What are the latest tech headlines?\\\"}'\\n\`\`\`\\n\\nThe flow will use the AI Agent with web search to respond to your query. If you don't provide a \`query\` parameter, it will default to \\"What is the top news headline?\\""
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+    expect(result.success).toBe(true);
+  });
 });
