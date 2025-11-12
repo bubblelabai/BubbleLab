@@ -73,7 +73,7 @@ DECISION PROCESS:
    - If request is clear and feasible → PROPOSE workflow changes and call editWorkflow tool to validate it
 
 OUTPUT FORMAT (JSON):
-You MUST respond in JSON format with one of these structures, DO NOT include these in the <think> block include them in the response message:
+You MUST respond in JSON format with one of these structures. DO NOT include these in the <think> block. Include them in the response message:
 
 Question (when you need MORE information from user):
 {
