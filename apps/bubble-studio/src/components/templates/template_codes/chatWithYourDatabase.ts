@@ -111,6 +111,51 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       throw new Error('Failed to parse data analyst response as JSON');
     }
 
+    // Extract SQL queries from tool calls for display in the report
+    const sqlQueries = analystResult.data.toolCalls
+      .filter(call => call.tool === 'sql-query-tool' && call.input)
+      .map(call => {
+        const queryInput = call.input as any;
+        return queryInput.query || queryInput.sql || JSON.stringify(queryInput);
+      })
+      .filter(query => query && query.trim() !== '');
+
+    // If we have SQL queries, add them to the analysis and update the HTML report
+    if (sqlQueries.length > 0) {
+      analysis.sqlQueries = sqlQueries;
+      
+      // Update the HTML report to include SQL queries section
+      const sqlQueriesHtml = \`
+        <div style="margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+          <h3 style="color: #333; margin-bottom: 15px;">🔍 SQL Queries Used</h3>
+          \${sqlQueries.map((query, index) => \`
+            <div style="margin-bottom: 15px;">
+              <h4 style="color: #666; margin-bottom: 5px; font-size: 14px;">Query \${index + 1}:</h4>
+              <pre style="
+                background-color: #f4f4f4;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 12px;
+                overflow-x: auto;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                line-height: 1.4;
+                color: #333;
+                margin: 0;
+              "><code>\${query}</code></pre>
+            </div>
+          \`).join('')}
+        </div>
+      \`;
+      
+      // Insert the SQL queries section before the footer in the HTML report
+      if (analysis.htmlReport && analysis.htmlReport.includes('<footer')) {
+        analysis.htmlReport = analysis.htmlReport.replace('<footer', sqlQueriesHtml + '<footer');
+      } else if (analysis.htmlReport) {
+        analysis.htmlReport += sqlQueriesHtml;
+      }
+    }
+
     // 3. Send email report using the generated HTML
     const emailSender = new ResendBubble({
       operation: 'send_email',
