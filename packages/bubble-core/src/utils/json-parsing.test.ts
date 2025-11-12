@@ -792,4 +792,14 @@ describe('JSON Parsing for pearl responses', () => {
     // This should succeed - it's valid JSON with complex nested content
     expect(result.success).toBe(true);
   });
+
+  test('should parse valid JSON response with webhook flow instructions', () => {
+    const input = `\n\n{
+  "type": "answer",
+  "message": "You can run this webhook-based flow in several ways:\\n\\n**Option 1: Using the Run Button in Flow Editor**\\n1. In the Flow editor, you'll see an \\"Input Schema\\" node for your webhook\\n2. Enter a test value for the \`query\` field (e.g., \\"What's the weather like today?\\")\\n3. Click the \\"Run\\" button to test the flow locally\\n4. View the results in the Console panel\\n\\n**Option 2: Using the Webhook URL**\\n1. In the flow visualizer, look for the webhook toggle/URL section\\n2. Copy the webhook URL provided\\n3. Send a POST request to that URL with your data:\\n   \`\`\`json\\n   {\\n     \\"query\\": \\"Your question here\\"\\n   }\\n   \`\`\`\\n4. The flow will respond with the AI agent's answer\\n\\n**Option 3: Testing with cURL**\\n\`\`\`bash\\ncurl -X POST YOUR_WEBHOOK_URL \\\\\\n  -H \\"Content-Type: application/json\\" \\\\\\n  -d '{\\\"query\\\": \\\"What are the latest tech headlines?\\\"}'\\n\`\`\`\\n\\nThe flow will use the AI Agent with web search to respond to your query. If you don't provide a \`query\` parameter, it will default to \\"What is the top news headline?\\""
+}`;
+
+    const result = parseJsonWithFallbacks(input);
+    expect(result.success).toBe(true);
+  });
 });

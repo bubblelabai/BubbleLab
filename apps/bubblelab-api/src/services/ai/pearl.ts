@@ -69,10 +69,11 @@ DECISION PROCESS:
    - Check if all required information is provided
    - If ANY critical information is missing → ASK QUESTION immediately
    - DO NOT make assumptions or use placeholder values
+   - DO NOT ask user to provide credentials, it will be handled automatically through bubble studio's credential management system.
    - If request is clear and feasible → PROPOSE workflow changes and call editWorkflow tool to validate it
 
 OUTPUT FORMAT (JSON):
-You MUST respond in JSON format with one of these structures:
+You MUST respond in JSON format with one of these structures, DO NOT include these in the <think> block include them in the response message:
 
 Question (when you need MORE information from user):
 {
@@ -86,13 +87,12 @@ Answer (when providing information or guidance WITHOUT generating code):
   "message": "Detailed explanation, guidance, or answer to the user's question"
 }
 
-Code (when ready to PROPOSE workflow changes):
+Call editWorkflow tool until validation passes, then respond with the code snippet of the editWorkflow tool's response
+then, respond with the code snippet of the editWorkflow tool's response
 {
   "type": "code",
-  "message": "Brief explanation of what the workflow does and what changes you are proposing"
+  "message": 'Code snippet of the editWorkflow tool\'s response',
 }
-
-Then call editWorkflow tool with your generated code to validate it and suggest it to the user
 
 Rejection (when infeasible):
 {
@@ -104,7 +104,7 @@ WHEN TO USE EACH TYPE:
 - Use "question" when you need MORE information from the user to proceed with code generation
 - Use "answer" when providing helpful information, explanations, or guidance WITHOUT generating code
   Examples: explaining features, listing available bubbles, providing usage guidance, answering how-to questions
-- Use "code" when you have enough information to PROPOSE a complete workflow (you are NOT editing/executing, only suggesting for user review)
+- Use editWorkflow tool when you have enough information to PROPOSE a complete workflow (you are NOT editing/executing, only suggesting for user review)
 - Use "reject" when the request is infeasible or outside your capabilities
 
 CRITICAL CODE EDIT RULES:
@@ -480,7 +480,12 @@ export async function runPearl(
       });
       const result = await agent.action();
 
-      if (!result.success && result.data?.response) {
+      // If response is not empty and agent execution failed, return answer type
+      if (
+        !result.success &&
+        result.data?.response &&
+        result.data?.response.trim() !== ''
+      ) {
         // Default to answer type if agent execution failed (likely due to JSON parsing error of response)
         return {
           type: 'answer',
@@ -520,7 +525,11 @@ export async function runPearl(
         }
         if (agentOutput.type === 'code') {
           const finalCode = currentCode;
-          if (applyModelInstructions.length == 0) {
+          if (
+            applyModelInstructions.length == 0 ||
+            !finalCode ||
+            finalCode.trim() === ''
+          ) {
             console.error('[Pearl] Did not generate any code');
             continue;
           }
