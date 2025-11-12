@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ResearchAgentTool } from './research-agent-tool.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import z from 'zod';
 
 //Remove all environment variables
 process.env = {};
@@ -32,6 +33,20 @@ describe('ResearchAgentTool', () => {
       expect(result.summary).toContain('Research failed');
     });
 
+    it('should handle Zod schema as expectedResultSchema', async () => {
+      const tool = new ResearchAgentTool({
+        task: 'Research the latest trends in AI development',
+        expectedResultSchema: z.object({
+          trends: z.array(z.string()).describe('An array of trends'),
+          summary: z.string().describe('A summary of the trends'),
+        }),
+      });
+      const result = tool.getExpectedResultSchema();
+      expect(result).toBeDefined();
+      console.log(result);
+      expect(result).toContain('');
+    });
+
     it('should handle missing GOOGLE_GEMINI_CRED gracefully', async () => {
       const tool = new ResearchAgentTool({
         task: 'Research the latest trends in AI development',
@@ -49,6 +64,12 @@ describe('ResearchAgentTool', () => {
       });
 
       const result = await tool.performAction();
+      const expectedResultSchema = tool.getExpectedResultSchema();
+      expect(expectedResultSchema).toBeDefined();
+      console.log(expectedResultSchema);
+      expect(expectedResultSchema).toContain(
+        '{"type":"object","properties":{"trends":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}}}'
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('API key');

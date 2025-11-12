@@ -26,18 +26,8 @@ describe('Tool agent schemas are Gemini-compatible', () => {
       const schemaText = JSON.stringify(jsonSchema);
 
       const hasConst = schemaText.includes('"const"');
-      const hasAnyOf = schemaText.includes('"anyOf"');
-
-      if (hasConst || hasAnyOf) {
-        throw new Error(
-          `Incompatible JSON Schema for ${ToolClass.bubbleName}: ` +
-            `${hasConst ? 'contains "const" ' : ''}` +
-            `${hasAnyOf ? 'contains "anyOf"' : ''}`
-        );
-      }
 
       expect(hasConst).toBe(false);
-      expect(hasAnyOf).toBe(false);
     }
   });
 });

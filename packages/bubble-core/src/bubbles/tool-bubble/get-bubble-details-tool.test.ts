@@ -88,6 +88,19 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('description:');
     });
 
+    test('research-agent-tool should show description in nested schema structure for expectedResultSchema parameter', async () => {
+      const tool = new GetBubbleDetailsTool({
+        bubbleName: 'research-agent-tool',
+      });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      console.log(usageExample);
+      expect(usageExample).not.toContain('ResearchAgentToolBubble');
+      expect(usageExample).toBeDefined();
+      console.log(result.data.usageExample);
+      expect(usageExample).toContain('An array of trends');
+    });
+
     // Should show description in nested schema structure for gmail bubble
     test('should show description in nested schema structure for gmail bubble', async () => {
       const tool = new GetBubbleDetailsTool({ bubbleName: 'gmail' });

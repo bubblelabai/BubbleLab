@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
@@ -6,12 +7,11 @@ import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
 
-// Schema for the expected JSON result structure
-const ExpectedResultSchema = z
-  .string()
-  .describe(
-    'JSON schema string defining the expected structure of the research result'
-  );
+// Schema for the expected JSON result structure - accepts either a Zod schema or a JSON schema string
+const ExpectedResultSchema = z.union([
+  z.custom<ZodTypeAny>((val) => val?._def !== undefined),
+  z.string(),
+]);
 
 // Define the parameters schema for the Research Agent Tool
 const ResearchAgentToolParamsSchema = z.object({
@@ -22,7 +22,7 @@ const ResearchAgentToolParamsSchema = z.object({
       'The research task that requires searching the internet and gathering information'
     ),
   expectedResultSchema: ExpectedResultSchema.describe(
-    'JSON schema string that defines the expected structure of the research result. Out'
+    'Zod schema or JSON schema string that defines the expected structure of the research result. Example: z.object({ trends: z.array(z.string()).describe("An array of trends"), summary: z.string().describe("A summary of the trends") }) or JSON.stringify({ type: "object", properties: { trends: { type: "array", items: { type: "string" } }, summary: { type: "string" } } })'
   ),
   model: AvailableModels.describe(
     'Model to use for the research agent (default: google/gemini-2.5-pro)'
@@ -131,7 +131,7 @@ export class ResearchAgentTool extends ToolBubble<
   constructor(
     params: ResearchAgentToolParamsInput = {
       task: '',
-      expectedResultSchema: '{"result": "string"}',
+      expectedResultSchema: z.object({ result: z.string() }),
     },
     context?: BubbleContext
   ) {
@@ -152,7 +152,9 @@ export class ResearchAgentTool extends ToolBubble<
       };
     }
     void context; // Context available but not currently used
-    const { task, expectedResultSchema, maxIterations } = this.params;
+    const { task, maxIterations } = this.params;
+
+    const jsonSchemaString = this.getExpectedResultSchema();
 
     try {
       console.log(
@@ -160,15 +162,15 @@ export class ResearchAgentTool extends ToolBubble<
         task.substring(0, 100) + '...'
       );
       console.log(
-        '[ResearchAgentTool] Expected result schema:',
-        expectedResultSchema.substring(0, 200) + '...'
+        '[ResearchAgentTool] Expected result schema (JSON):',
+        jsonSchemaString.substring(0, 200) + '...'
       );
       console.log('[ResearchAgentTool] Max iterations:', maxIterations);
 
       // Create the AI agent with web search and scraping tools
       const researchSubAgent = new AIAgentBubble(
         {
-          message: this.buildResearchPrompt(task, expectedResultSchema),
+          message: this.buildResearchPrompt(task, jsonSchemaString),
           systemPrompt: this.buildSystemPrompt(),
           model: {
             model: this.params.model,
@@ -276,6 +278,33 @@ export class ResearchAgentTool extends ToolBubble<
         error: errorMessage,
       };
     }
+  }
+
+  public getExpectedResultSchema(): string {
+    // Helper function to detect if a value is a Zod schema
+    const isZodSchema = (value: unknown): value is ZodTypeAny => {
+      return (
+        typeof value === 'object' &&
+        value !== null &&
+        '_def' in value &&
+        typeof (value as { _def?: unknown })._def === 'object' &&
+        (value as { _def?: { typeName?: string } })._def?.typeName !== undefined
+      );
+    };
+
+    // Convert Zod schema to JSON schema string if needed
+    const isZod = isZodSchema(this.params.expectedResultSchema);
+
+    if (isZod) {
+      return JSON.stringify(
+        zodToJsonSchema(
+          this.params.expectedResultSchema as ZodTypeAny,
+          'ResultSchema'
+        )
+      );
+    }
+
+    return this.params.expectedResultSchema as string;
   }
 
   /**
