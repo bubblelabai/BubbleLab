@@ -14,7 +14,10 @@ import { useUIStore } from '../stores/uiStore';
 import { useExecutionStore } from '../stores/executionStore';
 import { useCredentials } from '../hooks/useCredentials';
 import { API_BASE_URL } from '../env';
-import { getLiveOutputStore } from '@/stores/liveOutputStore';
+import {
+  getLiveOutputStore,
+  useLiveOutputStore,
+} from '@/stores/liveOutputStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -93,6 +96,28 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
+
+  // Subscribe to selected event index reactively (causes re-render when changed)
+  const selectedEventIndexByVariableId = useLiveOutputStore(
+    flowId,
+    (s) => s.selectedEventIndexByVariableId
+  );
+  const selectedEventIndex = selectedEventIndexByVariableId[bubbleId];
+
+  // Get total event count for this bubble to determine if we're on first/last
+  const liveOutputStore = getLiveOutputStore(flowId);
+  const orderedItems = liveOutputStore?.getState().getOrderedItems() || [];
+  const bubbleGroup = orderedItems.find(
+    (item) => item.kind === 'group' && item.name === bubbleId
+  );
+  const totalEvents =
+    bubbleGroup && bubbleGroup.kind === 'group' ? bubbleGroup.events.length : 0;
+  const lastEventIndex = Math.max(0, totalEvents - 1);
+
+  // Determine if Input or Output button should be highlighted
+  const isInputSelected = selectedEventIndex === 0;
+  const isOutputSelected =
+    selectedEventIndex === lastEventIndex && totalEvents > 0;
 
   // Determine bubble-specific state
   const isHighlighted =
@@ -247,9 +272,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
               backgroundColor: hasError
                 ? 'rgba(239, 68, 68, 0.9)'
                 : 'rgba(245, 245, 244, 0.95)',
-              borderColor: hasError ? '#dc2626' : 'rgba(212, 212, 211, 0.8)',
-              borderWidth: '1.5px',
+              borderColor: hasError
+                ? '#dc2626'
+                : isInputSelected
+                  ? 'rgba(99, 102, 241, 0.9)'
+                  : 'rgba(212, 212, 211, 0.8)',
+              borderWidth: isInputSelected ? '2.5px' : '1.5px',
               color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
+              boxShadow: isInputSelected
+                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -285,9 +317,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
               backgroundColor: hasError
                 ? 'rgba(239, 68, 68, 0.9)'
                 : 'rgba(23, 23, 23, 0.95)',
-              borderColor: hasError ? '#dc2626' : 'rgba(64, 64, 64, 0.8)',
-              borderWidth: '1.5px',
+              borderColor: hasError
+                ? '#dc2626'
+                : isOutputSelected
+                  ? 'rgba(99, 102, 241, 0.9)'
+                  : 'rgba(64, 64, 64, 0.8)',
+              borderWidth: isOutputSelected ? '2.5px' : '1.5px',
               color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
+              boxShadow: isOutputSelected
+                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
