@@ -78,7 +78,7 @@ function validateResult(
         validationErrors.push(`Expected snippet to contain "${text}"`);
       }
     } else if (testCase.expectedType === 'mixed') {
-      // If response is code, check snippert non empty,
+      // If response is code, check snippet non empty,
       // If response is answer, check message is non empty,
       // If response is question, check message is non empty,
       // If response is reject, check message is non empty,
