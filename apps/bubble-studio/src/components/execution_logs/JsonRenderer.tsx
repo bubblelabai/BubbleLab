@@ -486,13 +486,14 @@ function renderStringValue(
       ? unescapeContent(displayValue)
       : unescaped;
     const containerClass = isInline
-      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline'
-      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline';
+      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none'
+      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none';
 
     const htmlContentFactory = () => (
       <div
         className={containerClass}
         dangerouslySetInnerHTML={{ __html: unescaped }}
+        style={{ outline: 'none' }}
       />
     );
 
@@ -500,6 +501,7 @@ function renderStringValue(
       <div
         className={containerClass}
         dangerouslySetInnerHTML={{ __html: previewUnescaped }}
+        style={{ outline: 'none' }}
       />
     ) : (
       htmlContentFactory()
