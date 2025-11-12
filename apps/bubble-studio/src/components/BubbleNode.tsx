@@ -208,7 +208,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 ${
+      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 ${
+        isCompleted ? 'overflow-visible' : 'overflow-hidden'
+      } ${
         isSubBubble
           ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
           : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
@@ -226,22 +228,69 @@ function BubbleNode({ data }: BubbleNodeProps) {
       onClick={handleClick}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ left: -6 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ right: -6 }}
-      />
+      {/* Left Handle - Shows "Input" button after execution */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="left"
+          isConnectable={false}
+          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ left: -6, opacity: isCompleted ? 0 : 1 }}
+        />
+        {isCompleted && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+            style={{
+              left: '0',
+              backgroundColor: hasError
+                ? 'rgba(239, 68, 68, 0.9)'
+                : 'rgba(236, 72, 153, 0.9)',
+              borderColor: hasError ? '#dc2626' : '#ec4899',
+              borderWidth: '1.5px',
+              color: '#ffffff',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Could add functionality to show input data in console
+            }}
+          >
+            Input
+          </div>
+        )}
+      </div>
+
+      {/* Right Handle - Shows "Output" button after execution */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
+          isConnectable={false}
+          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ right: -6, opacity: isCompleted ? 0 : 1 }}
+        />
+        {isCompleted && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1.5 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+            style={{
+              right: '0',
+              backgroundColor: hasError
+                ? 'rgba(239, 68, 68, 0.9)'
+                : 'rgba(34, 197, 94, 0.9)',
+              borderColor: hasError ? '#dc2626' : '#22c55e',
+              borderWidth: '1.5px',
+              color: '#ffffff',
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Could add functionality to show output data in console
+            }}
+          >
+            Output
+          </div>
+        )}
+      </div>
       {/* Bottom handle */}
       <Handle
         type="source"
