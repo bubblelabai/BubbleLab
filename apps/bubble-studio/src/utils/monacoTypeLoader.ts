@@ -10,6 +10,7 @@ import bufferTypes from '../../public/typescript-libs/buffer.d.ts?raw';
 const zodTypes = `
 declare module 'zod' {
   export interface ZodType<Output = any, Def = any, Input = Output> {
+    _type: any;
     _output: Output;
     _input: Input;
     _def: Def;
