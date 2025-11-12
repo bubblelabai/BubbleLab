@@ -14,6 +14,7 @@ import { useUIStore } from '../stores/uiStore';
 import { useExecutionStore } from '../stores/executionStore';
 import { useCredentials } from '../hooks/useCredentials';
 import { API_BASE_URL } from '../env';
+import { getLiveOutputStore } from '@/stores/liveOutputStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -252,7 +253,13 @@ function BubbleNode({ data }: BubbleNodeProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              // Could add functionality to show input data in console
+              // Navigate to console with first output
+              const liveOutputStore = getLiveOutputStore(flowId);
+              if (liveOutputStore) {
+                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                // Set to first event (index 0)
+                liveOutputStore.getState().setSelectedEventIndex(bubbleId, 0);
+              }
             }}
           >
             Input
@@ -284,7 +291,25 @@ function BubbleNode({ data }: BubbleNodeProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              // Could add functionality to show output data in console
+              // Navigate to console with last output
+              const liveOutputStore = getLiveOutputStore(flowId);
+              if (liveOutputStore) {
+                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                // Get ordered items to find event count for this bubble
+                const orderedItems = liveOutputStore
+                  .getState()
+                  .getOrderedItems();
+                const bubbleGroup = orderedItems.find(
+                  (item) => item.kind === 'group' && item.name === bubbleId
+                );
+                if (bubbleGroup && bubbleGroup.kind === 'group') {
+                  // Set to last event (eventCount - 1 for 0-based index)
+                  const lastIndex = Math.max(0, bubbleGroup.events.length - 1);
+                  liveOutputStore
+                    .getState()
+                    .setSelectedEventIndex(bubbleId, lastIndex);
+                }
+              }
             }}
           >
             Output

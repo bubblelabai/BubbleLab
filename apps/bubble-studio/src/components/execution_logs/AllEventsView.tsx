@@ -520,7 +520,7 @@ export default function AllEventsView({
                 <div className="flex flex-col h-full">
                   <div className="flex items-center gap-3 px-4 py-2.5 bg-[#161b22] border-b border-[#21262d]">
                     <span className="text-xs text-gray-500 font-medium">
-                      Output
+                      Logs
                     </span>
                     <input
                       type="range"
