@@ -841,6 +841,23 @@ export class AIAgentBubble extends ServiceBubble<
       const systemMessage = new HumanMessage(systemPrompt);
       const allMessages = [systemMessage, ...messages];
 
+      // Helper function for exponential backoff with jitter
+      const exponentialBackoff = (attemptNumber: number): Promise<void> => {
+        // Base delay: 1 second, exponentially increases (1s, 2s, 4s, 8s, ...)
+        const baseDelay = 1000;
+        const maxDelay = 32000; // Cap at 32 seconds
+        const delay = Math.min(
+          baseDelay * Math.pow(2, attemptNumber - 1),
+          maxDelay
+        );
+
+        // Add jitter (random ±25% variation) to prevent thundering herd
+        const jitter = delay * 0.25 * (Math.random() - 0.5);
+        const finalDelay = delay + jitter;
+
+        return new Promise((resolve) => setTimeout(resolve, finalDelay));
+      };
+
       // If we have tools, bind them to the LLM, then add retry logic
       // IMPORTANT: Must bind tools FIRST, then add retry - not the other way around
       const modelWithTools =
@@ -850,6 +867,7 @@ export class AIAgentBubble extends ServiceBubble<
               onFailedAttempt: async (error) => {
                 const attemptNumber = error.attemptNumber;
                 const retriesLeft = error.retriesLeft;
+
                 this.context?.logger?.warn(
                   `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
                 );
@@ -864,6 +882,11 @@ export class AIAgentBubble extends ServiceBubble<
                     },
                   });
                 }
+
+                // Wait with exponential backoff before retrying
+                if (retriesLeft > 0) {
+                  await exponentialBackoff(attemptNumber);
+                }
               },
             })
           : llm.withRetry({
@@ -871,6 +894,7 @@ export class AIAgentBubble extends ServiceBubble<
               onFailedAttempt: async (error) => {
                 const attemptNumber = error.attemptNumber;
                 const retriesLeft = error.retriesLeft;
+
                 this.context?.logger?.warn(
                   `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
                 );
@@ -884,6 +908,11 @@ export class AIAgentBubble extends ServiceBubble<
                       recoverable: retriesLeft > 0,
                     },
                   });
+                }
+
+                // Wait with exponential backoff before retrying
+                if (retriesLeft > 0) {
+                  await exponentialBackoff(attemptNumber);
                 }
               },
             });
