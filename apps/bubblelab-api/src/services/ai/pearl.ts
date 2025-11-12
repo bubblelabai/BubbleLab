@@ -21,6 +21,7 @@ import {
   BUBBLE_STUDIO_INSTRUCTIONS,
   COMMON_DEBUGGING_INSTRUCTIONS,
   CREDENTIAL_ENV_MAP,
+  DEBUGGING_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -116,6 +117,9 @@ CRITICAL CODE EDIT RULES:
 6. If validation fails, use editWorkflow to fix the errors iteratively
 7. Keep calling editWorkflow until validation passes
 8. Do not provide a response until your code is fully validated
+
+CRITICAL DEBUGGING INSTRUCTIONS (when output is provided and user asks for help fixing the workflow):
+${DEBUGGING_INSTRUCTIONS}
 
 IMPORTANT TOOL USAGE:
 - When using editWorkflow, highlight the changes necessary and adds comments to indicate where unchanged code has been skipped. For example:

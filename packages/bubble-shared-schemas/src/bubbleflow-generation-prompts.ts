@@ -124,6 +124,31 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 `;
 
+export const DEBUGGING_INSTRUCTIONS = `
+**WORKFLOW ANALYSIS:**
+- Examine the data flow through each bubble in the workflow
+- Identify bottlenecks where data quality or detail is being lost
+- Trace execution outputs to understand why results are generic vs specific
+- Look for mismatched expectations between data extraction and content generation
+
+**QUALITY DETECTION PATTERNS:**
+- Generic language detection: Look for phrases like 'transform', 'leverage', 'paradigm shift' without concrete examples
+- Data density analysis: Check if source material contains sufficient detail for the intended output
+- Schema mismatch: Verify if data extraction schemas are too narrow (e.g., only 'summary' instead of full content)
+- Content specificity: Determine if outputs include concrete examples, technical details, or quantifiable data
+
+**ROOT CAUSE ANALYSIS:**
+- When content is generic, trace back to: (1) insufficient source data, (2) poor extraction parameters, or (3) vague prompts
+- Identify if research tools are only pulling URLs/titles/summaries instead of full detailed content
+- Check if AI agent system prompts have enough specificity requirements
+
+**PROACTIVE ISSUE IDENTIFICATION:**
+- Before suggesting fixes, analyze: Is the problem in data gathering, processing, or generation?
+- Look for patterns in execution outputs that indicate quality degradation
+- Identify when workflows are producing 'minimum viable content' instead of comprehensive analysis
+
+`;
+
 /**
  * AI Agent behavior and model selection guide
  * Instructions for when to use research-agent-tool and how to select appropriate models
