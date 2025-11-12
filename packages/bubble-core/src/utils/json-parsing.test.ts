@@ -763,7 +763,7 @@ describe('JSON Parsing for pearl responses', () => {
     expect(result.error).toBeDefined();
   });
 
-  test('should parse valid JSON response from AI assistant with mardown formatting inside', () => {
+  test('should parse valid JSON response from AI assistant with markdown formatting inside', () => {
     // This is a valid JSON response that should be parsed successfully
     const input = `{
   "type": "answer",
