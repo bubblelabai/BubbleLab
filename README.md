@@ -14,6 +14,10 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/bubblelabai/BubbleLab/pulls)
 
+
+[Try it](https://app.bubblelab.ai/) - [Demos](https://www.bubblelab.ai/demos)
+
+
 ---
 
 ### Editing Flows
@@ -32,11 +36,11 @@
 
 **Key Features:**
 
-- Orchestrate workflows in TypeScript with visual feedback side-by-side
-- Built-in AI Assistant to instantly spin up a workflow and amend as needed
-- Import existing N8N workflow
-- Full observability
-- Export workflows directly to your JS/TS backend
+- **Prompt to Workflow**: Describe what you want in natural language, and Pearl (our AI Assistant) instantly generates working workflows using our composable bubble system (integrations, tools, and logic nodes)
+- **Full Observability**: Built-in execution tracing with detailed logs, token usage tracking, and performance metrics. Debug with complete visibility into every step
+- **Import from n8n**: Migrate existing workflows seamlessly. We automatically translate n8n JSON into our bubble architecture
+- **Export as TypeScript**: Own your workflows completely. Export clean, production-ready code that runs anywhere—integrate with your codebase, CI/CD pipelines, and existing infrastructure
+
 
 ## 🚀 Quick Start
 
