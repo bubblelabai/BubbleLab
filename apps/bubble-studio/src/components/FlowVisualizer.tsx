@@ -26,6 +26,7 @@ import CronScheduleNode from './CronScheduleNode';
 import { WebhookURLDisplay } from './WebhookURLDisplay';
 import { getLiveOutputStore } from '@/stores/liveOutputStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -1121,7 +1122,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onPaneClick={() => {
           // Dismiss the highlighted bubble
           getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
+          useEditorStore.getState().clearExecutionHighlight();
           // Clear the bubble context
+          useUIStore.getState().openConsolidatedPanelWith('pearl');
           getPearlChatStore(currentFlow?.id || flowId)
             .getState()
             .clearBubbleContext();
