@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { CredentialType } from './types';
 export const subscriptionStatusResponseSchema = z
   .object({
     userId: z.string().openapi({
@@ -65,9 +66,9 @@ export const subscriptionStatusResponseSchema = z
       serviceUsage: z
         .array(
           z.object({
-            service: z.string().openapi({
+            service: z.nativeEnum(CredentialType).openapi({
               description: 'Service identifier',
-              example: 'OPENAI_CRED',
+              example: CredentialType.OPENAI_CRED,
             }),
             subService: z.string().optional().openapi({
               description: 'Sub-service identifier',
