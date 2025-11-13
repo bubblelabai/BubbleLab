@@ -1652,7 +1652,7 @@ export class BubbleParser {
     const lines = this.bubbleScript.split('\n');
 
     // Look backwards from the node line to find comments
-    let commentLines: string[] = [];
+    const commentLines: string[] = [];
     let currentLine = nodeLine - 1; // Start from the line before the node (0-indexed, but node.loc is 1-indexed)
     let isBlockComment = false;
 
