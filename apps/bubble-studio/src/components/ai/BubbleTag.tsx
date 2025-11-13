@@ -4,7 +4,6 @@
  */
 import { CogIcon } from '@heroicons/react/24/outline';
 import { findLogoForBubble } from '../../lib/integrations';
-import type { BubbleInfo } from '../../utils/bubbleUtils';
 import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 import { useUIStore } from '../../stores/uiStore';
 

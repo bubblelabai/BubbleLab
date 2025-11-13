@@ -4,7 +4,6 @@
  */
 import { parseBubbleTags } from '../../utils/bubbleTagParser';
 import { BubbleTag } from './BubbleTag';
-import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 
 interface BubbleTextProps {
   text: string;

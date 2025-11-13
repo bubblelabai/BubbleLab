@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
-import ReactMarkdown from 'react-markdown';
 import {
   MAX_BYTES,
   bytesToMB,
@@ -69,15 +68,10 @@ export function PearlChat() {
     (state) => state.pendingCredentials
   );
   const { data: flowData } = useBubbleFlow(selectedFlowId);
+  const bubbleDetail = useBubbleDetail(selectedFlowId);
 
   // Pearl store hook - subscribes to state and provides generation API
   const pearl = usePearlChatStore(selectedFlowId);
-
-  // get the current highlighted bubble
-  const highlightedBubble = useExecutionStore(
-    selectedFlowId,
-    (state) => state.highlightedBubble
-  );
 
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
@@ -183,7 +177,6 @@ export function PearlChat() {
     description: string;
   }> => {
     const triggerType = flowData?.eventType;
-    const bubbleDetail = useBubbleDetail(selectedFlowId);
 
     // Use selected bubble context to generate bubble-specific actions
     const bubbleSuggestions = pearl.selectedBubbleContext
@@ -417,7 +410,6 @@ export function PearlChat() {
                               <EventDisplay
                                 key={`${message.id}-event-${eventIndex}`}
                                 event={event}
-                                flowId={selectedFlowId}
                               />
                             )
                           )}
@@ -496,7 +488,6 @@ export function PearlChat() {
                       <EventDisplay
                         key={`current-event-${index}`}
                         event={event}
-                        flowId={selectedFlowId}
                       />
                     )
                   )}
@@ -631,13 +622,7 @@ export function PearlChat() {
 }
 
 // Helper component to render individual events
-function EventDisplay({
-  event,
-  flowId,
-}: {
-  event: DisplayEvent;
-  flowId: number | null;
-}) {
+function EventDisplay({ event }: { event: DisplayEvent }) {
   switch (event.type) {
     case 'llm_thinking':
       return (

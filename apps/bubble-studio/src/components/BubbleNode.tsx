@@ -18,7 +18,6 @@ import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
-import { usePearlChatStore } from '@/hooks/usePearlChatStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -43,7 +42,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     bubble,
     bubbleKey,
     requiredCredentialTypes: propRequiredCredentialTypes = [],
-    onHighlightChange,
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
@@ -73,7 +71,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
   );
 
   // Get actions from store
-  const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
   const setCredential = useExecutionStore(flowId, (s) => s.setCredential);
   const toggleRootExpansion = useExecutionStore(
     flowId,
@@ -181,9 +178,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
-  const { toggleBubbleInContext, clearBubbleContext } =
-    usePearlChatStore(flowId);
-  const openPearlChat = useUIStore((state) => state.setConsolidatedPanelTab);
   const logo = useMemo(
     () =>
       findLogoForBubble({
