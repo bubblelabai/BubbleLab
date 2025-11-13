@@ -858,63 +858,43 @@ export class AIAgentBubble extends ServiceBubble<
         return new Promise((resolve) => setTimeout(resolve, finalDelay));
       };
 
+      // Shared onFailedAttempt callback to avoid duplication
+      const onFailedAttempt = async (error: any) => {
+        const attemptNumber = error.attemptNumber;
+        const retriesLeft = error.retriesLeft;
+
+        this.context?.logger?.warn(
+          `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
+        );
+
+        // Optionally emit streaming event for retry
+        if (this.streamingCallback) {
+          await this.streamingCallback({
+            type: 'error',
+            data: {
+              error: `Retry attempt ${attemptNumber}/${this.params.model.maxRetries}: ${error.message}`,
+              recoverable: retriesLeft > 0,
+            },
+          });
+        }
+
+        // Wait with exponential backoff before retrying
+        if (retriesLeft > 0) {
+          await exponentialBackoff(attemptNumber);
+        }
+      };
+
       // If we have tools, bind them to the LLM, then add retry logic
       // IMPORTANT: Must bind tools FIRST, then add retry - not the other way around
       const modelWithTools =
         tools.length > 0
           ? llm.bindTools(tools).withRetry({
               stopAfterAttempt: this.params.model.maxRetries,
-              onFailedAttempt: async (error) => {
-                const attemptNumber = error.attemptNumber;
-                const retriesLeft = error.retriesLeft;
-
-                this.context?.logger?.warn(
-                  `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
-                );
-
-                // Optionally emit streaming event for retry
-                if (this.streamingCallback) {
-                  await this.streamingCallback({
-                    type: 'error',
-                    data: {
-                      error: `Retry attempt ${attemptNumber}/${this.params.model.maxRetries}: ${error.message}`,
-                      recoverable: retriesLeft > 0,
-                    },
-                  });
-                }
-
-                // Wait with exponential backoff before retrying
-                if (retriesLeft > 0) {
-                  await exponentialBackoff(attemptNumber);
-                }
-              },
+              onFailedAttempt,
             })
           : llm.withRetry({
               stopAfterAttempt: this.params.model.maxRetries,
-              onFailedAttempt: async (error) => {
-                const attemptNumber = error.attemptNumber;
-                const retriesLeft = error.retriesLeft;
-
-                this.context?.logger?.warn(
-                  `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
-                );
-
-                // Optionally emit streaming event for retry
-                if (this.streamingCallback) {
-                  await this.streamingCallback({
-                    type: 'error',
-                    data: {
-                      error: `Retry attempt ${attemptNumber}/${this.params.model.maxRetries}: ${error.message}`,
-                      recoverable: retriesLeft > 0,
-                    },
-                  });
-                }
-
-                // Wait with exponential backoff before retrying
-                if (retriesLeft > 0) {
-                  await exponentialBackoff(attemptNumber);
-                }
-              },
+              onFailedAttempt,
             });
 
       // Use streaming if streamingCallback is provided
