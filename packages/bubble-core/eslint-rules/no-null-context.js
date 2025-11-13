@@ -59,19 +59,59 @@ export default {
       MemberExpression(node) {
         if (!isInBaseBubbleClass) return;
 
+        // Helper function to check if an expression involves this.context (directly or through optional chaining)
+        const involvesThisContext = (expr) => {
+          if (!expr) return false;
+
+          // Direct access: this.context
+          if (
+            expr.type === 'MemberExpression' &&
+            expr.object.type === 'ThisExpression' &&
+            expr.property.name === 'context'
+          ) {
+            return true;
+          }
+
+          // Optional chaining: this.context?.property
+          if (expr.type === 'ChainExpression') {
+            return involvesThisContext(expr.expression);
+          }
+
+          // MemberExpression that might chain from this.context
+          if (expr.type === 'MemberExpression') {
+            return involvesThisContext(expr.object);
+          }
+
+          return false;
+        };
+
+        // Check for multiple optional chaining: this.context?.logger?.warn
+        // In this case, node.object is a ChainExpression
+        if (node.object.type === 'ChainExpression') {
+          if (involvesThisContext(node.object)) {
+            // This is multiple optional chaining involving this.context, so it's safe
+            return;
+          }
+        }
+
         // Check for this.context access
         if (
           node.object.type === 'MemberExpression' &&
           node.object.object.type === 'ThisExpression' &&
           node.object.property.name === 'context'
         ) {
+          // Check if any ancestor is a ChainExpression (for optional chaining)
+          let ancestor = node.parent;
+          while (ancestor) {
+            if (ancestor.type === 'ChainExpression') {
+              // This is part of optional chaining, so it's safe
+              return;
+            }
+            ancestor = ancestor.parent;
+          }
+
           // Check if the parent is a conditional expression or optional chaining
           const parent = node.parent;
-
-          // Allow optional chaining (this.context?.property)
-          if (parent.type === 'ChainExpression') {
-            return;
-          }
 
           // Allow conditional checks (this.context && this.context.property)
           if (parent.type === 'LogicalExpression' && parent.operator === '&&') {

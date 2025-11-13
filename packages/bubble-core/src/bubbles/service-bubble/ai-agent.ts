@@ -72,6 +72,15 @@ const ModelConfigSchema = z.object({
     .describe(
       'Maximum number of tokens to generate in response, keep at default of 40000 unless the response is expected to be certain length'
     ),
+  maxRetries: z
+    .number()
+    .int()
+    .min(0)
+    .max(10)
+    .default(3)
+    .describe(
+      'Maximum number of retries for API calls (default: 3). Useful for handling transient errors like 503 Service Unavailable.'
+    ),
   jsonMode: z
     .boolean()
     .default(false)
@@ -186,6 +195,7 @@ const AIAgentParamsSchema = z.object({
     model: 'google/gemini-2.5-flash',
     temperature: 0.7,
     maxTokens: 50000,
+    maxRetries: 3,
     jsonMode: false,
   }).describe(
     'AI model configuration including provider, temperature, and tokens. For model unless otherwise specified, use google/gemini-2.5-flash as default. Use google/gemini-2.5-flash-image-preview to edit and generate images.'
@@ -505,7 +515,7 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   private initializeModel(modelConfig: AIAgentParamsParsed['model']) {
-    const { model, temperature, maxTokens } = modelConfig;
+    const { model, temperature, maxTokens, maxRetries } = modelConfig;
     const slashIndex = model.indexOf('/');
     const provider = model.substring(0, slashIndex);
     const modelName = model.substring(slashIndex + 1);
@@ -517,6 +527,9 @@ export class AIAgentBubble extends ServiceBubble<
     // Enable streaming if streamingCallback is provided
     const enableStreaming = !!this.streamingCallback;
 
+    // Default to 3 retries if not specified
+    const retries = maxRetries ?? 3;
+
     switch (provider) {
       case 'openai':
         return new ChatOpenAI({
@@ -525,6 +538,7 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           apiKey,
           streaming: enableStreaming,
+          maxRetries: retries,
         });
       case 'google':
         return new ChatGoogleGenerativeAI({
@@ -533,6 +547,7 @@ export class AIAgentBubble extends ServiceBubble<
           maxOutputTokens: maxTokens,
           apiKey,
           streaming: enableStreaming,
+          maxRetries: retries,
         });
       case 'anthropic':
         return new ChatAnthropic({
@@ -542,6 +557,7 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           streaming: enableStreaming,
           apiKey,
+          maxRetries: retries,
         });
       case 'openrouter':
         console.log('openrouter', modelName);
@@ -552,6 +568,7 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           apiKey,
           streaming: enableStreaming,
+          maxRetries: retries,
           configuration: {
             baseURL: 'https://openrouter.ai/api/v1',
           },
@@ -824,8 +841,61 @@ export class AIAgentBubble extends ServiceBubble<
       const systemMessage = new HumanMessage(systemPrompt);
       const allMessages = [systemMessage, ...messages];
 
-      // If we have tools, bind them to the LLM
-      const modelWithTools = tools.length > 0 ? llm.bindTools(tools) : llm;
+      // Helper function for exponential backoff with jitter
+      const exponentialBackoff = (attemptNumber: number): Promise<void> => {
+        // Base delay: 1 second, exponentially increases (1s, 2s, 4s, 8s, ...)
+        const baseDelay = 1000;
+        const maxDelay = 32000; // Cap at 32 seconds
+        const delay = Math.min(
+          baseDelay * Math.pow(2, attemptNumber - 1),
+          maxDelay
+        );
+
+        // Add jitter (random ±25% variation) to prevent thundering herd
+        const jitter = delay * 0.25 * (Math.random() - 0.5);
+        const finalDelay = delay + jitter;
+
+        return new Promise((resolve) => setTimeout(resolve, finalDelay));
+      };
+
+      // Shared onFailedAttempt callback to avoid duplication
+      const onFailedAttempt = async (error: any) => {
+        const attemptNumber = error.attemptNumber;
+        const retriesLeft = error.retriesLeft;
+
+        this.context?.logger?.warn(
+          `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
+        );
+
+        // Optionally emit streaming event for retry
+        if (this.streamingCallback) {
+          await this.streamingCallback({
+            type: 'error',
+            data: {
+              error: `Retry attempt ${attemptNumber}/${this.params.model.maxRetries}: ${error.message}`,
+              recoverable: retriesLeft > 0,
+            },
+          });
+        }
+
+        // Wait with exponential backoff before retrying
+        if (retriesLeft > 0) {
+          await exponentialBackoff(attemptNumber);
+        }
+      };
+
+      // If we have tools, bind them to the LLM, then add retry logic
+      // IMPORTANT: Must bind tools FIRST, then add retry - not the other way around
+      const modelWithTools =
+        tools.length > 0
+          ? llm.bindTools(tools).withRetry({
+              stopAfterAttempt: this.params.model.maxRetries,
+              onFailedAttempt,
+            })
+          : llm.withRetry({
+              stopAfterAttempt: this.params.model.maxRetries,
+              onFailedAttempt,
+            });
 
       // Use streaming if streamingCallback is provided
       if (this.streamingCallback) {
