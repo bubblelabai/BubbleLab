@@ -80,6 +80,16 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Debug: Dump entire subscription data */}
+            <div className="mt-4 p-2 bg-gray-900 rounded text-xs text-gray-300 overflow-auto max-h-96">
+              <div className="font-semibold mb-2 text-yellow-400">
+                DEBUG: Full Subscription Data
+              </div>
+              <pre className="whitespace-pre-wrap break-words">
+                {JSON.stringify(subscription, null, 2)}
+              </pre>
+            </div>
           </div>
         )}
       </div>

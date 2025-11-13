@@ -19,15 +19,19 @@ export const subscriptionStatusResponseSchema = z
     }),
     usage: z.object({
       current: z.number().openapi({
-        description: 'Current monthly usage count',
+        description: 'Current monthly usage count (in USD)',
         example: 42,
       }),
       limit: z.number().openapi({
-        description: 'Monthly usage limit',
+        description: 'Monthly usage limit (in USD)',
         example: 100,
       }),
+      estimatedMonthlyCost: z.number().openapi({
+        description: 'Projected monthly cost based on current usage trend',
+        example: 14.19,
+      }),
       percentage: z.number().openapi({
-        description: 'Usage percentage',
+        description: 'Usage percentage (0-100)',
         example: 42,
       }),
       resetDate: z.string().openapi({
@@ -57,6 +61,39 @@ export const subscriptionStatusResponseSchema = z
         )
         .openapi({
           description: 'Token usage breakdown by model for current month',
+        }),
+      serviceUsage: z
+        .array(
+          z.object({
+            service: z.string().openapi({
+              description: 'Service identifier',
+              example: 'OPENAI_CRED',
+            }),
+            subService: z.string().optional().openapi({
+              description: 'Sub-service identifier',
+              example: 'gpt-4',
+            }),
+            unit: z.string().openapi({
+              description: 'Unit type for this service',
+              example: 'per_1m_tokens',
+            }),
+            usage: z.number().openapi({
+              description: 'Units used this month',
+              example: 2250000,
+            }),
+            unitCost: z.number().openapi({
+              description:
+                'Bubble Lab price per unit (with multiplier applied)',
+              example: 2.1,
+            }),
+            totalCost: z.number().openapi({
+              description: 'Total cost for this service (usage * unitCost)',
+              example: 4.725,
+            }),
+          })
+        )
+        .openapi({
+          description: 'Service usage and cost breakdown for current month',
         }),
     }),
     isActive: z.boolean().openapi({
