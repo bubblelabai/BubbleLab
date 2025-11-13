@@ -82,6 +82,96 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     pro_plus: 'Pro Plus',
   };
 
+  // Mock service usage data - TODO: Replace with actual usage tracking
+  const mockServiceUsage = [
+    {
+      service: 'FIRECRAWL_API_KEY',
+      unit: 'per_token',
+      usage: 0,
+      unitCost: 0.00087,
+      totalCost: 0,
+    },
+    {
+      service: 'RESEND_CRED',
+      unit: 'per_email',
+      usage: 0,
+      unitCost: 0.00042,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'apimaestro/linkedin-profile-posts',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00525,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'apimaestro/linkedin-posts-search-scraper-no-cookies',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00525,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'apify/instagram-scraper',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00284,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'apify/instagram-hashtag-scraper',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00242,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'streamers/youtube-scraper',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00525,
+      totalCost: 0,
+    },
+    {
+      service: 'APIFY_CRED',
+      subService: 'pintostudio/youtube-transcript-scraper',
+      unit: 'per_result',
+      usage: 0,
+      unitCost: 0.00525,
+      totalCost: 0,
+    },
+    {
+      service: 'GOOGLE_GEMINI_CRED',
+      subService: 'google/gemini-2.5-pro',
+      unit: 'per_1m_token_input',
+      usage: 0,
+      unitCost: 1.969,
+      totalCost: 0,
+    },
+    {
+      service: 'GOOGLE_GEMINI_CRED',
+      subService: 'google/gemini-2.5-flash',
+      unit: 'per_1m_token_output',
+      usage: 0,
+      unitCost: 1.969,
+      totalCost: 0,
+    },
+    {
+      service: 'OPENAI_CRED',
+      subService: 'gpt-4',
+      unit: 'per_1m_tokens',
+      usage: 0,
+      unitCost: 2.1,
+      totalCost: 0,
+    },
+  ];
+
   return c.json({
     userId,
     plan: subscriptionInfo.plan,
@@ -94,6 +184,8 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
       percentage,
       resetDate: nextResetDate,
       tokenUsage: tokenUsageData,
+      serviceUsage: mockServiceUsage,
+      estimatedMonthlyCost: 0,
     },
     isActive: true, // TODO: Check actual subscription status from Clerk
   });
