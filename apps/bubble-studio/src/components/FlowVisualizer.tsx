@@ -24,7 +24,6 @@ import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
 import CronScheduleNode from './CronScheduleNode';
 import { WebhookURLDisplay } from './WebhookURLDisplay';
-import { getLiveOutputStore } from '@/stores/liveOutputStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
 import { useEditorStore } from '@/stores/editorStore';
 
