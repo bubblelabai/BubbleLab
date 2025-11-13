@@ -24,7 +24,8 @@ import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
 import CronScheduleNode from './CronScheduleNode';
 import { WebhookURLDisplay } from './WebhookURLDisplay';
-import { getLiveOutputStore } from '@/stores/liveOutputStore';
+import { getPearlChatStore } from '@/stores/pearlChatStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -1104,15 +1105,32 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={(_event, node) => {
-          // When a bubble node is clicked, select its tab in the console panel
           if (node.type === 'bubbleNode') {
-            getLiveOutputStore(flowId)
-              ?.getState()
-              .selectBubbleInConsole(node.id);
+            // Dismiss the highlighted bubble
+            getExecutionStore(currentFlow?.id || flowId).highlightBubble(
+              node.id
+            );
+            // Clear the bubble context
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .clearBubbleContext();
+            // set context
+
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .addBubbleToContext(Number(node.id));
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
           }
         }}
         onPaneClick={() => {
+          // Dismiss the highlighted bubble
           getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
+          useEditorStore.getState().clearExecutionHighlight();
+          // Clear the bubble context
+          useUIStore.getState().openConsolidatedPanelWith('pearl');
+          getPearlChatStore(currentFlow?.id || flowId)
+            .getState()
+            .clearBubbleContext();
         }}
         proOptions={proOptions}
         minZoom={0.1}

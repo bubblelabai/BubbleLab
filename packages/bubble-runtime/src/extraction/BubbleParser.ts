@@ -1099,6 +1099,12 @@ export class BubbleParser {
           if (bubbleNode) {
             bubbleNode.variableName = nameText;
 
+            // Extract comment for this bubble node
+            const description = this.extractCommentForNode(node);
+            if (description) {
+              bubbleNode.description = description;
+            }
+
             // Find the Variable object for this bubble declaration
             const variable = this.findVariableForBubble(
               nameText,
@@ -1136,6 +1142,12 @@ export class BubbleParser {
       if (bubbleNode) {
         const synthetic = `_anonymous_${bubbleNode.className}_${Object.keys(nodes).length}`;
         bubbleNode.variableName = synthetic;
+
+        // Extract comment for this bubble node
+        const description = this.extractCommentForNode(node);
+        if (description) {
+          bubbleNode.description = description;
+        }
 
         // For anonymous bubbles, use negative synthetic ID (no Variable object exists)
         const syntheticId = -1 * (Object.keys(nodes).length + 1);
@@ -1188,6 +1200,12 @@ export class BubbleParser {
       if (bubbleNode) {
         const synthetic = `_anonymous_${bubbleNode.className}_${Object.keys(nodes).length}`;
         bubbleNode.variableName = synthetic;
+
+        // Extract comment for this bubble node
+        const description = this.extractCommentForNode(node);
+        if (description) {
+          bubbleNode.description = description;
+        }
 
         const syntheticId = -1 * (Object.keys(nodes).length + 1);
         bubbleNode.variableId = syntheticId;
@@ -1620,5 +1638,106 @@ export class BubbleParser {
 
     // Fallback
     return { value: valueText, type: BubbleParameterType.UNKNOWN };
+  }
+
+  /**
+   * Extract comment/description for a node by looking at preceding comments
+   **/
+  private extractCommentForNode(node: TSESTree.Node): string | undefined {
+    // Get the line number where this node starts
+    const nodeLine = node.loc?.start.line;
+    if (!nodeLine) return undefined;
+
+    // Split the script into lines to find comments
+    const lines = this.bubbleScript.split('\n');
+
+    // Look backwards from the node line to find comments
+    const commentLines: string[] = [];
+    let currentLine = nodeLine - 1; // Start from the line before the node (0-indexed, but node.loc is 1-indexed)
+    let isBlockComment = false;
+
+    // Scan backwards to collect comment lines
+    while (currentLine > 0) {
+      const line = lines[currentLine - 1]?.trim(); // Convert to 0-indexed
+
+      if (!line) {
+        // Empty line - if we already have comments, stop here
+        if (commentLines.length > 0) break;
+        currentLine--;
+        continue;
+      }
+
+      // Check for single-line comment (//)
+      if (line.startsWith('//')) {
+        commentLines.unshift(line);
+        currentLine--;
+        continue;
+      }
+
+      // Check if this line is part of a block comment
+      if (
+        line.startsWith('*') ||
+        line.startsWith('/**') ||
+        line.startsWith('/*')
+      ) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        continue;
+      }
+
+      // Check if this line ends a block comment
+      if (line.endsWith('*/')) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        // Continue collecting the rest of the comment block
+        continue;
+      }
+
+      // If we've already collected some comment lines and hit a non-comment, stop
+      if (commentLines.length > 0) {
+        break;
+      }
+
+      // Otherwise, this might be code - stop looking
+      break;
+    }
+
+    if (commentLines.length === 0) return undefined;
+
+    // Join comment lines and extract the actual text
+    const fullComment = commentLines.join('\n');
+
+    let cleaned: string;
+
+    if (isBlockComment) {
+      // Extract text from JSDoc-style or block comments
+      // Remove /** ... */ or /* ... */ wrappers and clean up
+      cleaned = fullComment
+        .replace(/^\/\*\*?\s*/, '') // Remove opening /** or /*
+        .replace(/\s*\*\/\s*$/, '') // Remove closing */
+        .split('\n')
+        .map((line) => {
+          // Remove leading * and whitespace from each line
+          return line.replace(/^\s*\*\s?/, '').trim();
+        })
+        .filter((line) => line.length > 0) // Remove empty lines
+        .join(' ') // Join into single line
+        .trim();
+    } else {
+      // Handle single-line comments (//)
+      cleaned = fullComment
+        .split('\n')
+        .map((line) => {
+          // Remove leading // and whitespace from each line
+          return line.replace(/^\/\/\s?/, '').trim();
+        })
+        .filter((line) => line.length > 0) // Remove empty lines
+        .join(' ') // Join into single line
+        .trim();
+    }
+
+    return cleaned || undefined;
   }
 }

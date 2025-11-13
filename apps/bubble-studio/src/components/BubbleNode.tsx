@@ -42,7 +42,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     bubble,
     bubbleKey,
     requiredCredentialTypes: propRequiredCredentialTypes = [],
-    onHighlightChange,
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
@@ -72,7 +71,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
   );
 
   // Get actions from store
-  const highlightBubble = useExecutionStore(flowId, (s) => s.highlightBubble);
   const setCredential = useExecutionStore(flowId, (s) => s.setCredential);
   const toggleRootExpansion = useExecutionStore(
     flowId,
@@ -180,7 +178,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
-
   const logo = useMemo(
     () =>
       findLogoForBubble({
@@ -231,13 +228,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     }
     return String(value);
   };
-
-  const handleClick = () => {
-    // Update store highlight state (convert to string for consistency)
-    highlightBubble(String(bubbleKey));
-    onHighlightChange?.();
-  };
-
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
   const isSubBubble =
     bubble.variableId < 0 ||
@@ -262,7 +252,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
                 : BUBBLE_COLORS.DEFAULT.border
       }`}
-      onClick={handleClick}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
       {/* Left Handle - Shows "Input" button after execution */}
@@ -296,6 +285,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
+
               // Navigate to console with first output
               const liveOutputStore = getLiveOutputStore(flowId);
               if (liveOutputStore) {
@@ -508,6 +498,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
               <h3 className="text-sm font-semibold text-neutral-100 truncate">
                 {bubble.variableName}
               </h3>
+              {bubble.description && (
+                <p className="text-xs text-neutral-400 mt-1.5 break-words">
+                  {bubble.description}
+                </p>
+              )}
               {/* <p className="text-xs text-neutral-400 truncate mt-1">
                 {bubble.bubbleName}
               </p> */}

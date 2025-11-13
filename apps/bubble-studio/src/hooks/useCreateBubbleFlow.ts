@@ -4,16 +4,8 @@ import type {
   CreateBubbleFlowResponse,
   BubbleFlowListResponse,
   BubbleFlowListItem,
+  CreateBubbleFlowRequest,
 } from '@bubblelab/shared-schemas';
-
-export interface CreateBubbleFlowRequest {
-  name: string;
-  description: string;
-  code: string;
-  prompt: string;
-  eventType: string;
-  webhookActive: boolean;
-}
 
 interface UseCreateBubbleFlowResult {
   mutate: (request: CreateBubbleFlowRequest) => void;
@@ -61,7 +53,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           name: newFlow.name,
           description: newFlow.description,
           eventType: newFlow.eventType,
-          isActive: newFlow.webhookActive,
+          isActive: newFlow.webhookActive || false,
           webhookExecutionCount: 0,
           cronActive: false,
           webhookFailureCount: 0,
@@ -125,7 +117,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 name: variables.name,
                 description: variables.description,
                 eventType: data.eventType,
-                isActive: variables.webhookActive,
+                isActive: variables.webhookActive || false,
                 webhookExecutionCount: 0,
                 webhookFailureCount: 0,
                 executionCount: 0,

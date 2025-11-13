@@ -43,6 +43,13 @@ export const createBubbleFlowSchema = z
       description: 'Whether the webhook should be active immediately',
       example: true,
     }),
+    bubbleParameters: z
+      .record(z.string(), ParsedBubbleWithInfoSchema)
+      .optional()
+      .openapi({
+        description:
+          'Optional pre-parsed bubble parameters with descriptions (from AI generation). If provided, will be used instead of re-parsing the code.',
+      }),
   })
   .openapi('CreateBubbleFlowRequest');
 

@@ -14,17 +14,24 @@ interface ComplexWorkflowPayload extends SlackMentionEvent {
 
 export class ComplexWorkflow extends BubbleFlow<'slack/bot_mentioned'> {
   async handle(payload: ComplexWorkflowPayload) {
+    /**
+     * This posts the user count to the database
+     */
     const database = new PostgreSQLBubble({
       query: 'SELECT count(*) as user_count FROM users',
       ignoreSSL: true,
       allowedOperations: ['SELECT'],
     });
+
+    // This sends a message to the user
     await new SlackBubble({
       operation: 'send_message',
       text: payload.text,
       channel: payload.channel,
     }).action();
     await database.action();
+
+    /* This says hello to the user */
     return await new HelloWorldBubble({
       message: payload.message,
       name: payload.name,

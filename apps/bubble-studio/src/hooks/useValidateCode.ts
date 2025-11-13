@@ -69,11 +69,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       }
 
       // Update visualizer with bubbles from validation
-      if (
-        result.valid &&
-        result.bubbles &&
-        Object.keys(result.bubbles).length > 0
-      ) {
+      if (result.valid && result.bubbles) {
         // Code was already optimistically updated in onMutate
         // Now update the validation results (bubbles, schema, credentials)
         updateBubbleParameters(result.bubbles);

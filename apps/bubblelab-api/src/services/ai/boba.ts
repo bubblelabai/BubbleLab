@@ -10,13 +10,11 @@ import {
   CREDENTIAL_ENV_MAP,
   CredentialType,
 } from '@bubblelab/shared-schemas';
-import {
-  BubbleFlowGeneratorWorkflow,
-  BubbleLogger,
-  type StreamingCallback,
-} from '@bubblelab/bubble-core';
-import { validateBubbleFlow } from '../validation.js';
+import { BubbleLogger, type StreamingCallback } from '@bubblelab/bubble-core';
+import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { env } from 'src/config/env.js';
+import { BubbleFlowGeneratorWorkflow } from './bubbleflow-generator.workflow.js';
+import { getBubbleFactory } from '../bubble-factory-instance.js';
 
 export interface BobaRequest {
   prompt: string;
@@ -71,6 +69,7 @@ export async function runBoba(
     [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_API_KEY || '',
     ...credentials,
   };
+  const bubbleFactory = await getBubbleFactory();
 
   // Create BubbleFlowGeneratorWorkflow instance
   const generator = new BubbleFlowGeneratorWorkflow(
@@ -79,8 +78,9 @@ export async function runBoba(
       credentials: mergedCredentials,
       streamingCallback: apiStreamingCallback,
     },
+    bubbleFactory,
     {
-      logger: logger,
+      logger,
     }
   );
 
@@ -89,13 +89,16 @@ export async function runBoba(
 
   // Validate the generated code
   let actualIsValid = result.data.isValid;
-  const validationResult = await validateBubbleFlow(result.data.generatedCode);
+  const validationResult = await validateAndExtract(
+    result.data.generatedCode,
+    bubbleFactory
+  );
 
   if (result.data.generatedCode && result.data.generatedCode.trim()) {
     try {
       result.data.inputsSchema = JSON.stringify(validationResult.inputSchema);
 
-      if (validationResult.valid && validationResult.bubbleParameters) {
+      if (validationResult.valid && validationResult) {
         actualIsValid = true;
       } else {
         // Keep the AI's validation result if our parsing failed
@@ -112,6 +115,7 @@ export async function runBoba(
   const tokenUsage = logger.getTokenUsage();
 
   // Build and return final generation result
+
   const generationResult: GenerationResult = {
     generatedCode: result.data.generatedCode,
     summary: result.data.summary,
@@ -123,6 +127,7 @@ export async function runBoba(
     bubbleCount: Object.keys(validationResult.bubbleParameters ?? {}).length,
     tokenUsage,
     codeLength: result.data.generatedCode.length,
+    bubbleParameters: validationResult.bubbleParameters,
   };
 
   console.log('[Boba] Generation result:', generationResult);

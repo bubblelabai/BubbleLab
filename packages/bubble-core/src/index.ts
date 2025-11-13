@@ -59,7 +59,6 @@ export type { GithubParamsInput } from './bubbles/service-bubble/github.js';
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
 export { SlackNotifierWorkflowBubble } from './bubbles/workflow-bubble/slack-notifier.workflow.js';
-export { BubbleFlowGeneratorWorkflow } from './bubbles/workflow-bubble/bubbleflow-generator.workflow.js';
 export { SlackDataAssistantWorkflow } from './bubbles/workflow-bubble/slack-data-assistant.workflow.js';
 export { PDFFormOperationsWorkflow } from './bubbles/workflow-bubble/pdf-form-operations.workflow.js';
 export { PDFOcrWorkflow } from './bubbles/workflow-bubble/pdf-ocr.workflow.js';
