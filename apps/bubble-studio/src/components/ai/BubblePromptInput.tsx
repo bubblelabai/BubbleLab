@@ -1,11 +1,10 @@
 /**
- * BubblePromptInput - Simple textarea that displays text with bubble tags
- * Pure component that parses value and renders bubble tags inline
+ * BubblePromptInput - Simple textarea that displays selected bubble context
+ * Shows selected bubbles separately on top of the textarea
  */
 import { KeyboardEvent, ChangeEvent } from 'react';
-import { parseBubbleTags } from '../../utils/bubbleTagParser';
 import { BubbleTag } from './BubbleTag';
-import { useBubbleDetail } from '../../hooks/useBubbleDetail';
+import { X } from 'lucide-react';
 
 interface BubblePromptInputProps {
   value: string;
@@ -15,6 +14,8 @@ interface BubblePromptInputProps {
   disabled?: boolean;
   className?: string;
   flowId: number | null;
+  selectedBubbleContext: number[]; // Bubble variable IDs from context
+  onRemoveBubble?: (variableId: number) => void;
 }
 
 export function BubblePromptInput({
@@ -24,13 +25,9 @@ export function BubblePromptInput({
   placeholder = '',
   disabled = false,
   className = '',
-  flowId,
+  selectedBubbleContext,
+  onRemoveBubble,
 }: BubblePromptInputProps) {
-  const bubbleDetail = useBubbleDetail(flowId);
-
-  // Parse the value and render segments
-  const segments = parseBubbleTags(value);
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && e.ctrlKey && !disabled && onSubmit) {
       e.preventDefault();
@@ -42,46 +39,47 @@ export function BubblePromptInput({
     onChange(e.target.value);
   };
 
-  console.log('[BubblePromptInput] segments', segments);
-  // Check if there are any bubble tags
-  const hasBubbles = segments.some((s) => s.type === 'bubble');
-
   return (
-    <div className="relative">
-      {/* Always show textarea for editing */}
+    <div className="space-y-2">
+      {/* Display selected bubble context on top if any exist */}
+      {selectedBubbleContext.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-1">
+          {selectedBubbleContext.map((variableId) => (
+            <div
+              key={variableId}
+              className="relative group inline-flex items-center gap-1"
+            >
+              <BubbleTag variableId={variableId} />
+              {onRemoveBubble && (
+                <button
+                  type="button"
+                  onClick={() => onRemoveBubble(variableId)}
+                  disabled={disabled}
+                  className="absolute -top-1 -right-1 p-0.5 bg-red-500 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Remove bubble from context"
+                >
+                  <X className="w-2.5 h-2.5 text-white" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Textarea for text input */}
       <textarea
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className={`${className} ${hasBubbles ? 'text-transparent caret-gray-100' : ''}`}
+        className={className}
         style={{
           minHeight: '80px',
           height: '80px',
           resize: 'none',
         }}
       />
-
-      {/* Overlay with bubble tags when they exist */}
-      {hasBubbles && (
-        <div
-          className={`absolute inset-0 pointer-events-none ${className}`}
-          style={{
-            minHeight: '80px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {segments.map((segment, index) => {
-            if (segment.type === 'text') {
-              return <span key={index}>{segment.content}</span>;
-            } else {
-              return <BubbleTag key={index} variableId={segment.variableId!} />;
-            }
-          })}
-        </div>
-      )}
     </div>
   );
 }

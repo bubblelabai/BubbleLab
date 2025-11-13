@@ -34,6 +34,7 @@ interface PearlChatState {
   eventsList: DisplayEvent[][];
   activeToolCallIds: Set<string>;
   prompt: string;
+  selectedBubbleContext: number[]; // List of bubble variable IDs for context
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -42,6 +43,12 @@ interface PearlChatState {
   // Prompt management
   setPrompt: (prompt: string) => void;
   clearPrompt: () => void;
+
+  // Bubble context management
+  addBubbleToContext: (variableId: number) => void;
+  removeBubbleFromContext: (variableId: number) => void;
+  toggleBubbleInContext: (variableId: number) => void;
+  clearBubbleContext: () => void;
 
   // Event management
   addEventToCurrentTurn: (event: DisplayEvent) => void;
@@ -69,6 +76,7 @@ function createPearlChatStore(flowId: number) {
     eventsList: [],
     activeToolCallIds: new Set(),
     prompt: '',
+    selectedBubbleContext: [],
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -79,6 +87,41 @@ function createPearlChatStore(flowId: number) {
     setPrompt: (prompt) => set({ prompt }),
 
     clearPrompt: () => set({ prompt: '' }),
+
+    addBubbleToContext: (variableId) =>
+      set((state) => {
+        if (state.selectedBubbleContext.includes(variableId)) {
+          return state; // Already in context
+        }
+        return {
+          selectedBubbleContext: [...state.selectedBubbleContext, variableId],
+        };
+      }),
+
+    removeBubbleFromContext: (variableId) =>
+      set((state) => ({
+        selectedBubbleContext: state.selectedBubbleContext.filter(
+          (id) => id !== variableId
+        ),
+      })),
+
+    toggleBubbleInContext: (variableId) =>
+      set((state) => {
+        const exists = state.selectedBubbleContext.includes(variableId);
+        if (exists) {
+          return {
+            selectedBubbleContext: state.selectedBubbleContext.filter(
+              (id) => id !== variableId
+            ),
+          };
+        } else {
+          return {
+            selectedBubbleContext: [...state.selectedBubbleContext, variableId],
+          };
+        }
+      }),
+
+    clearBubbleContext: () => set({ selectedBubbleContext: [] }),
 
     startNewTurn: () =>
       set((state) => ({ eventsList: [...state.eventsList, []] })),
@@ -123,6 +166,7 @@ function createPearlChatStore(flowId: number) {
         eventsList: [],
         activeToolCallIds: new Set(),
         prompt: '',
+        selectedBubbleContext: [],
       }),
   }));
 }

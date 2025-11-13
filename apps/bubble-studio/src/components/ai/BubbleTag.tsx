@@ -5,13 +5,18 @@
 import { CogIcon } from '@heroicons/react/24/outline';
 import { findLogoForBubble } from '../../lib/integrations';
 import type { BubbleInfo } from '../../utils/bubbleUtils';
+import { useBubbleDetail } from '../../hooks/useBubbleDetail';
+import { useUIStore } from '../../stores/uiStore';
 
 interface BubbleTagProps {
   variableId: number;
 }
 
 export function BubbleTag({ variableId }: BubbleTagProps) {
-  const logo = findLogoForBubble({ variableName: variableId.toString() });
+  const selectedFlow = useUIStore((state) => state.selectedFlowId);
+  const bubbleDetail = useBubbleDetail(selectedFlow).getBubbleInfo(variableId);
+
+  const logo = findLogoForBubble({ variableName: bubbleDetail?.bubbleName });
 
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-900/30 rounded text-xs text-blue-200 border border-blue-700/50">
@@ -25,7 +30,7 @@ export function BubbleTag({ variableId }: BubbleTagProps) {
       ) : (
         <CogIcon className="h-3 w-3" />
       )}
-      <span className="font-medium">{variableId}</span>
+      <span className="font-medium">{bubbleDetail?.variableName}</span>
     </span>
   );
 }

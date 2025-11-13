@@ -36,6 +36,7 @@ import {
   compressPngToBase64,
 } from '../../utils/fileUtils';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
+import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 import { CodeDiffView } from './CodeDiffView';
 import { BubbleText } from './BubbleText';
 import { MarkdownWithBubbles } from './MarkdownWithBubbles';
@@ -168,7 +169,7 @@ export function PearlChat() {
     closeSidePanel();
   };
 
-  // Generate contextual suggestions based on trigger type
+  // Generate contextual suggestions based on trigger type and selected bubble context
   const getQuickStartSuggestions = (): Array<{
     label: string;
     prompt: string;
@@ -176,7 +177,37 @@ export function PearlChat() {
     description: string;
   }> => {
     const triggerType = flowData?.eventType;
+    const bubbleDetail = useBubbleDetail(selectedFlowId);
 
+    // Use selected bubble context to generate bubble-specific actions
+    const bubbleSuggestions = pearl.selectedBubbleContext
+      .map((variableId) => {
+        const bubbleInfo = bubbleDetail.getBubbleInfo(variableId);
+        const variableName = bubbleInfo?.variableName || `Bubble ${variableId}`;
+
+        return [
+          {
+            label: `Delete ${variableName}`,
+            prompt: `Delete this bubble from my workflow`,
+            icon: <X className="w-4 h-4" />,
+            description: `Remove ${variableName} from the workflow`,
+          },
+          {
+            label: `Modify ${variableName}`,
+            prompt: `Modify the parameters of this bubble`,
+            icon: <AlertCircle className="w-4 h-4" />,
+            description: `Change settings for ${variableName}`,
+          },
+        ];
+      })
+      .flat();
+
+    // If there are bubble-specific suggestions, show only those
+    if (bubbleSuggestions.length > 0) {
+      return bubbleSuggestions;
+    }
+
+    // Otherwise, show flow-based suggestions
     const baseSuggestions = [
       {
         label: 'How to run this flow?',
@@ -499,6 +530,8 @@ export function PearlChat() {
               className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
               disabled={pearl.isPending}
               flowId={selectedFlowId}
+              selectedBubbleContext={pearl.selectedBubbleContext}
+              onRemoveBubble={pearl.removeBubbleFromContext}
             />
             <div className="absolute right-0 top-1/2 -translate-y-1/2">
               <label className="cursor-pointer">

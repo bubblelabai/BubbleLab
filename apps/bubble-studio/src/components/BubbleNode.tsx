@@ -181,8 +181,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
-  const { setPrompt } = usePearlChatStore(flowId);
-
+  const { toggleBubbleInContext, clearBubbleContext } =
+    usePearlChatStore(flowId);
+  const openPearlChat = useUIStore((state) => state.setConsolidatedPanelTab);
   const logo = useMemo(
     () =>
       findLogoForBubble({
@@ -233,15 +234,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     }
     return String(value);
   };
-
-  const handleClick = () => {
-    // Update store highlight state (convert to string for consistency)
-    highlightBubble(String(bubbleKey));
-    // Set the prompt to the current bubble description
-    setPrompt(bubble.variableName || '');
-    onHighlightChange?.();
-  };
-
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
   const isSubBubble =
     bubble.variableId < 0 ||
@@ -266,7 +258,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
                 : BUBBLE_COLORS.DEFAULT.border
       }`}
-      onClick={handleClick}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
       {/* Left Handle - Shows "Input" button after execution */}
@@ -300,6 +291,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
+
               // Navigate to console with first output
               const liveOutputStore = getLiveOutputStore(flowId);
               if (liveOutputStore) {

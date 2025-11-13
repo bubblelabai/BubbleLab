@@ -315,6 +315,7 @@ export function usePearlChatStore(flowId: number | null) {
   const eventsList = store((s) => s.eventsList);
   const activeToolCallIds = store((s) => s.activeToolCallIds);
   const prompt = store((s) => s.prompt);
+  const selectedBubbleContext = store((s) => s.selectedBubbleContext);
 
   // ===== Main Generation Function =====
   const startGeneration = (
@@ -323,8 +324,26 @@ export function usePearlChatStore(flowId: number | null) {
   ) => {
     if (!store || !flowId) return;
 
-    // Build user message
+    const storeState = store.getState();
+
+    // Build user message with bubble context injection
     let userContent = promptText.trim();
+
+    // Inject bubble context if any bubbles are selected
+    if (storeState.selectedBubbleContext.length > 0) {
+      const bubbleContextText = storeState.selectedBubbleContext
+        .map((variableId) => {
+          const bubbleInfo = bubbleDetail.getBubbleInfo(variableId);
+          const variableName =
+            bubbleInfo?.variableName || `Bubble ${variableId}`;
+          return `For the selected bubble: ${variableName}, please do the following: \n `;
+        })
+        .join(', ');
+
+      // Prepend bubble context to the user's prompt
+      userContent = `Context: ${bubbleContextText}${userContent ? '\n\n' + userContent : ''}`;
+    }
+
     if (uploadedFiles.length > 0) {
       const fileInfo = uploadedFiles
         .map((f) => {
@@ -348,11 +367,11 @@ export function usePearlChatStore(flowId: number | null) {
     };
 
     // Update store state
-    const storeState = store.getState();
     storeState.addMessage(userMessage);
     storeState.startNewTurn();
     storeState.clearToolCalls();
     storeState.clearPrompt(); // Clear prompt after sending
+    // Note: We keep selectedBubbleContext for now, will clear it after successful generation
 
     // Build conversation history from current messages
     const conversationMessages = storeState.messages.map((msg) => ({
@@ -414,12 +433,39 @@ export function usePearlChatStore(flowId: number | null) {
     store?.getState().clearPrompt();
   }, [store]);
 
+  // ===== Bubble context management =====
+  const addBubbleToContext = useCallback(
+    (variableId: number) => {
+      store?.getState().addBubbleToContext(variableId);
+    },
+    [store]
+  );
+
+  const removeBubbleFromContext = useCallback(
+    (variableId: number) => {
+      store?.getState().removeBubbleFromContext(variableId);
+    },
+    [store]
+  );
+
+  const toggleBubbleInContext = useCallback(
+    (variableId: number) => {
+      store?.getState().toggleBubbleInContext(variableId);
+    },
+    [store]
+  );
+
+  const clearBubbleContext = useCallback(() => {
+    store?.getState().clearBubbleContext();
+  }, [store]);
+
   return {
     // State (components can subscribe)
     messages,
     eventsList,
     activeToolCallIds,
     prompt,
+    selectedBubbleContext,
 
     // Actions
     startGeneration,
@@ -427,6 +473,10 @@ export function usePearlChatStore(flowId: number | null) {
     reset,
     setPrompt,
     clearPrompt,
+    addBubbleToContext,
+    removeBubbleFromContext,
+    toggleBubbleInContext,
+    clearBubbleContext,
 
     // Mutation state (for loading indicators)
     isPending,
