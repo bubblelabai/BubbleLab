@@ -300,19 +300,33 @@ export default function AllEventsView({
                 {/* Errors - If any */}
                 {errorEvents.length > 0 && (
                   <div className="px-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xs font-medium text-red-400 uppercase tracking-wide">
-                        Errors ({errorEvents.length})
-                      </h3>
-                      <button
-                        onClick={handleFixWithPearl}
-                        disabled={pearl.isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Fix with Pearl
-                      </button>
+                    {/* Prominent Fix with Pearl Banner */}
+                    <div className="mb-4 p-4 bg-[#161b22] border border-[#30363d] rounded-lg">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-200 mb-1">
+                            Need help fixing these errors?
+                          </h4>
+                          <p className="text-xs text-gray-400">
+                            Pearl can analyze your errors and suggest fixes
+                            automatically
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleFixWithPearl}
+                          disabled={pearl.isPending}
+                          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Errors List */}
+                    <h3 className="text-xs font-medium text-red-400 mb-2 uppercase tracking-wide">
+                      Errors ({errorEvents.length})
+                    </h3>
                     <div className="space-y-2">
                       {errorEvents.map((event, idx) => (
                         <div
