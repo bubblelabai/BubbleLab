@@ -65,6 +65,13 @@ export const GenerationResultSchema = z.object({
   codeLength: z.number().optional().openapi({
     description: 'Length of the generated code in characters',
   }),
+  bubbleParameters: z
+    .record(z.union([z.string(), z.number()]), ParsedBubbleWithInfoSchema)
+    .optional()
+    .openapi({
+      description:
+        'Parsed bubble parameters with descriptions from AI generation',
+    }),
 });
 // POST /bubbleflow-template/data-analyst - Generate template from description
 export const generateBubbleFlowTemplateSchema = z

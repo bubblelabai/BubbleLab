@@ -31,6 +31,7 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow. Be specific and make sure no same variable name is used for different bubbles. Bad name: slackNotifier, good name: slackOnChannelErrorNotifier.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
+
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
 export const BUBBLE_STUDIO_INSTRUCTIONS = `
@@ -106,11 +107,33 @@ Only return the final TypeScript code that passes validation. No explanations or
 export const INPUT_SCHEMA_INSTRUCTIONS = `For input schema, ie. the interface passed to the handle method. Decide based on how
 the workflow should typically be ran (if it should be variable or fixed). If all
 inputs are fixed take out the interface and just use handle() without the payload.
-Leave insightful comments on each input, for example
-const { input = 'sensible example value', cron } = payload;
-If you do leave a default value make sure to make the field optional in the payload interface.
+Leave insightful comments on each input field. For example, for a workflow that processes user data and sends notifications:
+
+export interface UserNotificationPayload extends WebhookEvent {
+  /** The user's email address to send notifications to */
+  email?: string;
+  /** Custom message content, defaults to a welcome message if not provided */
+  message?: string;
+  /** Notification priority level (low, medium, high) */
+  priority?: 'low' | 'medium' | 'high';
+  /** Whether to send SMS in addition to email notification */
+  includeSMS?: boolean;
+}
+
+const { 
+  email = 'user@example.com', 
+  message = 'Welcome to our platform! Thanks for signing up.', 
+  priority = 'medium',
+  includeSMS = false 
+} = payload;
+
+If you do leave a default value make sure to make the field optional in the payload interface!
 When setting schedule, you must take into account of the timezone of the user (don't worry about daylight time, just whatever the current timezone currently) and convert it to UTC offset! The cron expression is in UTC timezone.
-If no particular trigger is specified, use the webhook/http trigger.`;
+If no particular trigger is specified, use the webhook/http trigger.
+
+
+
+`;
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
@@ -122,6 +145,13 @@ Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the re
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+
+For each bubble instantiation in the workflow, leave a clear, insightful comment that explains:
+1. The bubble's purpose and role in the overall workflow
+2. A summary of each parameter and why it's configured that way
+3. How the bubble fits into the workflow's logic flow
+
+The comment should be placed directly above the bubble instantiation and help users understand what to modify if they need to customize the workflow.
 `;
 
 export const DEBUGGING_INSTRUCTIONS = `

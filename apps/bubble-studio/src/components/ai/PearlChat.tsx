@@ -23,10 +23,11 @@ import {
   Calendar,
   Webhook,
   HelpCircle,
+  FileInput,
+  Settings,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
-import ReactMarkdown from 'react-markdown';
 import {
   MAX_BYTES,
   bytesToMB,
@@ -35,13 +36,19 @@ import {
   readTextFile,
   compressPngToBase64,
 } from '../../utils/fileUtils';
-import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
+import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 import { CodeDiffView } from './CodeDiffView';
+import { BubbleText } from './BubbleText';
+import { MarkdownWithBubbles } from './MarkdownWithBubbles';
+import {
+  BubblePromptInput,
+  type BubblePromptInputRef,
+} from './BubblePromptInput';
+import { hasBubbleTags } from '../../utils/bubbleTagParser';
 
 export function PearlChat() {
-  // UI-only state
-  const [prompt, setPrompt] = useState('');
+  // UI-only state (non-shared)
   const [uploadedFiles, setUploadedFiles] = useState<
     Array<{ name: string; content: string }>
   >([]);
@@ -51,6 +58,7 @@ export function PearlChat() {
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const promptInputRef = useRef<BubblePromptInputRef>(null);
   const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
@@ -60,9 +68,9 @@ export function PearlChat() {
     (state) => state.pendingCredentials
   );
   const { data: flowData } = useBubbleFlow(selectedFlowId);
+  const bubbleDetail = useBubbleDetail(selectedFlowId);
 
   // Pearl store hook - subscribes to state and provides generation API
-
   const pearl = usePearlChatStore(selectedFlowId);
 
   // Auto-scroll to bottom when conversation changes
@@ -123,15 +131,14 @@ export function PearlChat() {
   };
 
   const handleGenerate = () => {
-    if (!prompt.trim() && uploadedFiles.length === 0) {
+    if (!pearl.prompt.trim() && uploadedFiles.length === 0) {
       return;
     }
 
     // Call Pearl store to start generation
-    pearl.startGeneration(prompt, uploadedFiles);
+    pearl.startGeneration(pearl.prompt, uploadedFiles);
 
     // Clear UI state
-    setPrompt('');
     setUploadedFiles([]);
   };
 
@@ -162,7 +169,7 @@ export function PearlChat() {
     closeSidePanel();
   };
 
-  // Generate contextual suggestions based on trigger type
+  // Generate contextual suggestions based on trigger type and selected bubble context
   const getQuickStartSuggestions = (): Array<{
     label: string;
     prompt: string;
@@ -171,6 +178,58 @@ export function PearlChat() {
   }> => {
     const triggerType = flowData?.eventType;
 
+    // Use selected bubble context to generate bubble-specific actions
+    const bubbleSuggestions = pearl.selectedBubbleContext
+      .map((variableId) => {
+        const bubbleInfo = bubbleDetail.getBubbleInfo(variableId);
+
+        // If bubble not found, assume it's an input node
+        let variableName: string;
+        let nodeIcon: React.ReactNode;
+
+        if (!bubbleInfo) {
+          // Determine if it's a cron schedule node or input schema node
+          if (triggerType === 'schedule/cron') {
+            variableName = 'Cron Schedule';
+            nodeIcon = <Calendar className="w-4 h-4" />;
+          } else {
+            variableName = 'Input Schema';
+            nodeIcon = <FileInput className="w-4 h-4" />;
+          }
+        } else {
+          variableName = bubbleInfo.variableName;
+          nodeIcon = <AlertCircle className="w-4 h-4" />;
+        }
+
+        return [
+          {
+            label: `Delete ${variableName}`,
+            prompt: `Delete this bubble from my workflow`,
+            icon: <X className="w-4 h-4" />,
+            description: `Remove ${variableName} from the workflow`,
+          },
+          {
+            label: `Modify ${variableName}`,
+            prompt: `Modify the parameters of this bubble`,
+            icon: nodeIcon,
+            description: `Change settings for ${variableName}`,
+          },
+          {
+            label: `Tell me more about the configurations of ${variableName}`,
+            prompt: `Tell me more about the configurations of this bubble`,
+            icon: <Settings className="w-4 h-4" />,
+            description: `Learn about the configuration options for ${variableName}`,
+          },
+        ];
+      })
+      .flat();
+
+    // If there are bubble-specific suggestions, show only those
+    if (bubbleSuggestions.length > 0) {
+      return bubbleSuggestions;
+    }
+
+    // Otherwise, show flow-based suggestions
     const baseSuggestions = [
       {
         label: 'How to run this flow?',
@@ -255,7 +314,11 @@ export function PearlChat() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    setPrompt(suggestion);
+    pearl.setPrompt(suggestion + ' ');
+    // Focus the input and position cursor at the end after state update
+    setTimeout(() => {
+      promptInputRef.current?.focusEnd();
+    }, 0);
   };
 
   return (
@@ -326,7 +389,11 @@ export function PearlChat() {
                 <div className="p-3 flex justify-end">
                   <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
                     <div className="text-[13px] text-gray-900">
-                      {message.content}
+                      {hasBubbleTags(message.content) ? (
+                        <BubbleText text={message.content} />
+                      ) : (
+                        message.content
+                      )}
                     </div>
                   </div>
                 </div>
@@ -374,11 +441,7 @@ export function PearlChat() {
                       <>
                         {message.content && (
                           <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
-                            <ReactMarkdown
-                              components={sharedMarkdownComponents}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
+                            <MarkdownWithBubbles content={message.content} />
                           </div>
                         )}
                         {message.code && (
@@ -398,9 +461,7 @@ export function PearlChat() {
                       </>
                     ) : (
                       <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-                        <ReactMarkdown components={sharedMarkdownComponents}>
-                          {message.content}
-                        </ReactMarkdown>
+                        <MarkdownWithBubbles content={message.content} />
                       </div>
                     )}
                   </div>
@@ -479,22 +540,17 @@ export function PearlChat() {
           )}
 
           <div className="relative">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+            <BubblePromptInput
+              ref={promptInputRef}
+              value={pearl.prompt}
+              onChange={pearl.setPrompt}
+              onSubmit={handleGenerate}
               placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
-              className={`bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10 disabled:opacity-50 disabled:cursor-not-allowed`}
+              className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
               disabled={pearl.isPending}
-              onKeyDown={(e) => {
-                if (
-                  e.key === 'Enter' &&
-                  e.ctrlKey &&
-                  !pearl.isPending &&
-                  (prompt.trim() || uploadedFiles.length > 0)
-                ) {
-                  handleGenerate();
-                }
-              }}
+              flowId={selectedFlowId}
+              selectedBubbleContext={pearl.selectedBubbleContext}
+              onRemoveBubble={pearl.removeBubbleFromContext}
             />
             <div className="absolute right-0 top-1/2 -translate-y-1/2">
               <label className="cursor-pointer">
@@ -531,11 +587,11 @@ export function PearlChat() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={
-                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                   pearl.isPending
                 }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                   pearl.isPending
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
@@ -549,7 +605,7 @@ export function PearlChat() {
               </button>
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                  (!prompt.trim() && uploadedFiles.length === 0) ||
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                   pearl.isPending
                     ? 'text-gray-500/60'
                     : 'text-gray-400'
@@ -587,9 +643,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
           <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-            <ReactMarkdown components={sharedMarkdownComponents}>
-              {event.content}
-            </ReactMarkdown>
+            <MarkdownWithBubbles content={event.content} />
           </div>
         </div>
       );

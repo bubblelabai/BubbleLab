@@ -556,6 +556,10 @@ export async function runPearl(
           agentOutput.type === 'answer' ||
           agentOutput.type === 'text'
         ) {
+          if (!agentOutput.message || agentOutput.message.trim() === '') {
+            console.error('[Pearl] Did not generate any code');
+            continue;
+          }
           return {
             type: 'answer',
             message: agentOutput.message,
