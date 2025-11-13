@@ -314,16 +314,17 @@ export function usePearlChatStore(flowId: number | null) {
   const messages = store((s) => s.messages);
   const eventsList = store((s) => s.eventsList);
   const activeToolCallIds = store((s) => s.activeToolCallIds);
+  const prompt = store((s) => s.prompt);
 
   // ===== Main Generation Function =====
   const startGeneration = (
-    prompt: string,
+    promptText: string,
     uploadedFiles: Array<{ name: string; content: string }> = []
   ) => {
     if (!store || !flowId) return;
 
     // Build user message
-    let userContent = prompt.trim();
+    let userContent = promptText.trim();
     if (uploadedFiles.length > 0) {
       const fileInfo = uploadedFiles
         .map((f) => {
@@ -351,6 +352,7 @@ export function usePearlChatStore(flowId: number | null) {
     storeState.addMessage(userMessage);
     storeState.startNewTurn();
     storeState.clearToolCalls();
+    storeState.clearPrompt(); // Clear prompt after sending
 
     // Build conversation history from current messages
     const conversationMessages = storeState.messages.map((msg) => ({
@@ -400,16 +402,31 @@ export function usePearlChatStore(flowId: number | null) {
   const isError = pearlMutation.isError;
   const error = pearlMutation.error;
 
+  // ===== Prompt management =====
+  const setPrompt = useCallback(
+    (newPrompt: string) => {
+      store?.getState().setPrompt(newPrompt);
+    },
+    [store]
+  );
+
+  const clearPrompt = useCallback(() => {
+    store?.getState().clearPrompt();
+  }, [store]);
+
   return {
     // State (components can subscribe)
     messages,
     eventsList,
     activeToolCallIds,
+    prompt,
 
     // Actions
     startGeneration,
     clearMessages,
     reset,
+    setPrompt,
+    clearPrompt,
 
     // Mutation state (for loading indicators)
     isPending,

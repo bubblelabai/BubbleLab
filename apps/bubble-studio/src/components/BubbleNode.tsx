@@ -18,6 +18,7 @@ import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
+import { usePearlChatStore } from '@/hooks/usePearlChatStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -180,6 +181,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
+  const { setPrompt } = usePearlChatStore(flowId);
 
   const logo = useMemo(
     () =>
@@ -235,6 +237,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
   const handleClick = () => {
     // Update store highlight state (convert to string for consistency)
     highlightBubble(String(bubbleKey));
+    // Set the prompt to the current bubble description
+    setPrompt(bubble.variableName || '');
     onHighlightChange?.();
   };
 
@@ -509,7 +513,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 {bubble.variableName}
               </h3>
               {bubble.description && (
-                <p className="text-xs text-neutral-400 mt-1.5 line-clamp-2">
+                <p className="text-xs text-neutral-400 mt-1.5 break-words">
                   {bubble.description}
                 </p>
               )}

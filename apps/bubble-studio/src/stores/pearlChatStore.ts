@@ -33,10 +33,15 @@ interface PearlChatState {
   messages: ChatMessage[];
   eventsList: DisplayEvent[][];
   activeToolCallIds: Set<string>;
+  prompt: string;
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+
+  // Prompt management
+  setPrompt: (prompt: string) => void;
+  clearPrompt: () => void;
 
   // Event management
   addEventToCurrentTurn: (event: DisplayEvent) => void;
@@ -63,12 +68,17 @@ function createPearlChatStore(flowId: number) {
     messages: [],
     eventsList: [],
     activeToolCallIds: new Set(),
+    prompt: '',
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
 
     clearMessages: () =>
       set({ messages: [], eventsList: [], activeToolCallIds: new Set() }),
+
+    setPrompt: (prompt) => set({ prompt }),
+
+    clearPrompt: () => set({ prompt: '' }),
 
     startNewTurn: () =>
       set((state) => ({ eventsList: [...state.eventsList, []] })),
@@ -108,7 +118,12 @@ function createPearlChatStore(flowId: number) {
     clearToolCalls: () => set({ activeToolCallIds: new Set() }),
 
     reset: () =>
-      set({ messages: [], eventsList: [], activeToolCallIds: new Set() }),
+      set({
+        messages: [],
+        eventsList: [],
+        activeToolCallIds: new Set(),
+        prompt: '',
+      }),
   }));
 }
 
