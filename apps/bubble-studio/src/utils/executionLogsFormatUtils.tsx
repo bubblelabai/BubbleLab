@@ -315,8 +315,16 @@ export function getEventIcon(event: StreamingLogEvent) {
       return <PlayIcon className="h-4 w-4 text-blue-400" />;
     case 'bubble_complete':
     case 'bubble_execution':
-    case 'bubble_execution_complete':
+    case 'bubble_execution_complete': {
+      // Check if bubble execution failed (result.success === false)
+      const result = event.additionalData?.result as
+        | { success?: boolean }
+        | undefined;
+      if (result && result.success === false) {
+        return <XCircleIcon className="h-4 w-4 text-red-500" />;
+      }
       return <CheckCircleIcon className="h-4 w-4 text-green-400" />;
+    }
     case 'execution_complete':
       return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
     case 'error':
@@ -348,8 +356,16 @@ export function getEventColor(event: StreamingLogEvent): string {
       return 'text-blue-300';
     case 'bubble_complete':
     case 'bubble_execution':
-    case 'bubble_execution_complete':
+    case 'bubble_execution_complete': {
+      // Check if bubble execution failed (result.success === false)
+      const result = event.additionalData?.result as
+        | { success?: boolean }
+        | undefined;
+      if (result && result.success === false) {
+        return 'text-red-400 font-medium';
+      }
       return 'text-green-300';
+    }
     case 'execution_complete':
       return 'text-green-400 font-semibold';
     case 'error':
@@ -369,6 +385,27 @@ export function getEventColor(event: StreamingLogEvent): string {
     default:
       return 'text-gray-300';
   }
+}
+
+/**
+ * Format event message based on execution result
+ * Changes "Bubble execution completed" to "Bubble execution failed" for failed results
+ */
+export function formatEventMessage(event: StreamingLogEvent): string {
+  // Check if this is a bubble_execution_complete event with a failed result
+  if (event.type === 'bubble_execution_complete') {
+    const result = event.additionalData?.result as
+      | { success?: boolean }
+      | undefined;
+    if (result && result.success === false) {
+      // Replace "completed" with "failed" in the message
+      return event.message.replace(
+        /Bubble execution completed/i,
+        'Bubble execution failed'
+      );
+    }
+  }
+  return event.message;
 }
 
 /**

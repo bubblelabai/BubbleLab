@@ -5,6 +5,7 @@ import {
   formatTimestamp,
   makeLinksClickable,
   getEventIcon,
+  formatEventMessage,
 } from '../../utils/executionLogsFormatUtils';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
 import AllEventsView from './AllEventsView';
@@ -62,6 +63,7 @@ export default function LiveOutput({
             currentLine={currentLine}
             getEventIcon={getEventIcon}
             formatTimestamp={formatTimestamp}
+            formatEventMessage={formatEventMessage}
             makeLinksClickable={makeLinksClickable}
             renderJson={JsonRenderer}
             flowId={flowId}

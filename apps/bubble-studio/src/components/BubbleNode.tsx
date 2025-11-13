@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, Info } from 'lucide-react';
+import { BookOpen, Code, Info, Sparkles } from 'lucide-react';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
@@ -18,6 +18,7 @@ import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
+import { usePearlChatStore } from '../hooks/usePearlChatStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -63,6 +64,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     (s) => s.highlightedBubble
   );
   const bubbleWithError = useExecutionStore(flowId, (s) => s.bubbleWithError);
+  const bubbleResults = useExecutionStore(flowId, (s) => s.bubbleResults);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
   const pendingCredentials = useExecutionStore(
@@ -94,6 +96,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
+
+  // Pearl chat integration for error fixing
+  const pearl = usePearlChatStore(flowId);
+  const { openConsolidatedPanelWith } = useUIStore();
 
   // Subscribe to selected event index and tab reactively (causes re-render when changed)
   const selectedEventIndexByVariableId = useLiveOutputStore(
@@ -131,7 +137,13 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Determine bubble-specific state
   const isHighlighted =
     highlightedBubble === bubbleKey || highlightedBubble === bubbleId;
-  const hasError = bubbleWithError === bubbleId;
+
+  // Check for errors: either fatal error OR result.success === false
+  const resultSuccess = bubbleResults[bubbleId];
+  const hasError =
+    bubbleWithError === bubbleId ||
+    (resultSuccess !== undefined && resultSuccess === false);
+
   const isExecuting = runningBubbles.has(bubbleId);
   const isCompleted = bubbleId in completedBubbles;
   const executionStats = completedBubbles[bubbleId];
@@ -331,9 +343,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              // Navigate to console with last output
               const liveOutputStore = getLiveOutputStore(flowId);
               if (liveOutputStore) {
+                // Navigate to console with last output
                 liveOutputStore.getState().selectBubbleInConsole(bubbleId);
                 // Get ordered items to find event count for this bubble
                 const orderedItems = liveOutputStore
@@ -386,12 +398,30 @@ function BubbleNode({ data }: BubbleNodeProps) {
             hasMissingRequirements ||
             bubble.parameters.length > 0) && (
             <>
-              <BubbleExecutionBadge
-                hasError={hasError}
-                isCompleted={isCompleted}
-                isExecuting={isExecuting}
-                executionStats={executionStats}
-              />
+              {/* Show Fix with Pearl button when error, otherwise show standard badge */}
+              {hasError ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const prompt = `I'm seeing an error in the ${bubble.variableName || bubble.bubbleName} bubble. Can you help me fix it?`;
+                    pearl.startGeneration(prompt);
+                    openConsolidatedPanelWith('pearl');
+                  }}
+                  disabled={pearl.isPending}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded transition-colors shadow-sm"
+                  title="Get help fixing this error with Pearl"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                </button>
+              ) : (
+                <BubbleExecutionBadge
+                  hasError={false}
+                  isCompleted={isCompleted}
+                  isExecuting={isExecuting}
+                  executionStats={executionStats}
+                />
+              )}
               {!hasError && !isExecuting && hasMissingRequirements && (
                 <div className="flex-shrink-0">
                   <div

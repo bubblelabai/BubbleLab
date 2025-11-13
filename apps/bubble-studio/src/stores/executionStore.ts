@@ -55,6 +55,13 @@ export interface FlowExecutionState {
   completedBubbles: Record<string, { totalTime: number; count: number }>;
 
   /**
+   * Bubble execution results (success/failure status)
+   * Key: bubbleKey (variableId), Value: success status (true/false)
+   * Used to determine if a bubble should show error styling based on result.success
+   */
+  bubbleResults: Record<string, boolean>;
+
+  /**
    * Root bubble IDs that are expanded (showing sub-bubbles)
    */
   expandedRootIds: string[];
@@ -163,6 +170,11 @@ export interface FlowExecutionState {
    * Mark a bubble as completed with execution time (accumulates multiple executions)
    */
   setBubbleCompleted: (bubbleKey: string, executionTimeMs: number) => void;
+
+  /**
+   * Set bubble execution result status (success/failure)
+   */
+  setBubbleResult: (bubbleKey: string, success: boolean) => void;
 
   /**
    * Clear all highlighting
@@ -280,6 +292,7 @@ function createExecutionStore(flowId: number) {
       lastExecutingBubble: null,
       runningBubbles: new Set<string>(),
       completedBubbles: {},
+      bubbleResults: {},
       executionInputs: {},
       pendingCredentials: {},
       expandedRootIds: [],
@@ -299,6 +312,7 @@ function createExecutionStore(flowId: number) {
           bubbleWithError: null,
           runningBubbles: new Set<string>(),
           completedBubbles: {},
+          bubbleResults: {},
         }),
 
       stopExecution: () => {
@@ -362,6 +376,14 @@ function createExecutionStore(flowId: number) {
             })(),
           };
         }),
+
+      setBubbleResult: (bubbleKey, success) =>
+        set((state) => ({
+          bubbleResults: {
+            ...state.bubbleResults,
+            [bubbleKey]: success,
+          },
+        })),
 
       clearHighlighting: () =>
         set({
@@ -551,6 +573,7 @@ const emptyState: FlowExecutionState = {
   lastExecutingBubble: null,
   runningBubbles: new Set<string>(),
   completedBubbles: {},
+  bubbleResults: {},
   executionInputs: {},
   pendingCredentials: {},
   expandedRootIds: [],
@@ -571,6 +594,7 @@ const emptyState: FlowExecutionState = {
   setBubbleRunning: () => {},
   setBubbleStopped: () => {},
   setBubbleCompleted: () => {},
+  setBubbleResult: () => {},
   clearHighlighting: () => {},
   setInput: () => {},
   setInputs: () => {},

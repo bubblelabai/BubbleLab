@@ -23,6 +23,7 @@ interface AllEventsViewProps {
   currentLine: number | null;
   getEventIcon: (event: StreamingLogEvent) => React.ReactElement;
   formatTimestamp: (timestamp: string) => string;
+  formatEventMessage: (event: StreamingLogEvent) => string;
   makeLinksClickable: (text: string | null) => (string | React.ReactElement)[];
   renderJson: React.ComponentType<{
     data: unknown;
@@ -42,6 +43,7 @@ export default function AllEventsView({
   currentLine,
   getEventIcon,
   formatTimestamp,
+  formatEventMessage,
   makeLinksClickable,
   renderJson: JsonRenderer,
   flowId = null,
@@ -132,6 +134,18 @@ export default function AllEventsView({
     return true;
   };
 
+  // Handler for "Fix with Pearl" CTA - used in both Results tab and individual bubble views
+  const handleFixWithPearl = () => {
+    if (!flowId) return;
+    const prompt = `I'm seeing error(s) in my workflow execution. Can you help me fix these errors?`;
+
+    // Trigger Pearl generation (component doesn't subscribe to Pearl state)
+    pearl.startGeneration(prompt);
+
+    // Open Pearl panel
+    openConsolidatedPanelWith('pearl');
+  };
+
   return (
     <div className="flex h-full bg-[#0d1117]">
       {/* Vertical Sidebar with Tabs */}
@@ -208,18 +222,6 @@ export default function AllEventsView({
                   new Date(b.timestamp).getTime()
               );
 
-            // Handler for "Fix with Pearl" CTA
-            const handleFixWithPearl = () => {
-              if (!flowId || errorEvents.length === 0) return;
-              const prompt = `I'm seeing error(s) in my workflow execution. Can you help me fix these errors?`;
-
-              // Trigger Pearl generation (component doesn't subscribe to Pearl state)
-              pearl.startGeneration(prompt);
-
-              // Open Pearl panel
-              openConsolidatedPanelWith('pearl');
-            };
-
             const warningEvents = globalEvents
               .filter((e) => e.type === 'warn')
               .sort(
@@ -273,7 +275,9 @@ export default function AllEventsView({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
                                 <p className="text-sm text-gray-200 break-words flex-1 min-w-0 font-medium">
-                                  {makeLinksClickable(event.message)}
+                                  {makeLinksClickable(
+                                    formatEventMessage(event)
+                                  )}
                                 </p>
                                 <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
@@ -300,19 +304,33 @@ export default function AllEventsView({
                 {/* Errors - If any */}
                 {errorEvents.length > 0 && (
                   <div className="px-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xs font-medium text-red-400 uppercase tracking-wide">
-                        Errors ({errorEvents.length})
-                      </h3>
-                      <button
-                        onClick={handleFixWithPearl}
-                        disabled={pearl.isPending}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Fix with Pearl
-                      </button>
+                    {/* Prominent Fix with Pearl Banner */}
+                    <div className="mb-4 p-4 bg-[#161b22] border border-[#30363d] rounded-lg">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-200 mb-1">
+                            Need help fixing these errors?
+                          </h4>
+                          <p className="text-xs text-gray-400">
+                            Pearl can analyze your errors and suggest fixes
+                            automatically
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleFixWithPearl}
+                          disabled={pearl.isPending}
+                          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Errors List */}
+                    <h3 className="text-xs font-medium text-red-400 mb-2 uppercase tracking-wide">
+                      Errors ({errorEvents.length})
+                    </h3>
                     <div className="space-y-2">
                       {errorEvents.map((event, idx) => (
                         <div
@@ -326,7 +344,9 @@ export default function AllEventsView({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
                                 <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
-                                  {makeLinksClickable(event.message)}
+                                  {makeLinksClickable(
+                                    formatEventMessage(event)
+                                  )}
                                 </p>
                                 <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
@@ -369,7 +389,9 @@ export default function AllEventsView({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
                                 <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
-                                  {makeLinksClickable(event.message)}
+                                  {makeLinksClickable(
+                                    formatEventMessage(event)
+                                  )}
                                 </p>
                                 <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
@@ -426,7 +448,9 @@ export default function AllEventsView({
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-3 min-w-0">
                                   <p className="text-xs text-gray-400 break-words flex-1 min-w-0">
-                                    {makeLinksClickable(event.message)}
+                                    {makeLinksClickable(
+                                      formatEventMessage(event)
+                                    )}
                                   </p>
                                   <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
                                     {formatTimestamp(event.timestamp)}
@@ -486,7 +510,7 @@ export default function AllEventsView({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 min-w-0">
                           <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                            {makeLinksClickable(event.message)}
+                            {makeLinksClickable(formatEventMessage(event))}
                           </p>
                           <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
                             {formatTimestamp(event.timestamp)}
@@ -516,6 +540,21 @@ export default function AllEventsView({
                 evs.length - 1
               );
               const selectedEvent = evs[selectedIndex];
+
+              // Check if this bubble has any errors
+              const hasErrorInBubble = evs.some((e) => {
+                // Check for error/fatal events
+                if (e.type === 'error' || e.type === 'fatal') return true;
+                // Check for bubble_execution_complete with result.success === false
+                if (e.type === 'bubble_execution_complete') {
+                  const result = e.additionalData?.result as
+                    | { success?: boolean }
+                    | undefined;
+                  return result && result.success === false;
+                }
+                return false;
+              });
+
               return (
                 <div className="flex flex-col h-full">
                   <div className="flex items-center gap-3 px-4 py-2.5 bg-[#161b22] border-b border-[#21262d]">
@@ -537,8 +576,37 @@ export default function AllEventsView({
                       {selectedIndex + 1}/{evs.length}
                     </span>
                   </div>
+
+                  {/* Fix with Pearl Banner - Show if bubble has errors */}
+                  {hasErrorInBubble && (
+                    <div className="px-4 pt-3 pb-2">
+                      <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-medium text-gray-200 mb-1">
+                              Need help fixing this error?
+                            </h4>
+                            <p className="text-[10px] text-gray-400">
+                              Pearl can analyze the error and suggest fixes
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleFixWithPearl}
+                            disabled={pearl.isPending}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-colors shadow-sm"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            {pearl.isPending
+                              ? 'Analyzing...'
+                              : 'Fix with Pearl'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {selectedEvent ? (
-                    <div className="flex-1 py-2">
+                    <div className="flex-1 py-2 overflow-y-auto">
                       <div
                         className={`px-3 py-2 rounded border-l-2 ${
                           selectedEvent.lineNumber === currentLine
@@ -553,7 +621,9 @@ export default function AllEventsView({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3 min-w-0">
                               <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                                {makeLinksClickable(selectedEvent.message)}
+                                {makeLinksClickable(
+                                  formatEventMessage(selectedEvent)
+                                )}
                               </p>
                               <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
                                 {formatTimestamp(selectedEvent.timestamp)}
