@@ -42,7 +42,10 @@ import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 import { CodeDiffView } from './CodeDiffView';
 import { BubbleText } from './BubbleText';
 import { MarkdownWithBubbles } from './MarkdownWithBubbles';
-import { BubblePromptInput } from './BubblePromptInput';
+import {
+  BubblePromptInput,
+  type BubblePromptInputRef,
+} from './BubblePromptInput';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
 
 export function PearlChat() {
@@ -56,6 +59,7 @@ export function PearlChat() {
   );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const promptInputRef = useRef<BubblePromptInputRef>(null);
   const { closeSidePanel } = useUIStore();
   const selectedFlowId = useUIStore((state) => state.selectedFlowId);
   const validateCodeMutation = useValidateCode({ flowId: selectedFlowId });
@@ -317,7 +321,11 @@ export function PearlChat() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    pearl.setPrompt(suggestion);
+    pearl.setPrompt(suggestion + ' ');
+    // Focus the input and position cursor at the end after state update
+    setTimeout(() => {
+      promptInputRef.current?.focusEnd();
+    }, 0);
   };
 
   return (
@@ -542,6 +550,7 @@ export function PearlChat() {
 
           <div className="relative">
             <BubblePromptInput
+              ref={promptInputRef}
               value={pearl.prompt}
               onChange={pearl.setPrompt}
               onSubmit={handleGenerate}

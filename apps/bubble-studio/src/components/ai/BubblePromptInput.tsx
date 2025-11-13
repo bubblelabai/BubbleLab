@@ -2,7 +2,13 @@
  * BubblePromptInput - Simple textarea that displays selected bubble context
  * Shows selected bubbles separately on top of the textarea
  */
-import { KeyboardEvent, ChangeEvent } from 'react';
+import {
+  KeyboardEvent,
+  ChangeEvent,
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import { BubbleTag } from './BubbleTag';
 import { X } from 'lucide-react';
 
@@ -18,16 +24,43 @@ interface BubblePromptInputProps {
   onRemoveBubble?: (variableId: number) => void;
 }
 
-export function BubblePromptInput({
-  value,
-  onChange,
-  onSubmit,
-  placeholder = '',
-  disabled = false,
-  className = '',
-  selectedBubbleContext,
-  onRemoveBubble,
-}: BubblePromptInputProps) {
+export interface BubblePromptInputRef {
+  focus: () => void;
+  focusEnd: () => void;
+}
+
+export const BubblePromptInput = forwardRef<
+  BubblePromptInputRef,
+  BubblePromptInputProps
+>(function BubblePromptInput(
+  {
+    value,
+    onChange,
+    onSubmit,
+    placeholder = '',
+    disabled = false,
+    className = '',
+    selectedBubbleContext,
+    onRemoveBubble,
+  },
+  ref
+) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    },
+    focusEnd: () => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.focus();
+        // Set cursor to end of text
+        const length = textarea.value.length;
+        textarea.setSelectionRange(length, length);
+      }
+    },
+  }));
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && e.ctrlKey && !disabled && onSubmit) {
       e.preventDefault();
@@ -68,6 +101,7 @@ export function BubblePromptInput({
 
       {/* Textarea for text input */}
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
@@ -82,4 +116,4 @@ export function BubblePromptInput({
       />
     </div>
   );
-}
+});
