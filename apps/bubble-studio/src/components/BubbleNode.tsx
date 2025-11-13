@@ -343,29 +343,21 @@ function BubbleNode({ data }: BubbleNodeProps) {
               e.stopPropagation();
               const liveOutputStore = getLiveOutputStore(flowId);
               if (liveOutputStore) {
-                // If there's an error, navigate to Results tab to show the error message
-                if (hasError) {
-                  liveOutputStore.getState().selectResultsInConsole();
-                } else {
-                  // Navigate to console with last output
-                  liveOutputStore.getState().selectBubbleInConsole(bubbleId);
-                  // Get ordered items to find event count for this bubble
-                  const orderedItems = liveOutputStore
+                // Navigate to console with last output
+                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                // Get ordered items to find event count for this bubble
+                const orderedItems = liveOutputStore
+                  .getState()
+                  .getOrderedItems();
+                const bubbleGroup = orderedItems.find(
+                  (item) => item.kind === 'group' && item.name === bubbleId
+                );
+                if (bubbleGroup && bubbleGroup.kind === 'group') {
+                  // Set to last event (eventCount - 1 for 0-based index)
+                  const lastIndex = Math.max(0, bubbleGroup.events.length - 1);
+                  liveOutputStore
                     .getState()
-                    .getOrderedItems();
-                  const bubbleGroup = orderedItems.find(
-                    (item) => item.kind === 'group' && item.name === bubbleId
-                  );
-                  if (bubbleGroup && bubbleGroup.kind === 'group') {
-                    // Set to last event (eventCount - 1 for 0-based index)
-                    const lastIndex = Math.max(
-                      0,
-                      bubbleGroup.events.length - 1
-                    );
-                    liveOutputStore
-                      .getState()
-                      .setSelectedEventIndex(bubbleId, lastIndex);
-                  }
+                    .setSelectedEventIndex(bubbleId, lastIndex);
                 }
               }
             }}
