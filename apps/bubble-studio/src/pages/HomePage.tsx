@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, MoreHorizontal, Edit2, Check, X, Search } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
+import { MonthlyUsageBar } from '../components/MonthlyUsageBar';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
 import { useRenameFlow } from '../hooks/useRenameFlow';
 import { CronToggle } from '../components/CronToggle';
+import { useSubscription } from '../hooks/useSubscription';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -19,6 +21,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateToDashboard,
 }) => {
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
+  const { data: subscription } = useSubscription();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -108,6 +111,15 @@ export const HomePage: React.FC<HomePageProps> = ({
               <span>New Flow</span>
             </button>
           </div>
+
+          {/* Monthly Usage Bar */}
+          <SignedIn>
+            {subscription && (
+              <div className="mb-4">
+                <MonthlyUsageBar subscription={subscription} isOpen={true} />
+              </div>
+            )}
+          </SignedIn>
 
           {/* Stats Cards */}
           <div className="flex gap-4 mb-2 flex-wrap">
