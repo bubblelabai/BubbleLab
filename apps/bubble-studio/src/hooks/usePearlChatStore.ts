@@ -341,7 +341,7 @@ export function usePearlChatStore(flowId: number | null) {
         .join(', ');
 
       // Prepend bubble context to the user's prompt
-      userContent = `Context: ${bubbleContextText}${userContent ? '\n\n' + userContent : ''}`;
+      userContent = `${bubbleContextText}${userContent ? '\n\n' + userContent : ''}`;
     }
 
     if (uploadedFiles.length > 0) {
