@@ -192,6 +192,23 @@ export function useRunExecution(
                     bubbleId,
                     executionTimeMs
                   );
+
+                  // Extract and store result success status for error styling
+                  const result = eventData.additionalData?.result as
+                    | { success?: boolean }
+                    | undefined;
+                  if (result && typeof result.success === 'boolean') {
+                    getExecutionStore(flowId).setBubbleResult(
+                      bubbleId,
+                      result.success
+                    );
+                    console.log(
+                      'Bubble result:',
+                      bubbleId,
+                      result.success ? '✓' : '✗'
+                    );
+                  }
+
                   console.log('Bubble completed:', bubbleId, executionTimeMs);
                 }
               }

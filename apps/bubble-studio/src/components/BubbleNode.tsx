@@ -63,6 +63,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     (s) => s.highlightedBubble
   );
   const bubbleWithError = useExecutionStore(flowId, (s) => s.bubbleWithError);
+  const bubbleResults = useExecutionStore(flowId, (s) => s.bubbleResults);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
   const pendingCredentials = useExecutionStore(
@@ -131,7 +132,13 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Determine bubble-specific state
   const isHighlighted =
     highlightedBubble === bubbleKey || highlightedBubble === bubbleId;
-  const hasError = bubbleWithError === bubbleId;
+
+  // Check for errors: either fatal error OR result.success === false
+  const resultSuccess = bubbleResults[bubbleId];
+  const hasError =
+    bubbleWithError === bubbleId ||
+    (resultSuccess !== undefined && resultSuccess === false);
+
   const isExecuting = runningBubbles.has(bubbleId);
   const isCompleted = bubbleId in completedBubbles;
   const executionStats = completedBubbles[bubbleId];
