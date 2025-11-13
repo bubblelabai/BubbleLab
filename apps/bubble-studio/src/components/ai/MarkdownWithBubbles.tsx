@@ -6,20 +6,16 @@ import ReactMarkdown from 'react-markdown';
 import { sharedMarkdownComponents } from '../shared/MarkdownComponents';
 import { parseBubbleTags } from '../../utils/bubbleTagParser';
 import { BubbleTag } from './BubbleTag';
-import { useBubbleDetail } from '../../hooks/useBubbleDetail';
 
 interface MarkdownWithBubblesProps {
   content: string;
-  flowId: number | null;
   className?: string;
 }
 
 export function MarkdownWithBubbles({
   content,
-  flowId,
   className = '',
 }: MarkdownWithBubblesProps) {
-  const bubbleDetail = useBubbleDetail(flowId);
   const segments = parseBubbleTags(content);
 
   // If no bubble tags, just render markdown normally

@@ -23,6 +23,8 @@ import {
   Calendar,
   Webhook,
   HelpCircle,
+  FileInput,
+  Settings,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
@@ -183,7 +185,24 @@ export function PearlChat() {
     const bubbleSuggestions = pearl.selectedBubbleContext
       .map((variableId) => {
         const bubbleInfo = bubbleDetail.getBubbleInfo(variableId);
-        const variableName = bubbleInfo?.variableName || `Bubble ${variableId}`;
+
+        // If bubble not found, assume it's an input node
+        let variableName: string;
+        let nodeIcon: React.ReactNode;
+
+        if (!bubbleInfo) {
+          // Determine if it's a cron schedule node or input schema node
+          if (triggerType === 'schedule/cron') {
+            variableName = 'Cron Schedule';
+            nodeIcon = <Calendar className="w-4 h-4" />;
+          } else {
+            variableName = 'Input Schema';
+            nodeIcon = <FileInput className="w-4 h-4" />;
+          }
+        } else {
+          variableName = bubbleInfo.variableName;
+          nodeIcon = <AlertCircle className="w-4 h-4" />;
+        }
 
         return [
           {
@@ -195,8 +214,14 @@ export function PearlChat() {
           {
             label: `Modify ${variableName}`,
             prompt: `Modify the parameters of this bubble`,
-            icon: <AlertCircle className="w-4 h-4" />,
+            icon: nodeIcon,
             description: `Change settings for ${variableName}`,
+          },
+          {
+            label: `Tell me more about the configurations of ${variableName}`,
+            prompt: `Tell me more about the configurations of this bubble`,
+            icon: <Settings className="w-4 h-4" />,
+            description: `Learn about the configuration options for ${variableName}`,
           },
         ];
       })
@@ -416,10 +441,7 @@ export function PearlChat() {
                       <>
                         {message.content && (
                           <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
-                            <MarkdownWithBubbles
-                              content={message.content}
-                              flowId={selectedFlowId}
-                            />
+                            <MarkdownWithBubbles content={message.content} />
                           </div>
                         )}
                         {message.code && (
@@ -439,10 +461,7 @@ export function PearlChat() {
                       </>
                     ) : (
                       <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-                        <MarkdownWithBubbles
-                          content={message.content}
-                          flowId={selectedFlowId}
-                        />
+                        <MarkdownWithBubbles content={message.content} />
                       </div>
                     )}
                   </div>
@@ -630,7 +649,7 @@ function EventDisplay({
         <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
           <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-            <MarkdownWithBubbles content={event.content} flowId={flowId} />
+            <MarkdownWithBubbles content={event.content} />
           </div>
         </div>
       );

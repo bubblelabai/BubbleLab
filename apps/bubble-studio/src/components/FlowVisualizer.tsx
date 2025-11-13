@@ -1106,18 +1106,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={(_event, node) => {
-          // Dismiss the highlighted bubble
-          getExecutionStore(currentFlow?.id || flowId).highlightBubble(node.id);
-          // Clear the bubble context
-          getPearlChatStore(currentFlow?.id || flowId)
-            .getState()
-            .clearBubbleContext();
-          // set context
+          if (node.type === 'bubbleNode') {
+            // Dismiss the highlighted bubble
+            getExecutionStore(currentFlow?.id || flowId).highlightBubble(
+              node.id
+            );
+            // Clear the bubble context
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .clearBubbleContext();
+            // set context
 
-          getPearlChatStore(currentFlow?.id || flowId)
-            .getState()
-            .addBubbleToContext(Number(node.id));
-          useUIStore.getState().openConsolidatedPanelWith('pearl');
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .addBubbleToContext(Number(node.id));
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          }
         }}
         onPaneClick={() => {
           // Dismiss the highlighted bubble
