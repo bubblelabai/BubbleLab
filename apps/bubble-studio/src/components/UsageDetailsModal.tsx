@@ -127,9 +127,9 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-[#161b22] border border-[#30363d] rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col mx-4">
+      <div className="relative bg-[#2a2826] border border-[#3d3935] rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#30363d]">
+        <div className="flex items-center justify-between p-6 border-b border-[#3d3935]">
           <div>
             <h2 className="text-2xl font-bold text-white">Usage Details</h2>
             <p className="text-sm text-gray-400 mt-1">
@@ -146,7 +146,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         </div>
 
         {/* Search Bar */}
-        <div className="px-6 py-3 border-b border-[#30363d]">
+        <div className="px-6 py-3 border-b border-[#3d3935]">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-500" />
@@ -156,18 +156,18 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by service, sub-service, or unit..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#0a0a0a] border border-[#30363d] text-gray-100 text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-500 transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#1a1816] border border-[#3d3935] text-gray-100 text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-500 transition-all duration-200"
             />
           </div>
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-auto bg-[#0a0a0a]">
+        <div className="flex-1 overflow-auto bg-[#1a1816]">
           <table className="w-full">
-            <thead className="bg-[#161b22] sticky top-0 z-10">
+            <thead className="bg-[#2a2826] sticky top-0 z-10">
               <tr>
                 <th
-                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
                   onClick={() => handleSort('service')}
                 >
                   <div className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
                   onClick={() => handleSort('subService')}
                 >
                   <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   Unit
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
                   onClick={() => handleSort('usage')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -197,7 +197,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
                   onClick={() => handleSort('unitCost')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -206,7 +206,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-800/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
                   onClick={() => handleSort('totalCost')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -216,7 +216,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#30363d]">
+            <tbody className="divide-y divide-[#3d3935]">
               {filteredAndSortedData.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
@@ -231,7 +231,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                 filteredAndSortedData.map((item, index) => (
                   <tr
                     key={index}
-                    className="hover:bg-gray-800/30 transition-colors"
+                    className="hover:bg-[#2a2826]/40 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-blue-400">
@@ -244,7 +244,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded">
+                      <span className="text-xs text-gray-400 bg-[#2a2826]/60 px-2 py-1 rounded">
                         {item.unit}
                       </span>
                     </td>
@@ -277,7 +277,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         </div>
 
         {/* Footer with totals */}
-        <div className="border-t border-[#30363d] bg-[#0a0a0a] p-6">
+        <div className="border-t border-[#3d3935] bg-[#1a1816] p-6">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-400">
               Showing {filteredAndSortedData.length} of {serviceUsage.length}{' '}
