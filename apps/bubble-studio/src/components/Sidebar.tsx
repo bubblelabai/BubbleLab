@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             {/* Tooltip when collapsed */}
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                Get instant help & feedback
+                Get instant help, report bugs, join community!
               </span>
             )}
           </div>
