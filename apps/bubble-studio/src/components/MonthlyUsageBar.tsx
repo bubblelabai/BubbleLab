@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
+import { ArrowRight } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
 
 interface MonthlyUsageBarProps {
@@ -39,9 +40,8 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
           {isOpen ? (
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs text-gray-400">Monthly Usage</div>
-                <div className="text-xs text-gray-400">
-                  {formatCost(totalCost)} / {formatCost(MONTHLY_LIMIT)}
+                <div className="text-sm text-gray-200 font-medium">
+                  Monthly Usage
                 </div>
               </div>
 
@@ -59,25 +59,31 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 />
               </div>
 
-              {/* Percentage and Show Details button */}
+              {/* Monetary usage and Show Details button */}
               <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-gray-400">
+                    {formatCost(totalCost)} / {formatCost(MONTHLY_LIMIT)}
+                  </div>
+                  <span
+                    className={`text-xs font-semibold ${
+                      isOverLimit
+                        ? 'text-red-400'
+                        : percentage > 80
+                          ? 'text-yellow-400'
+                          : 'text-blue-400'
+                    }`}
+                  >
+                    {percentage.toFixed(1)}%
+                  </span>
+                </div>
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors hover:underline"
+                  className="flex items-center gap-1 text-xs text-white hover:text-gray-300 font-medium transition-colors"
                 >
-                  Show Details
+                  Details
+                  <ArrowRight className="w-3 h-3" />
                 </button>
-                <span
-                  className={`text-xs font-semibold ${
-                    isOverLimit
-                      ? 'text-red-400'
-                      : percentage > 80
-                        ? 'text-yellow-400'
-                        : 'text-blue-400'
-                  }`}
-                >
-                  {percentage.toFixed(1)}%
-                </span>
               </div>
             </div>
           ) : (
