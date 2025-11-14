@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
+import { SERVICE_LOGOS } from '../lib/integrations';
 
 interface UsageDetailsModalProps {
   isOpen: boolean;
@@ -10,6 +11,33 @@ interface UsageDetailsModalProps {
 
 type SortField = 'service' | 'subService' | 'usage' | 'unitCost' | 'totalCost';
 type SortDirection = 'asc' | 'desc';
+
+// Map credential service names to logo keys
+const getServiceLogo = (service: string): string | null => {
+  const serviceMap: Record<string, string> = {
+    FIRECRAWL_API_KEY: 'Firecrawl',
+    RESEND_CRED: 'Resend',
+    APIFY_CRED: 'Apify',
+    GOOGLE_GEMINI_CRED: 'Gemini',
+    OPENAI_CRED: 'OpenAI',
+    ANTHROPIC_CRED: 'Claude',
+    SLACK_CRED: 'Slack',
+    GMAIL_CRED: 'Gmail',
+    GOOGLE_CALENDAR_CRED: 'Google Calendar',
+    GOOGLE_DRIVE_CRED: 'Google Drive',
+    GOOGLE_SHEETS_CRED: 'Google Sheets',
+    POSTGRES_CRED: 'Postgres',
+    CLOUDFLARE_CRED: 'Cloudflare',
+    GITHUB_CRED: 'GitHub',
+    REDDIT_CRED: 'Reddit',
+    LINKEDIN_CRED: 'LinkedIn',
+    YOUTUBE_CRED: 'YouTube',
+    INSTAGRAM_CRED: 'Instagram',
+  };
+
+  const logoKey = serviceMap[service];
+  return logoKey ? SERVICE_LOGOS[logoKey] : null;
+};
 
 export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
   isOpen,
@@ -228,49 +256,61 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredAndSortedData.map((item, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-[#2a2826]/40 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-blue-400">
-                        {item.service}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-300">
-                        {item.subService || '-'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-xs text-gray-400 bg-[#2a2826]/60 px-2 py-1 rounded">
-                        {item.unit}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <span className="text-sm text-gray-200 font-mono">
-                        {formatUsage(item.usage, item.unit)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <span className="text-sm text-gray-300 font-mono">
-                        {formatCost(item.unitCost)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <span
-                        className={`text-sm font-semibold font-mono ${
-                          item.totalCost > 0
-                            ? 'text-purple-400'
-                            : 'text-gray-500'
-                        }`}
-                      >
-                        {formatCost(item.totalCost)}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filteredAndSortedData.map((item, index) => {
+                  const logoPath = getServiceLogo(item.service);
+                  return (
+                    <tr
+                      key={index}
+                      className="hover:bg-[#2a2826]/40 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {logoPath && (
+                            <img
+                              src={logoPath}
+                              alt={item.service}
+                              className="w-5 h-5 flex-shrink-0"
+                            />
+                          )}
+                          <span className="text-sm font-medium text-blue-400">
+                            {item.service}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-300">
+                          {item.subService || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-xs text-gray-400 bg-[#2a2826]/60 px-2 py-1 rounded">
+                          {item.unit}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <span className="text-sm text-gray-200 font-mono">
+                          {formatUsage(item.usage, item.unit)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <span className="text-sm text-gray-300 font-mono">
+                          {formatCost(item.unitCost)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <span
+                          className={`text-sm font-semibold font-mono ${
+                            item.totalCost > 0
+                              ? 'text-purple-400'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {formatCost(item.totalCost)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
