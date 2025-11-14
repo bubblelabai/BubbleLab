@@ -53,7 +53,7 @@ import {
   ValidationResult,
 } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../services/bubble-factory-instance.js';
-import { trackModelTokenUsage } from '../services/token-tracking.js';
+import { trackServiceUsages } from '../services/service-usage-tracking.js';
 import { posthog } from 'src/services/posthog.js';
 import { BubbleResult } from '@bubblelab/bubble-core';
 
@@ -1069,16 +1069,12 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           event: 'stream_complete',
         });
 
-        // Track token usage
-        trackModelTokenUsage(
-          userId,
-          'google/gemini-2.5-pro',
-          generationResult.tokenUsage || {
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-          }
-        );
+        // Track service usage if available
+        // Note: GenerationResult.serviceUsage is a single ServiceUsage object,
+        // but we need to track it as an array for the tracking function
+        if (generationResult.serviceUsage) {
+          await trackServiceUsages(userId, [generationResult.serviceUsage]);
+        }
         if (generationResult.isValid) {
           posthog.captureEvent(
             {

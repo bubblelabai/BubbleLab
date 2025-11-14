@@ -20,7 +20,7 @@ import {
   CREDENTIAL_ENV_MAP,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { trackTokenUsage } from './token-tracking.js';
+import { trackServiceUsages } from './service-usage-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 
 export interface ExecutionOptions {
@@ -129,9 +129,9 @@ async function runBubbleFlowCommon(
     bubble_lab_clerk_user_id: options.userId,
   };
   const result = await runner.runAll(enhancedPayload);
-  // Track token usage if available
-  if (result.summary?.tokenUsageByModel) {
-    await trackTokenUsage(options.userId, result.summary.tokenUsageByModel);
+  // Track service usage if available
+  if (result.summary?.serviceUsage && result.summary.serviceUsage.length > 0) {
+    await trackServiceUsages(options.userId, result.summary.serviceUsage);
   }
 
   return result;

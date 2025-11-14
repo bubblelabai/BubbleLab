@@ -1,5 +1,5 @@
 import { z } from '@hono/zod-openapi';
-import { CredentialType } from './types';
+import { ServiceUsageSchema } from './bubbleflow-execution-schema';
 export const subscriptionStatusResponseSchema = z
   .object({
     userId: z.string().openapi({
@@ -63,39 +63,9 @@ export const subscriptionStatusResponseSchema = z
         .openapi({
           description: 'Token usage breakdown by model for current month',
         }),
-      serviceUsage: z
-        .array(
-          z.object({
-            service: z.nativeEnum(CredentialType).openapi({
-              description: 'Service identifier',
-              example: CredentialType.OPENAI_CRED,
-            }),
-            subService: z.string().optional().openapi({
-              description: 'Sub-service identifier',
-              example: 'gpt-4',
-            }),
-            unit: z.string().openapi({
-              description: 'Unit type for this service',
-              example: 'per_1m_tokens',
-            }),
-            usage: z.number().openapi({
-              description: 'Units used this month',
-              example: 2250000,
-            }),
-            unitCost: z.number().openapi({
-              description:
-                'Bubble Lab price per unit (with multiplier applied)',
-              example: 2.1,
-            }),
-            totalCost: z.number().openapi({
-              description: 'Total cost for this service (usage * unitCost)',
-              example: 4.725,
-            }),
-          })
-        )
-        .openapi({
-          description: 'Service usage and cost breakdown for current month',
-        }),
+      serviceUsage: z.array(ServiceUsageSchema).openapi({
+        description: 'Service usage and cost breakdown for current month',
+      }),
     }),
     isActive: z.boolean().openapi({
       description: 'Whether the subscription is active',

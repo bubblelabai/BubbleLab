@@ -321,8 +321,27 @@ export class EditBubbleFlowTool extends ToolBubble<
 
       if (this.context?.logger) {
         this.context.logger.logTokenUsage(
-          tokenUsage,
-          `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
+          {
+            usage: tokenUsage.inputTokens,
+            service: CredentialType.OPENROUTER_CRED,
+            unit: 'input_tokens',
+            subService: morphModel ?? 'morph/morph-v3-large',
+          },
+          `LLM completion: ${tokenUsage.inputTokens} input`,
+          {
+            bubbleName: 'code-edit-tool',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+        this.context.logger.logTokenUsage(
+          {
+            usage: tokenUsage.outputTokens,
+            service: CredentialType.OPENROUTER_CRED,
+            unit: 'output_tokens',
+            subService: morphModel ?? 'morph/morph-v3-large',
+          },
+          `LLM completion: ${tokenUsage.outputTokens} output`,
           {
             bubbleName: 'code-edit-tool',
             variableId: this.context?.variableId,
