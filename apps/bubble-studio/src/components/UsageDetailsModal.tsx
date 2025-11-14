@@ -165,9 +165,13 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#3d3935]">
           <div>
-            <h2 className="text-2xl font-bold text-white">Usage Details</h2>
+            <h2 className="text-2xl font-bold text-white">
+              Managed Credentials Usage Details
+            </h2>
             <p className="text-sm text-gray-400 mt-1">
-              Detailed breakdown of your service usage this month
+              Usage of BubbleLab's managed API credentials. You're encouraged to
+              bring your own API keys — when you do, you'll pay your provider
+              directly and this usage won't apply.
             </p>
           </div>
           <button
