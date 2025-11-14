@@ -12,7 +12,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   subscription,
   isOpen,
 }) => {
-  const MONTHLY_LIMIT = 5; // Hardcoded $5 limit
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Calculate total cost from serviceUsage
@@ -21,12 +20,24 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     0
   );
 
-  const percentage = Math.min((totalCost / MONTHLY_LIMIT) * 100, 100);
-  const isOverLimit = totalCost > MONTHLY_LIMIT;
+  const monthlyLimit = subscription.usage.limit;
+  const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
+  const isOverLimit = totalCost > monthlyLimit;
 
-  // Format cost to 2 decimal places
+  // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
-    return `$${cost.toFixed(2)}`;
+    return `$${cost.toFixed(4)}`;
+  };
+
+  // Format limit to 0 decimal places
+  const formatLimit = (limit: number): string => {
+    return `$${limit.toFixed(0)}`;
+  };
+
+  // Format reset date
+  const formatResetDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
@@ -40,8 +51,13 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
           {isOpen ? (
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-gray-200 font-medium">
-                  Monthly Usage
+                <div className="flex items-center gap-2">
+                  <div className="text-sm text-gray-200 font-medium">
+                    Monthly Usage
+                  </div>
+                  <span className="text-xs text-gray-400 font-normal">
+                    · {subscription.planDisplayName}
+                  </span>
                 </div>
               </div>
 
@@ -61,21 +77,26 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
               {/* Monetary usage and Show Details button */}
               <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-3">
-                  <div className="text-xs text-gray-400">
-                    {formatCost(totalCost)} / {formatCost(MONTHLY_LIMIT)}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-gray-400">
+                      {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
+                    </div>
+                    <span
+                      className={`text-xs font-semibold ${
+                        isOverLimit
+                          ? 'text-red-400'
+                          : percentage > 80
+                            ? 'text-yellow-400'
+                            : 'text-blue-400'
+                      }`}
+                    >
+                      {percentage.toFixed(1)}%
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs font-semibold ${
-                      isOverLimit
-                        ? 'text-red-400'
-                        : percentage > 80
-                          ? 'text-yellow-400'
-                          : 'text-blue-400'
-                    }`}
-                  >
-                    {percentage.toFixed(1)}%
-                  </span>
+                  <div className="text-[10px] text-gray-500">
+                    Resets {formatResetDate(subscription.usage.resetDate)}
+                  </div>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(true)}
@@ -101,9 +122,12 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
         {!isOpen && (
           <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
             <div className="font-semibold">
-              {formatCost(totalCost)} / {formatCost(MONTHLY_LIMIT)}
+              {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
             </div>
-            <div className="text-[10px] text-gray-400">this month</div>
+            <div className="text-[10px] text-gray-400">
+              {subscription.planDisplayName} · Resets{' '}
+              {formatResetDate(subscription.usage.resetDate)}
+            </div>
           </span>
         )}
       </div>
@@ -113,6 +137,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         serviceUsage={subscription.usage.serviceUsage}
+        limit={monthlyLimit}
       />
     </>
   );

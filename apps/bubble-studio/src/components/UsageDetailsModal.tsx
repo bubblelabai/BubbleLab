@@ -7,6 +7,7 @@ interface UsageDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   serviceUsage: SubscriptionStatusResponse['usage']['serviceUsage'];
+  limit: number;
 }
 
 type SortField = 'service' | 'subService' | 'usage' | 'unitCost' | 'totalCost';
@@ -43,6 +44,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
   isOpen,
   onClose,
   serviceUsage,
+  limit,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('totalCost');
@@ -124,6 +126,10 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
 
   const formatCost = (cost: number): string => {
     return `$${cost.toFixed(4)}`;
+  };
+
+  const formatLimit = (limit: number): string => {
+    return `$${limit.toFixed(0)}`;
   };
 
   const formatUsage = (usage: number, unit: string): string => {
@@ -327,9 +333,14 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
               <span className="text-sm font-semibold text-gray-300">
                 Total Cost:
               </span>
-              <span className="text-xl font-bold text-purple-400 font-mono">
-                {formatCost(totalCost)}
-              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold text-purple-400 font-mono">
+                  {formatCost(totalCost)}
+                </span>
+                <span className="text-sm text-gray-500 font-mono">
+                  / {formatLimit(limit)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
