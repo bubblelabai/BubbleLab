@@ -35,15 +35,19 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
     return count.toString();
   };
 
-  return (
+  return null;
+
+  /* return (
     <div className="relative group">
       <div
         className={`w-full flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] ${
           isOpen ? 'p-3' : 'justify-center p-2'
         }`}
       >
-        {/* Token usage details (shown when expanded) */}
-        {isOpen && (
+        {/* Token usage details (shown when expanded) */
+};
+{
+  /* {isOpen && (
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <div className="text-xs text-gray-400">Monthly Token Usage</div>
@@ -81,21 +85,29 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
               </div>
             )}
 
-            {/* Debug: Dump entire subscription data */}
-            <div className="mt-4 p-2 bg-gray-900 rounded text-xs text-gray-300 overflow-auto max-h-96">
+            {/* Debug: Dump entire subscription data */
+}
+{
+  /* <div className="mt-4 p-2 bg-gray-900 rounded text-xs text-gray-300 overflow-auto max-h-96">
               <div className="font-semibold mb-2 text-yellow-400">
                 DEBUG: Full Subscription Data
               </div>
               <pre className="whitespace-pre-wrap break-words">
                 {JSON.stringify(subscription, null, 2)}
               </pre>
-            </div>
-          </div>
-        )}
-      </div>
+            </div> */
+}
+{
+  /* </div>
+        )} */
+}
+{
+  /* </div>
 
-      {/* Tooltip when collapsed */}
-      {!isOpen && (
+      {/* Tooltip when collapsed */
+}
+{
+  /* {!isOpen && (
         <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
           <div className="font-semibold">
             {formatTokens(totalTokens)} tokens
@@ -104,7 +116,7 @@ export const TokenUsageDisplay: React.FC<TokenUsageDisplayProps> = ({
         </span>
       )}
     </div>
-  );
-};
+  ); */
+}
 
 export default TokenUsageDisplay;
