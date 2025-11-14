@@ -329,9 +329,7 @@ export function PearlChat() {
           <div className="flex flex-col items-center justify-center h-full px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-purple-500/30 mb-3">
-                <Sparkles className="w-6 h-6 text-purple-400" />
-              </div>
+              <Sparkles className="w-6 h-6 text-gray-200 mb-3 mx-auto" />
               <h3 className="text-base font-medium text-gray-200 mb-1">
                 Chat with Pearl
               </h3>
