@@ -60,8 +60,9 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
     // Calculate the timestamp for 24 hours ago
     const oldest = String(Math.floor(Date.now() / 1000) - 24 * 60 * 60);
 
-
-    // 1. Fetch Slack messages from the last 24 hours
+    // Retrieves Slack conversation history from the specified channel for the last
+    // 24 hours using the oldest timestamp, gathering all messages that will be
+    // analyzed and summarized into updates, blockers, and decisions.
     const historyResult = await new SlackBubble({
       operation: 'get_conversation_history',
       channel: channelName,
@@ -72,7 +73,6 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
       return { message: 'Could not retrieve Slack messages or no new messages in the last 24 hours.' };
     }
 
-    // 2. Format messages for the AI agent
     const messagesText = historyResult.data.messages
       .filter(msg => msg.text && msg.user) // Ensure message has text and a user
       .map(msg => \`User \${msg.user}: \${msg.text}\`)
@@ -91,7 +91,9 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
       \${messagesText}
     \`;
 
-    // 3. Summarize messages with an AI agent
+    // Analyzes Slack messages using gemini-2.5-flash with jsonMode to categorize
+    // them into Updates, Blockers, and Decisions, transforming raw conversation
+    // history into a structured project management summary.
     const agentResult = await new AIAgentBubble({
       message: summaryPrompt,
       model: { model: 'google/gemini-2.5-flash', jsonMode: true },
@@ -116,7 +118,6 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
       return \`<h2>\${title}</h2><ul>\${items.map(item => \`<li>\${item}</li>\`).join('')}</ul>\`;
     };
 
-    // 4. Format the summary into an HTML email
     const htmlBody = \`
       <h1>Daily Digest for #\${channelName}</h1>
       <p>Here is a summary of the last 24 hours of conversation.</p>
@@ -125,7 +126,9 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
       \${toHtmlList(decisions, '⚖️ Decisions')}
     \`;
 
-    // 5. Send the summary email
+    // Sends the AI-generated project management summary as a formatted HTML email
+    // to the recipient, delivering categorized updates, blockers, and decisions
+    // directly to their inbox.
     const emailResult = await new ResendBubble({
       operation: 'send_email',
       to: [recipientEmail],

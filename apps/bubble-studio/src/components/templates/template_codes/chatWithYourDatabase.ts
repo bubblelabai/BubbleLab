@@ -49,9 +49,7 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
 
     const dbSchema = schemaResult.data.databaseSchema.cleanedJSON;
 
-    // Performs intelligent data analysis using gemini-2.5-pro with jsonMode and the
-    // sql-query-tool, iteratively exploring the database to identify trends, calculate
-    // metrics, and generate a comprehensive HTML report with actionable insights.
+
     const dataAnalystPrompt = \`
       You are an expert data analyst. Based on the database schema and user query, provide comprehensive insights by exploring the database as needed.
 
@@ -91,6 +89,10 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       Return only valid JSON with no markdown formatting.
     \`;
 
+
+    // Performs intelligent data analysis using gemini-2.5-pro with jsonMode and the
+    // sql-query-tool, iteratively exploring the database to identify trends, calculate
+    // metrics, and generate a comprehensive HTML report with actionable insights.
     const dataAnalyst = new AIAgentBubble({
       message: dataAnalystPrompt,
       systemPrompt: 'You are a comprehensive data analyst. Use tools iteratively to explore data, analyze trends, and generate automated reports. Return only valid JSON.',
