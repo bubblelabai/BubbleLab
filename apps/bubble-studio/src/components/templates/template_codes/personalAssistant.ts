@@ -51,6 +51,12 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
     const timeMin = new Date().toISOString();
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Retrieves calendar events from the user's primary Google Calendar for the next
+    // 30 days. This provides the raw event data that will be summarized and emailed.
+    // Parameters: operation ('list_events'), calendar_id ('primary' for main calendar),
+    // time_min (current time), time_max (30 days from now), single_events (true to
+    // expand recurring events), order_by ('startTime' for chronological order). This
+    // is the first step in generating a weekly calendar summary report.
     const calendar = new GoogleCalendarBubble({
       operation: 'list_events',
       calendar_id: 'primary',
@@ -75,6 +81,12 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       description: event.description,
     }));
 
+    // Transforms the raw calendar events into a beautifully formatted HTML email summary.
+    // This AI agent analyzes all events and creates a professional, readable summary that
+    // highlights important dates, meetings, and deadlines. Parameters: systemPrompt
+    // (defines the agent as an email formatting expert), message (includes all calendar
+    // events as JSON). The agent generates HTML content that will be used directly in
+    // the email body, making the calendar summary visually appealing and easy to scan.
     const agent = new AIAgentBubble({
       systemPrompt: 'You are an expert at summarizing calendar events and creating beautiful, well-formatted HTML emails. Create a summary of the provided events. The output should be only the HTML body content.',
       message: \`Please summarize the following calendar events into a well-formatted email body: \${JSON.stringify(events)}\`,
@@ -86,6 +98,12 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       throw new Error('Failed to generate event summary.');
     }
 
+    // Sends the AI-generated calendar summary as an HTML email to the user. This
+    // delivers the formatted calendar report directly to their inbox. Parameters:
+    // operation ('send_email'), to (recipient email address), subject (descriptive
+    // email subject line), html (the formatted HTML content from the AI agent).
+    // This final step completes the workflow by delivering the calendar insights
+    // in a convenient, readable format.
     const emailBubble = new ResendBubble({
       operation: 'send_email',
       to: [email],

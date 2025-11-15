@@ -43,6 +43,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     const { email = "emailtoreceivereport@gmail.com", leadPersona = "Devs who run automation agencies, or build extensively with n8n" } = payload;
 
     // Step 1: Generate keywords using AI agent based on the lead persona
+    // Generates relevant LinkedIn search keywords based on the target lead persona.
+    // This AI agent analyzes the persona description and creates optimized keywords
+    // for finding potential leads on LinkedIn. Parameters: model (gemini-2.5-flash
+    // with low temperature for consistent output), systemPrompt (defines lead
+    // generation expert), message (includes the lead persona). This creates targeted
+    // search terms that will help find the right people on LinkedIn.
     const keywordGenerator = new AIAgentBubble({
       model: {
         model: 'google/gemini-2.5-flash',
@@ -68,6 +74,11 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     this.logger?.info(\`Using primary keyword: \${primaryKeyword}\`);
 
     // Step 2: Search LinkedIn posts using the generated keywords
+    // Searches LinkedIn for posts matching the generated keywords to find potential
+    // leads. This discovers relevant content and authors that match the target persona.
+    // Parameters: operation ('searchPosts'), keyword (the primary search keyword),
+    // limit (5 posts to analyze), sortBy ('relevance' to get the most relevant results).
+    // This provides the initial pool of LinkedIn posts and authors to evaluate as leads.
     const searchResult = await new LinkedInTool({
       operation: 'searchPosts',
       keyword: primaryKeyword,
@@ -88,6 +99,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
       
       if (post.author?.profileUrl) {
         try {
+          // Extracts the LinkedIn username from a profile URL using AI heuristics to
+          // handle complex URL formats and edge cases. This is needed to scrape
+          // additional posts from the lead's profile. Parameters: model (gemini-2.5-flash
+          // with very low temperature for precise extraction), systemPrompt (defines URL
+          // parser specialist), message (includes the profile URL). This enables deeper
+          // profile analysis by getting the username needed for profile scraping.
           const usernameExtractor = new AIAgentBubble({
             model: {
               model: 'google/gemini-2.5-flash',
@@ -120,6 +137,13 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
       }
       
       // Initial lead analysis
+      // Analyzes a LinkedIn post and author to determine if they match the target
+      // lead persona. This AI agent evaluates the post content, author headline,
+      // and other signals to classify them as a qualified lead or not. Parameters:
+      // model (gemini-2.5-flash with jsonMode for structured output), systemPrompt
+      // (defines expert lead generation analyst), message (includes author and post
+      // details). This is the core qualification step that filters potential leads
+      // based on the target persona.
       const leadGenAnalysisAgent = new AIAgentBubble({
         model: {
           model: 'google/gemini-2.5-flash',
@@ -154,6 +178,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
             let storyAnalysis = "";
             
             try {
+              // Scrapes additional posts from a LinkedIn profile to gather more context
+              // about the lead. This provides deeper insights into their interests,
+              // pain points, and professional story. Parameters: operation ('scrapePosts'),
+              // username (the LinkedIn username extracted earlier), limit (10 posts),
+              // pageNumber (1 for first page). This enables comprehensive lead analysis
+              // by understanding their full professional narrative.
               const profilePostsResult = await new LinkedInTool({
                 operation: 'scrapePosts',
                 username: username,
@@ -168,6 +198,13 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
 
                 // Analyze the complete story of all posts
                 if (additionalPosts.length > 0) {
+                  // Analyzes multiple LinkedIn posts from the same author to understand
+                  // their complete professional story, pain points, and engagement
+                  // opportunities. This provides strategic insights that help with
+                  // personalized outreach. Parameters: model (gemini-2.5-flash), systemPrompt
+                  // (defines strategic analyst), message (includes all posts and persona).
+                  // This creates a comprehensive profile analysis that makes outreach
+                  // more effective and personalized.
                   const storyAgent = new AIAgentBubble({
                     model: {
                       model: 'google/gemini-2.5-flash',
@@ -221,6 +258,13 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
         ? this.generateLeadsText(leads, checkedProfiles, leadPersona, primaryKeyword)
         : this.generateNoLeadsText(checkedProfiles, leadPersona, primaryKeyword);
 
+      // Sends a comprehensive email report with all identified leads, their story
+      // analyses, and checked profiles. This delivers the complete lead generation
+      // results directly to the user's inbox. Parameters: operation ('send_email'),
+      // from (sender email), to (recipient email), subject (dynamic based on results),
+      // text and html (formatted content with leads and insights). This final step
+      // delivers all the value - qualified leads with deep insights - in a convenient,
+      // actionable format.
       const emailResult = await new ResendBubble({
         operation: 'send_email',
         from: 'Bubble Lab Team <welcome@hello.bubblelab.ai>',

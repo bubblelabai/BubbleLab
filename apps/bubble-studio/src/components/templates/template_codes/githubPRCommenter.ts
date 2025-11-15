@@ -84,6 +84,11 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     // ========================================================================
     // PHASE 1: GET COMMIT GUIDELINES FROM REPOSITORY
     // ========================================================================
+    // Retrieves the COMMIT.md file from the repository to understand the project's
+    // commit message conventions. This file contains guidelines that will be used
+    // by the AI agent to generate PR titles and descriptions that follow the project's
+    // style. Parameters: owner (repo owner), repo (repository name), path ('COMMIT.md').
+    // This step ensures the AI suggestions align with the project's existing conventions.
     const getCommitFileBubble = new GithubBubble({
       operation: 'get_file',
       owner,
@@ -108,6 +113,12 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     // ========================================================================
     // PHASE 2: GET PR DIFF/CHANGES
     // ========================================================================
+    // Fetches the actual code changes (diff) from GitHub's diff URL. This contains
+    // all the file changes, additions, and deletions in the pull request. The diff
+    // content is essential for the AI agent to understand what code was changed and
+    // generate accurate PR descriptions. Parameters: url (GitHub's diff URL from the
+    // PR payload), method ('GET'). This provides the technical context needed for
+    // intelligent PR title and body generation.
     const getPrDiffBubble = new HttpBubble({
       url: prData.pull_request.diff_url,
       method: 'GET',
@@ -124,6 +135,13 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     // ========================================================================
     // PHASE 3: AI ANALYSIS & SUGGESTION GENERATION
     // ========================================================================
+    // Analyzes the commit guidelines and PR diff to generate a suggested PR title
+    // and description. This AI agent combines the project's style guidelines with
+    // the actual code changes to create contextually appropriate suggestions. Parameters:
+    // model (gemini-2.5-flash with jsonMode for structured output), systemPrompt
+    // (defines the agent as a PR writing expert), message (includes commit guidelines
+    // and diff content). The jsonMode ensures structured output with "title" and "body"
+    // keys, making it easy to parse and use in the GitHub comment.
     const suggestionAgent = new AIAgentBubble({
       model: {
         model: 'google/gemini-2.5-flash',
@@ -158,6 +176,12 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     // ========================================================================
     // PHASE 4: POST COMMENT TO PR
     // ========================================================================
+    // Posts the AI-generated PR title and description suggestions as a comment on
+    // the pull request. This makes the suggestions visible to the PR author and
+    // reviewers. Parameters: operation ('create_pr_comment'), owner (repo owner),
+    // repo (repository name), pull_number (PR number), body (formatted markdown comment
+    // containing the suggested title and body). This final step delivers the value
+    // to the user by making the suggestions immediately available in the PR thread.
     const commentBody = \`### Suggested PR title from Pearl\\n\\n**Title:** \\\`\${suggestion.title}\\\`\\n\\n**Body:**\\n\${suggestion.body}\`;
 
     const createCommentBubble = new GithubBubble({

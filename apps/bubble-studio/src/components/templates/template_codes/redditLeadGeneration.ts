@@ -34,6 +34,11 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     const { spreadsheetId, subreddit, searchCriteria } = payload;
 
     // 1. Get existing contacts from Google Sheet to avoid duplicates
+    // Reads the existing contact names from the first column of the Google Sheet to
+    // prevent duplicate entries. This ensures we only add new leads that haven't
+    // been contacted before. Parameters: operation ('read_values'), spreadsheet_id
+    // (the Google Sheets ID), range ('Sheet1!A:A' reads all values in column A).
+    // This is the first step to maintain data quality and avoid spamming existing contacts.
     const readSheet = new GoogleSheetsBubble({
       operation: 'read_values',
       spreadsheet_id: spreadsheetId,
@@ -50,6 +55,11 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
       : [];
 
     // 2. Scrape Reddit for posts from the specified subreddit
+    // Fetches recent posts from the target subreddit to find potential leads. This
+    // gathers raw Reddit content that will be analyzed by the AI agent to identify
+    // users matching the search criteria. Parameters: subreddit (target subreddit name),
+    // sort ('new' to get recent posts), limit (50 posts to analyze). This provides the
+    // source material for lead identification in the next step.
     const redditScraper = new RedditScrapeTool({
       subreddit,
       sort: 'new',
@@ -71,6 +81,14 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     }));
 
     // 3. Use AI to find users matching the search criteria and generate outreach messages
+    // Analyzes Reddit posts to identify potential leads matching the search criteria
+    // and generates personalized outreach messages for each lead. This AI agent filters
+    // through posts, identifies qualified leads, and creates empathetic, non-salesy
+    // messages tailored to each person's specific situation. Parameters: message (includes
+    // existing contacts and Reddit posts), systemPrompt (defines lead generation strategy),
+    // model (gemini-2.5-pro with jsonMode for structured output). This is the core intelligence
+    // step that transforms raw Reddit data into actionable lead information with personalized
+    // outreach messages.
     const systemPrompt = \`
       You are an expert analyst. Your task is to identify potential leads from a list of Reddit posts from the '\${subreddit}' subreddit.
       Your goal is to find exactly 10 new people who match the following criteria: \${searchCriteria}
@@ -127,6 +145,10 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     }
 
     // 4. Check for headers and add them if they are missing
+    // Verifies if the spreadsheet has column headers. This ensures the sheet is properly
+    // structured before adding new data. Parameters: operation ('read_values'),
+    // spreadsheet_id (the Google Sheets ID), range ('Sheet1!A1:E1' reads the first row).
+    // This quality check ensures data integrity and proper organization of the lead data.
     const headerCheck = new GoogleSheetsBubble({
         operation: 'read_values',
         spreadsheet_id: spreadsheetId,
@@ -139,6 +161,11 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
 
     const headers = headerResult.data?.values?.[0];
     if (!headers || headers.length < 5) {
+        // Writes column headers to the spreadsheet if they don't exist. This sets up
+        // the proper structure for storing lead information: Name, Link, Message, Date,
+        // and Status. Parameters: operation ('write_values'), spreadsheet_id (the Google
+        // Sheets ID), range ('Sheet1!A1' starting cell), values (array of header row).
+        // This ensures the spreadsheet is properly formatted before adding lead data.
         const writeHeaders = new GoogleSheetsBubble({
             operation: 'write_values',
             spreadsheet_id: spreadsheetId,
@@ -153,6 +180,12 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
 
 
     // 5. Format and append new contacts to the Google Sheet
+    // Adds the newly identified leads to the Google Sheet with all their information.
+    // This persists the lead data for future reference and outreach tracking. Parameters:
+    // operation ('append_values'), spreadsheet_id (the Google Sheets ID), range
+    // ('Sheet1!A:E' specifies columns A through E), values (array of rows, each containing
+    // name, link, message, date, and status). This final step saves the leads and makes
+    // them available for the user's outreach workflow.
     const rowsToAppend = newContacts.map(contact => {
         const post = posts.find((p: RedditPost) => p.url === contact.link);
         const postDate = post ? new Date(post.createdUtc * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
