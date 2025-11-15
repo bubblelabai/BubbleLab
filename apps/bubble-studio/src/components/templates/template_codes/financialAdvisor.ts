@@ -95,6 +95,9 @@ export class StockAnalysisFlow extends BubbleFlow<'webhook/http'> {
         required: ['headlines', 'keyEvents'],
       });
 
+      // Researches recent news, headlines, and key events for the stock ticker from
+      // Yahoo Finance, gathering current information that could impact the stock's price,
+      // including earnings announcements, product launches, and market events.
       const researchAgent = new ResearchAgentTool({
         task: \`Scrape Yahoo Finance for the latest news headlines and key events for the stock ticker: \${ticker}. Focus on information that could influence the stock's price.\`,
         expectedResultSchema: researchSchema,
@@ -134,6 +137,10 @@ export class StockAnalysisFlow extends BubbleFlow<'webhook/http'> {
         Please provide a concise, well-structured analysis in plain text format.
       \`;
 
+      // Analyzes the financial research data using gemini-2.5-pro to generate a
+      // comprehensive 3-paragraph stock analysis covering market sentiment, potential
+      // risks, and opportunities, transforming raw financial news into actionable
+      // investment insights.
       const analysisAgent = new AIAgentBubble({
         message: analysisPrompt,
         systemPrompt: 'You are a financial analyst AI. Your task is to provide clear, concise, and unbiased analysis of financial data in plain text format.',
@@ -154,6 +161,8 @@ export class StockAnalysisFlow extends BubbleFlow<'webhook/http'> {
       const analysis = analysisResult.data.response;
 
       // Only send email if all previous steps succeeded
+      // Delivers the AI-generated stock analysis as a plain text email to the recipient,
+      // making investment insights immediately accessible for decision-making.
       const emailSender = new ResendBubble({
         operation: 'send_email',
         to: [recipientEmail],

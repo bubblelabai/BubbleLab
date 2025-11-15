@@ -81,9 +81,9 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     const repo = prData.repository.name;
     const pull_number = prData.number;
 
-    // ========================================================================
-    // PHASE 1: GET COMMIT GUIDELINES FROM REPOSITORY
-    // ========================================================================
+    // Retrieves the COMMIT.md file from the repository using the owner, repo, and path
+    // to understand commit message conventions, ensuring AI-generated PR suggestions
+    // align with the project's style.
     const getCommitFileBubble = new GithubBubble({
       operation: 'get_file',
       owner,
@@ -105,9 +105,9 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       );
     }
 
-    // ========================================================================
-    // PHASE 2: GET PR DIFF/CHANGES
-    // ========================================================================
+    // Fetches the code changes (diff) from GitHub's diff URL using a GET request,
+    // providing the AI agent with all file changes, additions, and deletions needed
+    // to generate accurate PR descriptions.
     const getPrDiffBubble = new HttpBubble({
       url: prData.pull_request.diff_url,
       method: 'GET',
@@ -121,9 +121,9 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     }
     const diffContent = diffResult.data.body;
 
-    // ========================================================================
-    // PHASE 3: AI ANALYSIS & SUGGESTION GENERATION
-    // ========================================================================
+    // Analyzes commit guidelines and PR diff using gemini-2.5-flash with jsonMode to
+    // generate structured PR title and description suggestions that combine project
+    // style guidelines with actual code changes.
     const suggestionAgent = new AIAgentBubble({
       model: {
         model: 'google/gemini-2.5-flash',
@@ -155,9 +155,9 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       throw new BubbleError(errorMessage);
     }
 
-    // ========================================================================
-    // PHASE 4: POST COMMENT TO PR
-    // ========================================================================
+    // Posts the AI-generated PR suggestions as a formatted markdown comment on the
+    // pull request using the owner, repo, and pull_number, making the suggestions
+    // immediately visible to the PR author and reviewers.
     const commentBody = \`### Suggested PR title from Pearl\\n\\n**Title:** \\\`\${suggestion.title}\\\`\\n\\n**Body:**\\n\${suggestion.body}\`;
 
     const createCommentBubble = new GithubBubble({

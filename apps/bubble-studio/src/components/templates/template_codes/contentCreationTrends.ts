@@ -118,9 +118,6 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       targetAudience,
     } = payload;
 
-    // ========================================================================
-    // PHASE 1: BRAND INTELLIGENCE - Extract brand context from website
-    // ========================================================================
     let brandContext: BrandIntelligence;
 
     if (brandWebsite) {
@@ -129,6 +126,9 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
         ? brandWebsite
         : \`https://\${brandWebsite}\`;
 
+      // Scrapes the brand website in markdown format, focusing on main content to
+      // extract raw website content that will be analyzed for brand voice, audience,
+      // and value propositions.
       const brandScraper = new WebScrapeTool({
         url: formattedUrl,
         format: 'markdown',
@@ -160,6 +160,10 @@ Extract and return JSON:
 }
       \`;
 
+      // Analyzes the scraped website content using gemini-2.5-flash with jsonMode
+      // to extract structured brand intelligence including name, description, voice,
+      // audience, and value propositions, ensuring content ideas align with the
+      // brand's identity and messaging.
       const brandAnalyzer = new AIAgentBubble({
         message: brandAnalysisPrompt,
         systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence. Return only valid JSON.',
@@ -198,9 +202,9 @@ Extract and return JSON:
       brandContext.targetAudience = targetAudience;
     }
 
-    // ========================================================================
-    // PHASE 2: AI RESEARCH PLANNING - Brainstorm FRESH news sources first
-    // ========================================================================
+    // Brainstorms the best sources for discovering recent events and emerging phenomena,
+    // generating news source URLs, trend keywords, YouTube search queries, and subreddits
+    // that will surface fresh, timely content opportunities.
     const researchPlanningPrompt = \`
 You are a research strategist specializing in finding FRESH, RECENT content opportunities.
 
@@ -251,6 +255,9 @@ Return JSON:
 }
     \`;
 
+    // Plans comprehensive research strategies using gemini-2.5-flash with jsonMode,
+    // identifying the best news sources, trend keywords, YouTube queries, and Reddit
+    // communities for discovering fresh, recent content opportunities.
     const researchPlanner = new AIAgentBubble({
       message: researchPlanningPrompt,
       systemPrompt: 'You are an expert research strategist. Plan comprehensive research strategies for content trend discovery. Return only valid JSON.',
@@ -273,15 +280,13 @@ Return JSON:
       throw new Error('Failed to parse research plan JSON');
     }
 
-    // ========================================================================
-    // PHASE 3: NEWS-FIRST RESEARCH - Scrape fresh news to find emerging phenomena
-    // ========================================================================
-
-    // STEP 3.1: Scrape FRESH news sources sequentially (prioritize recent content)
+    // Scrapes fresh news sources including Google Trends, Exploding Topics, and
+    // AI-suggested news sites to find emerging phenomena and recent events that
+    // create timely content opportunities.
     const scrapeResults: Array<{ success: boolean; data?: { content: string }; error?: string }> = [];
 
-    // Google Trends (what's trending RIGHT NOW)
     try {
+      // Scrapes Google Trends to discover what's trending right now.
       const googleTrendsResult = await new WebScrapeTool({
         url: 'https://trends.google.com/trends/trendingsearches/daily',
         format: 'markdown',
@@ -292,8 +297,8 @@ Return JSON:
       scrapeResults.push({ success: false, error: 'Failed to scrape Google Trends' });
     }
 
-    // Exploding Topics (emerging topics)
     try {
+      // Scrapes Exploding Topics to identify emerging topics.
       const explodingTopicsResult = await new WebScrapeTool({
         url: 'https://www.explodingtopics.com',
         format: 'markdown',
@@ -304,9 +309,9 @@ Return JSON:
       scrapeResults.push({ success: false, error: 'Failed to scrape Exploding Topics' });
     }
 
-    // AI-suggested FRESH news sources (priority)
     for (const site of researchPlan.newsSourceUrls) {
       try {
+        // Scrapes AI-suggested fresh news sources to gather recent industry developments.
         const newsResult = await new WebScrapeTool({
           url: site.url,
           format: 'markdown',
@@ -329,7 +334,8 @@ Return JSON:
       })
       .join('\\n\\n---\\n\\n');
 
-    // STEP 3.2: Extract EMERGING PHENOMENA from recent news (what's happening NOW)
+    // Extracts emerging phenomena from recent news, identifying 4-6 specific events
+    // or cultural moments happening right now that create timely content opportunities.
     const phenomenaExtractionPrompt = \`
 Analyze RECENT news content and identify 4-6 emerging phenomena, events, or cultural moments that are happening RIGHT NOW.
 
@@ -368,6 +374,9 @@ Return JSON with RECENT, SPECIFIC phenomena:
 FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen trends.
     \`;
 
+    // Analyzes recent news content using gemini-2.5-flash with jsonMode to identify
+    // emerging phenomena, events, or cultural moments happening right now that create
+    // timely content opportunities.
     const phenomenaExtractor = new AIAgentBubble({
       message: phenomenaExtractionPrompt,
       systemPrompt: 'You are a news analyst specializing in identifying emerging phenomena and timely content opportunities. Focus on RECENT events with specific dates. Return only valid JSON.',
@@ -394,13 +403,13 @@ FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen 
       throw new Error('No emerging phenomena found in recent news');
     }
 
-    // STEP 3.3 & 3.4: Run YouTube + Deep Research in PARALLEL for maximum efficiency
+    // Runs YouTube search and deep research in parallel for maximum efficiency.
     const [youtubeData, researchData] = await Promise.all([
-      // PARALLEL TASK 1: YouTube - search and get FULL transcripts
+      // Searches YouTube and extracts full transcripts from top videos.
       (async () => {
-        // Limit to max 3 queries for efficiency
         const limitedQueries = researchPlan.youtubeSearchQueries.slice(0, 3);
 
+        // Searches YouTube for videos related to the research queries.
         const youtubeSearch = new YouTubeTool({
           operation: 'searchVideos',
           searchQueries: limitedQueries,
@@ -417,9 +426,10 @@ FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen 
           const topVideos = youtubeSearchResult.data.videos.slice(0, 5).filter(v => v.url);
           youtubeVideoTitles = topVideos.map(v => v.title || '').filter(Boolean);
 
-          // Get FULL transcripts from all 5 videos in parallel
+          // Extracts full transcripts with timestamps from all videos.
           const transcriptPromises = topVideos.map(async (video) => {
             try {
+              // Extracts the full transcript with timestamps from a YouTube video.
               const transcriptTool = new YouTubeTool({
                 operation: 'getTranscript',
                 videoUrl: video.url!,
@@ -450,11 +460,12 @@ FULL TRANSCRIPT:
         return { fullYoutubeTranscripts, youtubeVideoTitles };
       })(),
 
-      // PARALLEL TASK 2: Deep research AROUND each emerging phenomenon
+      // Researches how creators are responding to each emerging phenomenon.
       (async () => {
         const allTrends: TrendData['trends'] = [];
 
         for (const phenomenon of emergingPhenomena.phenomena) {
+          // Researches how creators and brands are responding to recent events.
           const researchTask = \`
 Research how creators and brands are responding to this RECENT event/phenomenon on social media.
 
@@ -493,6 +504,8 @@ Provide 2-3 specific content format examples showing how creators are responding
             ],
           });
 
+          // Uses research agent to discover how creators are responding to each
+          // emerging phenomenon, finding viral content formats and engagement tactics.
           const topicResearch = new ResearchAgentTool({
             task: researchTask,
             expectedResultSchema: researchSchema,
@@ -524,9 +537,10 @@ Provide 2-3 specific content format examples showing how creators are responding
       trends: allTrends,
     };
 
-    // STEP 3.5: Gather FULL Reddit posts from AI-suggested subreddits (in parallel)
-    // Get complete post content including title, body, and top comments for deeper insights
+    // Gathers full Reddit posts from AI-suggested subreddits, including title, body,
+    // and engagement metrics for deeper insights into creator discussions.
     const redditPromises = researchPlan.subreddits.map(async (subreddit) => {
+      // Scrapes Reddit posts from the specified subreddit to gather creator discussions.
       const redditScraper = new RedditScrapeTool({
         subreddit,
         limit: 10,
@@ -569,10 +583,8 @@ Content: \${content.substring(0, 500)}\${content.length > 500 ? '...' : ''}
     const redditResults = await Promise.all(redditPromises);
     const fullRedditContent = redditResults.filter((r): r is string => r !== null).join('\\n');
 
-    // ========================================================================
-    // PHASE 4: AI IDEATION - Generate FRESH, EVENT-DRIVEN content ideas
-    // ========================================================================
-    // Pass ALL collected data: brand context, emerging phenomena, research, transcripts, Reddit
+    // Generates fresh, event-driven content ideas by combining brand context,
+    // emerging phenomena, research data, YouTube transcripts, and Reddit discussions.
     const adaptationPrompt = \`
 You are an expert content strategist specializing in TIMELY, EVENT-DRIVEN content.
 
@@ -649,6 +661,9 @@ Return ONLY valid JSON:
 }
     \`;
 
+    // Generates 8-12 fresh, timely content ideas using gemini-2.5-flash with jsonMode,
+    // each tied to specific recent events and incorporating successful patterns from
+    // analyzed videos and research data.
     const ideationAgent = new AIAgentBubble({
       message: adaptationPrompt,
       systemPrompt:
@@ -672,9 +687,9 @@ Return ONLY valid JSON:
       throw new Error('Failed to parse content ideas JSON');
     }
 
-    // ========================================================================
-    // PHASE 5: DELIVERY - Send comprehensive email with ALL information
-    // ========================================================================
+    // Sends a comprehensive HTML email containing all generated content ideas, pattern
+    // analysis, emerging phenomena, video insights, and brand context directly to
+    // the user's inbox.
     const htmlEmail = \`
 <!DOCTYPE html>
 <html>
@@ -837,6 +852,8 @@ Return ONLY valid JSON:
 </html>
     \`;
 
+    // Delivers the complete content trends analysis package as a beautifully formatted
+    // HTML email, making all insights and ideas immediately accessible.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],

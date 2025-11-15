@@ -36,7 +36,8 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
 
     const draftIds: string[] = [];
 
-    // 1. List unread emails from the past 24 hours
+    // Retrieves up to 50 unread emails from the Gmail inbox that arrived in the past
+    // 24 hours, providing the initial list of emails that need replies.
     const listEmails = new GmailBubble({
       operation: 'list_emails',
       query: 'is:unread newer_than:1d',
@@ -61,7 +62,9 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
       };
     }
 
-    // 2. Fetch full email details for each email
+    // Retrieves the complete email content including headers, body text, and metadata
+    // for each unread email using the message_id, providing full context needed for
+    // AI analysis and reply generation.
     const emails: Email[] = [];
     for (const email of emailList) {
       const getEmail = new GmailBubble({
@@ -97,7 +100,9 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
       }
     }
 
-    // 3. Filter marketing/non-important emails if requested
+    // Classifies emails using gemini-2.5-flash with jsonMode to identify important
+    // emails requiring replies, filtering out marketing emails, newsletters, and
+    // automated notifications to ensure only meaningful emails get reply drafts.
     let filteredEmails: Email[] = emails;
 
     if (filterMarketing) {
@@ -136,6 +141,8 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
         )}
       \`;
 
+      // Analyzes emails to classify them as important or non-important, filtering out
+      // noise and focusing on emails that need human-like responses.
       const classificationAgent = new AIAgentBubble({
         message: classificationPrompt,
         systemPrompt: 'You are an expert email classifier. Return only valid JSON with no markdown formatting.',
@@ -170,7 +177,9 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
       filteredEmails = emails.filter((e) => importantEmailIds.has(e.id));
     }
 
-    // 4. Generate smart replies for each important email
+    // Creates contextual, professional email replies using gemini-2.5-flash with
+    // jsonMode, analyzing original email content to generate responses that match
+    // the tone and address key points, creating draft replies users can review and send.
     for (const email of filteredEmails) {
       const replyPrompt = \`
         You are a professional email assistant. Draft a smart, contextual reply to the following email.
@@ -195,6 +204,8 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
         }
       \`;
 
+      // Generates a smart, contextual reply for a single email, creating professional
+      // responses that address key points while matching the original email's tone.
       const replyAgent = new AIAgentBubble({
         message: replyPrompt,
         systemPrompt: 'You are a professional email assistant. Draft helpful, contextual email replies. Return only valid JSON with no markdown formatting.',
@@ -217,7 +228,9 @@ export class GmailReplyAssistantFlow extends BubbleFlow<'webhook/http'> {
         continue; // Skip this email if JSON parsing fails
       }
 
-      // 5. Create draft for the reply
+      // Creates a draft email in Gmail with the AI-generated reply content, linking
+      // it to the original email thread if available, making the reply available for
+      // user review and sending.
       // Extract recipient email from "From" header (format: "Name <email@example.com>")
       const toEmail = email.from.match(/<(.+?)>/)?.[1] || email.from;
 

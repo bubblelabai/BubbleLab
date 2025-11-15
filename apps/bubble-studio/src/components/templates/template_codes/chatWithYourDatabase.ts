@@ -32,7 +32,9 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
   async handle(payload: CustomCronPayload): Promise<Output> {
     const { email, query, reportTitle = 'Daily Flows Report' } = payload;
 
-    // 1. Analyze database schema to understand available tables
+    // Examines the PostgreSQL database structure with metadata included to discover
+    // all available tables and columns, providing the AI agent with context needed
+    // to generate accurate SQL queries.
     const schemaAnalyzer = new DatabaseAnalyzerWorkflowBubble({
       dataSourceType: 'postgresql',
       ignoreSSLErrors: true,
@@ -47,7 +49,7 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
 
     const dbSchema = schemaResult.data.databaseSchema.cleanedJSON;
 
-    // 2. Use AI data analyst agent to get insights, including necessary data retrieval and HTML report generation
+
     const dataAnalystPrompt = \`
       You are an expert data analyst. Based on the database schema and user query, provide comprehensive insights by exploring the database as needed.
 
@@ -87,6 +89,10 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       Return only valid JSON with no markdown formatting.
     \`;
 
+
+    // Performs intelligent data analysis using gemini-2.5-pro with jsonMode and the
+    // sql-query-tool, iteratively exploring the database to identify trends, calculate
+    // metrics, and generate a comprehensive HTML report with actionable insights.
     const dataAnalyst = new AIAgentBubble({
       message: dataAnalystPrompt,
       systemPrompt: 'You are a comprehensive data analyst. Use tools iteratively to explore data, analyze trends, and generate automated reports. Return only valid JSON.',
@@ -156,7 +162,8 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       }
     }
 
-    // 3. Send email report using the generated HTML
+    // Delivers the AI-generated database analysis report as a beautifully formatted
+    // HTML email to the recipient, making insights immediately accessible in their inbox.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],

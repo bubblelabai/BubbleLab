@@ -51,6 +51,9 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
     const timeMin = new Date().toISOString();
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
+    // Retrieves calendar events from the primary Google Calendar for the next 30 days,
+    // ordered chronologically with recurring events expanded, providing the raw event
+    // data that will be summarized and emailed.
     const calendar = new GoogleCalendarBubble({
       operation: 'list_events',
       calendar_id: 'primary',
@@ -75,6 +78,9 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       description: event.description,
     }));
 
+    // Transforms raw calendar events into a beautifully formatted HTML email summary
+    // by analyzing all events and creating a professional summary that highlights
+    // important dates, meetings, and deadlines.
     const agent = new AIAgentBubble({
       systemPrompt: 'You are an expert at summarizing calendar events and creating beautiful, well-formatted HTML emails. Create a summary of the provided events. The output should be only the HTML body content.',
       message: \`Please summarize the following calendar events into a well-formatted email body: \${JSON.stringify(events)}\`,
@@ -86,6 +92,8 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       throw new Error('Failed to generate event summary.');
     }
 
+    // Sends the AI-generated calendar summary as an HTML email to the recipient,
+    // delivering the formatted calendar report directly to their inbox.
     const emailBubble = new ResendBubble({
       operation: 'send_email',
       to: [email],

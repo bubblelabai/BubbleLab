@@ -50,9 +50,11 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
 
     const allHeadlines: (RedditPost | NewsArticle)[] = [];
 
-    // 1. Scrape Reddit communities
     if (subreddits && subreddits.length > 0) {
       for (const subreddit of subreddits) {
+        // Scrapes the top 15 posts from the specified subreddit filtered by the past
+        // day, gathering Reddit headlines and discussions that will be included in
+        // the news digest.
         const redditScraper = new RedditScrapeTool({
           subreddit,
           limit: 15,
@@ -68,9 +70,11 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
       }
     }
 
-    // 2. Scrape news websites
     if (newsUrls && newsUrls.length > 0) {
       for (const url of newsUrls) {
+        // Scrapes news websites in markdown format, focusing on main content to
+        // extract headlines and article content that will be organized into the
+        // daily news digest.
         const webScraper = new WebScrapeTool({
           url,
           format: 'markdown',
@@ -94,7 +98,9 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
       throw new Error('No headlines found from any source');
     }
 
-    // 3. Generate digest structure with AI (JSON mode)
+    // Analyzes all collected headlines using gemini-2.5-flash with jsonMode to
+    // organize them into 3-5 meaningful categories, generate summaries, and create
+    // an executive summary, transforming raw headlines into a structured digest.
     const prompt = \`
       You are an expert news editor. Analyze the following headlines and organize them into a structured digest.
 
@@ -124,6 +130,9 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
       \${JSON.stringify(allHeadlines)}
     \`;
 
+    // Organizes headlines into categories and generates summaries using gemini-2.5-flash
+    // with jsonMode, creating a structured digest with executive summary and categorized
+    // headlines ready for email formatting.
     const digestAgent = new AIAgentBubble({
       message: prompt,
       systemPrompt: 'You are an expert news editor. Analyze headlines and organize them into clear, logical categories. Return only valid JSON with no markdown formatting.',
@@ -142,7 +151,6 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     }
     this.logger?.info(JSON.stringify(digestResult))
 
-    // 4. Parse the JSON response and create beautiful HTML
     let digestData;
     try {
       digestData = JSON.parse(digestResult.data.response);
@@ -214,7 +222,9 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
 </html>
     \`;
 
-    // 5. Send email digest
+    // Sends the AI-generated news digest as a beautifully formatted HTML email
+    // to the recipient, delivering categorized headlines and executive summary
+    // directly to their inbox.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
