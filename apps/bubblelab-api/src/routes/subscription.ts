@@ -103,6 +103,13 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
       planDisplayNames[subscriptionInfo.plan] || subscriptionInfo.plan,
     features: subscriptionInfo.features,
     usage: {
+      tokenUsage: [
+        {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+        },
+      ],
       current: currentUsage,
       limit: monthlyLimit >= 100000 ? -1 : monthlyLimit, // Convert very high limit to -1 (unlimited)
       percentage,
