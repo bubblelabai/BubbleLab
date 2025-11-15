@@ -168,13 +168,16 @@ export class StreamingBubbleLogger extends BubbleLogger {
     const message = success
       ? 'Execution completed successfully in ' +
         (this.getCurrentExecutionTime() / 1000).toFixed(2) +
-        's. Total tokens used: ' +
-        this.getTokenUsage().inputTokens +
-        ' input + ' +
-        this.getTokenUsage().outputTokens +
-        ' output = ' +
-        this.getTokenUsage().totalTokens +
-        ' total tokens.'
+        's.' +
+        ' Total cost: $' +
+        Object.values(this.cumulativeServiceUsageByService)
+          .reduce((acc, curr) => acc + curr.totalCost, 0)
+          .toFixed(6) +
+        ' (' +
+        Object.entries(this.cumulativeServiceUsageByService)
+          .map(([service, data]) => `${service}: $${data.totalCost.toFixed(6)}`)
+          .join(', ') +
+        ')'
       : `Execution failed: ${error || 'Unknown error'}`;
 
     this.logLine(0, message, {

@@ -7,12 +7,16 @@ import {
 } from '../middleware/auth.js';
 import { PLAN_TYPE } from '../services/subscription-validation.js';
 import { db } from '../db/index.js';
-import { users, userModelUsage } from '../db/schema.js';
+import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { APP_FEATURES_TO_MONTHLY_LIMITS } from '../services/subscription-validation.js';
 import { calculateNextResetDate } from '../utils/subscription.js';
-import { getCurrentMonthYear } from '../services/token-tracking.js';
+import { getCurrentMonthYear } from '../services/service-usage-tracking.js';
 import { getSubscriptionStatusRoute } from '../schemas/subscription.js';
+import {
+  CredentialType,
+  SubscriptionStatusResponse,
+} from '@bubblelab/shared-schemas';
 
 const app = new OpenAPIHono();
 
@@ -40,22 +44,6 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
   // Get current month-year for token usage query
   const currentMonthYear = getCurrentMonthYear();
 
-  // Get token usage for current month
-  const tokenUsageData = await db
-    .select({
-      modelName: userModelUsage.modelName,
-      inputTokens: userModelUsage.inputTokens,
-      outputTokens: userModelUsage.outputTokens,
-      totalTokens: userModelUsage.totalTokens,
-    })
-    .from(userModelUsage)
-    .where(
-      and(
-        eq(userModelUsage.userId, userId),
-        eq(userModelUsage.monthYear, currentMonthYear)
-      )
-    );
-
   // Get the monthly limit based on features and app type
   const monthlyLimit = Math.max(
     ...subscriptionInfo.features.map(
@@ -82,6 +70,32 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     pro_plus: 'Pro Plus',
   };
 
+  // Fetch actual service usage data from database for current month
+  const serviceUsageRecords = await db.query.userServiceUsage.findMany({
+    where: and(
+      eq(userServiceUsage.userId, userId),
+      eq(userServiceUsage.monthYear, currentMonthYear)
+    ),
+  });
+
+  // Convert to ServiceUsage format
+  // Convert microdollars back to dollars (divide by 1,000,000)
+  const actualServiceUsage: SubscriptionStatusResponse['usage']['serviceUsage'] =
+    serviceUsageRecords.map((record) => ({
+      service: record.service as CredentialType,
+      subService: record.subService || undefined,
+      unit: record.unit,
+      usage: record.usage,
+      unitCost: record.unitCost / 1000000, // Convert microdollars to dollars
+      totalCost: record.totalCost / 1000000, // Convert microdollars to dollars
+    }));
+
+  // Calculate total estimated monthly cost
+  const estimatedMonthlyCost = actualServiceUsage.reduce(
+    (sum, usage) => sum + usage.totalCost,
+    0
+  );
+
   return c.json({
     userId,
     plan: subscriptionInfo.plan,
@@ -93,7 +107,8 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
       limit: monthlyLimit >= 100000 ? -1 : monthlyLimit, // Convert very high limit to -1 (unlimited)
       percentage,
       resetDate: nextResetDate,
-      tokenUsage: tokenUsageData,
+      serviceUsage: actualServiceUsage,
+      estimatedMonthlyCost,
     },
     isActive: true, // TODO: Check actual subscription status from Clerk
   });

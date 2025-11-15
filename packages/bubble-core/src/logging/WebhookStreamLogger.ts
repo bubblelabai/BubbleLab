@@ -174,7 +174,7 @@ export class WebhookStreamLogger extends BubbleLogger {
     error?: string
   ): void {
     const executionTime = (this.getCurrentExecutionTime() / 1000).toFixed(2);
-    const tokenUsage = this.getTokenUsage();
+    const tokenUsage = this.getExecutionSummary().serviceUsage;
 
     // Format the final result nicely for display - NO TRUNCATION
     let displayResult: string;
@@ -203,7 +203,7 @@ export class WebhookStreamLogger extends BubbleLogger {
     const separator = '═'.repeat(70);
     const thinSeparator = '─'.repeat(70);
     const message = success
-      ? `\n\n${separator}\n    ✓ FLOW COMPLETED SUCCESSFULLY\n${separator}\n\n⏱️  Execution Time: ${executionTime}s\n🎯 Tokens Used: ${tokenUsage.totalTokens} total (${tokenUsage.inputTokens} in + ${tokenUsage.outputTokens} out)\n\n${thinSeparator}\n📤 FINAL RESULT:\n${thinSeparator}\n\n${displayResult}\n\n${separator}\n`
+      ? `\n\n${separator}\n    ✓ FLOW COMPLETED SUCCESSFULLY\n${separator}\n\n⏱️  Execution Time: ${executionTime}s\n🎯 Tokens Used: ${tokenUsage?.reduce((acc, curr) => acc + curr.totalCost, 0).toFixed(6)} total (${tokenUsage?.reduce((acc, curr) => acc + curr.usage, 0).toFixed(6)} in + ${tokenUsage?.reduce((acc, curr) => acc + curr.usage, 0).toFixed(6)} out)\n\n${thinSeparator}\n📤 FINAL RESULT:\n${thinSeparator}\n\n${displayResult}\n\n${separator}\n`
       : `\n\n${separator}\n    ✗ FLOW FAILED\n${separator}\n\n❌ Error: ${error || 'Unknown error'}\n\n${separator}\n`;
 
     this.logLine(0, message, {

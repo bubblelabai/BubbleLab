@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { ServiceUsageSchema } from './bubbleflow-execution-schema';
 export const subscriptionStatusResponseSchema = z
   .object({
     userId: z.string().openapi({
@@ -19,15 +20,19 @@ export const subscriptionStatusResponseSchema = z
     }),
     usage: z.object({
       current: z.number().openapi({
-        description: 'Current monthly usage count',
+        description: 'Current monthly usage count (in USD)',
         example: 42,
       }),
       limit: z.number().openapi({
-        description: 'Monthly usage limit',
+        description: 'Monthly usage limit (in USD)',
         example: 100,
       }),
+      estimatedMonthlyCost: z.number().openapi({
+        description: 'Projected monthly cost based on current usage trend',
+        example: 14.19,
+      }),
       percentage: z.number().openapi({
-        description: 'Usage percentage',
+        description: 'Usage percentage (0-100)',
         example: 42,
       }),
       resetDate: z.string().openapi({
@@ -58,6 +63,9 @@ export const subscriptionStatusResponseSchema = z
         .openapi({
           description: 'Token usage breakdown by model for current month',
         }),
+      serviceUsage: z.array(ServiceUsageSchema).openapi({
+        description: 'Service usage and cost breakdown for current month',
+      }),
     }),
     isActive: z.boolean().openapi({
       description: 'Whether the subscription is active',
