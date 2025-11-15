@@ -75,6 +75,7 @@ export { WebSearchTool } from './bubbles/tool-bubble/web-search-tool.js';
 export { WebScrapeTool } from './bubbles/tool-bubble/web-scrape-tool.js';
 export { WebCrawlTool } from './bubbles/tool-bubble/web-crawl-tool.js';
 export { WebExtractTool } from './bubbles/tool-bubble/web-extract-tool.js';
+export { WebTestTool } from './bubbles/tool-bubble/web-test-tool.js';
 export { ResearchAgentTool } from './bubbles/tool-bubble/research-agent-tool.js';
 export { RedditScrapeTool } from './bubbles/tool-bubble/reddit-scrape-tool.js';
 export { InstagramTool } from './bubbles/tool-bubble/instagram-tool.js';

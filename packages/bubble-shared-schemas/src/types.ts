@@ -50,6 +50,7 @@ export type BubbleName =
   | 'web-scrape-tool'
   | 'web-crawl-tool'
   | 'web-extract-tool'
+  | 'web-test-tool'
   | 'research-agent-tool'
   | 'reddit-scrape-tool'
   | 'slack-data-assistant'

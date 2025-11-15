@@ -220,6 +220,9 @@ export class BubbleFactory {
     const { WebExtractTool } = await import(
       './bubbles/tool-bubble/web-extract-tool.js'
     );
+    const { WebTestTool } = await import(
+      './bubbles/tool-bubble/web-test-tool.js'
+    );
     const { ResearchAgentTool } = await import(
       './bubbles/tool-bubble/research-agent-tool.js'
     );
@@ -327,6 +330,7 @@ export class BubbleFactory {
       'web-extract-tool',
       WebExtractTool as BubbleClassWithMetadata
     );
+    this.register('web-test-tool', WebTestTool as BubbleClassWithMetadata);
     this.register(
       'research-agent-tool',
       ResearchAgentTool as BubbleClassWithMetadata

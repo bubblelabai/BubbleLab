@@ -179,6 +179,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'web-scrape-tool': [CredentialType.FIRECRAWL_API_KEY],
   'web-crawl-tool': [CredentialType.FIRECRAWL_API_KEY],
   'web-extract-tool': [CredentialType.FIRECRAWL_API_KEY],
+  'web-test-tool': [CredentialType.FIRECRAWL_API_KEY],
   'research-agent-tool': [
     CredentialType.FIRECRAWL_API_KEY,
     CredentialType.GOOGLE_GEMINI_CRED,
