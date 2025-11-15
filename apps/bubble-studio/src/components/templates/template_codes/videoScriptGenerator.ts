@@ -138,9 +138,6 @@ export class VideoScriptGeneratorFlow extends BubbleFlow<'webhook/http'> {
       specificVideoUrls,
     } = payload;
 
-    // ========================================================================
-    // PHASE 1: INPUT PROCESSING & BRAND INTELLIGENCE
-    // ========================================================================
     const lengthGuide = {
       short: '1-3 minutes',
       medium: '5-10 minutes',
@@ -158,12 +155,9 @@ export class VideoScriptGeneratorFlow extends BubbleFlow<'webhook/http'> {
         : \`https://\${brandWebsite}\`;
 
       try {
-        // Scrapes the brand website to extract content that will be analyzed for brand
-        // voice, audience, and value propositions. This gathers the raw website content
-        // needed for brand intelligence extraction. Parameters: url (formatted brand
-        // website URL), format ('markdown' for clean text extraction), onlyMainContent
-        // (true to focus on main content, excluding navigation and footer). This provides
-        // the source material for understanding the brand's identity and messaging.
+        // Scrapes the brand website in markdown format, focusing on main content to
+        // extract raw website content that will be analyzed for brand voice, audience,
+        // and value propositions.
         const brandScraper = new WebScrapeTool({
           url: formattedUrl,
           format: 'markdown',
@@ -190,13 +184,10 @@ Extract and return JSON:
 }
           \`;
 
-          // Analyzes the scraped website content to extract structured brand intelligence
-          // including name, description, voice, audience, and value propositions. This
-          // transforms raw website content into actionable brand insights that will
-          // inform video script generation. Parameters: message (includes website content
-          // and extraction instructions), systemPrompt (defines the agent as a brand
-          // strategist), model (gemini-2.5-flash with jsonMode for structured output).
-          // This ensures video scripts align with the brand's identity and messaging.
+          // Analyzes the scraped website content using gemini-2.5-flash with jsonMode
+          // to extract structured brand intelligence including name, description, voice,
+          // audience, and value propositions, ensuring video scripts align with the
+          // brand's identity and messaging.
           const brandAnalyzer = new AIAgentBubble({
             message: brandAnalysisPrompt,
             systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence for content creation. Return only valid JSON.',
@@ -228,9 +219,6 @@ Extract and return JSON:
 
     const finalTargetAudience = brandIntel?.audience || targetAudience || 'General audience';
 
-    // ========================================================================
-    // PHASE 2: VIDEO DISCOVERY & TRANSCRIPT EXTRACTION
-    // ========================================================================
     let videoUrls: string[] = [];
     let videoMetadata: Array<{
       title: string | null;
@@ -244,11 +232,8 @@ Extract and return JSON:
       // Use provided URLs
       videoUrls = specificVideoUrls.slice(0, 5); // Max 5 videos
 
-      // Retrieves metadata (title, duration, views, channel) for the provided video URLs.
-      // This gathers essential information about each video that will be used in analysis
-      // and script generation. Parameters: operation ('searchVideos'), videoUrls (array
-      // of specific YouTube URLs to analyze). This provides context about the videos
-      // before extracting their transcripts for deeper analysis.
+      // Retrieves metadata (title, duration, views, channel) for the provided video
+      // URLs, gathering essential information about each video before transcript extraction.
       const metadataSearch = new YouTubeTool({
         operation: 'searchVideos',
         videoUrls: videoUrls,
@@ -261,11 +246,9 @@ Extract and return JSON:
         videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
       }
     } else {
-      // Searches YouTube for top videos related to the topic. This discovers relevant
-      // content that can be analyzed for successful patterns and techniques. Parameters:
-      // operation ('searchVideos'), searchQueries (array with the topic), maxResults (5
-      // videos to analyze). This finds the best-performing videos on the topic to learn
-      // from their structure, hooks, and engagement tactics.
+      // Searches YouTube for the top 5 videos related to the topic, discovering
+      // relevant content that can be analyzed for successful patterns, hooks, and
+      // engagement tactics.
       const youtubeSearch = new YouTubeTool({
         operation: 'searchVideos',
         searchQueries: [topic],
@@ -291,12 +274,9 @@ Extract and return JSON:
     
     for (const url of videoUrls) {
       try {
-        // Extracts the full transcript (with timestamps) from a YouTube video. This
-        // provides the complete spoken content that will be analyzed for patterns,
-        // hooks, structure, and engagement techniques. Parameters: operation
-        // ('getTranscript'), videoUrl (the YouTube video URL). This is essential for
-        // understanding what makes successful videos work and adapting those techniques
-        // to new scripts.
+        // Extracts the full transcript with timestamps from a YouTube video, providing
+        // the complete spoken content needed to analyze patterns, hooks, structure,
+        // and engagement techniques.
         const transcriptTool = new YouTubeTool({
           operation: 'getTranscript',
           videoUrl: url,
@@ -328,9 +308,6 @@ Extract and return JSON:
       throw new Error('Failed to extract transcripts from any videos. Try different videos or topics.');
     }
 
-    // ========================================================================
-    // PHASE 3: AI PATTERN ANALYSIS
-    // ========================================================================
     const patternAnalysisPrompt = \`
 You are an expert video content analyst specializing in identifying successful patterns in YouTube videos.
 
@@ -390,14 +367,10 @@ Extract and return JSON with the following structure:
 Focus on actionable patterns that can be adapted to create a new video on this topic.
     \`;
 
-    // Analyzes all video transcripts to identify successful patterns including opening
-    // hooks, content structure, engagement tactics, visual suggestions, transitions,
-    // and CTA patterns. This AI agent extracts actionable insights from successful
-    // videos that can be applied to new script generation. Parameters: message
-    // (includes all transcripts and analysis instructions), systemPrompt (defines
-    // expert video content analyst), model (gemini-2.5-pro with jsonMode for structured
-    // output). This is the core intelligence step that identifies what makes videos
-    // successful and provides patterns for script creation.
+    // Analyzes all video transcripts using gemini-2.5-pro with jsonMode to identify
+    // successful patterns including opening hooks, content structure, engagement tactics,
+    // visual suggestions, transitions, and CTA patterns, extracting actionable insights
+    // for script creation.
     const patternAnalyzer = new AIAgentBubble({
       message: patternAnalysisPrompt,
       systemPrompt: 'You are an expert video content analyst. Analyze video transcripts and extract actionable patterns for content creation. Return only valid JSON.',
@@ -420,9 +393,6 @@ Focus on actionable patterns that can be adapted to create a new video on this t
       throw new Error('Failed to parse pattern analysis JSON');
     }
 
-    // ========================================================================
-    // PHASE 4: MULTI-STYLE SCRIPT GENERATION
-    // ========================================================================
     const scriptGenerationPrompt = \`
 You are an expert video script writer. Create 4 complete video script variations in different styles.
 
@@ -483,12 +453,9 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
     \`;
 
     // Generates 4 complete video script variations in different styles (Educational,
-    // Storytelling, Professional, Casual) based on the analyzed patterns and brand
-    // context. Each script includes hooks, timing, talking points, visual suggestions,
-    // and CTAs. Parameters: message (includes topic, audience, patterns, and brand
-    // context), systemPrompt (defines expert script writer), model (gemini-2.5-pro
-    // with jsonMode). This creates production-ready scripts that users can immediately
-    // use for video creation, incorporating successful patterns from analyzed videos.
+    // Storytelling, Professional, Casual) using gemini-2.5-pro with jsonMode, each
+    // including hooks, timing, talking points, visual suggestions, and CTAs, creating
+    // production-ready scripts that incorporate successful patterns from analyzed videos.
     const scriptGenerator = new AIAgentBubble({
       message: scriptGenerationPrompt,
       systemPrompt: 'You are an expert video script writer. Create complete, actionable video scripts in multiple styles. Return only valid JSON.',
@@ -515,9 +482,6 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
       throw new Error('No scripts generated');
     }
 
-    // ========================================================================
-    // PHASE 5: EMAIL DELIVERY
-    // ========================================================================
     const htmlEmail = \`
 <!DOCTYPE html>
 <html>
@@ -752,12 +716,8 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
     \`;
 
     // Sends a comprehensive HTML email containing all generated scripts, pattern
-    // analysis, video insights, and brand context. This delivers the complete video
-    // script package directly to the user's inbox. Parameters: operation ('send_email'),
-    // to (recipient email address), subject (includes topic, script count, and date),
-    // html (the complete formatted email with all scripts and insights). This final
-    // step delivers all the value - multiple script variations, analysis, and insights
-    // - in a beautifully formatted, easy-to-use format.
+    // analysis, video insights, and brand context directly to the user's inbox,
+    // delivering the complete video script package in a beautifully formatted format.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
