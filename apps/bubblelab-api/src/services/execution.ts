@@ -110,18 +110,11 @@ async function runBubbleFlowCommon(
       options.userId,
       options.appType
     );
-    console.debug('[runBubbleFlowCommon] Credits check:', creditsCheck);
+    console.log('[runBubbleFlowCommon] Credits check:', creditsCheck);
     if (!creditsCheck.allowed) {
-      const errorMessage = `Monthly credits exceeded. You have used ${creditsCheck.currentUsage} out of ${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using system services.`;
+      const errorMessage = `Monthly credits exceeded. You have used $${creditsCheck.currentUsage} out of $${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using system services or use your own credential.`;
       console.error('[runBubbleFlowCommon]', errorMessage);
-      // Stream error message to the stream callback
-      if (options.streamCallback) {
-        options.streamCallback({
-          timestamp: new Date().toISOString(),
-          type: 'error',
-          message: errorMessage,
-        });
-      }
+
       return {
         executionId: 0,
         success: false,

@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { clerk, getClerkClient } from '../utils/clerk-client.js';
 import { AppType } from '../config/clerk-apps.js';
 import { env } from '../config/env.js';
-import { getTotalServiceUsageForUser } from './service-usage-tracking.js';
+import { getTotalServiceCostForUser } from './service-usage-tracking.js';
 
 // Maps subscription plan id to monthly API limit
 export type PLAN_TYPE = 'free_user' | 'pro_plan' | 'pro_plus';
@@ -154,7 +154,7 @@ export async function verifyMonthlyCreditsExceeded(
     );
 
     // Get the plan limit
-    const currentUsage = await getTotalServiceUsageForUser(userId);
+    const currentUsage = await getTotalServiceCostForUser(userId);
     const limit = getMonthlyLimitForFeaturesInternal(features, appType);
     return {
       allowed: currentUsage < limit,

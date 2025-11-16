@@ -15,7 +15,7 @@ export function getCurrentMonthYear(): string {
  * Get total service usage for a user, optionally filtered by service and subService
  * Returns aggregated usage across all units for the specified service
  */
-export async function getTotalServiceUsageForUser(
+export async function getTotalServiceCostForUser(
   userId: string,
   service?: CredentialType,
   subService?: string
@@ -32,20 +32,13 @@ export async function getTotalServiceUsageForUser(
 
   if (subService) {
     whereConditions.push(eq(userServiceUsage.subService, subService));
-  } else {
-    const subServiceCondition = or(
-      isNull(userServiceUsage.subService),
-      eq(userServiceUsage.subService, '')
-    );
-    if (subServiceCondition) {
-      whereConditions.push(subServiceCondition);
-    }
   }
 
   const usageRecords = await db.query.userServiceUsage.findMany({
     where: and(...whereConditions),
   });
-  return usageRecords.reduce((acc, curr) => acc + curr.usage, 0);
+  console.log('[getTotalServiceUsageForUser] Usage records:', usageRecords);
+  return usageRecords.reduce((acc, curr) => acc + curr.totalCost, 0);
 }
 
 /**
