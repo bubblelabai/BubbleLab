@@ -159,6 +159,7 @@ export async function executeBubbleFlowWithTracking(
           streamCallback: options.streamCallback,
           useWebhookLogger: options.useWebhookLogger,
           pricingTable: getPricingTable(),
+          appType: appType,
         }
       );
     } else {
@@ -168,6 +169,7 @@ export async function executeBubbleFlowWithTracking(
         payload,
         {
           userId: options.userId,
+          appType: appType,
           pricingTable: getPricingTable(),
         }
       );

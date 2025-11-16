@@ -17,15 +17,18 @@ export function getCurrentMonthYear(): string {
  */
 export async function getTotalServiceUsageForUser(
   userId: string,
-  service: CredentialType,
+  service?: CredentialType,
   subService?: string
 ): Promise<number> {
   const monthYear = getCurrentMonthYear();
   const whereConditions = [
     eq(userServiceUsage.userId, userId),
-    eq(userServiceUsage.service, service),
     eq(userServiceUsage.monthYear, monthYear),
   ];
+
+  if (service) {
+    whereConditions.push(eq(userServiceUsage.service, service));
+  }
 
   if (subService) {
     whereConditions.push(eq(userServiceUsage.subService, subService));

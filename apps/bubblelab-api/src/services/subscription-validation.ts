@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { clerk, getClerkClient } from '../utils/clerk-client.js';
 import { AppType } from '../config/clerk-apps.js';
 import { env } from '../config/env.js';
+import { getTotalServiceUsageForUser } from './service-usage-tracking.js';
 
 // Maps subscription plan id to monthly API limit
 export type PLAN_TYPE = 'free_user' | 'pro_plan' | 'pro_plus';
@@ -26,8 +27,8 @@ export const APP_FEATURES_TO_MONTHLY_LIMITS: Record<
     unlimited_usage: 100000,
   },
   [AppType.BUBBLE_LAB]: {
-    base_usage: 10000,
-    pro_usage: 10000,
+    base_usage: 1,
+    pro_usage: 20,
     unlimited_usage: 10000,
   },
 };
@@ -94,7 +95,7 @@ function getMonthlyLimitForFeaturesInternal(
     // This shouldn't be needed since we only have one feature per plan, but just in case
     const monthlyLimit = Math.max(
       ...features.map(
-        (feature) => APP_FEATURES_TO_MONTHLY_LIMITS[appType][feature]
+        (feature) => APP_FEATURES_TO_MONTHLY_LIMITS[appType][feature] || 0
       )
     );
     console.debug(
@@ -116,6 +117,54 @@ export function getMonthlyLimitForFeatures(
   appType: AppType
 ): number {
   return getMonthlyLimitForFeaturesInternal(features, appType);
+}
+
+export async function verifyMonthlyCreditsExceeded(
+  userId: string,
+  appType: AppType
+): Promise<{ allowed: boolean; currentUsage: number; limit: number }> {
+  try {
+    // Skip API limit checks in test environment to avoid Clerk API calls
+    if (env.BUBBLE_ENV?.toLowerCase() === 'test') {
+      console.debug(
+        '[subscription-validation] Test mode: skipping credits check'
+      );
+      return {
+        allowed: true,
+        currentUsage: 0,
+        limit: APP_FEATURES_TO_MONTHLY_LIMITS[AppType.NODEX].unlimited_usage,
+      };
+    }
+
+    // Get user from Clerk to extract subscription info using the app-specific client
+    const appClerk = getClerkClient(appType) || clerk;
+    const clerkUser = await appClerk?.users.getUser(userId);
+    if (!clerkUser) {
+      throw new Error('User not found');
+    }
+
+    // Get user's subscription features from Clerk metadata (now populated by middleware)
+    const features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
+      'base_usage',
+    ];
+
+    console.info(
+      '[subscription-validation] verifyMonthlyCreditsExceeded: features',
+      features
+    );
+
+    // Get the plan limit
+    const currentUsage = await getTotalServiceUsageForUser(userId);
+    const limit = getMonthlyLimitForFeaturesInternal(features, appType);
+    return {
+      allowed: currentUsage < limit,
+      currentUsage,
+      limit,
+    };
+  } catch (err) {
+    console.error('Failed to verify monthly credits exceeded', err);
+    throw err;
+  }
 }
 
 export async function verifyMonthlyLimit(

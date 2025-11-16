@@ -3,6 +3,11 @@ import './config/env.js';
 import { env } from './config/env.js';
 import { posthog } from './services/posthog.js';
 
+// Disable console.debug in dev mode (can be enabled with ENABLE_DEBUG_LOGS=true)
+if (!process.env.ENABLE_DEBUG_LOGS) {
+  console.debug = () => {};
+}
+
 import { runMigrations } from './db/migrate.js';
 import { seedDevUser } from './db/seed-dev-user.js';
 import { OpenAPIHono } from '@hono/zod-openapi';

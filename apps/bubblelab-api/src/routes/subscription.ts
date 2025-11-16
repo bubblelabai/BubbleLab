@@ -17,7 +17,6 @@ import {
   CredentialType,
   SubscriptionStatusResponse,
 } from '@bubblelab/shared-schemas';
-import { getPricingTable } from '../config/pricing.js';
 
 const app = new OpenAPIHono();
 

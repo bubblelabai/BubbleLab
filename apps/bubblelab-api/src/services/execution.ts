@@ -22,6 +22,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import { trackServiceUsages } from './service-usage-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
+import { verifyMonthlyCreditsExceeded } from './subscription-validation.js';
 
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
@@ -99,6 +100,47 @@ async function runBubbleFlowCommon(
     const envValue = process.env[envName];
     if (envValue) {
       systemCredentials[credType as CredentialType] = envValue;
+    }
+  }
+
+  // Check if user has exceeded monthly credits when using system credentials
+  if (Object.keys(systemCredentials).length > 0 && options.appType) {
+    console.debug('[runBubbleFlowCommon] Checking monthly credits exceeded');
+    const creditsCheck = await verifyMonthlyCreditsExceeded(
+      options.userId,
+      options.appType
+    );
+    console.debug('[runBubbleFlowCommon] Credits check:', creditsCheck);
+    if (!creditsCheck.allowed) {
+      const errorMessage = `Monthly credits exceeded. You have used ${creditsCheck.currentUsage} out of ${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using system services.`;
+      console.error('[runBubbleFlowCommon]', errorMessage);
+      // Stream error message to the stream callback
+      if (options.streamCallback) {
+        options.streamCallback({
+          timestamp: new Date().toISOString(),
+          type: 'error',
+          message: errorMessage,
+        });
+      }
+      return {
+        executionId: 0,
+        success: false,
+        summary: {
+          totalCost: 0,
+          totalDuration: 0,
+          result: errorMessage,
+          lineExecutionCount: 0,
+          bubbleExecutionCount: 0,
+          errorCount: 0,
+          warningCount: 0,
+          serviceUsage: [],
+          serviceUsageByService: {},
+        },
+        error: errorMessage,
+        data: {
+          result: errorMessage,
+        },
+      };
     }
   }
 
