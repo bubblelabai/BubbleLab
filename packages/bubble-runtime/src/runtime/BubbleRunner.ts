@@ -1,6 +1,7 @@
 import {
   ExecutionResult,
   ParsedBubbleWithInfo,
+  CredentialType,
 } from '@bubblelab/shared-schemas';
 import {
   BubbleFactory,
@@ -39,6 +40,7 @@ export interface BubbleRunnerOptions {
   streamCallback?: StreamCallback;
   useWebhookLogger?: boolean;
   pricingTable: Record<string, { unit: string; unitCost: number }>;
+  userCredentialMapping?: Map<number, Set<CredentialType>>;
 }
 
 export class BubbleRunner {
@@ -83,34 +85,31 @@ export class BubbleRunner {
     };
 
     // Initialize logger if enabled
+    const loggerConfig = {
+      minLevel: this.options.logLevel || LogLevel.INFO,
+      enableTiming: true,
+      enableMemoryTracking: true,
+      pricingTable: this.options.pricingTable,
+      userCredentialMapping: this.options.userCredentialMapping,
+    };
+
     if (this.options.streamCallback) {
       // Use webhook logger for terminal-friendly output when requested
       if (this.options.useWebhookLogger) {
         this.logger = new WebhookStreamLogger('BubbleFlow', {
-          minLevel: this.options.logLevel || LogLevel.INFO,
-          enableTiming: true,
-          enableMemoryTracking: true,
+          ...loggerConfig,
           streamCallback: this.options.streamCallback,
-          pricingTable: this.options.pricingTable,
         });
       } else {
         // Use streaming logger when stream callback is provided
         this.logger = new StreamingBubbleLogger('BubbleFlow', {
-          minLevel: this.options.logLevel || LogLevel.INFO,
-          enableTiming: true,
-          enableMemoryTracking: true,
+          ...loggerConfig,
           streamCallback: this.options.streamCallback,
-          pricingTable: this.options.pricingTable,
         });
       }
     } else {
       // Use regular logger
-      this.logger = new BubbleLogger('BubbleFlow', {
-        minLevel: this.options.logLevel || LogLevel.INFO,
-        enableTiming: true,
-        enableMemoryTracking: true,
-        pricingTable: this.options.pricingTable,
-      });
+      this.logger = new BubbleLogger('BubbleFlow', loggerConfig);
     }
 
     this.plan = this.buildExecutionPlan();

@@ -131,18 +131,160 @@ export async function trackServiceUsage(
 }
 
 /**
+ * Create a matching key for service usage records
+ * Matches on: user + service + subService + unit + unitCost + monthYear
+ * This ensures that different prices are tracked separately
+ */
+function createUsageKey(
+  userId: string,
+  serviceUsage: ServiceUsage,
+  monthYear: string
+): string {
+  const subService = serviceUsage.subService || '';
+  return `${userId}:${serviceUsage.service}:${subService}:${serviceUsage.unit}:${serviceUsage.unitCost}:${monthYear}`;
+}
+
+/**
  * Track service usage for multiple services from a ServiceUsage array
- * Iterates through each service usage entry and tracks them separately
- * Each entry is uniquely identified by service + subService + unit
+ * Uses batch operations to minimize database queries:
+ * 1. Batch fetch all existing records for the user in the current month
+ * 2. Match on user + service + subService + unit + unitCost + monthYear
+ * 3. Batch insert new records and batch update existing ones
  */
 export async function trackServiceUsages(
   userId: string,
   serviceUsages: ServiceUsage[]
 ): Promise<void> {
-  // Track each service usage separately
-  const trackingPromises = serviceUsages.map((usage) => {
-    return trackServiceUsage(userId, usage);
-  });
-  // Execute all tracking operations in parallel
-  await Promise.all(trackingPromises);
+  if (serviceUsages.length === 0) {
+    return;
+  }
+
+  const monthYear = getCurrentMonthYear();
+
+  try {
+    // Batch fetch all existing records for this user in the current month
+    // We'll match against these records instead of querying individually
+    const existingRecords = await db.query.userServiceUsage.findMany({
+      where: and(
+        eq(userServiceUsage.userId, userId),
+        eq(userServiceUsage.monthYear, monthYear)
+      ),
+    });
+
+    // Create a map of existing records by their matching key
+    const existingMap = new Map<string, (typeof existingRecords)[0]>();
+    for (const record of existingRecords) {
+      const key = createUsageKey(
+        userId,
+        {
+          service: record.service as CredentialType,
+          subService: record.subService || undefined,
+          unit: record.unit,
+          usage: record.usage,
+          unitCost: record.unitCost,
+          totalCost: record.totalCost,
+        },
+        monthYear
+      );
+      existingMap.set(key, record);
+    }
+
+    // Group service usages by their matching key and aggregate usage
+    const usageMap = new Map<
+      string,
+      { serviceUsage: ServiceUsage; totalUsage: number }
+    >();
+
+    for (const usage of serviceUsages) {
+      const key = createUsageKey(userId, usage, monthYear);
+      const existing = usageMap.get(key);
+      if (existing) {
+        // Aggregate usage for the same key
+        existing.totalUsage += usage.usage;
+      } else {
+        usageMap.set(key, {
+          serviceUsage: usage,
+          totalUsage: usage.usage,
+        });
+      }
+    }
+
+    // Separate records into updates and inserts
+    const recordsToUpdate: Array<{
+      id: number;
+      usage: number;
+      unitCost: number;
+      totalCost: number;
+    }> = [];
+    const recordsToInsert: Array<{
+      userId: string;
+      service: string;
+      subService: string | null;
+      monthYear: string;
+      unit: string;
+      usage: number;
+      unitCost: number;
+      totalCost: number;
+    }> = [];
+
+    for (const [key, { serviceUsage, totalUsage }] of usageMap.entries()) {
+      const existing = existingMap.get(key);
+      if (existing) {
+        // Update existing record - increment usage and recalculate totalCost
+        const newUsage = existing.usage + totalUsage;
+        const newTotalCost = newUsage * serviceUsage.unitCost;
+        recordsToUpdate.push({
+          id: existing.id,
+          usage: newUsage,
+          unitCost: serviceUsage.unitCost, // Update to current pricing
+          totalCost: newTotalCost,
+        });
+      } else {
+        // Insert new record
+        const totalCost = totalUsage * serviceUsage.unitCost;
+        recordsToInsert.push({
+          userId,
+          service: serviceUsage.service,
+          subService: serviceUsage.subService || null,
+          monthYear,
+          unit: serviceUsage.unit,
+          usage: totalUsage,
+          unitCost: serviceUsage.unitCost,
+          totalCost: totalCost,
+        });
+      }
+    }
+
+    // Batch insert new records
+    if (recordsToInsert.length > 0) {
+      await db.insert(userServiceUsage).values(recordsToInsert);
+    }
+
+    // Batch update existing records
+    // Note: Drizzle doesn't support batch updates directly, so we execute them in parallel
+    // This is still much better than N queries (we have at most N updates, not 2N queries)
+    const updatePromises = recordsToUpdate.map((record) =>
+      db
+        .update(userServiceUsage)
+        .set({
+          usage: record.usage,
+          unitCost: record.unitCost,
+          totalCost: record.totalCost,
+          updatedAt: new Date(),
+        })
+        .where(eq(userServiceUsage.id, record.id))
+    );
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+  } catch (error) {
+    console.error(
+      '[trackServiceUsages] Failed to track service usages:',
+      error,
+      'for userId:',
+      userId
+    );
+    // Don't throw - service usage tracking failures shouldn't break execution
+  }
 }

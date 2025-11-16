@@ -125,7 +125,38 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
   }, [filteredAndSortedData]);
 
   const formatCost = (cost: number): string => {
-    return `$${cost.toFixed(4)}`;
+    // If cost is less than 0.0001, show 8 decimal places for precision
+    // Otherwise, show 4 decimal places
+    const decimals = cost > 0 && cost < 0.0001 ? 8 : 4;
+    return `$${cost.toFixed(decimals)}`;
+  };
+
+  const formatUnitCost = (
+    unitCost: number
+  ): { cost: string; shouldAppendMillion: boolean } => {
+    // If unit cost is 0, show "free"
+    if (unitCost === 0) {
+      return {
+        cost: 'FREE',
+        shouldAppendMillion: false,
+      };
+    }
+    // If unit cost is less than 0.0001, multiply by 1 million and append /million
+    if (unitCost > 0 && unitCost < 0.0001) {
+      const costPerMillion = unitCost * 1000000;
+      return {
+        cost: `$${costPerMillion.toFixed(4)}`,
+        shouldAppendMillion: true,
+      };
+    }
+    return {
+      cost: formatCost(unitCost),
+      shouldAppendMillion: false,
+    };
+  };
+
+  const formatUnit = (unit: string, shouldAppendMillion: boolean): string => {
+    return shouldAppendMillion ? `${unit}/million` : unit;
   };
 
   const formatLimit = (limit: number): string => {
@@ -268,6 +299,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
               ) : (
                 filteredAndSortedData.map((item, index) => {
                   const logoPath = getServiceLogo(item.service);
+                  const unitCostFormatted = formatUnitCost(item.unitCost);
                   return (
                     <tr
                       key={index}
@@ -294,7 +326,10 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-xs text-gray-400 bg-[#2a2826]/60 px-2 py-1 rounded">
-                          {item.unit}
+                          {formatUnit(
+                            item.unit,
+                            unitCostFormatted.shouldAppendMillion
+                          )}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
@@ -304,7 +339,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
                         <span className="text-sm text-gray-300 font-mono">
-                          {formatCost(item.unitCost)}
+                          {unitCostFormatted.cost}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">

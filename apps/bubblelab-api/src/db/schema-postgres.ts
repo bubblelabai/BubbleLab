@@ -146,6 +146,7 @@ export const userServiceUsage = pgTable(
       table.service,
       table.subService,
       table.unit,
+      table.unitCost,
       table.monthYear
     ),
   })

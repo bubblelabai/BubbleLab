@@ -48,18 +48,9 @@ async function runBubbleFlowCommon(
 
   // Initialize script and runner (runner gives us a single injector path for both modes)
   const bubbleScriptInstance = new BubbleScript(bubbleScript, bubbleFactory);
-  const runner = new BubbleRunner(bubbleScriptInstance, bubbleFactory, {
-    enableLogging: Boolean(options.streamCallback),
-    enableLineByLineLogging: Boolean(options.streamCallback),
-    enableBubbleLogging: Boolean(options.streamCallback),
-    streamCallback: options.streamCallback,
-    useWebhookLogger: options.useWebhookLogger,
-    pricingTable: options.pricingTable,
-  });
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection
-
-  const injector: BubbleInjector = runner.injector;
+  const injector: BubbleInjector = new BubbleInjector(bubbleScriptInstance);
   const requiredCredentials = injector.findCredentials();
 
   console.log(
@@ -69,6 +60,8 @@ async function runBubbleFlowCommon(
 
   // Get user credentials when needed
   const userCredentials: UserCredentialWithId[] = [];
+  // Map variable IDs to the credential types they use (for zero-cost pricing)
+  const userCredentialMapping = new Map<number, Set<CredentialType>>();
 
   if (Object.keys(bubbleParameters).length > 0) {
     //Find user credentials from database
@@ -85,6 +78,19 @@ async function runBubbleFlowCommon(
         metadata: mapping.metadata,
       }))
     );
+
+    // Build mapping of variable ID -> Set of credential types used
+    for (const cred of userCredentials) {
+      const varId =
+        typeof cred.bubbleVarId === 'number'
+          ? cred.bubbleVarId
+          : parseInt(String(cred.bubbleVarId));
+
+      if (!userCredentialMapping.has(varId)) {
+        userCredentialMapping.set(varId, new Set<CredentialType>());
+      }
+      userCredentialMapping.get(varId)!.add(cred.credentialType);
+    }
   }
 
   // System credentials from env
@@ -96,9 +102,20 @@ async function runBubbleFlowCommon(
     }
   }
 
+  // Create runner with user credential mapping
+  const runner = new BubbleRunner(bubbleScriptInstance, bubbleFactory, {
+    enableLogging: Boolean(options.streamCallback),
+    enableLineByLineLogging: Boolean(options.streamCallback),
+    enableBubbleLogging: Boolean(options.streamCallback),
+    streamCallback: options.streamCallback,
+    useWebhookLogger: options.useWebhookLogger,
+    pricingTable: options.pricingTable,
+    userCredentialMapping,
+  });
+
   // Inject when needed
   if (Object.keys(requiredCredentials).length > 0) {
-    const injectionResult = injector.injectCredentials(
+    const injectionResult = runner.injector.injectCredentials(
       userCredentials.map((uc) => ({
         bubbleVarId: uc.bubbleVarId,
         secret: uc.secret,

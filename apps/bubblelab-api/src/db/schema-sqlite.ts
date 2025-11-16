@@ -139,6 +139,7 @@ export const userServiceUsage = sqliteTable(
       table.userId,
       table.service,
       table.subService,
+      table.unitCost,
       table.unit,
       table.monthYear
     ),

@@ -79,18 +79,6 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     ),
   });
 
-  // Get current pricing table
-  const pricingTable = getPricingTable();
-
-  // Helper function to construct pricing key (same format as BubbleLogger.getServiceUsageKey())
-  const getPricingKey = (
-    service: string,
-    subService?: string | null,
-    unit?: string
-  ): string => {
-    return `${service}${subService ? `:${subService}` : ''}:${unit || 'per_1m_tokens'}`;
-  };
-
   // Convert to ServiceUsage format using current pricing table
   const actualServiceUsage: SubscriptionStatusResponse['usage']['serviceUsage'] =
     serviceUsageRecords.map((record) => {
@@ -99,12 +87,8 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
       const unit = record.unit;
       const usage = record.usage;
 
-      // Look up current pricing from pricing table using the key format
-      const pricingKey = getPricingKey(service, subService, unit);
-      const pricing = pricingTable[pricingKey];
-
       // Use current pricing if available, otherwise fallback to 0
-      const unitCost = pricing?.unitCost || 0;
+      const unitCost = record.unitCost;
       const totalCost = usage * unitCost;
 
       return {

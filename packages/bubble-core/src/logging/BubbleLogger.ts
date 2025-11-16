@@ -58,6 +58,8 @@ export interface LoggerConfig {
   flushInterval?: number; // Auto-flush interval in milliseconds
   // Maps service id to price per unit
   pricingTable: Record<string, { unit: string; unitCost: number }>;
+  // Maps variable ID to set of credential types that are user credentials (for zero-cost pricing)
+  userCredentialMapping?: Map<number, Set<CredentialType>>;
 }
 
 export class BubbleLogger {
@@ -79,18 +81,24 @@ export class BubbleLogger {
   private peakMemoryUsage?: NodeJS.MemoryUsage;
   private buffer: LogEntry[] = [];
   private flushTimer?: NodeJS.Timeout;
-  // Track cumulative raw usage by service
+  // Track cumulative raw usage by service, then by variable ID
+  // Structure: serviceKey -> variableId -> usage data
   public cumulativeServiceUsageByService: Map<
     string,
-    {
-      usage: number;
-      service: CredentialType;
-      subService?: string;
-      unit: string;
-    }
+    Map<
+      number,
+      {
+        usage: number;
+        service: CredentialType;
+        subService?: string;
+        unit: string;
+      }
+    >
   > = new Map();
   // Track individual bubble execution times
   private bubbleStartTimes: Map<number, number> = new Map();
+  // Store user credential mapping for cost calculation
+  private userCredentialMapping?: Map<number, Set<CredentialType>>;
 
   constructor(
     private flowName: string,
@@ -98,7 +106,7 @@ export class BubbleLogger {
       pricingTable: Record<string, { unit: string; unitCost: number }>;
     }
   ) {
-    const { pricingTable, ...restConfig } = config;
+    const { pricingTable, userCredentialMapping, ...restConfig } = config;
     this.config = {
       minLevel: LogLevel.INFO,
       enableTiming: true,
@@ -110,6 +118,7 @@ export class BubbleLogger {
       ...restConfig,
       pricingTable,
     };
+    this.userCredentialMapping = userCredentialMapping;
     this.startTime = Date.now();
     this.lastLogTime = this.startTime;
     this.executionId = `${flowName}-${this.startTime}-${Math.random().toString(36).substring(7)}`;
@@ -285,32 +294,46 @@ export class BubbleLogger {
     });
   }
 
-  protected getServiceUsageKey(service: LogServiceUsage): string {
+  protected getServiceUsageKey(
+    service: LogServiceUsage,
+    unitCost?: number
+  ): string {
     //Combine service, subservice and unit into a single string
-    return `${service.service}${service.subService ? `:${service.subService}` : ''}:${service.unit}`;
+    //Optionally include unitCost to differentiate between user and system credentials
+    const baseKey = `${service.service}${service.subService ? `:${service.subService}` : ''}:${service.unit}`;
+    return unitCost !== undefined ? `${baseKey}:${unitCost}` : baseKey;
   }
 
   /**
-   * Add token usage to cumulative tracking per model
+   * Add token usage to cumulative tracking per model and variable ID
    */
-  addServiceUsage(serviceUsage: LogServiceUsage): void {
-    const existing = this.cumulativeServiceUsageByService.get(
-      this.getServiceUsageKey(serviceUsage)
-    ) || {
+  addServiceUsage(serviceUsage: LogServiceUsage, variableId?: number): void {
+    const serviceKey = this.getServiceUsageKey(serviceUsage);
+
+    // Get or create the service entry
+    if (!this.cumulativeServiceUsageByService.has(serviceKey)) {
+      this.cumulativeServiceUsageByService.set(serviceKey, new Map());
+    }
+
+    const serviceMap = this.cumulativeServiceUsageByService.get(serviceKey)!;
+
+    // If variableId is provided, track per variable ID
+    // If not provided, use 0 as a fallback (for backward compatibility)
+    const varId = variableId ?? 0;
+
+    const existing = serviceMap.get(varId) || {
       usage: 0,
       service: serviceUsage.service,
       subService: serviceUsage.subService,
       unit: serviceUsage.unit,
     };
-    this.cumulativeServiceUsageByService.set(
-      this.getServiceUsageKey(serviceUsage),
-      {
-        usage: existing.usage + serviceUsage.usage,
-        service: existing.service,
-        subService: existing.subService,
-        unit: existing.unit,
-      }
-    );
+
+    serviceMap.set(varId, {
+      usage: existing.usage + serviceUsage.usage,
+      service: existing.service,
+      subService: existing.subService,
+      unit: existing.unit,
+    });
   }
 
   /**
@@ -326,12 +349,26 @@ export class BubbleLogger {
       `Service usage (${this.getServiceUsageKey(serviceUsage)}): ${serviceUsage.usage} units`;
 
     console.log('logging!!!', serviceUsage);
-    // Add token usage to cumulative tracking per model
-    this.addServiceUsage(serviceUsage);
-    // Convert Map to object for logging
-    const serviceUsageByService = Object.fromEntries(
-      this.cumulativeServiceUsageByService.entries()
-    );
+    // Add token usage to cumulative tracking per model and variable ID
+    this.addServiceUsage(serviceUsage, metadata?.variableId);
+    // Convert Map to object for logging (flattened for backward compatibility)
+    const serviceUsageByService: Record<string, unknown> = {};
+    for (const [
+      serviceKey,
+      varIdMap,
+    ] of this.cumulativeServiceUsageByService.entries()) {
+      // Aggregate usage across all variable IDs for display
+      let totalUsage = 0;
+      for (const usageData of varIdMap.values()) {
+        totalUsage += usageData.usage;
+      }
+      serviceUsageByService[serviceKey] = {
+        usage: totalUsage,
+        service: Array.from(varIdMap.values())[0]?.service,
+        subService: Array.from(varIdMap.values())[0]?.subService,
+        unit: Array.from(varIdMap.values())[0]?.unit,
+      };
+    }
     this.info(logMessage, {
       ...metadata,
       serviceUsage,
@@ -609,23 +646,72 @@ export class BubbleLogger {
     }
 
     const serviceUsage: ServiceUsage[] = [];
-    //Calculate service usage based on pricing table
+    // Calculate service usage based on pricing table, per variable ID
+    // Create separate entries for user credentials (unitCost = 0) vs system credentials
+    // Key format: serviceKey:unitCost to differentiate between user and system credentials
+    const aggregatedServiceUsage = new Map<
+      string,
+      {
+        service: CredentialType;
+        usage: number;
+        subService?: string;
+        unit: string;
+        unitCost: number;
+        totalCost: number;
+      }
+    >();
+
     for (const [
-      key,
-      serviceUsageEntry,
+      serviceKey,
+      varIdMap,
     ] of this.cumulativeServiceUsageByService.entries()) {
       // Use the full key (service:subService:unit) to look up pricing
       // This matches the key format used in the pricing table
-      const pricingKey = key; // key is already in format "service:subService:unit"
+      const pricingKey = serviceKey; // key is already in format "service:subService:unit"
       const pricing = this.config.pricingTable[pricingKey];
+      const systemUnitCost = pricing?.unitCost || 0;
 
+      // Process each variable ID's usage separately
+      for (const [variableId, usageData] of varIdMap.entries()) {
+        // Check if this variable ID used a user credential for this service type
+        const userCredsForVarId = this.userCredentialMapping?.get(variableId);
+        const usedUserCredential =
+          userCredsForVarId?.has(usageData.service) ?? false;
+
+        // Set unitCost to 0 if user credential was used, otherwise use pricing table
+        const unitCost = usedUserCredential ? 0 : systemUnitCost;
+        const costForThisVarId = usageData.usage * unitCost;
+
+        // Create a key that includes unitCost to separate user vs system credential usage
+        const usageKey = `${serviceKey}:${unitCost}`;
+
+        // Aggregate by usage key (serviceKey:unitCost)
+        const existing = aggregatedServiceUsage.get(usageKey);
+        if (existing) {
+          existing.usage += usageData.usage;
+          existing.totalCost += costForThisVarId;
+        } else {
+          aggregatedServiceUsage.set(usageKey, {
+            service: usageData.service,
+            usage: usageData.usage,
+            subService: usageData.subService,
+            unit: usageData.unit,
+            unitCost: unitCost,
+            totalCost: costForThisVarId,
+          });
+        }
+      }
+    }
+
+    // Convert aggregated map to ServiceUsage array
+    for (const [, aggregated] of aggregatedServiceUsage.entries()) {
       serviceUsage.push({
-        service: serviceUsageEntry.service,
-        usage: serviceUsageEntry.usage,
-        subService: serviceUsageEntry.subService,
-        unit: serviceUsageEntry.unit,
-        unitCost: pricing?.unitCost || 0,
-        totalCost: serviceUsageEntry.usage * (pricing?.unitCost || 0),
+        service: aggregated.service,
+        usage: aggregated.usage,
+        subService: aggregated.subService,
+        unit: aggregated.unit,
+        unitCost: aggregated.unitCost,
+        totalCost: aggregated.totalCost,
       });
     }
 
