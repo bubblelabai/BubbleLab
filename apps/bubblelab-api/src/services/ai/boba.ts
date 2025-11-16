@@ -13,8 +13,7 @@ import {
 import { BubbleLogger, type StreamingCallback } from '@bubblelab/bubble-core';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { env } from 'src/config/env.js';
-import { BubbleFlowGeneratorWorkflow } from './bubbleflow-generator.workflow.js';
-import { getBubbleFactory } from '../bubble-factory-instance.js';
+import { getPricingTable } from 'src/config/pricing.js';
 
 export interface BobaRequest {
   prompt: string;
@@ -61,7 +60,9 @@ export async function runBoba(
   }
 
   // Create logger for token tracking
-  const logger = new BubbleLogger('BubbleFlowGeneratorWorkflow');
+  const logger = new BubbleLogger('BubbleFlowGeneratorWorkflow', {
+    pricingTable: getPricingTable(),
+  });
 
   // Merge provided credentials with default Google Gemini credential
   const mergedCredentials: Partial<Record<CredentialType, string>> = {
@@ -111,8 +112,9 @@ export async function runBoba(
     }
   }
 
-  // Get token usage from logger
-  const tokenUsage = logger.getTokenUsage();
+  // Get service usage from logger execution summary
+  const executionSummary = logger.getExecutionSummary();
+  const serviceUsage = executionSummary.serviceUsage;
 
   // Build and return final generation result
 
@@ -125,7 +127,7 @@ export async function runBoba(
     error: result.error,
     toolCalls: result.data.toolCalls,
     bubbleCount: Object.keys(validationResult.bubbleParameters ?? {}).length,
-    tokenUsage,
+    serviceUsage,
     codeLength: result.data.generatedCode.length,
     bubbleParameters: validationResult.bubbleParameters,
   };

@@ -82,15 +82,23 @@ export class BubbleLogger {
   // Track cumulative token usage per model
   public cumulativeServiceUsageByService: Map<
     string,
-    { usage: number; service: CredentialType; subService?: string }
+    {
+      usage: number;
+      service: CredentialType;
+      subService?: string;
+      unit: string;
+    }
   > = new Map();
   // Track individual bubble execution times
   private bubbleStartTimes: Map<number, number> = new Map();
 
   constructor(
     private flowName: string,
-    config: Partial<LoggerConfig> = {}
+    config: Partial<Omit<LoggerConfig, 'pricingTable'>> & {
+      pricingTable: Record<string, { unit: string; unitCost: number }>;
+    }
   ) {
+    const { pricingTable, ...restConfig } = config;
     this.config = {
       minLevel: LogLevel.INFO,
       enableTiming: true,
@@ -99,10 +107,9 @@ export class BubbleLogger {
       maxLogEntries: 10000,
       bufferSize: 100,
       flushInterval: 1000,
-      pricingTable: {},
-      ...config,
+      ...restConfig,
+      pricingTable,
     };
-
     this.startTime = Date.now();
     this.lastLogTime = this.startTime;
     this.executionId = `${flowName}-${this.startTime}-${Math.random().toString(36).substring(7)}`;
@@ -293,6 +300,7 @@ export class BubbleLogger {
       usage: 0,
       service: serviceUsage.service,
       subService: serviceUsage.subService,
+      unit: serviceUsage.unit,
     };
     this.cumulativeServiceUsageByService.set(
       this.getServiceUsageKey(serviceUsage),
@@ -300,6 +308,7 @@ export class BubbleLogger {
         usage: existing.usage + serviceUsage.usage,
         service: existing.service,
         subService: existing.subService,
+        unit: existing.unit,
       }
     );
   }
@@ -316,14 +325,13 @@ export class BubbleLogger {
       message ||
       `Service usage (${this.getServiceUsageKey(serviceUsage)}): ${serviceUsage.usage} units`;
 
+    console.log('logging!!!', serviceUsage);
     // Add token usage to cumulative tracking per model
     this.addServiceUsage(serviceUsage);
-
     // Convert Map to object for logging
     const serviceUsageByService = Object.fromEntries(
       this.cumulativeServiceUsageByService.entries()
     );
-
     this.info(logMessage, {
       ...metadata,
       serviceUsage,
@@ -595,20 +603,21 @@ export class BubbleLogger {
     const serviceUsage: ServiceUsage[] = [];
     //Calculate service usage based on pricing table
     for (const [
-      _,
+      key,
       serviceUsageEntry,
     ] of this.cumulativeServiceUsageByService.entries()) {
+      // Use the full key (service:subService:unit) to look up pricing
+      // This matches the key format used in the pricing table
+      const pricingKey = key; // key is already in format "service:subService:unit"
+      const pricing = this.config.pricingTable[pricingKey];
+
       serviceUsage.push({
         service: serviceUsageEntry.service,
         usage: serviceUsageEntry.usage,
-        unit:
-          this.config.pricingTable[serviceUsageEntry.service]?.unit ||
-          'unknown unit',
-        unitCost:
-          this.config.pricingTable[serviceUsageEntry.service]?.unitCost || 0,
-        totalCost:
-          serviceUsageEntry.usage *
-          (this.config.pricingTable[serviceUsageEntry.service]?.unitCost || 0),
+        subService: serviceUsageEntry.subService,
+        unit: serviceUsageEntry.unit,
+        unitCost: pricing?.unitCost || 0,
+        totalCost: serviceUsageEntry.usage * (pricing?.unitCost || 0),
       });
     }
 

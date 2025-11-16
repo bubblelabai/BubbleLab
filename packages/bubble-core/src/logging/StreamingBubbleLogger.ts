@@ -14,7 +14,9 @@ import {
   sanitizeErrorStack,
 } from '../utils/error-sanitizer.js';
 
-interface StreamingLoggerConfig extends Partial<LoggerConfig> {
+interface StreamingLoggerConfig
+  extends Partial<Omit<LoggerConfig, 'pricingTable'>> {
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
   streamCallback?: StreamCallback;
 }
 
@@ -25,7 +27,10 @@ interface StreamingLoggerConfig extends Partial<LoggerConfig> {
 export class StreamingBubbleLogger extends BubbleLogger {
   private streamCallback?: StreamCallback;
 
-  constructor(flowName: string, options: StreamingLoggerConfig = {}) {
+  constructor(
+    flowName: string,
+    options: StreamingLoggerConfig = { pricingTable: {} }
+  ) {
     const { streamCallback, ...loggerConfig } = options;
     super(flowName, loggerConfig);
     this.streamCallback = streamCallback;

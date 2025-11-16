@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { userServiceUsage } from '../db/schema.js';
-import { eq, and, sql, or, isNull } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import type { CredentialType, ServiceUsage } from '@bubblelab/shared-schemas';
 
 /**
@@ -57,12 +57,12 @@ export async function trackServiceUsage(
   const monthYear = getCurrentMonthYear();
 
   try {
-    // Try to find existing record matching service + subService + unit + monthYear
+    // Try to find existing record matching user + service + subService + unit
+    // (monthYear is not part of unique constraint, so we look up by the unique fields only)
     const whereConditions = [
       eq(userServiceUsage.userId, userId),
       eq(userServiceUsage.service, serviceUsage.service),
       eq(userServiceUsage.unit, serviceUsage.unit),
-      eq(userServiceUsage.monthYear, monthYear),
     ];
 
     if (serviceUsage.subService) {
@@ -85,21 +85,24 @@ export async function trackServiceUsage(
 
     if (existing) {
       // Update existing record - increment usage and recalculate totalCost
+      // Use current pricing from serviceUsage (which comes from pricing table)
+      const newUsage = existing.usage + serviceUsage.usage;
+      const currentUnitCost = serviceUsage.unitCost; // Use current pricing
+      const newTotalCost = newUsage * currentUnitCost;
+
       await db
         .update(userServiceUsage)
         .set({
-          usage: sql`${userServiceUsage.usage} + ${serviceUsage.usage}`,
-          totalCost: sql`(${userServiceUsage.usage} + ${serviceUsage.usage}) * ${userServiceUsage.unitCost}`,
+          usage: newUsage,
+          unitCost: currentUnitCost, // Update to current pricing
+          totalCost: newTotalCost,
           updatedAt: new Date(),
         })
         .where(eq(userServiceUsage.id, existing.id));
     } else {
       // Insert new record
-      // Convert unitCost from dollars to microdollars (multiply by 1,000,000)
-      const unitCostMicrodollars = Math.round(serviceUsage.unitCost * 1000000);
-      const totalCostMicrodollars = Math.round(
-        serviceUsage.usage * serviceUsage.unitCost * 1000000
-      );
+      // Store costs directly as dollars (high precision float, no conversion needed)
+      const totalCost = serviceUsage.usage * serviceUsage.unitCost;
 
       await db.insert(userServiceUsage).values({
         userId,
@@ -108,8 +111,8 @@ export async function trackServiceUsage(
         monthYear,
         unit: serviceUsage.unit,
         usage: serviceUsage.usage,
-        unitCost: unitCostMicrodollars,
-        totalCost: totalCostMicrodollars,
+        unitCost: serviceUsage.unitCost,
+        totalCost: totalCost,
       });
     }
   } catch (error) {

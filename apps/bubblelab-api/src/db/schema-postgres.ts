@@ -7,6 +7,7 @@ import {
   timestamp,
   unique,
   jsonb,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
@@ -128,9 +129,9 @@ export const userServiceUsage = pgTable(
     subService: text('sub_service'), // Optional: e.g., 'gpt-4', 'gemini-2.0-flash', 'apify/instagram-scraper'
     monthYear: text('month_year').notNull(), // e.g., '2025-01'
     unit: text('unit').notNull(), // e.g., 'per_1m_tokens', 'per_email', 'per_result'
-    usage: integer('usage').notNull().default(0), // Usage count in the specified unit
-    unitCost: integer('unit_cost').notNull(), // Cost per unit in microdollars (e.g., 2100000 = $2.10 per 1M tokens)
-    totalCost: integer('total_cost').notNull().default(0), // Calculated: usage * unitCost (in microdollars)
+    usage: doublePrecision('usage').notNull().default(0), // Usage count in the specified unit (high precision float)
+    unitCost: doublePrecision('unit_cost').notNull(), // Cost per unit in dollars (high precision float)
+    totalCost: doublePrecision('total_cost').notNull().default(0), // Calculated: usage * unitCost (high precision float)
     createdAt: timestamp('created_at', { mode: 'date' })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -139,11 +140,12 @@ export const userServiceUsage = pgTable(
       .$defaultFn(() => new Date()),
   },
   (table) => ({
-    // Unique constraint: one record per user, service, subService, and month
-    userServiceMonthUnique: unique().on(
+    // Unique constraint: one record per user, service, subService, and unit
+    userServiceUnitUnique: unique().on(
       table.userId,
       table.service,
       table.subService,
+      table.unit,
       table.monthYear
     ),
   })

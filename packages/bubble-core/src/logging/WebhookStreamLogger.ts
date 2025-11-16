@@ -14,7 +14,9 @@ import {
   sanitizeErrorStack,
 } from '../utils/error-sanitizer.js';
 
-interface WebhookStreamLoggerConfig extends Partial<LoggerConfig> {
+interface WebhookStreamLoggerConfig
+  extends Partial<Omit<LoggerConfig, 'pricingTable'>> {
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
   streamCallback?: StreamCallback;
 }
 
@@ -75,7 +77,10 @@ function formatForWebhookStream(data: unknown, maxLength = 200): string {
 export class WebhookStreamLogger extends BubbleLogger {
   private streamCallback?: StreamCallback;
 
-  constructor(flowName: string, options: WebhookStreamLoggerConfig = {}) {
+  constructor(
+    flowName: string,
+    options: WebhookStreamLoggerConfig = { pricingTable: {} }
+  ) {
     const { streamCallback, ...loggerConfig } = options;
     super(flowName, loggerConfig);
     this.streamCallback = streamCallback;

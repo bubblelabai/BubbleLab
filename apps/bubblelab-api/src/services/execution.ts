@@ -27,6 +27,7 @@ export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
   systemCredentials?: Record<string, string>;
   appType?: AppType;
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
 }
 
 export interface StreamingExecutionOptions extends ExecutionOptions {
@@ -53,6 +54,7 @@ async function runBubbleFlowCommon(
     enableBubbleLogging: Boolean(options.streamCallback),
     streamCallback: options.streamCallback,
     useWebhookLogger: options.useWebhookLogger,
+    pricingTable: options.pricingTable,
   });
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection

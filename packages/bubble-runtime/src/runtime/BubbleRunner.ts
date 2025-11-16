@@ -38,6 +38,7 @@ export interface BubbleRunnerOptions {
   enableBubbleLogging?: boolean;
   streamCallback?: StreamCallback;
   useWebhookLogger?: boolean;
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
 }
 
 export class BubbleRunner {
@@ -62,7 +63,7 @@ export class BubbleRunner {
   constructor(
     bubbleScript: string | BubbleScript,
     bubbleFactory: BubbleFactory,
-    options: BubbleRunnerOptions = {}
+    options: BubbleRunnerOptions
   ) {
     this.bubbleScript =
       typeof bubbleScript === 'string'
@@ -90,6 +91,7 @@ export class BubbleRunner {
           enableTiming: true,
           enableMemoryTracking: true,
           streamCallback: this.options.streamCallback,
+          pricingTable: this.options.pricingTable,
         });
       } else {
         // Use streaming logger when stream callback is provided
@@ -98,6 +100,7 @@ export class BubbleRunner {
           enableTiming: true,
           enableMemoryTracking: true,
           streamCallback: this.options.streamCallback,
+          pricingTable: this.options.pricingTable,
         });
       }
     } else {
@@ -106,6 +109,7 @@ export class BubbleRunner {
         minLevel: this.options.logLevel || LogLevel.INFO,
         enableTiming: true,
         enableMemoryTracking: true,
+        pricingTable: this.options.pricingTable,
       });
     }
 

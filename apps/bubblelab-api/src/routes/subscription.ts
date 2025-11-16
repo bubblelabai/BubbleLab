@@ -17,6 +17,7 @@ import {
   CredentialType,
   SubscriptionStatusResponse,
 } from '@bubblelab/shared-schemas';
+import { getPricingTable } from '../config/pricing.js';
 
 const app = new OpenAPIHono();
 
@@ -78,17 +79,43 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     ),
   });
 
-  // Convert to ServiceUsage format
-  // Convert microdollars back to dollars (divide by 1,000,000)
+  // Get current pricing table
+  const pricingTable = getPricingTable();
+
+  // Helper function to construct pricing key (same format as BubbleLogger.getServiceUsageKey())
+  const getPricingKey = (
+    service: string,
+    subService?: string | null,
+    unit?: string
+  ): string => {
+    return `${service}${subService ? `:${subService}` : ''}:${unit || 'per_1m_tokens'}`;
+  };
+
+  // Convert to ServiceUsage format using current pricing table
   const actualServiceUsage: SubscriptionStatusResponse['usage']['serviceUsage'] =
-    serviceUsageRecords.map((record) => ({
-      service: record.service as CredentialType,
-      subService: record.subService || undefined,
-      unit: record.unit,
-      usage: record.usage,
-      unitCost: record.unitCost / 1000000, // Convert microdollars to dollars
-      totalCost: record.totalCost / 1000000, // Convert microdollars to dollars
-    }));
+    serviceUsageRecords.map((record) => {
+      const service = record.service as CredentialType;
+      const subService = record.subService || undefined;
+      const unit = record.unit;
+      const usage = record.usage;
+
+      // Look up current pricing from pricing table using the key format
+      const pricingKey = getPricingKey(service, subService, unit);
+      const pricing = pricingTable[pricingKey];
+
+      // Use current pricing if available, otherwise fallback to 0
+      const unitCost = pricing?.unitCost || 0;
+      const totalCost = usage * unitCost;
+
+      return {
+        service,
+        subService,
+        unit,
+        usage,
+        unitCost,
+        totalCost,
+      };
+    });
 
   // Calculate total estimated monthly cost
   const estimatedMonthlyCost = actualServiceUsage.reduce(
