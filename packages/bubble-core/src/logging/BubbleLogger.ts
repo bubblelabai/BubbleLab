@@ -79,7 +79,7 @@ export class BubbleLogger {
   private peakMemoryUsage?: NodeJS.MemoryUsage;
   private buffer: LogEntry[] = [];
   private flushTimer?: NodeJS.Timeout;
-  // Track cumulative token usage per model
+  // Track cumulative raw usage by service
   public cumulativeServiceUsageByService: Map<
     string,
     {
@@ -600,6 +600,14 @@ export class BubbleLogger {
       lineNumber: log.metadata.lineNumber,
       additionalData: log.metadata.additionalData,
     }));
+
+    // If pricing table is empty print a warning
+    if (Object.keys(this.config.pricingTable).length === 0) {
+      console.warn(
+        'Pricing table is empty, no pricing data will be available. To track cost tracking, please set the pricing table in the logger config.'
+      );
+    }
+
     const serviceUsage: ServiceUsage[] = [];
     //Calculate service usage based on pricing table
     for (const [
@@ -626,6 +634,7 @@ export class BubbleLogger {
       errors,
       warnings,
       serviceUsage,
+      totalCost: serviceUsage.reduce((acc, curr) => acc + curr.totalCost, 0),
     };
   }
 

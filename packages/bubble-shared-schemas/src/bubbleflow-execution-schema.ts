@@ -55,6 +55,9 @@ export const ExecutionSummarySchema = z
       description: 'Number of errors encountered',
       example: 0,
     }),
+    totalCost: z
+      .number()
+      .openapi({ description: 'Total cost of the execution' }),
     warningCount: z.number().optional().openapi({
       description: 'Number of warnings encountered',
       example: 1,
