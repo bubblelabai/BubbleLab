@@ -275,6 +275,24 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
         itemsCount = items.length;
       }
 
+      // Log service usage for Apify actor execution
+      if (itemsCount > 0 && this.context?.logger) {
+        this.context.logger.logTokenUsage(
+          {
+            usage: itemsCount,
+            service: CredentialType.APIFY_CRED,
+            unit: 'per_result',
+            subService: actorId,
+          },
+          `Apify actor ${actorId}: ${itemsCount} results`,
+          {
+            bubbleName: 'apify',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+
       return {
         runId,
         status: finalStatus.status,

@@ -175,14 +175,9 @@ export class StreamingBubbleLogger extends BubbleLogger {
         (this.getCurrentExecutionTime() / 1000).toFixed(2) +
         's.' +
         ' Total cost: $' +
-        Object.values(this.cumulativeServiceUsageByService)
-          .reduce((acc, curr) => acc + curr.totalCost, 0)
-          .toFixed(6) +
-        ' (' +
-        Object.entries(this.cumulativeServiceUsageByService)
-          .map(([service, data]) => `${service}: $${data.totalCost.toFixed(6)}`)
-          .join(', ') +
-        ')'
+        this.getExecutionSummary()
+          ?.serviceUsage?.reduce((acc, curr) => acc + curr.totalCost, 0)
+          .toFixed(6)
       : `Execution failed: ${error || 'Unknown error'}`;
 
     this.logLine(0, message, {

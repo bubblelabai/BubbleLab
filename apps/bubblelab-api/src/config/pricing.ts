@@ -37,11 +37,22 @@ function getPricingKey(
  * Update these values as pricing changes.
  */
 export const PRICING_TABLE: PricingTable = {
-  // Web Scraping Services
-  [getPricingKey(CredentialType.FIRECRAWL_API_KEY, undefined, 'per_result')]: {
-    unit: 'per_result',
-    unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
-  },
+  // Web Scraping Services - Firecrawl with subServices
+  [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-search', 'per_result')]:
+    {
+      unit: 'per_result',
+      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
+    },
+  [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-scrape', 'per_result')]:
+    {
+      unit: 'per_result',
+      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
+    },
+  [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-crawl', 'per_result')]:
+    {
+      unit: 'per_result',
+      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
+    },
 
   // Communication Services
   [getPricingKey(CredentialType.RESEND_CRED, undefined, 'per_email')]: {
@@ -179,65 +190,6 @@ export const PRICING_TABLE: PricingTable = {
   [getPricingKey(CredentialType.OPENROUTER_CRED, undefined, 'per_1m_tokens')]: {
     unit: 'per_1m_tokens',
     unitCost: 2.5, // $2.50 per 1M tokens (varies by model - needs model-specific pricing)
-  },
-
-  // Database Services
-  [getPricingKey(CredentialType.DATABASE_CRED, undefined, 'per_query')]: {
-    unit: 'per_query',
-    unitCost: 0.001, // $0.001 per query
-  },
-
-  // Communication Services
-  [getPricingKey(CredentialType.SLACK_CRED, undefined, 'per_message')]: {
-    unit: 'per_message',
-    unitCost: 0.0001, // $0.0001 per message
-  },
-
-  // Storage Services
-  [getPricingKey(CredentialType.CLOUDFLARE_R2_ACCESS_KEY, undefined, 'per_gb')]:
-    {
-      unit: 'per_gb',
-      unitCost: 0.015, // $0.015 per GB stored
-    },
-  [getPricingKey(CredentialType.CLOUDFLARE_R2_SECRET_KEY, undefined, 'per_gb')]:
-    {
-      unit: 'per_gb',
-      unitCost: 0.015, // $0.015 per GB stored
-    },
-  [getPricingKey(CredentialType.CLOUDFLARE_R2_ACCOUNT_ID, undefined, 'per_gb')]:
-    {
-      unit: 'per_gb',
-      unitCost: 0.015, // $0.015 per GB stored
-    },
-
-  // OAuth Services (typically free or low cost)
-  [getPricingKey(CredentialType.GOOGLE_DRIVE_CRED, undefined, 'per_api_call')]:
-    {
-      unit: 'per_api_call',
-      unitCost: 0.0001, // $0.0001 per API call
-    },
-  [getPricingKey(CredentialType.GMAIL_CRED, undefined, 'per_email')]: {
-    unit: 'per_email',
-    unitCost: 0.001, // $0.001 per email operation
-  },
-  [getPricingKey(CredentialType.GOOGLE_SHEETS_CRED, undefined, 'per_api_call')]:
-    {
-      unit: 'per_api_call',
-      unitCost: 0.0001, // $0.0001 per API call
-    },
-  [getPricingKey(
-    CredentialType.GOOGLE_CALENDAR_CRED,
-    undefined,
-    'per_api_call'
-  )]: {
-    unit: 'per_api_call',
-    unitCost: 0.0001, // $0.0001 per API call
-  },
-
-  // Development Platform Services
-  [getPricingKey(CredentialType.GITHUB_TOKEN, undefined, 'per_api_call')]: {
-    unit: 'per_api_call',
-    unitCost: 0.0, // Free (GitHub API is free)
   },
 };
 

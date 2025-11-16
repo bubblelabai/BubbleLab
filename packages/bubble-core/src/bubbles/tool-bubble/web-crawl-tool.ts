@@ -329,10 +329,30 @@ export class WebCrawlTool extends ToolBubble<
       });
     }
 
+    const creditsUsed = pages.length;
+
+    // Log service usage for Firecrawl web crawl
+    if (creditsUsed > 0 && this.context?.logger) {
+      this.context.logger.logTokenUsage(
+        {
+          usage: creditsUsed,
+          service: CredentialType.FIRECRAWL_API_KEY,
+          unit: 'per_result',
+          subService: 'web-crawl',
+        },
+        `Firecrawl web crawl: ${creditsUsed} credits used for ${url}`,
+        {
+          bubbleName: 'web-crawl-tool',
+          variableId: this.context?.variableId,
+          operationType: 'bubble_execution',
+        }
+      );
+    }
+
     return {
       url,
       pages,
-      creditsUsed: pages.length,
+      creditsUsed,
       totalPages: pages.length,
       success: true,
       error: '',

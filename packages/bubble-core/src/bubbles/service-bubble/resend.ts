@@ -293,6 +293,29 @@ export class ResendBubble<
       throw new Error(`Failed to send email: ${JSON.stringify(error)}`);
     }
 
+    // Count number of recipients (to, cc, bcc)
+    const recipientCount =
+      (Array.isArray(to) ? to.length : 1) +
+      (cc ? (Array.isArray(cc) ? cc.length : 1) : 0) +
+      (bcc ? (Array.isArray(bcc) ? bcc.length : 1) : 0);
+
+    // Log service usage for Resend email sending
+    if (recipientCount > 0 && this.context?.logger) {
+      this.context.logger.logTokenUsage(
+        {
+          usage: recipientCount,
+          service: CredentialType.RESEND_CRED,
+          unit: 'per_email',
+        },
+        `Resend email sent: ${recipientCount} email(s)`,
+        {
+          bubbleName: 'resend',
+          variableId: this.context?.variableId,
+          operationType: 'bubble_execution',
+        }
+      );
+    }
+
     return {
       operation: 'send_email',
       success: true,
