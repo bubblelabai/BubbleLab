@@ -6,6 +6,7 @@ import { SERVICE_LOGOS } from '../lib/integrations';
 interface UsageDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  resetDate: string;
   serviceUsage: SubscriptionStatusResponse['usage']['serviceUsage'];
   limit: number;
 }
@@ -42,6 +43,7 @@ const getServiceLogo = (service: string): string | null => {
 
 export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
   isOpen,
+  resetDate,
   onClose,
   serviceUsage,
   limit,
@@ -170,6 +172,37 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
     return usage.toLocaleString();
   };
 
+  // Calculate billing period from resetDate
+  // If resetDate is 2025-12-03T08:00:00.000Z, billing period is 2025-11-03 to 2025-12-03 (resets exactly at that time)
+  const billingPeriod = useMemo(() => {
+    if (!resetDate) return null;
+
+    const reset = new Date(resetDate);
+
+    // Start date: one month before reset date, same day and time
+    const start = new Date(reset);
+    start.setUTCMonth(start.getUTCMonth() - 1);
+
+    // End date: reset date itself (billing resets exactly at this time)
+    const end = new Date(reset);
+
+    // Format dates preserving UTC timezone (as indicated by the Z in ISO string)
+    const formatDate = (date: Date): string => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+
+      return `${year}-${month}-${day} ${hours}:${minutes} UTC`;
+    };
+
+    return {
+      start: formatDate(start),
+      end: formatDate(end),
+    };
+  }, [resetDate]);
+
   const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
     if (sortField !== field) {
       return <div className="w-4 h-4" />;
@@ -195,7 +228,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
       <div className="relative bg-[#2a2826] border border-[#3d3935] rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#3d3935]">
-          <div>
+          <div className="flex-1">
             <h2 className="text-2xl font-bold text-white">
               Managed Credentials Usage Details
             </h2>
@@ -204,6 +237,11 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
               bring your own API keys — when you do, you'll pay your provider
               directly and this usage won't apply.
             </p>
+            {billingPeriod && (
+              <p className="text-xs text-gray-500 mt-2 font-mono">
+                Billing Period: {billingPeriod.start} to {billingPeriod.end}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

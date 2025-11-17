@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
 import { ArrowRight } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
+import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 
 interface MonthlyUsageBarProps {
   subscription: SubscriptionStatusResponse;
@@ -13,16 +14,44 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   isOpen,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data: bubbleFlowListResponse } = useBubbleFlowList();
+
+  console.log('subscription', subscription);
 
   // Calculate total cost from serviceUsage
   const totalCost = subscription.usage.serviceUsage.reduce(
     (sum, service) => sum + service.totalCost,
     0
   );
+  const numberOfExecutions = subscription?.usage.executionCount || 0;
+  const executionLimit = subscription.usage.executionLimit;
+  const numberOfActiveWebhooksOrCronSchedules =
+    bubbleFlowListResponse?.bubbleFlows.filter(
+      (flow) => flow.isActive || flow.cronActive
+    ).length || 0;
+  const webHookLimit = 1;
 
   const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
   const isOverLimit = totalCost > monthlyLimit;
+
+  // Calculate execution percentage
+  const executionPercentage =
+    executionLimit > 0
+      ? Math.min((numberOfExecutions / executionLimit) * 100, 100)
+      : 0;
+  const isOverExecutionLimit = numberOfExecutions > executionLimit;
+
+  // Calculate webhook percentage
+  const webhookPercentage =
+    webHookLimit > 0
+      ? Math.min(
+          (numberOfActiveWebhooksOrCronSchedules / webHookLimit) * 100,
+          100
+        )
+      : 0;
+  const isOverWebhookLimit =
+    numberOfActiveWebhooksOrCronSchedules > webHookLimit;
 
   // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
@@ -94,6 +123,44 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                       {percentage.toFixed(1)}%
                     </span>
                   </div>
+
+                  {/* Execution count */}
+                  <div className="flex items-center gap-2">
+                    <div className="text-[10px] text-gray-500">
+                      Executions: {numberOfExecutions} / {executionLimit}
+                    </div>
+                    <span
+                      className={`text-[10px] font-semibold ${
+                        isOverExecutionLimit
+                          ? 'text-red-400'
+                          : executionPercentage > 80
+                            ? 'text-yellow-400'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      {executionPercentage.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  {/* Webhook/Cron count */}
+                  <div className="flex items-center gap-2">
+                    <div className="text-[10px] text-gray-500">
+                      Active Flows: {numberOfActiveWebhooksOrCronSchedules} /{' '}
+                      {webHookLimit}
+                    </div>
+                    <span
+                      className={`text-[10px] font-semibold ${
+                        isOverWebhookLimit
+                          ? 'text-red-400'
+                          : webhookPercentage > 80
+                            ? 'text-yellow-400'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      {webhookPercentage.toFixed(0)}%
+                    </span>
+                  </div>
+
                   <div className="text-[10px] text-gray-500">
                     Resets {formatResetDate(subscription.usage.resetDate)}
                   </div>
@@ -125,6 +192,13 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
             </div>
             <div className="text-[10px] text-gray-400">
+              Executions: {numberOfExecutions} / {executionLimit}
+            </div>
+            <div className="text-[10px] text-gray-400">
+              Active Flows: {numberOfActiveWebhooksOrCronSchedules} /{' '}
+              {webHookLimit}
+            </div>
+            <div className="text-[10px] text-gray-400">
               {subscription.planDisplayName} · Resets{' '}
               {formatResetDate(subscription.usage.resetDate)}
             </div>
@@ -134,6 +208,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
       {/* Usage Details Modal */}
       <UsageDetailsModal
+        resetDate={subscription.usage.resetDate}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         serviceUsage={subscription.usage.serviceUsage}

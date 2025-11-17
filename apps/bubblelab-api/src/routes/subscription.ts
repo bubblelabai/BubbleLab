@@ -11,7 +11,7 @@ import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { APP_FEATURES_TO_MONTHLY_LIMITS } from '../services/subscription-validation.js';
 import { calculateNextResetDate } from '../utils/subscription.js';
-import { getCurrentMonthYear } from '../services/service-usage-tracking.js';
+import { getCurrentMonthYear } from '../utils/subscription.js';
 import { getSubscriptionStatusRoute } from '../schemas/subscription.js';
 import {
   CredentialType,
