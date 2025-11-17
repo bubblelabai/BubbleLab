@@ -104,38 +104,6 @@ async function runBubbleFlowCommon(
   }
 
   // Check if user has exceeded monthly credits when using system credentials
-  if (Object.keys(systemCredentials).length > 0 && options.appType) {
-    console.debug('[runBubbleFlowCommon] Checking monthly credits exceeded');
-    const creditsCheck = await verifyMonthlyCreditsExceeded(
-      options.userId,
-      options.appType
-    );
-    console.log('[runBubbleFlowCommon] Credits check:', creditsCheck);
-    if (!creditsCheck.allowed) {
-      const errorMessage = `Monthly credits exceeded. You have used $${creditsCheck.currentUsage} out of $${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using system services or use your own credential.`;
-      console.error('[runBubbleFlowCommon]', errorMessage);
-
-      return {
-        executionId: 0,
-        success: false,
-        summary: {
-          totalCost: 0,
-          totalDuration: 0,
-          result: errorMessage,
-          lineExecutionCount: 0,
-          bubbleExecutionCount: 0,
-          errorCount: 0,
-          warningCount: 0,
-          serviceUsage: [],
-          serviceUsageByService: {},
-        },
-        error: errorMessage,
-        data: {
-          result: errorMessage,
-        },
-      };
-    }
-  }
 
   // Create runner with user credential mapping
   const runner = new BubbleRunner(bubbleScriptInstance, bubbleFactory, {
@@ -160,6 +128,60 @@ async function runBubbleFlowCommon(
       })),
       systemCredentials
     );
+
+    if (
+      injectionResult.injectedCredentials &&
+      Object.values(injectionResult.injectedCredentials).some(
+        (cred) => !cred.isUserCredential
+      ) &&
+      options.appType
+    ) {
+      console.debug('[runBubbleFlowCommon] Checking monthly credits exceeded');
+      const creditsCheck = await verifyMonthlyCreditsExceeded(
+        options.userId,
+        options.appType
+      );
+      console.log('[runBubbleFlowCommon] Credits check:', creditsCheck);
+      if (!creditsCheck.allowed) {
+        const systemCredentialTypes = Object.values(
+          injectionResult.injectedCredentials ?? {}
+        )
+          .filter((cred) => !cred.isUserCredential)
+          .map((cred) => cred.credentialType);
+
+        const errorMessage = `Monthly credits exceeded. You have used $${creditsCheck.currentUsage} out of $${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using bubblelab's managed services or use your own credential. System credentials used: ${systemCredentialTypes.join(', ')}`;
+        console.error('[runBubbleFlowCommon]', errorMessage);
+
+        // stream error message to the stream callback
+        if (options.streamCallback) {
+          options.streamCallback({
+            timestamp: new Date().toISOString(),
+            type: 'error',
+            message: errorMessage,
+          });
+        }
+        return {
+          executionId: 0,
+          success: false,
+          summary: {
+            totalCost: 0,
+            totalDuration: 0,
+            result: errorMessage,
+            lineExecutionCount: 0,
+            bubbleExecutionCount: 0,
+            errorCount: 0,
+            warningCount: 0,
+            serviceUsage: [],
+            errors: [{ message: errorMessage, timestamp: Date.now() }],
+            serviceUsageByService: {},
+          },
+          error: errorMessage,
+          data: {
+            result: errorMessage,
+          },
+        };
+      }
+    }
 
     if (!injectionResult.success) {
       console.error(
@@ -211,7 +233,6 @@ export async function runBubbleFlow(
       options
     );
   } catch (error) {
-    console.error('[runBubbleFlow] Execution failed:', error);
     return {
       executionId: 0,
       success: false,
@@ -241,6 +262,13 @@ export async function runBubbleFlowWithStreaming(
       options
     );
   } catch (error) {
+    if (options.streamCallback) {
+      options.streamCallback({
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        message: `Unexpected error occurred: ${getSafeErrorMessage(error)}`,
+      });
+    }
     console.error('[runBubbleFlowWithStreaming] Execution failed:', error);
     return {
       executionId: 0,

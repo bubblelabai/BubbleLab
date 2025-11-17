@@ -123,6 +123,7 @@ export async function verifyMonthlyCreditsExceeded(
   userId: string,
   appType: AppType
 ): Promise<{ allowed: boolean; currentUsage: number; limit: number }> {
+  const startTime = performance.now();
   try {
     // Skip API limit checks in test environment to avoid Clerk API calls
     if (env.BUBBLE_ENV?.toLowerCase() === 'test') {
@@ -164,6 +165,11 @@ export async function verifyMonthlyCreditsExceeded(
   } catch (err) {
     console.error('Failed to verify monthly credits exceeded', err);
     throw err;
+  } finally {
+    const endTime = performance.now();
+    console.log(
+      `[subscription-validation] verifyMonthlyCreditsExceeded took ${endTime - startTime}ms`
+    );
   }
 }
 

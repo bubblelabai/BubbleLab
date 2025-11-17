@@ -23,7 +23,14 @@ export interface CredentialInjectionResult {
   parsedBubbles?: Record<string, ParsedBubbleWithInfo>;
   code?: string;
   errors?: string[];
-  injectedCredentials?: Record<number, string>; // For debugging/audit (values are masked)
+  injectedCredentials?: Record<
+    number,
+    {
+      isUserCredential: boolean;
+      credentialType: CredentialType;
+      credentialValue: string;
+    }
+  >; // For debugging/audit (values are masked)
 }
 
 export class BubbleInjector {
@@ -50,10 +57,24 @@ export class BubbleInjector {
       const allCredentialTypes = new Set<CredentialType>();
 
       // Get bubble-level credentials
-      const credentialOptions =
+      let credentialOptions =
         BUBBLE_CREDENTIAL_OPTIONS[
           bubble.bubbleName as keyof typeof BUBBLE_CREDENTIAL_OPTIONS
         ];
+
+      // For AI agent bubbles, optimize credential requirements based on model
+      if (bubble.bubbleName === 'ai-agent' && credentialOptions) {
+        const modelCredentialType = this.extractModelCredentialType(bubble);
+
+        if (modelCredentialType !== null) {
+          // Model is static - only include the credential needed for this model
+          credentialOptions = credentialOptions.filter(
+            (credType) => credType === modelCredentialType
+          );
+        }
+        // If modelCredentialType is null, model is dynamic - include all credentials
+      }
+
       if (credentialOptions && Array.isArray(credentialOptions)) {
         for (const credType of credentialOptions) {
           allCredentialTypes.add(credType);
@@ -78,6 +99,84 @@ export class BubbleInjector {
     }
 
     return requiredCredentials;
+  }
+
+  /**
+   * Extracts the required credential type from AI agent model parameter
+   * @param bubble - The parsed bubble to extract model from
+   * @returns The credential type needed for the model, or null if dynamic (needs all)
+   */
+  private extractModelCredentialType(
+    bubble: ParsedBubbleWithInfo
+  ): CredentialType | null {
+    console.log(
+      '[BubbleInjector] Extracting model credential type for bubble:',
+      bubble.bubbleName
+    );
+    if (bubble.bubbleName !== 'ai-agent') {
+      return null;
+    }
+
+    // Find the model parameter
+    const modelParam = bubble.parameters.find(
+      (param) => param.name === 'model'
+    );
+    if (!modelParam) {
+      console.log('[BubbleInjector] No model parameter found');
+      // No model parameter, use default (google) or return null to include all
+      return CredentialType.GOOGLE_GEMINI_CRED;
+    }
+
+    // Try to extract the model string from the model object
+    let modelString: string | undefined;
+    if (modelParam.type === BubbleParameterType.OBJECT) {
+      // Model is an object, try to extract the nested 'model' property
+      try {
+        // parse the string to json
+        const modelObj = eval('(' + modelParam.value + ')');
+        // If model
+        const nestedModel = modelObj.model;
+        if (typeof nestedModel === 'string') {
+          modelString = nestedModel;
+        }
+      } catch (error) {
+        console.error(
+          '[BubbleInjector] Failed to parse model parameter as JSON:',
+          error
+        );
+        // If parsing fails, treat as dynamic model
+        modelString = undefined;
+      }
+    }
+
+    // If we couldn't extract a static model string, treat as dynamic
+    if (!modelString) {
+      return CredentialType.GOOGLE_GEMINI_CRED;
+    }
+
+    // Extract provider prefix (e.g., "google" from "google/gemini-2.5-flash")
+    const slashIndex = modelString.indexOf('/');
+    if (slashIndex === -1) {
+      // Invalid format, treat as dynamic
+      return null;
+    }
+
+    const provider = modelString.substring(0, slashIndex).toLowerCase();
+
+    // Map provider to credential type
+    switch (provider) {
+      case 'openai':
+        return CredentialType.OPENAI_CRED;
+      case 'google':
+        return CredentialType.GOOGLE_GEMINI_CRED;
+      case 'anthropic':
+        return CredentialType.ANTHROPIC_CRED;
+      case 'openrouter':
+        return CredentialType.OPENROUTER_CRED;
+      default:
+        // Unknown provider, treat as dynamic (include all)
+        return null;
+    }
   }
 
   /**
@@ -167,7 +266,14 @@ export class BubbleInjector {
   ): CredentialInjectionResult {
     try {
       const modifiedBubbles = { ...this.bubbleScript.getParsedBubbles() };
-      const injectedCredentials: Record<string, string> = {};
+      const injectedCredentials: Record<
+        number,
+        {
+          isUserCredential: boolean;
+          credentialType: CredentialType;
+          credentialValue: string;
+        }
+      > = {};
       const errors: string[] = [];
 
       // Iterate through each bubble to determine if it needs credential injection
@@ -175,8 +281,21 @@ export class BubbleInjector {
         const bubbleName = bubble.bubbleName as BubbleName;
 
         // Get the credential options for this bubble from the registry
-        const bubbleCredentialOptions =
+        let bubbleCredentialOptions =
           BUBBLE_CREDENTIAL_OPTIONS[bubbleName] || [];
+
+        // For AI agent bubbles, optimize credential injection based on model
+        if (bubble.bubbleName === 'ai-agent') {
+          const modelCredentialType = this.extractModelCredentialType(bubble);
+
+          if (modelCredentialType !== null) {
+            // Model is static - only inject the credential needed for this model
+            bubbleCredentialOptions = bubbleCredentialOptions.filter(
+              (credType) => credType === modelCredentialType
+            );
+          }
+          // If modelCredentialType is null, model is dynamic - include all credentials
+        }
 
         // For AI agent bubbles, also collect tool-level credential requirements
         const toolCredentialOptions =
@@ -204,6 +323,13 @@ export class BubbleInjector {
             credentialMapping[credentialType] = this.escapeString(
               systemCredentials[credentialType]
             );
+            injectedCredentials[`${bubble.variableId}.${credentialType}`] = {
+              isUserCredential: false,
+              credentialType: credentialType,
+              credentialValue: this.maskCredential(
+                systemCredentials[credentialType]
+              ),
+            };
           }
         }
 
@@ -219,18 +345,17 @@ export class BubbleInjector {
             credentialMapping[userCredType] = this.escapeString(
               userCred.secret
             );
+            injectedCredentials[`${bubble.variableId}.${userCredType}`] = {
+              isUserCredential: true,
+              credentialType: userCredType,
+              credentialValue: this.maskCredential(userCred.secret),
+            };
           }
         }
 
         // Inject credentials into bubble parameters
         if (Object.keys(credentialMapping).length > 0) {
           this.injectCredentialsIntoBubble(bubble, credentialMapping);
-
-          // Track injected credentials for debugging (mask values)
-          for (const [credType, value] of Object.entries(credentialMapping)) {
-            injectedCredentials[`${bubble.variableId}.${credType}`] =
-              this.maskCredential(value);
-          }
         }
       }
 
@@ -240,8 +365,6 @@ export class BubbleInjector {
         'Final script:',
         this.bubbleScript.showScript('[BubbleInjector] Final script')
       );
-
-      console.debug('INJECTED CREDENTIALS', injectedCredentials);
       return {
         success: errors.length === 0,
         code: finalScript,
