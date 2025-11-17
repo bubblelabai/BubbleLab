@@ -118,6 +118,25 @@ async function runBubbleFlowCommon(
     pricingTable: options.pricingTable,
     userCredentialMapping,
   });
+  const usageCheck = await getMonthlyLimitForPlan(options.userId);
+  console.log('[runBubbleFlowCommon] Usage check:', usageCheck);
+
+  if (usageCheck.executions.currentUsage >= usageCheck.executions.limit) {
+    const errorMessage = `Monthly executions exceeded. You have used ${usageCheck.executions.currentUsage} out of ${usageCheck.executions.limit} monthly executions. Please upgrade your plan for continued use.`;
+    console.error('[runBubbleFlowCommon]', errorMessage);
+    if (options.streamCallback) {
+      options.streamCallback({
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        message: errorMessage,
+      });
+    }
+    return {
+      executionId: 0,
+      success: false,
+      summary: runner.getLogger()?.getExecutionSummary(),
+    };
+  }
 
   // Inject when needed
   if (Object.keys(requiredCredentials).length > 0) {
@@ -139,9 +158,6 @@ async function runBubbleFlowCommon(
       ) &&
       options.appType
     ) {
-      const usageCheck = await getMonthlyLimitForPlan(options.userId);
-
-      console.log('[runBubbleFlowCommon] Usage check:', usageCheck);
       if (usageCheck.credits.currentUsage >= usageCheck.credits.limit) {
         const systemCredentialTypes = Object.values(
           injectionResult.injectedCredentials ?? {}
@@ -179,23 +195,6 @@ async function runBubbleFlowCommon(
           data: {
             result: errorMessage,
           },
-        };
-      } else if (
-        usageCheck.executions.currentUsage >= usageCheck.executions.limit
-      ) {
-        const errorMessage = `Monthly executions exceeded. You have used ${usageCheck.executions.currentUsage} out of ${usageCheck.executions.limit} monthly executions. Please upgrade your plan for continued use.`;
-        console.error('[runBubbleFlowCommon]', errorMessage);
-        if (options.streamCallback) {
-          options.streamCallback({
-            timestamp: new Date().toISOString(),
-            type: 'error',
-            message: errorMessage,
-          });
-        }
-        return {
-          executionId: 0,
-          success: false,
-          summary: runner.getLogger()?.getExecutionSummary(),
         };
       }
     }

@@ -157,7 +157,7 @@ export async function authMiddleware(c: Context, next: Next) {
     const userId = payload.sub;
     // Extract subscription info from JWT payload
     const subscriptionInfo = extractSubscriptionInfoFromPayload(payload);
-    console.log('[authMiddleware] subscriptionInfo', subscriptionInfo);
+    console.debug('[authMiddleware] subscriptionInfo', subscriptionInfo);
 
     // Set user info and app context
     c.set('userId', userId);

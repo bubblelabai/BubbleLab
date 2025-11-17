@@ -3,13 +3,14 @@ import {
   authMiddleware,
   getUserId,
   getSubscriptionInfo,
-  getAppType,
 } from '../middleware/auth.js';
-import { PLAN_TYPE } from '../services/subscription-validation.js';
+import {
+  PLAN_TYPE,
+  APP_PLAN_TO_MONTHLY_LIMITS,
+} from '../services/subscription-validation.js';
 import { db } from '../db/index.js';
 import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
-import { APP_FEATURES_TO_MONTHLY_LIMITS } from '../services/subscription-validation.js';
 import { calculateNextResetDate } from '../utils/subscription.js';
 import { getCurrentMonthYear } from '../utils/subscription.js';
 import { getSubscriptionStatusRoute } from '../schemas/subscription.js';
@@ -27,7 +28,6 @@ app.use('*', authMiddleware);
 app.openapi(getSubscriptionStatusRoute, async (c) => {
   const userId = getUserId(c);
   const subscriptionInfo = getSubscriptionInfo(c);
-  const appType = getAppType(c);
 
   // Get user's current monthly usage
   const userResult = await db
@@ -40,24 +40,12 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     .limit(1);
 
   const currentUsage = userResult[0]?.monthlyUsageCount || 0;
-
   // Get current month-year for token usage query
   const currentMonthYear = getCurrentMonthYear();
-
-  // Get the monthly limit based on features and app type
-  const monthlyLimit = Math.max(
-    ...subscriptionInfo.features.map(
-      (feature) => APP_FEATURES_TO_MONTHLY_LIMITS[appType][feature] || 0
-    ),
-    APP_FEATURES_TO_MONTHLY_LIMITS[appType].base_usage // Fallback to base usage
-  );
-
   const nextResetDate = calculateNextResetDate(
     userResult[0]?.monthlyResetDate || null
   );
 
-  // Map plan names to display names
-  console.log('🔍 plan', subscriptionInfo.plan, ' monthly limit', monthlyLimit);
   const planDisplayNames: Record<PLAN_TYPE, string> = {
     free_user: 'Free',
     pro_plan: 'Pro',
@@ -115,8 +103,10 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
         },
       ],
       executionCount: currentUsage,
-      executionLimit: monthlyLimit >= 100000 ? -1 : monthlyLimit, // Convert very high limit to -1 (unlimited)
-      creditLimit: monthlyLimit,
+      executionLimit:
+        APP_PLAN_TO_MONTHLY_LIMITS[subscriptionInfo.plan].executionLimit,
+      creditLimit:
+        APP_PLAN_TO_MONTHLY_LIMITS[subscriptionInfo.plan].creditLimit,
       resetDate: nextResetDate,
       serviceUsage: actualServiceUsage,
       estimatedMonthlyCost,

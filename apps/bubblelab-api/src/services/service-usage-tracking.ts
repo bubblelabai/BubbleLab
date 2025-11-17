@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { userServiceUsage } from '../db/schema.js';
+import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and, or, isNull } from 'drizzle-orm';
 import type { CredentialType, ServiceUsage } from '@bubblelab/shared-schemas';
 import { getMonthYearFromUserCreatedDate } from '../utils/subscription.js';
@@ -12,12 +12,27 @@ import { getCurrentMonthYear } from '../utils/subscription.js';
 export async function getTotalServiceCostForUser(
   userId: string,
   service?: CredentialType,
-  subService?: string,
-  userCreatedAt?: Date
+  subService?: string
 ): Promise<number> {
+  // Query for the user's created date to get the month year for the billing period
+  const userCreatedAt = await db.query.users.findFirst({
+    where: eq(users.clerkId, userId),
+    columns: { createdAt: true },
+  });
+  if (!userCreatedAt) {
+    throw new Error(
+      'User not found to get the month year for the billing period'
+    );
+  }
   const monthYear = userCreatedAt
-    ? getMonthYearFromUserCreatedDate(userCreatedAt)
+    ? getMonthYearFromUserCreatedDate(userCreatedAt.createdAt)
     : getCurrentMonthYear();
+  console.log(
+    '[getTotalServiceUsageForUser] Month year:',
+    monthYear,
+    ' user created at:',
+    userCreatedAt.createdAt
+  );
   const whereConditions = [
     eq(userServiceUsage.userId, userId),
     eq(userServiceUsage.monthYear, monthYear),
