@@ -1082,7 +1082,12 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             totalCost: serviceUsage.totalCost,
           }));
           if (generationResult.serviceUsage) {
-            await trackServiceUsages(userId, serviceUsages);
+            // Fetch user's created date for billing period calculation
+            const user = await db.query.users.findFirst({
+              where: eq(users.clerkId, userId),
+              columns: { createdAt: true },
+            });
+            await trackServiceUsages(userId, serviceUsages, user?.createdAt);
           }
           if (generationResult.isValid) {
             posthog.captureEvent(

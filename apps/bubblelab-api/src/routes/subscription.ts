@@ -52,12 +52,6 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     APP_FEATURES_TO_MONTHLY_LIMITS[appType].base_usage // Fallback to base usage
   );
 
-  // Calculate usage percentage
-  const percentage =
-    monthlyLimit === -1 || monthlyLimit === 100000
-      ? 0
-      : Math.min(Math.round((currentUsage / monthlyLimit) * 100), 100);
-
   const nextResetDate = calculateNextResetDate(
     userResult[0]?.monthlyResetDate || null
   );
@@ -120,9 +114,9 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
           totalTokens: 0,
         },
       ],
-      current: currentUsage,
-      limit: monthlyLimit >= 100000 ? -1 : monthlyLimit, // Convert very high limit to -1 (unlimited)
-      percentage,
+      executionCount: currentUsage,
+      executionLimit: monthlyLimit >= 100000 ? -1 : monthlyLimit, // Convert very high limit to -1 (unlimited)
+      creditLimit: monthlyLimit,
       resetDate: nextResetDate,
       serviceUsage: actualServiceUsage,
       estimatedMonthlyCost,

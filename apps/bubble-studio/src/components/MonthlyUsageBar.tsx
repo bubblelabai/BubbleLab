@@ -20,7 +20,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     0
   );
 
-  const monthlyLimit = subscription.usage.limit;
+  const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
   const isOverLimit = totalCost > monthlyLimit;
 

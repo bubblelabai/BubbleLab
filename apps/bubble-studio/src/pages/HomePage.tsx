@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, MoreHorizontal, Edit2, Check, X, Search } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
-import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
 import { MonthlyUsageBar } from '../components/MonthlyUsageBar';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
@@ -148,13 +147,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Token Usage Display */}
-            <SignedIn>
-              <div className="w-64">
-                <TokenUsageDisplay isOpen={true} />
-              </div>
-            </SignedIn>
           </div>
         </div>
 

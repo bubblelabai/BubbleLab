@@ -154,8 +154,19 @@ export async function verifyMonthlyCreditsExceeded(
       features
     );
 
+    // Get user's created date for billing period calculation
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.clerkId, userId),
+      columns: { createdAt: true },
+    });
+
     // Get the plan limit
-    const currentUsage = await getTotalServiceCostForUser(userId);
+    const currentUsage = await getTotalServiceCostForUser(
+      userId,
+      undefined,
+      undefined,
+      dbUser?.createdAt
+    );
     const limit = getMonthlyLimitForFeaturesInternal(features, appType);
     return {
       allowed: currentUsage < limit,

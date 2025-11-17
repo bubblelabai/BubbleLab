@@ -19,21 +19,21 @@ export const subscriptionStatusResponseSchema = z
       example: ['unlimited_usage', 'priority_support'],
     }),
     usage: z.object({
-      current: z.number().openapi({
-        description: 'Current monthly usage count (in USD)',
+      executionCount: z.number().openapi({
+        description: 'Current monthly execution count',
+        example: 100,
+      }),
+      executionLimit: z.number().openapi({
+        description: 'Current monthly execution limit',
         example: 42,
       }),
-      limit: z.number().openapi({
-        description: 'Monthly usage limit (in USD)',
+      creditLimit: z.number().openapi({
+        description: 'Monthly credit limit',
         example: 100,
       }),
       estimatedMonthlyCost: z.number().openapi({
         description: 'Projected monthly cost based on current usage trend',
         example: 14.19,
-      }),
-      percentage: z.number().openapi({
-        description: 'Usage percentage (0-100)',
-        example: 42,
       }),
       resetDate: z.string().openapi({
         description: 'ISO date when usage resets',

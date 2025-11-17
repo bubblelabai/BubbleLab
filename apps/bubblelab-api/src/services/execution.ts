@@ -23,6 +23,9 @@ import {
 import { trackServiceUsages } from './service-usage-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
 import { verifyMonthlyCreditsExceeded } from './subscription-validation.js';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
 
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
@@ -206,8 +209,26 @@ async function runBubbleFlowCommon(
   };
   const result = await runner.runAll(enhancedPayload);
   // Track service usage if available
+  if (result.success) {
+    // Increment monthly usage count for every execution
+    await db
+      .update(users)
+      .set({
+        monthlyUsageCount: sql`${users.monthlyUsageCount} + 1`,
+      })
+      .where(eq(users.clerkId, options.userId));
+  }
   if (result.summary?.serviceUsage && result.summary.serviceUsage.length > 0) {
-    await trackServiceUsages(options.userId, result.summary.serviceUsage);
+    // Fetch user's created date for billing period calculation
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, options.userId),
+      columns: { createdAt: true },
+    });
+    await trackServiceUsages(
+      options.userId,
+      result.summary.serviceUsage,
+      user?.createdAt
+    );
   }
 
   return result;

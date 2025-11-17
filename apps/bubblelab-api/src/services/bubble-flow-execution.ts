@@ -190,14 +190,6 @@ export async function executeBubbleFlowWithTracking(
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
 
-    // Increase monthly usage count
-    await db
-      .update(users)
-      .set({
-        monthlyUsageCount: sql`${users.monthlyUsageCount} + 1`,
-      })
-      .where(eq(users.clerkId, options.userId));
-
     return {
       executionId: execResult[0].id,
       success: result.success,
