@@ -20,17 +20,26 @@ describe('BubbleRunner correctly runs and plans', () => {
 
   describe('Plan Generation', () => {
     it('should run a simple bubble flow', async () => {
-      new BubbleRunner(redditLeadFinderScript, bubbleFactory);
+      new BubbleRunner(redditLeadFinderScript, bubbleFactory, {
+        pricingTable: {},
+      });
     });
     it('should fail if no bubble factory is initalized correctly', async () => {
       expect(
-        () => new BubbleRunner(redditLeadFinderScript, new BubbleFactory())
+        () =>
+          new BubbleRunner(redditLeadFinderScript, new BubbleFactory(), {
+            pricingTable: {},
+          })
       ).toThrow(
         'Failed to trace bubble dependencies: No bubbles found in BubbleFactory'
       );
     });
     it.skip('should run a flow with multiple action calls', async () => {
-      const runner = new BubbleRunner(multipleActionCallsScript, bubbleFactory);
+      const runner = new BubbleRunner(
+        multipleActionCallsScript,
+        bubbleFactory,
+        { pricingTable: {} }
+      );
       const plan = runner.getPlan();
       console.log(JSON.stringify(plan, null, 2));
       expect(plan.steps).toHaveLength(7);
@@ -38,7 +47,11 @@ describe('BubbleRunner correctly runs and plans', () => {
 
     // skip this test
     it.skip('should run an image generation flow', async () => {
-      const runner = new BubbleRunner(imageGenerationFlowScript, bubbleFactory);
+      const runner = new BubbleRunner(
+        imageGenerationFlowScript,
+        bubbleFactory,
+        { pricingTable: {} }
+      );
       const plan = runner.getPlan();
 
       // Test setup step
@@ -127,7 +140,9 @@ describe('BubbleRunner correctly runs and plans', () => {
 
   describe('Simple Execution', () => {
     it('should execute a simple bubble flow', async () => {
-      const runner = new BubbleRunner(helloWorldScript, bubbleFactory);
+      const runner = new BubbleRunner(helloWorldScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
@@ -135,7 +150,9 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
     });
     it('should execute multiple bubble flows', async () => {
-      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll({
         url: 'https://example.com',
       });
@@ -146,7 +163,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     }, 300000); // 5 minutes timeout
 
     it('should execute a simple http bubble flow', async () => {
-      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory);
+      const runner = new BubbleRunner(simpleHttpScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
@@ -155,7 +174,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
 
     it('should inject logger and modify bubble parameters', async () => {
-      const runner = new BubbleRunner(helloWorldScript, bubbleFactory);
+      const runner = new BubbleRunner(helloWorldScript, bubbleFactory, {
+        pricingTable: {},
+      });
 
       // Test parameter modification
       const bubbles = runner.getParsedBubbles();
@@ -193,7 +214,9 @@ describe('BubbleRunner correctly runs and plans', () => {
   describe('Execution With Edge Cases', () => {
     it('should execute a flow with a parameter as a variable', async () => {
       const testScript = getFixture('param-as-var');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       let result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success || result.error?.includes('credentials')).toBe(
@@ -209,7 +232,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a webhook flow', async () => {
       const testWebhookScript = getFixture('test-webhook');
-      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(result);
       console.log('Logs:', runner.getLogger()?.getLogs());
@@ -218,7 +243,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a webhook flow with no payload', async () => {
       const testWebhookScript = getFixture('hello-world-no-payload');
-      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(result);
       console.log('Logs:', runner.getLogger()?.getLogs());
@@ -227,7 +254,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a flow with multiple bubble instantiations (multi-line params) and preserve structure', async () => {
       const testScript = getFixture('hello-world-multiple');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
 
       expect(result).toBeDefined();
@@ -243,14 +272,18 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a webhook flow with multi-line parameters', async () => {
       const testWebhookScript = getFixture('hello-world-multi-line-para');
-      const runner = new BubbleRunner(testWebhookScript, bubbleFactory);
+      const runner = new BubbleRunner(testWebhookScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
     it('should execute a flow with a starter flow', async () => {
       const testScript = getFixture('starter-flow');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       runner.injector.injectCredentials([], getUserCredential());
       const result = await runner.runAll();
       expect(result).toBeDefined();
@@ -262,7 +295,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should run reddit-lead-finder flow', async () => {
       const testScript = getFixture('reddit-lead-finder');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
 
       runner.injector.injectCredentials([], getUserCredential());
       const result = await runner.runAll({
@@ -281,14 +316,18 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a techweek-scrape flow', async () => {
       const testScript = getFixture('techweek-scrape');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(result);
       console.log('Logs:', runner.getLogger()?.getLogs());
     });
     it('should execute a flow with a parameter with a comment', async () => {
       const testScript = getFixture('para-with-comment');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       // inject credentials
       const bubbles = runner.getParsedBubbles();
@@ -298,7 +337,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a flow with a bubble inside promise', async () => {
       const testScript = getFixture('bubble-inside-promise');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
 
       // IF success is true or no resend error, then test is successful
@@ -310,7 +351,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a flow with a class method and log', async () => {
       const testScript = getFixture('flow-with-class-method-and-log');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll({
         email: 'test@example.com',
         job_description: 'test job description',
@@ -323,7 +366,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     });
     it('should execute a flow with a method inside the handler', async () => {
       const testScript = getFixture('method-inside-handler');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
@@ -331,14 +376,18 @@ describe('BubbleRunner correctly runs and plans', () => {
 
     it('should execute a flow with a function outside the handler', async () => {
       const testScript = getFixture('function-outside-flow');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
     });
     it('should execute a flow with a google drive complex', async () => {
       const testScript = getFixture('google-drive-complex');
-      const runner = new BubbleRunner(testScript, bubbleFactory);
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       expect(result).toBeDefined();
       expect(result.success || result.error?.includes('credentials')).toBe(
@@ -348,7 +397,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     describe('Parameter parsing and formatting - final script checks', () => {
       it('case 1: single variable parameter (new Bubble(params)) formats with spread when credentials injected', async () => {
         const testScript = getFixture('param-as-var');
-        const runner = new BubbleRunner(testScript, bubbleFactory);
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
         // Inject any available user credentials to trigger credential insertion
         runner.injector.injectCredentials([], getUserCredential());
         // Normalize instantiations and logging to update script string
@@ -362,7 +413,9 @@ describe('BubbleRunner correctly runs and plans', () => {
 
       it('case 2: object literal properties (new Bubble({ fe: fee })) remain as name: value, not spread', async () => {
         const testScript = getFixture('para-with-variable-alias');
-        const runner = new BubbleRunner(testScript, bubbleFactory);
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
         // Normalize to single-line instantiations
         runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
         const code = runner.bubbleScript.bubblescript;
@@ -372,7 +425,9 @@ describe('BubbleRunner correctly runs and plans', () => {
 
       it('case 3: spread and parameter (new Bubble({ fe: fee, ...something })) preserves spread', async () => {
         const testScript = getFixture('flow-with-spread-and-para');
-        const runner = new BubbleRunner(testScript, bubbleFactory);
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
         runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
         // expect ..({ operation: 'send_message', channel: channel, ...slackMessage }
         expect(runner.bubbleScript.bubblescript).toContain(
@@ -381,7 +436,9 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
     });
     it('should inject logger with credentials and modify bubble parameters', async () => {
-      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
+      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const bubbles = runner.getParsedBubbles();
       const bubbleIds = Object.keys(bubbles).map(Number);
       expect(bubbleIds.length).toBeGreaterThan(0);

@@ -80,10 +80,7 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
       // Should return all AI agent credentials (including system ones)
       expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
       expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY);
     });
   });
 
@@ -98,9 +95,7 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
 
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
       expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
       expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
       expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
@@ -116,10 +111,7 @@ describe('BubbleInjector.findCredentials()', () => {
 
       // Should return AI agent base credentials but not crash on malformed tools
       expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
       expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY);
     });
 
     it('should handle single tool object (not array)', () => {
@@ -133,10 +125,7 @@ describe('BubbleInjector.findCredentials()', () => {
       expect(credentials).toBeDefined();
       expect(credentials['404']).toBeDefined();
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials['404']).toContain(CredentialType.OPENAI_CRED);
       expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.ANTHROPIC_CRED);
-      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
       expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
   });
@@ -159,13 +148,10 @@ describe('BubbleInjector.findCredentials()', () => {
       expect(credentials['404']).toHaveLength(1);
 
       // AI agent should require base credentials plus tool credentials
-      expect(credentials['405']).toContain(CredentialType.OPENAI_CRED);
       expect(credentials['405']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['405']).toContain(CredentialType.ANTHROPIC_CRED);
       expect(credentials['405']).toContain(CredentialType.DATABASE_CRED);
-      expect(credentials['405']).toContain(CredentialType.OPENROUTER_CRED);
       expect(credentials['405']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials['405']).toHaveLength(6); // All AI agent credentials
+      expect(credentials['405']).toHaveLength(3); // All AI agent credentials
 
       // Should have 3 different bubble IDs with credentials
       expect(Object.keys(credentials)).toHaveLength(2);
@@ -235,9 +221,9 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.code).toBeDefined();
       expect(result.injectedCredentials).toBeDefined();
       console.log(result.injectedCredentials);
-      expect(result.injectedCredentials!['405.SLACK_CRED']).toMatch(
-        /slac\*+-123/
-      );
+      expect(
+        result.injectedCredentials!['405.SLACK_CRED'].credentialValue
+      ).toMatch(/slac\*+-123/);
 
       // Check that credentials were added to bubble parameters
       expect(result.parsedBubbles?.[405]?.parameters).toHaveLength(3);
@@ -292,9 +278,9 @@ describe('BubbleInjector.injectCredentials()', () => {
 
       const result = injector.injectCredentials([], systemCredentials);
       expect(result.success).toBe(true);
-      expect(result.injectedCredentials!['404.SLACK_CRED']).toMatch(
-        /syst\*+oken/
-      );
+      expect(
+        result.injectedCredentials!['404.SLACK_CRED'].credentialValue
+      ).toMatch(/syst\*+oken/);
 
       console.log('Parsed bubbles:', result.parsedBubbles);
 
@@ -353,7 +339,9 @@ describe('BubbleInjector.injectCredentials()', () => {
     it('should inject credentials for AI agent with tools', () => {
       const bubbleScript = `
         const aiAgent = new AIAgentBubble({
-          model: 'gemini-2.0-flash-exp',
+          model: {
+            model: 'openai/gpt-4o',
+          },
           tools: [{"name": "slack"}, {"name": "web-scrape-tool"}]
         });
       `;
@@ -389,17 +377,21 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.success).toBe(true);
       expect(result.injectedCredentials).toBeDefined();
 
+      console.log(result.injectedCredentials);
       // Should have injected multiple credentials
       expect(Object.keys(result.injectedCredentials!)).toHaveLength(3);
-      expect(result.injectedCredentials![`${aiAgentVarId}.SLACK_CRED`]).toMatch(
-        /user\*+oken/
-      );
+      expect(
+        result.injectedCredentials![`${aiAgentVarId}.SLACK_CRED`]
+          .credentialValue
+      ).toMatch('user********oken');
       expect(
         result.injectedCredentials![`${aiAgentVarId}.OPENAI_CRED`]
-      ).toMatch(/syst\*+-key/);
+          .credentialValue
+      ).toMatch('syst*********-key');
       expect(
         result.injectedCredentials![`${aiAgentVarId}.FIRECRAWL_API_KEY`]
-      ).toMatch(/syst\*+-key/);
+          .credentialValue
+      ).toMatch('syst************-key');
 
       // Check bubble parameters were updated
       const credentialsParam = result.parsedBubbles?.[
@@ -494,7 +486,9 @@ describe('BubbleInjector.injectCredentials()', () => {
       const result = injector.injectCredentials(userCredentials);
 
       expect(result.success).toBe(true);
-      expect(result.injectedCredentials!['404.SLACK_CRED']).toBe('*****');
+      expect(
+        result.injectedCredentials!['404.SLACK_CRED'].credentialValue
+      ).toBe('*****');
     });
 
     it('should properly mask long credentials', () => {
@@ -518,9 +512,9 @@ describe('BubbleInjector.injectCredentials()', () => {
 
       expect(result.success).toBe(true);
       console.log('Injected credentials:', result.injectedCredentials);
-      expect(result.injectedCredentials!['404.SLACK_CRED']).toBe(
-        'very**********************************sked'
-      );
+      expect(
+        result.injectedCredentials!['404.SLACK_CRED'].credentialValue
+      ).toBe('very**********************************sked');
     });
 
     it('should handle bubbles inside control structures like for loops', () => {
