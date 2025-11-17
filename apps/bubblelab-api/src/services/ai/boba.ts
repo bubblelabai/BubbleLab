@@ -14,7 +14,8 @@ import { BubbleLogger, type StreamingCallback } from '@bubblelab/bubble-core';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { env } from 'src/config/env.js';
 import { getPricingTable } from 'src/config/pricing.js';
-
+import { getBubbleFactory } from '../bubble-factory-instance.js';
+import { BubbleFlowGeneratorWorkflow } from './bubbleflow-generator.workflow.js';
 export interface BobaRequest {
   prompt: string;
   credentials?: Partial<Record<CredentialType, string>>;

@@ -7,7 +7,7 @@ import {
   bubbleFlowExecutions,
   users,
 } from '../db/schema.js';
-import { type StreamingEvent } from '@bubblelab/shared-schemas';
+import { ServiceUsage, type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
@@ -56,6 +56,7 @@ import { getBubbleFactory } from '../services/bubble-factory-instance.js';
 import { trackServiceUsages } from '../services/service-usage-tracking.js';
 import { posthog } from 'src/services/posthog.js';
 import { BubbleResult } from '@bubblelab/bubble-core';
+import { PRICING_TABLE } from '../config/pricing.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -292,6 +293,7 @@ app.openapi(executeBubbleFlowRoute, async (c) => {
     const result = await executeBubbleFlowWithTracking(id, triggerEvent, {
       userId,
       appType,
+      pricingTable: PRICING_TABLE,
     });
 
     if (!result.success) {
@@ -347,6 +349,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
               id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             });
           },
+          pricingTable: PRICING_TABLE,
         });
 
         // Send stream completion
@@ -1068,33 +1071,40 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }),
           event: 'stream_complete',
         });
-
-        // Track service usage if available
-        // Note: GenerationResult.serviceUsage is a single ServiceUsage object,
-        // but we need to track it as an array for the tracking function
+        let serviceUsages: ServiceUsage[] = [];
         if (generationResult.serviceUsage) {
-          await trackServiceUsages(userId, [generationResult.serviceUsage]);
-        }
-        if (generationResult.isValid) {
-          posthog.captureEvent(
-            {
-              userId,
-              prompt: prompt,
-              code: generationResult.generatedCode,
-            },
-            'bubble_flow_generation_success'
-          );
-        } else {
-          posthog.captureErrorEvent(
-            generationResult.error,
-            {
-              userId,
-              prompt: prompt,
-              code: generationResult.generatedCode,
-              error: generationResult.error,
-            },
-            'bubble_flow_generation_failed'
-          );
+          serviceUsages = generationResult.serviceUsage.map((serviceUsage) => ({
+            service: serviceUsage.service,
+            subService: serviceUsage.subService + 'pearl_generation',
+            unit: serviceUsage.unit,
+            usage: serviceUsage.usage,
+            unitCost: serviceUsage.unitCost,
+            totalCost: serviceUsage.totalCost,
+          }));
+          if (generationResult.serviceUsage) {
+            await trackServiceUsages(userId, serviceUsages);
+          }
+          if (generationResult.isValid) {
+            posthog.captureEvent(
+              {
+                userId,
+                prompt: prompt,
+                code: generationResult.generatedCode,
+              },
+              'bubble_flow_generation_success'
+            );
+          } else {
+            posthog.captureErrorEvent(
+              generationResult.error,
+              {
+                userId,
+                prompt: prompt,
+                code: generationResult.generatedCode,
+                error: generationResult.error,
+              },
+              'bubble_flow_generation_failed'
+            );
+          }
         }
       } catch (error) {
         console.error('[API] Streaming generation error:', error);

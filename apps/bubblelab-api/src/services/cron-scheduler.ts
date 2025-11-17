@@ -8,6 +8,7 @@ import {
   validateCronExpression,
 } from '@bubblelab/shared-schemas';
 import { transformWebhookPayload } from '../utils/payload-transformer.js';
+import { getPricingTable } from '../config/pricing.js';
 
 export type CronSchedulerOptions = {
   maxConcurrency?: number;
@@ -142,6 +143,7 @@ export class CronScheduler {
       executeBubbleFlowWithTracking(f.id, transformedPayload, {
         userId: f.userId,
         appType: AppType.BUBBLE_LAB,
+        pricingTable: getPricingTable(),
       })
         .catch((err) => this.logger.error('[cron] exec error', f.id, err))
         .finally(() => {

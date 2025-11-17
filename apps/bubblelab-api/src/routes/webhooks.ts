@@ -2,6 +2,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { streamSSE } from 'hono/streaming';
 import { db } from '../db/index.js';
 import { webhooks } from '../db/schema.js';
+import { getPricingTable } from '../config/pricing.js';
 import {
   slackUrlVerificationSchema,
   webhookResponseSchema,
@@ -132,6 +133,7 @@ app.openapi(webhookRoute, async (c) => {
     // Execute the flow asynchronously (don't await)
     executeBubbleFlowViaWebhook(webhook.bubbleFlowId, webhookPayload, {
       userId,
+      pricingTable: getPricingTable(),
     })
       .then((result) => {
         console.log(
@@ -154,7 +156,7 @@ app.openapi(webhookRoute, async (c) => {
   const result = await executeBubbleFlowViaWebhook(
     webhook.bubbleFlowId,
     webhookPayload,
-    { userId }
+    { userId, pricingTable: getPricingTable() }
   );
 
   // Return execution result with webhook metadata
@@ -205,6 +207,7 @@ app.openapi(webhookStreamRoute, async (c) => {
         await executeBubbleFlowWithTracking(webhook.bubbleFlowId, requestBody, {
           userId: webhook.userId,
           useWebhookLogger: true,
+          pricingTable: getPricingTable(),
           streamCallback: async (event) => {
             // For terminal-friendly output, just send the message directly
             // instead of wrapping it in JSON
