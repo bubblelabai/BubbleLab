@@ -849,12 +849,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
-    if (
-      flowId &&
-      options &&
-      activateCron !== undefined &&
-      options.syncInputsWithFlow === false
-    ) {
+    if (flowId && options && activateCron !== undefined) {
       // Check if cron is already active (skip limit check if already active)
       if (activateCron && !existingFlow?.cronActive) {
         // Check webhook limit before activating cron
