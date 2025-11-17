@@ -21,19 +21,19 @@ export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
   }
 > = {
   free_user: {
-    executionLimit: 40,
-    creditLimit: 10,
-    webhookLimit: 5,
+    executionLimit: 100,
+    creditLimit: 5,
+    webhookLimit: 1,
   },
   pro_plan: {
-    executionLimit: 5000,
-    creditLimit: 0.015,
-    webhookLimit: 2,
+    executionLimit: 3000,
+    creditLimit: 20,
+    webhookLimit: 10,
   },
   pro_plus: {
-    executionLimit: 100000,
+    executionLimit: 99999999,
     creditLimit: 1000,
-    webhookLimit: 500,
+    webhookLimit: 99999999,
   },
 };
 
