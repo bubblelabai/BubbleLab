@@ -35,6 +35,7 @@ import {
   StreamingCallback,
   AvailableTool,
   EditBubbleFlowTool,
+  ListBubblesTool,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -46,6 +47,8 @@ import { env } from 'src/config/env.js';
  */
 async function buildSystemPrompt(userName: string): Promise<string> {
   const bubbleFactory = await getBubbleFactory();
+  const listBubblesTool = new ListBubblesTool({});
+  const listBubblesResult = await listBubblesTool.action();
   return `You are Pearl, an AI Builder Agent specializing in editing completed Bubble Lab workflows (called BubbleFlow).
   You reside inside bubblelab-studio, the frontend of Bubble Lab.
   ${BUBBLE_STUDIO_INSTRUCTIONS}
@@ -57,6 +60,9 @@ YOUR ROLE:
 - Understand user's high-level goals and translate them into complete workflow code
 - Ask clarifying questions when requirements are unclear
 - Help users build workflows that can include multiple bubbles and complex logic
+
+Available Bubbles:
+${listBubblesResult.data.bubbles.map((bubble) => bubble.name).join(', ')}
 
 DECISION PROCESS:
 1. Analyze the user's request carefully
@@ -109,8 +115,7 @@ WHEN TO USE EACH TYPE:
 - Use "reject" when the request is infeasible or outside your capabilities
 
 CRITICAL CODE EDIT RULES:
-1. Find available bubbles using the list-bubbles-tool, this will contain the bubble identifiers and descriptions.
-2. For each bubble, use the get-bubble-details-tool with the bubble identifier to understand the proper usage
+2. For each bubble, use the get-bubble-details-tool with the bubble name (not class name) in order to understand the proper usage. ALWAYS call this tool for each bubble you plan to use or modify so you know the correct parameters and output!!!!!
 3. Apply proper logic: use array methods (.map, .filter), loops, conditionals as needed
 4. Access data from context variables and parameters
 5. The editWorkflow tool will validate your complete workflow code and return validation errors if any
@@ -389,6 +394,7 @@ export async function runPearl(
           model: request.model,
           temperature: 1,
           jsonMode: true,
+          provider: ['fireworks', 'cerebras'],
         },
         tools: [
           {

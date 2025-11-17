@@ -81,6 +81,10 @@ const ModelConfigSchema = z.object({
     .describe(
       'Maximum number of retries for API calls (default: 3). Useful for handling transient errors like 503 Service Unavailable.'
     ),
+  provider: z
+    .array(z.string())
+    .optional()
+    .describe('Providers for ai agent (open router only).'),
   jsonMode: z
     .boolean()
     .default(false)
@@ -573,6 +577,9 @@ export class AIAgentBubble extends ServiceBubble<
             baseURL: 'https://openrouter.ai/api/v1',
           },
           modelKwargs: {
+            provider: {
+              order: this.params.model.provider,
+            },
             reasoning: {
               effort: 'medium',
               exclude: false,
@@ -1207,7 +1214,7 @@ export class AIAgentBubble extends ServiceBubble<
         );
       }
 
-      const response = finalMessage?.content || 'No response generated';
+      const response = finalMessage?.content || '';
 
       // Use shared formatting method
       const formattedResult = formatFinalResponse(
@@ -1536,7 +1543,7 @@ export class AIAgentBubble extends ServiceBubble<
       }
 
       // Process final result
-      const accumulatedResponse = accumulatedContent || 'No response generated';
+      const accumulatedResponse = accumulatedContent || '';
 
       // Use shared formatting method
       const formattedResult = await formatFinalResponse(
