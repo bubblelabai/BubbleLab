@@ -1075,10 +1075,10 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         if (generationResult.serviceUsage) {
           serviceUsages = generationResult.serviceUsage.map((serviceUsage) => ({
             service: serviceUsage.service,
-            subService: serviceUsage.subService + 'pearl_generation',
+            subService: serviceUsage.subService + '_pearl_generation',
             unit: serviceUsage.unit,
             usage: serviceUsage.usage,
-            unitCost: serviceUsage.unitCost,
+            unitCost: 0,
             totalCost: serviceUsage.totalCost,
           }));
           if (generationResult.serviceUsage) {
