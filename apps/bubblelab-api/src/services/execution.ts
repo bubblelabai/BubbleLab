@@ -22,7 +22,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import { trackServiceUsages } from './service-usage-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
-import { verifyMonthlyCreditsExceeded } from './subscription-validation.js';
+import { getMonthlyLimitForPlan } from './subscription-validation.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
@@ -139,20 +139,17 @@ async function runBubbleFlowCommon(
       ) &&
       options.appType
     ) {
-      console.debug('[runBubbleFlowCommon] Checking monthly credits exceeded');
-      const creditsCheck = await verifyMonthlyCreditsExceeded(
-        options.userId,
-        options.appType
-      );
-      console.log('[runBubbleFlowCommon] Credits check:', creditsCheck);
-      if (!creditsCheck.allowed) {
+      const usageCheck = await getMonthlyLimitForPlan(options.userId);
+
+      console.log('[runBubbleFlowCommon] Usage check:', usageCheck);
+      if (usageCheck.credits.currentUsage >= usageCheck.credits.limit) {
         const systemCredentialTypes = Object.values(
           injectionResult.injectedCredentials ?? {}
         )
           .filter((cred) => !cred.isUserCredential)
           .map((cred) => cred.credentialType);
 
-        const errorMessage = `Monthly credits exceeded. You have used $${creditsCheck.currentUsage} out of $${creditsCheck.limit} monthly credits. Please upgrade your plan or recharge to continue using bubblelab's managed services or use your own credential. System credentials used: ${systemCredentialTypes.join(', ')}`;
+        const errorMessage = `Monthly credits exceeded. You have used $${usageCheck.credits.currentUsage} out of $${usageCheck.credits.limit} monthly credits. Please upgrade your plan or recharge to continue using bubblelab's managed services or use your own credential. System credentials used: ${systemCredentialTypes.join(', ')}`;
         console.error('[runBubbleFlowCommon]', errorMessage);
 
         // stream error message to the stream callback
@@ -182,6 +179,23 @@ async function runBubbleFlowCommon(
           data: {
             result: errorMessage,
           },
+        };
+      } else if (
+        usageCheck.executions.currentUsage >= usageCheck.executions.limit
+      ) {
+        const errorMessage = `Monthly executions exceeded. You have used ${usageCheck.executions.currentUsage} out of ${usageCheck.executions.limit} monthly executions. Please upgrade your plan for continued use.`;
+        console.error('[runBubbleFlowCommon]', errorMessage);
+        if (options.streamCallback) {
+          options.streamCallback({
+            timestamp: new Date().toISOString(),
+            type: 'error',
+            message: errorMessage,
+          });
+        }
+        return {
+          executionId: 0,
+          success: false,
+          summary: runner.getLogger()?.getExecutionSummary(),
         };
       }
     }
