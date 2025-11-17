@@ -45,7 +45,10 @@ import {
   setupErrorHandler,
   validationErrorHook,
 } from '../utils/error-handler.js';
-import { verifyMonthlyLimit } from '../services/subscription-validation.js';
+import {
+  verifyMonthlyLimit,
+  getCurrentWebhookUsage,
+} from '../services/subscription-validation.js';
 import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
 import {
   BubbleScript,
@@ -614,6 +617,23 @@ app.openapi(activateBubbleFlowRoute, async (c) => {
     );
   }
 
+  // Check if webhook is already active (skip limit check if already active)
+  if (!webhook.isActive) {
+    // Check webhook limit before activating
+    const webhookUsage = await getCurrentWebhookUsage(userId);
+    console.log('[activateBubbleFlowRoute] Webhook usage:', webhookUsage);
+    if (webhookUsage.currentUsage >= webhookUsage.limit) {
+      return c.json(
+        {
+          error:
+            'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+          details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+        },
+        403
+      );
+    }
+  }
+
   // Activate the webhook
   await db
     .update(webhooks)
@@ -835,6 +855,22 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       activateCron !== undefined &&
       options.syncInputsWithFlow === false
     ) {
+      // Check if cron is already active (skip limit check if already active)
+      if (activateCron && !existingFlow?.cronActive) {
+        // Check webhook limit before activating cron
+        const webhookUsage = await getCurrentWebhookUsage(userId);
+        if (webhookUsage.currentUsage >= webhookUsage.limit) {
+          return c.json(
+            {
+              error:
+                'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+              details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+            },
+            403
+          );
+        }
+      }
+
       // Just update the activation state of the cron
       await db
         .update(bubbleFlows)

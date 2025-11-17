@@ -28,7 +28,7 @@ export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
   pro_plan: {
     executionLimit: 50,
     creditLimit: 0.015,
-    webhookLimit: 10,
+    webhookLimit: 2,
   },
   pro_plus: {
     executionLimit: 100000,
@@ -138,25 +138,23 @@ export async function getMonthlyLimitForPlan(userId: string): Promise<{
       userSubscriptionInfo = await getUserSubscriptionInfo(userId);
     }
 
-    // Get current usage for webhooks (active webhooks + active crons)
-    const currentWebhookUsage = await getCurrentWebhookUsage(userId);
+    // Get current usage and limit for webhooks (active webhooks + active crons)
+    const webhookUsage = await getCurrentWebhookUsage(userId);
 
-    // Get current usage for executions (monthlyUsageCount)
-    const currentExecutionUsage = await getCurrentExecutionUsage(userId);
+    // Get current usage and limit for executions (monthlyUsageCount)
+    const executionUsage = await getCurrentExecutionUsage(userId);
 
     // Get current usage for credits (reuse existing logic)
     const currentCreditUsage = await getTotalServiceCostForUser(userId);
 
     return {
       webhooks: {
-        limit:
-          APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].webhookLimit,
-        currentUsage: currentWebhookUsage,
+        limit: webhookUsage.limit,
+        currentUsage: webhookUsage.currentUsage,
       },
       executions: {
-        limit:
-          APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].executionLimit,
-        currentUsage: currentExecutionUsage,
+        limit: executionUsage.limit,
+        currentUsage: executionUsage.currentUsage,
       },
       credits: {
         limit:
@@ -229,11 +227,30 @@ async function getUserSubscriptionInfo(
 }
 
 /**
- * Helper function to get current webhook usage for a user
+ * Helper function to get current webhook usage and limit for a user
  * Counts active webhooks and active crons
+ * Returns both limit and current usage
  */
-async function getCurrentWebhookUsage(userId: string): Promise<number> {
+export async function getCurrentWebhookUsage(
+  userId: string
+): Promise<{ limit: number; currentUsage: number }> {
   try {
+    // Get subscription info (from context or Clerk)
+    let userSubscriptionInfo: UserSubscriptionInfo;
+    const contextSubscriptionInfo = getCurrentUserInfo();
+
+    if (contextSubscriptionInfo && contextSubscriptionInfo.appType) {
+      // Use subscription info from context (no need to fetch from Clerk)
+      userSubscriptionInfo = {
+        appType: contextSubscriptionInfo.appType,
+        plan: contextSubscriptionInfo.plan,
+        features: contextSubscriptionInfo.features,
+      };
+    } else {
+      // Fallback to fetching from Clerk if context not available
+      userSubscriptionInfo = await getUserSubscriptionInfo(userId);
+    }
+
     // Count active webhooks
     const activeWebhooksResult = await db
       .select({ count: count() })
@@ -253,35 +270,72 @@ async function getCurrentWebhookUsage(userId: string): Promise<number> {
     const activeCronsCount = activeCronsResult[0]?.count || 0;
 
     // Total active webhooks/crons
-    return activeWebhooksCount + activeCronsCount;
+    const currentUsage = activeWebhooksCount + activeCronsCount;
+
+    // Get limit from plan
+    const limit =
+      APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].webhookLimit;
+
+    return { limit, currentUsage };
   } catch (err) {
     console.error(
       '[subscription-validation] Error getting current webhook usage:',
       err
     );
-    return 0;
+    // Return unlimited access as fallback
+    const unlimitedLimit =
+      APP_FEATURES_TO_MONTHLY_LIMITS[AppType.NODEX].unlimited_usage;
+    return { limit: unlimitedLimit, currentUsage: 0 };
   }
 }
 
 /**
- * Helper function to get current execution usage for a user
+ * Helper function to get current execution usage and limit for a user
  * Uses monthlyUsageCount from users table
+ * Returns both limit and current usage
  */
-async function getCurrentExecutionUsage(userId: string): Promise<number> {
+async function getCurrentExecutionUsage(
+  userId: string
+): Promise<{ limit: number; currentUsage: number }> {
   try {
+    // Get subscription info (from context or Clerk)
+    let userSubscriptionInfo: UserSubscriptionInfo;
+    const contextSubscriptionInfo = getCurrentUserInfo();
+
+    if (contextSubscriptionInfo && contextSubscriptionInfo.appType) {
+      // Use subscription info from context (no need to fetch from Clerk)
+      userSubscriptionInfo = {
+        appType: contextSubscriptionInfo.appType,
+        plan: contextSubscriptionInfo.plan,
+        features: contextSubscriptionInfo.features,
+      };
+    } else {
+      // Fallback to fetching from Clerk if context not available
+      userSubscriptionInfo = await getUserSubscriptionInfo(userId);
+    }
+
     const userResult = await db
       .select({ monthlyUsageCount: users.monthlyUsageCount })
       .from(users)
       .where(eq(users.clerkId, userId))
       .limit(1);
 
-    return userResult[0]?.monthlyUsageCount || 0;
+    const currentUsage = userResult[0]?.monthlyUsageCount || 0;
+
+    // Get limit from plan
+    const limit =
+      APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].executionLimit;
+
+    return { limit, currentUsage };
   } catch (err) {
     console.error(
       '[subscription-validation] Error getting current execution usage:',
       err
     );
-    return 0;
+    // Return unlimited access as fallback
+    const unlimitedLimit =
+      APP_FEATURES_TO_MONTHLY_LIMITS[AppType.BUBBLE_LAB].unlimited_usage;
+    return { limit: unlimitedLimit, currentUsage: 0 };
   }
 }
 
