@@ -31,6 +31,10 @@ export const subscriptionStatusResponseSchema = z
         description: 'Monthly credit limit',
         example: 100,
       }),
+      activeFlowLimit: z.number().openapi({
+        description: 'Current monthly active flow limit',
+        example: 2,
+      }),
       estimatedMonthlyCost: z.number().openapi({
         description: 'Projected monthly cost based on current usage trend',
         example: 14.19,

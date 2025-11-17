@@ -29,7 +29,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     bubbleFlowListResponse?.bubbleFlows.filter(
       (flow) => flow.isActive || flow.cronActive
     ).length || 0;
-  const webHookLimit = 1;
+  const webHookLimit = subscription.usage.activeFlowLimit;
 
   const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);

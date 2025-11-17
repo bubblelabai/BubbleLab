@@ -26,7 +26,7 @@ export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
     webhookLimit: 5,
   },
   pro_plan: {
-    executionLimit: 50,
+    executionLimit: 5000,
     creditLimit: 0.015,
     webhookLimit: 2,
   },

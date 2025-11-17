@@ -103,6 +103,8 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
         },
       ],
       executionCount: currentUsage,
+      activeFlowLimit:
+        APP_PLAN_TO_MONTHLY_LIMITS[subscriptionInfo.plan].webhookLimit,
       executionLimit:
         APP_PLAN_TO_MONTHLY_LIMITS[subscriptionInfo.plan].executionLimit,
       creditLimit:
