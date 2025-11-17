@@ -13,13 +13,15 @@ export const credentialsApi = {
   initiateOAuth: async (
     provider: string,
     credentialType: string,
-    name?: string
+    name?: string,
+    scopes?: string[]
   ): Promise<{ authUrl: string; state: string }> => {
     return api.post<{ authUrl: string; state: string }>(
       `/oauth/${provider}/initiate`,
       {
         credentialType,
         name,
+        scopes,
       }
     );
   },
