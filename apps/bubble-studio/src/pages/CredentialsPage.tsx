@@ -16,6 +16,7 @@ import {
   getOAuthProvider,
   isOAuthCredential,
   getScopeDescriptions,
+  ScopeDescription,
 } from '@bubblelab/shared-schemas';
 import {
   useCredentials,
@@ -619,7 +620,7 @@ export function CreateCredentialModal({
                     <div className="space-y-2">
                       {getScopeDescriptions(
                         formData.credentialType as CredentialType
-                      ).map((scopeDesc) => (
+                      ).map((scopeDesc: ScopeDescription) => (
                         <label
                           key={scopeDesc.scope}
                           className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
@@ -646,17 +647,6 @@ export function CreateCredentialModal({
                     </div>
                   </div>
                 </div>
-                {getOAuthProvider(formData.credentialType as CredentialType) ===
-                  'google' &&
-                  API_BASE_URL.includes('bubblelab.ai') && (
-                    <div className="mt-3 bg-yellow-900 bg-opacity-20 rounded-lg p-3 border border-yellow-500">
-                      <p className="text-xs text-yellow-300">
-                        ⚠️ Our Google OAuth app is pending approval. You may see
-                        a warning about an "untrusted app" during
-                        authentication. This is normal and safe to proceed.
-                      </p>
-                    </div>
-                  )}
               </div>
             )}
           </div>
