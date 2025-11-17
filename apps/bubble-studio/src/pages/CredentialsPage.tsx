@@ -15,6 +15,8 @@ import {
   CredentialType,
   getOAuthProvider,
   isOAuthCredential,
+  getScopeDescriptions,
+  ScopeDescription,
 } from '@bubblelab/shared-schemas';
 import {
   useCredentials,
@@ -28,7 +30,6 @@ import type {
 } from '@bubblelab/shared-schemas';
 import { credentialsApi } from '../services/credentialsApi';
 import { resolveLogoByName } from '../lib/integrations';
-import { API_BASE_URL } from '../env';
 
 interface CredentialConfig {
   label: string;
@@ -269,6 +270,29 @@ export function CreateCredentialModal({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
+  const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set());
+
+  // Check if the current credential type is OAuth
+  const isOAuthCredentialType = isOAuthCredential(
+    formData.credentialType as CredentialType
+  );
+
+  // Initialize selected scopes based on defaultEnabled when credential type changes
+  useEffect(() => {
+    if (isOAuthCredentialType) {
+      const scopeDescriptions = getScopeDescriptions(
+        formData.credentialType as CredentialType
+      );
+      const enabledScopes = new Set(
+        scopeDescriptions
+          .filter((desc) => desc.defaultEnabled)
+          .map((desc) => desc.scope)
+      );
+      setSelectedScopes(enabledScopes);
+    } else {
+      setSelectedScopes(new Set());
+    }
+  }, [formData.credentialType, isOAuthCredentialType]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -280,6 +304,7 @@ export function CreateCredentialModal({
       setShowPassword(false);
       setError(null);
       setIsOAuthConnecting(false);
+      setSelectedScopes(new Set());
     }
   }, [isOpen]);
 
@@ -292,11 +317,6 @@ export function CreateCredentialModal({
       }));
     }
   }, [isOpen, lockedCredentialType]);
-
-  // Check if the current credential type is OAuth
-  const isOAuthCredentialType = isOAuthCredential(
-    formData.credentialType as CredentialType
-  );
 
   const handleOAuthConnect = async () => {
     setIsOAuthConnecting(true);
@@ -313,11 +333,22 @@ export function CreateCredentialModal({
         );
       }
 
-      // Initiate OAuth flow
+      // Get selected scopes as array
+      const scopesArray = Array.from(selectedScopes);
+
+      // Validate at least one scope is selected
+      if (scopesArray.length === 0) {
+        setError('Please select at least one permission');
+        setIsOAuthConnecting(false);
+        return;
+      }
+
+      // Initiate OAuth flow with selected scopes
       const { authUrl, state } = await credentialsApi.initiateOAuth(
         provider,
         formData.credentialType,
-        formData.name
+        formData.name,
+        scopesArray
       );
 
       // Store the credential name and state for when the OAuth callback completes
@@ -469,15 +500,16 @@ export function CreateCredentialModal({
                   title="Credential Type"
                   value={formData.credentialType}
                   onChange={(e) => {
+                    const newCredentialType = e.target.value as CredentialType;
                     setFormData((prev) => ({
                       ...prev,
-                      credentialType: e.target.value as CredentialType,
+                      credentialType: newCredentialType,
                       name:
                         prev.name ||
-                        CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
+                        CREDENTIAL_TYPE_CONFIG[newCredentialType]
                           .namePlaceholder,
                       credentialConfigurations:
-                        CREDENTIAL_TYPE_CONFIG[e.target.value as CredentialType]
+                        CREDENTIAL_TYPE_CONFIG[newCredentialType]
                           .credentialConfigurations,
                     }));
                     setError(null);
@@ -574,22 +606,46 @@ export function CreateCredentialModal({
                       This will open a secure OAuth connection window
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
+                  <p className="text-xs text-gray-400 leading-relaxed mb-4">
                     You'll be redirected to authorize access to your account.
                     Once completed, the connection will be saved automatically.
                   </p>
-                </div>
-                {getOAuthProvider(formData.credentialType as CredentialType) ===
-                  'google' &&
-                  API_BASE_URL.includes('bubblelab.ai') && (
-                    <div className="mt-3 bg-yellow-900 bg-opacity-20 rounded-lg p-3 border border-yellow-500">
-                      <p className="text-xs text-yellow-300">
-                        ⚠️ Our Google OAuth app is pending approval. You may see
-                        a warning about an "untrusted app" during
-                        authentication. This is normal and safe to proceed.
-                      </p>
+
+                  {/* Scope Descriptions with Checkboxes */}
+                  <div className="mt-4 pt-4 border-t border-[#30363d]">
+                    <p className="text-xs font-medium text-gray-300 mb-3">
+                      Select permissions to request:
+                    </p>
+                    <div className="space-y-2">
+                      {getScopeDescriptions(
+                        formData.credentialType as CredentialType
+                      ).map((scopeDesc: ScopeDescription) => (
+                        <label
+                          key={scopeDesc.scope}
+                          className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedScopes.has(scopeDesc.scope)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedScopes);
+                              if (e.target.checked) {
+                                newSelected.add(scopeDesc.scope);
+                              } else {
+                                newSelected.delete(scopeDesc.scope);
+                              }
+                              setSelectedScopes(newSelected);
+                            }}
+                            className="mt-0.5 w-4 h-4 rounded border-[#30363d] bg-[#1a1a1a] text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
+                          />
+                          <span className="flex-1">
+                            {scopeDesc.description}
+                          </span>
+                        </label>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

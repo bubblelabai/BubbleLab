@@ -47,12 +47,22 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 export type OAuthProvider = 'google';
 
 /**
+ * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
+ */
+export interface ScopeDescription {
+  scope: string; // OAuth scope URL
+  description: string; // Human-readable description of what this scope allows
+  defaultEnabled: boolean; // Whether this scope should be enabled by default
+}
+
+/**
  * OAuth credential type configuration for a specific service under a provider
  */
 export interface OAuthCredentialConfig {
   displayName: string; // User-facing name
   defaultScopes: string[]; // OAuth scopes for this credential type
   description: string; // Description of what this credential provides access to
+  scopeDescriptions?: ScopeDescription[]; // Optional: descriptions for each scope
 }
 
 /**
@@ -80,24 +90,79 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'https://www.googleapis.com/auth/drive.file',
           'https://www.googleapis.com/auth/documents',
           'https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive',
         ],
         description: 'Access Google Drive files and folders',
+        scopeDescriptions: [
+          {
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            description:
+              'View and manage Google Drive files and folders that you have created with Bubble Lab',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'https://www.googleapis.com/auth/documents',
+            description: 'View and manage your Google Docs documents',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'https://www.googleapis.com/auth/spreadsheets',
+            description: 'View and manage your Google Sheets spreadsheets',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'https://www.googleapis.com/auth/drive',
+            description:
+              'View and manage all ofyour Google Drive files and folders (will see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
+            defaultEnabled: false,
+          },
+        ],
       },
       [CredentialType.GMAIL_CRED]: {
         displayName: 'Gmail',
-        defaultScopes: ['https://www.googleapis.com/auth/gmail.send'],
+        defaultScopes: [
+          'https://www.googleapis.com/auth/gmail.send',
+          'https://www.googleapis.com/auth/gmail.modify',
+        ],
         description: 'Access Gmail for sending emails',
+        scopeDescriptions: [
+          {
+            scope: 'https://www.googleapis.com/auth/gmail.send',
+            description: 'Send email on your behalf',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'https://www.googleapis.com/auth/gmail.modify',
+            description:
+              'View and manage all of your Gmail emails and labels (might see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
+            defaultEnabled: false,
+          },
+        ],
       },
       [CredentialType.GOOGLE_SHEETS_CRED]: {
         displayName: 'Google Sheets',
         defaultScopes: ['https://www.googleapis.com/auth/spreadsheets'],
         description:
           'Access Google Sheets for reading and writing spreadsheet data',
+        scopeDescriptions: [
+          {
+            scope: 'https://www.googleapis.com/auth/spreadsheets',
+            description: 'View and manage your Google Sheets spreadsheets',
+            defaultEnabled: true,
+          },
+        ],
       },
       [CredentialType.GOOGLE_CALENDAR_CRED]: {
         displayName: 'Google Calendar',
         defaultScopes: ['https://www.googleapis.com/auth/calendar'],
         description: 'Access Google Calendar for reading and managing events',
+        scopeDescriptions: [
+          {
+            scope: 'https://www.googleapis.com/auth/calendar',
+            description: 'View and manage events on all your calendars',
+            defaultEnabled: true,
+          },
+        ],
       },
     },
     authorizationParams: {
@@ -127,6 +192,35 @@ export function getOAuthProvider(
  */
 export function isOAuthCredential(credentialType: CredentialType): boolean {
   return getOAuthProvider(credentialType) !== null;
+}
+
+/**
+ * Get scope descriptions for a specific credential type
+ * Returns an array of scope descriptions that will be requested during OAuth
+ */
+export function getScopeDescriptions(
+  credentialType: CredentialType
+): ScopeDescription[] {
+  const provider = getOAuthProvider(credentialType);
+  if (!provider) {
+    return [];
+  }
+
+  const providerConfig = OAUTH_PROVIDERS[provider];
+  const credentialConfig = providerConfig?.credentialTypes[credentialType];
+
+  if (!credentialConfig?.scopeDescriptions) {
+    // Fallback: create descriptions from scope URLs if not explicitly defined
+    return (
+      credentialConfig?.defaultScopes.map((scope) => ({
+        scope,
+        description: `Access: ${scope}`,
+        defaultEnabled: true, // Default to enabled if in defaultScopes
+      })) || []
+    );
+  }
+
+  return credentialConfig.scopeDescriptions;
 }
 
 /**
