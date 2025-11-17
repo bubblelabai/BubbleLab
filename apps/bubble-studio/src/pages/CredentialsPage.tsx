@@ -30,7 +30,6 @@ import type {
 } from '@bubblelab/shared-schemas';
 import { credentialsApi } from '../services/credentialsApi';
 import { resolveLogoByName } from '../lib/integrations';
-import { API_BASE_URL } from '../env';
 
 interface CredentialConfig {
   label: string;
