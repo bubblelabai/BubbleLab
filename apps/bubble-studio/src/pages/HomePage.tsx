@@ -52,12 +52,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     return flow.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // Calculate total executions across all flows
-  const totalExecutions = allFlows.reduce(
-    (sum, flow) => sum + (flow.executionCount || 0),
-    0
-  );
-
   const handleDeleteClick = (flowId: number, event: React.MouseEvent) => {
     event.stopPropagation();
     setOpenMenuId(null);
@@ -119,35 +113,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
             )}
           </SignedIn>
-
-          {/* Stats Cards */}
-          <div className="flex gap-4 mb-2 flex-wrap">
-            {/* Flows Count Card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">Total Flows</div>
-                  <div className="text-lg font-semibold text-white">
-                    {isLoading ? '...' : allFlows.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Executions Card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">
-                    Total Executions
-                  </div>
-                  <div className="text-lg font-semibold text-white">
-                    {isLoading ? '...' : totalExecutions.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Flows Section */}

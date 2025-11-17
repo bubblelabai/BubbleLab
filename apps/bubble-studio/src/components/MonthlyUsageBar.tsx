@@ -87,7 +87,17 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   <span className="text-xs text-gray-400 font-normal">
                     · {subscription.planDisplayName}
                   </span>
+                  <span className="text-xs text-gray-400 font-normal">
+                    · Resets {formatResetDate(subscription.usage.resetDate)}
+                  </span>
                 </div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center gap-1 text-xs text-white hover:text-gray-300 font-medium transition-colors"
+                >
+                  Details
+                  <ArrowRight className="w-3 h-3" />
+                </button>
               </div>
 
               {/* Progress bar */}
@@ -104,74 +114,22 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 />
               </div>
 
-              {/* Monetary usage and Show Details button */}
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3">
-                    <div className="text-xs text-gray-400">
-                      {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
-                    </div>
-                    <span
-                      className={`text-xs font-semibold ${
-                        isOverLimit
-                          ? 'text-red-400'
-                          : percentage > 80
-                            ? 'text-yellow-400'
-                            : 'text-blue-400'
-                      }`}
-                    >
-                      {percentage.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  {/* Execution count */}
-                  <div className="flex items-center gap-2">
-                    <div className="text-[10px] text-gray-500">
-                      Executions: {numberOfExecutions} / {executionLimit}
-                    </div>
-                    <span
-                      className={`text-[10px] font-semibold ${
-                        isOverExecutionLimit
-                          ? 'text-red-400'
-                          : executionPercentage > 80
-                            ? 'text-yellow-400'
-                            : 'text-gray-500'
-                      }`}
-                    >
-                      {executionPercentage.toFixed(0)}%
-                    </span>
-                  </div>
-
-                  {/* Webhook/Cron count */}
-                  <div className="flex items-center gap-2">
-                    <div className="text-[10px] text-gray-500">
-                      Active Flows: {numberOfActiveWebhooksOrCronSchedules} /{' '}
-                      {webHookLimit}
-                    </div>
-                    <span
-                      className={`text-[10px] font-semibold ${
-                        isOverWebhookLimit
-                          ? 'text-red-400'
-                          : webhookPercentage > 80
-                            ? 'text-yellow-400'
-                            : 'text-gray-500'
-                      }`}
-                    >
-                      {webhookPercentage.toFixed(0)}%
-                    </span>
-                  </div>
-
-                  <div className="text-[10px] text-gray-500">
-                    Resets {formatResetDate(subscription.usage.resetDate)}
-                  </div>
+              {/* Monetary usage */}
+              <div className="flex items-center gap-3 mt-2">
+                <div className="text-xs text-gray-400">
+                  {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-1 text-xs text-white hover:text-gray-300 font-medium transition-colors"
+                <span
+                  className={`text-xs font-semibold ${
+                    isOverLimit
+                      ? 'text-red-400'
+                      : percentage > 80
+                        ? 'text-yellow-400'
+                        : 'text-blue-400'
+                  }`}
                 >
-                  Details
-                  <ArrowRight className="w-3 h-3" />
-                </button>
+                  {percentage.toFixed(1)}%
+                </span>
               </div>
             </div>
           ) : (
@@ -185,6 +143,47 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
           )}
         </div>
 
+        {/* Usage cards - outside Monthly Usage container */}
+        {isOpen && (
+          <div className="flex gap-4 mt-2 flex-wrap">
+            {/* Execution count card */}
+            <div className="w-64">
+              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-400 mb-1">
+                    Total Executions
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <div className="text-lg font-semibold text-white">
+                      {numberOfExecutions}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      / {executionLimit}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Flows card */}
+            <div className="w-64">
+              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-gray-400 mb-1">Active Flows</div>
+                  <div className="flex items-baseline gap-1.5">
+                    <div className="text-lg font-semibold text-white">
+                      {numberOfActiveWebhooksOrCronSchedules}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      / {webHookLimit}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tooltip when collapsed */}
         {!isOpen && (
           <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
@@ -192,7 +191,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
             </div>
             <div className="text-[10px] text-gray-400">
-              Executions: {numberOfExecutions} / {executionLimit}
+              Total Executions: {numberOfExecutions} / {executionLimit}
             </div>
             <div className="text-[10px] text-gray-400">
               Active Flows: {numberOfActiveWebhooksOrCronSchedules} /{' '}
