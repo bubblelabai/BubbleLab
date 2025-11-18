@@ -15,6 +15,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
 import { verifyMonthlyLimit } from './subscription-validation.js';
 import { AppType } from '../config/clerk-apps.js';
+import { getPricingTable } from '../config/pricing.js';
 
 export interface ExecutionPayload {
   type: keyof BubbleTriggerEventRegistry;
@@ -31,6 +32,7 @@ export interface ExecutionOptions {
   userId: string;
   systemCredentials?: Record<string, string>;
   appType?: AppType;
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
 }
 
 // Use shared prepareForStorage for payload and result
@@ -156,6 +158,8 @@ export async function executeBubbleFlowWithTracking(
           userId: options.userId,
           streamCallback: options.streamCallback,
           useWebhookLogger: options.useWebhookLogger,
+          pricingTable: getPricingTable(),
+          appType: appType,
         }
       );
     } else {
@@ -165,6 +169,8 @@ export async function executeBubbleFlowWithTracking(
         payload,
         {
           userId: options.userId,
+          appType: appType,
+          pricingTable: getPricingTable(),
         }
       );
     }
@@ -183,14 +189,6 @@ export async function executeBubbleFlowWithTracking(
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
-
-    // Increase monthly usage count
-    await db
-      .update(users)
-      .set({
-        monthlyUsageCount: sql`${users.monthlyUsageCount} + 1`,
-      })
-      .where(eq(users.clerkId, options.userId));
 
     return {
       executionId: execResult[0].id,

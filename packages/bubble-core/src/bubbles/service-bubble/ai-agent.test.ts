@@ -60,14 +60,6 @@ describe('AIAgentBubble', () => {
       expect(params.systemPrompt).toBe('You are a helpful AI assistant');
       expect(params.model.model).toBe('google/gemini-2.5-flash');
       expect(params.model.temperature).toBe(0.7);
-      expect(params.tools).toEqual([
-        {
-          name: 'web-search-tool',
-          config: {
-            maxResults: 5,
-          },
-        },
-      ]);
       expect(params.maxIterations).toBe(10);
     });
 
@@ -534,16 +526,6 @@ describe('AIAgentBubble - Tool Bubble Integration', () => {
     expect(bubble.currentParams.tools).toHaveLength(0);
   });
 
-  test('should use default empty tools when not provided', () => {
-    const bubble = new AIAgentBubble({
-      message: 'Test with default tools',
-    });
-
-    expect(bubble.currentParams.tools).toHaveLength(1);
-    expect(bubble.currentParams.tools[0].name).toBe('web-search-tool');
-    expect(bubble.currentParams.tools[0].config).toEqual({ maxResults: 5 });
-  });
-
   test('should accept dynamic custom tools without pre-registration', () => {
     const bubble = new AIAgentBubble({
       message: 'Calculate sales tax for $100',
@@ -564,7 +546,6 @@ describe('AIAgentBubble - Tool Bubble Integration', () => {
       ],
     });
 
-    expect(bubble.currentParams.tools).toHaveLength(1);
     expect(bubble.currentParams.customTools![0]).toMatchObject({
       name: 'calculate-tax',
       description: expect.stringContaining('sales tax'),

@@ -41,11 +41,14 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       path: '/test-timeout',
       body: { name: 'TimeoutTest', message: 'Testing timeout fix!' },
       name: 'TimeoutTest',
+      executionId: 'test-timeout-execution-id',
       message: 'Testing timeout fix!',
+      pricingTable: {},
     };
 
     const options = {
       userId: 'test-timeout-user-id',
+      pricingTable: {},
     };
 
     // Set a reasonable timeout for the test

@@ -1,28 +1,37 @@
 import { z } from '@hono/zod-openapi';
 import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema';
+import { CredentialType } from './types';
 
-export const TokenUsageSchema = z
+export const ServiceUsageSchema = z
   .object({
-    inputTokens: z.number().openapi({
-      description: 'Number of input tokens used',
-      example: 150,
+    service: z.nativeEnum(CredentialType).openapi({
+      description: 'Service identifier',
+      example: CredentialType.OPENAI_CRED,
     }),
-    outputTokens: z.number().openapi({
-      description: 'Number of output tokens generated',
-      example: 75,
+    subService: z.string().optional().openapi({
+      description: 'Sub-service identifier',
+      example: 'gpt-4',
     }),
-    totalTokens: z.number().openapi({
-      description: 'Total number of tokens used (input + output)',
-      example: 225,
+    unit: z.string().openapi({
+      description: 'Unit type for this service',
+      example: 'per_1m_tokens',
     }),
-    modelName: z.string().optional().openapi({
-      description: 'Name of the model used for token consumption',
-      example: 'google/gemini-2.5-flash',
+    usage: z.number().openapi({
+      description: 'Units used this month',
+      example: 2250000,
+    }),
+    unitCost: z.number().openapi({
+      description: 'Bubble Lab price per unit (with multiplier applied)',
+      example: 2.1,
+    }),
+    totalCost: z.number().openapi({
+      description: 'Total cost for this service (usage * unitCost)',
+      example: 4.725,
     }),
   })
-  .openapi('TokenUsage');
+  .openapi('ServiceUsage');
 
-export type TokenUsage = z.infer<typeof TokenUsageSchema>;
+export type ServiceUsage = z.infer<typeof ServiceUsageSchema>;
 
 export const ExecutionSummarySchema = z
   .object({
@@ -46,6 +55,9 @@ export const ExecutionSummarySchema = z
       description: 'Number of errors encountered',
       example: 0,
     }),
+    totalCost: z
+      .number()
+      .openapi({ description: 'Total cost of the execution' }),
     warningCount: z.number().optional().openapi({
       description: 'Number of warnings encountered',
       example: 1,
@@ -151,22 +163,14 @@ export const ExecutionSummarySchema = z
       description: 'Execution end timestamp (Unix timestamp)',
       example: 1703123458289,
     }),
-    tokenUsage: TokenUsageSchema.optional().openapi({
+    serviceUsage: z.array(ServiceUsageSchema).optional().openapi({
       description: 'Token usage during execution',
     }),
-    tokenUsageByModel: z
-      .record(z.string(), TokenUsageSchema.omit({ modelName: true }))
+    serviceUsageByService: z
+      .record(z.string(), ServiceUsageSchema)
       .optional()
       .openapi({
-        description:
-          'Token usage breakdown by model (key: model name, value: token usage)',
-        example: {
-          'google/gemini-2.5-flash': {
-            inputTokens: 1500,
-            outputTokens: 750,
-            totalTokens: 2250,
-          },
-        },
+        description: 'Service usage breakdown by service',
       }),
   })
   .openapi('ExecutionSummary');

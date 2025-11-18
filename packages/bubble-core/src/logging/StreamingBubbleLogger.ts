@@ -14,7 +14,9 @@ import {
   sanitizeErrorStack,
 } from '../utils/error-sanitizer.js';
 
-interface StreamingLoggerConfig extends Partial<LoggerConfig> {
+interface StreamingLoggerConfig
+  extends Partial<Omit<LoggerConfig, 'pricingTable'>> {
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
   streamCallback?: StreamCallback;
 }
 
@@ -25,7 +27,10 @@ interface StreamingLoggerConfig extends Partial<LoggerConfig> {
 export class StreamingBubbleLogger extends BubbleLogger {
   private streamCallback?: StreamCallback;
 
-  constructor(flowName: string, options: StreamingLoggerConfig = {}) {
+  constructor(
+    flowName: string,
+    options: StreamingLoggerConfig = { pricingTable: {} }
+  ) {
     const { streamCallback, ...loggerConfig } = options;
     super(flowName, loggerConfig);
     this.streamCallback = streamCallback;
@@ -168,13 +173,11 @@ export class StreamingBubbleLogger extends BubbleLogger {
     const message = success
       ? 'Execution completed successfully in ' +
         (this.getCurrentExecutionTime() / 1000).toFixed(2) +
-        's. Total tokens used: ' +
-        this.getTokenUsage().inputTokens +
-        ' input + ' +
-        this.getTokenUsage().outputTokens +
-        ' output = ' +
-        this.getTokenUsage().totalTokens +
-        ' total tokens.'
+        's.' +
+        ' Total cost: $' +
+        this.getExecutionSummary()
+          ?.serviceUsage?.reduce((acc, curr) => acc + curr.totalCost, 0)
+          .toFixed(6)
       : `Execution failed: ${error || 'Unknown error'}`;
 
     this.logLine(0, message, {

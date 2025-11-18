@@ -185,12 +185,32 @@ export class WebSearchTool extends ToolBubble<
           'No content available',
       }));
 
+      const creditsUsed = Math.floor(limitedResults / 10);
+
+      // Log service usage for Firecrawl web search
+      if (creditsUsed > 0 && this.context?.logger) {
+        this.context.logger.logTokenUsage(
+          {
+            usage: creditsUsed,
+            service: CredentialType.FIRECRAWL_API_KEY,
+            unit: 'per_result',
+            subService: 'web-search',
+          },
+          `Firecrawl web search: ${creditsUsed} credits used`,
+          {
+            bubbleName: 'web-search-tool',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+
       return {
         results,
         query,
         totalResults: results.length,
         searchEngine: 'Firecrawl',
-        creditsUsed: Math.floor(limitedResults / 10),
+        creditsUsed,
         success: true,
         error: '',
       };

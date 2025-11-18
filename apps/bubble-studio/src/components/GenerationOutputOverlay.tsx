@@ -276,12 +276,15 @@ export function GenerationOutputOverlay() {
                 </div>
 
                 {/* Stats Grid - show immediately */}
-                {generationResult.tokenUsage && (
+                {generationResult.serviceUsage && (
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in fade-in duration-300">
                     {/* Tokens */}
                     <div className="flex flex-col">
                       <p className="text-xl sm:text-2xl font-bold text-gray-100">
-                        {generationResult.tokenUsage.totalTokens.toLocaleString()}
+                        {generationResult.serviceUsage.reduce(
+                          (sum, service) => sum + service.usage,
+                          0
+                        )}
                       </p>
                       <p className="text-xs text-gray-400 uppercase tracking-wide">
                         tokens

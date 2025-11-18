@@ -4,7 +4,7 @@ import {
   hasTemplate,
 } from '@/components/templates/templateLoader';
 import {
-  TokenUsage,
+  ServiceUsage,
   StreamingEvent,
   GenerationResult,
 } from '@bubblelab/shared-schemas';
@@ -18,7 +18,7 @@ type GenerationStreamingEvent =
       data: {
         generatedCode?: string;
         bubbleParameters?: Record<string, unknown>;
-        tokenUsage?: TokenUsage;
+        serviceUsage?: ServiceUsage[];
         inputsSchema?: string;
         isValid?: boolean;
         success?: boolean;

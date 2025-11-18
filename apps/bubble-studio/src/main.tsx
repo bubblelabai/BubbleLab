@@ -18,6 +18,11 @@ import { dark } from '@clerk/themes';
 import { analytics } from './services/analytics';
 import { patchDOMForGoogleTranslate } from './utils/googleTranslateFix';
 
+// Disable console.debug in dev mode (can be enabled with ENABLE_DEBUG_LOGS=true)
+if (!import.meta.env.VITE_ENABLE_DEBUG_LOGS) {
+  console.debug = () => {};
+}
+
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
 

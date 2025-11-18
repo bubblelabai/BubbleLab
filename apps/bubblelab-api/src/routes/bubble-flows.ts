@@ -7,7 +7,7 @@ import {
   bubbleFlowExecutions,
   users,
 } from '../db/schema.js';
-import { type StreamingEvent } from '@bubblelab/shared-schemas';
+import { ServiceUsage, type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
@@ -45,7 +45,10 @@ import {
   setupErrorHandler,
   validationErrorHook,
 } from '../utils/error-handler.js';
-import { verifyMonthlyLimit } from '../services/subscription-validation.js';
+import {
+  verifyMonthlyLimit,
+  getCurrentWebhookUsage,
+} from '../services/subscription-validation.js';
 import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
 import {
   BubbleScript,
@@ -53,9 +56,10 @@ import {
   ValidationResult,
 } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../services/bubble-factory-instance.js';
-import { trackModelTokenUsage } from '../services/token-tracking.js';
+import { trackServiceUsages } from '../services/service-usage-tracking.js';
 import { posthog } from 'src/services/posthog.js';
 import { BubbleResult } from '@bubblelab/bubble-core';
+import { PRICING_TABLE } from '../config/pricing.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -292,6 +296,7 @@ app.openapi(executeBubbleFlowRoute, async (c) => {
     const result = await executeBubbleFlowWithTracking(id, triggerEvent, {
       userId,
       appType,
+      pricingTable: PRICING_TABLE,
     });
 
     if (!result.success) {
@@ -347,6 +352,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
               id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             });
           },
+          pricingTable: PRICING_TABLE,
         });
 
         // Send stream completion
@@ -611,6 +617,23 @@ app.openapi(activateBubbleFlowRoute, async (c) => {
     );
   }
 
+  // Check if webhook is already active (skip limit check if already active)
+  if (!webhook.isActive) {
+    // Check webhook limit before activating
+    const webhookUsage = await getCurrentWebhookUsage(userId);
+    console.log('[activateBubbleFlowRoute] Webhook usage:', webhookUsage);
+    if (webhookUsage.currentUsage >= webhookUsage.limit) {
+      return c.json(
+        {
+          error:
+            'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+          details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+        },
+        403
+      );
+    }
+  }
+
   // Activate the webhook
   await db
     .update(webhooks)
@@ -826,12 +849,23 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
-    if (
-      flowId &&
-      options &&
-      activateCron !== undefined &&
-      options.syncInputsWithFlow === false
-    ) {
+    if (flowId && options && activateCron !== undefined) {
+      // Check if cron is already active (skip limit check if already active)
+      if (activateCron && !existingFlow?.cronActive) {
+        // Check webhook limit before activating cron
+        const webhookUsage = await getCurrentWebhookUsage(userId);
+        if (webhookUsage.currentUsage >= webhookUsage.limit) {
+          return c.json(
+            {
+              error:
+                'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+              details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+            },
+            403
+          );
+        }
+      }
+
       // Just update the activation state of the cron
       await db
         .update(bubbleFlows)
@@ -1068,37 +1102,45 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           }),
           event: 'stream_complete',
         });
-
-        // Track token usage
-        trackModelTokenUsage(
-          userId,
-          'google/gemini-2.5-pro',
-          generationResult.tokenUsage || {
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
+        let serviceUsages: ServiceUsage[] = [];
+        if (generationResult.serviceUsage) {
+          serviceUsages = generationResult.serviceUsage.map((serviceUsage) => ({
+            service: serviceUsage.service,
+            subService: serviceUsage.subService + '_pearl_generation',
+            unit: serviceUsage.unit,
+            usage: serviceUsage.usage,
+            unitCost: 0,
+            totalCost: serviceUsage.totalCost,
+          }));
+          if (generationResult.serviceUsage) {
+            // Fetch user's created date for billing period calculation
+            const user = await db.query.users.findFirst({
+              where: eq(users.clerkId, userId),
+              columns: { createdAt: true },
+            });
+            await trackServiceUsages(userId, serviceUsages, user?.createdAt);
           }
-        );
-        if (generationResult.isValid) {
-          posthog.captureEvent(
-            {
-              userId,
-              prompt: prompt,
-              code: generationResult.generatedCode,
-            },
-            'bubble_flow_generation_success'
-          );
-        } else {
-          posthog.captureErrorEvent(
-            generationResult.error,
-            {
-              userId,
-              prompt: prompt,
-              code: generationResult.generatedCode,
-              error: generationResult.error,
-            },
-            'bubble_flow_generation_failed'
-          );
+          if (generationResult.isValid) {
+            posthog.captureEvent(
+              {
+                userId,
+                prompt: prompt,
+                code: generationResult.generatedCode,
+              },
+              'bubble_flow_generation_success'
+            );
+          } else {
+            posthog.captureErrorEvent(
+              generationResult.error,
+              {
+                userId,
+                prompt: prompt,
+                code: generationResult.generatedCode,
+                error: generationResult.error,
+              },
+              'bubble_flow_generation_failed'
+            );
+          }
         }
       } catch (error) {
         console.error('[API] Streaming generation error:', error);

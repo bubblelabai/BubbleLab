@@ -2,7 +2,7 @@ import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema';
 import { z } from '@hono/zod-openapi';
 import { BubbleParameterType } from './bubble-definition-schema';
 import { CredentialType } from './types';
-import { TokenUsageSchema } from './bubbleflow-execution-schema';
+import { ServiceUsageSchema } from './bubbleflow-execution-schema';
 
 // BubbleFlow generation schemas
 export const generateBubbleFlowCodeSchema = z.object({
@@ -56,8 +56,9 @@ export const GenerationResultSchema = z.object({
     .string()
     .default('')
     .describe('JSON Schema (string) representing the inputs of the flow'),
-  tokenUsage: TokenUsageSchema.optional().openapi({
-    description: 'Token usage statistics for the generation',
+  serviceUsage: z.array(ServiceUsageSchema).optional().openapi({
+    description:
+      'Service usage statistics for the generation (array of services used)',
   }),
   bubbleCount: z.number().optional().openapi({
     description: 'Number of bubbles used in the generated flow',

@@ -20,13 +20,18 @@ import {
   CREDENTIAL_ENV_MAP,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { trackTokenUsage } from './token-tracking.js';
+import { trackServiceUsages } from './service-usage-tracking.js';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
+import { getMonthlyLimitForPlan } from './subscription-validation.js';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
+import { eq, sql } from 'drizzle-orm';
 
 export interface ExecutionOptions {
   userId: string; // Add userId for new credential system
   systemCredentials?: Record<string, string>;
   appType?: AppType;
+  pricingTable: Record<string, { unit: string; unitCost: number }>;
 }
 
 export interface StreamingExecutionOptions extends ExecutionOptions {
@@ -47,17 +52,9 @@ async function runBubbleFlowCommon(
 
   // Initialize script and runner (runner gives us a single injector path for both modes)
   const bubbleScriptInstance = new BubbleScript(bubbleScript, bubbleFactory);
-  const runner = new BubbleRunner(bubbleScriptInstance, bubbleFactory, {
-    enableLogging: Boolean(options.streamCallback),
-    enableLineByLineLogging: Boolean(options.streamCallback),
-    enableBubbleLogging: Boolean(options.streamCallback),
-    streamCallback: options.streamCallback,
-    useWebhookLogger: options.useWebhookLogger,
-  });
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection
-
-  const injector: BubbleInjector = runner.injector;
+  const injector: BubbleInjector = new BubbleInjector(bubbleScriptInstance);
   const requiredCredentials = injector.findCredentials();
 
   console.log(
@@ -67,6 +64,8 @@ async function runBubbleFlowCommon(
 
   // Get user credentials when needed
   const userCredentials: UserCredentialWithId[] = [];
+  // Map variable IDs to the credential types they use (for zero-cost pricing)
+  const userCredentialMapping = new Map<number, Set<CredentialType>>();
 
   if (Object.keys(bubbleParameters).length > 0) {
     //Find user credentials from database
@@ -83,6 +82,19 @@ async function runBubbleFlowCommon(
         metadata: mapping.metadata,
       }))
     );
+
+    // Build mapping of variable ID -> Set of credential types used
+    for (const cred of userCredentials) {
+      const varId =
+        typeof cred.bubbleVarId === 'number'
+          ? cred.bubbleVarId
+          : parseInt(String(cred.bubbleVarId));
+
+      if (!userCredentialMapping.has(varId)) {
+        userCredentialMapping.set(varId, new Set<CredentialType>());
+      }
+      userCredentialMapping.get(varId)!.add(cred.credentialType);
+    }
   }
 
   // System credentials from env
@@ -94,9 +106,41 @@ async function runBubbleFlowCommon(
     }
   }
 
+  // Check if user has exceeded monthly credits when using system credentials
+
+  // Create runner with user credential mapping
+  const runner = new BubbleRunner(bubbleScriptInstance, bubbleFactory, {
+    enableLogging: Boolean(options.streamCallback),
+    enableLineByLineLogging: Boolean(options.streamCallback),
+    enableBubbleLogging: Boolean(options.streamCallback),
+    streamCallback: options.streamCallback,
+    useWebhookLogger: options.useWebhookLogger,
+    pricingTable: options.pricingTable,
+    userCredentialMapping,
+  });
+  const usageCheck = await getMonthlyLimitForPlan(options.userId);
+  console.log('[runBubbleFlowCommon] Usage check:', usageCheck);
+
+  if (usageCheck.executions.currentUsage >= usageCheck.executions.limit) {
+    const errorMessage = `Monthly executions exceeded. You have used ${usageCheck.executions.currentUsage} out of ${usageCheck.executions.limit} monthly executions. Please upgrade your plan for continued use.`;
+    console.error('[runBubbleFlowCommon]', errorMessage);
+    if (options.streamCallback) {
+      options.streamCallback({
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        message: errorMessage,
+      });
+    }
+    return {
+      executionId: 0,
+      success: false,
+      summary: runner.getLogger()?.getExecutionSummary(),
+    };
+  }
+
   // Inject when needed
   if (Object.keys(requiredCredentials).length > 0) {
-    const injectionResult = injector.injectCredentials(
+    const injectionResult = runner.injector.injectCredentials(
       userCredentials.map((uc) => ({
         bubbleVarId: uc.bubbleVarId,
         secret: uc.secret,
@@ -106,6 +150,54 @@ async function runBubbleFlowCommon(
       })),
       systemCredentials
     );
+
+    if (
+      injectionResult.injectedCredentials &&
+      Object.values(injectionResult.injectedCredentials).some(
+        (cred) => !cred.isUserCredential
+      ) &&
+      options.appType
+    ) {
+      if (usageCheck.credits.currentUsage >= usageCheck.credits.limit) {
+        const systemCredentialTypes = Object.values(
+          injectionResult.injectedCredentials ?? {}
+        )
+          .filter((cred) => !cred.isUserCredential)
+          .map((cred) => cred.credentialType);
+
+        const errorMessage = `Monthly credits exceeded. You have used $${usageCheck.credits.currentUsage} out of $${usageCheck.credits.limit} monthly credits. Please upgrade your plan or recharge to continue using bubblelab's managed services or use your own credential. System credentials used: ${systemCredentialTypes.join(', ')}`;
+        console.error('[runBubbleFlowCommon]', errorMessage);
+
+        // stream error message to the stream callback
+        if (options.streamCallback) {
+          options.streamCallback({
+            timestamp: new Date().toISOString(),
+            type: 'error',
+            message: errorMessage,
+          });
+        }
+        return {
+          executionId: 0,
+          success: false,
+          summary: {
+            totalCost: 0,
+            totalDuration: 0,
+            result: errorMessage,
+            lineExecutionCount: 0,
+            bubbleExecutionCount: 0,
+            errorCount: 0,
+            warningCount: 0,
+            serviceUsage: [],
+            errors: [{ message: errorMessage, timestamp: Date.now() }],
+            serviceUsageByService: {},
+          },
+          error: errorMessage,
+          data: {
+            result: errorMessage,
+          },
+        };
+      }
+    }
 
     if (!injectionResult.success) {
       console.error(
@@ -129,9 +221,27 @@ async function runBubbleFlowCommon(
     bubble_lab_clerk_user_id: options.userId,
   };
   const result = await runner.runAll(enhancedPayload);
-  // Track token usage if available
-  if (result.summary?.tokenUsageByModel) {
-    await trackTokenUsage(options.userId, result.summary.tokenUsageByModel);
+  // Track service usage if available
+  if (result.success) {
+    // Increment monthly usage count for every execution
+    await db
+      .update(users)
+      .set({
+        monthlyUsageCount: sql`${users.monthlyUsageCount} + 1`,
+      })
+      .where(eq(users.clerkId, options.userId));
+  }
+  if (result.summary?.serviceUsage && result.summary.serviceUsage.length > 0) {
+    // Fetch user's created date for billing period calculation
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkId, options.userId),
+      columns: { createdAt: true },
+    });
+    await trackServiceUsages(
+      options.userId,
+      result.summary.serviceUsage,
+      user?.createdAt
+    );
   }
 
   return result;
@@ -157,7 +267,6 @@ export async function runBubbleFlow(
       options
     );
   } catch (error) {
-    console.error('[runBubbleFlow] Execution failed:', error);
     return {
       executionId: 0,
       success: false,
@@ -187,6 +296,13 @@ export async function runBubbleFlowWithStreaming(
       options
     );
   } catch (error) {
+    if (options.streamCallback) {
+      options.streamCallback({
+        timestamp: new Date().toISOString(),
+        type: 'error',
+        message: `Unexpected error occurred: ${getSafeErrorMessage(error)}`,
+      });
+    }
     console.error('[runBubbleFlowWithStreaming] Execution failed:', error);
     return {
       executionId: 0,

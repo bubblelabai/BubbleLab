@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Trash2, MoreHorizontal, Edit2, Check, X, Search } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
-import { TokenUsageDisplay } from '../components/TokenUsageDisplay';
+import { MonthlyUsageBar } from '../components/MonthlyUsageBar';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
 import { useRenameFlow } from '../hooks/useRenameFlow';
 import { CronToggle } from '../components/CronToggle';
+import { useSubscription } from '../hooks/useSubscription';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -19,6 +20,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateToDashboard,
 }) => {
   const { data: bubbleFlowListResponse, loading } = useBubbleFlowList();
+  const { data: subscription } = useSubscription();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -49,12 +51,6 @@ export const HomePage: React.FC<HomePageProps> = ({
     if (!searchQuery.trim()) return true;
     return flow.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
-
-  // Calculate total executions across all flows
-  const totalExecutions = allFlows.reduce(
-    (sum, flow) => sum + (flow.executionCount || 0),
-    0
-  );
 
   const handleDeleteClick = (flowId: number, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -109,41 +105,14 @@ export const HomePage: React.FC<HomePageProps> = ({
             </button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="flex gap-4 mb-2 flex-wrap">
-            {/* Flows Count Card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">Total Flows</div>
-                  <div className="text-lg font-semibold text-white">
-                    {isLoading ? '...' : allFlows.length}
-                  </div>
-                </div>
+          {/* Monthly Usage Bar */}
+          <SignedIn>
+            {subscription && (
+              <div className="mb-4">
+                <MonthlyUsageBar subscription={subscription} isOpen={true} />
               </div>
-            </div>
-
-            {/* Total Executions Card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">
-                    Total Executions
-                  </div>
-                  <div className="text-lg font-semibold text-white">
-                    {isLoading ? '...' : totalExecutions.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Token Usage Display */}
-            <SignedIn>
-              <div className="w-64">
-                <TokenUsageDisplay isOpen={true} />
-              </div>
-            </SignedIn>
-          </div>
+            )}
+          </SignedIn>
         </div>
 
         {/* Flows Section */}

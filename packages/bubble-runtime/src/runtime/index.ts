@@ -1,1 +1,1 @@
-export { BubbleRunner } from './BubbleRunner';
+export { BubbleRunner, type BubbleRunnerOptions } from './BubbleRunner';

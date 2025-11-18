@@ -7,6 +7,7 @@ import {
   timestamp,
   unique,
   jsonb,
+  doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
@@ -117,18 +118,20 @@ export const userCredentials = pgTable('user_credentials', {
     .$defaultFn(() => new Date()),
 });
 
-export const userModelUsage = pgTable(
-  'user_model_usage',
+export const userServiceUsage = pgTable(
+  'user_service_usage',
   {
     id: serial().primaryKey(),
     userId: text('user_id')
       .notNull()
       .references(() => users.clerkId, { onDelete: 'cascade' }),
-    modelName: text('model_name').notNull(), // e.g., 'gpt-4', 'claude-3-opus', 'gemini-2.0-flash'
+    service: text('service').notNull(), // CredentialType enum value (e.g., 'OPENAI_CRED', 'FIRECRAWL_API_KEY')
+    subService: text('sub_service'), // Optional: e.g., 'gpt-4', 'gemini-2.0-flash', 'apify/instagram-scraper'
     monthYear: text('month_year').notNull(), // e.g., '2025-01'
-    inputTokens: integer('input_tokens').notNull().default(0),
-    outputTokens: integer('output_tokens').notNull().default(0),
-    totalTokens: integer('total_tokens').notNull().default(0),
+    unit: text('unit').notNull(), // e.g., 'per_1m_tokens', 'per_email', 'per_result'
+    usage: doublePrecision('usage').notNull().default(0), // Usage count in the specified unit (high precision float)
+    unitCost: doublePrecision('unit_cost').notNull(), // Cost per unit in dollars (high precision float)
+    totalCost: doublePrecision('total_cost').notNull().default(0), // Calculated: usage * unitCost (high precision float)
     createdAt: timestamp('created_at', { mode: 'date' })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -137,10 +140,13 @@ export const userModelUsage = pgTable(
       .$defaultFn(() => new Date()),
   },
   (table) => ({
-    // Unique constraint on userId, modelName, and monthYear
-    userModelMonthUnique: unique().on(
+    // Unique constraint: one record per user, service, subService, and unit
+    userServiceUnitUnique: unique().on(
       table.userId,
-      table.modelName,
+      table.service,
+      table.subService,
+      table.unit,
+      table.unitCost,
       table.monthYear
     ),
   })

@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as FlowsRouteImport } from './routes/flows'
 import { Route as CredentialsRouteImport } from './routes/credentials'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FlowFlowIdRouteImport } from './routes/flow.$flowId'
 
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/credentials': typeof CredentialsRoute
   '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/credentials': typeof CredentialsRoute
   '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,28 @@ export interface FileRoutesById {
   '/credentials': typeof CredentialsRoute
   '/flows': typeof FlowsRoute
   '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
   '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
+  fullPaths:
+    | '/'
+    | '/credentials'
+    | '/flows'
+    | '/home'
+    | '/pricing'
+    | '/flow/$flowId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
-  id: '__root__' | '/' | '/credentials' | '/flows' | '/home' | '/flow/$flowId'
+  to: '/' | '/credentials' | '/flows' | '/home' | '/pricing' | '/flow/$flowId'
+  id:
+    | '__root__'
+    | '/'
+    | '/credentials'
+    | '/flows'
+    | '/home'
+    | '/pricing'
+    | '/flow/$flowId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,11 +98,19 @@ export interface RootRouteChildren {
   CredentialsRoute: typeof CredentialsRoute
   FlowsRoute: typeof FlowsRoute
   HomeRoute: typeof HomeRoute
+  PricingRoute: typeof PricingRoute
   FlowFlowIdRoute: typeof FlowFlowIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/home': {
       id: '/home'
       path: '/home'
@@ -124,6 +154,7 @@ const rootRouteChildren: RootRouteChildren = {
   CredentialsRoute: CredentialsRoute,
   FlowsRoute: FlowsRoute,
   HomeRoute: HomeRoute,
+  PricingRoute: PricingRoute,
   FlowFlowIdRoute: FlowFlowIdRoute,
 }
 export const routeTree = rootRouteImport

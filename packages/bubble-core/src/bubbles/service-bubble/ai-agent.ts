@@ -206,14 +206,7 @@ const AIAgentParamsSchema = z.object({
   ),
   tools: z
     .array(ToolConfigSchema)
-    .default([
-      {
-        name: 'web-search-tool',
-        config: {
-          maxResults: 5,
-        },
-      },
-    ])
+    .default([])
     .describe(
       'Array of pre-registered tools the AI agent can use. Can be tool types (web-search-tool, web-scrape-tool, web-crawl-tool, web-extract-tool, instagram-tool). If using image models, set the tools to []'
     ),
@@ -488,6 +481,22 @@ export class AIAgentBubble extends ServiceBubble<
         error: errorMessage,
         iterations: 0,
       };
+    }
+  }
+  protected getCredentialType(): CredentialType {
+    const { model } = this.params;
+    const [provider] = model.model.split('/');
+    switch (provider) {
+      case 'openai':
+        return CredentialType.OPENAI_CRED;
+      case 'google':
+        return CredentialType.GOOGLE_GEMINI_CRED;
+      case 'anthropic':
+        return CredentialType.ANTHROPIC_CRED;
+      case 'openrouter':
+        return CredentialType.OPENROUTER_CRED;
+      default:
+        throw new Error(`Unsupported model provider: ${provider}`);
     }
   }
 
@@ -1200,12 +1209,26 @@ export class AIAgentBubble extends ServiceBubble<
       if (totalTokensSum > 0 && this.context && this.context.logger) {
         this.context.logger.logTokenUsage(
           {
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
-            totalTokens: totalTokensSum,
-            modelName: this.params.model.model,
+            usage: totalInputTokens,
+            service: this.getCredentialType(),
+            unit: 'input_tokens',
+            subService: this.params.model.model as CredentialType,
           },
-          `LLM completion: ${totalInputTokens} input + ${totalOutputTokens} output = ${totalTokensSum} total tokens`,
+          `LLM completion: ${totalInputTokens} input`,
+          {
+            bubbleName: 'ai-agent',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+        this.context.logger.logTokenUsage(
+          {
+            usage: totalOutputTokens,
+            service: this.getCredentialType(),
+            unit: 'output_tokens',
+            subService: this.params.model.model as CredentialType,
+          },
+          `LLM completion: ${totalOutputTokens} output`,
           {
             bubbleName: 'ai-agent',
             variableId: this.context?.variableId,
@@ -1444,8 +1467,28 @@ export class AIAgentBubble extends ServiceBubble<
                 };
 
                 this.context.logger.logTokenUsage(
-                  tokenUsage,
-                  `LLM completion: ${tokenUsage.inputTokens} input + ${tokenUsage.outputTokens} output = ${tokenUsage.totalTokens} total tokens`,
+                  {
+                    usage: tokenUsage.inputTokens || 0,
+                    service: this.getCredentialType(),
+                    unit: 'input_tokens',
+                    subService: this.params.model.model as CredentialType,
+                  },
+                  `LLM completion: ${tokenUsage.inputTokens} input`,
+                  {
+                    bubbleName: 'ai-agent',
+                    variableId: this.context?.variableId,
+                    operationType: 'bubble_execution',
+                  }
+                );
+
+                this.context.logger.logTokenUsage(
+                  {
+                    usage: tokenUsage.outputTokens || 0,
+                    service: this.getCredentialType(),
+                    unit: 'output_tokens',
+                    subService: this.params.model.model as CredentialType,
+                  },
+                  `LLM completion: ${tokenUsage.outputTokens} output`,
                   {
                     bubbleName: 'ai-agent',
                     variableId: this.context?.variableId,

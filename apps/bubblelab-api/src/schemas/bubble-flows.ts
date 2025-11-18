@@ -408,6 +408,14 @@ export const activateBubbleFlowRoute = createRoute({
       },
       description: 'Invalid ID format',
     },
+    403: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Webhook limit exceeded',
+    },
     404: {
       content: {
         'application/json': {
@@ -639,6 +647,14 @@ export const validateBubbleFlowCodeRoute = createRoute({
         },
       },
       description: 'Invalid request body',
+    },
+    403: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Webhook limit exceeded',
     },
     404: {
       content: {

@@ -38,11 +38,13 @@ class TestTimeoutFlow extends BubbleFlow {
       path: '/test-timeout',
       body: { name: 'TimeoutTest', message: 'Testing timeout fix!' },
       name: 'TimeoutTest',
+      executionId: 'test-timeout-execution-id',
       message: 'Testing timeout fix!',
     };
 
     const options = {
       userId: 'test-timeout-user-id',
+      pricingTable: {},
     };
 
     // Set a reasonable timeout for the test
@@ -101,10 +103,12 @@ class TestGlobalsFlow extends BubbleFlow {
       timestamp: new Date().toISOString(),
       path: '/test-globals',
       body: {},
+      executionId: 'test-globals-execution-id',
     };
 
     const options = {
       userId: 'test-globals-user-id',
+      pricingTable: {},
     };
 
     const result = await executeBubbleFlow(processedCode, payload, options);
@@ -144,10 +148,12 @@ class TestPromiseTimeoutFlow extends BubbleFlow {
       timestamp: new Date().toISOString(),
       path: '/test-promise-timeout',
       body: {},
+      executionId: 'test-promise-timeout-execution-id',
     };
 
     const options = {
       userId: 'test-promise-timeout-user-id',
+      pricingTable: {},
     };
 
     const startTime = Date.now();
