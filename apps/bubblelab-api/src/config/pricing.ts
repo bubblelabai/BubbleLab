@@ -176,6 +176,22 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: 2.63 / 1_000_000, // $2.63 per 1M tokens = $0.00000263 per token
   },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: 2.0 / 1_000_000, // $2.00 per 1M tokens = $0.000002 per token (for prompts <= 200k tokens; $4.00 for prompts > 200k tokens)
+  },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: 12.0 / 1_000_000, // $12.00 per 1M tokens = $0.000012 per token (for prompts <= 200k tokens; $18.00 for prompts > 200k tokens, includes thinking tokens)
+  },
 
   // AI Services - OpenAI with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
@@ -315,6 +331,23 @@ export const PRICING_TABLE: PricingTable = {
   )]: {
     unit: 'output_tokens',
     unitCost: (1.9 * 1.05) / 1_000_000, // $1.90 per 1M tokens * 1.05 markup = $1.995 per 1M tokens
+  },
+  // deepseek/deepseek-chat-v3.1: Official pricing from OpenRouter
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/deepseek/deepseek-chat-v3.1',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.2 * 1.05) / 1_000_000, // $0.20 per 1M tokens * 1.05 markup = $0.21 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/deepseek/deepseek-chat-v3.1',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (0.8 * 1.05) / 1_000_000, // $0.80 per 1M tokens * 1.05 markup = $0.84 per 1M tokens
   },
 
   // Legacy entries for services without subService (fallback pricing)

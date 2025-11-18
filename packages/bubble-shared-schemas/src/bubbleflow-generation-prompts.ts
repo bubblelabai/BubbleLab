@@ -109,7 +109,7 @@ export const INPUT_SCHEMA_INSTRUCTIONS = `For input schema, ie. the interface pa
 the workflow should typically be ran (if it should be variable or fixed). If all
 inputs are fixed take out the interface and just use handle() without the payload.
 Leave insightful comments on each input field. For example, for a workflow that processes user data and sends notifications:
-
+  
 export interface UserNotificationPayload extends WebhookEvent {
   /** The user's email address to send notifications to */
   email?: string;
@@ -148,9 +148,8 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 
 For each bubble instantiation in the workflow, leave a clear, insightful comment that explains:
-1. The bubble's purpose and role in the overall workflow
-2. A summary of each parameter and why it's configured that way
-3. How the bubble fits into the workflow's logic flow
+1. The bubble's purpose and role in the overall workflow, do not put the step number. IMPORTANT: Put it directly above instantiation code of the each bubble ie new SlackNotifier({...})! Not before running of the bubble.
+2. A user friendly summary so a user can understand the bubble's input / param / configs output and how it fits into the workflow's logic flow.
 
 The comment should be placed directly above the bubble instantiation and help users understand what to modify if they need to customize the workflow.
 `;

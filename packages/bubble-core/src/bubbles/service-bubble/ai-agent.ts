@@ -559,7 +559,8 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxOutputTokens: maxTokens,
           apiKey,
-          streaming: enableStreaming,
+          // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
+          streaming: false,
           maxRetries: retries,
         });
       case 'anthropic':

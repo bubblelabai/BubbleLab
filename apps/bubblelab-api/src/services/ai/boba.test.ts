@@ -1,8 +1,9 @@
 // @ts-expect-error - Bun test types
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { validateBubbleFlow } from '@bubblelab/bubble-runtime';
 import { runBoba } from './boba.js';
 import { env } from '../../config/env.js';
+import type { StreamingEvent } from '@bubblelab/shared-schemas';
 
 const PROMPT_LISTS = {
   'email-workflow': `Create a workflow that sends an email to user@example.com with subject "Hello" and body "Welcome to our platform!"`,
@@ -362,12 +363,18 @@ Outcome: A semi-automated, ToS-compliant Fiverr outreach system that saves time,
   ]
 }`,
   'github-workflow': `Based on my recent git commits in my repo, help me write a newsletter of new updates in my project and send me a nicely formatted html to my email`,
+  'read-pdf': `read from uploaded PDF and extract content`,
+  'generate-doc': `生成文档内容分析的工作流`,
 };
 
 describe('Pearl AI Agent Code Generation Repeated test', () => {
   it.skip('should generate a simple email workflow with Gemini 2.5 pro', async () => {
     const testPrompt = PROMPT_LISTS['email-workflow'];
-    const result = await runBoba({ prompt: testPrompt });
+    const streamingEvents: StreamingEvent[] = [];
+    const streamingCallback = async (event: StreamingEvent) => {
+      streamingEvents.push(event);
+    };
+    const result = await runBoba({ prompt: testPrompt }, streamingCallback);
     const validationResult = await validateBubbleFlow(result.generatedCode);
     expect(validationResult.valid).toBe(true);
     expect(result.generatedCode).toContain('BubbleFlow');
@@ -375,6 +382,8 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
     expect(result.generatedCode).toContain('Hello');
     expect(result.generatedCode).toContain('Welcome to our platform!');
     console.log(result.summary);
+    console.log(`Received ${streamingEvents.length} streaming events`);
+    expect(streamingEvents.length).toBeGreaterThan(0);
   }, 400000);
 
   it.skip('should generate complex workflow with multiple bubbles', async () => {
@@ -386,10 +395,16 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
     // Run all tests in parallel
     const promises = Array.from({ length: totalRuns }, async (_, index) => {
       try {
-        const result = await runBoba({ prompt: testPrompt });
+        const streamingEvents: StreamingEvent[] = [];
+        const streamingCallback = async (event: StreamingEvent) => {
+          streamingEvents.push(event);
+        };
+        const result = await runBoba({ prompt: testPrompt }, streamingCallback);
         const validationResult = await validateBubbleFlow(result.generatedCode);
         const passed = validationResult.valid;
-        console.log(`Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'}`);
+        console.log(
+          `Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'} [${streamingEvents.length} events]`
+        );
         return passed;
       } catch (error) {
         console.log(`Test ${index + 1}: FAIL (error: ${error})`);
@@ -409,11 +424,15 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
 
     // Run all tests in parallel
     const promises = Array.from({ length: totalRuns }, async (_, index) => {
-      const result = await runBoba({ prompt: testPrompt });
+      const streamingEvents: StreamingEvent[] = [];
+      const streamingCallback = async (event: StreamingEvent) => {
+        streamingEvents.push(event);
+      };
+      const result = await runBoba({ prompt: testPrompt }, streamingCallback);
       const validationResult = await validateBubbleFlow(result.generatedCode);
       const passed = validationResult.valid;
       console.log(
-        `JSON Workflow Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'}`
+        `JSON Workflow Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'} [${streamingEvents.length} events]`
       );
       if (!passed) {
         console.log(
@@ -457,11 +476,15 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
 
     // Run all tests in parallel
     const promises = Array.from({ length: totalRuns }, async (_, index) => {
-      const result = await runBoba({ prompt: testPrompt });
+      const streamingEvents: StreamingEvent[] = [];
+      const streamingCallback = async (event: StreamingEvent) => {
+        streamingEvents.push(event);
+      };
+      const result = await runBoba({ prompt: testPrompt }, streamingCallback);
       const validationResult = await validateBubbleFlow(result.generatedCode);
       const passed = validationResult.valid;
       console.log(
-        `GitHub Workflow Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'}`
+        `GitHub Workflow Test ${index + 1}: ${passed ? 'PASS' : 'FAIL'} [${streamingEvents.length} events]`
       );
       if (!passed) {
         console.log(
@@ -491,7 +514,7 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
   }, 400000);
 });
 
-describe.skip('Boba All Prompts Test Suite', () => {
+describe('Boba All Prompts Test Suite', () => {
   it('should run all prompts in parallel and report statistics', async () => {
     if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
       return;
@@ -516,6 +539,8 @@ describe.skip('Boba All Prompts Test Suite', () => {
       numTimeCreate: number;
       error: string | null;
       runNumber: number;
+      streamingEvents: StreamingEvent[];
+      streamingEventCounts: Record<string, number>;
     }>[] = [];
 
     for (let run = 1; run <= totalRuns; run++) {
@@ -523,8 +548,21 @@ describe.skip('Boba All Prompts Test Suite', () => {
         const testPrompt = PROMPT_LISTS[promptKey];
         const startTime = Date.now();
 
+        // Collect streaming events
+        const streamingEvents: StreamingEvent[] = [];
+        const streamingEventCounts: Record<string, number> = {};
+
+        const streamingCallback = async (event: StreamingEvent) => {
+          streamingEvents.push(event);
+          streamingEventCounts[event.type] =
+            (streamingEventCounts[event.type] || 0) + 1;
+        };
+
         try {
-          const result = await runBoba({ prompt: testPrompt });
+          const result = await runBoba(
+            { prompt: testPrompt },
+            streamingCallback
+          );
           const validationResult = await validateBubbleFlow(
             result.generatedCode
           );
@@ -533,7 +571,7 @@ describe.skip('Boba All Prompts Test Suite', () => {
 
           const passed = validationResult.valid;
           console.log(
-            `${promptKey} (run ${run}/${totalRuns}): ${passed ? 'PASS' : 'FAIL'} (${latency.toFixed(2)}s)`
+            `${promptKey} (run ${run}/${totalRuns}): ${passed ? 'PASS' : 'FAIL'} (${latency.toFixed(2)}s) [${streamingEvents.length} events]`
           );
 
           if (!passed) {
@@ -557,6 +595,8 @@ describe.skip('Boba All Prompts Test Suite', () => {
             numTimeCreate,
             error: null,
             runNumber: run,
+            streamingEvents,
+            streamingEventCounts,
           };
         } catch (error) {
           const endTime = Date.now();
@@ -573,6 +613,8 @@ describe.skip('Boba All Prompts Test Suite', () => {
             numTimeCreate: 0,
             error: error instanceof Error ? error.message : 'Unknown error',
             runNumber: run,
+            streamingEvents,
+            streamingEventCounts,
           };
         }
       });
@@ -644,6 +686,42 @@ describe.skip('Boba All Prompts Test Suite', () => {
     console.log(
       `   - Avg create calls per run: ${(totalCreateCalls / results.length).toFixed(2)}`
     );
+
+    // Streaming statistics
+    const totalStreamingEvents = results.reduce(
+      (sum, r) => sum + r.streamingEvents.length,
+      0
+    );
+    const avgStreamingEvents = totalStreamingEvents / results.length;
+    console.log('\n📡 Streaming statistics:');
+    console.log(`   - Total streaming events: ${totalStreamingEvents}`);
+    console.log(`   - Avg events per run: ${avgStreamingEvents.toFixed(2)}`);
+
+    // Aggregate event type counts
+    const allEventCounts: Record<string, number> = {};
+    results.forEach((r) => {
+      Object.entries(r.streamingEventCounts).forEach(([type, count]) => {
+        allEventCounts[type] = (allEventCounts[type] || 0) + count;
+      });
+    });
+
+    if (Object.keys(allEventCounts).length > 0) {
+      console.log('   - Event type breakdown:');
+      Object.entries(allEventCounts)
+        .sort(([, a], [, b]) => b - a)
+        .forEach(([type, count]) => {
+          console.log(`     ${type}: ${count}`);
+        });
+    }
+
+    // Verify that streaming events were received
+    const runsWithStreaming = results.filter(
+      (r) => r.streamingEvents.length > 0
+    ).length;
+    console.log(
+      `   - Runs with streaming events: ${runsWithStreaming}/${results.length}`
+    );
+    expect(runsWithStreaming).toBeGreaterThan(0);
 
     expect(passCount).toBeGreaterThanOrEqual(requiredPasses);
   }, 600000); // 10 minute timeout for all prompts
