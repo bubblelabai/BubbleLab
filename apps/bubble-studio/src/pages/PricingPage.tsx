@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { PricingTable } from '@clerk/clerk-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useRouter } from '@tanstack/react-router';
 import { useUser } from '../hooks/useUser';
 import { useAuth } from '../hooks/useAuth';
@@ -52,6 +52,15 @@ export const PricingPage: React.FC = () => {
         <p className="text-gray-400">
           Choose the plan that best fits your needs
         </p>
+        <a
+          href="https://www.bubblelab.ai/pricing"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors mt-2"
+        >
+          View full pricing details
+          <ExternalLink className="w-4 h-4" />
+        </a>
       </div>
 
       {/* Clerk Pricing Table */}

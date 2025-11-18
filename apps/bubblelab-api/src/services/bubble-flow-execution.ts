@@ -13,7 +13,6 @@ import type { ExecutionResult } from '@bubblelab/shared-schemas';
 
 import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
-import { verifyMonthlyLimit } from './subscription-validation.js';
 import { AppType } from '../config/clerk-apps.js';
 import { getPricingTable } from '../config/pricing.js';
 
