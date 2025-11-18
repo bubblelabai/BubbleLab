@@ -177,6 +177,146 @@ export const PRICING_TABLE: PricingTable = {
     unitCost: 2.63 / 1_000_000, // $2.63 per 1M tokens = $0.00000263 per token
   },
 
+  // AI Services - OpenAI with subServices and Input/Output tokens
+  // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
+  // Pricing includes 1.05x markup
+  [getPricingKey(CredentialType.OPENAI_CRED, 'openai/gpt-5', 'input_tokens')]: {
+    unit: 'input_tokens',
+    unitCost: (1.25 * 1.05) / 1_000_000, // $1.25 per 1M tokens * 1.05 markup = $1.3125 per 1M tokens
+  },
+  [getPricingKey(CredentialType.OPENAI_CRED, 'openai/gpt-5', 'output_tokens')]:
+    {
+      unit: 'output_tokens',
+      unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
+    },
+  [getPricingKey(
+    CredentialType.OPENAI_CRED,
+    'openai/gpt-5-mini',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.25 * 1.05) / 1_000_000, // $0.25 per 1M tokens * 1.05 markup = $0.2625 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENAI_CRED,
+    'openai/gpt-5-mini',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (2.0 * 1.05) / 1_000_000, // $2.00 per 1M tokens * 1.05 markup = $2.10 per 1M tokens
+  },
+  // GPT-5.1: Official pricing from OpenAI
+  // Note: Cached input pricing is $0.125 / 1M tokens (not tracked separately)
+  [getPricingKey(CredentialType.OPENAI_CRED, 'openai/gpt-5.1', 'input_tokens')]:
+    {
+      unit: 'input_tokens',
+      unitCost: (1.25 * 1.05) / 1_000_000, // $1.25 per 1M tokens * 1.05 markup = $1.3125 per 1M tokens
+    },
+  [getPricingKey(
+    CredentialType.OPENAI_CRED,
+    'openai/gpt-5.1',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
+  },
+
+  // AI Services - Anthropic with subServices and Input/Output tokens
+  // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
+  // Pricing includes 1.05x markup
+  // Claude Sonnet 4.5: Official pricing from Anthropic
+  // Note: Sonnet 4.5 has tiered pricing (≤ 200K tokens vs > 200K tokens). Using standard pricing (≤ 200K tokens) as base.
+  // For prompts > 200K tokens: Input $6/MTok, Output $22.50/MTok
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-sonnet-4-5',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (3.0 * 1.05) / 1_000_000, // $3.00 per 1M tokens * 1.05 markup = $3.15 per 1M tokens (for prompts ≤ 200K tokens)
+  },
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-sonnet-4-5',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (15.0 * 1.05) / 1_000_000, // $15.00 per 1M tokens * 1.05 markup = $15.75 per 1M tokens (for prompts ≤ 200K tokens)
+  },
+  // Claude Haiku 4.5: Official pricing from Anthropic
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-haiku-4-5',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (1.0 * 1.05) / 1_000_000, // $1.00 per 1M tokens * 1.05 markup = $1.05 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-haiku-4-5',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (5.0 * 1.05) / 1_000_000, // $5.00 per 1M tokens * 1.05 markup = $5.25 per 1M tokens
+  },
+
+  // AI Services - OpenRouter with subServices and Input/Output tokens
+  // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
+  // Pricing includes 1.05x markup
+  // z-ai/glm-4.6: Official pricing from OpenRouter
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/z-ai/glm-4.6',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.55 * 1.05) / 1_000_000, // $0.55 per 1M tokens * 1.05 markup = $0.5775 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/z-ai/glm-4.6',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (2.19 * 1.05) / 1_000_000, // $2.19 per 1M tokens * 1.05 markup = $2.2995 per 1M tokens
+  },
+  // x-ai/grok-code-fast-1: Official pricing from OpenRouter
+  // Note: Cache read pricing is $0.02 / 1M tokens (not tracked separately)
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/x-ai/grok-code-fast-1',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.2 * 1.05) / 1_000_000, // $0.20 per 1M tokens * 1.05 markup = $0.21 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/x-ai/grok-code-fast-1',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (1.5 * 1.05) / 1_000_000, // $1.50 per 1M tokens * 1.05 markup = $1.575 per 1M tokens
+  },
+  // morph/morph-v3-large: Official pricing from OpenRouter
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/morph/morph-v3-large',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.9 * 1.05) / 1_000_000, // $0.90 per 1M tokens * 1.05 markup = $0.945 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/morph/morph-v3-large',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (1.9 * 1.05) / 1_000_000, // $1.90 per 1M tokens * 1.05 markup = $1.995 per 1M tokens
+  },
+
   // Legacy entries for services without subService (fallback pricing)
   // These may be used if subService is not provided
   [getPricingKey(CredentialType.OPENAI_CRED, undefined, 'per_1m_tokens')]: {
