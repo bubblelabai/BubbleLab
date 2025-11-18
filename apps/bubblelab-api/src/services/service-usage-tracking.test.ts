@@ -1,6 +1,6 @@
 // @ts-expect-error - Bun test types
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getMonthYearFromUserCreatedDate } from './service-usage-tracking.js';
+import { getMonthYearFromUserCreatedDate } from '../utils/subscription';
 
 describe('getMonthYearFromUserCreatedDate', () => {
   let originalDate: typeof Date;
