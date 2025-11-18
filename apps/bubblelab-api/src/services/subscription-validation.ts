@@ -32,7 +32,7 @@ export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
   },
   pro_plus: {
     executionLimit: 99999999,
-    creditLimit: 1000,
+    creditLimit: 100,
     webhookLimit: 99999999,
   },
 };
