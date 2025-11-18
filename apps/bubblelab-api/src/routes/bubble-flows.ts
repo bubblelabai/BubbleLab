@@ -284,7 +284,7 @@ app.openapi(executeBubbleFlowRoute, async (c) => {
       type: 'webhook/http' as const,
       timestamp: new Date().toISOString(),
       executionId: crypto.randomUUID(),
-      path: `/execute-bubble-flow/${id}`,
+      path: `/${id}/execute`,
       body: userPayload,
       ...userPayload,
     };
@@ -332,7 +332,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
       type: 'webhook/http' as const,
       timestamp: new Date().toISOString(),
       executionId: crypto.randomUUID(),
-      path: `/execute-bubble-flow/${id}`,
+      path: `/${id}/execute-stream`,
       body: userPayload,
       ...userPayload,
     };

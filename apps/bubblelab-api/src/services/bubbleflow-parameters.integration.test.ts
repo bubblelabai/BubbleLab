@@ -137,7 +137,7 @@ describe('BubbleFlow Parameters Integration', () => {
 
     // 4. Execute the flow to see initial result
     const executeResponse = await TestApp.post(
-      `/execute-bubble-flow/${createdBubbleFlowId}`,
+      `/bubble-flow/${createdBubbleFlowId}/execute`,
       {
         payload: { test: 'initial execution' },
       }
@@ -195,7 +195,7 @@ describe('BubbleFlow Parameters Integration', () => {
 
     // 7. Execute again to see if parameters took effect
     const executeAgainResponse = await TestApp.post(
-      `/execute-bubble-flow/${createdBubbleFlowId}`,
+      `/bubble-flow/${createdBubbleFlowId}/execute`,
       {
         payload: { test: 'execution with updated parameters' },
       }
