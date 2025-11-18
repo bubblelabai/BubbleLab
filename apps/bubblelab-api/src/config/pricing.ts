@@ -176,6 +176,22 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: 2.63 / 1_000_000, // $2.63 per 1M tokens = $0.00000263 per token
   },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: 2.0 / 1_000_000, // $2.00 per 1M tokens = $0.000002 per token (for prompts <= 200k tokens; $4.00 for prompts > 200k tokens)
+  },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: 12.0 / 1_000_000, // $12.00 per 1M tokens = $0.000012 per token (for prompts <= 200k tokens; $18.00 for prompts > 200k tokens, includes thinking tokens)
+  },
 
   // AI Services - OpenAI with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)

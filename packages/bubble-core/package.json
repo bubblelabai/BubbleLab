@@ -44,7 +44,7 @@
     "@langchain/anthropic": "^0.3.32",
     "@langchain/community": "^0.3.53",
     "@langchain/core": "^0.3.66",
-    "@langchain/google-genai": "^0.2.15",
+    "@langchain/google-genai": "^1.0.2",
     "@langchain/langgraph": "^0.3.10",
     "@langchain/openai": "^0.6.2",
     "@mendable/firecrawl-js": "^4.5.0",

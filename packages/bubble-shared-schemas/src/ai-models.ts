@@ -11,6 +11,7 @@ export const AvailableModels = z.enum([
   'google/gemini-2.5-flash',
   'google/gemini-2.5-flash-lite',
   'google/gemini-2.5-flash-image-preview',
+  'google/gemini-3-pro-preview',
 
   // Anthropic models
   'anthropic/claude-sonnet-4-5',
