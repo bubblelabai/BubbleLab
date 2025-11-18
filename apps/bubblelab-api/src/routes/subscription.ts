@@ -50,6 +50,7 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     free_user: 'Free',
     pro_plan: 'Pro',
     pro_plus: 'Pro Plus',
+    unlimited: 'Unlimited',
   };
 
   // Fetch actual service usage data from database for current month
