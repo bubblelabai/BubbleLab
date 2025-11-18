@@ -60,7 +60,7 @@ type BubbleFlowGeneratorParamsParsed = BubbleFlowGeneratorParams & {
 
 // Shared constants and prompts
 const AI_MODEL_CONFIG = {
-  model: 'google/gemini-2.5-pro',
+  model: 'google/gemini-3-pro-preview',
   temperature: 0.3,
 } as const;
 
