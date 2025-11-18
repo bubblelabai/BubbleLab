@@ -91,10 +91,6 @@ export async function executeBubbleFlowWithTracking(
   }
 
   const appType = user.appType as AppType;
-  const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
-    options.userId,
-    appType || AppType.BUBBLE_LAB
-  );
 
   // Get BubbleFlow from database (only if it belongs to the user)
   const flow = await db.query.bubbleFlows.findFirst({
@@ -108,31 +104,6 @@ export async function executeBubbleFlowWithTracking(
     throw new Error(
       'Something went wrong, please recreate the flow. If the problem persists, please contact Nodex support.'
     );
-  }
-
-  if (!allowed) {
-    // Create a new execution record with error
-    await db.insert(bubbleFlowExecutions).values({
-      bubbleFlowId,
-      payload: cleanUpObjectForDisplayAndStorage(payload),
-      status: 'error',
-      error:
-        'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-        currentUsage +
-        ', limit: ' +
-        limit,
-      code: flow.originalCode,
-    });
-
-    return {
-      executionId: 0,
-      success: false,
-      error:
-        'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-        currentUsage +
-        ', limit: ' +
-        limit,
-    };
   }
 
   // Create execution record
