@@ -15,8 +15,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { logger } from 'hono/logger';
 import { cors } from 'hono/cors';
 import { type HealthCheckResponse } from './schemas/index.js';
-import { authMiddleware, getUserId, getAppType } from './middleware/auth.js';
-import { verifyMonthlyLimit } from './services/subscription-validation.js';
+import { authMiddleware } from './middleware/auth.js';
 import {
   setupErrorHandler,
   validationErrorHook,
@@ -98,50 +97,6 @@ app.route('/subscription', subscriptionRoutes);
 app.route('/join-waitlist', joinWaitlistRoutes);
 app.route('/ai', aiRoutes);
 console.log('[DEBUG] All routes mounted.');
-
-// Legacy route support for /execute-bubble-flow/:id
-// This maps /execute-bubble-flow/:id to /bubble-flow/:id/execute internally
-app.post('/execute-bubble-flow/:id', async (c) => {
-  const id = c.req.param('id');
-  const userId = getUserId(c);
-  const appType = getAppType(c);
-  const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
-    userId,
-    appType
-  );
-  if (!allowed) {
-    return c.json(
-      {
-        error:
-          'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-          currentUsage +
-          ', limit: ' +
-          limit,
-      },
-      403
-    );
-  }
-
-  // Handle empty/malformed payloads gracefully
-  let userPayload;
-  try {
-    userPayload = await c.req.json();
-  } catch (error) {
-    userPayload = {}; // Default to empty object for empty/malformed JSON
-  }
-
-  // Create a new request for the new route structure
-  const url = new URL(c.req.url);
-  url.pathname = `/bubble-flow/${id}/execute`;
-
-  const newRequest = new Request(url.toString(), {
-    method: 'POST',
-    headers: c.req.header(),
-    body: JSON.stringify(userPayload), // Pass user payload directly
-  });
-
-  return app.fetch(newRequest);
-});
 
 // OpenAPI documentation endpoint
 app.doc('/doc', {

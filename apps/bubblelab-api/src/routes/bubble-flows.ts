@@ -45,10 +45,7 @@ import {
   setupErrorHandler,
   validationErrorHook,
 } from '../utils/error-handler.js';
-import {
-  verifyMonthlyLimit,
-  getCurrentWebhookUsage,
-} from '../services/subscription-validation.js';
+import { getCurrentWebhookUsage } from '../services/subscription-validation.js';
 import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
 import {
   BubbleScript,
@@ -1020,24 +1017,6 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 // Generate BubbleFlow code with streaming from natural language
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
-  const appType = getAppType(c);
-  // Add check for api limit
-  const { allowed, currentUsage, limit } = await verifyMonthlyLimit(
-    userId,
-    appType
-  );
-  if (!allowed) {
-    return c.json(
-      {
-        error:
-          'Monthly limit exceeded, current usage, please upgrade plan or wait until next month: ' +
-          currentUsage +
-          ', limit: ' +
-          limit,
-      },
-      403
-    );
-  }
   try {
     const { prompt } = c.req.valid('json');
 

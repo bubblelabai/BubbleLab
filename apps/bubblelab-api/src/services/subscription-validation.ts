@@ -4,7 +4,6 @@ import { users, bubbleFlows, webhooks } from '../db/schema.js';
 import { eq, and, count } from 'drizzle-orm';
 import { clerk, getClerkClient } from '../utils/clerk-client.js';
 import { AppType } from '../config/clerk-apps.js';
-import { env } from '../config/env.js';
 import { getTotalServiceCostForUser } from './service-usage-tracking.js';
 import { getCurrentUserInfo } from '../utils/request-context.js';
 
@@ -383,64 +382,4 @@ export function getMonthlyLimitForFeatures(
   appType: AppType
 ): number {
   return getMonthlyLimitForFeaturesInternal(features, appType);
-}
-
-export async function verifyMonthlyLimit(
-  userId: string,
-  appType: AppType
-): Promise<{ allowed: boolean; currentUsage: number; limit: number }> {
-  try {
-    // Skip API limit checks in test environment to avoid Clerk API calls
-    if (
-      env.BUBBLE_ENV?.toLowerCase() === 'test' ||
-      env.BUBBLE_ENV?.toLowerCase() === 'dev'
-    ) {
-      console.debug(
-        '[subscription-validation] Test mode: skipping API limit check'
-      );
-      return {
-        allowed: true,
-        currentUsage: 0,
-        limit: APP_FEATURES_TO_MONTHLY_LIMITS[AppType.NODEX].unlimited_usage,
-      };
-    }
-
-    // Get user from Clerk to extract subscription info using the app-specific client
-    const appClerk = getClerkClient(appType) || clerk;
-    const clerkUser = await appClerk?.users.getUser(userId);
-    if (!clerkUser) {
-      throw new Error('User not found');
-    }
-
-    // Get user's subscription features from Clerk metadata (now populated by middleware)
-    const features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
-      'base_usage',
-    ];
-
-    console.info(
-      '[subscription-validation] verifyMonthlyLimit: features',
-      features
-    );
-
-    // Get the plan limit
-    const apiLimit = getMonthlyLimitForFeaturesInternal(features, appType);
-
-    // Query the user's current monthly usage by clerk_id
-    const userResult = await db
-      .select({ monthlyUsageCount: users.monthlyUsageCount })
-      .from(users)
-      .where(eq(users.clerkId, userId))
-      .limit(1);
-
-    const currentUsage = userResult[0]?.monthlyUsageCount || 0;
-
-    return {
-      allowed: currentUsage < apiLimit,
-      currentUsage,
-      limit: apiLimit,
-    };
-  } catch (err) {
-    console.error('Failed to verify API limit', err);
-    throw err;
-  }
 }
