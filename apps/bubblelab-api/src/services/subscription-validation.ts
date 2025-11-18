@@ -9,7 +9,7 @@ import { getTotalServiceCostForUser } from './service-usage-tracking.js';
 import { getCurrentUserInfo } from '../utils/request-context.js';
 
 // Maps subscription plan id to monthly API limit
-export type PLAN_TYPE = 'free_user' | 'pro_plan' | 'pro_plus';
+export type PLAN_TYPE = 'free_user' | 'pro_plan' | 'pro_plus' | 'unlimited';
 export type FEATURE_TYPE = 'base_usage' | 'pro_usage' | 'unlimited_usage';
 
 export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
@@ -33,6 +33,11 @@ export const APP_PLAN_TO_MONTHLY_LIMITS: Record<
   pro_plus: {
     executionLimit: 99999999,
     creditLimit: 100,
+    webhookLimit: 99999999,
+  },
+  unlimited: {
+    executionLimit: 99999999,
+    creditLimit: 99999999,
     webhookLimit: 99999999,
   },
 };

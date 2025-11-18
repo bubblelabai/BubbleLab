@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpCircle } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { useNavigate } from '@tanstack/react-router';
+import { DISABLE_AUTH } from '../env';
 
 interface MonthlyUsageBarProps {
   subscription: SubscriptionStatusResponse;
@@ -79,14 +80,16 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     · Resets {formatResetDate(subscription.usage.resetDate)}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleUpgradeClick}
-                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-                >
-                  Upgrade
-                  <ArrowUpCircle className="w-3 h-3" />
-                </button>
+                {!DISABLE_AUTH && (
+                  <button
+                    type="button"
+                    onClick={handleUpgradeClick}
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                  >
+                    Upgrade
+                    <ArrowUpCircle className="w-3 h-3" />
+                  </button>
+                )}
               </div>
 
               {/* Progress bar */}
@@ -120,6 +123,16 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   {percentage.toFixed(1)}%
                 </span>
               </div>
+
+              {/* Details button */}
+              <button
+                type="button"
+                onClick={() => setIsDetailsModalOpen(true)}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors mt-2"
+              >
+                Details
+                <ArrowRight className="w-3 h-3" />
+              </button>
             </div>
           ) : (
             <div className="flex items-center justify-center">
@@ -174,16 +187,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 </div>
               </div>
             </div>
-
-            {/* Details button below the cards */}
-            <button
-              type="button"
-              onClick={() => setIsDetailsModalOpen(true)}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors mt-2"
-            >
-              Details
-              <ArrowRight className="w-3 h-3" />
-            </button>
           </div>
         )}
 

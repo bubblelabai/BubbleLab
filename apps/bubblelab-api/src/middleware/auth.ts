@@ -35,7 +35,7 @@ export interface ClerkJWTPayload {
 }
 
 const devUserId = DEV_USER_ID;
-const devUserPlan: PLAN_TYPE = 'pro_plus';
+const devUserPlan: PLAN_TYPE = 'unlimited';
 const devUserFeatures: FEATURE_TYPE[] = [
   'base_usage',
   'pro_usage',

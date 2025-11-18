@@ -8,81 +8,81 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root';
-import { Route as PricingRouteImport } from './routes/pricing';
-import { Route as HomeRouteImport } from './routes/home';
-import { Route as FlowsRouteImport } from './routes/flows';
-import { Route as CredentialsRouteImport } from './routes/credentials';
-import { Route as IndexRouteImport } from './routes/index';
-import { Route as FlowFlowIdRouteImport } from './routes/flow.$flowId';
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as FlowsRouteImport } from './routes/flows'
+import { Route as CredentialsRouteImport } from './routes/credentials'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as FlowFlowIdRouteImport } from './routes/flow.$flowId'
 
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const FlowsRoute = FlowsRouteImport.update({
   id: '/flows',
   path: '/flows',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const CredentialsRoute = CredentialsRouteImport.update({
   id: '/credentials',
   path: '/credentials',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const FlowFlowIdRoute = FlowFlowIdRouteImport.update({
   id: '/flow/$flowId',
   path: '/flow/$flowId',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute;
-  '/credentials': typeof CredentialsRoute;
-  '/flows': typeof FlowsRoute;
-  '/home': typeof HomeRoute;
-  '/pricing': typeof PricingRoute;
-  '/flow/$flowId': typeof FlowFlowIdRoute;
+  '/': typeof IndexRoute
+  '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
+  '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
+  '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute;
-  '/credentials': typeof CredentialsRoute;
-  '/flows': typeof FlowsRoute;
-  '/home': typeof HomeRoute;
-  '/pricing': typeof PricingRoute;
-  '/flow/$flowId': typeof FlowFlowIdRoute;
+  '/': typeof IndexRoute
+  '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
+  '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
+  '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  '/': typeof IndexRoute;
-  '/credentials': typeof CredentialsRoute;
-  '/flows': typeof FlowsRoute;
-  '/home': typeof HomeRoute;
-  '/pricing': typeof PricingRoute;
-  '/flow/$flowId': typeof FlowFlowIdRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/credentials': typeof CredentialsRoute
+  '/flows': typeof FlowsRoute
+  '/home': typeof HomeRoute
+  '/pricing': typeof PricingRoute
+  '/flow/$flowId': typeof FlowFlowIdRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/credentials'
     | '/flows'
     | '/home'
     | '/pricing'
-    | '/flow/$flowId';
-  fileRoutesByTo: FileRoutesByTo;
-  to: '/' | '/credentials' | '/flows' | '/home' | '/pricing' | '/flow/$flowId';
+    | '/flow/$flowId'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/credentials' | '/flows' | '/home' | '/pricing' | '/flow/$flowId'
   id:
     | '__root__'
     | '/'
@@ -90,62 +90,62 @@ export interface FileRouteTypes {
     | '/flows'
     | '/home'
     | '/pricing'
-    | '/flow/$flowId';
-  fileRoutesById: FileRoutesById;
+    | '/flow/$flowId'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  CredentialsRoute: typeof CredentialsRoute;
-  FlowsRoute: typeof FlowsRoute;
-  HomeRoute: typeof HomeRoute;
-  PricingRoute: typeof PricingRoute;
-  FlowFlowIdRoute: typeof FlowFlowIdRoute;
+  IndexRoute: typeof IndexRoute
+  CredentialsRoute: typeof CredentialsRoute
+  FlowsRoute: typeof FlowsRoute
+  HomeRoute: typeof HomeRoute
+  PricingRoute: typeof PricingRoute
+  FlowFlowIdRoute: typeof FlowFlowIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/pricing': {
-      id: '/pricing';
-      path: '/pricing';
-      fullPath: '/pricing';
-      preLoaderRoute: typeof PricingRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/home': {
-      id: '/home';
-      path: '/home';
-      fullPath: '/home';
-      preLoaderRoute: typeof HomeRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/flows': {
-      id: '/flows';
-      path: '/flows';
-      fullPath: '/flows';
-      preLoaderRoute: typeof FlowsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/flows'
+      path: '/flows'
+      fullPath: '/flows'
+      preLoaderRoute: typeof FlowsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/credentials': {
-      id: '/credentials';
-      path: '/credentials';
-      fullPath: '/credentials';
-      preLoaderRoute: typeof CredentialsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/credentials'
+      path: '/credentials'
+      fullPath: '/credentials'
+      preLoaderRoute: typeof CredentialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
-      id: '/';
-      path: '/';
-      fullPath: '/';
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/flow/$flowId': {
-      id: '/flow/$flowId';
-      path: '/flow/$flowId';
-      fullPath: '/flow/$flowId';
-      preLoaderRoute: typeof FlowFlowIdRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/flow/$flowId'
+      path: '/flow/$flowId'
+      fullPath: '/flow/$flowId'
+      preLoaderRoute: typeof FlowFlowIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,7 +156,7 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRoute,
   PricingRoute: PricingRoute,
   FlowFlowIdRoute: FlowFlowIdRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
