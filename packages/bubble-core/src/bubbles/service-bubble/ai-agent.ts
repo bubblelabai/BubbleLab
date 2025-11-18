@@ -252,6 +252,10 @@ const AIAgentResultSchema = z.object({
         tool: z.string().describe('Name of the tool that was called'),
         input: z.unknown().describe('Input parameters passed to the tool'),
         output: z.unknown().describe('Output returned by the tool'),
+        thinking: z
+          .string()
+          .optional()
+          .describe('Reasoning/thinking process that led to this tool call'),
       })
     )
     .describe('Array of tool calls made during the conversation'),
@@ -264,6 +268,10 @@ const AIAgentResultSchema = z.object({
   success: z
     .boolean()
     .describe('Whether the agent execution completed successfully'),
+  thinking: z
+    .string()
+    .optional()
+    .describe('Reasoning tokens or thinking process content'),
 });
 
 type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
@@ -385,104 +393,6 @@ export class AIAgentBubble extends ServiceBubble<
     }
   }
 
-  /**
-   * Execute the AI agent with streaming support for real-time feedback
-   */
-  public async actionWithStreaming(
-    streamingCallback: StreamingCallback,
-    context?: BubbleContext
-  ): Promise<AIAgentResult> {
-    // Context is available but not currently used in this implementation
-    void context;
-    const {
-      message,
-      images,
-      systemPrompt,
-      model,
-      tools,
-      customTools,
-      maxIterations,
-    } = this.params;
-
-    const startTime = Date.now();
-    // Send start event
-    await streamingCallback({
-      type: 'start',
-      data: {
-        message: `Analyzing with ${this.params.name || 'AI Agent'}`,
-        maxIterations,
-        timestamp: new Date().toISOString(),
-      },
-    });
-
-    try {
-      // Send LLM start event
-      await streamingCallback({
-        type: 'llm_start',
-        data: {
-          model: model.model,
-          temperature: model.temperature,
-        },
-      });
-
-      // Initialize the language model
-      const llm = this.initializeModel(model);
-
-      // Initialize tools (both pre-registered and custom)
-      const agentTools = await this.initializeTools(tools, customTools);
-
-      // Create the agent graph
-      const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
-
-      // Execute the agent with streaming
-      const result = await this.executeAgentWithStreaming(
-        graph,
-        message,
-        images,
-        maxIterations,
-        model.jsonMode,
-        streamingCallback
-      );
-
-      const totalDuration = Date.now() - startTime;
-
-      // Send completion event
-      await streamingCallback({
-        type: 'complete',
-        data: {
-          result,
-          totalDuration,
-        },
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
-      // Send error event as recoverable
-      await streamingCallback({
-        type: 'error',
-        data: {
-          error: errorMessage,
-          recoverable: true, // Mark as recoverable to continue execution
-        },
-      });
-
-      console.warn(
-        '[AIAgent] Streaming execution error (continuing):',
-        errorMessage
-      );
-
-      return {
-        response: `Error: ${errorMessage}`,
-        success: false, // Still false but execution can continue
-        toolCalls: [],
-        error: errorMessage,
-        iterations: 0,
-      };
-    }
-  }
   protected getCredentialType(): CredentialType {
     const { model } = this.params;
     const [provider] = model.model.split('/');
@@ -914,53 +824,64 @@ export class AIAgentBubble extends ServiceBubble<
               onFailedAttempt,
             });
 
-      // Use streaming if streamingCallback is provided
-      if (this.streamingCallback) {
-        const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      // Generate messageId for streaming events
+      const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      let thinkingTokens: string | undefined;
 
-        // Use invoke with callbacks for streaming
-        const response = await modelWithTools.invoke(allMessages, {
-          callbacks: [
-            {
-              handleLLMStart: async (): Promise<void> => {
-                await this.streamingCallback?.({
-                  type: 'llm_start',
+      const callbacks = [
+        {
+          handleLLMStart: async (): Promise<void> => {
+            if (this.streamingCallback) {
+              await this.streamingCallback({
+                type: 'llm_start',
+                data: {
+                  model: this.params.model.model,
+                  temperature: this.params.model.temperature,
+                },
+              });
+            }
+          },
+          handleLLMEnd: async (output: any): Promise<void> => {
+            // Extract thinking tokens from different model providers
+            const thinking = extractAndStreamThinkingTokens(output);
+            if (thinking) {
+              thinkingTokens = thinking;
+              if (this.streamingCallback) {
+                await this.streamingCallback({
+                  type: 'think',
                   data: {
-                    model: this.params.model.model,
-                    temperature: this.params.model.temperature,
-                  },
-                });
-              },
-              handleLLMEnd: async (output): Promise<void> => {
-                // Extract thinking tokens from different model providers
-                const thinking = extractAndStreamThinkingTokens(output);
-                if (thinking) {
-                  await this.streamingCallback?.({
-                    type: 'think',
-                    data: {
-                      content: thinking,
-                      messageId,
-                    },
-                  });
-                }
-                await this.streamingCallback?.({
-                  type: 'llm_complete',
-                  data: {
+                    content: thinking,
                     messageId,
-                    totalTokens: output.llmOutput?.usage_metadata?.total_tokens,
                   },
                 });
-              },
-            },
-          ],
-        });
+              }
+            }
 
-        return { messages: [response] };
-      } else {
-        // Non-streaming fallback
-        const response = await modelWithTools.invoke(allMessages);
-        return { messages: [response] };
+            if (this.streamingCallback) {
+              await this.streamingCallback({
+                type: 'llm_complete',
+                data: {
+                  messageId,
+                  totalTokens: output.llmOutput?.usage_metadata?.total_tokens,
+                },
+              });
+            }
+          },
+        },
+      ];
+
+      // Execute model with callbacks (handles both streaming and non-streaming cases for thinking tokens)
+      const response = await modelWithTools.invoke(allMessages, { callbacks });
+
+      // Attach thinking tokens to response for later retrieval
+      if (thinkingTokens) {
+        if (!response.additional_kwargs) {
+          response.additional_kwargs = {};
+        }
+        response.additional_kwargs.thinking = thinkingTokens;
       }
+
+      return { messages: [response] };
     };
 
     // Define conditional edge function
@@ -1114,7 +1035,10 @@ export class AIAgentBubble extends ServiceBubble<
 
       // Extract tool calls from messages and track individual LLM calls
       // Store tool calls temporarily to match with their responses
-      const toolCallMap = new Map<string, { name: string; args: unknown }>();
+      const toolCallMap = new Map<
+        string,
+        { name: string; args: unknown; thinking?: string }
+      >();
 
       for (let i = 0; i < result.messages.length; i++) {
         const msg = result.messages[i];
@@ -1123,18 +1047,57 @@ export class AIAgentBubble extends ServiceBubble<
           (msg instanceof AIMessageChunk && msg.tool_calls)
         ) {
           const typedToolCalls = msg.tool_calls;
+
+          // Extract thinking from multiple sources
+          let thinking: string | undefined;
+
+          // First, try from additional_kwargs (attached by handleLLMEnd callback)
+          thinking = (msg as AIMessage | AIMessageChunk).additional_kwargs
+            ?.thinking as string | undefined;
+
+          // If not found, try to extract from raw response structure
+          if (!thinking) {
+            const msgAny = msg as any;
+            // Try to get raw response from various possible locations
+            const rawResponse =
+              msgAny.additional_kwargs?.__raw_response ||
+              msgAny.kwargs?.additional_kwargs?.__raw_response;
+
+            if (rawResponse) {
+              // Construct LLMResult structure that extractAndStreamThinkingTokens expects
+              // The function expects: { generations: [[{ message: { additional_kwargs: { __raw_response: ... } } }]] }
+              const llmResult = {
+                generations: [
+                  [
+                    {
+                      message: {
+                        additional_kwargs: {
+                          __raw_response: rawResponse,
+                        },
+                      },
+                    },
+                  ],
+                ],
+                llmOutput: msgAny.response_metadata || {},
+              };
+              thinking = extractAndStreamThinkingTokens(llmResult as any);
+            }
+          }
+
           // Log and track tool calls
           for (const toolCall of typedToolCalls || []) {
             toolCallMap.set(toolCall.id!, {
               name: toolCall.name,
               args: toolCall.args,
+              thinking,
             });
 
             console.log(
               '[AIAgent] Tool call:',
               toolCall.name,
               'with args:',
-              toolCall.args
+              toolCall.args,
+              thinking ? 'with thinking' : 'no thinking'
             );
           }
         } else if (msg instanceof ToolMessage) {
@@ -1162,6 +1125,7 @@ export class AIAgentBubble extends ServiceBubble<
               tool: toolCall.name,
               input: toolCall.args,
               output,
+              thinking: toolCall.thinking,
             });
           }
         }
@@ -1259,6 +1223,39 @@ export class AIAgentBubble extends ServiceBubble<
 
       const finalResponse = formattedResult.response;
 
+      // Extract thinking tokens from multiple sources
+      let thinking: string | undefined;
+
+      // First, try from additional_kwargs (attached by handleLLMEnd callback)
+      thinking = finalMessage.additional_kwargs?.thinking as string | undefined;
+
+      // If not found, try to extract from raw response structure
+      if (!thinking) {
+        const msgAny = finalMessage as any;
+        const rawResponse =
+          msgAny.additional_kwargs?.__raw_response ||
+          msgAny.kwargs?.additional_kwargs?.__raw_response;
+
+        if (rawResponse) {
+          // Construct LLMResult structure that extractAndStreamThinkingTokens expects
+          const llmResult = {
+            generations: [
+              [
+                {
+                  message: {
+                    additional_kwargs: {
+                      __raw_response: rawResponse,
+                    },
+                  },
+                },
+              ],
+            ],
+            llmOutput: msgAny.response_metadata || {},
+          };
+          thinking = extractAndStreamThinkingTokens(llmResult as any);
+        }
+      }
+
       console.log(
         '[AIAgent] Final response length:',
         typeof finalResponse === 'string'
@@ -1279,6 +1276,7 @@ export class AIAgentBubble extends ServiceBubble<
             : JSON.stringify(finalResponse),
         toolCalls: toolCalls.length > 0 ? toolCalls : [],
         iterations,
+        thinking,
         error: '',
         success: true,
       };
@@ -1292,347 +1290,6 @@ export class AIAgentBubble extends ServiceBubble<
 
       // Return partial results to allow execution to continue
       // Include any tool calls that were completed before the error
-      return {
-        response: `Execution error: ${errorMessage}`,
-        success: false, // Still false but don't completely halt execution
-        iterations,
-        toolCalls: toolCalls.length > 0 ? toolCalls : [], // Preserve completed tool calls
-        error: errorMessage,
-      };
-    }
-  }
-
-  /**
-   * Execute agent with streaming support using LangGraph streamEvents
-   */
-  private async executeAgentWithStreaming(
-    graph: ReturnType<typeof StateGraph.prototype.compile>,
-    message: string,
-    images: AIAgentParamsParsed['images'],
-    maxIterations: number,
-    jsonMode?: boolean,
-    streamingCallback?: StreamingCallback
-  ): Promise<AIAgentResult> {
-    const toolCalls: AIAgentResult['toolCalls'] = [];
-    let iterations = 0;
-    let currentMessageId = '';
-
-    console.log(
-      '[AIAgent] Starting streaming execution with message:',
-      message.substring(0, 100) + '...'
-    );
-
-    try {
-      // Create human message with text and optional images
-      let humanMessage: HumanMessage;
-
-      if (images && images.length > 0) {
-        console.log(
-          '[AIAgent] Creating multimodal message with',
-          images.length,
-          'images'
-        );
-
-        // Create multimodal content array
-        const content: Array<{
-          type: string;
-          text?: string;
-          image_url?: { url: string };
-        }> = [{ type: 'text', text: message }];
-
-        // Add images to content
-        for (const image of images) {
-          let imageUrl: string;
-
-          if (image.type === 'base64') {
-            // Base64 encoded image
-            imageUrl = `data:${image.mimeType};base64,${image.data}`;
-          } else {
-            // URL image - fetch and convert to base64 for Google Gemini compatibility
-            try {
-              console.log('[AIAgent] Fetching image from URL:', image.url);
-              const response = await fetch(image.url);
-              if (!response.ok) {
-                throw new Error(
-                  `Failed to fetch image: ${response.status} ${response.statusText}`
-                );
-              }
-
-              const arrayBuffer = await response.arrayBuffer();
-              const base64Data = Buffer.from(arrayBuffer).toString('base64');
-
-              // Detect MIME type from response or default to PNG
-              const contentType =
-                response.headers.get('content-type') || 'image/png';
-              imageUrl = `data:${contentType};base64,${base64Data}`;
-
-              console.log(
-                '[AIAgent] Successfully converted URL image to base64'
-              );
-            } catch (error) {
-              console.error('[AIAgent] Error fetching image from URL:', error);
-              throw new Error(
-                `Failed to load image from URL ${image.url}: ${error instanceof Error ? error.message : 'Unknown error'}`
-              );
-            }
-          }
-
-          content.push({
-            type: 'image_url',
-            image_url: { url: imageUrl },
-          });
-
-          // Add image description if provided
-          if (image.description) {
-            content.push({
-              type: 'text',
-              text: `Image description: ${image.description}`,
-            });
-          }
-        }
-
-        humanMessage = new HumanMessage({ content });
-      } else {
-        // Text-only message
-        humanMessage = new HumanMessage(message);
-      }
-
-      // Stream events from the graph
-      const eventStream = graph.streamEvents(
-        { messages: [humanMessage] },
-        {
-          version: 'v2',
-          recursionLimit: maxIterations,
-        }
-      );
-
-      let currentIteration = 0;
-      const toolCallMap = new Map<
-        string,
-        { name: string; args: unknown; startTime: number }
-      >();
-      let accumulatedContent = '';
-
-      // Track processed events to prevent duplicates
-      const processedIterationEvents = new Set<string>();
-
-      for await (const event of eventStream) {
-        if (!event || typeof event !== 'object') continue;
-
-        // Handle different types of streaming events
-        switch (event.event) {
-          case 'on_chat_model_start':
-            currentIteration++;
-            currentMessageId = `msg-${Date.now()}-${currentIteration}`;
-
-            if (streamingCallback) {
-              await streamingCallback({
-                type: 'iteration_start',
-                data: { iteration: currentIteration },
-              });
-            }
-            break;
-
-          case 'on_chat_model_stream':
-            // Stream individual tokens
-            if (event.data?.chunk?.content && streamingCallback) {
-              const content = event.data.chunk.content;
-              accumulatedContent += content;
-
-              await streamingCallback({
-                type: 'token',
-                data: {
-                  content,
-                  messageId: currentMessageId,
-                },
-              });
-            }
-            break;
-
-          case 'on_chat_model_end':
-            if (streamingCallback) {
-              const usageMetadata = event.data?.output?.usage_metadata;
-              const totalTokens = usageMetadata?.total_tokens;
-
-              // Track token usage if available
-              if (
-                usageMetadata &&
-                this.context != null &&
-                this.context.logger != null
-              ) {
-                const tokenUsage = {
-                  inputTokens: usageMetadata.input_tokens || 0,
-                  outputTokens: usageMetadata.output_tokens || 0,
-                  totalTokens: totalTokens || 0,
-                  modelName: this.params.model.model,
-                };
-
-                this.context.logger.logTokenUsage(
-                  {
-                    usage: tokenUsage.inputTokens || 0,
-                    service: this.getCredentialType(),
-                    unit: 'input_tokens',
-                    subService: this.params.model.model as CredentialType,
-                  },
-                  `LLM completion: ${tokenUsage.inputTokens} input`,
-                  {
-                    bubbleName: 'ai-agent',
-                    variableId: this.context?.variableId,
-                    operationType: 'bubble_execution',
-                  }
-                );
-
-                this.context.logger.logTokenUsage(
-                  {
-                    usage: tokenUsage.outputTokens || 0,
-                    service: this.getCredentialType(),
-                    unit: 'output_tokens',
-                    subService: this.params.model.model as CredentialType,
-                  },
-                  `LLM completion: ${tokenUsage.outputTokens} output`,
-                  {
-                    bubbleName: 'ai-agent',
-                    variableId: this.context?.variableId,
-                    operationType: 'bubble_execution',
-                  }
-                );
-              }
-
-              await streamingCallback({
-                type: 'llm_complete',
-                data: {
-                  messageId: currentMessageId,
-                  totalTokens,
-                },
-              });
-            }
-            break;
-
-          case 'on_tool_start':
-            if (event.name && event.data?.input && streamingCallback) {
-              const callId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-              toolCallMap.set(callId, {
-                name: event.name,
-                args: event.data.input,
-                startTime: Date.now(),
-              });
-
-              await streamingCallback({
-                type: 'tool_start',
-                data: {
-                  tool: event.name,
-                  input: event.data.input,
-                  callId,
-                },
-              });
-            }
-            break;
-
-          case 'on_tool_end':
-            if (event.name && event.data?.output && streamingCallback) {
-              // Find matching tool call
-              const matchingCall = Array.from(toolCallMap.entries()).find(
-                ([, callData]) => callData.name === event.name
-              );
-
-              if (matchingCall) {
-                const [callId, callData] = matchingCall;
-                const duration = Date.now() - callData.startTime;
-
-                toolCalls.push({
-                  tool: callData.name,
-                  input: callData.args,
-                  output: event.data.output,
-                });
-
-                await streamingCallback({
-                  type: 'tool_complete',
-                  data: {
-                    callId,
-                    input: callData.args as { input: string },
-                    tool: callData.name,
-                    output: event.data.output,
-                    duration,
-                  },
-                });
-
-                toolCallMap.delete(callId);
-              }
-            }
-            break;
-
-          case 'on_chain_end':
-            // This indicates the completion of the entire graph
-            if (event.data?.output) {
-              iterations = currentIteration;
-
-              // Prevent duplicate iteration_complete events
-              const iterationKey = `iteration_${currentIteration}`;
-              if (
-                streamingCallback &&
-                !processedIterationEvents.has(iterationKey)
-              ) {
-                processedIterationEvents.add(iterationKey);
-                await streamingCallback({
-                  type: 'iteration_complete',
-                  data: {
-                    iteration: currentIteration,
-                    hasToolCalls: toolCalls.length > 0,
-                  },
-                });
-              }
-            }
-            break;
-        }
-      }
-
-      // Process final result
-      const accumulatedResponse = accumulatedContent || '';
-
-      // Use shared formatting method
-      const formattedResult = await formatFinalResponse(
-        accumulatedResponse,
-        this.params.model.model,
-        jsonMode
-      );
-
-      // If there's an error from formatting (e.g., invalid JSON), return early with consistent behavior
-      if (formattedResult.error) {
-        return {
-          response: formattedResult.response,
-          toolCalls: toolCalls.length > 0 ? toolCalls : [],
-          iterations,
-          error: formattedResult.error,
-          success: false,
-        };
-      }
-
-      const finalResponse = formattedResult.response;
-
-      console.log(
-        '[AIAgent] Streaming execution completed with',
-        iterations,
-        'iterations and',
-        toolCalls.length,
-        'tool calls'
-      );
-
-      return {
-        response:
-          typeof finalResponse === 'string'
-            ? finalResponse
-            : JSON.stringify(finalResponse),
-        toolCalls: toolCalls.length > 0 ? toolCalls : [],
-        iterations,
-        error: '',
-        success: true,
-      };
-    } catch (error) {
-      console.warn('[AIAgent] Streaming execution error (continuing):', error);
-
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
       return {
         response: `Execution error: ${errorMessage}`,
         success: false, // Still false but don't completely halt execution

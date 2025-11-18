@@ -25,6 +25,10 @@ export function extractAndStreamThinkingTokens(
       // Path 5: Deep nested structure
       outputAny.generations?.[0]?.[0]?.message?.additional_kwargs
         ?.__raw_response,
+      // Path 6: Generation info
+      outputAny.generations?.[0]?.[0]?.generationInfo?.__raw_response,
+      // Path 7: Direct generation info (LangGraph/some providers)
+      outputAny.generations?.[0]?.[0]?.generationInfo,
     ];
 
     let rawResponse: unknown = null;
@@ -35,6 +39,7 @@ export function extractAndStreamThinkingTokens(
       }
     }
 
+    console.log('rawResponse', JSON.stringify(rawResponse, null, 2));
     if (rawResponse) {
       if (
         typeof rawResponse === 'object' &&
@@ -51,6 +56,28 @@ export function extractAndStreamThinkingTokens(
           // Also check for reasoning in the choice itself (not just delta)
           else if (choice.reasoning) {
             reasoning = choice.reasoning;
+          }
+          // Check for reasoning inside the message object (DeepSeek/Fireworks format)
+          else if (choice.message?.reasoning) {
+            reasoning = choice.message.reasoning;
+          }
+          // Check for reasoning_details (DeepSeek/Fireworks alternative)
+          else if (
+            choice.message?.reasoning_details &&
+            Array.isArray(choice.message.reasoning_details) &&
+            choice.message.reasoning_details.length > 0
+          ) {
+            reasoning = choice.message.reasoning_details
+              .map((detail: any) => detail.text || '')
+              .join('');
+          }
+          // Check for <think> tags in content if reasoning is still missing
+          else if (choice.message?.content) {
+            const content = choice.message.content;
+            const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/);
+            if (thinkMatch) {
+              reasoning = thinkMatch[1];
+            }
           }
 
           // Strip <think> and </think> tags from the reasoning content
