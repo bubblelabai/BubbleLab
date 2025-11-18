@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpCircle } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
+import { useNavigate } from '@tanstack/react-router';
 
 interface MonthlyUsageBarProps {
   subscription: SubscriptionStatusResponse;
@@ -13,10 +14,15 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   subscription,
   isOpen,
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const { data: bubbleFlowListResponse } = useBubbleFlowList();
+  const navigate = useNavigate();
 
   console.log('subscription', subscription);
+
+  const handleUpgradeClick = () => {
+    navigate({ to: '/pricing' });
+  };
 
   // Calculate total cost from serviceUsage
   const totalCost = subscription.usage.serviceUsage.reduce(
@@ -92,11 +98,12 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   </span>
                 </div>
                 <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-1 text-xs text-white hover:text-gray-300 font-medium transition-colors"
+                  type="button"
+                  onClick={handleUpgradeClick}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
                 >
-                  Details
-                  <ArrowRight className="w-3 h-3" />
+                  Upgrade
+                  <ArrowUpCircle className="w-3 h-3" />
                 </button>
               </div>
 
@@ -145,42 +152,56 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
         {/* Usage cards - outside Monthly Usage container */}
         {isOpen && (
-          <div className="flex gap-4 mt-2 flex-wrap">
-            {/* Execution count card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">
-                    Total Executions
-                  </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <div className="text-lg font-semibold text-white">
-                      {numberOfExecutions}
+          <div className="mt-2">
+            <div className="flex gap-4 flex-wrap">
+              {/* Execution count card */}
+              <div className="w-64">
+                <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-400 mb-1">
+                      Total Executions
                     </div>
-                    <div className="text-xs text-gray-500">
-                      / {executionLimit}
+                    <div className="flex items-baseline gap-1.5">
+                      <div className="text-lg font-semibold text-white">
+                        {numberOfExecutions}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        / {executionLimit}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Flows card */}
+              <div className="w-64">
+                <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-400 mb-1">
+                      Active Flows
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <div className="text-lg font-semibold text-white">
+                        {numberOfActiveWebhooksOrCronSchedules}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        / {webHookLimit}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Active Flows card */}
-            <div className="w-64">
-              <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-400 mb-1">Active Flows</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <div className="text-lg font-semibold text-white">
-                      {numberOfActiveWebhooksOrCronSchedules}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      / {webHookLimit}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Details button below the cards */}
+            <button
+              type="button"
+              onClick={() => setIsDetailsModalOpen(true)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors mt-2"
+            >
+              Details
+              <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
         )}
 
@@ -208,8 +229,8 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
       {/* Usage Details Modal */}
       <UsageDetailsModal
         resetDate={subscription.usage.resetDate}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
         serviceUsage={subscription.usage.serviceUsage}
         limit={monthlyLimit}
       />
