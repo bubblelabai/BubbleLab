@@ -332,6 +332,23 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: (1.9 * 1.05) / 1_000_000, // $1.90 per 1M tokens * 1.05 markup = $1.995 per 1M tokens
   },
+  // deepseek/deepseek-chat-v3.1: Official pricing from OpenRouter
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/deepseek/deepseek-chat-v3.1',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.2 * 1.05) / 1_000_000, // $0.20 per 1M tokens * 1.05 markup = $0.21 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/deepseek/deepseek-chat-v3.1',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (0.8 * 1.05) / 1_000_000, // $0.80 per 1M tokens * 1.05 markup = $0.84 per 1M tokens
+  },
 
   // Legacy entries for services without subService (fallback pricing)
   // These may be used if subService is not provided

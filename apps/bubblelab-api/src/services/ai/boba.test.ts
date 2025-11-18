@@ -363,6 +363,8 @@ Outcome: A semi-automated, ToS-compliant Fiverr outreach system that saves time,
   ]
 }`,
   'github-workflow': `Based on my recent git commits in my repo, help me write a newsletter of new updates in my project and send me a nicely formatted html to my email`,
+  'read-pdf': `read from uploaded PDF and extract content`,
+  'generate-doc': `生成文档内容分析的工作流`,
 };
 
 describe('Pearl AI Agent Code Generation Repeated test', () => {
