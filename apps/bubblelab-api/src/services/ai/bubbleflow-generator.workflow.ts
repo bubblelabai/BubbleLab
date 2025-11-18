@@ -150,6 +150,7 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
   }> {
     const summarizeAgent = new AIAgentBubble(
       {
+        streamingCallback: streamingCallback,
         name: 'Flow Summary Agent',
         message:
           `You are summarizeAgent for Bubble Lab. Analyze the provided validated BubbleFlow TypeScript and generate a user-friendly summary.
@@ -219,9 +220,7 @@ Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. 
     );
 
     console.log('[BubbleFlowGenerator] Starting summarizeAgent...');
-    const summarizeRun = streamingCallback
-      ? await summarizeAgent.actionWithStreaming(streamingCallback)
-      : await summarizeAgent.action();
+    const summarizeRun = await summarizeAgent.action();
     let summary = '';
     let inputsSchema = '';
 
@@ -234,14 +233,10 @@ Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. 
     });
 
     // Handle both streaming (direct response) and non-streaming (wrapped in data) results
-    const isStreamingResult = 'response' in summarizeRun;
-    const response = isStreamingResult
-      ? summarizeRun.response
-      : summarizeRun.data?.response;
-
+    const response = summarizeRun.data;
     if (summarizeRun.success && response) {
       try {
-        const raw = response.trim();
+        const raw = response?.response.trim();
         const parsed = JSON.parse(raw);
         summary = typeof parsed.summary === 'string' ? parsed.summary : '';
         inputsSchema =
