@@ -1,16 +1,16 @@
-import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useWebhook } from '../hooks/useWebhook';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 
 interface WebhookURLDisplayProps {
   flowId: number | null;
 }
 
 export function WebhookURLDisplay({ flowId }: WebhookURLDisplayProps) {
-  const [copied, setCopied] = useState(false);
   const { data: flowData } = useBubbleFlow(flowId);
   const webhookMutation = useWebhook();
+  const { copied, copyToClipboard } = useCopyToClipboard();
 
   if (!flowData?.webhook_url) {
     return null;
@@ -19,14 +19,7 @@ export function WebhookURLDisplay({ flowId }: WebhookURLDisplayProps) {
   const isActive = !!flowData.isActive;
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(flowData.webhook_url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to copy webhook URL:', error);
-    }
+    await copyToClipboard(flowData.webhook_url);
   };
 
   const handleToggleWebhook = async () => {

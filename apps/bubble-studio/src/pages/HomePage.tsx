@@ -6,6 +6,7 @@ import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
 import { useRenameFlow } from '../hooks/useRenameFlow';
 import { CronToggle } from '../components/CronToggle';
+import { WebhookToggle } from '../components/WebhookToggle';
 import { useSubscription } from '../hooks/useSubscription';
 
 export interface HomePageProps {
@@ -278,20 +279,23 @@ export const HomePage: React.FC<HomePageProps> = ({
                       {flow.executionCount === 1 ? 'execution' : 'executions'}
                     </div>
 
-                    {/* Cron Toggle - if this flow has a cron schedule */}
-                    {flow.cronSchedule && (
-                      <div
-                        className="mb-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    {/* Cron Toggle or Webhook Toggle - mutually exclusive */}
+                    <div className="mb-2" onClick={(e) => e.stopPropagation()}>
+                      {flow.cronSchedule ? (
                         <CronToggle
                           flowId={flow.id}
                           compact={true}
                           syncInputsWithFlow={false}
                           showScheduleText={true}
                         />
-                      </div>
-                    )}
+                      ) : (
+                        <WebhookToggle
+                          flowId={flow.id}
+                          compact={true}
+                          showCopyButton={true}
+                        />
+                      )}
+                    </div>
 
                     {/* Created Date */}
                     <div className="text-xs text-gray-500">
