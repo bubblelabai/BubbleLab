@@ -41,24 +41,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
   const isOverLimit = totalCost > monthlyLimit;
 
-  // Calculate execution percentage
-  const executionPercentage =
-    executionLimit > 0
-      ? Math.min((numberOfExecutions / executionLimit) * 100, 100)
-      : 0;
-  const isOverExecutionLimit = numberOfExecutions > executionLimit;
-
-  // Calculate webhook percentage
-  const webhookPercentage =
-    webHookLimit > 0
-      ? Math.min(
-          (numberOfActiveWebhooksOrCronSchedules / webHookLimit) * 100,
-          100
-        )
-      : 0;
-  const isOverWebhookLimit =
-    numberOfActiveWebhooksOrCronSchedules > webHookLimit;
-
   // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
     return `$${cost.toFixed(4)}`;
