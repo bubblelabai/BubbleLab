@@ -122,7 +122,7 @@ export async function createBubbleFlow(data: {
 
 export async function executeBubbleFlow(id: number, payload: unknown) {
   return await testApp.post<ExecuteBubbleFlowResponse | ErrorResponse>(
-    `/execute-bubble-flow/${id}`,
+    `/bubble-flow/${id}/execute`,
     payload // Send payload directly (no wrapper)
   );
 }
