@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, MoreHorizontal, Edit2, Check, X, Search } from 'lucide-react';
+import {
+  Trash2,
+  MoreHorizontal,
+  Edit2,
+  Check,
+  X,
+  Search,
+  Plus,
+} from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { MonthlyUsageBar } from '../components/MonthlyUsageBar';
 import { SignedIn } from '../components/AuthComponents';
@@ -93,17 +101,14 @@ export const HomePage: React.FC<HomePageProps> = ({
     <div className="h-full bg-[#0a0a0a] overflow-auto">
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <button
-              type="button"
-              onClick={onNavigateToDashboard}
-              className="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 flex items-center gap-2"
-            >
-              <span className="text-lg leading-none">+</span>
-              <span>New Flow</span>
-            </button>
+        <div className="mb-10">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white font-sans">
+              Dashboard
+            </h1>
+            <p className="text-gray-400 mt-2 text-sm font-sans">
+              Track your usage and limits
+            </p>
           </div>
 
           {/* Monthly Usage Bar */}
@@ -118,12 +123,27 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         {/* Flows Section */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-white mb-4">
-            My Bubble Flows
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-white font-sans">
+                My Bubble Flows
+              </h2>
+              <p className="text-gray-400 mt-1 text-sm font-sans">
+                Manage and monitor your workflows
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onNavigateToDashboard}
+              className="px-5 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="font-bold font-sans">New Flow</span>
+            </button>
+          </div>
 
           {/* Search Bar */}
-          <div className="relative max-w-2xl">
+          <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-500" />
             </div>
@@ -132,7 +152,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search flows..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#161b22] border border-[#30363d] text-gray-100 text-sm rounded-lg focus:outline-none focus:border-gray-400 placeholder-gray-500 transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#1a1a1a] border border-white/5 text-gray-100 text-sm rounded-lg focus:outline-none focus:border-white/10 placeholder-gray-500 transition-all duration-200"
             />
           </div>
         </div>
@@ -179,7 +199,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={flow.id}
-                  className="group relative rounded-lg border border-[#30363d] bg-[#161b22] hover:bg-[#21262d] hover:border-purple-600/40 transition-all duration-200 cursor-pointer"
+                  className="group relative rounded-lg border border-white/5 bg-[#1a1a1a] hover:bg-[#202020] hover:border-white/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
                   onClick={() => onFlowSelect(flow.id)}
                 >
                   {/* Card Content */}
@@ -349,9 +369,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                       </div>
                     )}
                   </div>
-
-                  {/* Hover Effect Indicator */}
-                  <div className="absolute inset-0 rounded-lg ring-1 ring-purple-600/0 group-hover:ring-purple-600/30 transition-all duration-200 pointer-events-none" />
                 </div>
               );
             })}
