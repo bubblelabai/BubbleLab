@@ -286,52 +286,60 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 </a>
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight pb-2 animate-fade-in-up delay-100 drop-shadow-sm">
-                What do you want to build?
+                What do you want to automate?
               </h1>
-              <p className="text-base md:text-lg text-gray-400 mt-3 animate-fade-in-up delay-150">
+              <p className="text-base md:text-lg text-gray-400 mt-1 animate-fade-in-up delay-150">
                 Make agentic workflows you can observe and export
-              </p>
-              <p className="text-sm md:text-base text-gray-500 mt-2 animate-fade-in-up delay-200">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory(null)}
-                  className="border-b border-gray-500 hover:border-gray-300 hover:text-gray-300 transition-colors cursor-pointer bg-transparent"
-                >
-                  Prompt below
-                </button>
-                ,{' '}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('Import JSON')}
-                  className="border-b border-gray-500 hover:border-gray-300 hover:text-gray-300 transition-colors cursor-pointer bg-transparent"
-                >
-                  import JSON
-                </button>{' '}
-                or{' '}
-                <button
-                  type="button"
-                  onClick={handleBuildFromScratch}
-                  disabled={isStreaming || isCreatingFromScratch}
-                  className={`border-b transition-colors bg-transparent ${
-                    isStreaming || isCreatingFromScratch
-                      ? 'border-gray-600 text-gray-600 cursor-not-allowed'
-                      : 'border-gray-500 hover:border-gray-300 hover:text-gray-300 cursor-pointer'
-                  }`}
-                >
-                  Build from scratch
-                </button>
               </p>
             </div>
           </div>
 
+          {/* Prompt Options */}
+          <div className="flex flex-wrap gap-2 justify-center animate-fade-in-up delay-200">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                selectedCategory === null
+                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+              }`}
+            >
+              Prompt
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('Import JSON')}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                selectedCategory === 'Import JSON'
+                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+              }`}
+            >
+              Import JSON
+            </button>
+            <button
+              type="button"
+              onClick={handleBuildFromScratch}
+              disabled={isStreaming || isCreatingFromScratch}
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                isStreaming || isCreatingFromScratch
+                  ? 'bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed opacity-50'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+              }`}
+            >
+              Start from empty Bubble flow
+            </button>
+          </div>
+
           {/* HERO PROMPT SECTION */}
-          <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20">
+          <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20 -mt-4">
             <div className="bg-[#1a1a1a] rounded-2xl p-4 shadow-2xl border border-white/5 relative group transition-all duration-300 hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
               <textarea
                 ref={promptRef}
                 placeholder={
                   selectedCategory === 'Import JSON'
-                    ? 'Paste in your JSON workflow...'
+                    ? 'Paste in your existing JSON workflow to be converted into a Bubble flow...'
                     : 'Read in my Google Calendar and send me an email with my upcoming events'
                 }
                 value={generationPrompt}
