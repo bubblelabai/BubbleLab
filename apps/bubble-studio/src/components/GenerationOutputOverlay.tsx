@@ -4,7 +4,6 @@ import { useOutputStore } from '@/stores/outputStore';
 import { useNavigate } from '@tanstack/react-router';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
 import {
-  X,
   Loader2,
   CheckCircle,
   XCircle,
@@ -153,7 +152,7 @@ export function GenerationOutputOverlay() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-3 sm:p-4 md:p-6">
       <div className="w-full max-w-4xl lg:max-w-5xl bg-gradient-to-b from-[#0d1117] to-[#0a0d12] border border-[#30363d] rounded-xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[#30363d]">
+        <div className="flex items-center p-4 sm:p-6 border-b border-[#30363d]">
           <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
             {isStreaming ? (
               <div className="relative flex-shrink-0">
@@ -182,20 +181,6 @@ export function GenerationOutputOverlay() {
               </p>
             </div>
           </div>
-
-          {/* Close button - only enabled when not streaming */}
-          <button
-            onClick={handleClose}
-            disabled={isStreaming}
-            className={`p-1.5 sm:p-2 rounded-lg transition-all flex-shrink-0 ${
-              isStreaming
-                ? 'text-gray-600 cursor-not-allowed'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-[#21262d] hover:scale-110'
-            }`}
-            title={isStreaming ? 'Generation in progress...' : 'Close'}
-          >
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
         </div>
 
         {/* Output Content - Hide when summary is complete */}

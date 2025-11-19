@@ -8,7 +8,7 @@
 export const TEMPLATE_CATEGORIES = [
   'Popular',
   'Lead Generation',
-  'Project Management',
+  'Engineering & Project Management',
   'Personal Assistant',
   'Marketing',
   'Prompt',
@@ -84,7 +84,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     prompt:
       'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
     code: githubPRCommenterTemplate.templateCode,
-    category: 'Project Management',
+    category: 'Engineering & Project Management',
     isPopular: true,
   },
   {
@@ -110,7 +110,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     prompt:
       'Ask questions about your database and get AI-powered insights and reports via email',
     code: databaseTemplate.templateCode,
-    category: 'Project Management',
+    category: 'Engineering & Project Management',
   },
   {
     id: 'project-management',
@@ -118,7 +118,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     prompt:
       'Summarize last 24h of Slack into Updates/Blockers/Decisions and email a daily digest',
     code: projectManagementTemplate.templateCode,
-    category: 'Project Management',
+    category: 'Engineering & Project Management',
     isPopular: true,
   },
   {
