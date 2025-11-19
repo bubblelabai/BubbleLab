@@ -459,11 +459,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </p>
               <div className="flex flex-wrap gap-3 items-center">
                 {INTEGRATIONS.map((integration) => (
-                  <div
-                    key={integration.name}
-                    className="relative group"
-                    title={integration.name}
-                  >
+                  <div key={integration.name} className="relative group">
                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
                       <img
                         src={integration.file}
@@ -487,11 +483,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </p>
               <div className="flex flex-wrap gap-3 items-center">
                 {SCRAPING_SERVICES.map((service) => (
-                  <div
-                    key={service.name}
-                    className="relative group"
-                    title={service.name}
-                  >
+                  <div key={service.name} className="relative group">
                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
                       <img
                         src={service.file}
@@ -515,11 +507,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </p>
               <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
-                  <div
-                    key={model.name}
-                    className="relative group"
-                    title={model.name}
-                  >
+                  <div key={model.name} className="relative group">
                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
                       <img
                         src={model.file}
