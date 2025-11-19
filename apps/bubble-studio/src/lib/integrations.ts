@@ -58,11 +58,17 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Resend', file: SERVICE_LOGOS['Resend'] },
   { name: 'Firecrawl', file: SERVICE_LOGOS['Firecrawl'] },
   { name: 'Cloudflare', file: SERVICE_LOGOS['Cloudflare'] },
+  { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
+  { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
+];
+
+// Scraping services (Apify actors and general web scraping)
+export const SCRAPING_SERVICES: IntegrationLogo[] = [
   { name: 'LinkedIn', file: SERVICE_LOGOS['LinkedIn'] },
   { name: 'YouTube', file: SERVICE_LOGOS['YouTube'] },
   { name: 'Instagram', file: SERVICE_LOGOS['Instagram'] },
-  { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
-  { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
+  { name: 'Reddit', file: SERVICE_LOGOS['Reddit'] },
+  { name: 'Websites', file: TOOL_LOGOS['Web Scrape'] },
 ];
 
 export const AI_MODELS: IntegrationLogo[] = [
