@@ -347,3 +347,49 @@ describe('BubbleParser.parseBubblesFromAST()', () => {
     expect(slackMessageParam?.type).toBe('variable');
   });
 });
+
+describe('BubbleParser.getPayloadJsonSchema()', () => {
+  let bubbleFactory: BubbleFactory;
+
+  beforeEach(async () => {
+    bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+  });
+
+  it('should parse payload json schema correctly', async () => {
+    const testScript = getFixture('reddit-scraper');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+    const payloadJsonSchema = bubbleParser.getPayloadJsonSchema(ast);
+    const spreadsheetIdProperty = Object.keys(
+      payloadJsonSchema?.properties || {}
+    ).find((property: string) => property === 'spreadsheetId');
+
+    expect(spreadsheetIdProperty).toBeDefined();
+
+    if (spreadsheetIdProperty) {
+      // Expect a description of the spreadsheet ID
+      expect(
+        payloadJsonSchema?.properties?.[spreadsheetIdProperty]?.description
+      ).toBeDefined();
+      expect(
+        payloadJsonSchema?.properties?.[spreadsheetIdProperty]?.description
+      ).toBe(
+        'The spreadsheet ID is the ID of the Google Sheet that contains the list of contacts You can find the spreadsheet ID in the URL of the Google Sheet (after /d/ in the URL)'
+      );
+    }
+  });
+});

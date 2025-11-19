@@ -12,6 +12,8 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  // The spreadsheet ID is the ID of the Google Sheet that contains the list of contacts
+  // You can find the spreadsheet ID in the URL of the Google Sheet (after /d/ in the URL)
   spreadsheetId: string;
 }
 

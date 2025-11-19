@@ -108,33 +108,89 @@ Only return the final TypeScript code that passes validation. No explanations or
 export const INPUT_SCHEMA_INSTRUCTIONS = `For input schema, ie. the interface passed to the handle method. Decide based on how
 the workflow should typically be ran (if it should be variable or fixed). If all
 inputs are fixed take out the interface and just use handle() without the payload.
-Leave insightful comments on each input field. For example, for a workflow that processes user data and sends notifications:
+
+CRITICAL: EVERY input field MUST have a helpful, user-friendly comment that explains:
+1. WHAT the field means (what information it represents)
+2. WHERE to find the information (specific location, URL, settings page, etc.)
+3. HOW to provide the input (format, extraction steps)
+
+Write comments in plain, conversational language as if explaining to a non-technical user.
+DO NOT include example values in comments - example values should ONLY be provided as default values in the destructuring assignment using the = operator.
+
+Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
+
+// The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
+spreadsheetId: string;
+
+// Slack: Right-click channel → "View channel details" → Copy the "Channel ID" (starts with 'C')
+channelId: string;
+
+// Email address where notifications should be sent.
+recipientEmail: string;
+
+// Folder path using forward slashes to separate directories.
+outputFolderPath: string;
+
+// API key from Dashboard > Settings > API Keys. Generate new key and copy the full string (32-64 chars).
+apiKey: string;
+
+// Priority level: 'low' (non-urgent), 'medium' (normal), 'high' (urgent)
+priority?: 'low' | 'medium' | 'high';
+
+COMMENT PATTERNS BY TYPE:
+
+- URLs/IDs: Explain exact location in URL (after /d/, in query params) - describe the format, not show examples
+- UI IDs: Explain steps to find it (right-click menu, settings page) and format (length, prefix)
+- File paths: Explain format (forward slashes, relative vs absolute) - describe the structure
+- API keys: Explain where to generate (dashboard location) and format (length, appearance)
+- Emails/strings: Explain the format and any validation requirements
+- Enums: List all valid values with brief descriptions
+- Dates: Explain format (ISO 8601, Unix timestamp) and timezone if relevant
+- Arrays: Explain what each item represents and the structure
+
+Remember: Example values go in the destructuring default values, NOT in comments!
+
+Examples of BAD comments (DO NOT USE):
+// The spreadsheet ID  ❌ Too vague
+// User email  ❌ No format/explanation
+// API key for authentication  ❌ Doesn't tell where to get it
+// Priority level. Defaults to 'medium'  ❌ Don't mention defaults in comments
+// Email address. Example: "user@example.com"  ❌ Don't include examples in comments - put them in destructuring defaults
+
+For example, for a workflow that processes user data and sends notifications:
   
 export interface UserNotificationPayload extends WebhookEvent {
-  /** The user's email address to send notifications to */
-  email?: string;
-  /** Custom message content, defaults to a welcome message if not provided */
+  /** Email address where notifications should be sent. */
+  email: string;
+  /** Custom message content to include in the notification. */
   message?: string;
-  /** Notification priority level (low, medium, high) */
+  /** Priority level: 'low' (non-urgent), 'medium' (normal), 'high' (urgent) */
   priority?: 'low' | 'medium' | 'high';
-  /** Whether to send SMS in addition to email notification */
+  /** Whether to send SMS in addition to email. Set to true to enable SMS notifications, false to only send email. */
   includeSMS?: boolean;
+  /** The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL. */
+  spreadsheetId: string;
 }
 
 const { 
   email = 'user@example.com', 
   message = 'Welcome to our platform! Thanks for signing up.', 
   priority = 'medium',
+  spreadsheetId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
   includeSMS = false 
 } = payload;
 
-If you do leave a default value make sure to make the field optional in the payload interface!
+CRITICAL: ALWAYS provide example values as default values using the = operator in the destructuring assignment.
+These example values help users understand the expected format. For instance:
+- Google Sheets ID: spreadsheetId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
+- Email: email = 'user@example.com'
+- Channel ID: channelId = 'C01234567AB'
+
+Make fields optional in the payload interface when it is a nice-to-have configuration that is not critical to the workflow. The less the required fields, the better the user experience.
 When setting schedule, you must take into account of the timezone of the user (don't worry about daylight time, just whatever the current timezone currently) and convert it to UTC offset! The cron expression is in UTC timezone.
 If no particular trigger is specified, use the webhook/http trigger.
 
-
-
-`;
+REMEMBER: Users should be able to fill out inputs without asking questions or looking up documentation. Be thorough and specific!`;
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
