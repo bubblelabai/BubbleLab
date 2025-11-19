@@ -27,6 +27,7 @@ import { useValidateCode } from '../hooks/useValidateCode';
 import { useEditor } from '../hooks/useEditor';
 import { useRunExecution } from '../hooks/useRunExecution';
 import { filterEmptyInputs } from '../utils/inputUtils';
+import { BUBBLE_COLORS } from './BubbleColors';
 
 interface CronScheduleNodeData {
   flowId: number;
@@ -93,6 +94,10 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   // Subscribe to execution store (using selectors to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+  const highlightedBubble = useExecutionStore(
+    flowId,
+    (s) => s.highlightedBubble
+  );
   const setInput = useExecutionStore(flowId, (s) => s.setInput);
   const setInputs = useExecutionStore(flowId, (s) => s.setInputs);
   const pendingCredentials = useExecutionStore(
@@ -160,6 +165,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const hasMissingRequired =
     missingRequiredFields.length > 0 &&
     Object.keys(executionInputs).length == 0;
+
+  // Check if this node is highlighted
+  const isHighlighted = highlightedBubble === 'cron-schedule-node';
 
   // Convert UTC cron to local time parts
   const localConversion = convertUtcCronToLocalParts(cronSchedule);
@@ -349,14 +357,16 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     <div
       className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
         isExecuting
-          ? 'border-purple-400 shadow-lg shadow-purple-500/30'
+          ? `border-purple-400 shadow-lg shadow-purple-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : !isActive
-            ? 'border-neutral-700 opacity-75'
+            ? `border-neutral-700 opacity-75 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
             : hasMissingRequired
-              ? 'border-amber-500'
+              ? `border-amber-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
               : validation.valid
-                ? 'border-neutral-600'
-                : 'border-red-500'
+                ? isHighlighted
+                  ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+                  : 'border-neutral-600'
+                : `border-red-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -365,7 +375,15 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
         position={Position.Right}
         id="right"
         isConnectable={false}
-        className={`w-3 h-3 ${isExecuting ? 'bg-purple-400' : isActive ? 'bg-purple-400' : 'bg-neutral-500'}`}
+        className={`w-3 h-3 ${
+          isExecuting
+            ? 'bg-purple-400'
+            : isHighlighted
+              ? BUBBLE_COLORS.SELECTED.handle
+              : isActive
+                ? 'bg-purple-400'
+                : 'bg-neutral-500'
+        }`}
         style={{ right: -6 }}
       />
 

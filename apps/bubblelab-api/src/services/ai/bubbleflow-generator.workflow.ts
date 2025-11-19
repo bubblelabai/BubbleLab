@@ -19,6 +19,7 @@ import {
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
   type ParsedBubbleWithInfo,
+  INPUT_SCHEMA_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -289,6 +290,8 @@ ${bubbleDescriptions}
 ${CRITICAL_INSTRUCTIONS}
 
 ${BUBBLE_SPECIFIC_INSTRUCTIONS}
+
+${INPUT_SCHEMA_INSTRUCTIONS}
 
 ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
   }

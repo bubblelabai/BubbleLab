@@ -776,8 +776,15 @@ export class BubbleParser {
         keyName = m.key.value;
       if (!keyName) continue;
       const propSchema = m.typeAnnotation
-        ? this.tsTypeToJsonSchema(m.typeAnnotation.typeAnnotation, ast)
+        ? this.tsTypeToJsonSchema(m.typeAnnotation.typeAnnotation, ast) || {}
         : {};
+
+      // Extract comment/description for this property
+      const description = this.extractCommentForNode(m);
+      if (description) {
+        propSchema.description = description;
+      }
+
       properties[keyName] = propSchema;
       if (!m.optional) required.push(keyName);
     }
