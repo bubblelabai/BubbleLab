@@ -452,72 +452,86 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
           </div>
 
           {/* Current Supported Integrations Section */}
-          <div className="mt-16 p-5 bg-[#0d1117] border border-[#30363d] rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold tracking-wide text-gray-400">
-                Current Supported Integrations
+          <div className="mt-10 w-full max-w-3xl mx-auto space-y-4">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+                Third Party Integrations
               </p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
-              {INTEGRATIONS.map((integration) => (
-                <div
-                  key={integration.name}
-                  className="flex items-center gap-2 md:gap-3 p-1"
-                >
-                  <img
-                    src={integration.file}
-                    alt={`${integration.name} logo`}
-                    className="h-5 w-5 md:h-6 md:w-6"
-                    loading="lazy"
-                  />
-                  <p className="text-sm text-gray-200 truncate">
-                    {integration.name}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8">
-              <p className="text-xs font-semibold tracking-wide text-gray-400 mb-3">
-                Current Supported Scraping (Powered by Apify and Firecrawl)
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
-                {SCRAPING_SERVICES.map((service) => (
+              <div className="flex flex-wrap gap-3 items-center">
+                {INTEGRATIONS.map((integration) => (
                   <div
-                    key={service.name}
-                    className="flex items-center gap-2 md:gap-3 p-1"
+                    key={integration.name}
+                    className="relative group"
+                    title={integration.name}
                   >
-                    <img
-                      src={service.file}
-                      alt={`${service.name} logo`}
-                      className="h-5 w-5 md:h-6 md:w-6"
-                      loading="lazy"
-                    />
-                    <p className="text-sm text-gray-200 truncate">
-                      {service.name}
-                    </p>
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                      <img
+                        src={integration.file}
+                        alt={`${integration.name} logo`}
+                        className="h-5 w-5"
+                        loading="lazy"
+                      />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                      {integration.name}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="mt-8">
-              <p className="text-xs font-semibold tracking-wide text-gray-400 mb-3">
-                Current Supported AI Models
+
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+                Scraping
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+              <div className="flex flex-wrap gap-3 items-center">
+                {SCRAPING_SERVICES.map((service) => (
+                  <div
+                    key={service.name}
+                    className="relative group"
+                    title={service.name}
+                  >
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                      <img
+                        src={service.file}
+                        alt={`${service.name} logo`}
+                        className="h-5 w-5"
+                        loading="lazy"
+                      />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                      {service.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+                AI Models and Agents
+              </p>
+              <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
                   <div
                     key={model.name}
-                    className="flex items-center gap-2 md:gap-3 p-1"
+                    className="relative group"
+                    title={model.name}
                   >
-                    <img
-                      src={model.file}
-                      alt={`${model.name} logo`}
-                      className="h-5 w-5 md:h-6 md:w-6"
-                      loading="lazy"
-                    />
-                    <p className="text-sm text-gray-200 truncate">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                      <img
+                        src={model.file}
+                        alt={`${model.name} logo`}
+                        className="h-5 w-5"
+                        loading="lazy"
+                      />
+                    </div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
                       {model.name}
-                    </p>
+                    </div>
                   </div>
                 ))}
               </div>
