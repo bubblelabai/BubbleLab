@@ -30,10 +30,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   return (
     <div
       className={`fixed inset-y-0 left-0 z-40 bg-[#0f1115] border-r border-[#30363d] transition-all duration-200 ${
-        isOpen ? 'w-56' : 'w-14'
+        isOpen ? 'w-56' : 'w-16'
       }`}
     >
-      <div className="h-full flex flex-col pt-2 items-stretch gap-2">
+      <div className="h-full flex flex-col pt-2 px-2 items-stretch gap-2">
         {/* Sidebar toggle (favicon) */}
         <button
           type="button"
@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           className="relative group flex items-center h-12 rounded-lg hover:bg-[#21262d] focus:outline-none"
           aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          <span className="w-14 flex-none flex justify-center p-2">
+          <span className="w-12 flex-none flex justify-center p-2">
             {isOpen ? (
               <img
                 src="/favicon.ico"
@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Home"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <Home className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -128,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="My Flows"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <Workflow className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Credentials"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <KeyRound className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -209,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Join Discord Community"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <MessageCircle className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -243,7 +243,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Read Documentation"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <BookOpen className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -277,7 +277,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Watch Demos"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <Video className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -311,7 +311,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Star us on GitHub"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 <Github className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
@@ -346,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           <SignedIn>
             <div className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors">
               {/* Fixed icon column with Clerk UserButton or mock avatar */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center p-2">
                 {DISABLE_AUTH ? (
                   // Mock avatar when auth is disabled
                   <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-600/40 flex items-center justify-center">
