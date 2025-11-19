@@ -44,6 +44,15 @@ export interface DashboardPageProps {
   autoShowSignIn?: boolean;
 }
 
+// Rotating placeholder messages
+const PLACEHOLDER_MESSAGES = [
+  'Read in my Google Calendar and send me an email with my upcoming events.',
+  'Review open GitHub PRs in my repo and comment with suggested titles and descriptions.',
+  'Analyze top tech stocks news and subredddits and send me a sentiment report.',
+  'Find qualified prospects from Linkedin and log them to a sheet with an auto-drafted outreach message.',
+  'Search for trending social media posts in my niche and send me an email analysis with how to apply to my product.',
+];
+
 export function DashboardPage({
   isStreaming,
   generationPrompt,
@@ -59,6 +68,9 @@ export function DashboardPage({
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
+  const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
+  const [displayedPlaceholder, setDisplayedPlaceholder] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [savedPrompt, setSavedPrompt] = useState<string>(() => {
     // Load saved prompt from localStorage on initialization
     try {
@@ -192,6 +204,50 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       autoResize(promptRef.current);
     }
   }, [generationPrompt]);
+
+  // Typing animation for placeholder
+  useEffect(() => {
+    const currentMessage = PLACEHOLDER_MESSAGES[currentPlaceholderIndex];
+
+    const typingSpeed = 50; // ms per character when typing
+    const deletingSpeed = 20; // ms per character when deleting (faster)
+    const pauseAfterTyping = 2000; // pause after fully typed
+    const pauseAfterDeleting = 500; // brief pause after deleting
+
+    let timeout: NodeJS.Timeout;
+
+    if (!isDeleting && displayedPlaceholder.length < currentMessage.length) {
+      // Typing forward
+      timeout = setTimeout(() => {
+        setDisplayedPlaceholder(
+          currentMessage.slice(0, displayedPlaceholder.length + 1)
+        );
+      }, typingSpeed);
+    } else if (
+      !isDeleting &&
+      displayedPlaceholder.length === currentMessage.length
+    ) {
+      // Finished typing, pause then start deleting
+      timeout = setTimeout(() => {
+        setIsDeleting(true);
+      }, pauseAfterTyping);
+    } else if (isDeleting && displayedPlaceholder.length > 0) {
+      // Deleting
+      timeout = setTimeout(() => {
+        setDisplayedPlaceholder(displayedPlaceholder.slice(0, -1));
+      }, deletingSpeed);
+    } else if (isDeleting && displayedPlaceholder.length === 0) {
+      // Finished deleting, move to next message
+      timeout = setTimeout(() => {
+        setIsDeleting(false);
+        setCurrentPlaceholderIndex(
+          (prevIndex) => (prevIndex + 1) % PLACEHOLDER_MESSAGES.length
+        );
+      }, pauseAfterDeleting);
+    }
+
+    return () => clearTimeout(timeout);
+  }, [displayedPlaceholder, isDeleting, currentPlaceholderIndex]);
 
   // Hide sign in modal when user signs in and restore saved prompt
   useEffect(() => {
@@ -362,7 +418,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 placeholder={
                   selectedCategory === 'Import JSON'
                     ? 'Paste in your existing JSON workflow to be converted into a Bubble flow...'
-                    : 'Read in my Google Calendar and send me an email with my upcoming events'
+                    : displayedPlaceholder
                 }
                 value={generationPrompt}
                 onChange={(e) => {
@@ -385,6 +441,22 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   selectedCategory === 'Import JSON' ? 'font-mono' : ''
                 }`}
                 onKeyDown={(e) => {
+                  // Tab key: autocomplete the current placeholder
+                  if (
+                    e.key === 'Tab' &&
+                    !generationPrompt.trim() &&
+                    selectedCategory !== 'Import JSON'
+                  ) {
+                    e.preventDefault();
+                    const fullMessage =
+                      PLACEHOLDER_MESSAGES[currentPlaceholderIndex];
+                    setGenerationPrompt(fullMessage);
+                    // Stop the animation by resetting to a stable state
+                    setDisplayedPlaceholder(fullMessage);
+                    setIsDeleting(false);
+                    return;
+                  }
+
                   if (e.key === 'Enter' && e.ctrlKey && !isStreaming) {
                     if (!isSignedIn) {
                       if (generationPrompt.trim()) {
