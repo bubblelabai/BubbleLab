@@ -320,6 +320,22 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             </button>
             <button
               type="button"
+              onClick={() => {
+                const templatesSection =
+                  document.getElementById('templates-section');
+                if (templatesSection) {
+                  templatesSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  });
+                }
+              }}
+              className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer"
+            >
+              Choose from template
+            </button>
+            <button
+              type="button"
               onClick={handleBuildFromScratch}
               disabled={isStreaming || isCreatingFromScratch}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
@@ -509,7 +525,10 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
           </div>
 
           {/* Category Filter Buttons */}
-          <div className="flex flex-wrap gap-2 justify-center mb-10 animate-fade-in-up delay-300">
+          <div
+            id="templates-section"
+            className="flex flex-wrap gap-2 justify-center mb-10 animate-fade-in-up delay-300"
+          >
             {/* All Templates - First button */}
             <button
               type="button"
