@@ -5,6 +5,7 @@ import InputFieldsRenderer from './InputFieldsRenderer';
 import { useExecutionStore } from '../stores/executionStore';
 import { useRunExecution } from '../hooks/useRunExecution';
 import { filterEmptyInputs } from '../utils/inputUtils';
+import { BUBBLE_COLORS } from './BubbleColors';
 
 interface SchemaField {
   name: string;
@@ -50,6 +51,10 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
   // Subscribe to execution store (using selectors to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
+  const highlightedBubble = useExecutionStore(
+    flowId,
+    (s) => s.highlightedBubble
+  );
 
   // Get actions from store
   const setInput = useExecutionStore(flowId, (s) => s.setInput);
@@ -138,6 +143,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
   // Check if form is valid (no missing required fields)
   const isFormValid = !hasMissingRequired;
 
+  // Check if this node is highlighted
+  const isHighlighted = highlightedBubble === 'input-schema-node';
+
   // Handle execute flow
   const handleExecuteFlow = async () => {
     // Filter out empty values (empty strings, undefined, empty arrays) so defaults are used
@@ -154,10 +162,12 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
     <div
       className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
         isExecuting
-          ? 'border-blue-400 shadow-lg shadow-blue-500/30'
+          ? `border-blue-400 shadow-lg shadow-blue-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : hasMissingRequired
-            ? 'border-amber-500'
-            : 'border-neutral-600'
+            ? `border-amber-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
+            : isHighlighted
+              ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+              : 'border-neutral-600'
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -166,7 +176,13 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         position={Position.Right}
         id="right"
         isConnectable={false}
-        className={`w-3 h-3 ${isExecuting ? 'bg-blue-400' : 'bg-blue-400'}`}
+        className={`w-3 h-3 ${
+          isExecuting
+            ? 'bg-blue-400'
+            : isHighlighted
+              ? BUBBLE_COLORS.SELECTED.handle
+              : 'bg-blue-400'
+        }`}
         style={{ right: -6 }}
       />
 

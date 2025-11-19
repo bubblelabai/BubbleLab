@@ -1106,7 +1106,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         nodeTypes={nodeTypes}
         onNodeClick={(_event, node) => {
           if (node.type === 'bubbleNode') {
-            // Dismiss the highlighted bubble
+            // Highlight the bubble
             getExecutionStore(currentFlow?.id || flowId).highlightBubble(
               node.id
             );
@@ -1115,10 +1115,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               .getState()
               .clearBubbleContext();
             // set context
-
             getPearlChatStore(currentFlow?.id || flowId)
               .getState()
               .addBubbleToContext(Number(node.id));
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (
+            node.type === 'inputSchemaNode' ||
+            node.type === 'cronScheduleNode'
+          ) {
+            // Highlight the entry node
+            getExecutionStore(currentFlow?.id || flowId).highlightBubble(
+              node.id
+            );
+            // Clear the bubble context (entry nodes don't have bubble context)
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .clearBubbleContext();
             useUIStore.getState().openConsolidatedPanelWith('pearl');
           }
         }}
