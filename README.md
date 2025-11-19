@@ -44,22 +44,13 @@
 
 ## 🚀 Quick Start
 
-### 1. Hosted Bubble Studio (Fastest Way)
+### 1. Hosted Bubble Studio (Cloud Version)
 
-The quickest way to get started with BubbleLab is through our hosted Bubble Studio:
+No setup required, start building immediately with managed integrations 👉 [Try Now](https://app.bubblelab.ai)
 
-<!-- Insert screenshot here -->
+### 2. Run Locally
 
-**Benefits:**
-
-- No setup required - start building immediately
-- Visual flow builder with drag-and-drop interface
-- Export your flows to run on your own backend
-- Free AI credits
-
-👉 [Try Bubble Studio Now](https://app.bubblelab.ai)
-
-In addition, you can try Bubble Studio in **two command**, locally (not suited for production):
+Run Bubble Studio locally in **2 commands**:
 
 ```bash
 # 1. Install dependencies
@@ -69,7 +60,144 @@ pnpm install
 pnpm run dev
 ```
 
-### 2. Create BubbleLab App
+That's it! The setup script automatically:
+
+- ✅ Creates `.env` files from examples
+- ✅ Configures dev mode (no auth required)
+- ✅ Sets up SQLite database
+- ✅ Builds core packages
+- ✅ Starts both frontend and backend
+
+Open **http://localhost:3000** and start building workflows!
+
+**⚠️ IMPORTANT: Required API Keys**
+
+To run any flows in self-hosted mode, you **MUST** configure these API keys in `apps/bubblelab-api/.env`:
+
+```bash
+GOOGLE_API_KEY=your_google_api_key        # Required for AI flow execution
+OPENROUTER_API_KEY=your_openrouter_key    # Required for AI flow execution
+```
+
+Without these keys, you can use the visual builder but cannot execute flows. Get your keys:
+- Google AI API: https://aistudio.google.com/apikey
+- OpenRouter: https://openrouter.ai/keys
+
+#### Prerequisites
+
+- **[Bun](https://bun.sh)** - Required for running the backend API server
+- **[pnpm](https://pnpm.io)** - Package manager for monorepo management
+- **Node.js** - v18 or higher
+
+#### What Gets Started
+
+- **Frontend**: http://localhost:3000 (Bubble Studio)
+- **Backend**: http://localhost:3001 (API Server)
+
+#### Development Mode (Default)
+
+By default, the app runs in **development mode** with:
+
+- 🔓 **No authentication required** - Uses mock user `dev@localhost.com`
+- 💾 **SQLite database** - Auto-created at `apps/bubblelab-api/dev.db`
+- 🎯 **Auto-seeded dev user** - Backend creates the user automatically
+
+#### Production Mode (Optional)
+
+To run with real authentication:
+
+1. Get your Clerk keys at [clerk.com](https://clerk.com)
+2. Update `.env` files:
+
+**Frontend** (`apps/bubble-studio/.env`):
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
+VITE_DISABLE_AUTH=false
+```
+
+**Backend** (`apps/bubblelab-api/.env`):
+
+```bash
+BUBBLE_ENV=prod
+CLERK_SECRET_KEY=sk_test_...
+```
+
+3. Restart with `pnpm run dev`
+
+#### Environment Variables
+
+The setup script creates these files with sensible defaults:
+
+**`apps/bubble-studio/.env`**:
+
+```bash
+VITE_API_URL=http://localhost:3001
+VITE_CLERK_PUBLISHABLE_KEY=
+VITE_DISABLE_AUTH=true  # Dev mode: no auth needed
+```
+
+**`apps/bubblelab-api/.env`**:
+
+```bash
+BUBBLE_ENV=dev  # Creates mock user automatically
+DATABASE_URL=file:./dev.db  # SQLite
+```
+
+#### API Keys & Credentials
+
+**Required for Flow Execution:**
+
+```bash
+GOOGLE_API_KEY=           # Google AI API key - REQUIRED to run any flows
+OPENROUTER_API_KEY=       # OpenRouter API key - REQUIRED to run any flows
+```
+
+**Optional API Keys** (enable specific features in `apps/bubblelab-api/.env`):
+
+```bash
+# AI Model Providers
+OPENAI_API_KEY=           # OpenAI API key for GPT models
+
+# Communication & Storage
+RESEND_API_KEY=           # Resend API key for email notifications
+FIRE_CRAWL_API_KEY=       # FireCrawl API key for web scraping
+
+# Authentication (optional, only needed for production mode)
+CLERK_SECRET_KEY_BUBBLELAB=  # Clerk secret key for authentication
+
+# OAuth (optional)
+GOOGLE_OAUTH_CLIENT_ID=      # Google OAuth client ID
+GOOGLE_OAUTH_CLIENT_SECRET=  # Google OAuth client secret
+
+# Cloud Storage (optional)
+CLOUDFLARE_R2_ACCESS_KEY=    # Cloudflare R2 access key
+CLOUDFLARE_R2_SECRET_KEY=    # Cloudflare R2 secret key
+CLOUDFLARE_R2_ACCOUNT_ID=    # Cloudflare R2 account ID
+
+# Other
+PYTHON_PATH=              # Custom Python path (optional)
+CREDENTIAL_ENCRYPTION_KEY=8VfrrosUTORJghTDpdTKG7pvfD721ChyFt97m3Art1Y=  # Encryption key for storing user credentials
+BUBBLE_CONNECTING_STRING_URL=  # Database connection string (optional, defaults to SQLite)
+```
+
+#### Additional Commands
+
+```bash
+# Run only the setup script
+pnpm run setup:env
+
+# Build for production
+pnpm run build
+
+# Run tests
+pnpm test
+
+# Lint code
+pnpm lint
+```
+
+### 3. Create BubbleLab App
 
 Get started with BubbleLab in seconds using our CLI tool:
 
@@ -196,141 +324,6 @@ BubbleLab is built on a modular architecture with the following core packages:
 
 - **[bubble-studio](./apps/bubble-studio)** - Visual workflow builder (React + Vite)
 - **[bubblelab-api](./apps/bubblelab-api)** - Backend API for flow storage and execution (Bun + Hono)
-
-## 🔨 Building from Source
-
-### Prerequisites
-
-- **[Bun](https://bun.sh)** - Required for running the backend API server
-- **[pnpm](https://pnpm.io)** - Package manager for monorepo management
-- **Node.js** - v18 or higher
-
-### Quick Start
-
-Run Bubble Studio locally in **2 commands**:
-
-```bash
-# 1. Install dependencies
-pnpm install
-
-# 2. Start everything
-pnpm run dev
-```
-
-That's it! The setup script automatically:
-
-- ✅ Creates `.env` files from examples
-- ✅ Configures dev mode (no auth required)
-- ✅ Sets up SQLite database
-- ✅ Builds core packages
-- ✅ Starts both frontend and backend
-
-Open **http://localhost:3000** and start building workflows!
-
-### What Gets Started
-
-- **Frontend**: http://localhost:3000 (Bubble Studio)
-- **Backend**: http://localhost:3001 (API Server)
-
-### Development Mode (Default)
-
-By default, the app runs in **development mode** with:
-
-- 🔓 **No authentication required** - Uses mock user `dev@localhost.com`
-- 💾 **SQLite database** - Auto-created at `apps/bubblelab-api/dev.db`
-- 🎯 **Auto-seeded dev user** - Backend creates the user automatically
-
-### Production Mode (Optional)
-
-To run with real authentication:
-
-1. Get your Clerk keys at [clerk.com](https://clerk.com)
-2. Update `.env` files:
-
-**Frontend** (`apps/bubble-studio/.env`):
-
-```bash
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_...
-VITE_DISABLE_AUTH=false
-```
-
-**Backend** (`apps/bubblelab-api/.env`):
-
-```bash
-BUBBLE_ENV=prod
-CLERK_SECRET_KEY=sk_test_...
-```
-
-3. Restart with `pnpm run dev`
-
-### Environment Variables
-
-The setup script creates these files with sensible defaults:
-
-**`apps/bubble-studio/.env`**:
-
-```bash
-VITE_API_URL=http://localhost:3001
-VITE_CLERK_PUBLISHABLE_KEY=
-VITE_DISABLE_AUTH=true  # Dev mode: no auth needed
-```
-
-**`apps/bubblelab-api/.env`**:
-
-```bash
-BUBBLE_ENV=dev  # Creates mock user automatically
-DATABASE_URL=file:./dev.db  # SQLite
-```
-
-#### API Keys & Credentials
-
-The following API keys are optional but enable specific features. Add them to `apps/bubblelab-api/.env`:
-
-```bash
-# AI Model Providers (both required for AI-powered flow generation)
-OPENAI_API_KEY=           # OpenAI API key for GPT models
-GOOGLE_API_KEY=           # Google AI API key for Gemini models (required for flow generation)
-OPENROUTER_API_KEY=       # OpenRouter API key for multi-model support (required for flow generation)
-
-# Communication & Storage
-RESEND_API_KEY=           # Resend API key for email notifications
-FIRE_CRAWL_API_KEY=       # FireCrawl API key for web scraping
-
-# Authentication (optional, only needed for production mode)
-CLERK_SECRET_KEY_BUBBLELAB=  # Clerk secret key for authentication
-
-# OAuth (optional)
-GOOGLE_OAUTH_CLIENT_ID=      # Google OAuth client ID
-GOOGLE_OAUTH_CLIENT_SECRET=  # Google OAuth client secret
-
-# Cloud Storage (optional)
-CLOUDFLARE_R2_ACCESS_KEY=    # Cloudflare R2 access key
-CLOUDFLARE_R2_SECRET_KEY=    # Cloudflare R2 secret key
-CLOUDFLARE_R2_ACCOUNT_ID=    # Cloudflare R2 account ID
-
-# Other
-PYTHON_PATH=              # Custom Python path (optional)
-CREDENTIAL_ENCRYPTION_KEY=8VfrrosUTORJghTDpdTKG7pvfD721ChyFt97m3Art1Y=  # Encryption key for storing user credentials
-BUBBLE_CONNECTING_STRING_URL=  # Database connection string (optional, defaults to SQLite)
-```
-
-**Note:** AI-powered flow generation requires both `GOOGLE_API_KEY` and `OPENROUTER_API_KEY` to be configured. Without these, you can still use Bubble Studio to manually build workflows, but the AI assistant features will be unavailable.
-
-### Additional Commands
-
-```bash
-# Run only the setup script
-pnpm run setup:env
-
-# Build for production
-pnpm run build
-
-# Run tests
-pnpm test
-
-# Lint code
-pnpm lint
-```
 
 ## 🤝 Contributing & Self-Hosting Bubble Studio
 
