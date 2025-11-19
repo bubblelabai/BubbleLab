@@ -524,127 +524,135 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             </div>
           </div>
 
-          {/* Category Filter Buttons */}
+          {/* Templates Section Container */}
           <div
             id="templates-section"
-            className="flex flex-wrap gap-2 justify-center mb-10 animate-fade-in-up delay-300"
+            className="mt-16 p-6 bg-[#0d1117] border border-[#30363d] rounded-xl animate-fade-in-up delay-300"
           >
-            {/* All Templates - First button */}
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
-                !selectedCategory
-                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
-              }`}
-            >
-              All Templates
-            </button>
-            {/* Rest of the categories (excluding Prompt and Import JSON) */}
-            {TEMPLATE_CATEGORIES.filter(
-              (cat) => cat !== 'Prompt' && cat !== 'Import JSON'
-            ).map((category) => (
+            {/* Templates Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Templates</h2>
+            </div>
+
+            {/* Category Filter Buttons */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {/* All Templates - First button */}
               <button
-                key={category}
                 type="button"
-                onClick={() => setSelectedCategory(category)}
+                onClick={() => setSelectedCategory(null)}
                 className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
-                  selectedCategory === category
+                  !selectedCategory
                     ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
                     : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
                 }`}
               >
-                {category}
+                All Templates
               </button>
-            ))}
-          </div>
-
-          {/* Templates Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start animate-fade-in-up delay-300">
-            {filteredTemplates.map((preset) => {
-              // Find the original index in PRESET_PROMPTS to maintain correct mapping
-              const originalIndex = PRESET_PROMPTS.findIndex(
-                (p) => p === preset
-              );
-              const match = preset.name.match(/\(([^)]+)\)/);
-              const logos = match
-                ? (match[1]
-                    .split(',')
-                    .map((s) => s.trim())
-                    .map((name) => resolveLogoByName(name))
-                    .filter(Boolean) as { name: string; file: string }[])
-                : ([] as { name: string; file: string }[]);
-              const isActive = selectedPreset === originalIndex;
-              return (
+              {/* Rest of the categories (excluding Prompt and Import JSON) */}
+              {TEMPLATE_CATEGORIES.filter(
+                (cat) => cat !== 'Prompt' && cat !== 'Import JSON'
+              ).map((category) => (
                 <button
-                  key={originalIndex}
+                  key={category}
                   type="button"
-                  onClick={() => {
-                    // Check authentication first
-                    if (!isSignedIn) {
-                      if (preset.prompt.trim()) {
-                        setSavedPrompt(preset.prompt);
-                        localStorage.setItem('savedPrompt', preset.prompt);
-                        setSavedPresetIndex(originalIndex);
-                        localStorage.setItem(
-                          'savedPresetIndex',
-                          originalIndex.toString()
-                        );
-                      }
-                      setShowSignInModal(true);
-                      return;
-                    }
-
-                    // Track template click
-                    const template = getTemplateByIndex(originalIndex);
-                    if (template) {
-                      trackTemplate({
-                        action: 'click',
-                        templateId: template.id,
-                        templateName: template.name,
-                        templateCategory: template.category,
-                      });
-                    }
-
-                    // Set the preset and prompt, then trigger generation
-                    setSelectedPreset(originalIndex);
-                    setGenerationPrompt(preset.prompt);
-                    setPendingGeneration(true);
-                    // Scroll to top to see prompt
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  disabled={isStreaming}
-                  className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
-                    isActive
-                      ? 'border-purple-500/30 bg-white/10 shadow-[0_0_20px_rgba(147,51,234,0.1)]'
-                      : 'border-white/5 bg-[#1a1a1a] hover:border-white/10 hover:bg-[#202020] hover:shadow-xl hover:-translate-y-0.5'
-                  } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
+                    selectedCategory === category
+                      ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                  }`}
                 >
-                  <div className="flex flex-col gap-3 flex-grow relative z-10">
-                    {logos.length > 0 && (
-                      <div className="flex items-center gap-2 mb-1">
-                        {logos.slice(0, 5).map((integration) => (
-                          <img
-                            key={integration.name}
-                            src={integration.file}
-                            alt={`${integration.name} logo`}
-                            className="h-5 w-5 opacity-80"
-                            loading="lazy"
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <div className="text-base font-bold text-gray-200 mb-1 group-hover:text-white transition-colors">
-                      {preset.name}
-                    </div>
-                    <div className="text-sm font-medium text-gray-500 flex-grow leading-relaxed group-hover:text-gray-400 transition-colors line-clamp-3">
-                      {preset.prompt}
-                    </div>
-                  </div>
+                  {category}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Templates Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start">
+              {filteredTemplates.map((preset) => {
+                // Find the original index in PRESET_PROMPTS to maintain correct mapping
+                const originalIndex = PRESET_PROMPTS.findIndex(
+                  (p) => p === preset
+                );
+                const match = preset.name.match(/\(([^)]+)\)/);
+                const logos = match
+                  ? (match[1]
+                      .split(',')
+                      .map((s) => s.trim())
+                      .map((name) => resolveLogoByName(name))
+                      .filter(Boolean) as { name: string; file: string }[])
+                  : ([] as { name: string; file: string }[]);
+                const isActive = selectedPreset === originalIndex;
+                return (
+                  <button
+                    key={originalIndex}
+                    type="button"
+                    onClick={() => {
+                      // Check authentication first
+                      if (!isSignedIn) {
+                        if (preset.prompt.trim()) {
+                          setSavedPrompt(preset.prompt);
+                          localStorage.setItem('savedPrompt', preset.prompt);
+                          setSavedPresetIndex(originalIndex);
+                          localStorage.setItem(
+                            'savedPresetIndex',
+                            originalIndex.toString()
+                          );
+                        }
+                        setShowSignInModal(true);
+                        return;
+                      }
+
+                      // Track template click
+                      const template = getTemplateByIndex(originalIndex);
+                      if (template) {
+                        trackTemplate({
+                          action: 'click',
+                          templateId: template.id,
+                          templateName: template.name,
+                          templateCategory: template.category,
+                        });
+                      }
+
+                      // Set the preset and prompt, then trigger generation
+                      setSelectedPreset(originalIndex);
+                      setGenerationPrompt(preset.prompt);
+                      setPendingGeneration(true);
+                      // Scroll to top to see prompt
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={isStreaming}
+                    className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
+                      isActive
+                        ? 'border-purple-500/30 bg-white/10 shadow-[0_0_20px_rgba(147,51,234,0.1)]'
+                        : 'border-white/5 bg-[#1a1a1a] hover:border-white/10 hover:bg-[#202020] hover:shadow-xl hover:-translate-y-0.5'
+                    } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <div className="flex flex-col gap-3 flex-grow relative z-10">
+                      {logos.length > 0 && (
+                        <div className="flex items-center gap-2 mb-1">
+                          {logos.slice(0, 5).map((integration) => (
+                            <img
+                              key={integration.name}
+                              src={integration.file}
+                              alt={`${integration.name} logo`}
+                              className="h-5 w-5 opacity-80"
+                              loading="lazy"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <div className="text-base font-bold text-gray-200 mb-1 group-hover:text-white transition-colors">
+                        {preset.name}
+                      </div>
+                      <div className="text-sm font-medium text-gray-500 flex-grow leading-relaxed group-hover:text-gray-400 transition-colors line-clamp-3">
+                        {preset.prompt}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
