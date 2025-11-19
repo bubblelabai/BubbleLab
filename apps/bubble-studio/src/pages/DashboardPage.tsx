@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import {
   INTEGRATIONS,
+  SCRAPING_SERVICES,
   AI_MODELS,
   resolveLogoByName,
 } from '../lib/integrations';
@@ -680,6 +681,29 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       </p>
                     </div>
                   ))}
+                </div>
+                <div className="mt-8">
+                  <p className="text-xs font-semibold tracking-wide text-gray-400 mb-3">
+                    Current Supported Scraping (Powered by Apify and Firecrawl)
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                    {SCRAPING_SERVICES.map((service) => (
+                      <div
+                        key={service.name}
+                        className="flex items-center gap-2 md:gap-3 p-1"
+                      >
+                        <img
+                          src={service.file}
+                          alt={`${service.name} logo`}
+                          className="h-5 w-5 md:h-6 md:w-6"
+                          loading="lazy"
+                        />
+                        <p className="text-sm text-gray-200 truncate">
+                          {service.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="mt-8">
                   <p className="text-xs font-semibold tracking-wide text-gray-400 mb-3">
