@@ -7,10 +7,18 @@ import type {
   CreateBubbleFlowRequest,
 } from '@bubblelab/shared-schemas';
 
+interface CreateBubbleFlowWithOptimisticData extends CreateBubbleFlowRequest {
+  // Optional: bubble information for optimistic UI updates (e.g., when duplicating)
+  _optimisticBubbles?: Array<{
+    bubbleName: string;
+    className: string;
+  }>;
+}
+
 interface UseCreateBubbleFlowResult {
-  mutate: (request: CreateBubbleFlowRequest) => void;
+  mutate: (request: CreateBubbleFlowWithOptimisticData) => void;
   mutateAsync: (
-    request: CreateBubbleFlowRequest
+    request: CreateBubbleFlowWithOptimisticData
   ) => Promise<CreateBubbleFlowResponse>;
   isLoading: boolean;
   error: Error | null;
@@ -24,12 +32,14 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
   const mutation = useMutation({
     mutationKey: ['createBubbleFlow'],
     mutationFn: async (
-      request: CreateBubbleFlowRequest
+      request: CreateBubbleFlowWithOptimisticData
     ): Promise<CreateBubbleFlowResponse> => {
       console.log('[useCreateBubbleFlow] Creating new bubble flow:', request);
+      // Remove optimistic data before sending to server
+      const { _optimisticBubbles, ...serverRequest } = request;
       const response = await api.post<CreateBubbleFlowResponse>(
         '/bubble-flow',
-        request
+        serverRequest
       );
       console.log('[useCreateBubbleFlow] Flow created successfully:', response);
       return response;
@@ -60,6 +70,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           executionCount: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          // Include bubbles if provided (for duplication)
+          bubbles: newFlow._optimisticBubbles,
         };
 
         const updatedFlowList: BubbleFlowListResponse = {
@@ -124,6 +136,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 cronActive: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                // Preserve bubbles from optimistic update to prevent flash
+                bubbles: flow.bubbles,
               };
             }
             return flow;

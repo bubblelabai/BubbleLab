@@ -7,12 +7,14 @@ import {
   X,
   Search,
   Plus,
+  Copy,
 } from 'lucide-react';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { MonthlyUsageBar } from '../components/MonthlyUsageBar';
 import { SignedIn } from '../components/AuthComponents';
 import { findLogoForBubble } from '../lib/integrations';
 import { useRenameFlow } from '../hooks/useRenameFlow';
+import { useDuplicateFlow } from '../hooks/useDuplicateFlow';
 import { CronToggle } from '../components/CronToggle';
 import { WebhookToggle } from '../components/WebhookToggle';
 import { useSubscription } from '../hooks/useSubscription';
@@ -32,8 +34,28 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { data: subscription } = useSubscription();
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [renamingFlowId, setRenamingFlowId] = useState<number | null>(null);
+  const [duplicatingFlowId, setDuplicatingFlowId] = useState<number | null>(
+    null
+  );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Duplicate flow hook
+  const { duplicateFlow, isLoading: isDuplicating } = useDuplicateFlow({
+    flowId: duplicatingFlowId,
+    onSuccess: (newFlowId) => {
+      console.log('[HomePage] Flow duplicated successfully:', newFlowId);
+      setDuplicatingFlowId(null);
+      setOpenMenuId(null);
+      // Stay on the flows page - the new flow will appear at the top of the list
+    },
+    onError: (error) => {
+      console.error('[HomePage] Failed to duplicate flow:', error);
+      setDuplicatingFlowId(null);
+      setOpenMenuId(null);
+      // TODO: Show error toast/notification
+    },
+  });
 
   const allFlows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -81,6 +103,23 @@ export const HomePage: React.FC<HomePageProps> = ({
     setRenamingFlowId(flowId);
     setOpenMenuId(null);
   };
+
+  const handleDuplicateClick = async (
+    flowId: number,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+    setDuplicatingFlowId(flowId);
+    setOpenMenuId(null);
+    // The duplication will be handled by the effect below
+  };
+
+  // Effect to trigger duplication when duplicatingFlowId is set
+  useEffect(() => {
+    if (duplicatingFlowId && !isDuplicating) {
+      void duplicateFlow();
+    }
+  }, [duplicatingFlowId, isDuplicating, duplicateFlow]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -357,6 +396,19 @@ export const HomePage: React.FC<HomePageProps> = ({
                         >
                           <Edit2 className="w-4 h-4" />
                           Rename Flow
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDuplicateClick(flow.id, e)}
+                          disabled={
+                            isDuplicating && duplicatingFlowId === flow.id
+                          }
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-blue-600/20 hover:text-blue-400 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Copy className="w-4 h-4" />
+                          {isDuplicating && duplicatingFlowId === flow.id
+                            ? 'Duplicating...'
+                            : 'Duplicate Flow'}
                         </button>
                         <button
                           type="button"
