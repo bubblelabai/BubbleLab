@@ -338,35 +338,43 @@ export const HomePage: React.FC<HomePageProps> = ({
                       {flow.executionCount === 1 ? 'execution' : 'executions'}
                     </div>
 
-                    {/* Cron Toggle or Webhook Toggle - mutually exclusive */}
-                    <div className="mb-2" onClick={(e) => e.stopPropagation()}>
-                      {flow.cronSchedule ? (
-                        <CronToggle
-                          flowId={flow.id}
-                          compact={true}
-                          syncInputsWithFlow={false}
-                          showScheduleText={true}
-                        />
-                      ) : (
-                        <WebhookToggle
-                          flowId={flow.id}
-                          compact={true}
-                          showCopyButton={true}
-                        />
-                      )}
-                    </div>
+                    {/* Divider and Date/Toggle Row */}
+                    <div className="pt-2 mt-2 border-t border-white/5">
+                      <div
+                        className="flex items-center justify-between"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Cron Toggle or Webhook Toggle - mutually exclusive */}
+                        <div>
+                          {flow.cronSchedule ? (
+                            <CronToggle
+                              flowId={flow.id}
+                              compact={true}
+                              syncInputsWithFlow={false}
+                              showScheduleText={true}
+                            />
+                          ) : (
+                            <WebhookToggle
+                              flowId={flow.id}
+                              compact={true}
+                              showCopyButton={true}
+                            />
+                          )}
+                        </div>
 
-                    {/* Created Date */}
-                    <div className="text-xs text-gray-500">
-                      {new Date(flow.createdAt)
-                        .toLocaleString(undefined, {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                        .replace(/, (\d{4})/g, ' $1')}
+                        {/* Created Date */}
+                        <div className="text-xs text-gray-500">
+                          {new Date(flow.createdAt)
+                            .toLocaleString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                            .replace(/, (\d{4})/g, ' $1')}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
