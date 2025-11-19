@@ -33,6 +33,38 @@ const LoadingDots: React.FC = () => {
 
 // Removed initials helper; using image-only rendering
 
+// Map categories to emojis
+// Map categories to emojis
+const CATEGORY_EMOJIS: Record<string, string> = {
+  Popular: '🔥',
+  'Lead Generation': '💼',
+  'Project Management': '🚀',
+  'Personal Assistant': '🤖',
+  Marketing: '📈',
+  'Import JSON': '📥',
+};
+
+const STARTER_EXAMPLES = [
+  {
+    label: 'Create a CRM',
+    prompt:
+      'Build a CRM system to track leads and manage customer relationships.',
+  },
+  {
+    label: 'Scrape LinkedIn',
+    prompt:
+      'Create a workflow to scrape LinkedIn profiles and save them to a database.',
+  },
+  {
+    label: 'Build a Chatbot',
+    prompt: 'Create an AI chatbot that can answer questions about my product.',
+  },
+  {
+    label: 'Automate Email',
+    prompt: 'Monitor my inbox for invoices and save them to Google Drive.',
+  },
+];
+
 export interface DashboardPageProps {
   isStreaming: boolean;
   generationPrompt: string;
@@ -57,7 +89,7 @@ export function DashboardPage({
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
-    useState<TemplateCategory | null>('Prompt');
+    useState<TemplateCategory | null>(null);
   const [savedPrompt, setSavedPrompt] = useState<string>(() => {
     // Load saved prompt from localStorage on initialization
     try {
@@ -229,12 +261,9 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     setSelectedPreset,
   ]);
 
-  // Clear generation prompt when "Prompt" or "Import JSON" category is selected
+  // Clear generation prompt when "Import JSON" category is selected
   useEffect(() => {
-    if (
-      (selectedCategory === 'Prompt' || selectedCategory === 'Import JSON') &&
-      generationPrompt.trim()
-    ) {
+    if (selectedCategory === 'Import JSON' && generationPrompt.trim()) {
       setGenerationPrompt('');
       setSelectedPreset(-1);
     }
@@ -257,23 +286,26 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
   }, [pendingJsonImport, generationPrompt, onGenerateCode]);
 
   return (
-    <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
+    <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-100 font-sans selection:bg-purple-500/30 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-purple-900/10 rounded-[100%] blur-[100px] pointer-events-none" />
+
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl w-full mx-auto space-y-8 py-12 px-4 sm:px-6">
+      <div className="flex-1 overflow-y-auto relative z-10">
+        <div className="max-w-5xl w-full mx-auto space-y-10 py-12 px-4 sm:px-6">
           {/* Header */}
-          <div className="text-center space-y-4">
-            <div className="text-center mb-14">
+          <div className="text-center space-y-6">
+            <div className="text-center mb-8">
               {/* Discord Community Link */}
-              <div className="mb-4 text-center">
+              <div className="mb-6 text-center animate-fade-in-up">
                 <a
                   href="https://discord.com/invite/PkJvcU2myV"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white text-xs font-medium rounded-full transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5 group"
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="w-3.5 h-3.5 text-[#5865F2] group-hover:scale-110 transition-transform duration-300"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
@@ -282,52 +314,177 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   Join Discord Community
                 </a>
               </div>
-              <h1 className="text-4xl font-bold text-white">
-                Workflows that you can observe and export
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight pb-2 animate-fade-in-up delay-100 drop-shadow-sm">
+                What do you want to build?
               </h1>
+              <p className="text-base md:text-lg text-gray-400 mt-3 animate-fade-in-up delay-150">
+                Make agentic workflows you can observe and export
+              </p>
+              <p className="text-sm md:text-base text-gray-500 mt-2 animate-fade-in-up delay-200">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory(null)}
+                  className="border-b border-gray-500 hover:border-gray-300 hover:text-gray-300 transition-colors cursor-pointer bg-transparent"
+                >
+                  Prompt below
+                </button>
+                ,{' '}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('Import JSON')}
+                  className="border-b border-gray-500 hover:border-gray-300 hover:text-gray-300 transition-colors cursor-pointer bg-transparent"
+                >
+                  import JSON
+                </button>{' '}
+                or{' '}
+                <button
+                  type="button"
+                  onClick={handleBuildFromScratch}
+                  disabled={isStreaming || isCreatingFromScratch}
+                  className={`border-b transition-colors bg-transparent ${
+                    isStreaming || isCreatingFromScratch
+                      ? 'border-gray-600 text-gray-600 cursor-not-allowed'
+                      : 'border-gray-500 hover:border-gray-300 hover:text-gray-300 cursor-pointer'
+                  }`}
+                >
+                  Build from scratch
+                </button>
+              </p>
+            </div>
+          </div>
+
+          {/* HERO PROMPT SECTION */}
+          <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20">
+            <div className="bg-[#1a1a1a] rounded-2xl p-4 shadow-2xl border border-white/5 relative group transition-all duration-300 hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
+              <textarea
+                ref={promptRef}
+                placeholder={
+                  selectedCategory === 'Import JSON'
+                    ? 'Paste in your JSON workflow...'
+                    : 'Describe your workflow...'
+                }
+                value={generationPrompt}
+                onChange={(e) => {
+                  setGenerationPrompt(e.target.value);
+                  if (selectedPreset !== -1) {
+                    setSelectedPreset(-1);
+                  }
+                  if (
+                    !e.target.value.trim() &&
+                    (savedPrompt || savedPresetIndex !== -1)
+                  ) {
+                    setSavedPrompt('');
+                    setSavedPresetIndex(-1);
+                    localStorage.removeItem('savedPrompt');
+                    localStorage.removeItem('savedPresetIndex');
+                  }
+                }}
+                onInput={(e) => autoResize(e.currentTarget)}
+                className={`bg-transparent text-gray-100 w-full min-h-[100px] max-h-[200px] placeholder-gray-600 resize-none focus:outline-none focus:ring-0 p-2 overflow-y-auto thin-scrollbar leading-relaxed ${
+                  selectedCategory === 'Import JSON'
+                    ? 'text-sm font-mono'
+                    : 'text-lg font-medium'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey && !isStreaming) {
+                    if (!isSignedIn) {
+                      if (generationPrompt.trim()) {
+                        setSavedPrompt(generationPrompt);
+                        localStorage.setItem('savedPrompt', generationPrompt);
+                      }
+                      setShowSignInModal(true);
+                      return;
+                    }
+                    // Handle JSON import
+                    if (selectedCategory === 'Import JSON') {
+                      const jsonContent = generationPrompt.trim();
+                      setGenerationPrompt(
+                        `Convert the following JSON file to a workflow:\n\n${jsonContent}`
+                      );
+                      setPendingJsonImport(true);
+                    } else {
+                      onGenerateCode();
+                    }
+                  }
+                }}
+              />
+              <div className="flex justify-between items-center mt-2 px-2">
+                <div className="text-xs text-gray-600 font-medium">
+                  {generationPrompt.length > 0
+                    ? `${generationPrompt.length} chars`
+                    : ''}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-gray-600 font-medium uppercase tracking-wider">
+                    Ctrl+Enter
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isSignedIn) {
+                        if (generationPrompt.trim()) {
+                          setSavedPrompt(generationPrompt);
+                          localStorage.setItem('savedPrompt', generationPrompt);
+                        }
+                        setShowSignInModal(true);
+                        return;
+                      }
+                      // Handle JSON import
+                      if (selectedCategory === 'Import JSON') {
+                        const jsonContent = generationPrompt.trim();
+                        setGenerationPrompt(
+                          `Convert the following JSON file to a workflow:\n\n${jsonContent}`
+                        );
+                        setPendingJsonImport(true);
+                      } else {
+                        onGenerateCode();
+                      }
+                    }}
+                    disabled={isGenerateDisabled}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                      isGenerateDisabled
+                        ? 'bg-white/5 text-gray-600 cursor-not-allowed'
+                        : 'bg-white text-black hover:bg-gray-200 hover:scale-105'
+                    }`}
+                  >
+                    {isStreaming ? (
+                      <LoadingDots />
+                    ) : (
+                      <ArrowUp className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Starter Examples Chips */}
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {STARTER_EXAMPLES.map((example, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setGenerationPrompt(example.prompt);
+                    if (promptRef.current) promptRef.current.focus();
+                  }}
+                  className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-full text-xs text-gray-400 hover:text-gray-200 transition-all duration-200"
+                >
+                  {example.label}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Category Filter Buttons */}
-          <div className="flex flex-wrap gap-2 justify-center mb-6">
-            {/* Prompt - First button */}
-            {TEMPLATE_CATEGORIES.includes('Prompt') && (
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('Prompt')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
-                  selectedCategory === 'Prompt'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
-                }`}
-              >
-                <Pencil className="w-4 h-4" />
-                Prompt
-              </button>
-            )}
-            {/* Import JSON - Second button */}
-            {TEMPLATE_CATEGORIES.includes('Import JSON') && (
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('Import JSON')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
-                  selectedCategory === 'Import JSON'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
-                }`}
-              >
-                <FileDown className="w-4 h-4" />
-                Import JSON
-              </button>
-            )}
-            {/* All Templates - Third button */}
+          <div className="flex flex-wrap gap-2 justify-center mb-10 animate-fade-in-up delay-300">
+            {/* All Templates - First button */}
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+              className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 !selectedCategory
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-transparent text-gray-500 hover:bg-white/5 hover:text-gray-300 border border-transparent hover:border-white/5'
               }`}
             >
               All Templates
@@ -340,236 +497,23 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 key={category}
                 type="button"
                 onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 flex items-center gap-2 ${
                   selectedCategory === category
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
+                    ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                    : 'bg-transparent text-gray-500 hover:bg-white/5 hover:text-gray-300 border border-transparent hover:border-white/5'
                 }`}
               >
+                <span className="text-sm">
+                  {CATEGORY_EMOJIS[category] || '📋'}
+                </span>
                 {category}
               </button>
             ))}
-            {/* Build from Scratch - Last button */}
-            <button
-              type="button"
-              onClick={handleBuildFromScratch}
-              disabled={isStreaming || isCreatingFromScratch}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 ${
-                isStreaming || isCreatingFromScratch
-                  ? 'bg-gray-700/40 text-gray-500 cursor-not-allowed'
-                  : 'bg-[#3a3a3a] text-gray-300 hover:bg-[#4a4a4a] hover:text-white'
-              }`}
-            >
-              {isCreatingFromScratch ? (
-                <>
-                  <span className="inline-block animate-spin">⚙</span>
-                  Creating Empty Flow...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  Build from Scratch
-                </>
-              )}
-            </button>
           </div>
 
           {/* Templates Grid */}
-          {selectedCategory === 'Prompt' ? (
-            <div className="bg-[#252525] rounded-xl p-6 shadow-lg">
-              {/* Custom Prompt Section */}
-              <div>
-                <textarea
-                  ref={promptRef}
-                  placeholder="Read in my Google Calendar and send me an email with my upcoming events"
-                  value={generationPrompt}
-                  onChange={(e) => {
-                    setGenerationPrompt(e.target.value);
-                    if (selectedPreset !== -1) {
-                      setSelectedPreset(-1);
-                    }
-                    if (
-                      !e.target.value.trim() &&
-                      (savedPrompt || savedPresetIndex !== -1)
-                    ) {
-                      setSavedPrompt('');
-                      setSavedPresetIndex(-1);
-                      localStorage.removeItem('savedPrompt');
-                      localStorage.removeItem('savedPresetIndex');
-                    }
-                  }}
-                  onInput={(e) => autoResize(e.currentTarget)}
-                  className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
-                  onKeyDown={(e) => {
-                    // Only allow Ctrl+Enter for "Prompt" category
-                    if (
-                      e.key === 'Enter' &&
-                      e.ctrlKey &&
-                      !isStreaming &&
-                      selectedCategory === 'Prompt'
-                    ) {
-                      if (!isSignedIn) {
-                        if (generationPrompt.trim()) {
-                          setSavedPrompt(generationPrompt);
-                          localStorage.setItem('savedPrompt', generationPrompt);
-                        }
-                        setShowSignInModal(true);
-                        return;
-                      }
-                      onGenerateCode();
-                    }
-                  }}
-                />
-
-                {/* Generate Button - Inside the prompt container */}
-                <div className="flex justify-end mt-4">
-                  <div className="flex flex-col items-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isSignedIn) {
-                          if (generationPrompt.trim()) {
-                            setSavedPrompt(generationPrompt);
-                            localStorage.setItem(
-                              'savedPrompt',
-                              generationPrompt
-                            );
-                          }
-                          setShowSignInModal(true);
-                          return;
-                        }
-                        onGenerateCode();
-                      }}
-                      disabled={isGenerateDisabled}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                        isGenerateDisabled
-                          ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                          : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
-                      }`}
-                    >
-                      {isStreaming ? (
-                        <LoadingDots />
-                      ) : (
-                        <ArrowUp className="w-5 h-5" />
-                      )}
-                    </button>
-                    <div
-                      className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                        isGenerateDisabled
-                          ? 'text-gray-500/60'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      Ctrl+Enter
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : selectedCategory === 'Import JSON' ? (
-            <div className="bg-[#252525] rounded-xl p-6 shadow-lg">
-              {/* Import JSON Section */}
-              <div>
-                <textarea
-                  ref={promptRef}
-                  placeholder="Paste in your JSON workflow..."
-                  value={generationPrompt}
-                  onChange={(e) => {
-                    setGenerationPrompt(e.target.value);
-                    if (selectedPreset !== -1) {
-                      setSelectedPreset(-1);
-                    }
-                    if (
-                      !e.target.value.trim() &&
-                      (savedPrompt || savedPresetIndex !== -1)
-                    ) {
-                      setSavedPrompt('');
-                      setSavedPresetIndex(-1);
-                      localStorage.removeItem('savedPrompt');
-                      localStorage.removeItem('savedPresetIndex');
-                    }
-                  }}
-                  onInput={(e) => autoResize(e.currentTarget)}
-                  className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
-                  onKeyDown={(e) => {
-                    // Only allow Ctrl+Enter for "Import JSON" category
-                    if (
-                      e.key === 'Enter' &&
-                      e.ctrlKey &&
-                      !isStreaming &&
-                      selectedCategory === 'Import JSON'
-                    ) {
-                      if (!isSignedIn) {
-                        if (generationPrompt.trim()) {
-                          setSavedPrompt(generationPrompt);
-                          localStorage.setItem('savedPrompt', generationPrompt);
-                        }
-                        setShowSignInModal(true);
-                        return;
-                      }
-                      // Prepend system prompt before generating
-                      const jsonContent = generationPrompt.trim();
-                      setGenerationPrompt(
-                        `Convert the following JSON file to a workflow:\n\n${jsonContent}`
-                      );
-                      setPendingJsonImport(true);
-                    }
-                  }}
-                />
-
-                {/* Generate Button - Inside the prompt container */}
-                <div className="flex justify-end mt-4">
-                  <div className="flex flex-col items-end">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!isSignedIn) {
-                          if (generationPrompt.trim()) {
-                            setSavedPrompt(generationPrompt);
-                            localStorage.setItem(
-                              'savedPrompt',
-                              generationPrompt
-                            );
-                          }
-                          setShowSignInModal(true);
-                          return;
-                        }
-                        // Prepend system prompt before generating
-                        const jsonContent = generationPrompt.trim();
-                        setGenerationPrompt(
-                          `Convert the following JSON file to a workflow:\n\n${jsonContent}`
-                        );
-                        setPendingJsonImport(true);
-                      }}
-                      disabled={isGenerateDisabled}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                        isGenerateDisabled
-                          ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                          : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
-                      }`}
-                    >
-                      {isStreaming ? (
-                        <LoadingDots />
-                      ) : (
-                        <ArrowUp className="w-5 h-5" />
-                      )}
-                    </button>
-                    <div
-                      className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                        isGenerateDisabled
-                          ? 'text-gray-500/60'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      Ctrl+Enter
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Template Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start">
+          {selectedCategory !== 'Import JSON' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start animate-fade-in-up delay-300">
               {filteredTemplates.map((preset) => {
                 // Find the original index in PRESET_PROMPTS to maintain correct mapping
                 const originalIndex = PRESET_PROMPTS.findIndex(
@@ -619,32 +563,38 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       setSelectedPreset(originalIndex);
                       setGenerationPrompt(preset.prompt);
                       setPendingGeneration(true);
+                      // Scroll to top to see prompt
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     disabled={isStreaming}
-                    className={`w-full h-full text-left p-4 rounded-lg border transition flex flex-col ${
+                    className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
                       isActive
-                        ? 'border-purple-600/60 bg-[#2b2b2b]'
-                        : 'border-[#3a3a3a] hover:border-[#4a4a4a] hover:bg-[#2a2a2a]'
+                        ? 'border-purple-500/30 bg-white/10 shadow-[0_0_20px_rgba(147,51,234,0.1)]'
+                        : 'border-white/5 bg-[#1a1a1a] hover:border-white/10 hover:bg-[#202020] hover:shadow-xl hover:-translate-y-0.5'
                     } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
-                    <div className="flex flex-col gap-2 flex-grow">
+                    <div className="flex flex-col gap-3 flex-grow relative z-10">
                       {logos.length > 0 && (
                         <div className="flex items-center gap-2 mb-1">
                           {logos.slice(0, 5).map((integration) => (
-                            <img
+                            <div
                               key={integration.name}
-                              src={integration.file}
-                              alt={`${integration.name} logo`}
-                              className="h-5 w-5 opacity-80"
-                              loading="lazy"
-                            />
+                              className="bg-white/5 p-1.5 rounded-md backdrop-blur-sm group-hover:bg-white/10 transition-colors duration-300"
+                            >
+                              <img
+                                src={integration.file}
+                                alt={`${integration.name} logo`}
+                                className="h-4 w-4 opacity-80 group-hover:opacity-100 transition-opacity"
+                                loading="lazy"
+                              />
+                            </div>
                           ))}
                         </div>
                       )}
-                      <div className="text-sm font-semibold text-white mb-2">
+                      <div className="text-base font-bold text-gray-200 mb-1 group-hover:text-white transition-colors">
                         {preset.name}
                       </div>
-                      <div className="text-sm font-medium text-gray-100 flex-grow">
+                      <div className="text-sm font-medium text-gray-500 flex-grow leading-relaxed group-hover:text-gray-400 transition-colors line-clamp-3">
                         {preset.prompt}
                       </div>
                     </div>
@@ -654,50 +604,68 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             </div>
           )}
 
-          {(selectedCategory === 'Prompt' ||
-            selectedCategory === 'Import JSON') &&
+          {(selectedCategory === null || selectedCategory === 'Import JSON') &&
             selectedPreset === -1 && (
-              <div className="mt-16 p-5 bg-[#0d1117] border border-[#30363d] rounded-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-semibold tracking-wide text-gray-400">
+              <div className="mt-16 p-8 bg-[#151921]/50 backdrop-blur-sm border border-white/5 rounded-2xl animate-fade-in-up delay-500">
+                <div className="flex items-center justify-between mb-8">
+                  <p className="text-xs font-bold tracking-[0.2em] text-gray-500 uppercase">
                     Current Supported Integrations
                   </p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
                   {INTEGRATIONS.map((integration) => (
-                    <div
+                    <button
                       key={integration.name}
-                      className="flex items-center gap-2 md:gap-3 p-1"
+                      type="button"
+                      onClick={() => {
+                        const textToAdd = `Use ${integration.name}`;
+                        const newPrompt = generationPrompt
+                          ? `${generationPrompt}\n${textToAdd}`
+                          : textToAdd;
+                        setGenerationPrompt(newPrompt);
+                        // Focus the textarea
+                        if (promptRef.current) {
+                          promptRef.current.focus();
+                          // Set cursor to end
+                          const len = newPrompt.length;
+                          promptRef.current.setSelectionRange(len, len);
+                        }
+                      }}
+                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/10 transition-all duration-300 w-full text-left group border border-transparent hover:border-white/5"
                     >
-                      <img
-                        src={integration.file}
-                        alt={`${integration.name} logo`}
-                        className="h-5 w-5 md:h-6 md:w-6"
-                        loading="lazy"
-                      />
-                      <p className="text-sm text-gray-200 truncate">
+                      <div className="bg-white/5 p-2 rounded-lg group-hover:bg-white/10 transition-colors duration-300">
+                        <img
+                          src={integration.file}
+                          alt={`${integration.name} logo`}
+                          className="h-6 w-6 group-hover:scale-110 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-400 truncate font-medium group-hover:text-white transition-colors">
                         {integration.name}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
-                <div className="mt-8">
-                  <p className="text-xs font-semibold tracking-wide text-gray-400 mb-3">
+                <div className="mt-12">
+                  <p className="text-xs font-bold tracking-[0.2em] text-gray-500 uppercase mb-6">
                     Current Supported AI Models
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
                     {AI_MODELS.map((model) => (
                       <div
                         key={model.name}
-                        className="flex items-center gap-2 md:gap-3 p-1"
+                        className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5"
                       >
-                        <img
-                          src={model.file}
-                          alt={`${model.name} logo`}
-                          className="h-5 w-5 md:h-6 md:w-6"
-                          loading="lazy"
-                        />
-                        <p className="text-sm text-gray-200 truncate">
+                        <div className="bg-white/5 p-2 rounded-lg">
+                          <img
+                            src={model.file}
+                            alt={`${model.name} logo`}
+                            className="h-6 w-6"
+                            loading="lazy"
+                          />
+                        </div>
+                        <p className="text-sm text-gray-400 truncate font-medium">
                           {model.name}
                         </p>
                       </div>

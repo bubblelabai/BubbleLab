@@ -1074,7 +1074,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   return (
     <div
       className="h-full overflow-hidden relative"
-      style={{ backgroundColor: '#1e1e1e' }}
+      style={{ backgroundColor: '#0a0a0a' }}
     >
       {onValidate && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
@@ -1082,7 +1082,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type="button"
             onClick={onValidate}
             disabled={isExecuting}
-            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-1"
+            className="bg-purple-900 hover:bg-purple-800 border border-purple-700 disabled:bg-gray-800 disabled:cursor-not-allowed disabled:border-gray-700 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-white disabled:text-gray-500 flex items-center gap-1 shadow-sm"
           >
             <RefreshCw className="w-3 h-3" />
             Sync with code
@@ -1145,7 +1145,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         zoomOnDoubleClick={false}
       >
         <Controls className="!bg-neutral-900 !border-neutral-600 [&_button]:!bg-neutral-800 [&_button]:!text-neutral-200 [&_button]:!border-neutral-600 [&_button:hover]:!bg-neutral-700" />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={12}
+          size={1}
+          color="#333"
+        />
       </ReactFlow>
     </div>
   );

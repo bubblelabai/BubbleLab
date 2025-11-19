@@ -247,17 +247,17 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 ${
+      className={`bg-neutral-800/90 rounded-xl border transition-all duration-300 shadow-xl ${
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isSubBubble
-          ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
-          : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
+          ? 'bg-gray-600 border-gray-500 scale-75 w-80' // Sub-bubbles are smaller and darker
+          : 'bg-gray-700 border-gray-600 w-96' // Main bubbles fixed width
       } ${
         isExecuting
-          ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`
+          ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background} shadow-blue-500/30`
           : hasError
-            ? `${BUBBLE_COLORS.ERROR.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.ERROR.background}`
+            ? `${BUBBLE_COLORS.ERROR.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.ERROR.background} shadow-red-500/10`
             : isCompleted
               ? `${BUBBLE_COLORS.COMPLETED.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.COMPLETED.background}`
               : isHighlighted
@@ -389,7 +389,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
       {/* Header */}
       <div
-        className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
+        className={`px-8 py-6 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
       >
         <div className="absolute top-4 right-4 flex items-center gap-2">
           {(hasError ||
@@ -525,7 +525,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
           {/* Content */}
           <div className="flex items-start gap-3 w-full">
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-neutral-100 truncate">
+              <h3 className="text-2xl font-bold text-neutral-100 truncate tracking-tight">
                 {bubble.variableName}
               </h3>
               {bubble.description && (
@@ -648,7 +648,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
       {/* Parameters (collapsible) */}
       {isExpanded && bubble.parameters.length > 0 && (
-        <div className="p-4 space-y-3 border-b border-neutral-600">
+        <div className="p-8 space-y-4 border-b border-neutral-600">
           {displayParams.map((param) => (
             <div key={param.name} className="space-y-1">
               <div className="flex items-center justify-between">

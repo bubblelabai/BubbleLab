@@ -8,6 +8,7 @@ import { useEditor } from '../hooks/useEditor';
 import { useUIStore } from '../stores/uiStore';
 import { useExecutionHistory } from '../hooks/useExecutionHistory';
 import { shallow } from 'zustand/shallow';
+import { PearlIcon } from './icons/PearlIcon';
 
 export function ConsolidatedSidePanel() {
   const flowId = useUIStore((state) => state.selectedFlowId);
@@ -35,7 +36,7 @@ export function ConsolidatedSidePanel() {
     {
       id: 'pearl' as const,
       label: 'Pearl',
-      icon: Bot,
+      icon: PearlIcon,
       badge: null,
     },
     {
@@ -61,7 +62,7 @@ export function ConsolidatedSidePanel() {
   return (
     <div className="h-full flex flex-col bg-[#1a1a1a] border-l border-[#30363d]">
       {/* Tab Bar */}
-      <div className="flex border-b border-[#30363d] bg-[#0f1115]">
+      <div className="flex items-center px-2 pt-2 border-b border-[#30363d] bg-[#1a1a1a]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -71,20 +72,24 @@ export function ConsolidatedSidePanel() {
               key={tab.id}
               type="button"
               onClick={() => setConsolidatedPanelTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
+              className={`relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium transition-all duration-200 rounded-t-lg border-t-2 group ${
                 isActive
-                  ? 'border-white text-white bg-[#1a1a1a]'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
+                  ? 'text-white bg-[#252525] border-purple-500 shadow-[inset_0_1px_0_0_rgba(168,85,247,0.1)]'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]/50 border-transparent'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon
+                className={`w-4 h-4 ${isActive ? 'text-purple-400' : 'text-gray-500 group-hover:text-gray-400'}`}
+              />
               <span>{tab.label}</span>
               {tab.badge !== null && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center ${
                     tab.badge === 'running'
-                      ? 'bg-gray-700 text-white animate-pulse'
-                      : 'bg-gray-700/50 text-gray-400'
+                      ? 'bg-purple-500/20 text-purple-300 animate-pulse border border-purple-500/30'
+                      : isActive
+                        ? 'bg-gray-700 text-gray-300'
+                        : 'bg-gray-800 text-gray-500'
                   }`}
                 >
                   {tab.badge === 'running' ? '●' : tab.badge}

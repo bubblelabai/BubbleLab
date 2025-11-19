@@ -152,12 +152,12 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
+      className={`bg-neutral-800/90 rounded-xl border overflow-hidden transition-all duration-300 w-96 shadow-xl ${
         isExecuting
-          ? 'border-blue-400 shadow-lg shadow-blue-500/30'
+          ? 'border-blue-400 shadow-blue-500/30'
           : hasMissingRequired
-            ? 'border-amber-500'
-            : 'border-neutral-600'
+            ? 'border-amber-500/50 shadow-amber-500/10'
+            : 'border-neutral-700 hover:border-neutral-600'
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -171,25 +171,24 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       />
 
       {/* Header */}
-      <div className="px-4 py-3">
+      <div className="px-6 py-5 border-b border-neutral-700/50">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/20">
               <FileInput className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-neutral-100">
+              <h3 className="text-lg font-bold text-neutral-100 tracking-tight">
                 Flow Inputs
               </h3>
             </div>
           </div>
-          {/* Removed Collapse/Expand toggle; section is always expanded */}
         </div>
 
         {/* Status indicator */}
         {hasMissingRequired && !isExecuting && (
-          <div className="mt-2">
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-300 border border-amber-600/40">
+          <div className="mt-3">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <span>⚠️</span>
               <span>
                 {missingRequiredFields.length} required field
@@ -201,7 +200,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       </div>
 
       {/* Input fields (always expanded) */}
-      <div className="p-4">
+      <div className="p-6">
         <InputFieldsRenderer
           schemaFields={schemaFields}
           inputValues={executionInputs}
@@ -211,15 +210,15 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       </div>
 
       {/* Execute button */}
-      <div className="p-4 border-t border-neutral-600">
+      <div className="px-6 pb-6 pt-2">
         <button
           type="button"
           onClick={handleExecuteFlow}
           disabled={!isFormValid || isExecuting}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg ${
             isFormValid && !isExecuting
-              ? 'bg-blue-600 hover:bg-blue-500 text-white'
-              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+              ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20 hover:shadow-blue-900/40 hover:-translate-y-0.5'
+              : 'bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700'
           }`}
         >
           {isExecuting ? (
@@ -229,7 +228,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
             </>
           ) : (
             <>
-              <Play className="w-4 h-4" />
+              <Play className="w-4 h-4 fill-current" />
               <span>Execute Flow</span>
             </>
           )}

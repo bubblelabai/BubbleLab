@@ -30,10 +30,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   return (
     <div
       className={`fixed inset-y-0 left-0 z-40 bg-[#0f1115] border-r border-[#30363d] transition-all duration-200 ${
-        isOpen ? 'w-56' : 'w-14'
+        isOpen ? 'w-56' : 'w-16'
       }`}
     >
-      <div className="h-full flex flex-col pt-2 items-stretch gap-2">
+      <div className="h-full flex flex-col pt-2 px-2 items-stretch gap-2">
         {/* Sidebar toggle (favicon) */}
         <button
           type="button"
@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           className="relative group flex items-center h-12 rounded-lg hover:bg-[#21262d] focus:outline-none"
           aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
         >
-          <span className="w-14 flex-none flex justify-center p-2">
+          <span className="w-12 flex-none flex justify-center items-center p-2">
             {isOpen ? (
               <img
                 src="/favicon.ico"
@@ -89,19 +89,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Home"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <Home className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                Home
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">Home</span>
+              )}
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -128,19 +122,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="My Flows"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <Workflow className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                My Flows
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">My Flows</span>
+              )}
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -167,19 +155,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Credentials"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <KeyRound className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                Credentials
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">
+                  Credentials
+                </span>
+              )}
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -209,19 +193,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Join Discord Community"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <MessageCircle className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                Discord
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">Discord</span>
+              )}
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -243,19 +221,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Read Documentation"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <BookOpen className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                Documentation
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">
+                  Documentation
+                </span>
+              )}
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -277,19 +251,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Watch Demos"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <Video className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                Demos
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">Demos</span>
+              )}
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -311,26 +279,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               aria-label="Star us on GitHub"
             >
               {/* Fixed icon column */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 <Github className="w-5 h-5" />
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                {githubStars !== undefined ? (
-                  <span className="text-yellow-400 flex items-center gap-1">
-                    <Star className="w-3 h-3" fill="currentColor" />
-                    {githubStars} Stars
-                  </span>
-                ) : (
-                  'Star us on GitHub'
-                )}
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">
+                  {githubStars !== undefined ? (
+                    <span className="text-yellow-400 flex items-center gap-1">
+                      <Star className="w-3 h-3" fill="currentColor" />
+                      {githubStars} Stars
+                    </span>
+                  ) : (
+                    'Star us on GitHub'
+                  )}
+                </span>
+              )}
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
@@ -345,8 +309,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <div className="mb-3">
           <SignedIn>
             <div className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors">
-              {/* Fixed icon column with Clerk UserButton or mock avatar */}
-              <span className="w-14 flex-none flex justify-center p-2">
+              <span className="w-12 flex-none flex justify-center items-center p-2">
                 {DISABLE_AUTH ? (
                   // Mock avatar when auth is disabled
                   <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-600/40 flex items-center justify-center">
@@ -366,15 +329,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                 )}
               </span>
               {/* Expanding label column */}
-              <span
-                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                  isOpen
-                    ? 'opacity-100 max-w-[160px] pr-3'
-                    : 'opacity-0 max-w-0'
-                }`}
-              >
-                {user?.emailAddresses?.[0]?.emailAddress || 'Profile'}
-              </span>
+              {isOpen && (
+                <span className="text-sm whitespace-nowrap pr-3">
+                  {user?.emailAddresses?.[0]?.emailAddress || 'Profile'}
+                </span>
+              )}
             </div>
           </SignedIn>
         </div>

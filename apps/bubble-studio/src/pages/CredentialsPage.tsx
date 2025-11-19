@@ -10,6 +10,7 @@ import {
   ArrowPathIcon,
   CogIcon,
   ChevronDownIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 import {
   CredentialType,
@@ -866,13 +867,13 @@ function CredentialCard({
   const logo = useMemo(() => resolveLogoByName(serviceName), [serviceName]);
 
   return (
-    <div className="bg-[#1a1a1a] rounded-lg border border-[#30363d] p-4 hover:border-[#444c56] transition-all duration-200">
-      <div className="flex items-start justify-between mb-3">
+    <div className="bg-[#1a1a1a] rounded-xl border border-[#30363d] p-6 hover:border-gray-500 transition-all duration-300 shadow-sm hover:shadow-xl group">
+      <div className="flex items-start justify-between mb-4">
         <div className="flex-1 min-w-0">
           {/* Icon and Basic Info Row */}
-          <div className="flex items-start gap-3 w-full">
+          <div className="flex items-start gap-4 w-full">
             {/* Left Icon/Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 bg-[#0d1117] p-2 rounded-lg border border-[#30363d]">
               {logo && !logoError ? (
                 <img
                   src={logo.file}
@@ -882,45 +883,46 @@ function CredentialCard({
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-blue-600">
-                  <CogIcon className="h-4 w-4 text-white" />
+                <div className="h-8 w-8 flex items-center justify-center">
+                  <CogIcon className="h-6 w-6 text-gray-400" />
                 </div>
               )}
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pt-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-gray-100 truncate">
+                <h3 className="text-lg font-bold text-white truncate group-hover:text-blue-400 transition-colors">
                   {credential.name}
                 </h3>
                 {isOAuthCredentialType && (
-                  <div className="flex items-center gap-1">
-                    <ArrowTopRightOnSquareIcon className="h-3 w-3 text-blue-400" />
-                    <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
-                      OAuth
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 text-xs font-medium rounded-full border border-blue-500/20">
+                    OAuth
+                  </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 font-medium">
                 {credentialConfig?.label || credential.credentialType}
               </p>
               {isOAuthCredentialType && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-xs text-green-400">Connected</span>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                  <span className="text-xs text-green-500 font-medium">
+                    Connected
+                  </span>
                 </div>
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 ml-3">
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           {isOAuthCredentialType && onRefreshOAuth && (
             <button
               onClick={() => onRefreshOAuth(credential)}
               disabled={isRefreshing}
-              className="text-gray-400 hover:text-blue-400 p-1.5 hover:bg-blue-900/20 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-gray-400 hover:text-blue-400 p-2 hover:bg-blue-500/10 rounded-lg transition-all duration-200 disabled:opacity-50"
               title="Refresh OAuth token"
             >
               {isRefreshing ? (
@@ -932,7 +934,7 @@ function CredentialCard({
           )}
           <button
             onClick={() => onEdit(credential)}
-            className="text-gray-400 hover:text-gray-300 p-1.5 hover:bg-[#30363d] rounded transition-all duration-200"
+            className="text-gray-400 hover:text-white p-2 hover:bg-[#30363d] rounded-lg transition-all duration-200"
             title="Edit credential"
           >
             <PencilIcon className="h-4 w-4" />
@@ -940,7 +942,7 @@ function CredentialCard({
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-gray-400 hover:text-red-400 p-1.5 hover:bg-red-900/20 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-gray-400 hover:text-red-400 p-2 hover:bg-red-500/10 rounded-lg transition-all duration-200 disabled:opacity-50"
             title="Delete credential"
           >
             <TrashIcon className="h-4 w-4" />
@@ -948,9 +950,14 @@ function CredentialCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
-        <span>
-          Created: {new Date(credential.createdAt).toLocaleDateString()}
+      <div className="flex items-center justify-between text-xs text-gray-500 pt-4 border-t border-[#30363d]/50 mt-2">
+        <span className="font-medium">
+          Added on{' '}
+          {new Date(credential.createdAt).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          })}
         </span>
       </div>
     </div>
@@ -1050,76 +1057,80 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0 font-mono">
-      {/* Header */}
-      <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-100 font-sans">
-              Credentials
-            </h1>
-            <p className="text-sm text-gray-400 mt-1 font-sans">
-              Manage your API keys and authentication credentials
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add Credential
-          </button>
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mx-6 mt-4">
-          <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-            <p className="text-sm text-red-200">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6 bg-[#1a1a1a]">
-        {credentials.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-[#30363d] rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl text-gray-400">🔑</span>
+    <div className="h-full bg-[#0a0a0a] overflow-auto font-mono">
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-4xl font-bold text-white tracking-tight font-sans">
+                Credentials
+              </h1>
+              <p className="text-gray-400 mt-2 text-lg font-sans">
+                Manage your API keys and authentication credentials
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-100 mb-2">
-              No credentials yet
-            </h3>
-            <p className="text-sm text-gray-400 mb-6">
-              Add your first credential to get started with secure API access
-            </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="px-5 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
             >
-              <PlusIcon className="h-4 w-4" />
-              Add Credential
+              <PlusIcon className="h-5 w-5" />
+              <span className="font-bold font-sans">Add Credential</span>
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {credentials.map((credential) => (
-              <CredentialCard
-                key={credential.id}
-                credential={credential}
-                onEdit={handleEditCredential}
-                onDelete={handleDeleteCredential}
-                isDeleting={deleteCredentialMutation.isPending}
-                onRefreshOAuth={handleRefreshOAuth}
-                isRefreshing={
-                  refreshOAuthMutation.isPending &&
-                  refreshOAuthMutation.variables?.id === credential.id
-                }
-              />
-            ))}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-8">
+            <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <p className="text-sm text-red-200 font-sans">{error}</p>
+            </div>
           </div>
         )}
+
+        {/* Content */}
+        <div className="pb-12">
+          {credentials.length === 0 ? (
+            <div className="text-center py-16 border border-[#30363d] border-dashed rounded-2xl bg-[#1a1a1a]/30">
+              <div className="bg-[#1a1a1a] p-4 rounded-full inline-flex mb-4 border border-[#30363d]">
+                <KeyIcon className="h-8 w-8 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-medium text-white mb-2">
+                No credentials yet
+              </h3>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                Add your first credential to authenticate with external
+                services.
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-3 bg-white text-black hover:bg-gray-200 font-medium rounded-full transition-all duration-200 shadow-lg hover:scale-105 flex items-center gap-2 mx-auto"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <span className="font-sans font-bold">Add Credential</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {credentials.map((credential) => (
+                <CredentialCard
+                  key={credential.id}
+                  credential={credential}
+                  onEdit={handleEditCredential}
+                  onDelete={handleDeleteCredential}
+                  isDeleting={deleteCredentialMutation.isPending}
+                  onRefreshOAuth={handleRefreshOAuth}
+                  isRefreshing={
+                    refreshOAuthMutation.isPending &&
+                    refreshOAuthMutation.variables?.id === credential.id
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modals */}

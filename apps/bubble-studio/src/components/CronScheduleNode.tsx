@@ -347,16 +347,16 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
+      className={`bg-neutral-800/90 rounded-xl border overflow-hidden transition-all duration-300 w-96 shadow-xl ${
         isExecuting
-          ? 'border-purple-400 shadow-lg shadow-purple-500/30'
+          ? 'border-purple-400 shadow-purple-500/30'
           : !isActive
             ? 'border-neutral-700 opacity-75'
             : hasMissingRequired
-              ? 'border-amber-500'
+              ? 'border-amber-500/50 shadow-amber-500/10'
               : validation.valid
-                ? 'border-neutral-600'
-                : 'border-red-500'
+                ? 'border-neutral-600 hover:border-neutral-500'
+                : 'border-red-500/50 shadow-red-500/10'
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -370,7 +370,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       />
 
       {/* Header */}
-      <div className="p-4 border-b border-neutral-600">
+      <div className="px-6 py-5 border-b border-neutral-600">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div
@@ -379,7 +379,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               <Clock className="h-4 w-4 text-white" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold text-neutral-100">
+              <h3 className="text-lg font-bold text-neutral-100 tracking-tight">
                 Cron Schedule
               </h3>
               <p className="text-xs text-neutral-400 truncate" title={flowName}>
@@ -458,7 +458,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
       {/* Schedule editor */}
       {isExpanded && (
-        <div className="p-4 space-y-4">
+        <div className="p-6 space-y-4">
           {/* Frequency selector */}
           <div>
             <label className="block text-xs font-medium text-neutral-300 mb-2">
@@ -766,7 +766,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
       {/* Input fields section */}
       {isExpanded && schemaFields.length > 0 && (
-        <div className="p-4 border-t border-neutral-600">
+        <div className="p-6 border-t border-neutral-600">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-medium text-neutral-300">
               Default Input Values
@@ -795,7 +795,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       )}
 
       {/* Execute button */}
-      <div className="p-4 border-t border-neutral-600">
+      <div className="p-6 pt-2">
         <button
           type="button"
           onClick={handleExecuteFlow}

@@ -302,31 +302,17 @@ function InputFieldsRenderer({
           field.default === undefined;
 
         return (
-          <div
-            key={field.name}
-            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
-          >
-            <label className="block text-xs font-semibold text-neutral-200 mb-1">
-              {field.name}
+          <div key={field.name} className="pb-4 last:pb-0">
+            <label className="block text-xs font-medium text-neutral-300 mb-1.5 ml-0.5">
+              {field.name.charAt(0).toUpperCase() + field.name.slice(1)}
               {field.required && (
-                <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
-                  REQUIRED
-                </span>
-              )}
-              {field.type && (
-                <span className="ml-2 text-[10px] font-normal text-neutral-400">
-                  {field.type === 'string'
-                    ? '• text'
-                    : field.type === 'array'
-                      ? '• list'
-                      : field.type === 'object'
-                        ? '• object'
-                        : `• ${field.type}`}
+                <span className="text-red-400 ml-0.5" title="Required">
+                  *
                 </span>
               )}
             </label>
             {field.description && (
-              <div className="text-[10px] text-neutral-400 mb-1.5">
+              <div className="text-[10px] text-neutral-500 mb-2 ml-0.5">
                 {field.description}
               </div>
             )}
@@ -528,28 +514,16 @@ function InputFieldsRenderer({
                           propSchema.type === 'object' && propSchema.properties;
 
                         return (
-                          <div
-                            key={propName}
-                            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
-                          >
-                            <label className="block text-xs font-semibold text-neutral-300 mb-1">
-                              {propName}
+                          <div key={propName} className="pb-3 last:pb-0">
+                            <label className="block text-xs font-medium text-neutral-300 mb-1.5 ml-0.5">
+                              {propName.charAt(0).toUpperCase() +
+                                propName.slice(1)}
                               {propRequired && (
-                                <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
-                                  REQUIRED
-                                </span>
-                              )}
-                              {propSchema.type && (
-                                <span className="ml-2 text-[10px] font-normal text-neutral-500">
-                                  {propSchema.type === 'string'
-                                    ? '• text'
-                                    : propSchema.type === 'array'
-                                      ? '• list'
-                                      : propSchema.type === 'number'
-                                        ? '• number'
-                                        : propSchema.type === 'object'
-                                          ? '• object'
-                                          : `• ${propSchema.type}`}
+                                <span
+                                  className="text-red-400 ml-0.5"
+                                  title="Required"
+                                >
+                                  *
                                 </span>
                               )}
                             </label>
@@ -610,27 +584,19 @@ function InputFieldsRenderer({
                                       return (
                                         <div
                                           key={nestedPropName}
-                                          className="pb-2 border-b border-neutral-600/30 last:border-b-0 last:pb-0"
+                                          className="pb-3 last:pb-0"
                                         >
-                                          <label className="block text-[11px] font-semibold text-neutral-400 mb-1">
-                                            {nestedPropName}
+                                          <label className="block text-[11px] font-medium text-neutral-400 mb-1 ml-0.5">
+                                            {nestedPropName
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                              nestedPropName.slice(1)}
                                             {nestedPropRequired && (
-                                              <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
-                                                REQUIRED
-                                              </span>
-                                            )}
-                                            {nestedPropSchema.type && (
-                                              <span className="ml-2 text-[9px] font-normal text-neutral-600">
-                                                {nestedPropSchema.type ===
-                                                'string'
-                                                  ? '• text'
-                                                  : nestedPropSchema.type ===
-                                                      'array'
-                                                    ? '• list'
-                                                    : nestedPropSchema.type ===
-                                                        'number'
-                                                      ? '• number'
-                                                      : `• ${nestedPropSchema.type}`}
+                                              <span
+                                                className="text-red-400 ml-0.5"
+                                                title="Required"
+                                              >
+                                                *
                                               </span>
                                             )}
                                           </label>
@@ -958,7 +924,7 @@ function InputFieldsRenderer({
                 </button>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1 group relative">
                 <div className="relative">
                   <AutoResizeTextarea
                     value={
@@ -984,41 +950,43 @@ function InputFieldsRenderer({
                         ? !!uploadedFileNames[field.name]
                         : false)
                     }
-                    className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                    className={`w-full px-3 py-2 text-xs bg-neutral-900/50 border ${
                       isMissing
-                        ? 'border-amber-500 focus:border-amber-400'
-                        : 'border-neutral-600 focus:border-blue-500'
-                    } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                        ? 'border-amber-500/50 focus:border-amber-500'
+                        : 'border-neutral-700 focus:border-blue-500/80'
+                    } rounded-lg text-neutral-200 placeholder-neutral-600 focus:outline-none focus:ring-2 ${
                       isMissing
-                        ? 'focus:ring-amber-500/50'
-                        : 'focus:ring-blue-500/50'
+                        ? 'focus:ring-amber-500/20'
+                        : 'focus:ring-blue-500/20'
                     } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
                       (field.type === undefined || field.type === 'string') &&
                       uploadedFileNames[field.name]
                         ? 'pr-14'
                         : field.type === undefined || field.type === 'string'
-                          ? 'pr-7'
+                          ? 'pr-8'
                           : ''
                     }`}
                   />
                   {(field.type === undefined || field.type === 'string') && (
-                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <div
+                      className={`absolute right-2 top-2 flex items-center gap-1 transition-opacity duration-200 ${uploadedFileNames[field.name] ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}
+                    >
                       {uploadedFileNames[field.name] ? (
                         <>
                           <button
                             type="button"
                             onClick={() => handleDeleteFile(field.name)}
                             disabled={isExecuting}
-                            className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-1 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             aria-label={`Delete uploaded file for ${field.name}`}
                           >
                             <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
                           </button>
-                          <Paperclip className="w-3 h-3 text-neutral-300" />
+                          <Paperclip className="w-3 h-3 text-blue-400" />
                         </>
                       ) : (
                         <label
-                          className="cursor-pointer group"
+                          className="cursor-pointer p-1 hover:bg-neutral-800 rounded transition-colors"
                           title="Upload file (txt, csv, html, png, jpg)"
                         >
                           <input
@@ -1038,7 +1006,7 @@ function InputFieldsRenderer({
                             className={`w-3.5 h-3.5 transition-all ${
                               isExecuting
                                 ? 'text-neutral-600 cursor-not-allowed'
-                                : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
+                                : 'text-neutral-500 hover:text-blue-400'
                             }`}
                           />
                         </label>
