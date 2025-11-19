@@ -423,7 +423,10 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
-        properties: { image: { type: 'string' }, mimeType: { type: 'string' } },
+        properties: {
+          image: { type: 'string', description: 'base64 encoded image' },
+          mimeType: { type: 'string', description: 'mime type of the image' },
+        },
         required: ['image', 'mimeType'],
       });
       const payloadMock = MockDataGenerator.generateMockFromJsonSchema(
@@ -443,7 +446,13 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
-        properties: { spreadsheetId: { type: 'string' } },
+        properties: {
+          spreadsheetId: {
+            type: 'string',
+            description:
+              'The spreadsheet ID is the ID of the Google Sheet that contains the list of contacts You can find the spreadsheet ID in the URL of the Google Sheet (after /d/ in the URL)',
+          },
+        },
         required: ['spreadsheetId'],
       });
       const payloadMock = MockDataGenerator.generateMockFromJsonSchema(
