@@ -12,7 +12,7 @@ build: ## Build all containers
 	docker compose build
 
 build-studio: ## Build only bubble-studio service (faster for frontend changes)
-	docker compose build bubble-studio
+	docker compose build nginx
 
 up: ## Start all services in production mode
 	docker compose up -d
@@ -40,8 +40,8 @@ reload-env: ## Reload environment variables from .env (down + up)
 	docker compose up -d
 
 rebuild-studio: ## Rebuild and restart bubble-studio (for build-time env var changes)
-	docker compose build bubble-studio
-	docker compose up -d bubble-studio
+	docker compose build nginx
+	docker compose up -d nginx
 
 status: ## Show status of all services
 	docker compose ps

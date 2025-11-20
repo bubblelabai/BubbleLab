@@ -58,20 +58,17 @@ function detectAppType(token: string): AppType | null {
     const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
     const issuer = decoded?.iss || '';
 
-    console.log('Detected issuer:', issuer);
-
     // Use centralized issuer detection
     const appType = detectAppTypeFromIssuer(issuer);
-    console.log('Detected app type:', appType);
-
+    console.debug('Detected issuer:', issuer);
+    console.debug('Detected app type:', appType);
     if (appType == null) {
       throw new Error('Unauthorized app');
     }
-
     return appType;
   } catch (err) {
-    console.log(
-      'Failed to decode token for app detection, defaulting to nodex'
+    console.error(
+      'Failed to decode token for app detection, either disable authentication or configure the appropriate issuer IDs CLERK_ISSUER_BUBBLELAB_DEV for development and CLERK_ISSUER_BUBBLELAB_PROD for production'
     );
     return null;
   }
@@ -116,8 +113,9 @@ export async function authMiddleware(c: Context, next: Next) {
     // Detect app type from token issuer
     const appType = detectAppType(token);
     if (appType == null) {
-      console.log('Unauthorized app!!!!');
-      throw new Error('Unauthorized app');
+      throw new Error(
+        'Unauthorized app, please configure the appropriate issuer IDs CLERK_ISSUER_BUBBLELAB_DEV for development and CLERK_ISSUER_BUBBLELAB_PROD for production'
+      );
     }
     const secretKey = getSecretKeyForApp(appType);
 
@@ -237,8 +235,9 @@ export async function authMiddleware(c: Context, next: Next) {
       }
     );
   } catch (err) {
-    console.error('Auth error', err);
-    return c.json({ error: 'Invalid or expired token' }, 401);
+    const error = err as Error;
+    console.error('Auth error', error);
+    return c.json({ error: 'Invalid or expired token, ' + error.message }, 401);
   }
 }
 
