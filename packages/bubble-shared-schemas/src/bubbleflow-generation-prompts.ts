@@ -237,7 +237,7 @@ GOOD EXAMPLE:
 \`\`\`typescript
 // Searches for academic papers related to the topic variable and summarizes each one's key findings.
 // The search behavior is controlled by the task prompt - modify it to focus on specific aspects,
-// add date ranges, or filter by publication type. Currently using gemini-3-pro for thorough
+// add date ranges, or filter by publication type. Currently using gemini-3-pro-preview for thorough
 // multi-step research; switch to gemini-2.5-flash if you need faster results with less depth.
 // Returns an array of papers (each with title, url, authors, publicationDate, summary, and
 // relevance explanation) plus an overallSummary that synthesizes all findings for downstream use.
