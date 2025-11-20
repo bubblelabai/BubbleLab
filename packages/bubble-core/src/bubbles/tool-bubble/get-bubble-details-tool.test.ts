@@ -59,6 +59,7 @@ describe('GetBubbleDetailsTool', () => {
       const tool = new GetBubbleDetailsTool({ bubbleName: 'ai-agent' });
       const result = await tool.action();
       const usageExample = result.data?.usageExample;
+      console.log(usageExample);
       expect(usageExample).toBeDefined();
       expect(usageExample).toContain('// Example usage');
       expect(usageExample).toContain('const');

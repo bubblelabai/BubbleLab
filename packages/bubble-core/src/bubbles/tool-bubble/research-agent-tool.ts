@@ -6,6 +6,7 @@ import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
+import { RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 
 // Schema for the expected JSON result structure - accepts either a Zod schema or a JSON schema string
 const ExpectedResultSchema = z.union([
@@ -25,11 +26,11 @@ const ResearchAgentToolParamsSchema = z.object({
     'Zod schema or JSON schema string that defines the expected structure of the research result. Example: z.object({ trends: z.array(z.string()).describe("An array of trends"), summary: z.string().describe("A summary of the trends") }) or JSON.stringify({ type: "object", properties: { trends: { type: "array", items: { type: "string" } }, summary: { type: "string" } } })'
   ),
   model: AvailableModels.describe(
-    'Model to use for the research agent (default: google/gemini-2.5-pro)'
+    `Model to use for the research agent (default: ${RECOMMENDED_MODELS.BEST})`
   )
-    .default('google/gemini-2.5-pro')
+    .default(RECOMMENDED_MODELS.BEST)
     .describe(
-      'Model to use for the research agent (default: google/gemini-2.5-pro)'
+      `Model to use for the research agent (default: ${RECOMMENDED_MODELS.BEST})`
     ),
   maxTokens: z
     .number()
