@@ -1008,10 +1008,6 @@ export class FollowUpBossBubble<
 
   public async testCredential(): Promise<boolean> {
     const credential = this.chooseCredential();
-    if (!credential) {
-      throw new Error('Follow Up Boss credentials are required');
-    }
-
     try {
       const response = await fetch('https://api.followupboss.com/v1/me', {
         headers: {
