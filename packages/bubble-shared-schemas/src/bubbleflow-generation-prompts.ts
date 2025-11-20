@@ -8,6 +8,19 @@
  * These instructions ensure consistent, correct code generation
  */
 import { SYSTEM_CREDENTIALS } from './credential-schema.js';
+import { AvailableModel } from './ai-models.js';
+
+// Model constants for AI agent instructions
+export const RECOMMENDED_MODELS = {
+  BEST: 'google/gemini-3-pro-preview',
+  PRO: 'google/gemini-2.5-pro',
+  PRO_ALT: 'anthropic/claude-sonnet-4-5',
+  FAST: 'google/gemini-2.5-flash',
+  FAST_ALT: 'anthropic/claude-haiku-4-5',
+  LITE: 'google/gemini-2.5-flash-lite',
+  IMAGE: 'google/gemini-2.5-flash-image-preview',
+} as Record<string, AvailableModel>;
+
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
 2. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
@@ -203,11 +216,49 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 
-For each bubble instantiation in the workflow, leave a clear, insightful comment that explains:
-1. The bubble's purpose and role in the overall workflow, do not put the step number. IMPORTANT: Put it directly above instantiation code of the each bubble ie new SlackNotifier({...})! Not before running of the bubble.
-2. A user friendly summary so a user can understand the bubble's input / param / configs output and how it fits into the workflow's logic flow.
+BUBBLE COMMENT REQUIREMENTS:
+Place a descriptive comment directly above each bubble instantiation (the \`new BubbleName({...})\` line).
 
-The comment should be placed directly above the bubble instantiation and help users understand what to modify if they need to customize the workflow.
+CRITICAL: NEVER include step numbers (1., 2., Step 1, etc.) in comments.
+
+Write comments as flowing narrative sentences that naturally reveal parameters and their purpose. Describe what the bubble does, weave in how its configuration controls behavior, and when relevant, mention how its output connects to downstream bubbles.
+
+The comment should read like documentation that helps users understand both what happens and what they can change to customize behavior.
+
+GOOD EXAMPLE:
+\`\`\`typescript
+// Searches for academic papers related to the topic variable and summarizes each one's key findings.
+// The search behavior is controlled by the task prompt - modify it to focus on specific aspects,
+// add date ranges, or filter by publication type. Currently using gemini-3-pro for thorough
+// multi-step research; switch to gemini-2.5-flash if you need faster results with less depth.
+// Returns an array of papers (each with title, url, authors, publicationDate, summary, and
+// relevance explanation) plus an overallSummary that synthesizes all findings for downstream use.
+const researchTool = new ResearchAgentTool({
+  task: \`Find research papers about \${topic}...\`,
+  model: 'google/gemini-3-pro-preview',
+  expectedResultSchema: z.object({...})
+});
+
+// Takes the papers array and overallSummary from the research results and formats them into
+// a structured report. The template parameter controls the output format - currently set for
+// markdown but can be changed to HTML or plain text. Uses the relevance field from each paper
+// to prioritize which findings appear first in the final document.
+const reportGenerator = new AIAgentBubble({...});
+\`\`\`
+
+BAD EXAMPLE:
+\`\`\`typescript
+// 1. Research Agent Tool
+// Performs deep research on the specified topic, finding relevant papers and summarizing them.
+// Using google/gemini-3-pro-preview for best research capabilities.
+const researchTool = new ResearchAgentTool({...});
+\`\`\`
+❌ Has step number
+❌ Generic description ("performs deep research") - doesn't explain what parameters control
+❌ No mention of output structure or how to customize
+❌ Doesn't connect to how downstream bubbles use the results
+
+Comments should enable users to modify behavior without reading external documentation.
 `;
 
 export const DEBUGGING_INSTRUCTIONS = `
@@ -242,223 +293,54 @@ export const DEBUGGING_INSTRUCTIONS = `
 export const AI_AGENT_BEHAVIOR_INSTRUCTIONS = `AI AGENT & MODEL SELECTION GUIDE:
 
 ═══════════════════════════════════════════════════════════════════
-PART 1: WHEN TO USE RESEARCH-AGENT-TOOL
+WHEN TO USE RESEARCH-AGENT-TOOL
 ═══════════════════════════════════════════════════════════════════
 
-ALWAYS use research-agent-tool when:
-✓ The task is COMPLEX, AMBIGUOUS, or NOT WELL-DEFINED
-✓ You need to DISCOVER and SYNTHESIZE information from MULTIPLE unknown sources
-✓ The task requires STRATEGIC RESEARCH and INTELLIGENT DECISION-MAKING about what/where to scrape
-✓ You need to EXPLORE and COMPARE multiple websites or data sources
-✓ The user asks for market research, competitive analysis, or trend analysis
-✓ You need to FIND and AGGREGATE specific data points from various unclear sources
-✓ The scraping targets are NOT explicitly specified and need to be discovered
-
-Examples of tasks that REQUIRE research-agent-tool:
-- "Find the top 10 competitors for [company] and compare their pricing" (need to discover who competitors are + where their pricing is)
-- "Research current trends in [industry] and provide a summary" (need to discover sources and synthesize)
-- "Get user reviews and ratings for [product] across multiple sites" (need to find which sites have reviews)
-- "Research best practices for [technology] from developer blogs" (need to discover relevant blogs)
-- "Find companies in the AI space that raised funding this month" (ambiguous - need to discover sources)
+USE research-agent-tool when:
+- Task is ambiguous or requires discovering unknown sources
+- Need to explore, compare, or synthesize from multiple websites
+- Market research, competitive analysis, or trend analysis
+- Scraping targets need to be discovered (not explicitly provided)
 
 DO NOT use research-agent-tool when:
-✗ The scraping target is SPECIFIC and WELL-DEFINED (e.g., "scrape YC companies list", "scrape Hacker News front page")
-✗ The task is a SIMPLE, DIRECT scrape of a known URL or website
-✗ The task only requires deterministic logic or data transformation
-✗ All necessary information (URLs, targets) is already provided in the input/context
-✗ The task is about code generation, formatting, or internal operations
-✗ Simple database queries or API calls can solve the problem
-✗ The task can be broken down into deterministic steps that can be executed in a loop or batch
-
-Examples of tasks that should use DIRECT scraping tools (scrape-tool, scrape-site-tool):
-- "Scrape the YC companies list from ycombinator.com/companies"
-- "Get the front page of Hacker News"
-- "Scrape product details from [specific-product-url]"
-- "Extract all links from [specific-page]"
-- "Crawl documentation site starting from [url]"
+- Target URL/website is specific and well-defined
+- Task is deterministic (data transformation, formatting, known API calls)
+- Simple scraping of known pages (use scrape-tool, scrape-site-tool instead)
 
 ═══════════════════════════════════════════════════════════════════
-PART 2: MODEL SELECTION BY TASK TYPE
+MODEL SELECTION
 ═══════════════════════════════════════════════════════════════════
 
-Use the following decision tree to select the appropriate model:
+TIER 1 - BEST (${RECOMMENDED_MODELS.BEST}):
+Use for: Complex reasoning, tool-calling agents, research-agent-tool, code generation,
+high-iteration tasks (50+), critical accuracy requirements
 
-┌─────────────────────────────────────────────────────────────────┐
-│ TIER 1: PRO-LEVEL MODELS (Most Powerful, Higher Cost)          │
-│ Models: google/gemini-2.5-pro, anthropic/claude-sonnet-4-5     │
-└─────────────────────────────────────────────────────────────────┘
+TIER 2 - PRO (${RECOMMENDED_MODELS.PRO}, ${RECOMMENDED_MODELS.PRO_ALT}):
+Use for: Multi-step reasoning, strategic planning, complex data analysis
 
-ALWAYS use Pro-tier models for:
-✓ Complex multi-step reasoning and strategic planning
-✓ Research tasks requiring intelligent web search and synthesis
-✓ ANY AI agent that calls tools (tool-calling agents)
-✓ Code generation and BubbleFlow creation
-✓ Tasks with high iteration counts (50-100+ iterations)
-✓ Complex data analysis requiring advanced reasoning
-✓ Tasks where accuracy and quality are critical
+TIER 3 - FAST (${RECOMMENDED_MODELS.FAST}, ${RECOMMENDED_MODELS.FAST_ALT}):
+Use for: Summarization, creative writing, document processing, general AI agents,
+data formatting, moderate iterations (10-30), image understanding
 
-Specific use cases:
-- research-agent-tool: ALWAYS use google/gemini-2.5-pro (default)
-- BubbleFlow code generation: Use google/gemini-2.5-pro
-- Complex data analysis with multiple tool calls: Use google/gemini-2.5-pro
-- Strategic planning and multi-step workflows: Use google/gemini-2.5-pro
+TIER 4 - LITE (${RECOMMENDED_MODELS.LITE}):
+Use for: Simple text generation, quick formatting, high-volume low-complexity tasks
 
-┌─────────────────────────────────────────────────────────────────┐
-│ TIER 2: FAST MODELS (Balanced Performance, Moderate Cost)      │
-│ Models: google/gemini-2.5-flash, anthropic/claude-haiku-4-5    │
-└─────────────────────────────────────────────────────────────────┘
-
-Use Flash-tier models for:
-✓ Summarization tasks (condensing long text)
-✓ Creative writing (generating content, emails, articles)
-✓ Synthesizing information (combining multiple sources)
-✓ Formatting and restructuring data
-✓ Document processing (OCR, text extraction, basic analysis)
-✓ Iterative data queries with moderate complexity (10-30 iterations)
-✓ General-purpose AI agents with simple tool usage
-✓ Text classification and sentiment analysis
-- Image understanding
-
-Specific use cases:
-- Content summarization: Use google/gemini-2.5-flash
-- Email/message generation: Use google/gemini-2.5-flash
-- Data formatting and transformation: Use google/gemini-2.5-flash
-- PDF/document analysis: Use google/gemini-2.5-flash
-- Slack data assistant: Use google/gemini-2.5-flash
-- General AI agent without complex reasoning: Use google/gemini-2.5-flash
-
-┌─────────────────────────────────────────────────────────────────┐
-│ TIER 3: LITE MODELS (Fastest, Lowest Cost)                     │
-│ Models: google/gemini-2.5-flash-lite                           │
-└─────────────────────────────────────────────────────────────────┘
-
-Use Lite-tier models for:
-✓ Very simple text generation
-✓ Quick summarization of small content (< 1000 words)
-✓ Simple formatting and cleanup
-✓ High-volume, low-complexity tasks
-✓ Single-shot queries without tools
-
-Specific use cases:
-- Web scrape content summarization (large pages > 5MB)
-- Simple text cleanup and formatting
-- Quick responses with no tool usage
-
-┌─────────────────────────────────────────────────────────────────┐
-│ TIER 4: SPECIALIZED MODELS                                     │
-└─────────────────────────────────────────────────────────────────┘
-
-google/gemini-2.5-flash-image-preview:
-✓ Image generation tasks
-✓ Multimodal AI requiring image output
-✓ Visual content creation
-
-openai/gpt-5, openai/gpt-5-mini:
-✓ When user explicitly requests OpenAI models
-✓ Tasks requiring GPT-5 specific capabilities
-
-openrouter models:
-✓ Experimental or specialized use cases
-✓ When user requests specific OpenRouter models
+SPECIALIZED:
+- ${RECOMMENDED_MODELS.IMAGE}: Image generation
+- openai/gpt-5, openai/gpt-5-mini: When user explicitly requests OpenAI
+- openrouter models: Experimental/specialized use cases
 
 ═══════════════════════════════════════════════════════════════════
-PART 3: USER PREFERENCE OVERRIDE
+DECISION FLOWCHART
 ═══════════════════════════════════════════════════════════════════
 
-CRITICAL RULE: If the user explicitly specifies a model, ALWAYS respect their choice.
+1. User specified model? → Use their choice
+2. Web research needed? → research-agent-tool + ${RECOMMENDED_MODELS.BEST}
+3. AI agent with tools? → ${RECOMMENDED_MODELS.BEST}
+4. Complex reasoning/code gen? → ${RECOMMENDED_MODELS.BEST}
+5. Summary/creative/docs? → ${RECOMMENDED_MODELS.FAST}
+6. Simple text? → ${RECOMMENDED_MODELS.LITE}
+7. Default → ${RECOMMENDED_MODELS.FAST}
 
-User preference ALWAYS overrides the recommendations above.
-
-Examples:
-- User says: "Use GPT-5 for this task" → Use openai/gpt-5
-- User says: "I want Claude Sonnet" → Use anthropic/claude-sonnet-4-5
-- User says: "Use the fastest model" → Use google/gemini-2.5-flash-lite
-- User specifies model in parameters → Use that exact model
-
-═══════════════════════════════════════════════════════════════════
-PART 4: DECISION FLOWCHART
-═══════════════════════════════════════════════════════════════════
-
-START: Analyze the task
-    ↓
-    ├─→ User specified a model? ──YES──→ Use user's model ──→ END
-    │
-    NO
-    ↓
-    ├─→ Requires web research? ──YES──→ Use research-agent-tool ──→ Use google/gemini-2.5-pro ──→ END
-    │
-    NO
-    ↓
-    ├─→ AI agent with tool calls? ──YES──→ Use google/gemini-2.5-pro ──→ END
-    │
-    NO
-    ↓
-    ├─→ Complex reasoning? ──YES──→ Use google/gemini-2.5-pro ──→ END
-    │
-    NO
-    ↓
-    ├─→ Code generation? ──YES──→ Use google/gemini-2.5-pro ──→ END
-    │
-    NO
-    ↓
-    ├─→ Summary/synthesis/creative? ──YES──→ Use google/gemini-2.5-flash ──→ END
-    │
-    NO
-    ↓
-    ├─→ Simple text task? ──YES──→ Use google/gemini-2.5-flash-lite ──→ END
-    │
-    NO
-    ↓
-    └─→ Default: Use google/gemini-2.5-flash ──→ END
-
-═══════════════════════════════════════════════════════════════════
-PART 5: PRACTICAL EXAMPLES
-═══════════════════════════════════════════════════════════════════
-
-Task: "Find current pricing for all SaaS competitors and create a comparison table"
-→ Decision: Requires web research + structured synthesis
-→ Tool: research-agent-tool
-→ Model: google/gemini-2.5-pro (research-agent default)
-
-Task: "Summarize this 50-page PDF document"
-→ Decision: Document processing + summarization
-→ Tool: pdf-ocr bubble + AI agent
-→ Model: google/gemini-2.5-flash
-
-Task: "Write a creative marketing email for our new product"
-→ Decision: Creative writing, no web research needed
-→ Tool: AI agent (no tools)
-→ Model: google/gemini-2.5-flash
-
-Task: "Generate a BubbleFlow for Slack notification system"
-→ Decision: Code generation requiring precision
-→ Tool: BubbleFlow generator
-→ Model: google/gemini-2.5-pro
-
-Task: "Format this JSON data into a readable table"
-→ Decision: Simple formatting task
-→ Tool: AI agent or direct formatting
-→ Model: google/gemini-2.5-flash-lite
-
-Task: "Analyze our database and find trends, query multiple times if needed"
-→ Decision: Iterative analysis with SQL tool calls (20-30 iterations)
-→ Tool: AI agent with sql-query-tool
-→ Model: google/gemini-2.5-flash
-
-Task: "Research and synthesize academic papers on [topic], then write a detailed report"
-→ Decision: Complex research + synthesis requiring strategic thinking
-→ Tool: research-agent-tool
-→ Model: google/gemini-2.5-pro
-
-═══════════════════════════════════════════════════════════════════
-PART 6: COST OPTIMIZATION TIPS
-═══════════════════════════════════════════════════════════════════
-
-1. Start with Flash, upgrade to Pro only if needed
-2. For research-agent-tool, Pro is required due to complexity
-3. For data analysis, Flash is usually sufficient even with many iterations
-4. Use Lite for high-volume, low-stakes tasks
-5. Document processing rarely needs Pro unless very complex reasoning required
-
-Remember: Model selection impacts both performance and cost. Choose wisely!
+CRITICAL: User preference ALWAYS overrides these recommendations.
 `;
