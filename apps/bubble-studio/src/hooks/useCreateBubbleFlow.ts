@@ -131,10 +131,6 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         (old) => {
           if (!old) return old;
 
-          console.log(
-            '[useCreateBubbleFlow] Updating flow list with real data:',
-            data
-          );
           // Replace the optimistic entry with the real data
           const updatedFlows = old.bubbleFlows.map((flow) => {
             // Find the optimistic entry using the tempId
