@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useBubbleFlow } from './useBubbleFlow';
 import { useBubbleFlowList } from './useBubbleFlowList';
 import { useCreateBubbleFlow } from './useCreateBubbleFlow';
-import type { CreateBubbleFlowRequest } from '@bubblelab/shared-schemas';
 
 interface UseDuplicateFlowOptions {
   flowId: number | null;

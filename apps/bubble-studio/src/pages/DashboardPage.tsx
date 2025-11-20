@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ArrowUp, Pencil, FileDown, Plus } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';

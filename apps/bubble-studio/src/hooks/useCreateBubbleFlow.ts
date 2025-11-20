@@ -15,6 +15,17 @@ interface CreateBubbleFlowWithOptimisticData extends CreateBubbleFlowRequest {
   }>;
 }
 
+// Extended type for optimistic flows with loading state
+export interface OptimisticBubbleFlowListItem extends BubbleFlowListItem {
+  _isLoading?: boolean;
+}
+
+// Extended response type that includes optimistic flows
+export interface OptimisticBubbleFlowListResponse
+  extends Omit<BubbleFlowListResponse, 'bubbleFlows'> {
+  bubbleFlows: OptimisticBubbleFlowListItem[];
+}
+
 interface UseCreateBubbleFlowResult {
   mutate: (request: CreateBubbleFlowWithOptimisticData) => void;
   mutateAsync: (
@@ -36,7 +47,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
     ): Promise<CreateBubbleFlowResponse> => {
       console.log('[useCreateBubbleFlow] Creating new bubble flow:', request);
       // Remove optimistic data before sending to server
-      const { _optimisticBubbles, ...serverRequest } = request;
+      const { _optimisticBubbles: _, ...serverRequest } = request;
+      void _; // Silence unused variable warning
       const response = await api.post<CreateBubbleFlowResponse>(
         '/bubble-flow',
         serverRequest
@@ -49,16 +61,17 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
       await queryClient.cancelQueries({ queryKey: ['bubbleFlowList'] });
 
       // Snapshot the previous value
-      const previousFlowList = queryClient.getQueryData<BubbleFlowListResponse>(
-        ['bubbleFlowList']
-      );
+      const previousFlowList =
+        queryClient.getQueryData<OptimisticBubbleFlowListResponse>([
+          'bubbleFlowList',
+        ]);
 
       // Generate temporary ID for optimistic update
       const tempId = Date.now();
 
       // Optimistically update the flow list with new flow
       if (previousFlowList) {
-        const optimisticFlow: BubbleFlowListItem = {
+        const optimisticFlow: OptimisticBubbleFlowListItem = {
           id: tempId, // Temporary ID that will be replaced by real ID from server
           name: newFlow.name,
           description: newFlow.description,
@@ -72,9 +85,11 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           updatedAt: new Date().toISOString(),
           // Include bubbles if provided (for duplication)
           bubbles: newFlow._optimisticBubbles,
+          // Mark as loading for UI indication
+          _isLoading: true,
         };
 
-        const updatedFlowList: BubbleFlowListResponse = {
+        const updatedFlowList: OptimisticBubbleFlowListResponse = {
           ...previousFlowList,
           bubbleFlows: [optimisticFlow, ...previousFlowList.bubbleFlows],
         };
@@ -111,7 +126,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
       console.log('[useCreateBubbleFlow] Flow creation succeeded:', data);
 
       // Update the flow list with the real data from server
-      queryClient.setQueryData<BubbleFlowListResponse>(
+      queryClient.setQueryData<OptimisticBubbleFlowListResponse>(
         ['bubbleFlowList'],
         (old) => {
           if (!old) return old;
@@ -138,6 +153,8 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 updatedAt: new Date().toISOString(),
                 // Preserve bubbles from optimistic update to prevent flash
                 bubbles: flow.bubbles,
+                // Remove loading state - flow is now real
+                _isLoading: false,
               };
             }
             return flow;

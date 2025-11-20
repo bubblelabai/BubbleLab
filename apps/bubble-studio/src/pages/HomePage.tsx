@@ -18,6 +18,7 @@ import { useDuplicateFlow } from '../hooks/useDuplicateFlow';
 import { CronToggle } from '../components/CronToggle';
 import { WebhookToggle } from '../components/WebhookToggle';
 import { useSubscription } from '../hooks/useSubscription';
+import type { OptimisticBubbleFlowListItem } from '../hooks/useCreateBubbleFlow';
 
 export interface HomePageProps {
   onFlowSelect: (flowId: number) => void;
@@ -57,7 +58,10 @@ export const HomePage: React.FC<HomePageProps> = ({
     },
   });
 
-  const allFlows = (bubbleFlowListResponse?.bubbleFlows || []).sort(
+  const allFlows = (
+    (bubbleFlowListResponse?.bubbleFlows ||
+      []) as OptimisticBubbleFlowListItem[]
+  ).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
@@ -235,12 +239,23 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {flows.map((flow) => {
               const isRun = false; // TODO: Determine run status from server data
+              const isOptimisticLoading = flow._isLoading === true;
               return (
                 <div
                   key={flow.id}
-                  className="group relative rounded-lg border border-white/5 bg-[#1a1a1a] hover:bg-[#202020] hover:border-white/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
-                  onClick={() => onFlowSelect(flow.id)}
+                  className={`group relative rounded-lg border border-white/5 bg-[#1a1a1a] transition-all duration-300 ${
+                    isOptimisticLoading
+                      ? 'opacity-70 cursor-wait'
+                      : 'hover:bg-[#202020] hover:border-white/10 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
+                  }`}
+                  onClick={() => !isOptimisticLoading && onFlowSelect(flow.id)}
                 >
+                  {/* Loading overlay for optimistic flows */}
+                  {isOptimisticLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg z-20">
+                      <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin" />
+                    </div>
+                  )}
                   {/* Card Content */}
                   <div className="p-5">
                     {/* Bubble Logos */}
@@ -378,57 +393,59 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
                   </div>
 
-                  {/* Menu Button - always visible */}
-                  <div
-                    className="absolute top-3 right-3"
-                    ref={openMenuId === flow.id ? menuRef : null}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => handleMenuToggle(flow.id, e)}
-                      className="p-2 rounded-md hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
-                      aria-label="Flow options"
+                  {/* Menu Button - always visible, disabled when loading */}
+                  {!isOptimisticLoading && (
+                    <div
+                      className="absolute top-3 right-3"
+                      ref={openMenuId === flow.id ? menuRef : null}
                     >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleMenuToggle(flow.id, e)}
+                        className="p-2 rounded-md hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
+                        aria-label="Flow options"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
 
-                    {/* Dropdown Menu */}
-                    {openMenuId === flow.id && (
-                      <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
-                        <button
-                          type="button"
-                          onClick={(e) =>
-                            handleRenameClick(flow.id, flow.name, e)
-                          }
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-purple-600/20 hover:text-purple-400 flex items-center gap-2 transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                          Rename Flow
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDuplicateClick(flow.id, e)}
-                          disabled={
-                            isDuplicating && duplicatingFlowId === flow.id
-                          }
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-blue-600/20 hover:text-blue-400 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Copy className="w-4 h-4" />
-                          {isDuplicating && duplicatingFlowId === flow.id
-                            ? 'Duplicating...'
-                            : 'Duplicate Flow'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteClick(flow.id, e)}
-                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 flex items-center gap-2 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete Flow
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      {/* Dropdown Menu */}
+                      {openMenuId === flow.id && (
+                        <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              handleRenameClick(flow.id, flow.name, e)
+                            }
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-purple-600/20 hover:text-purple-400 flex items-center gap-2 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Rename Flow
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDuplicateClick(flow.id, e)}
+                            disabled={
+                              isDuplicating && duplicatingFlowId === flow.id
+                            }
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-blue-600/20 hover:text-blue-400 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Copy className="w-4 h-4" />
+                            {isDuplicating && duplicatingFlowId === flow.id
+                              ? 'Duplicating...'
+                              : 'Duplicate Flow'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteClick(flow.id, e)}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 flex items-center gap-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Flow
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

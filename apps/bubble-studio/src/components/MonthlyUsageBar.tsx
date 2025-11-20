@@ -40,7 +40,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
   const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
-  const isOverLimit = totalCost > monthlyLimit;
 
   // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
