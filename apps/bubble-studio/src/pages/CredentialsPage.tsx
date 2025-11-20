@@ -10,6 +10,7 @@ import {
   ArrowPathIcon,
   CogIcon,
   ChevronDownIcon,
+  KeyIcon,
 } from '@heroicons/react/24/outline';
 import {
   CredentialType,
@@ -1050,76 +1051,80 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a] min-h-0 font-mono">
-      {/* Header */}
-      <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-100 font-sans">
-              Credentials
-            </h1>
-            <p className="text-sm text-gray-400 mt-1 font-sans">
-              Manage your API keys and authentication credentials
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Add Credential
-          </button>
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mx-6 mt-4">
-          <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-            <p className="text-sm text-red-200">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6 bg-[#1a1a1a]">
-        {credentials.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-[#30363d] rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl text-gray-400">🔑</span>
+    <div className="h-full bg-[#0a0a0a] overflow-auto font-mono">
+      <div className="max-w-7xl mx-auto px-8 py-12">
+        {/* Header */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-white font-sans">
+                Credentials
+              </h1>
+              <p className="text-gray-400 mt-2 text-sm font-sans">
+                Manage your API keys and authentication credentials
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-100 mb-2">
-              No credentials yet
-            </h3>
-            <p className="text-sm text-gray-400 mb-6">
-              Add your first credential to get started with secure API access
-            </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="px-5 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
             >
-              <PlusIcon className="h-4 w-4" />
-              Add Credential
+              <PlusIcon className="h-5 w-5" />
+              <span className="font-bold font-sans">Add Credential</span>
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {credentials.map((credential) => (
-              <CredentialCard
-                key={credential.id}
-                credential={credential}
-                onEdit={handleEditCredential}
-                onDelete={handleDeleteCredential}
-                isDeleting={deleteCredentialMutation.isPending}
-                onRefreshOAuth={handleRefreshOAuth}
-                isRefreshing={
-                  refreshOAuthMutation.isPending &&
-                  refreshOAuthMutation.variables?.id === credential.id
-                }
-              />
-            ))}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-8">
+            <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <p className="text-sm text-red-200 font-sans">{error}</p>
+            </div>
           </div>
         )}
+
+        {/* Content */}
+        <div className="pb-12">
+          {credentials.length === 0 ? (
+            <div className="text-center py-16 border border-[#30363d] border-dashed rounded-2xl bg-[#1a1a1a]/30">
+              <div className="bg-[#1a1a1a] p-4 rounded-full inline-flex mb-4 border border-[#30363d]">
+                <KeyIcon className="h-8 w-8 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-medium text-white mb-2">
+                No credentials yet
+              </h3>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                Add your first credential to authenticate with external
+                services.
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-3 bg-white text-black hover:bg-gray-200 font-medium rounded-full transition-all duration-200 shadow-lg hover:scale-105 flex items-center gap-2 mx-auto"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <span className="font-sans font-bold">Add Credential</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {credentials.map((credential) => (
+                <CredentialCard
+                  key={credential.id}
+                  credential={credential}
+                  onEdit={handleEditCredential}
+                  onDelete={handleDeleteCredential}
+                  isDeleting={deleteCredentialMutation.isPending}
+                  onRefreshOAuth={handleRefreshOAuth}
+                  isRefreshing={
+                    refreshOAuthMutation.isPending &&
+                    refreshOAuthMutation.variables?.id === credential.id
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modals */}

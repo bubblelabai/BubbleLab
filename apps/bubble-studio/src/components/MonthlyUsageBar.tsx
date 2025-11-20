@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
-import { ArrowRight, ArrowUpCircle } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { useNavigate } from '@tanstack/react-router';
@@ -40,7 +40,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
   const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
-  const isOverLimit = totalCost > monthlyLimit;
 
   // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
@@ -62,7 +61,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     <>
       <div className="relative group">
         <div
-          className={`w-full rounded-lg bg-[#0a0a0a] border border-[#30363d] ${
+          className={`w-full rounded-lg bg-[#1a1a1a] border border-white/5 ${
             isOpen ? 'p-3' : 'justify-center p-2'
           }`}
         >
@@ -84,10 +83,9 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   <button
                     type="button"
                     onClick={handleUpgradeClick}
-                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                    className="px-3 py-1.5 bg-white text-black hover:bg-gray-200 text-xs font-medium rounded-full transition-all duration-200 flex items-center shadow-lg hover:scale-105 font-sans"
                   >
-                    Upgrade
-                    <ArrowUpCircle className="w-3 h-3" />
+                    <span>Upgrade Plan</span>
                   </button>
                 )}
               </div>
@@ -95,44 +93,34 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               {/* Progress bar */}
               <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 rounded-full ${
-                    isOverLimit
-                      ? 'bg-red-500'
-                      : percentage > 80
-                        ? 'bg-yellow-500'
-                        : 'bg-blue-500'
-                  }`}
+                  className="h-full transition-all duration-300 rounded-full bg-gray-600"
                   style={{ width: `${percentage}%` }}
                 />
               </div>
 
               {/* Monetary usage */}
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center justify-between mt-2">
                 <div className="text-xs text-gray-400">
                   {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
                 </div>
-                <span
-                  className={`text-xs font-semibold ${
-                    isOverLimit
-                      ? 'text-red-400'
-                      : percentage > 80
-                        ? 'text-yellow-400'
-                        : 'text-blue-400'
-                  }`}
-                >
+                <span className="text-sm font-semibold text-gray-400">
                   {percentage.toFixed(1)}%
                 </span>
               </div>
 
-              {/* Details button */}
-              <button
-                type="button"
-                onClick={() => setIsDetailsModalOpen(true)}
-                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors mt-2"
-              >
-                Details
-                <ArrowRight className="w-3 h-3" />
-              </button>
+              {/* Divider and Details button */}
+              <div className="pt-2 mt-2 border-t border-white/5">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailsModalOpen(true)}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors"
+                  >
+                    View Detailed Breakdown
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-center">
@@ -148,10 +136,10 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
         {/* Usage cards - outside Monthly Usage container */}
         {isOpen && (
           <div className="mt-2">
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex gap-4">
               {/* Execution count card */}
-              <div className="w-64">
-                <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+              <div className="flex-1">
+                <div className="flex items-center rounded-lg bg-[#1a1a1a] border border-white/5 p-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-400 mb-1">
                       Total Executions
@@ -169,8 +157,8 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               </div>
 
               {/* Active Flows card */}
-              <div className="w-64">
-                <div className="flex items-center rounded-lg bg-[#0a0a0a] border border-[#30363d] p-3">
+              <div className="flex-1">
+                <div className="flex items-center rounded-lg bg-[#1a1a1a] border border-white/5 p-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-gray-400 mb-1">
                       Active Flows

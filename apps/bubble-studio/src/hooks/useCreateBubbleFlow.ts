@@ -7,10 +7,29 @@ import type {
   CreateBubbleFlowRequest,
 } from '@bubblelab/shared-schemas';
 
+interface CreateBubbleFlowWithOptimisticData extends CreateBubbleFlowRequest {
+  // Optional: bubble information for optimistic UI updates (e.g., when duplicating)
+  _optimisticBubbles?: Array<{
+    bubbleName: string;
+    className: string;
+  }>;
+}
+
+// Extended type for optimistic flows with loading state
+export interface OptimisticBubbleFlowListItem extends BubbleFlowListItem {
+  _isLoading?: boolean;
+}
+
+// Extended response type that includes optimistic flows
+export interface OptimisticBubbleFlowListResponse
+  extends Omit<BubbleFlowListResponse, 'bubbleFlows'> {
+  bubbleFlows: OptimisticBubbleFlowListItem[];
+}
+
 interface UseCreateBubbleFlowResult {
-  mutate: (request: CreateBubbleFlowRequest) => void;
+  mutate: (request: CreateBubbleFlowWithOptimisticData) => void;
   mutateAsync: (
-    request: CreateBubbleFlowRequest
+    request: CreateBubbleFlowWithOptimisticData
   ) => Promise<CreateBubbleFlowResponse>;
   isLoading: boolean;
   error: Error | null;
@@ -24,12 +43,15 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
   const mutation = useMutation({
     mutationKey: ['createBubbleFlow'],
     mutationFn: async (
-      request: CreateBubbleFlowRequest
+      request: CreateBubbleFlowWithOptimisticData
     ): Promise<CreateBubbleFlowResponse> => {
       console.log('[useCreateBubbleFlow] Creating new bubble flow:', request);
+      // Remove optimistic data before sending to server
+      const { _optimisticBubbles: _, ...serverRequest } = request;
+      void _; // Silence unused variable warning
       const response = await api.post<CreateBubbleFlowResponse>(
         '/bubble-flow',
-        request
+        serverRequest
       );
       console.log('[useCreateBubbleFlow] Flow created successfully:', response);
       return response;
@@ -39,16 +61,17 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
       await queryClient.cancelQueries({ queryKey: ['bubbleFlowList'] });
 
       // Snapshot the previous value
-      const previousFlowList = queryClient.getQueryData<BubbleFlowListResponse>(
-        ['bubbleFlowList']
-      );
+      const previousFlowList =
+        queryClient.getQueryData<OptimisticBubbleFlowListResponse>([
+          'bubbleFlowList',
+        ]);
 
       // Generate temporary ID for optimistic update
       const tempId = Date.now();
 
       // Optimistically update the flow list with new flow
       if (previousFlowList) {
-        const optimisticFlow: BubbleFlowListItem = {
+        const optimisticFlow: OptimisticBubbleFlowListItem = {
           id: tempId, // Temporary ID that will be replaced by real ID from server
           name: newFlow.name,
           description: newFlow.description,
@@ -60,9 +83,13 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
           executionCount: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          // Include bubbles if provided (for duplication)
+          bubbles: newFlow._optimisticBubbles,
+          // Mark as loading for UI indication
+          _isLoading: true,
         };
 
-        const updatedFlowList: BubbleFlowListResponse = {
+        const updatedFlowList: OptimisticBubbleFlowListResponse = {
           ...previousFlowList,
           bubbleFlows: [optimisticFlow, ...previousFlowList.bubbleFlows],
         };
@@ -99,15 +126,11 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
       console.log('[useCreateBubbleFlow] Flow creation succeeded:', data);
 
       // Update the flow list with the real data from server
-      queryClient.setQueryData<BubbleFlowListResponse>(
+      queryClient.setQueryData<OptimisticBubbleFlowListResponse>(
         ['bubbleFlowList'],
         (old) => {
           if (!old) return old;
 
-          console.log(
-            '[useCreateBubbleFlow] Updating flow list with real data:',
-            data
-          );
           // Replace the optimistic entry with the real data
           const updatedFlows = old.bubbleFlows.map((flow) => {
             // Find the optimistic entry using the tempId
@@ -124,6 +147,10 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
                 cronActive: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                // Preserve bubbles from optimistic update to prevent flash
+                bubbles: flow.bubbles,
+                // Remove loading state - flow is now real
+                _isLoading: false,
               };
             }
             return flow;
