@@ -21,6 +21,9 @@ interface FirecrawlSearchResponse {
   web?: FirecrawlSearchResult[];
 }
 
+// Firecrawl charges 2 credits per 10 search results
+const CREDITS_PER_10_RESULTS = 2;
+
 // Define the parameters schema - simplified like the MCP server
 const WebSearchToolParamsSchema = z.object({
   query: z
@@ -185,7 +188,9 @@ export class WebSearchTool extends ToolBubble<
           'No content available',
       }));
 
-      const creditsUsed = Math.ceil(results.length / 10) * 2;
+      // Calculate credits: Firecrawl charges 2 credits per 10 results (rounded up)
+      const creditsUsed =
+        Math.ceil(results.length / 10) * CREDITS_PER_10_RESULTS;
 
       // Log service usage for Firecrawl web search
       if (creditsUsed > 0 && this.context?.logger) {
