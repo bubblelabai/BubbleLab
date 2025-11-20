@@ -75,6 +75,24 @@ export class OAuthService {
         'Google OAuth credentials not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET'
       );
     }
+
+    // Follow Up Boss OAuth 2.0 configuration
+    if (env.FUB_OAUTH_CLIENT_ID && env.FUB_OAUTH_CLIENT_SECRET) {
+      this.clients.set(
+        'followupboss',
+        new OAuth2Client({
+          server: 'https://app.followupboss.com',
+          clientId: env.FUB_OAUTH_CLIENT_ID,
+          clientSecret: env.FUB_OAUTH_CLIENT_SECRET,
+          authorizationEndpoint: '/oauth/authorize',
+          tokenEndpoint: '/oauth/token',
+        })
+      );
+    } else {
+      console.warn(
+        'Follow Up Boss OAuth credentials not configured. Set FUB_OAUTH_CLIENT_ID and FUB_OAUTH_CLIENT_SECRET'
+      );
+    }
   }
 
   /**

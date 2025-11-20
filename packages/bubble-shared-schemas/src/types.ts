@@ -26,6 +26,7 @@ export enum CredentialType {
   GMAIL_CRED = 'GMAIL_CRED',
   GOOGLE_SHEETS_CRED = 'GOOGLE_SHEETS_CRED',
   GOOGLE_CALENDAR_CRED = 'GOOGLE_CALENDAR_CRED',
+  FUB_CRED = 'FUB_CRED',
 
   // Development Platform Credentials
   GITHUB_TOKEN = 'GITHUB_TOKEN',
@@ -70,4 +71,5 @@ export type BubbleName =
   | 'instagram-tool'
   | 'linkedin-tool'
   | 'youtube-tool'
-  | 'github';
+  | 'github'
+  | 'followupboss';

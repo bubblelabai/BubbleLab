@@ -78,6 +78,8 @@ export const env = {
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  FUB_OAUTH_CLIENT_ID: process.env.FUB_OAUTH_CLIENT_ID,
+  FUB_OAUTH_CLIENT_SECRET: process.env.FUB_OAUTH_CLIENT_SECRET,
   POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
   POSTHOG_HOST: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
   POSTHOG_ENABLED: process.env.POSTHOG_ENABLED === 'true',
@@ -107,6 +109,10 @@ console.log('🔧 Environment variables loaded:', {
   isDev: env.isDev,
   GOOGLE_OAUTH_CLIENT_ID: env.GOOGLE_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing',
   GOOGLE_OAUTH_CLIENT_SECRET: env.GOOGLE_OAUTH_CLIENT_SECRET
+    ? '✅ Set'
+    : '❌ Missing',
+  FUB_OAUTH_CLIENT_ID: env.FUB_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing',
+  FUB_OAUTH_CLIENT_SECRET: env.FUB_OAUTH_CLIENT_SECRET
     ? '✅ Set'
     : '❌ Missing',
   POSTHOG_API_KEY: env.POSTHOG_API_KEY ? '✅ Set' : '❌ Missing',
