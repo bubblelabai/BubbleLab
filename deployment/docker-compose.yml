@@ -70,7 +70,7 @@ services:
       args:
         VITE_API_URL: ${BUBBLELAB_API_URL}
         VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
-        VITE_DISABLE_AUTH: ${CLERK_DISABLE_AUTH:-false}
+        VITE_DISABLE_AUTH: ${DISABLE_AUTH:-true}
     container_name: bubblelab-nginx
     ports:
       - '${NGINX_PORT}:80'

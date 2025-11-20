@@ -12,13 +12,12 @@ COPY .npmrc ./.
 # Install all dependencies
 RUN pnpm install --frozen-lockfile
 
-ARG VITE_API_ENDPOINT
 ARG VITE_API_URL
 ARG VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_API_ENDPOINT=${VITE_API_ENDPOINT}
+ARG VITE_DISABLE_AUTH
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
-
+ENV VITE_DISABLE_AUTH=${VITE_DISABLE_AUTH}
 # Build dependencies
 RUN cd packages/bubble-shared-schemas && pnpm run build
 RUN cd packages/bubble-core && pnpm run build
