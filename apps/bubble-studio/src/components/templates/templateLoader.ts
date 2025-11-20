@@ -61,6 +61,24 @@ export interface TemplateDefinition {
 
 export const TEMPLATES: TemplateDefinition[] = [
   {
+    id: 'daily-news',
+    name: 'Daily News Digest (Research Agent, Email, Reddit)',
+    prompt:
+      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
+    code: dailyNewsTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: true,
+  },
+  {
+    id: 'github-pr-commenter',
+    name: 'GitHub PR Commenter (GitHub, AI Agent)',
+    prompt:
+      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
+    code: githubPRCommenterTemplate.templateCode,
+    category: 'Engineering & Project Management',
+    isPopular: true,
+  },
+  {
     id: 'linkedin-lead-gen',
     name: 'LinkedIn Lead Generation (LinkedIn, Email)',
     prompt:
@@ -76,15 +94,6 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
-    isPopular: true,
-  },
-  {
-    id: 'github-pr-commenter',
-    name: 'GitHub PR Commenter (GitHub, AI Agent)',
-    prompt:
-      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
-    code: githubPRCommenterTemplate.templateCode,
-    category: 'Engineering & Project Management',
     isPopular: true,
   },
   {
@@ -146,15 +155,6 @@ export const TEMPLATES: TemplateDefinition[] = [
   //   category: 'Lead Generation',
   // },
 
-  {
-    id: 'daily-news',
-    name: 'Daily News Digest (Research Agent, Email, Reddit)',
-    prompt:
-      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
-    code: dailyNewsTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: true,
-  },
   // {
   //   id: 'gmail-reply',
   //   name: 'Gmail Reply Assistant (Gmail)',
