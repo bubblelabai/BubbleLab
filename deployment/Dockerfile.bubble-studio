@@ -24,20 +24,10 @@ RUN cd packages/bubble-shared-schemas && pnpm run build
 RUN cd packages/bubble-core && pnpm run build
 RUN cd apps/bubble-studio && pnpm run build
 
-# Runtime stage
-FROM node:20-slim
-RUN corepack enable
-WORKDIR /app
-
-# Copy built files
-COPY --from=builder /workspace/apps/bubble-studio/dist ./dist
-COPY --from=builder /workspace/apps/bubble-studio/index.html ./
-
-# Install vite for preview server
-RUN npm install -g vite@latest
-
-EXPOSE 3000
-
-# Run vite preview server
-CMD ["vite", "preview", "--port", "3000", "--host", "0.0.0.0"]
+# Runtime stage - use nginx to serve static files directly
+FROM nginx:alpine
+# Copy static files to nginx html directory
+# Note: dist folder contains index.html and assets, so copy its contents
+COPY --from=builder /workspace/apps/bubble-studio/dist /usr/share/nginx/html
+EXPOSE 80
 
