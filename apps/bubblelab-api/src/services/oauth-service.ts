@@ -75,6 +75,24 @@ export class OAuthService {
         'Google OAuth credentials not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET'
       );
     }
+
+    // Follow Up Boss OAuth 2.0 configuration
+    if (env.FUB_OAUTH_CLIENT_ID && env.FUB_OAUTH_CLIENT_SECRET) {
+      this.clients.set(
+        'followupboss',
+        new OAuth2Client({
+          server: 'https://app.followupboss.com',
+          clientId: env.FUB_OAUTH_CLIENT_ID,
+          clientSecret: env.FUB_OAUTH_CLIENT_SECRET,
+          authorizationEndpoint: '/oauth/authorize',
+          tokenEndpoint: '/oauth/token',
+        })
+      );
+    } else {
+      console.warn(
+        'Follow Up Boss OAuth credentials not configured. Set FUB_OAUTH_CLIENT_ID and FUB_OAUTH_CLIENT_SECRET'
+      );
+    }
   }
 
   /**
@@ -130,7 +148,7 @@ export class OAuthService {
       // Check if our parameters are actually in the URL and manually add if missing
       const urlObj = new URL(authUrl);
 
-      // If parameters are missing, manually add them
+      // If parameters are missing or need to be overridden, set them
       if (
         !urlObj.searchParams.has('access_type') &&
         authorizationParams.access_type
@@ -139,6 +157,13 @@ export class OAuthService {
       }
       if (!urlObj.searchParams.has('prompt') && authorizationParams.prompt) {
         urlObj.searchParams.set('prompt', authorizationParams.prompt);
+      }
+      // FUB uses non-standard 'auth_code' instead of 'code'
+      if (authorizationParams.response_type) {
+        urlObj.searchParams.set(
+          'response_type',
+          authorizationParams.response_type
+        );
       }
 
       const finalAuthUrl = urlObj.toString();
@@ -185,11 +210,56 @@ export class OAuthService {
     const redirectUri = `${env.NODEX_API_URL || 'http://localhost:3001'}/oauth/${provider}/callback`;
 
     try {
-      // Exchange authorization code for tokens
-      const token = await client.authorizationCode.getToken({
-        code,
-        redirectUri,
-      });
+      let token;
+
+      // FUB requires manual token exchange due to non-standard requirements
+      if (provider === 'followupboss') {
+        const basicAuth = Buffer.from(
+          `${env.FUB_OAUTH_CLIENT_ID}:${env.FUB_OAUTH_CLIENT_SECRET}`
+        ).toString('base64');
+
+        const tokenResponse = await fetch(
+          'https://app.followupboss.com/oauth/token',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Basic ${basicAuth}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              grant_type: 'authorization_code',
+              code,
+              redirect_uri: redirectUri,
+              state,
+            }).toString(),
+          }
+        );
+
+        const responseText = await tokenResponse.text();
+        console.log('[FUB OAuth] Token response status:', tokenResponse.status);
+        console.log('[FUB OAuth] Token response body:', responseText);
+
+        if (!tokenResponse.ok) {
+          throw new Error(
+            `FUB token exchange failed: ${tokenResponse.status} - ${responseText}`
+          );
+        }
+
+        const tokenData = JSON.parse(responseText);
+        token = {
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token,
+          expiresAt: tokenData.expires_in
+            ? Date.now() + tokenData.expires_in * 1000
+            : undefined,
+        };
+      } else {
+        // Standard OAuth flow for other providers
+        token = await client.authorizationCode.getToken({
+          code,
+          redirectUri,
+        });
+      }
 
       if (!token.refreshToken) {
         console.warn(

@@ -39,6 +39,7 @@ export { GmailBubble } from './bubbles/service-bubble/gmail.js';
 export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
 export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
+export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,

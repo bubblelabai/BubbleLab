@@ -41,6 +41,7 @@
     "@aws-sdk/client-s3": "^3.873.0",
     "@aws-sdk/s3-request-presigner": "^3.873.0",
     "@bubblelab/shared-schemas": "workspace:*",
+    "@google/generative-ai": "^0.24.1",
     "@langchain/anthropic": "^0.3.32",
     "@langchain/community": "^0.3.53",
     "@langchain/core": "^0.3.66",

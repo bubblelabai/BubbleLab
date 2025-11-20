@@ -148,6 +148,7 @@ export class BubbleFactory {
       'linkedin-tool',
       'youtube-tool',
       'github',
+      'followupboss',
     ];
   }
 
@@ -183,6 +184,9 @@ export class BubbleFactory {
     );
     const { ApifyBubble } = await import('./bubbles/service-bubble/apify');
     const { GithubBubble } = await import('./bubbles/service-bubble/github.js');
+    const { FollowUpBossBubble } = await import(
+      './bubbles/service-bubble/followupboss.js'
+    );
     const { DatabaseAnalyzerWorkflowBubble } = await import(
       './bubbles/workflow-bubble/database-analyzer.workflow.js'
     );
@@ -271,6 +275,10 @@ export class BubbleFactory {
     );
     this.register('apify', ApifyBubble as BubbleClassWithMetadata);
     this.register('github', GithubBubble as BubbleClassWithMetadata);
+    this.register(
+      'followupboss',
+      FollowUpBossBubble as BubbleClassWithMetadata
+    );
     this.register(
       'database-analyzer',
       DatabaseAnalyzerWorkflowBubble as BubbleClassWithMetadata
@@ -626,6 +634,7 @@ import {
   HttpBubble, // bubble name: 'http'
   StorageBubble, // bubble name: 'storage'
   ApifyBubble, // bubble name: 'apify'
+  FollowUpBossBubble, // bubble name: 'followupboss'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

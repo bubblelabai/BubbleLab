@@ -24,6 +24,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Instagram: '/integrations/instagram.svg',
   Apify: '/integrations/apify.svg',
   GitHub: '/integrations/github.svg',
+  'Follow Up Boss': '/integrations/FUB.png',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -60,6 +61,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Cloudflare', file: SERVICE_LOGOS['Cloudflare'] },
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
   { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
+  { name: 'Follow Up Boss', file: SERVICE_LOGOS['Follow Up Boss'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -109,6 +111,9 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   instagram: 'Instagram',
   apify: 'Apify',
   github: 'GitHub',
+  followupboss: 'Follow Up Boss',
+  fub: 'Follow Up Boss',
+  'follow-up-boss': 'Follow Up Boss',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -199,6 +204,7 @@ export function findLogoForBubble(
     [/\binstagram\b/, 'Instagram'],
     [/\bapify\b/, 'Apify'],
     [/\bgithub\b/, 'GitHub'],
+    [/\bfollow\s*up\s*boss\b|\bfollowupboss\b|\bfub\b/, 'Follow Up Boss'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
@@ -262,6 +268,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       slackformatteragentbubble: 'slack-formatter-agent-bubble',
       storagebubble: 'storage-bubble',
       githubbubble: 'github-bubble',
+      followupbossbubble: 'followupboss-bubble',
     }
   );
 
@@ -302,6 +309,8 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     slackformatteragent: 'slack-formatter-agent-bubble',
     storage: 'storage-bubble',
     github: 'github-bubble',
+    followupboss: 'followupboss-bubble',
+    fub: 'followupboss-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants
