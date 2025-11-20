@@ -19,8 +19,29 @@ export default defineConfig({
     },
   },
   server: {
-    fs: {
-      allow: ['../..'],
+    host: '0.0.0.0',
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target:
+          process.env.VITE_API_URL ||
+          process.env.VITE_API_ENDPOINT ||
+          'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target:
+          process.env.VITE_API_URL ||
+          process.env.VITE_API_ENDPOINT ||
+          'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
   define: {

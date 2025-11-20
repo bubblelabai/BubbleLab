@@ -1,59 +1,94 @@
 version: '3.8'
 
+# This docker-compose file reproduces the reverse proxy blocking issue
+# described in GitHub issue #120
+
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: reverse-proxy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reverse-proxy-network
+
+  # BubbleLab API
+  bubblelab-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile.api
+    container_name: reverse-proxy-api
+    expose:
+      - '3001'
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - BUBBLE_ENV=${BUBBLE_ENV}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - NODEX_API_URL=${NODEX_API_URL}
+      - CREDENTIAL_ENCRYPTION_KEY=${CREDENTIAL_ENCRYPTION_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - reverse-proxy-network
+
+  # Bubble Studio Dashboard (Vite preview server)
+  # This service will be blocked when accessed through the reverse proxy
+  bubble-studio:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.bubble-studio
+      args:
+        VITE_API_ENDPOINT: ${VITE_API_ENDPOINT}
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+    container_name: reverse-proxy-dashboard
+    expose:
+      - '3000'
+    restart: unless-stopped
+    networks:
+      - reverse-proxy-network
+
+  # Nginx Reverse Proxy
+  # This simulates a typical production setup where the dashboard
+  # is accessed through a reverse proxy (e.g., at /dashboard)
   nginx:
     image: nginx:alpine
-    container_name: nodex-nginx
+    container_name: reverse-proxy-nginx
     ports:
-      - '${NGINX_PORT:-80}:80'
+      - '${NGINX_PORT}:80'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
+      - bubble-studio
       - bubblelab-api
     restart: unless-stopped
     networks:
-      - nodex-network
-
-  bubblelab-api:
-    build:
-      context: ../apps/bubblelab-api
-      dockerfile: Dockerfile
-    container_name: bubblelab-api
-    expose:
-      - '${NODEX_API_PORT:-3001}'
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - PORT=${NODEX_API_PORT:-3001}
-      - DATABASE_URL=${DATABASE_URL:-file:./dev.db}
-      - NODEX_API_URL=${NODEX_API_URL:-http://localhost}
-      - BUBBLE_CONNECTING_STRING_URL=${BUBBLE_CONNECTING_STRING_URL}
-      - SLACK_TOKEN=${SLACK_TOKEN}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    volumes:
-      - bubblelab-api-data:/app/data
-    restart: unless-stopped
-    networks:
-      - nodex-network
-
-  # Add more services here as needed
-  # nodex-web:
-  #   build:
-  #     context: ../apps/nodex-web
-  #     dockerfile: Dockerfile
-  #   container_name: nodex-web
-  #   expose:
-  #     - "3000"
-  #   environment:
-  #     - NODE_ENV=${NODE_ENV:-production}
-  #   restart: unless-stopped
-  #   networks:
-  #     - nodex-network
+      - reverse-proxy-network
 
 networks:
-  nodex-network:
+  reverse-proxy-network:
     driver: bridge
 
 volumes:
-  bubblelab-api-data:
+  postgres_data:
+    driver: local
