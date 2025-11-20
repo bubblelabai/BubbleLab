@@ -199,7 +199,15 @@ These example values help users understand the expected format. For instance:
 - Email: email = 'user@example.com'
 - Channel ID: channelId = 'C01234567AB'
 
-Make fields optional in the payload interface when it is a nice-to-have configuration that is not critical to the workflow. The less the required fields, the better the user experience.
+REQUIRED vs OPTIONAL FIELD DECISION:
+1. User specified a value in their request → OPTIONAL with that value as default
+   (e.g., user says "research AI agents" → topic?: string with default "AI Agents")
+2. Value must change per execution → REQUIRED
+   (e.g., recipient email when user says "send me" but doesn't provide one, target URL that varies each run)
+3. Nice-to-have configuration → OPTIONAL
+   (e.g., output format preferences, depth settings)
+
+The goal is to minimize required fields. If the user already told you what they want, don't make them type it again - use their value as the default.
 When setting schedule, you must take into account of the timezone of the user (don't worry about daylight time, just whatever the current timezone currently) and convert it to UTC offset! The cron expression is in UTC timezone.
 If no particular trigger is specified, use the webhook/http trigger.
 
