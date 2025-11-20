@@ -7,7 +7,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: reverse-proxy-postgres
+    container_name: bubblelab-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -24,18 +24,17 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - reverse-proxy-network
+      - bubblelab-network
 
   # BubbleLab API
-  bubblelab-api:
+  api:
     build:
       context: ..
       dockerfile: Dockerfile.api
-    container_name: reverse-proxy-api
+    container_name: bubblelab-api
     expose:
       - '3001'
     environment:
-      - NODE_ENV=${NODE_ENV}
       - DATABASE_URL=${DATABASE_URL}
       - BUBBLE_ENV=${BUBBLE_ENV}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -48,7 +47,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - reverse-proxy-network
+      - bubblelab-network
 
   # Nginx Reverse Proxy with static files built in
   # Static files are built into the nginx image, no separate service needed
@@ -60,20 +59,20 @@ services:
         VITE_API_ENDPOINT: ${VITE_API_ENDPOINT}
         VITE_API_URL: ${VITE_API_URL}
         VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
-    container_name: reverse-proxy-nginx
+    container_name: bubblelab-nginx
     ports:
       - '${NGINX_PORT}:80'
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
-      - bubblelab-api
+      - api
     restart: unless-stopped
     networks:
-      - reverse-proxy-network
+      - bubblelab-network
 
 networks:
-  reverse-proxy-network:
+  bubblelab-network:
     driver: bridge
 
 volumes:
