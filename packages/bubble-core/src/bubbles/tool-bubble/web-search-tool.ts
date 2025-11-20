@@ -185,7 +185,7 @@ export class WebSearchTool extends ToolBubble<
           'No content available',
       }));
 
-      const creditsUsed = Math.floor(limitedResults / 10);
+      const creditsUsed = Math.ceil(results.length / 10) * 2;
 
       // Log service usage for Firecrawl web search
       if (creditsUsed > 0 && this.context?.logger) {
@@ -193,7 +193,7 @@ export class WebSearchTool extends ToolBubble<
           {
             usage: creditsUsed,
             service: CredentialType.FIRECRAWL_API_KEY,
-            unit: 'per_result',
+            unit: 'per_10_results',
             subService: 'web-search',
           },
           `Firecrawl web search: ${creditsUsed} credits used`,

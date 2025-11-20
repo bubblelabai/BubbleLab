@@ -38,20 +38,23 @@ function getPricingKey(
  */
 export const PRICING_TABLE: PricingTable = {
   // Web Scraping Services - Firecrawl with subServices
-  [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-search', 'per_result')]:
-    {
-      unit: 'per_result',
-      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
-    },
+  [getPricingKey(
+    CredentialType.FIRECRAWL_API_KEY,
+    'web-search',
+    'per_10_results'
+  )]: {
+    unit: 'per_10_results',
+    unitCost: 0.009 * 1.05, // Firecrawl charges 0.009 per credits with 1.05x markup
+  },
   [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-scrape', 'per_result')]:
     {
       unit: 'per_result',
-      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
+      unitCost: 0.009 * 1.05, // Firecrawl charges 0.009 per credits with 1.05x markup
     },
   [getPricingKey(CredentialType.FIRECRAWL_API_KEY, 'web-crawl', 'per_result')]:
     {
       unit: 'per_result',
-      unitCost: 0.00087, // $0.00087 per result (was $83/month for 100k tokens, pro-rated with 1.05x markup)
+      unitCost: 0.009 * 1.05, // Firecrawl charges 0.009 per credits with 1.05x markup
     },
 
   // Communication Services
