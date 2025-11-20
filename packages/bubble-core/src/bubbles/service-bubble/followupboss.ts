@@ -1017,8 +1017,8 @@ export class FollowUpBossBubble<
         headers: {
           Authorization: `Bearer ${credential}`,
           'Content-Type': 'application/json',
-          'X-System': 'Bubble-Lab',
-          'X-System-Key': '918df6764bffb31556a2cd4bfe4e0a27',
+          'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
+          'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
         },
       });
       return response.ok;
@@ -1037,8 +1037,8 @@ export class FollowUpBossBubble<
     const requestHeaders: Record<string, string> = {
       Authorization: `Bearer ${this.chooseCredential()}`,
       'Content-Type': 'application/json',
-      'X-System': 'Bubble-Lab',
-      'X-System-Key': '918df6764bffb31556a2cd4bfe4e0a27',
+      'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
+      'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
     };
 
     const requestInit: RequestInit = {
