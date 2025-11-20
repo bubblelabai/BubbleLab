@@ -14,9 +14,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/bubblelabai/BubbleLab/pulls)
 
-
 [Try it](https://app.bubblelab.ai/) - [Demos](https://www.bubblelab.ai/demos)
-
 
 ---
 
@@ -40,7 +38,6 @@
 - **Full Observability**: Built-in execution tracing with detailed logs, token usage tracking, and performance metrics. Debug with complete visibility into every step
 - **Import from n8n**: Migrate existing workflows seamlessly. We automatically translate n8n JSON into our bubble architecture
 - **Export as TypeScript**: Own your workflows completely. Export clean, production-ready code that runs anywhere—integrate with your codebase, CI/CD pipelines, and existing infrastructure
-
 
 ## 🚀 Quick Start
 
@@ -80,6 +77,7 @@ OPENROUTER_API_KEY=your_openrouter_key    # Required for AI flow execution
 ```
 
 Without these keys, you can use the visual builder but cannot execute flows. Get your keys:
+
 - Google AI API: https://aistudio.google.com/apikey
 - OpenRouter: https://openrouter.ai/keys
 
@@ -325,11 +323,13 @@ BubbleLab is built on a modular architecture with the following core packages:
 - **[bubble-studio](./apps/bubble-studio)** - Visual workflow builder (React + Vite)
 - **[bubblelab-api](./apps/bubblelab-api)** - Backend API for flow storage and execution (Bun + Hono)
 
-## 🤝 Contributing & Self-Hosting Bubble Studio
+## 🚢 Deployment
 
-Documentation for contributing to BubbleLab and self-hosting the platform is coming soon!
+For Docker-based deployment instructions, see **[deployment/README.md](./deployment/README.md)**.
 
-In the meantime, feel free to:
+## 🤝 Contributing
+
+We welcome contributions! Feel free to:
 
 - Explore the source code
 - Open issues for bugs or feature requests about Bubble Studio or add more bubbles

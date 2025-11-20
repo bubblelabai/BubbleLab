@@ -77,11 +77,22 @@ class ApiClient {
 
       // Handle authentication errors
       if (response.status === 401) {
+        let errorData: unknown;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = await response.text();
+        }
+
+        const backendMessage = this.extractErrorMessage(errorData);
+        const message =
+          backendMessage || 'Authentication failed - please log in again';
+
         console.error('Authentication failed - user may need to log in again');
-        toast.error('Authentication failed - please log in again', {
+        toast.error(message, {
           autoClose: 4000,
         });
-        throw new Error('Authentication failed - please log in again');
+        throw new Error(message);
       }
 
       // Handle other HTTP errors
