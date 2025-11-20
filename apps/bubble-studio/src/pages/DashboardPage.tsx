@@ -3,6 +3,8 @@ import { ArrowUp, Pencil, FileDown, Plus } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
+import { useGenerationStore } from '../stores/generationStore';
+import { useOutputStore } from '../stores/outputStore';
 import {
   INTEGRATIONS,
   SCRAPING_SERVICES,
@@ -65,6 +67,8 @@ export function DashboardPage({
   const { isSignedIn } = useAuth();
   const navigate = useNavigate();
   const createBubbleFlowMutation = useCreateBubbleFlow();
+  const { startStreaming, stopStreaming } = useGenerationStore();
+  const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
@@ -111,6 +115,12 @@ export function DashboardPage({
     }
 
     setIsCreatingFromScratch(true);
+
+    // Use the GenerationOutputOverlay for loading feedback
+    clearOutput();
+    startStreaming();
+    setOutput('Creating empty Bubble flow...\n');
+
     try {
       // Create a minimal empty flow template with a simple AI agent example
       const emptyFlowCode = `import { BubbleFlow, AIAgentBubble, type WebhookEvent } from '@bubblelab/bubble-core';
@@ -163,13 +173,21 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
         webhookActive: false,
       });
 
-      // Navigate to the newly created flow
+      setOutput((prev) => prev + '✅ Flow created successfully!\n');
+
+      // Navigate directly to the flow (same as template creation)
       navigate({
         to: '/flow/$flowId',
-        params: { flowId: String(createResult.id) },
+        params: { flowId: createResult.id.toString() },
       });
+      stopStreaming();
+      setOutput('');
     } catch (error) {
       console.error('Failed to create empty flow:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to create flow';
+      setOutput((prev) => prev + `❌ Error: ${errorMessage}\n`);
+      stopStreaming();
       setIsCreatingFromScratch(false);
     }
   };
