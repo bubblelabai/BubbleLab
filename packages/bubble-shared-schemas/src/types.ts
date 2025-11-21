@@ -27,6 +27,7 @@ export enum CredentialType {
   GOOGLE_SHEETS_CRED = 'GOOGLE_SHEETS_CRED',
   GOOGLE_CALENDAR_CRED = 'GOOGLE_CALENDAR_CRED',
   FUB_CRED = 'FUB_CRED',
+  FUB_API_KEY_CRED = 'FUB_API_KEY_CRED',
 
   // Development Platform Credentials
   GITHUB_TOKEN = 'GITHUB_TOKEN',

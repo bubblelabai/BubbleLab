@@ -23,6 +23,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
   [CredentialType.GOOGLE_CALENDAR_CRED]: '',
   [CredentialType.FUB_CRED]: '',
+  [CredentialType.FUB_API_KEY_CRED]: 'FUB_API_KEY',
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
 };
 
@@ -336,7 +337,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'linkedin-tool': [CredentialType.APIFY_CRED],
   'youtube-tool': [CredentialType.APIFY_CRED],
   github: [CredentialType.GITHUB_TOKEN],
-  followupboss: [CredentialType.FUB_CRED],
+  followupboss: [CredentialType.FUB_CRED, CredentialType.FUB_API_KEY_CRED],
 };
 
 // POST /credentials - Create credential schema

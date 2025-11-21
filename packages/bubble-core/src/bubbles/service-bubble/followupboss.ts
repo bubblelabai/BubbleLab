@@ -1062,11 +1062,10 @@ export class FollowUpBossBubble<
   }
 
   public async testCredential(): Promise<boolean> {
-    const credential = this.chooseCredential();
     try {
       const response = await fetch('https://api.followupboss.com/v1/me', {
         headers: {
-          Authorization: `Bearer ${credential}`,
+          Authorization: this.getAuthHeader(),
           'Content-Type': 'application/json',
           'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
           'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
@@ -1086,7 +1085,7 @@ export class FollowUpBossBubble<
     const url = `https://api.followupboss.com/v1${endpoint}`;
 
     const requestHeaders: Record<string, string> = {
-      Authorization: `Bearer ${this.chooseCredential()}`,
+      Authorization: this.getAuthHeader(),
       'Content-Type': 'application/json',
       'X-System': process.env.FUB_SYSTEM_NAME || 'Bubble-Lab',
       'X-System-Key': process.env.FUB_SYSTEM_KEY || '',
@@ -1869,9 +1868,42 @@ export class FollowUpBossBubble<
     };
 
     if (!credentials || typeof credentials !== 'object') {
+      return undefined;
+    }
+
+    if (credentials[CredentialType.FUB_API_KEY_CRED]) {
+      return credentials[CredentialType.FUB_API_KEY_CRED];
+    }
+
+    if (credentials[CredentialType.FUB_CRED]) {
+      return credentials[CredentialType.FUB_CRED];
+    }
+
+    return undefined;
+  }
+
+  private getAuthHeader(): string {
+    const { credentials } = this.params as {
+      credentials?: Record<string, string>;
+    };
+
+    if (!credentials || typeof credentials !== 'object') {
       throw new Error('No Follow Up Boss credentials provided');
     }
 
-    return credentials[CredentialType.FUB_CRED];
+    // OAuth takes priority - uses Bearer token
+    if (credentials[CredentialType.FUB_CRED]) {
+      return `Bearer ${credentials[CredentialType.FUB_CRED]}`;
+    }
+
+    // Fall back to API key - uses Basic auth (key as username, empty password)
+    if (credentials[CredentialType.FUB_API_KEY_CRED]) {
+      const apiKey = credentials[CredentialType.FUB_API_KEY_CRED];
+      return `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`;
+    }
+
+    throw new Error(
+      'No Follow Up Boss credentials provided (OAuth or API key)'
+    );
   }
 }

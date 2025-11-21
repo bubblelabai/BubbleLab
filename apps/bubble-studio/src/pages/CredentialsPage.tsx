@@ -189,6 +189,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Follow Up Boss Connection',
     credentialConfigurations: {},
   },
+  [CredentialType.FUB_API_KEY_CRED]: {
+    label: 'Follow Up Boss (API Key)',
+    description: 'API key for Follow Up Boss CRM (alternative to OAuth)',
+    placeholder: 'Enter your FUB API key',
+    namePlaceholder: 'My Follow Up Boss API Key',
+    credentialConfigurations: {},
+  },
   [CredentialType.GITHUB_TOKEN]: {
     label: 'GitHub',
     description:
@@ -239,6 +246,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',
     [CredentialType.GOOGLE_CALENDAR_CRED]: 'Google Calendar',
     [CredentialType.FUB_CRED]: 'Follow Up Boss',
+    [CredentialType.FUB_API_KEY_CRED]: 'Follow Up Boss',
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
   };
 
