@@ -7,42 +7,101 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 // Define the parameters schema for the Eleven Labs bubble
 export const ElevenLabsParamsSchema = z.discriminatedUnion('operation', [
   z.object({
-    operation: z.literal('get_signed_url'),
-    agentId: z.string(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z
+      .literal('get_signed_url')
+      .describe('Get a signed URL for authenticated WebSocket connection'),
+    agentId: z.string().describe('The ID of the agent to connect to'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
   z.object({
-    operation: z.literal('trigger_outbound_call'),
-    agentId: z.string(),
-    toPhoneNumber: z.string(),
-    phoneNumberId: z.string().optional(),
-    variables: z.record(z.string()).optional(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z
+      .literal('trigger_outbound_call')
+      .describe('Trigger an outbound call to a phone number'),
+    agentId: z.string().describe('The ID of the agent to use for the call'),
+    toPhoneNumber: z
+      .string()
+      .describe('The phone number to call (E.164 format)'),
+    phoneNumberId: z
+      .string()
+      .optional()
+      .describe('The ID of the phone number to call from (optional)'),
+    variables: z
+      .record(z.string())
+      .optional()
+      .describe('Dynamic variables to pass to the agent'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
   z.object({
-    operation: z.literal('get_agent'),
-    agentId: z.string(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z.literal('get_agent').describe('Get details about an agent'),
+    agentId: z.string().describe('The ID of the agent to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
   z.object({
-    operation: z.literal('validate_webhook_signature'),
-    signature: z.string(),
-    timestamp: z.string(),
-    body: z.string(),
-    webhookSecret: z.string(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z
+      .literal('validate_webhook_signature')
+      .describe('Validate a webhook signature from Eleven Labs'),
+    signature: z
+      .string()
+      .describe('The signature header from the webhook request'),
+    timestamp: z
+      .string()
+      .describe('The timestamp header from the webhook request'),
+    body: z.string().describe('The raw body of the webhook request'),
+    webhookSecret: z
+      .string()
+      .describe('The webhook secret to validate against'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
   z.object({
-    operation: z.literal('get_conversation'),
-    conversationId: z.string(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z
+      .literal('get_conversation')
+      .describe('Get details of a specific conversation'),
+    conversationId: z
+      .string()
+      .describe('The ID of the conversation to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
   z.object({
-    operation: z.literal('get_conversations'),
-    agentId: z.string().optional(),
-    pageSize: z.number().optional(),
-    cursor: z.string().optional(),
-    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    operation: z
+      .literal('get_conversations')
+      .describe('Get a list of conversations'),
+    agentId: z.string().optional().describe('Filter conversations by agent ID'),
+    pageSize: z
+      .number()
+      .optional()
+      .describe('Number of conversations to return (default: 30)'),
+    cursor: z.string().optional().describe('Cursor for pagination'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
   }),
 ]);
 
@@ -52,42 +111,63 @@ export type ElevenLabsParamsParsed = z.output<typeof ElevenLabsParamsSchema>;
 export const ElevenLabsResultSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z.literal('get_signed_url'),
-    signedUrl: z.string().optional(),
-    success: z.boolean(),
-    error: z.string(),
+    signedUrl: z
+      .string()
+      .optional()
+      .describe('The signed URL for WebSocket connection'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
   z.object({
     operation: z.literal('trigger_outbound_call'),
-    callSid: z.string().optional(),
-    conversationId: z.string().optional(),
-    success: z.boolean(),
-    error: z.string(),
+    callSid: z
+      .string()
+      .optional()
+      .describe('The unique identifier for the call'),
+    conversationId: z
+      .string()
+      .optional()
+      .describe('The unique identifier for the conversation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
   z.object({
     operation: z.literal('get_agent'),
-    agent: z.record(z.unknown()).optional(),
-    success: z.boolean(),
-    error: z.string(),
+    agent: z.record(z.unknown()).optional().describe('The agent details'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
   z.object({
     operation: z.literal('validate_webhook_signature'),
-    isValid: z.boolean(),
-    success: z.boolean(),
-    error: z.string(),
+    isValid: z.boolean().describe('Whether the signature is valid'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
   z.object({
     operation: z.literal('get_conversation'),
-    conversation: z.record(z.unknown()).optional(),
-    success: z.boolean(),
-    error: z.string(),
+    conversation: z
+      .record(z.unknown())
+      .optional()
+      .describe('The conversation details'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
   z.object({
     operation: z.literal('get_conversations'),
-    conversations: z.array(z.record(z.unknown())).optional(),
-    hasMore: z.boolean().optional(),
-    nextCursor: z.string().optional(),
-    success: z.boolean(),
-    error: z.string(),
+    conversations: z
+      .array(z.record(z.unknown()))
+      .optional()
+      .describe('List of conversations'),
+    hasMore: z
+      .boolean()
+      .optional()
+      .describe('Whether there are more conversations to retrieve'),
+    nextCursor: z
+      .string()
+      .optional()
+      .describe('Cursor for the next page of results'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
   }),
 ]);
 
