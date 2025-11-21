@@ -24,6 +24,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Instagram: '/integrations/instagram.svg',
   Apify: '/integrations/apify.svg',
   GitHub: '/integrations/github.svg',
+  ElevenLabs: '/integrations/elevenlabs.png', // Placeholder path
   'Follow Up Boss': '/integrations/FUB.png',
 
   // AI models (also used as fallbacks for vendor names)
@@ -61,6 +62,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Cloudflare', file: SERVICE_LOGOS['Cloudflare'] },
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
   { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
+  { name: 'ElevenLabs', file: SERVICE_LOGOS['ElevenLabs'] },
   { name: 'Follow Up Boss', file: SERVICE_LOGOS['Follow Up Boss'] },
 ];
 
@@ -111,6 +113,8 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   instagram: 'Instagram',
   apify: 'Apify',
   github: 'GitHub',
+  elevenlabs: 'ElevenLabs',
+  'eleven-labs': 'ElevenLabs',
   followupboss: 'Follow Up Boss',
   fub: 'Follow Up Boss',
   'follow-up-boss': 'Follow Up Boss',
@@ -204,6 +208,7 @@ export function findLogoForBubble(
     [/\binstagram\b/, 'Instagram'],
     [/\bapify\b/, 'Apify'],
     [/\bgithub\b/, 'GitHub'],
+    [/\belevenlabs\b|\beleven-labs\b/, 'ElevenLabs'],
     [/\bfollow\s*up\s*boss\b|\bfollowupboss\b|\bfub\b/, 'Follow Up Boss'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],

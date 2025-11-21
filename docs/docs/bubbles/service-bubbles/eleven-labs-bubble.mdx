@@ -1,0 +1,325 @@
+# Eleven Labs Bubble
+
+Eleven Labs integration for Conversational AI
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { ElevenLabsBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new ElevenLabsBubble({
+  operation: 'get_signed_url',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `get_signed_url`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_signed_url'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a signed URL for authenticated WebSocket connection</dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The ID of the agent to connect to</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_signed_url'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>signedUrl</code> <em>string</em> </dt>
+  <dd>The signed URL for WebSocket connection</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `trigger_outbound_call`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trigger_outbound_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Trigger an outbound call to a phone number</dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The ID of the agent to use for the call</dd>
+
+  <dt><code>toPhoneNumber</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The phone number to call (E.164 format)</dd>
+
+  <dt><code>phoneNumberId</code> <em>string</em> </dt>
+  <dd>The ID of the phone number to call from (optional)</dd>
+
+  <dt><code>variables</code> <em>Record&lt;string,string&gt;</em> </dt>
+  <dd>Dynamic variables to pass to the agent</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trigger_outbound_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>callSid</code> <em>string</em> </dt>
+  <dd>The unique identifier for the call</dd>
+
+  <dt><code>conversationId</code> <em>string</em> </dt>
+  <dd>The unique identifier for the conversation</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_agent`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_agent'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get details about an agent</dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The ID of the agent to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_agent'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agent</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>The agent details</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `validate_webhook_signature`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'validate_webhook_signature'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Validate a webhook signature from Eleven Labs</dd>
+
+  <dt><code>signature</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The signature header from the webhook request</dd>
+
+  <dt><code>timestamp</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The timestamp header from the webhook request</dd>
+
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The raw body of the webhook request</dd>
+
+  <dt><code>webhookSecret</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The webhook secret to validate against</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'validate_webhook_signature'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>isValid</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the signature is valid</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_conversation`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get details of a specific conversation</dd>
+
+  <dt><code>conversationId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The ID of the conversation to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>conversation</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>The conversation details</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_conversations`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversations'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a list of conversations</dd>
+
+  <dt><code>agentId</code> <em>string</em> </dt>
+  <dd>Filter conversations by agent ID</dd>
+
+  <dt><code>pageSize</code> <em>number</em> </dt>
+  <dd>Number of conversations to return (default: 30)</dd>
+
+  <dt><code>cursor</code> <em>string</em> </dt>
+  <dd>Cursor for pagination</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversations'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>conversations</code> <em>Record&lt;string,unknown&gt;[]</em> </dt>
+  <dd>List of conversations</dd>
+
+  <dt><code>hasMore</code> <em>boolean</em> </dt>
+  <dd>Whether there are more conversations to retrieve</dd>
+
+  <dt><code>nextCursor</code> <em>string</em> </dt>
+  <dd>Cursor for the next page of results</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if the operation failed</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

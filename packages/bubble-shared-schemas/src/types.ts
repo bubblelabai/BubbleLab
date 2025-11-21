@@ -21,6 +21,9 @@ export enum CredentialType {
   // Scraping Credentials
   APIFY_CRED = 'APIFY_CRED',
 
+  // Voice Credentials
+  ELEVENLABS_API_KEY = 'ELEVENLABS_API_KEY',
+
   // OAuth Credentials
   GOOGLE_DRIVE_CRED = 'GOOGLE_DRIVE_CRED',
   GMAIL_CRED = 'GMAIL_CRED',
@@ -72,4 +75,5 @@ export type BubbleName =
   | 'linkedin-tool'
   | 'youtube-tool'
   | 'github'
+  | 'eleven-labs'
   | 'followupboss';
