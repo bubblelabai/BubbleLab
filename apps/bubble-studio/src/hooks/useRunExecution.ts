@@ -7,7 +7,10 @@ import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
+import {
+  SYSTEM_CREDENTIALS,
+  validateCredentialSelection,
+} from '@bubblelab/shared-schemas';
 import type {
   CredentialType,
   StreamingLogEvent,
@@ -502,15 +505,18 @@ export function useRunExecution(
     >;
 
     for (const [bubbleKey, credTypes] of requiredEntries) {
-      for (const credType of credTypes) {
-        if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
+      const selectedForBubble =
+        getExecutionStore(flowId).pendingCredentials[bubbleKey] || {};
 
-        const selectedForBubble =
-          getExecutionStore(flowId).pendingCredentials[bubbleKey] || {};
-        const selectedId = selectedForBubble[credType];
+      const validation = validateCredentialSelection(
+        credTypes.map((t) => t as CredentialType),
+        selectedForBubble,
+        SYSTEM_CREDENTIALS
+      );
 
-        if (selectedId === undefined || selectedId === null) {
-          reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
+      if (!validation.isValid) {
+        for (const missing of validation.missing) {
+          reasons.push(`Missing credential for ${bubbleKey}: ${missing}`);
         }
       }
     }

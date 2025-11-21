@@ -247,6 +247,137 @@ export function getScopeDescriptions(
 export type CredentialOptions = Partial<Record<CredentialType, string>>;
 
 /**
+ * Credential group configuration for services with multiple auth methods
+ */
+export interface CredentialGroupConfig {
+  label: string; // Display label for the group (e.g., "Follow Up Boss")
+  types: CredentialType[]; // Credential types that belong to this group
+  typeLabels: Partial<Record<CredentialType, string>>; // Labels for each type within the group
+}
+
+/**
+ * Groups of credential types that are alternatives (user picks one)
+ * Used to display related auth methods together in UI
+ */
+export const CREDENTIAL_GROUPS: Record<string, CredentialGroupConfig> = {
+  followupboss: {
+    label: 'Follow Up Boss',
+    types: [CredentialType.FUB_CRED, CredentialType.FUB_API_KEY_CRED],
+    typeLabels: {
+      [CredentialType.FUB_CRED]: 'OAuth',
+      [CredentialType.FUB_API_KEY_CRED]: 'API Key',
+    },
+  },
+};
+
+/**
+ * Get the group name for a credential type, if it belongs to a group
+ */
+export function getCredentialGroupName(
+  credentialType: CredentialType
+): string | null {
+  for (const [groupName, config] of Object.entries(CREDENTIAL_GROUPS)) {
+    if (config.types.includes(credentialType)) {
+      return groupName;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get the group configuration for a credential type
+ */
+export function getCredentialGroup(
+  credentialType: CredentialType
+): CredentialGroupConfig | null {
+  const groupName = getCredentialGroupName(credentialType);
+  return groupName ? CREDENTIAL_GROUPS[groupName] : null;
+}
+
+/**
+ * Check if credential types are alternatives (belong to same group)
+ * Returns the group config if they are alternatives, null otherwise
+ */
+export function getAlternativeCredentialsGroup(
+  types: CredentialType[]
+): CredentialGroupConfig | null {
+  if (types.length < 2) return null;
+
+  // Check if all types belong to the same group
+  const firstGroup = getCredentialGroupName(types[0]);
+  if (!firstGroup) return null;
+
+  const allSameGroup = types.every(
+    (type) => getCredentialGroupName(type) === firstGroup
+  );
+
+  return allSameGroup ? CREDENTIAL_GROUPS[firstGroup] : null;
+}
+
+/**
+ * Get the label for a credential type within its group
+ */
+export function getCredentialTypeLabel(credentialType: CredentialType): string {
+  const group = getCredentialGroup(credentialType);
+  if (group && group.typeLabels[credentialType]) {
+    return group.typeLabels[credentialType];
+  }
+  return credentialType;
+}
+
+/**
+ * Check if credentials are satisfied for a set of required credential types.
+ * For grouped credentials (alternatives), only one needs to be selected.
+ * For non-grouped credentials, each one must be selected individually.
+ *
+ * @param requiredTypes - Array of required credential types
+ * @param selectedCredentials - Record of credentialType -> credentialId (or null/undefined if not selected)
+ * @param systemCredentials - Set of credential types that are system-managed (optional)
+ * @returns Object with isValid boolean and array of missing credential labels
+ */
+export function validateCredentialSelection(
+  requiredTypes: CredentialType[],
+  selectedCredentials: Record<string, number | null | undefined>,
+  systemCredentials?: Set<CredentialType>
+): { isValid: boolean; missing: string[] } {
+  const missing: string[] = [];
+
+  // Filter out system credentials
+  const nonSystemTypes = systemCredentials
+    ? requiredTypes.filter((t) => !systemCredentials.has(t))
+    : requiredTypes;
+
+  if (nonSystemTypes.length === 0) {
+    return { isValid: true, missing: [] };
+  }
+
+  // Check if these credential types form a group (alternatives)
+  const alternativeGroup = getAlternativeCredentialsGroup(nonSystemTypes);
+
+  if (alternativeGroup) {
+    // For grouped credentials, only ONE needs to be selected
+    const hasAnySelected = nonSystemTypes.some((credType) => {
+      const selectedId = selectedCredentials[credType];
+      return selectedId !== undefined && selectedId !== null;
+    });
+
+    if (!hasAnySelected) {
+      missing.push(alternativeGroup.label);
+    }
+  } else {
+    // For non-grouped credentials, check each one individually
+    for (const credType of nonSystemTypes) {
+      const selectedId = selectedCredentials[credType];
+      if (selectedId === undefined || selectedId === null) {
+        missing.push(credType);
+      }
+    }
+  }
+
+  return { isValid: missing.length === 0, missing };
+}
+
+/**
  * Collection of credential options for all bubbles
  */
 export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {

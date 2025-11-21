@@ -601,6 +601,44 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
 };
 ```
 
+### 5a. **Alternative Auth Methods (Credential Groups)** (Optional)
+📍 **File:** `packages/shared-schemas/src/credential-schema.ts`
+
+If your service supports multiple authentication methods (e.g., OAuth AND API Key), you need to configure them as a **credential group**. This tells the UI to display them as alternatives where the user only needs to provide ONE of them, not all.
+
+```typescript
+// Add to CREDENTIAL_GROUPS if your service has alternative auth methods
+export const CREDENTIAL_GROUPS: Record<string, CredentialGroupConfig> = {
+  // ... existing groups
+  'your-service': {
+    label: 'Your Service',  // Display name for the group
+    types: [CredentialType.YOUR_SERVICE_OAUTH, CredentialType.YOUR_SERVICE_API_KEY],
+    typeLabels: {
+      [CredentialType.YOUR_SERVICE_OAUTH]: 'OAuth',
+      [CredentialType.YOUR_SERVICE_API_KEY]: 'API Key',
+    },
+  },
+};
+```
+
+**Why this matters:**
+- Without this, the UI will show both credential types as **required** (user must provide both)
+- With this configuration, they are shown as **alternatives** (user picks one)
+- The validation will pass when ANY one of the group is selected
+- The credential dropdown will show them grouped with labels like "OAuth" and "API Key"
+
+**Example use case:** Follow Up Boss supports both OAuth and API Key authentication:
+```typescript
+followupboss: {
+  label: 'Follow Up Boss',
+  types: [CredentialType.FUB_CRED, CredentialType.FUB_API_KEY_CRED],
+  typeLabels: {
+    [CredentialType.FUB_CRED]: 'OAuth',
+    [CredentialType.FUB_API_KEY_CRED]: 'API Key',
+  },
+},
+```
+
 ### 6. **Bubble Name Type Definition**
 📍 **File:** `packages/shared-schemas/src/types.ts`
 

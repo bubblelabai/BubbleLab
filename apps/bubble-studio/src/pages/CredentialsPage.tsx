@@ -18,6 +18,9 @@ import {
   isOAuthCredential,
   getScopeDescriptions,
   ScopeDescription,
+  CREDENTIAL_GROUPS,
+  getCredentialGroupName,
+  getCredentialTypeLabel,
 } from '@bubblelab/shared-schemas';
 import {
   useCredentials,
@@ -267,6 +270,7 @@ interface CreateCredentialModalProps {
   lockedCredentialType?: CredentialType;
   lockType?: boolean;
   onSuccess?: (credential: CredentialResponse) => void;
+  allowedCredentialTypes?: CredentialType[]; // Filter to only show these types in dropdown
 }
 
 export function CreateCredentialModal({
@@ -277,6 +281,7 @@ export function CreateCredentialModal({
   lockedCredentialType,
   lockType,
   onSuccess,
+  allowedCredentialTypes,
 }: CreateCredentialModalProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<CreateCredentialRequest>({
@@ -326,15 +331,32 @@ export function CreateCredentialModal({
     }
   }, [isOpen]);
 
-  // If a locked type is provided, set it when opening the modal
+  // If a locked type or allowed types are provided, set the credential type when opening the modal
   useEffect(() => {
-    if (isOpen && lockedCredentialType) {
-      setFormData((prev) => ({
-        ...prev,
-        credentialType: lockedCredentialType,
-      }));
+    if (isOpen) {
+      if (lockedCredentialType) {
+        setFormData((prev) => ({
+          ...prev,
+          credentialType: lockedCredentialType,
+        }));
+      } else if (allowedCredentialTypes && allowedCredentialTypes.length > 0) {
+        // Set to first allowed type if current type is not in allowed list
+        setFormData((prev) => {
+          if (
+            !allowedCredentialTypes.includes(
+              prev.credentialType as CredentialType
+            )
+          ) {
+            return {
+              ...prev,
+              credentialType: allowedCredentialTypes[0],
+            };
+          }
+          return prev;
+        });
+      }
     }
-  }, [isOpen, lockedCredentialType]);
+  }, [isOpen, lockedCredentialType, allowedCredentialTypes]);
 
   const handleOAuthConnect = async () => {
     setIsOAuthConnecting(true);
@@ -524,30 +546,45 @@ export function CreateCredentialModal({
                   value={formData.credentialType}
                   onChange={(e) => {
                     const newCredentialType = e.target.value as CredentialType;
-                    setFormData((prev) => ({
-                      ...prev,
-                      credentialType: newCredentialType,
-                      name:
-                        prev.name ||
+                    setFormData((prev) => {
+                      const oldPlaceholder =
+                        CREDENTIAL_TYPE_CONFIG[
+                          prev.credentialType as CredentialType
+                        ]?.namePlaceholder;
+                      const newPlaceholder =
                         CREDENTIAL_TYPE_CONFIG[newCredentialType]
-                          .namePlaceholder,
-                      credentialConfigurations:
-                        CREDENTIAL_TYPE_CONFIG[newCredentialType]
-                          .credentialConfigurations,
-                    }));
+                          .namePlaceholder;
+
+                      // Update name if it's empty or matches the old placeholder
+                      const shouldUpdateName =
+                        !prev.name || prev.name === oldPlaceholder;
+
+                      return {
+                        ...prev,
+                        credentialType: newCredentialType,
+                        name: shouldUpdateName ? newPlaceholder : prev.name,
+                        credentialConfigurations:
+                          CREDENTIAL_TYPE_CONFIG[newCredentialType]
+                            .credentialConfigurations,
+                      };
+                    });
                     setError(null);
                   }}
                   className="w-full bg-[#1a1a1a] text-gray-100 pl-3 py-2 pr-16 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 appearance-none"
                   disabled={!!lockType || !!lockedCredentialType}
                   required
                 >
-                  {Object.entries(CREDENTIAL_TYPE_CONFIG).map(
-                    ([type, config]) => (
+                  {Object.entries(CREDENTIAL_TYPE_CONFIG)
+                    .filter(
+                      ([type]) =>
+                        !allowedCredentialTypes ||
+                        allowedCredentialTypes.includes(type as CredentialType)
+                    )
+                    .map(([type, config]) => (
                       <option key={type} value={type}>
                         {config.label}
                       </option>
-                    )
-                  )}
+                    ))}
                 </select>
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                   <ChevronDownIcon className="h-4 w-4 text-gray-400" />
@@ -1134,20 +1171,158 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {credentials.map((credential) => (
-                <CredentialCard
-                  key={credential.id}
-                  credential={credential}
-                  onEdit={handleEditCredential}
-                  onDelete={handleDeleteCredential}
-                  isDeleting={deleteCredentialMutation.isPending}
-                  onRefreshOAuth={handleRefreshOAuth}
-                  isRefreshing={
-                    refreshOAuthMutation.isPending &&
-                    refreshOAuthMutation.variables?.id === credential.id
+              {(() => {
+                // Group credentials by their credential group
+                const groupedCredentials: Record<string, CredentialResponse[]> =
+                  {};
+                const ungroupedCredentials: CredentialResponse[] = [];
+
+                for (const credential of credentials) {
+                  const groupName = getCredentialGroupName(
+                    credential.credentialType as CredentialType
+                  );
+                  if (groupName) {
+                    if (!groupedCredentials[groupName]) {
+                      groupedCredentials[groupName] = [];
+                    }
+                    groupedCredentials[groupName].push(credential);
+                  } else {
+                    ungroupedCredentials.push(credential);
                   }
-                />
-              ))}
+                }
+
+                return (
+                  <>
+                    {/* Render grouped credentials */}
+                    {Object.entries(groupedCredentials).map(
+                      ([groupName, groupCreds]) => {
+                        const groupConfig = CREDENTIAL_GROUPS[groupName];
+                        if (!groupConfig) return null;
+
+                        return (
+                          <div
+                            key={groupName}
+                            className="bg-[#1a1a1a] rounded-lg border border-[#30363d] p-4 hover:border-[#444c56] transition-all duration-200"
+                          >
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="flex-shrink-0">
+                                {(() => {
+                                  const serviceName =
+                                    getServiceNameForCredentialType(
+                                      groupCreds[0]
+                                        .credentialType as CredentialType
+                                    );
+                                  const logo = resolveLogoByName(serviceName);
+                                  return logo ? (
+                                    <img
+                                      src={logo.file}
+                                      alt={`${logo.name} logo`}
+                                      className="h-8 w-8 object-contain"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-blue-600">
+                                      <CogIcon className="h-4 w-4 text-white" />
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-semibold text-gray-100">
+                                  {groupConfig.label}
+                                </h3>
+                                <p className="text-xs text-gray-400">
+                                  {groupCreds.length} credential
+                                  {groupCreds.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              {groupCreds.map((credential) => (
+                                <div
+                                  key={credential.id}
+                                  className="flex items-center justify-between p-2 bg-[#0a0a0a] rounded border border-[#30363d]"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-xs px-2 py-0.5 bg-[#30363d] text-gray-300 rounded">
+                                      {getCredentialTypeLabel(
+                                        credential.credentialType as CredentialType
+                                      )}
+                                    </span>
+                                    <span className="text-xs text-gray-300 truncate">
+                                      {credential.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {isOAuthCredential(
+                                      credential.credentialType as CredentialType
+                                    ) && (
+                                      <button
+                                        onClick={() =>
+                                          handleRefreshOAuth(credential)
+                                        }
+                                        disabled={
+                                          refreshOAuthMutation.isPending
+                                        }
+                                        className="text-gray-400 hover:text-blue-400 p-1 hover:bg-blue-900/20 rounded transition-all duration-200 disabled:opacity-50"
+                                        title="Refresh OAuth token"
+                                      >
+                                        <ArrowPathIcon className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() =>
+                                        handleEditCredential(credential)
+                                      }
+                                      className="text-gray-400 hover:text-gray-300 p-1 hover:bg-[#30363d] rounded transition-all duration-200"
+                                      title="Edit credential"
+                                    >
+                                      <PencilIcon className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (
+                                          confirm(
+                                            `Are you sure you want to delete "${credential.name}"?`
+                                          )
+                                        ) {
+                                          handleDeleteCredential(credential.id);
+                                        }
+                                      }}
+                                      disabled={
+                                        deleteCredentialMutation.isPending
+                                      }
+                                      className="text-gray-400 hover:text-red-400 p-1 hover:bg-red-900/20 rounded transition-all duration-200 disabled:opacity-50"
+                                      title="Delete credential"
+                                    >
+                                      <TrashIcon className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+                    {/* Render ungrouped credentials */}
+                    {ungroupedCredentials.map((credential) => (
+                      <CredentialCard
+                        key={credential.id}
+                        credential={credential}
+                        onEdit={handleEditCredential}
+                        onDelete={handleDeleteCredential}
+                        isDeleting={deleteCredentialMutation.isPending}
+                        onRefreshOAuth={handleRefreshOAuth}
+                        isRefreshing={
+                          refreshOAuthMutation.isPending &&
+                          refreshOAuthMutation.variables?.id === credential.id
+                        }
+                      />
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
         </div>
