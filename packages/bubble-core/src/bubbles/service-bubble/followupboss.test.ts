@@ -12,6 +12,7 @@ describe('FollowUpBoss Bubble Details', () => {
     expect(result.data?.name).toBe('followupboss');
     expect(result.data?.alias).toBe('fub');
     expect(result.data?.usageExample).toBeDefined();
+    console.log(result.data?.usageExample);
     // Should include enum values
     expect(result.data?.usageExample).toContain('peopleCreated');
     expect(result.data?.usageExample).toContain('peopleUpdated');

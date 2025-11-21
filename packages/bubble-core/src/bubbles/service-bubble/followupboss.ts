@@ -536,6 +536,40 @@ const FUBParamsSchema = z.discriminatedUnion('operation', [
 
   // Event operations (preferred for new leads)
   z.object({
+    operation: z.literal('list_events').describe('List/search events'),
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(25)
+      .describe('Number of results to return'),
+    offset: z
+      .number()
+      .optional()
+      .default(0)
+      .describe('Number of results to skip'),
+    personId: z.number().optional().describe('Filter by person ID'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  z.object({
+    operation: z.literal('get_event').describe('Get a specific event by ID'),
+    event_id: z.number().describe('Event ID to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  z.object({
     operation: z
       .literal('create_event')
       .describe('Create an event (preferred for new leads)'),
@@ -874,6 +908,27 @@ const FUBResultSchema = z.discriminatedUnion('operation', [
 
   // Event results
   z.object({
+    operation: z.literal('list_events'),
+    success: z.boolean(),
+    events: z.array(FUBEventSchema).optional(),
+    _metadata: z
+      .object({
+        total: z.number().optional(),
+        limit: z.number().optional(),
+        offset: z.number().optional(),
+      })
+      .optional(),
+    error: z.string(),
+  }),
+
+  z.object({
+    operation: z.literal('get_event'),
+    success: z.boolean(),
+    event: FUBEventSchema.optional(),
+    error: z.string(),
+  }),
+
+  z.object({
     operation: z.literal('create_event'),
     success: z.boolean(),
     event: FUBEventSchema.optional(),
@@ -1155,6 +1210,14 @@ export class FollowUpBossBubble<
             );
 
           // Event operations
+          case 'list_events':
+            return await this.listEvents(
+              this.params as Extract<FUBParams, { operation: 'list_events' }>
+            );
+          case 'get_event':
+            return await this.getEvent(
+              this.params as Extract<FUBParams, { operation: 'get_event' }>
+            );
           case 'create_event':
             return await this.createEvent(
               this.params as Extract<FUBParams, { operation: 'create_event' }>
@@ -1563,6 +1626,47 @@ export class FollowUpBossBubble<
   }
 
   // Event operations
+  private async listEvents(
+    params: Extract<FUBParams, { operation: 'list_events' }>
+  ): Promise<Extract<FUBResult, { operation: 'list_events' }>> {
+    const queryParams = new URLSearchParams();
+    if (params.limit) queryParams.set('limit', params.limit.toString());
+    if (params.offset) queryParams.set('offset', params.offset.toString());
+    if (params.personId)
+      queryParams.set('personId', params.personId.toString());
+
+    const response = (await this.makeFUBApiRequest(
+      `/events?${queryParams.toString()}`
+    )) as { events?: unknown[]; _metadata?: unknown };
+
+    return {
+      operation: 'list_events',
+      success: true,
+      events: response.events as z.infer<typeof FUBEventSchema>[],
+      _metadata: response._metadata as {
+        total?: number;
+        limit?: number;
+        offset?: number;
+      },
+      error: '',
+    };
+  }
+
+  private async getEvent(
+    params: Extract<FUBParams, { operation: 'get_event' }>
+  ): Promise<Extract<FUBResult, { operation: 'get_event' }>> {
+    const response = (await this.makeFUBApiRequest(
+      `/events/${params.event_id}`
+    )) as z.infer<typeof FUBEventSchema>;
+
+    return {
+      operation: 'get_event',
+      success: true,
+      event: response,
+      error: '',
+    };
+  }
+
   private async createEvent(
     params: Extract<FUBParams, { operation: 'create_event' }>
   ): Promise<Extract<FUBResult, { operation: 'create_event' }>> {
