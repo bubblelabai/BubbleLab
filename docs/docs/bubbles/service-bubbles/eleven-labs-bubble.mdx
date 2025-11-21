@@ -31,13 +31,13 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'get_signed_url'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Get a signed URL for authenticated WebSocket connection</dd>
 
   <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The ID of the agent to connect to</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -51,13 +51,13 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>signedUrl</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>The signed URL for WebSocket connection</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
@@ -76,22 +76,22 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'trigger_outbound_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Trigger an outbound call to a phone number</dd>
 
   <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The ID of the agent to use for the call</dd>
 
   <dt><code>toPhoneNumber</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The phone number to call (E.164 format)</dd>
 
   <dt><code>phoneNumberId</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>The ID of the phone number to call from (optional)</dd>
 
   <dt><code>variables</code> <em>Record&lt;string,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Dynamic variables to pass to the agent</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -105,16 +105,16 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>callSid</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>The unique identifier for the call</dd>
 
   <dt><code>conversationId</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>The unique identifier for the conversation</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
@@ -133,13 +133,13 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'get_agent'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Get details about an agent</dd>
 
   <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The ID of the agent to retrieve</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -153,13 +153,13 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>agent</code> <em>Record&lt;string,unknown&gt;</em> </dt>
-  <dd></dd>
+  <dd>The agent details</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
@@ -178,22 +178,22 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'validate_webhook_signature'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Validate a webhook signature from Eleven Labs</dd>
 
   <dt><code>signature</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The signature header from the webhook request</dd>
 
   <dt><code>timestamp</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The timestamp header from the webhook request</dd>
 
   <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The raw body of the webhook request</dd>
 
   <dt><code>webhookSecret</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The webhook secret to validate against</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -207,13 +207,13 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>isValid</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the signature is valid</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
@@ -232,13 +232,13 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'get_conversation'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Get details of a specific conversation</dd>
 
   <dt><code>conversationId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>The ID of the conversation to retrieve</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -252,13 +252,13 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>conversation</code> <em>Record&lt;string,unknown&gt;</em> </dt>
-  <dd></dd>
+  <dd>The conversation details</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
@@ -277,19 +277,19 @@ const result = await new ElevenLabsBubble({
 <div className="schema-card">
 <dl>
   <dt><code>operation</code> <em>'get_conversations'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Get a list of conversations</dd>
 
   <dt><code>agentId</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>Filter conversations by agent ID</dd>
 
   <dt><code>pageSize</code> <em>number</em> </dt>
-  <dd></dd>
+  <dd>Number of conversations to return (default: 30)</dd>
 
   <dt><code>cursor</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>Cursor for pagination</dd>
 
   <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
-  <dd></dd>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
 </dl>
 
 </div>
@@ -303,19 +303,19 @@ const result = await new ElevenLabsBubble({
   <dd></dd>
 
   <dt><code>conversations</code> <em>Record&lt;string,unknown&gt;[]</em> </dt>
-  <dd></dd>
+  <dd>List of conversations</dd>
 
   <dt><code>hasMore</code> <em>boolean</em> </dt>
-  <dd></dd>
+  <dd>Whether there are more conversations to retrieve</dd>
 
   <dt><code>nextCursor</code> <em>string</em> </dt>
-  <dd></dd>
+  <dd>Cursor for the next page of results</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Whether the operation was successful</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
+  <dd>Error message if the operation failed</dd>
 </dl>
 
 </div>
