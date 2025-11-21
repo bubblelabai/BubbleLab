@@ -375,6 +375,17 @@ export class SlackBubble<
   T extends SlackParams = SlackParams, // ✅ Uses input type
 > extends ServiceBubble<T, Extract<SlackResult, { operation: T['operation'] }>> {
 
+  // ⚠️ IMPORTANT: Cast default through Extract type to avoid "operation: any"
+  constructor(
+    params: T = { operation: 'list_channels' } as Extract<
+      SlackParams,
+      { operation: 'list_channels' }
+    > as T, // ✅ Cast to specific operation type, then to T
+    context?: BubbleContext
+  ) {
+    super(params, context);
+  }
+
   // Manual parsing required for operations with defaults
   private async listChannels(params: Extract<SlackParams, { operation: 'list_channels' }>) {
     const parsed = SlackParamsSchema.parse(params); // ✅ Parse to apply defaults

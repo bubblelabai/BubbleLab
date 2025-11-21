@@ -1,0 +1,1489 @@
+# Followupboss Bubble
+
+Follow Up Boss CRM integration
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { FollowUpBossBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new FollowUpBossBubble({
+  operation: 'list_people',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `list_people`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_people'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List people/contacts</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>sort</code> <em>string</em> </dt>
+  <dd>Sort field</dd>
+
+  <dt><code>fields</code> <em>string</em> </dt>
+  <dd>Comma-separated fields to return (use "allFields" for all)</dd>
+
+  <dt><code>includeTrash</code> <em>boolean</em> </dt>
+  <dd>Include people in Trash stage</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_people'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>people</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_person`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific person by ID</dd>
+
+  <dt><code>person_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Person ID to retrieve</dd>
+
+  <dt><code>fields</code> <em>string</em> </dt>
+  <dd>Comma-separated fields to return</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>person</code> <em>object</em> </dt>
+  <dd>FUB person/contact object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_person`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new person/contact</dd>
+
+  <dt><code>firstName</code> <em>string</em> </dt>
+  <dd>First name</dd>
+
+  <dt><code>lastName</code> <em>string</em> </dt>
+  <dd>Last name</dd>
+
+  <dt><code>emails</code> <em>object[]</em> </dt>
+  <dd>Email addresses</dd>
+
+  <dt><code>phones</code> <em>object[]</em> </dt>
+  <dd>Phone numbers</dd>
+
+  <dt><code>stage</code> <em>string</em> </dt>
+  <dd>Initial stage</dd>
+
+  <dt><code>source</code> <em>string</em> </dt>
+  <dd>Lead source</dd>
+
+  <dt><code>assignedTo</code> <em>number</em> </dt>
+  <dd>Assigned user ID</dd>
+
+  <dt><code>tags</code> <em>string[]</em> </dt>
+  <dd>Tags to apply</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>person</code> <em>object</em> </dt>
+  <dd>FUB person/contact object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_person`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing person</dd>
+
+  <dt><code>person_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Person ID to update</dd>
+
+  <dt><code>firstName</code> <em>string</em> </dt>
+  <dd>First name</dd>
+
+  <dt><code>lastName</code> <em>string</em> </dt>
+  <dd>Last name</dd>
+
+  <dt><code>emails</code> <em>object[]</em> </dt>
+  <dd>Email addresses</dd>
+
+  <dt><code>phones</code> <em>object[]</em> </dt>
+  <dd>Phone numbers</dd>
+
+  <dt><code>stage</code> <em>string</em> </dt>
+  <dd>Stage</dd>
+
+  <dt><code>source</code> <em>string</em> </dt>
+  <dd>Lead source</dd>
+
+  <dt><code>assignedTo</code> <em>number</em> </dt>
+  <dd>Assigned user ID</dd>
+
+  <dt><code>tags</code> <em>string[]</em> </dt>
+  <dd>Tags</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>person</code> <em>object</em> </dt>
+  <dd>FUB person/contact object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_person`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a person</dd>
+
+  <dt><code>person_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Person ID to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_person'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deleted_id</code> <em>number</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_tasks`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_tasks'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List tasks</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_tasks'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>tasks</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_task`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific task by ID</dd>
+
+  <dt><code>task_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Task ID to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>task</code> <em>object</em> </dt>
+  <dd>FUB task object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_task`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new task</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Associated person ID</dd>
+
+  <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Task name/title</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>Task description</dd>
+
+  <dt><code>dueDate</code> <em>string</em> </dt>
+  <dd>Due date (YYYY-MM-DD)</dd>
+
+  <dt><code>assignedTo</code> <em>number</em> </dt>
+  <dd>Assigned user ID</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>task</code> <em>object</em> </dt>
+  <dd>FUB task object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_task`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing task</dd>
+
+  <dt><code>task_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Task ID to update</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>Task name/title</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>Task description</dd>
+
+  <dt><code>dueDate</code> <em>string</em> </dt>
+  <dd>Due date (YYYY-MM-DD)</dd>
+
+  <dt><code>completed</code> <em>boolean</em> </dt>
+  <dd>Whether task is completed</dd>
+
+  <dt><code>assignedTo</code> <em>number</em> </dt>
+  <dd>Assigned user ID</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>task</code> <em>object</em> </dt>
+  <dd>FUB task object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_task`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a task</dd>
+
+  <dt><code>task_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Task ID to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_task'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deleted_id</code> <em>number</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_notes`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_notes'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List notes</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_notes'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>notes</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_note`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new note</dd>
+
+  <dt><code>personId</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Associated person ID</dd>
+
+  <dt><code>subject</code> <em>string</em> </dt>
+  <dd>Note subject</dd>
+
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Note content</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>note</code> <em>object</em> </dt>
+  <dd>FUB note object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_note`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing note</dd>
+
+  <dt><code>note_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Note ID to update</dd>
+
+  <dt><code>subject</code> <em>string</em> </dt>
+  <dd>Note subject</dd>
+
+  <dt><code>body</code> <em>string</em> </dt>
+  <dd>Note content</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>note</code> <em>object</em> </dt>
+  <dd>FUB note object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_note`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a note</dd>
+
+  <dt><code>note_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Note ID to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_note'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deleted_id</code> <em>number</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_deals`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_deals'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List deals</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_deals'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deals</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_deal`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific deal by ID</dd>
+
+  <dt><code>deal_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Deal ID to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deal</code> <em>object</em> </dt>
+  <dd>FUB deal object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_deal`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new deal</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Associated person ID</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>Deal name</dd>
+
+  <dt><code>price</code> <em>number</em> </dt>
+  <dd>Deal price/value</dd>
+
+  <dt><code>stage</code> <em>string</em> </dt>
+  <dd>Deal stage</dd>
+
+  <dt><code>closeDate</code> <em>string</em> </dt>
+  <dd>Expected close date (YYYY-MM-DD)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deal</code> <em>object</em> </dt>
+  <dd>FUB deal object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_deal`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing deal</dd>
+
+  <dt><code>deal_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Deal ID to update</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>Deal name</dd>
+
+  <dt><code>price</code> <em>number</em> </dt>
+  <dd>Deal price/value</dd>
+
+  <dt><code>stage</code> <em>string</em> </dt>
+  <dd>Deal stage</dd>
+
+  <dt><code>closeDate</code> <em>string</em> </dt>
+  <dd>Expected close date (YYYY-MM-DD)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_deal'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deal</code> <em>object</em> </dt>
+  <dd>FUB deal object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create an event (preferred for new leads)</dd>
+
+  <dt><code>type</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Event type (e.g., "Showing Request", "Registration")</dd>
+
+  <dt><code>source</code> <em>string</em> </dt>
+  <dd>Event source</dd>
+
+  <dt><code>message</code> <em>string</em> </dt>
+  <dd>Event message</dd>
+
+  <dt><code>person</code> <em>object</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Person data for the event</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>event</code> <em>object</em> </dt>
+  <dd>FUB event object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_calls`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_calls'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List calls</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_calls'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>calls</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_call`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Log a call</dd>
+
+  <dt><code>personId</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Associated person ID</dd>
+
+  <dt><code>outcome</code> <em>string</em> </dt>
+  <dd>Call outcome</dd>
+
+  <dt><code>note</code> <em>string</em> </dt>
+  <dd>Call notes</dd>
+
+  <dt><code>duration</code> <em>number</em> </dt>
+  <dd>Call duration in seconds</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>call</code> <em>object</em> </dt>
+  <dd>FUB call object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_appointments`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_appointments'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List appointments</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_appointments'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>appointments</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_appointment`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_appointment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create an appointment</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Associated person ID</dd>
+
+  <dt><code>title</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Appointment title</dd>
+
+  <dt><code>startTime</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Start time (ISO 8601)</dd>
+
+  <dt><code>endTime</code> <em>string</em> </dt>
+  <dd>End time (ISO 8601)</dd>
+
+  <dt><code>location</code> <em>string</em> </dt>
+  <dd>Location</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_appointment'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>appointment</code> <em>object</em> </dt>
+  <dd>FUB appointment object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_webhooks`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_webhooks'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List registered webhooks</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_webhooks'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>webhooks</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific webhook by ID</dd>
+
+  <dt><code>webhook_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Webhook ID to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>webhook</code> <em>object</em> </dt>
+  <dd>FUB webhook object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Register a new webhook</dd>
+
+  <dt><code>event</code> <em>'peopleCreated' | 'peopleUpdated' | 'peopleDeleted' | 'peopleTagsCreated' | 'peopleStageUpdated' | 'peopleRelationshipCreated' | 'peopleRelationshipUpdated' | 'peopleRelationshipDeleted' | 'notesCreated' | 'notesUpdated' | 'notesDeleted' | 'emailsCreated' | 'emailsUpdated' | 'emailsDeleted' | 'tasksCreated' | 'tasksUpdated' | 'tasksDeleted' | 'appointmentsCreated' | 'appointmentsUpdated' | 'appointmentsDeleted' | 'textMessagesCreated' | 'textMessagesUpdated' | 'textMessagesDeleted' | 'callsCreated' | 'callsUpdated' | 'callsDeleted' | 'dealsCreated' | 'dealsUpdated' | 'dealsDeleted' | 'eventsCreated' | 'stageCreated' | 'stageUpdated' | 'stageDeleted' | 'pipelineCreated' | 'pipelineUpdated' | 'pipelineDeleted' | 'pipelineStageCreated' | 'pipelineStageUpdated' | 'pipelineStageDeleted' | 'customFieldsCreated' | 'customFieldsUpdated' | 'customFieldsDeleted' | 'dealCustomFieldsCreated' | 'dealCustomFieldsUpdated' | 'dealCustomFieldsDeleted' | 'emEventsOpened' | 'emEventsClicked' | 'emEventsUnsubscribed' | 'reactionCreated' | 'reactionDeleted' | 'threadedReplyCreated' | 'threadedReplyUpdated' | 'threadedReplyDeleted'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Webhook event type to subscribe to</dd>
+
+  <dt><code>url</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>HTTPS callback URL for webhook notifications</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>webhook</code> <em>object</em> </dt>
+  <dd>FUB webhook object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update an existing webhook</dd>
+
+  <dt><code>webhook_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Webhook ID to update</dd>
+
+  <dt><code>event</code> <em>'peopleCreated' | 'peopleUpdated' | 'peopleDeleted' | 'peopleTagsCreated' | 'peopleStageUpdated' | 'peopleRelationshipCreated' | 'peopleRelationshipUpdated' | 'peopleRelationshipDeleted' | 'notesCreated' | 'notesUpdated' | 'notesDeleted' | 'emailsCreated' | 'emailsUpdated' | 'emailsDeleted' | 'tasksCreated' | 'tasksUpdated' | 'tasksDeleted' | 'appointmentsCreated' | 'appointmentsUpdated' | 'appointmentsDeleted' | 'textMessagesCreated' | 'textMessagesUpdated' | 'textMessagesDeleted' | 'callsCreated' | 'callsUpdated' | 'callsDeleted' | 'dealsCreated' | 'dealsUpdated' | 'dealsDeleted' | 'eventsCreated' | 'stageCreated' | 'stageUpdated' | 'stageDeleted' | 'pipelineCreated' | 'pipelineUpdated' | 'pipelineDeleted' | 'pipelineStageCreated' | 'pipelineStageUpdated' | 'pipelineStageDeleted' | 'customFieldsCreated' | 'customFieldsUpdated' | 'customFieldsDeleted' | 'dealCustomFieldsCreated' | 'dealCustomFieldsUpdated' | 'dealCustomFieldsDeleted' | 'emEventsOpened' | 'emEventsClicked' | 'emEventsUnsubscribed' | 'reactionCreated' | 'reactionDeleted' | 'threadedReplyCreated' | 'threadedReplyUpdated' | 'threadedReplyDeleted'</em> </dt>
+  <dd>New webhook event type</dd>
+
+  <dt><code>url</code> <em>string</em> </dt>
+  <dd>New HTTPS callback URL</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>webhook</code> <em>object</em> </dt>
+  <dd>FUB webhook object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a webhook</dd>
+
+  <dt><code>webhook_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Webhook ID to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>deleted_id</code> <em>number</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

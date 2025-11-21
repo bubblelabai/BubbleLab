@@ -25,6 +25,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Apify: '/integrations/apify.svg',
   GitHub: '/integrations/github.svg',
   ElevenLabs: '/integrations/elevenlabs.png', // Placeholder path
+  'Follow Up Boss': '/integrations/FUB.png',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -62,6 +63,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
   { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
   { name: 'ElevenLabs', file: SERVICE_LOGOS['ElevenLabs'] },
+  { name: 'Follow Up Boss', file: SERVICE_LOGOS['Follow Up Boss'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -113,6 +115,9 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   github: 'GitHub',
   elevenlabs: 'ElevenLabs',
   'eleven-labs': 'ElevenLabs',
+  followupboss: 'Follow Up Boss',
+  fub: 'Follow Up Boss',
+  'follow-up-boss': 'Follow Up Boss',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -204,6 +209,7 @@ export function findLogoForBubble(
     [/\bapify\b/, 'Apify'],
     [/\bgithub\b/, 'GitHub'],
     [/\belevenlabs\b|\beleven-labs\b/, 'ElevenLabs'],
+    [/\bfollow\s*up\s*boss\b|\bfollowupboss\b|\bfub\b/, 'Follow Up Boss'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
@@ -267,6 +273,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       slackformatteragentbubble: 'slack-formatter-agent-bubble',
       storagebubble: 'storage-bubble',
       githubbubble: 'github-bubble',
+      followupbossbubble: 'followupboss-bubble',
     }
   );
 
@@ -307,6 +314,8 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     slackformatteragent: 'slack-formatter-agent-bubble',
     storage: 'storage-bubble',
     github: 'github-bubble',
+    followupboss: 'followupboss-bubble',
+    fub: 'followupboss-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants

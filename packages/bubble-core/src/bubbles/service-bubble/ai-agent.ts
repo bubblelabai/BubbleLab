@@ -30,6 +30,7 @@ import {
   formatFinalResponse,
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
+import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -562,6 +563,26 @@ export class AIAgentBubble extends ServiceBubble<
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
           maxRetries: retries,
+          // Disable all safety filters to prevent candidateContent.parts.reduce errors
+          // when Gemini blocks content and returns candidates without content field
+          safetySettings: [
+            {
+              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+          ],
         });
       case 'anthropic':
         return new ChatAnthropic({

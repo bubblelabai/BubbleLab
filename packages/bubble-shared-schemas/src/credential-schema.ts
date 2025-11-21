@@ -23,6 +23,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GMAIL_CRED]: '',
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
   [CredentialType.GOOGLE_CALENDAR_CRED]: '',
+  [CredentialType.FUB_CRED]: '',
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
 };
 
@@ -45,7 +46,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google';
+export type OAuthProvider = 'google' | 'followupboss';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -169,6 +170,22 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     authorizationParams: {
       access_type: 'offline', // Required for refresh tokens
       prompt: 'consent', // Force consent screen to ensure refresh token is issued
+    },
+  },
+  followupboss: {
+    name: 'followupboss',
+    displayName: 'Follow Up Boss',
+    credentialTypes: {
+      [CredentialType.FUB_CRED]: {
+        displayName: 'Follow Up Boss',
+        defaultScopes: [], // FUB doesn't use granular scopes
+        description:
+          'Access Follow Up Boss CRM for managing contacts, tasks, deals, and more',
+      },
+    },
+    authorizationParams: {
+      response_type: 'auth_code', // FUB uses 'auth_code' instead of standard 'code'
+      prompt: 'login', // FUB supports 'login' to force re-authentication
     },
   },
 };
@@ -321,6 +338,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'youtube-tool': [CredentialType.APIFY_CRED],
   github: [CredentialType.GITHUB_TOKEN],
   'eleven-labs': [CredentialType.ELEVENLABS_API_KEY],
+  followupboss: [CredentialType.FUB_CRED],
 };
 
 // POST /credentials - Create credential schema

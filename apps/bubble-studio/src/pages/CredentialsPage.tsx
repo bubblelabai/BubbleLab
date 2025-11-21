@@ -181,6 +181,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       ignoreSSL: false,
     },
   },
+  [CredentialType.FUB_CRED]: {
+    label: 'Follow Up Boss',
+    description:
+      'OAuth connection to Follow Up Boss CRM for contacts, tasks, and deals',
+    placeholder: '', // Not used for OAuth
+    namePlaceholder: 'My Follow Up Boss Connection',
+    credentialConfigurations: {},
+  },
   [CredentialType.GITHUB_TOKEN]: {
     label: 'GitHub',
     description:
@@ -237,6 +245,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GMAIL_CRED]: 'Gmail',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',
     [CredentialType.GOOGLE_CALENDAR_CRED]: 'Google Calendar',
+    [CredentialType.FUB_CRED]: 'Follow Up Boss',
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
   };
@@ -345,8 +354,13 @@ export function CreateCredentialModal({
       // Get selected scopes as array
       const scopesArray = Array.from(selectedScopes);
 
-      // Validate at least one scope is selected
-      if (scopesArray.length === 0) {
+      // Get available scopes for this credential type
+      const availableScopes = getScopeDescriptions(
+        formData.credentialType as CredentialType
+      );
+
+      // Validate at least one scope is selected (only if scopes are available)
+      if (availableScopes.length > 0 && scopesArray.length === 0) {
         setError('Please select at least one permission');
         setIsOAuthConnecting(false);
         return;
@@ -620,40 +634,44 @@ export function CreateCredentialModal({
                     Once completed, the connection will be saved automatically.
                   </p>
 
-                  {/* Scope Descriptions with Checkboxes */}
-                  <div className="mt-4 pt-4 border-t border-[#30363d]">
-                    <p className="text-xs font-medium text-gray-300 mb-3">
-                      Select permissions to request:
-                    </p>
-                    <div className="space-y-2">
-                      {getScopeDescriptions(
-                        formData.credentialType as CredentialType
-                      ).map((scopeDesc: ScopeDescription) => (
-                        <label
-                          key={scopeDesc.scope}
-                          className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedScopes.has(scopeDesc.scope)}
-                            onChange={(e) => {
-                              const newSelected = new Set(selectedScopes);
-                              if (e.target.checked) {
-                                newSelected.add(scopeDesc.scope);
-                              } else {
-                                newSelected.delete(scopeDesc.scope);
-                              }
-                              setSelectedScopes(newSelected);
-                            }}
-                            className="mt-0.5 w-4 h-4 rounded border-[#30363d] bg-[#1a1a1a] text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
-                          />
-                          <span className="flex-1">
-                            {scopeDesc.description}
-                          </span>
-                        </label>
-                      ))}
+                  {/* Scope Descriptions with Checkboxes - only show if scopes are available */}
+                  {getScopeDescriptions(
+                    formData.credentialType as CredentialType
+                  ).length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-[#30363d]">
+                      <p className="text-xs font-medium text-gray-300 mb-3">
+                        Select permissions to request:
+                      </p>
+                      <div className="space-y-2">
+                        {getScopeDescriptions(
+                          formData.credentialType as CredentialType
+                        ).map((scopeDesc: ScopeDescription) => (
+                          <label
+                            key={scopeDesc.scope}
+                            className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedScopes.has(scopeDesc.scope)}
+                              onChange={(e) => {
+                                const newSelected = new Set(selectedScopes);
+                                if (e.target.checked) {
+                                  newSelected.add(scopeDesc.scope);
+                                } else {
+                                  newSelected.delete(scopeDesc.scope);
+                                }
+                                setSelectedScopes(newSelected);
+                              }}
+                              className="mt-0.5 w-4 h-4 rounded border-[#30363d] bg-[#1a1a1a] text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
+                            />
+                            <span className="flex-1">
+                              {scopeDesc.description}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
