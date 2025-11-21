@@ -148,6 +148,7 @@ export class BubbleFactory {
       'linkedin-tool',
       'youtube-tool',
       'github',
+      'eleven-labs',
     ];
   }
 
@@ -250,6 +251,9 @@ export class BubbleFactory {
     const { ParseDocumentWorkflow } = await import(
       './bubbles/workflow-bubble/parse-document.workflow.js'
     );
+    const { ElevenLabsBubble } = await import(
+      './bubbles/service-bubble/eleven-labs.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -339,6 +343,7 @@ export class BubbleFactory {
     this.register('linkedin-tool', LinkedInTool as BubbleClassWithMetadata);
     this.register('youtube-tool', YouTubeTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
+    this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -626,6 +631,7 @@ import {
   HttpBubble, // bubble name: 'http'
   StorageBubble, // bubble name: 'storage'
   ApifyBubble, // bubble name: 'apify'
+  ElevenLabsBubble, // bubble name: 'eleven-labs'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

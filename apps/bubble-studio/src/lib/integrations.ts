@@ -24,6 +24,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Instagram: '/integrations/instagram.svg',
   Apify: '/integrations/apify.svg',
   GitHub: '/integrations/github.svg',
+  ElevenLabs: '/integrations/elevenlabs.png', // Placeholder path
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -60,6 +61,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Cloudflare', file: SERVICE_LOGOS['Cloudflare'] },
   { name: 'Apify', file: SERVICE_LOGOS['Apify'] },
   { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
+  { name: 'ElevenLabs', file: SERVICE_LOGOS['ElevenLabs'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -109,6 +111,8 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   instagram: 'Instagram',
   apify: 'Apify',
   github: 'GitHub',
+  elevenlabs: 'ElevenLabs',
+  'eleven-labs': 'ElevenLabs',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -199,6 +203,7 @@ export function findLogoForBubble(
     [/\binstagram\b/, 'Instagram'],
     [/\bapify\b/, 'Apify'],
     [/\bgithub\b/, 'GitHub'],
+    [/\belevenlabs\b|\beleven-labs\b/, 'ElevenLabs'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],

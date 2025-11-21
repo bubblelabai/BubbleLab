@@ -167,6 +167,10 @@ export class CredentialValidator {
         baseParams.owner = 'octocat';
         baseParams.repo = 'Hello-World';
         break;
+      case CredentialType.ELEVENLABS_API_KEY:
+        baseParams.operation = 'get_signed_url';
+        baseParams.agentId = 'test-agent-id';
+        break;
       default:
         break;
     }

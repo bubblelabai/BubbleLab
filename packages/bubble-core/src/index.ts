@@ -55,6 +55,8 @@ export type {
 export type { APIFY_ACTOR_SCHEMAS } from './bubbles/service-bubble/apify/apify-scraper.schema.js';
 export { GithubBubble } from './bubbles/service-bubble/github.js';
 export type { GithubParamsInput } from './bubbles/service-bubble/github.js';
+export { ElevenLabsBubble } from './bubbles/service-bubble/eleven-labs.js';
+export type { ElevenLabsParamsInput } from './bubbles/service-bubble/eleven-labs.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';

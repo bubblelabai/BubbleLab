@@ -18,6 +18,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'CLOUDFLARE_R2_SECRET_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'CLOUDFLARE_R2_ACCOUNT_ID',
   [CredentialType.APIFY_CRED]: 'APIFY_API_TOKEN',
+  [CredentialType.ELEVENLABS_API_KEY]: 'ELEVENLABS_API_KEY',
   [CredentialType.GOOGLE_DRIVE_CRED]: '',
   [CredentialType.GMAIL_CRED]: '',
   [CredentialType.GOOGLE_SHEETS_CRED]: '',
@@ -319,6 +320,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'linkedin-tool': [CredentialType.APIFY_CRED],
   'youtube-tool': [CredentialType.APIFY_CRED],
   github: [CredentialType.GITHUB_TOKEN],
+  'eleven-labs': [CredentialType.ELEVENLABS_API_KEY],
 };
 
 // POST /credentials - Create credential schema

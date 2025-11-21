@@ -189,6 +189,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My GitHub Token',
     credentialConfigurations: {},
   },
+  [CredentialType.ELEVENLABS_API_KEY]: {
+    label: 'Eleven Labs',
+    description: 'API key for Eleven Labs Conversational AI',
+    placeholder: 'xi-...',
+    namePlaceholder: 'My Eleven Labs Key',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -231,6 +238,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GOOGLE_SHEETS_CRED]: 'Google Sheets',
     [CredentialType.GOOGLE_CALENDAR_CRED]: 'Google Calendar',
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
+    [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
