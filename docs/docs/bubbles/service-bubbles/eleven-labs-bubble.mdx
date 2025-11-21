@@ -1,0 +1,325 @@
+# Eleven Labs Bubble
+
+Eleven Labs integration for Conversational AI
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { ElevenLabsBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new ElevenLabsBubble({
+  operation: 'get_signed_url',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `get_signed_url`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_signed_url'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_signed_url'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>signedUrl</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `trigger_outbound_call`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trigger_outbound_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>toPhoneNumber</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>phoneNumberId</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>variables</code> <em>Record&lt;string,string&gt;</em> </dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'trigger_outbound_call'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>callSid</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>conversationId</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_agent`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_agent'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agentId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_agent'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agent</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `validate_webhook_signature`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'validate_webhook_signature'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>signature</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>timestamp</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>body</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>webhookSecret</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'validate_webhook_signature'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>isValid</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_conversation`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>conversationId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversation'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>conversation</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_conversations`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversations'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>agentId</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>pageSize</code> <em>number</em> </dt>
+  <dd></dd>
+
+  <dt><code>cursor</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_conversations'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>conversations</code> <em>Record&lt;string,unknown&gt;[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>hasMore</code> <em>boolean</em> </dt>
+  <dd></dd>
+
+  <dt><code>nextCursor</code> <em>string</em> </dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+

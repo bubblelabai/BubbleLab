@@ -190,9 +190,9 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     credentialConfigurations: {},
   },
   [CredentialType.ELEVENLABS_API_KEY]: {
-    label: 'Eleven Labs',
-    description: 'API key for Eleven Labs Conversational AI',
-    placeholder: 'xi-...',
+    label: 'Eleven Labs API Key',
+    description: 'Your API key from Eleven Labs',
+    placeholder: 'agent_...',
     namePlaceholder: 'My Eleven Labs Key',
     credentialConfigurations: {},
   },
