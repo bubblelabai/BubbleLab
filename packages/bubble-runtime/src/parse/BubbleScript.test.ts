@@ -558,3 +558,17 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
     });
   });
 });
+
+describe('BubbleScript.getWorkflow()', () => {
+  let bubbleFactory: BubbleFactory;
+  beforeEach(async () => {
+    bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+  });
+  it('should get workflow from reddit scraper script', () => {
+    const redditScraperScript = getFixture('reddit-scraper');
+    const analyzer = new BubbleScript(redditScraperScript, bubbleFactory);
+    const workflow = analyzer.getWorkflow();
+    console.log(JSON.stringify(workflow, null, 2));
+  });
+});

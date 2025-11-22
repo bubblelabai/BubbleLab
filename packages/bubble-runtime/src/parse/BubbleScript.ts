@@ -11,6 +11,7 @@ import type {
   ParsedBubbleWithInfo,
   BubbleTrigger,
   BubbleTriggerEventRegistry,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { BubbleParser } from '../extraction/BubbleParser';
 
@@ -21,6 +22,7 @@ export class BubbleScript {
   // Stores parsed bubble information with variable $id as key
   private parsedBubbles: Record<number, ParsedBubbleWithInfo>;
   private originalParsedBubbles: Record<number, ParsedBubbleWithInfo>;
+  private workflow: ParsedWorkflow;
   private scriptVariables: Record<number, Variable>; // Maps Variable.$id to Variable
   private variableLocations: Record<
     number,
@@ -75,6 +77,7 @@ export class BubbleScript {
     );
     this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.parsedBubbles = parseResult.bubbles;
+    this.workflow = parseResult.workflow;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
@@ -112,6 +115,7 @@ export class BubbleScript {
 
     this.parsedBubbles = parseResult.bubbles;
     this.originalParsedBubbles = parseResult.bubbles;
+    this.workflow = parseResult.workflow;
     this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
@@ -511,6 +515,13 @@ export class BubbleScript {
    */
   getParsedBubbles(): Record<number, ParsedBubbleWithInfo> {
     return this.parsedBubbles;
+  }
+
+  /**
+   * Get the hierarchical workflow structure
+   */
+  getWorkflow(): ParsedWorkflow {
+    return this.workflow;
   }
 
   /**

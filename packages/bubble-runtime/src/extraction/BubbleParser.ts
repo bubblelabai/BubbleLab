@@ -12,6 +12,11 @@ import type {
   BubbleName,
   DependencyGraphNode,
   BubbleParameter,
+  WorkflowNode,
+  ParsedWorkflow,
+  ControlFlowWorkflowNode,
+  TryCatchWorkflowNode,
+  CodeBlockWorkflowNode,
 } from '@bubblelab/shared-schemas';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
@@ -31,6 +36,7 @@ export class BubbleParser {
     scopeManager: ScopeManager
   ): {
     bubbles: Record<number, ParsedBubbleWithInfo>;
+    workflow: ParsedWorkflow;
     instanceMethodsLocation: Record<
       string,
       {
@@ -143,8 +149,12 @@ export class BubbleParser {
       );
     }
 
+    // Build hierarchical workflow structure
+    const workflow = this.buildWorkflowTree(ast, nodes, scopeManager);
+
     return {
       bubbles: nodes,
+      workflow,
       instanceMethodsLocation,
     };
   }
@@ -1746,5 +1756,518 @@ export class BubbleParser {
     }
 
     return cleaned || undefined;
+  }
+
+  /**
+   * Build hierarchical workflow structure from AST
+   */
+  private buildWorkflowTree(
+    ast: TSESTree.Program,
+    bubbles: Record<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): ParsedWorkflow {
+    const handleNode = this.findHandleFunctionNode(ast);
+    if (!handleNode || handleNode.body.type !== 'BlockStatement') {
+      // If no handle method or empty body, return empty workflow
+      return {
+        root: [],
+        bubbles,
+      };
+    }
+
+    const workflowNodes: WorkflowNode[] = [];
+    const bubbleMap = new Map<number, ParsedBubbleWithInfo>();
+    for (const [id, bubble] of Object.entries(bubbles)) {
+      bubbleMap.set(Number(id), bubble);
+    }
+
+    // Process statements in handle method body
+    for (const stmt of handleNode.body.body) {
+      const node = this.buildWorkflowNodeFromStatement(
+        stmt,
+        bubbleMap,
+        scopeManager
+      );
+      if (node) {
+        workflowNodes.push(node);
+      }
+    }
+
+    return {
+      root: workflowNodes,
+      bubbles,
+    };
+  }
+
+  /**
+   * Build a workflow node from an AST statement
+   */
+  private buildWorkflowNodeFromStatement(
+    stmt: TSESTree.Statement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): WorkflowNode | null {
+    // Handle IfStatement
+    if (stmt.type === 'IfStatement') {
+      return this.buildIfNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle ForStatement
+    if (
+      stmt.type === 'ForStatement' ||
+      stmt.type === 'ForInStatement' ||
+      stmt.type === 'ForOfStatement'
+    ) {
+      return this.buildForNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle WhileStatement
+    if (stmt.type === 'WhileStatement') {
+      return this.buildWhileNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle TryStatement
+    if (stmt.type === 'TryStatement') {
+      return this.buildTryCatchNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle VariableDeclaration - check if it's a bubble
+    if (stmt.type === 'VariableDeclaration') {
+      for (const decl of stmt.declarations) {
+        if (decl.init && decl.id.type === 'Identifier') {
+          // Try to find bubble by variable name first (more reliable)
+          const variableName = decl.id.name;
+          const bubble = Array.from(bubbleMap.values()).find(
+            (b) => b.variableName === variableName
+          );
+          if (bubble) {
+            return {
+              type: 'bubble',
+              variableId: bubble.variableId,
+            };
+          }
+          // Fallback to expression matching
+          const bubbleFromExpr = this.findBubbleInExpression(
+            decl.init,
+            bubbleMap
+          );
+          if (bubbleFromExpr) {
+            return {
+              type: 'bubble',
+              variableId: bubbleFromExpr.variableId,
+            };
+          }
+        }
+      }
+      // If not a bubble, treat as code block
+      return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle ExpressionStatement - check if it's a bubble
+    if (stmt.type === 'ExpressionStatement') {
+      const bubble = this.findBubbleInExpression(stmt.expression, bubbleMap);
+      if (bubble) {
+        return {
+          type: 'bubble',
+          variableId: bubble.variableId,
+        };
+      }
+      // If not a bubble, treat as code block
+      return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Handle ReturnStatement
+    if (stmt.type === 'ReturnStatement') {
+      if (stmt.argument) {
+        const bubble = this.findBubbleInExpression(stmt.argument, bubbleMap);
+        if (bubble) {
+          return {
+            type: 'bubble',
+            variableId: bubble.variableId,
+          };
+        }
+      }
+      return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+    }
+
+    // Default: treat as code block
+    return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+  }
+
+  /**
+   * Build an if node from IfStatement
+   */
+  private buildIfNode(
+    stmt: TSESTree.IfStatement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): ControlFlowWorkflowNode {
+    const condition = this.extractConditionString(stmt.test);
+    const location = this.extractLocation(stmt);
+
+    const children: WorkflowNode[] = [];
+    if (stmt.consequent.type === 'BlockStatement') {
+      for (const childStmt of stmt.consequent.body) {
+        const node = this.buildWorkflowNodeFromStatement(
+          childStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (node) {
+          children.push(node);
+        }
+      }
+    } else {
+      // Single statement (no braces)
+      const node = this.buildWorkflowNodeFromStatement(
+        stmt.consequent as TSESTree.Statement,
+        bubbleMap,
+        scopeManager
+      );
+      if (node) {
+        children.push(node);
+      }
+    }
+
+    const elseBranch: WorkflowNode[] | undefined = stmt.alternate
+      ? (() => {
+          if (stmt.alternate.type === 'BlockStatement') {
+            const nodes: WorkflowNode[] = [];
+            for (const childStmt of stmt.alternate.body) {
+              const node = this.buildWorkflowNodeFromStatement(
+                childStmt,
+                bubbleMap,
+                scopeManager
+              );
+              if (node) {
+                nodes.push(node);
+              }
+            }
+            return nodes;
+          } else if (stmt.alternate.type === 'IfStatement') {
+            // else if - treat as nested if
+            const node = this.buildIfNode(
+              stmt.alternate,
+              bubbleMap,
+              scopeManager
+            );
+            return [node];
+          } else {
+            // Single statement else
+            const node = this.buildWorkflowNodeFromStatement(
+              stmt.alternate as TSESTree.Statement,
+              bubbleMap,
+              scopeManager
+            );
+            return node ? [node] : [];
+          }
+        })()
+      : undefined;
+
+    return {
+      type: 'if',
+      location,
+      condition,
+      children,
+      elseBranch,
+    };
+  }
+
+  /**
+   * Build a for node from ForStatement/ForInStatement/ForOfStatement
+   */
+  private buildForNode(
+    stmt:
+      | TSESTree.ForStatement
+      | TSESTree.ForInStatement
+      | TSESTree.ForOfStatement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): ControlFlowWorkflowNode {
+    const location = this.extractLocation(stmt);
+    let condition: string | undefined;
+
+    if (stmt.type === 'ForStatement') {
+      const init = stmt.init
+        ? this.bubbleScript.substring(stmt.init.range![0], stmt.init.range![1])
+        : '';
+      const test = stmt.test
+        ? this.bubbleScript.substring(stmt.test.range![0], stmt.test.range![1])
+        : '';
+      const update = stmt.update
+        ? this.bubbleScript.substring(
+            stmt.update.range![0],
+            stmt.update.range![1]
+          )
+        : '';
+      condition = `${init}; ${test}; ${update}`.trim();
+    } else if (stmt.type === 'ForInStatement') {
+      const left = this.bubbleScript.substring(
+        stmt.left.range![0],
+        stmt.left.range![1]
+      );
+      const right = this.bubbleScript.substring(
+        stmt.right.range![0],
+        stmt.right.range![1]
+      );
+      condition = `${left} in ${right}`;
+    } else if (stmt.type === 'ForOfStatement') {
+      const left = this.bubbleScript.substring(
+        stmt.left.range![0],
+        stmt.left.range![1]
+      );
+      const right = this.bubbleScript.substring(
+        stmt.right.range![0],
+        stmt.right.range![1]
+      );
+      condition = `${left} of ${right}`;
+    }
+
+    const children: WorkflowNode[] = [];
+    if (stmt.body.type === 'BlockStatement') {
+      for (const childStmt of stmt.body.body) {
+        const node = this.buildWorkflowNodeFromStatement(
+          childStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (node) {
+          children.push(node);
+        }
+      }
+    } else {
+      // Single statement (no braces)
+      const node = this.buildWorkflowNodeFromStatement(
+        stmt.body as TSESTree.Statement,
+        bubbleMap,
+        scopeManager
+      );
+      if (node) {
+        children.push(node);
+      }
+    }
+
+    return {
+      type: stmt.type === 'ForOfStatement' ? 'for' : 'for',
+      location,
+      condition,
+      children,
+    };
+  }
+
+  /**
+   * Build a while node from WhileStatement
+   */
+  private buildWhileNode(
+    stmt: TSESTree.WhileStatement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): ControlFlowWorkflowNode {
+    const location = this.extractLocation(stmt);
+    const condition = this.extractConditionString(stmt.test);
+
+    const children: WorkflowNode[] = [];
+    if (stmt.body.type === 'BlockStatement') {
+      for (const childStmt of stmt.body.body) {
+        const node = this.buildWorkflowNodeFromStatement(
+          childStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (node) {
+          children.push(node);
+        }
+      }
+    } else {
+      // Single statement (no braces)
+      const node = this.buildWorkflowNodeFromStatement(
+        stmt.body as TSESTree.Statement,
+        bubbleMap,
+        scopeManager
+      );
+      if (node) {
+        children.push(node);
+      }
+    }
+
+    return {
+      type: 'while',
+      location,
+      condition,
+      children,
+    };
+  }
+
+  /**
+   * Build a try-catch node from TryStatement
+   */
+  private buildTryCatchNode(
+    stmt: TSESTree.TryStatement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): TryCatchWorkflowNode {
+    const location = this.extractLocation(stmt);
+
+    const children: WorkflowNode[] = [];
+    if (stmt.block.type === 'BlockStatement') {
+      for (const childStmt of stmt.block.body) {
+        const node = this.buildWorkflowNodeFromStatement(
+          childStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (node) {
+          children.push(node);
+        }
+      }
+    }
+
+    const catchBlock: WorkflowNode[] | undefined = stmt.handler
+      ? (() => {
+          if (stmt.handler.body.type === 'BlockStatement') {
+            const nodes: WorkflowNode[] = [];
+            for (const childStmt of stmt.handler.body.body) {
+              const node = this.buildWorkflowNodeFromStatement(
+                childStmt,
+                bubbleMap,
+                scopeManager
+              );
+              if (node) {
+                nodes.push(node);
+              }
+            }
+            return nodes;
+          }
+          return [];
+        })()
+      : undefined;
+
+    return {
+      type: 'try_catch',
+      location,
+      children,
+      catchBlock,
+    };
+  }
+
+  /**
+   * Build a code block node from a statement
+   */
+  private buildCodeBlockNode(
+    stmt: TSESTree.Statement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): CodeBlockWorkflowNode | null {
+    const location = this.extractLocation(stmt);
+    if (!location) return null;
+
+    const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
+
+    // Check for nested structures
+    const children: WorkflowNode[] = [];
+    if (stmt.type === 'BlockStatement') {
+      for (const childStmt of stmt.body) {
+        const node = this.buildWorkflowNodeFromStatement(
+          childStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (node) {
+          children.push(node);
+        }
+      }
+    }
+
+    return {
+      type: 'code_block',
+      location,
+      code,
+      children,
+    };
+  }
+
+  /**
+   * Find a bubble in an expression by checking if it matches any parsed bubble
+   */
+  private findBubbleInExpression(
+    expr: TSESTree.Expression,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>
+  ): ParsedBubbleWithInfo | null {
+    if (!expr.loc) return null;
+
+    // Extract the NewExpression from the expression (handles await, .action(), etc.)
+    const newExpr = this.extractNewExpression(expr);
+    if (!newExpr || !newExpr.loc) return null;
+
+    // Match by NewExpression location (this is what bubbles are stored with)
+    for (const bubble of bubbleMap.values()) {
+      // Check if the NewExpression location overlaps with bubble location
+      // Use a tolerance for column matching since the exact column might differ slightly
+      if (
+        bubble.location.startLine === newExpr.loc.start.line &&
+        bubble.location.endLine === newExpr.loc.end.line &&
+        Math.abs(bubble.location.startCol - newExpr.loc.start.column) <= 5
+      ) {
+        return bubble;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract the NewExpression from an expression, handling await, .action(), etc.
+   */
+  private extractNewExpression(
+    expr: TSESTree.Expression
+  ): TSESTree.NewExpression | null {
+    // Handle await new X()
+    if (expr.type === 'AwaitExpression' && expr.argument) {
+      return this.extractNewExpression(expr.argument);
+    }
+
+    // Handle new X().action()
+    if (
+      expr.type === 'CallExpression' &&
+      expr.callee.type === 'MemberExpression'
+    ) {
+      if (expr.callee.object) {
+        return this.extractNewExpression(expr.callee.object);
+      }
+    }
+
+    // Direct NewExpression
+    if (expr.type === 'NewExpression') {
+      return expr;
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract condition string from a test expression
+   */
+  private extractConditionString(test: TSESTree.Expression): string {
+    return this.bubbleScript.substring(test.range![0], test.range![1]);
+  }
+
+  /**
+   * Extract location from a node
+   */
+  private extractLocation(node: TSESTree.Node): {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  } {
+    if (!node.loc) {
+      return { startLine: 0, startCol: 0, endLine: 0, endCol: 0 };
+    }
+    return {
+      startLine: node.loc.start.line,
+      startCol: node.loc.start.column,
+      endLine: node.loc.end.line,
+      endCol: node.loc.end.column,
+    };
   }
 }

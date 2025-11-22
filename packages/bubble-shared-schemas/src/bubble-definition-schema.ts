@@ -231,3 +231,134 @@ export type BubbleDependencySpecInferred = z.infer<
 export type ParsedBubbleWithInfoInferred = z.infer<
   typeof ParsedBubbleWithInfoSchema
 >;
+
+// Workflow node types for hierarchical workflow representation
+export type WorkflowNodeType =
+  | 'bubble'
+  | 'if'
+  | 'for'
+  | 'while'
+  | 'try_catch'
+  | 'code_block';
+
+export interface BubbleWorkflowNode {
+  type: 'bubble';
+  variableId: number; // Reference to bubble in ParsedWorkflow.bubbles map
+}
+
+export interface ControlFlowWorkflowNode {
+  type: 'if' | 'for' | 'while';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  condition?: string; // For if/for/while conditions
+  children: WorkflowNode[];
+  elseBranch?: WorkflowNode[]; // For if statements
+}
+
+export interface TryCatchWorkflowNode {
+  type: 'try_catch';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  children: WorkflowNode[]; // Try block
+  catchBlock?: WorkflowNode[]; // Catch block
+}
+
+export interface CodeBlockWorkflowNode {
+  type: 'code_block';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  code: string; // The actual code snippet
+  children: WorkflowNode[]; // Nested bubbles/control flow within this block
+}
+
+export type WorkflowNode =
+  | BubbleWorkflowNode
+  | ControlFlowWorkflowNode
+  | TryCatchWorkflowNode
+  | CodeBlockWorkflowNode;
+
+export interface ParsedWorkflow {
+  root: WorkflowNode[];
+  bubbles: Record<number, ParsedBubbleWithInfo>; // Keep for backward compatibility
+}
+
+// Zod schemas for workflow nodes
+export const WorkflowNodeTypeSchema = z.enum([
+  'bubble',
+  'if',
+  'for',
+  'while',
+  'try_catch',
+  'code_block',
+]);
+
+export const LocationSchema = z.object({
+  startLine: z.number(),
+  startCol: z.number(),
+  endLine: z.number(),
+  endCol: z.number(),
+});
+
+export const BubbleWorkflowNodeSchema: z.ZodType<BubbleWorkflowNode> = z.object(
+  {
+    type: z.literal('bubble'),
+    variableId: z.number(),
+  }
+);
+
+export const ControlFlowWorkflowNodeSchema: z.ZodType<ControlFlowWorkflowNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.enum(['if', 'for', 'while']),
+      location: LocationSchema,
+      condition: z.string().optional(),
+      children: z.array(WorkflowNodeSchema),
+      elseBranch: z.array(WorkflowNodeSchema).optional(),
+    })
+  );
+
+export const TryCatchWorkflowNodeSchema: z.ZodType<TryCatchWorkflowNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.literal('try_catch'),
+      location: LocationSchema,
+      children: z.array(WorkflowNodeSchema),
+      catchBlock: z.array(WorkflowNodeSchema).optional(),
+    })
+  );
+
+export const CodeBlockWorkflowNodeSchema: z.ZodType<CodeBlockWorkflowNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.literal('code_block'),
+      location: LocationSchema,
+      code: z.string(),
+      children: z.array(WorkflowNodeSchema),
+    })
+  );
+
+export const WorkflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
+  z.union([
+    BubbleWorkflowNodeSchema,
+    ControlFlowWorkflowNodeSchema,
+    TryCatchWorkflowNodeSchema,
+    CodeBlockWorkflowNodeSchema,
+  ])
+);
+
+export const ParsedWorkflowSchema = z.object({
+  root: z.array(WorkflowNodeSchema),
+  bubbles: z.record(z.number(), ParsedBubbleWithInfoSchema),
+});

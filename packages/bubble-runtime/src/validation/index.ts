@@ -2,6 +2,7 @@ import type {
   ParsedBubbleWithInfo,
   CredentialType,
   BubbleTrigger,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { validateScript, VariableTypeInfo } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
@@ -17,6 +18,7 @@ export interface ValidationResult {
 
 export interface ValidationAndExtractionResult extends ValidationResult {
   bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
+  workflow?: ParsedWorkflow;
   inputSchema?: Record<string, unknown>;
   trigger?: BubbleTrigger;
   requiredCredentials?: Record<string, CredentialType[]>;
@@ -120,6 +122,7 @@ export async function validateAndExtract(
     return {
       ...validationResult,
       bubbleParameters,
+      workflow: script.getWorkflow(),
       inputSchema: script.getPayloadJsonSchema() || {},
       trigger: script.getBubbleTriggerEventType() || undefined,
       requiredCredentials:
