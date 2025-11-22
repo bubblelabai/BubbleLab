@@ -121,7 +121,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     onClick={handleUpgradeClick}
                     className={`px-3 py-1.5 ${
                       anyLimitExceeded
-                        ? 'bg-red-500 hover:bg-red-600 text-white'
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
                         : 'bg-white text-black hover:bg-gray-200'
                     } text-xs font-medium rounded-full transition-all duration-200 flex items-center gap-1 shadow-lg hover:scale-105 font-sans`}
                   >
