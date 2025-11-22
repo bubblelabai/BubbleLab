@@ -149,11 +149,10 @@ export async function executeBubbleFlowWithTracking(
     await db
       .update(bubbleFlowExecutions)
       .set({
-        result: cleanUpObjectForDisplayAndStorage(
-          options.streamCallback
-            ? { data: result.data, ...result.summary }
-            : (result.data ?? 'Execution completed without logging')
-        ),
+        result: cleanUpObjectForDisplayAndStorage({
+          data: result.data,
+          ...result.summary,
+        }),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
         completedAt: new Date(),
