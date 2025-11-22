@@ -58,6 +58,8 @@ export { GithubBubble } from './bubbles/service-bubble/github.js';
 export type { GithubParamsInput } from './bubbles/service-bubble/github.js';
 export { ElevenLabsBubble } from './bubbles/service-bubble/eleven-labs.js';
 export type { ElevenLabsParamsInput } from './bubbles/service-bubble/eleven-labs.js';
+export { AGIIncBubble } from './bubbles/service-bubble/agi-inc.js';
+export type { AGIIncParamsInput } from './bubbles/service-bubble/agi-inc.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';

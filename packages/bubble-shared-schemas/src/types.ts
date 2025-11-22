@@ -33,6 +33,9 @@ export enum CredentialType {
 
   // Development Platform Credentials
   GITHUB_TOKEN = 'GITHUB_TOKEN',
+
+  // Browser Automation Credentials
+  AGI_API_KEY = 'AGI_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -76,4 +79,5 @@ export type BubbleName =
   | 'youtube-tool'
   | 'github'
   | 'eleven-labs'
-  | 'followupboss';
+  | 'followupboss'
+  | 'agi-inc';
