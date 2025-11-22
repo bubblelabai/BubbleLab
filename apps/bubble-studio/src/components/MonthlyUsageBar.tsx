@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { SubscriptionStatusResponse } from '@bubblelab/shared-schemas';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, AlertCircle, Info } from 'lucide-react';
 import { UsageDetailsModal } from './UsageDetailsModal';
 import { useBubbleFlowList } from '../hooks/useBubbleFlowList';
 import { useNavigate } from '@tanstack/react-router';
@@ -41,6 +41,42 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   const monthlyLimit = subscription.usage.creditLimit;
   const percentage = Math.min((totalCost / monthlyLimit) * 100, 100);
 
+  // Calculate percentages for all metrics
+  const executionPercentage = Math.min(
+    (numberOfExecutions / executionLimit) * 100,
+    100
+  );
+  const activeFlowsPercentage = Math.min(
+    (numberOfActiveWebhooksOrCronSchedules / webHookLimit) * 100,
+    100
+  );
+
+  // Determine if any limit is exceeded or near limit (>80%)
+  const isUsageExceeded = percentage >= 100;
+  const isExecutionExceeded = executionPercentage >= 100;
+  const isActiveFlowsExceeded = activeFlowsPercentage >= 100;
+  const anyLimitExceeded =
+    isUsageExceeded || isExecutionExceeded || isActiveFlowsExceeded;
+
+  const isUsageNearLimit = percentage >= 80 && !isUsageExceeded;
+  const isExecutionNearLimit =
+    executionPercentage >= 80 && !isExecutionExceeded;
+  const isActiveFlowsNearLimit =
+    activeFlowsPercentage >= 80 && !isActiveFlowsExceeded;
+
+  // Helper to get color classes based on usage level
+  const getProgressColor = (percentage: number): string => {
+    if (percentage >= 100) return 'bg-red-500';
+    if (percentage >= 80) return 'bg-yellow-500';
+    return 'bg-blue-500';
+  };
+
+  const getTextColor = (percentage: number): string => {
+    if (percentage >= 100) return 'text-red-400';
+    if (percentage >= 80) return 'text-yellow-400';
+    return 'text-gray-400';
+  };
+
   // Format cost to 4 decimal places
   const formatCost = (cost: number): string => {
     return `$${cost.toFixed(4)}`;
@@ -70,7 +106,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="text-sm text-gray-200 font-medium">
-                    Monthly Usage
+                    Plan Usage Limits
                   </div>
                   <span className="text-xs text-gray-400 font-normal">
                     · {subscription.planDisplayName}
@@ -83,33 +119,99 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   <button
                     type="button"
                     onClick={handleUpgradeClick}
-                    className="px-3 py-1.5 bg-white text-black hover:bg-gray-200 text-xs font-medium rounded-full transition-all duration-200 flex items-center shadow-lg hover:scale-105 font-sans"
+                    className={`px-3 py-1.5 ${
+                      anyLimitExceeded
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                        : 'bg-white text-black hover:bg-gray-200'
+                    } text-xs font-medium rounded-full transition-all duration-200 flex items-center gap-1 shadow-lg hover:scale-105 font-sans`}
                   >
-                    <span>Upgrade Plan</span>
+                    {anyLimitExceeded && <AlertCircle className="w-3 h-3" />}
+                    <span>
+                      {anyLimitExceeded ? 'Upgrade Required' : 'Upgrade Plan'}
+                    </span>
                   </button>
                 )}
               </div>
 
-              {/* Progress bar */}
-              <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full transition-all duration-300 rounded-full bg-gray-600"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-
-              {/* Monetary usage */}
-              <div className="flex items-center justify-between mt-2">
-                <div className="text-xs text-gray-400">
-                  {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
+              {/* Warning message if any limit exceeded */}
+              {anyLimitExceeded && (
+                <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-red-300">
+                      <span className="font-medium">Limit exceeded.</span>{' '}
+                      You've reached your plan's cap
+                      {isUsageExceeded &&
+                      isExecutionExceeded &&
+                      isActiveFlowsExceeded
+                        ? ' on all metrics'
+                        : isUsageExceeded && isExecutionExceeded
+                          ? ' on credits and executions'
+                          : isUsageExceeded && isActiveFlowsExceeded
+                            ? ' on credits and active flows'
+                            : isExecutionExceeded && isActiveFlowsExceeded
+                              ? ' on executions and active flows'
+                              : isUsageExceeded
+                                ? ' on credits'
+                                : isExecutionExceeded
+                                  ? ' on executions'
+                                  : ' on active flows'}
+                      . Upgrade to continue building with Bubble Lab.
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-400">
-                  {percentage.toFixed(1)}%
-                </span>
+              )}
+
+              {/* Credit Usage */}
+              <div
+                className={`mb-3 p-3 rounded-lg ${
+                  isUsageExceeded
+                    ? 'bg-red-500/5 border border-red-500/30'
+                    : isUsageNearLimit
+                      ? 'bg-yellow-500/5 border border-yellow-500/30'
+                      : ''
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-xs text-gray-400 font-medium">
+                      Monthly Credit Usage
+                    </div>
+                    {isUsageExceeded && (
+                      <div className="relative group/credit-tooltip">
+                        <Info className="w-3 h-3 text-red-400 cursor-help" />
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                          <span className="font-medium text-red-300">
+                            Credit limit reached.
+                          </span>{' '}
+                          You can continue executing flows by using your own API
+                          keys, or upgrade your plan for more managed
+                          integration credits.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-400">
+                      {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
+                    </div>
+                    <span
+                      className={`text-sm font-semibold ${getTextColor(percentage)}`}
+                    >
+                      {percentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 rounded-full ${getProgressColor(percentage)}`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
               </div>
 
               {/* Divider and Details button */}
-              <div className="pt-2 mt-2 border-t border-white/5">
+              <div className="pt-2 border-t border-white/5">
                 <div className="flex justify-end">
                   <button
                     type="button"
@@ -139,39 +241,115 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
             <div className="flex gap-4">
               {/* Execution count card */}
               <div className="flex-1">
-                <div className="flex items-center rounded-lg bg-[#1a1a1a] border border-white/5 p-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-400 mb-1">
-                      Total Executions
+                <div
+                  className={`rounded-lg bg-[#1a1a1a] border p-3 ${
+                    isExecutionExceeded
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : isExecutionNearLimit
+                        ? 'border-yellow-500/30 bg-yellow-500/5'
+                        : 'border-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs text-gray-400 font-medium">
+                        Monthly Executions
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        {subscription.planDisplayName} · Resets{' '}
+                        {formatResetDate(subscription.usage.resetDate)}
+                      </div>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                      <div className="text-lg font-semibold text-white">
-                        {numberOfExecutions}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        / {executionLimit}
-                      </div>
+                    <span
+                      className={`text-sm font-semibold ${getTextColor(executionPercentage)}`}
+                    >
+                      {executionPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mb-2">
+                    <div className="text-lg font-semibold text-white">
+                      {numberOfExecutions.toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      / {executionLimit.toLocaleString()}
                     </div>
                   </div>
+                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${getProgressColor(executionPercentage)}`}
+                      style={{ width: `${executionPercentage}%` }}
+                    />
+                  </div>
+                  {isExecutionExceeded && (
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-red-400 relative group/exec-tooltip">
+                      <AlertCircle className="w-3 h-3" />
+                      <span className="cursor-help">Limit reached</span>
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                        <span className="font-medium text-red-300">
+                          Execution limit reached.
+                        </span>{' '}
+                        You've hit your monthly execution cap. Upgrade your plan
+                        to run more Bubble Lab workflows this month.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Active Flows card */}
               <div className="flex-1">
-                <div className="flex items-center rounded-lg bg-[#1a1a1a] border border-white/5 p-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-400 mb-1">
-                      Active Flows
+                <div
+                  className={`rounded-lg bg-[#1a1a1a] border p-3 ${
+                    isActiveFlowsExceeded
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : isActiveFlowsNearLimit
+                        ? 'border-yellow-500/30 bg-yellow-500/5'
+                        : 'border-white/5'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs text-gray-400 font-medium">
+                        Total Active Flows
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        {subscription.planDisplayName}
+                      </div>
                     </div>
-                    <div className="flex items-baseline gap-1.5">
-                      <div className="text-lg font-semibold text-white">
-                        {numberOfActiveWebhooksOrCronSchedules}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        / {webHookLimit}
-                      </div>
+                    <span
+                      className={`text-sm font-semibold ${getTextColor(activeFlowsPercentage)}`}
+                    >
+                      {activeFlowsPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mb-2">
+                    <div className="text-lg font-semibold text-white">
+                      {numberOfActiveWebhooksOrCronSchedules}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      / {webHookLimit}
                     </div>
                   </div>
+                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${getProgressColor(activeFlowsPercentage)}`}
+                      style={{ width: `${activeFlowsPercentage}%` }}
+                    />
+                  </div>
+                  {isActiveFlowsExceeded && (
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-red-400 relative group/flow-tooltip">
+                      <AlertCircle className="w-3 h-3" />
+                      <span className="cursor-help">Limit reached</span>
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                        <span className="font-medium text-red-300">
+                          Active flow limit reached.
+                        </span>{' '}
+                        Your existing active flows will continue running. To
+                        activate webhooks or cron schedules for additional
+                        workflows, please upgrade your plan.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

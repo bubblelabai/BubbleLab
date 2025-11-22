@@ -137,7 +137,7 @@ export default function AllEventsView({
   // Handler for "Fix with Pearl" CTA - used in both Results tab and individual bubble views
   const handleFixWithPearl = () => {
     if (!flowId) return;
-    const prompt = `I'm seeing error(s) in my workflow execution. Can you help me fix these errors?`;
+    const prompt = `I'm seeing error(s) in my workflow execution. Can you tell me what I can do address these errors / fix any issues in the workflow as you see fit?`;
 
     // Trigger Pearl generation (component doesn't subscribe to Pearl state)
     pearl.startGeneration(prompt);
