@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type {
   BubbleFlowDetailsResponse,
   StreamingLogEvent,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { findBubbleByVariableId, type BubbleInfo } from '../utils/bubbleUtils';
 
@@ -104,6 +105,14 @@ export function useBubbleDetail(flowId: number | null) {
   }
 
   /**
+   * Get workflow structure from the cached flow data
+   */
+  function getWorkflow(): ParsedWorkflow | undefined {
+    const flowData = getFlowData();
+    return flowData?.workflow;
+  }
+
+  /**
    * Build a lookup map of variableId -> variableName
    */
   function getVariableNameMap(): Map<number, string> {
@@ -144,6 +153,7 @@ export function useBubbleDetail(flowId: number | null) {
   return {
     getFlowData,
     getBubbleParameters,
+    getWorkflow,
     getVariableNameForDisplay,
     getVariableParameters,
     getBubbleInfo,

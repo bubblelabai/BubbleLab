@@ -19,6 +19,7 @@ import {
 import {
   CredentialType,
   type ParsedBubbleWithInfo,
+  type ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
@@ -217,6 +218,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
     message: 'BubbleFlow created successfully',
     inputSchema: validationResult.inputSchema || {},
     bubbleParameters: validationResult.bubbleParameters || {},
+    workflow: validationResult.workflow,
     eventType: validationResult.trigger?.type || 'webhook/http',
     requiredCredentials,
   };
@@ -417,6 +419,7 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     string,
     ParsedBubbleWithInfo
   >;
+  let workflow: ParsedWorkflow | undefined = undefined;
 
   if (!bubbleParameters || Object.keys(bubbleParameters).length === 0) {
     //Parse parameters
@@ -425,6 +428,7 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     //Update db with parsed parameters
     bubbleParameters = script.getParsedBubbles();
     const inputSchema = script.getPayloadJsonSchema();
+    workflow = script.getWorkflow();
     await db
       .update(bubbleFlows)
       .set({
@@ -445,6 +449,7 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     displayedBubbleParameters:
       generateDisplayedBubbleParameters(bubbleParameters),
     bubbleParameters: bubbleParameters,
+    workflow: workflow,
     inputSchema: flow.inputSchema || {},
     metadata: flow.metadata || {},
     isActive: flow.webhooks[0]?.isActive ?? false,
@@ -962,6 +967,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           cron: result.trigger?.cronSchedule || null,
           cronActive: activateCron,
           defaultInputs: defaultInputs || existingFlow?.defaultInputs || {},
+          workflow: result.workflow,
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
@@ -990,6 +996,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           ),
           cron: result.trigger?.cronSchedule || null,
           cronActive: existingFlow?.cronActive || false,
+          workflow: result.workflow,
           error: result.errors?.join('; ') || 'Validation failed',
           errors: [result.errors?.join('; ') || 'Validation failed'],
           metadata: {
