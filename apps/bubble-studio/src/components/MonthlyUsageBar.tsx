@@ -163,7 +163,15 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               )}
 
               {/* Credit Usage */}
-              <div className="mb-3">
+              <div
+                className={`mb-3 p-3 rounded-lg ${
+                  isUsageExceeded
+                    ? 'bg-red-500/5 border border-red-500/30'
+                    : isUsageNearLimit
+                      ? 'bg-yellow-500/5 border border-yellow-500/30'
+                      : ''
+                }`}
+              >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <div className="text-xs text-gray-400 font-medium">
