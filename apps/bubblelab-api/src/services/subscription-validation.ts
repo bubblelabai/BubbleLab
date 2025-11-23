@@ -205,11 +205,34 @@ async function getUserSubscriptionInfo(
       throw new Error('User not found in Clerk');
     }
 
+    // Check for plan override in private metadata (for special users who bypass subscription system)
+    const privatePlan = clerkUser.privateMetadata?.plan as
+      | PLAN_TYPE
+      | undefined;
+    const privateFeatures = clerkUser.privateMetadata?.features as
+      | FEATURE_TYPE[]
+      | undefined;
+
     // Extract subscription info from Clerk metadata
-    const plan = parseClerkPlan(clerkUser.publicMetadata?.plan as string);
-    const features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
+    // Private metadata overrides public metadata if present
+    let plan = parseClerkPlan(clerkUser.publicMetadata?.plan as string);
+    let features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
       'base_usage',
     ];
+
+    // Override with private metadata if present
+    if (privatePlan) {
+      plan = privatePlan;
+      console.debug(
+        `[getUserSubscriptionInfo] Overriding plan from private metadata: ${privatePlan}`
+      );
+    }
+    if (privateFeatures && privateFeatures.length > 0) {
+      features = privateFeatures;
+      console.debug(
+        `[getUserSubscriptionInfo] Overriding features from private metadata: ${privateFeatures.join(', ')}`
+      );
+    }
 
     return {
       appType: appType,

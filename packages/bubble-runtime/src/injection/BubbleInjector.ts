@@ -135,7 +135,14 @@ export class BubbleInjector {
       // Model is an object, try to extract the nested 'model' property
       try {
         // parse the string to json
-        const modelObj = eval('(' + modelParam.value + ')');
+        if (typeof modelParam.value !== 'string') {
+          throw new Error('Model parameter value must be a string');
+        }
+        // Convert single quotes to double quotes (handle escaped quotes)
+        let jsonStr = modelParam.value
+          .replace(/'/g, '"')
+          .replace(/(\w+):/g, '"$1":');
+        const modelObj = JSON.parse(jsonStr);
         // Extract primary model
         const nestedModel = modelObj.model;
         if (typeof nestedModel === 'string') {
