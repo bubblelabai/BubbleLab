@@ -59,12 +59,6 @@ type BubbleFlowGeneratorParamsParsed = BubbleFlowGeneratorParams & {
   streamingCallback?: StreamingCallback;
 };
 
-// Shared constants and prompts
-const AI_MODEL_CONFIG = {
-  model: 'anthropic/claude-sonnet-4-5',
-  temperature: 0.3,
-} as const;
-
 const MAX_ITERATIONS = 50;
 
 const TOOL_NAMES = {
@@ -152,6 +146,13 @@ export class BubbleFlowGeneratorWorkflow extends WorkflowBubble<
     const summarizeAgent = new AIAgentBubble(
       {
         name: 'Flow Summary Agent',
+        model: {
+          model: 'google/gemini-2.5-flash',
+          jsonMode: true,
+          backupModel: {
+            model: 'anthropic/claude-haiku-4-5',
+          },
+        },
         message:
           `You are summarizeAgent for Bubble Lab. Analyze the provided validated BubbleFlow TypeScript and generate a user-friendly summary.
 
@@ -208,21 +209,17 @@ CODE TO ANALYZE:
         systemPrompt: `You MUST follow the exact summary pattern provided. Focus on the UI testing perspective - users will fill in a form, not make HTTP requests. For inputsSchema, extract from CustomWebhookPayload interface (exclude WebhookEvent base fields).
 
 Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. The summary must include all sections: Flow Title, Description, Required Credentials, Setup Before Testing, To Test This Flow, What Happens When You Run, and Output You'll See with example JSON.`,
-        model: {
-          jsonMode: true,
-        },
         tools: [],
         maxIterations: 5,
         credentials,
+        streamingCallback: streamingCallback,
       },
       this.context,
       'summarizeAgent'
     );
 
     console.log('[BubbleFlowGenerator] Starting summarizeAgent...');
-    const summarizeRun = streamingCallback
-      ? await summarizeAgent.actionWithStreaming(streamingCallback)
-      : await summarizeAgent.action();
+    const summarizeRun = await summarizeAgent.action();
     let summary = '';
     let inputsSchema = '';
 
@@ -234,11 +231,7 @@ Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. 
       error: summarizeRun.error,
     });
 
-    // Handle both streaming (direct response) and non-streaming (wrapped in data) results
-    const isStreamingResult = 'response' in summarizeRun;
-    const response = isStreamingResult
-      ? summarizeRun.response
-      : summarizeRun.data?.response;
+    const response = summarizeRun.data?.response;
 
     if (summarizeRun.success && response) {
       try {
@@ -481,8 +474,14 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
             bubbleDescriptions
           ),
 
-          model: AI_MODEL_CONFIG,
-
+          model: {
+            model: 'google/gemini-3-pro-preview',
+            temperature: 0.3,
+            backupModel: {
+              model: 'anthropic/claude-sonnet-4-5',
+              temperature: 0.3,
+            },
+          },
           tools: [
             {
               name: TOOL_NAMES.BUBBLE_DETAILS,

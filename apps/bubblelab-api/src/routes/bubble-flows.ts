@@ -1027,6 +1027,11 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
           {
             prompt,
             credentials: {
+              [CredentialType.OPENROUTER_CRED]:
+                process.env.OPENROUTER_API_KEY || '',
+              [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY || '',
+              [CredentialType.ANTHROPIC_CRED]:
+                process.env.ANTHROPIC_API_KEY || '',
               [CredentialType.GOOGLE_GEMINI_CRED]:
                 process.env.GOOGLE_API_KEY || '',
             },

@@ -72,7 +72,7 @@ describe('ResearchAgentTool', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('API key');
+      expect(result.error).toContain('credential');
       expect(result.result).toEqual({});
       expect(result.sourcesUsed).toEqual([]);
       expect(result.iterationsUsed).toBe(0);
