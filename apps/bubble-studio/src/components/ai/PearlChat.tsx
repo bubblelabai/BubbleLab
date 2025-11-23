@@ -19,7 +19,6 @@ import {
   Paperclip,
   X,
   Info,
-  Sparkles,
   Calendar,
   Webhook,
   HelpCircle,
@@ -329,7 +328,11 @@ export function PearlChat() {
           <div className="flex flex-col items-center justify-center h-full px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
-              <Sparkles className="w-6 h-6 text-gray-200 mb-3 mx-auto" />
+              <img
+                src="/pearl.png"
+                alt="Pearl"
+                className="w-12 h-12 mb-3 mx-auto"
+              />
               <h3 className="text-base font-medium text-gray-200 mb-1">
                 Chat with Pearl
               </h3>
