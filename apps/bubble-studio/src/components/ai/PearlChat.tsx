@@ -336,9 +336,6 @@ export function PearlChat() {
               <h3 className="text-base font-medium text-gray-200 mb-1">
                 Chat with Pearl
               </h3>
-              <p className="text-sm text-gray-400">
-                Get help modifying, debugging, or understanding your workflow
-              </p>
             </div>
 
             {/* Quick Start Suggestions */}
@@ -591,7 +588,7 @@ export function PearlChat() {
               value={pearl.prompt}
               onChange={pearl.setPrompt}
               onSubmit={handleGenerate}
-              placeholder="Example: After the google sheet is updated, also send me an email with the analysis..."
+              placeholder="Get help modifying, debugging, or understanding your workflow..."
               className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
               disabled={pearl.isPending}
               flowId={selectedFlowId}
