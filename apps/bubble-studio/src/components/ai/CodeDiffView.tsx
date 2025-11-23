@@ -19,7 +19,6 @@ export function CodeDiffView({
   originalCode,
   modifiedCode,
   onAccept,
-  onReject,
   isAccepted = false,
 }: CodeDiffViewProps) {
   const diffEditorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(
