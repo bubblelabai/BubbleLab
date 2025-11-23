@@ -169,16 +169,99 @@ export function PearlChat() {
   };
 
   // Generate contextual suggestions based on trigger type and selected bubble context
-  const getQuickStartSuggestions = (): Array<{
-    label: string;
-    prompt: string;
-    icon: React.ReactNode;
-    description: string;
-  }> => {
+  const getQuickStartSuggestions = (): {
+    mainActions: Array<{
+      label: string;
+      prompt: string;
+      icon: React.ReactNode;
+      description: string;
+    }>;
+    bubbleActions: Array<{
+      label: string;
+      prompt: string;
+      icon: React.ReactNode;
+      description: string;
+    }>;
+  } => {
     const triggerType = flowData?.eventType;
 
+    // Main actions that are always shown
+    const baseSuggestions = [
+      {
+        label: 'How to run this flow?',
+        prompt: 'How do I run this flow?',
+        icon: <HelpCircle className="w-4 h-4" />,
+        description:
+          'Learn how to run and provide the right inputs to the flow',
+      },
+    ];
+
+    // Add trigger-specific conversion suggestions
+    let conversionSuggestions: Array<{
+      label: string;
+      prompt: string;
+      icon: React.ReactNode;
+      description: string;
+    }> = [];
+
+    if (triggerType === 'webhook/http') {
+      conversionSuggestions = [
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    } else if (triggerType === 'schedule/cron') {
+      conversionSuggestions = [
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+      ];
+    } else if (
+      triggerType?.startsWith('slack/') ||
+      triggerType?.startsWith('gmail/')
+    ) {
+      conversionSuggestions = [
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    } else {
+      // Default suggestions for unknown/unset trigger types
+      conversionSuggestions = [
+        {
+          label: 'Convert to webhook',
+          prompt: 'Help me convert this flow to be triggered by a webhook',
+          icon: <Webhook className="w-4 h-4" />,
+          description: 'Trigger via HTTP requests',
+        },
+        {
+          label: 'Convert to schedule',
+          prompt: 'Help me convert this flow to run on a schedule',
+          icon: <Calendar className="w-4 h-4" />,
+          description: 'Run automatically at specific times',
+        },
+      ];
+    }
+
+    const mainActions = [...baseSuggestions, ...conversionSuggestions];
+
     // Use selected bubble context to generate bubble-specific actions
-    const bubbleSuggestions = pearl.selectedBubbleContext
+    const bubbleActions = pearl.selectedBubbleContext
       .map((variableId) => {
         const bubbleInfo = bubbleDetail.getBubbleInfo(variableId);
 
@@ -223,93 +306,10 @@ export function PearlChat() {
       })
       .flat();
 
-    // If there are bubble-specific suggestions, show only those
-    if (bubbleSuggestions.length > 0) {
-      return bubbleSuggestions;
-    }
-
-    // Otherwise, show flow-based suggestions
-    const baseSuggestions = [
-      {
-        label: 'How to run this flow?',
-        prompt: 'How do I run this flow?',
-        icon: <HelpCircle className="w-4 h-4" />,
-        description:
-          'Learn how to run and provide the right inputs to the flow',
-      },
-    ];
-
-    // Add trigger-specific conversion suggestions
-    if (triggerType === 'webhook/http') {
-      return [
-        ...baseSuggestions,
-        {
-          label: 'Convert to schedule',
-          prompt: 'Help me convert this flow to run on a schedule',
-          icon: <Calendar className="w-4 h-4" />,
-          description: 'Run automatically at specific times',
-        },
-      ];
-    } else if (triggerType === 'schedule/cron') {
-      return [
-        ...baseSuggestions,
-        {
-          label: 'Convert to webhook',
-          prompt: 'Help me convert this flow to be triggered by a webhook',
-          icon: <Webhook className="w-4 h-4" />,
-          description: 'Trigger via HTTP requests',
-        },
-      ];
-    } else if (triggerType?.startsWith('slack/')) {
-      return [
-        ...baseSuggestions,
-        {
-          label: 'Convert to webhook',
-          prompt: 'Help me convert this flow to be triggered by a webhook',
-          icon: <Webhook className="w-4 h-4" />,
-          description: 'Trigger via HTTP requests',
-        },
-        {
-          label: 'Convert to schedule',
-          prompt: 'Help me convert this flow to run on a schedule',
-          icon: <Calendar className="w-4 h-4" />,
-          description: 'Run automatically at specific times',
-        },
-      ];
-    } else if (triggerType?.startsWith('gmail/')) {
-      return [
-        ...baseSuggestions,
-        {
-          label: 'Convert to webhook',
-          prompt: 'Help me convert this flow to be triggered by a webhook',
-          icon: <Webhook className="w-4 h-4" />,
-          description: 'Trigger via HTTP requests',
-        },
-        {
-          label: 'Convert to schedule',
-          prompt: 'Help me convert this flow to run on a schedule',
-          icon: <Calendar className="w-4 h-4" />,
-          description: 'Run automatically at specific times',
-        },
-      ];
-    }
-
-    // Default suggestions for unknown/unset trigger types
-    return [
-      ...baseSuggestions,
-      {
-        label: 'Convert to webhook',
-        prompt: 'Help me convert this flow to be triggered by a webhook',
-        icon: <Webhook className="w-4 h-4" />,
-        description: 'Trigger via HTTP requests',
-      },
-      {
-        label: 'Convert to schedule',
-        prompt: 'Help me convert this flow to run on a schedule',
-        icon: <Calendar className="w-4 h-4" />,
-        description: 'Run automatically at specific times',
-      },
-    ];
+    return {
+      mainActions,
+      bubbleActions,
+    };
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -325,7 +325,7 @@ export function PearlChat() {
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
         {pearl.messages.length === 0 && !pearl.isPending && (
-          <div className="flex flex-col items-center justify-center h-full px-4 py-8">
+          <div className="flex flex-col items-center px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
               <img
@@ -346,31 +346,76 @@ export function PearlChat() {
               <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3 px-1">
                 Quick Actions
               </div>
-              {getQuickStartSuggestions().map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSuggestionClick(suggestion.prompt)}
-                  className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
-                      {suggestion.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
-                        {suggestion.label}
-                      </div>
-                      <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
-                        {suggestion.description}
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
-                    </div>
-                  </div>
-                </button>
-              ))}
+              {(() => {
+                const { mainActions, bubbleActions } =
+                  getQuickStartSuggestions();
+                return (
+                  <>
+                    {/* Main Actions */}
+                    {mainActions.map((suggestion, index) => (
+                      <button
+                        key={`main-${index}`}
+                        type="button"
+                        onClick={() => handleSuggestionClick(suggestion.prompt)}
+                        className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                            {suggestion.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                              {suggestion.label}
+                            </div>
+                            <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                              {suggestion.description}
+                            </div>
+                          </div>
+                          <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+
+                    {/* Bubble Specific Actions */}
+                    {bubbleActions.length > 0 && (
+                      <>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3 px-1">
+                          Bubble specific Quick Actions
+                        </div>
+                        {bubbleActions.map((suggestion, index) => (
+                          <button
+                            key={`bubble-${index}`}
+                            type="button"
+                            onClick={() =>
+                              handleSuggestionClick(suggestion.prompt)
+                            }
+                            className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                                {suggestion.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                                  {suggestion.label}
+                                </div>
+                                <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                  {suggestion.description}
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
