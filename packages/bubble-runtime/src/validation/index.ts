@@ -3,7 +3,7 @@ import type {
   CredentialType,
   BubbleTrigger,
 } from '@bubblelab/shared-schemas';
-import { validateScript } from './BubbleValidator.js';
+import { validateScript, VariableTypeInfo } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
 import { BubbleInjector } from '../injection/BubbleInjector.js';
 import { BubbleFactory } from '@bubblelab/bubble-core';
@@ -11,6 +11,7 @@ import { validateCronExpression } from '@bubblelab/shared-schemas';
 
 export interface ValidationResult {
   valid: boolean;
+  variableTypes?: VariableTypeInfo[];
   errors?: string[];
 }
 
@@ -57,6 +58,7 @@ export async function validateBubbleFlow(
 
     return {
       valid: errors.length === 0,
+      variableTypes: validationResult.variableTypes,
       errors: errors.length > 0 ? errors : undefined,
     };
   } catch (error) {

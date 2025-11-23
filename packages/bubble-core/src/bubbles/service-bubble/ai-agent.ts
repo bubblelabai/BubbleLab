@@ -52,6 +52,37 @@ export type ToolHookBefore = (
 // Type for streaming callback function
 export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;
 
+// Define backup model configuration schema
+const BackupModelConfigSchema = z.object({
+  model: AvailableModels.describe(
+    'Backup AI model to use if the primary model fails (format: provider/model-name).'
+  ),
+  temperature: z
+    .number()
+    .min(0)
+    .max(2)
+    .optional()
+    .describe(
+      'Temperature for backup model. If not specified, uses primary model temperature.'
+    ),
+  maxTokens: z
+    .number()
+    .positive()
+    .optional()
+    .describe(
+      'Max tokens for backup model. If not specified, uses primary model maxTokens.'
+    ),
+  maxRetries: z
+    .number()
+    .int()
+    .min(0)
+    .max(10)
+    .optional()
+    .describe(
+      'Max retries for backup model. If not specified, uses primary model maxRetries.'
+    ),
+});
+
 // Define model configuration
 const ModelConfigSchema = z.object({
   model: AvailableModels.default('google/gemini-2.5-flash').describe(
@@ -92,6 +123,9 @@ const ModelConfigSchema = z.object({
     .describe(
       'When true, strips markdown formatting and returns clean JSON response'
     ),
+  backupModel: BackupModelConfigSchema.optional().describe(
+    'Backup model configuration to use if the primary model fails.'
+  ),
 });
 
 // Define tool configuration for pre-registered tools
@@ -335,50 +369,74 @@ export class AIAgentBubble extends ServiceBubble<
     return false;
   }
 
+  /**
+   * Build effective model config from primary and optional backup settings
+   */
+  private buildModelConfig(
+    primaryConfig: AIAgentParamsParsed['model'],
+    backupConfig?: z.infer<typeof BackupModelConfigSchema>
+  ): AIAgentParamsParsed['model'] {
+    if (!backupConfig) {
+      return primaryConfig;
+    }
+
+    return {
+      model: backupConfig.model,
+      temperature: backupConfig.temperature ?? primaryConfig.temperature,
+      maxTokens: backupConfig.maxTokens ?? primaryConfig.maxTokens,
+      maxRetries: backupConfig.maxRetries ?? primaryConfig.maxRetries,
+      provider: primaryConfig.provider,
+      jsonMode: primaryConfig.jsonMode,
+      backupModel: undefined, // Don't chain backup models
+    };
+  }
+
+  /**
+   * Core execution logic for running the agent with a given model config
+   */
+  private async executeWithModel(
+    modelConfig: AIAgentParamsParsed['model']
+  ): Promise<AIAgentResult> {
+    const { message, images, systemPrompt, tools, customTools, maxIterations } =
+      this.params;
+
+    // Initialize the language model
+    const llm = this.initializeModel(modelConfig);
+
+    // Initialize tools (both pre-registered and custom)
+    const agentTools = await this.initializeTools(tools, customTools);
+
+    // Create the agent graph
+    const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
+
+    // Execute the agent
+    return this.executeAgent(
+      graph,
+      message,
+      images,
+      maxIterations,
+      modelConfig
+    );
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-    const {
-      message,
-      images,
-      systemPrompt,
-      model,
-      tools,
-      customTools,
-      maxIterations,
-    } = this.params;
+    const { model } = this.params;
 
     try {
-      // Initialize the language model
-      const llm = this.initializeModel(model);
-
-      // Initialize tools (both pre-registered and custom)
-      const agentTools = await this.initializeTools(tools, customTools);
-
-      // Create the agent graph
-      const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
-
-      // Execute the agent
-      const result = await this.executeAgent(
-        graph,
-        message,
-        images,
-        maxIterations,
-        model.jsonMode
-      );
-
-      return result;
+      return await this.executeWithModel(model);
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      console.warn('[AIAgent] Execution error:', errorMessage);
+
       // Return error information but mark as recoverable
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      console.warn('[AIAgent] Execution error (continuing):', errorMessage);
-
       return {
         response: `Error: ${errorMessage}`,
-        success: false, // Still false but execution can continue
+        success: false,
         toolCalls: [],
         error: errorMessage,
         iterations: 0,
@@ -386,104 +444,6 @@ export class AIAgentBubble extends ServiceBubble<
     }
   }
 
-  /**
-   * Execute the AI agent with streaming support for real-time feedback
-   */
-  public async actionWithStreaming(
-    streamingCallback: StreamingCallback,
-    context?: BubbleContext
-  ): Promise<AIAgentResult> {
-    // Context is available but not currently used in this implementation
-    void context;
-    const {
-      message,
-      images,
-      systemPrompt,
-      model,
-      tools,
-      customTools,
-      maxIterations,
-    } = this.params;
-
-    const startTime = Date.now();
-    // Send start event
-    await streamingCallback({
-      type: 'start',
-      data: {
-        message: `Analyzing with ${this.params.name || 'AI Agent'}`,
-        maxIterations,
-        timestamp: new Date().toISOString(),
-      },
-    });
-
-    try {
-      // Send LLM start event
-      await streamingCallback({
-        type: 'llm_start',
-        data: {
-          model: model.model,
-          temperature: model.temperature,
-        },
-      });
-
-      // Initialize the language model
-      const llm = this.initializeModel(model);
-
-      // Initialize tools (both pre-registered and custom)
-      const agentTools = await this.initializeTools(tools, customTools);
-
-      // Create the agent graph
-      const graph = await this.createAgentGraph(llm, agentTools, systemPrompt);
-
-      // Execute the agent with streaming
-      const result = await this.executeAgentWithStreaming(
-        graph,
-        message,
-        images,
-        maxIterations,
-        model.jsonMode,
-        streamingCallback
-      );
-
-      const totalDuration = Date.now() - startTime;
-
-      // Send completion event
-      await streamingCallback({
-        type: 'complete',
-        data: {
-          result,
-          totalDuration,
-        },
-      });
-
-      return result;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
-      // Send error event as recoverable
-      await streamingCallback({
-        type: 'error',
-        data: {
-          error: errorMessage,
-          recoverable: true, // Mark as recoverable to continue execution
-        },
-      });
-
-      console.warn(
-        '[AIAgent] Streaming execution error (continuing):',
-        errorMessage
-      );
-
-      return {
-        response: `Error: ${errorMessage}`,
-        success: false, // Still false but execution can continue
-        toolCalls: [],
-        error: errorMessage,
-        iterations: 0,
-      };
-    }
-  }
   protected getCredentialType(): CredentialType {
     const { model } = this.params;
     const [provider] = model.model.split('/');
@@ -534,9 +494,36 @@ export class AIAgentBubble extends ServiceBubble<
     const provider = model.substring(0, slashIndex);
     const modelName = model.substring(slashIndex + 1);
 
-    // Use chooseCredential to get the appropriate credential
-    // This will throw immediately if credentials are missing
-    const apiKey = this.chooseCredential();
+    // Get credential based on the modelConfig's provider (not this.params.model)
+    const credentials = this.params.credentials as
+      | Record<CredentialType, string>
+      | undefined;
+
+    if (!credentials || typeof credentials !== 'object') {
+      throw new Error(`No ${provider.toUpperCase()} credentials provided`);
+    }
+
+    let apiKey: string | undefined;
+    switch (provider) {
+      case 'openai':
+        apiKey = credentials[CredentialType.OPENAI_CRED];
+        break;
+      case 'google':
+        apiKey = credentials[CredentialType.GOOGLE_GEMINI_CRED];
+        break;
+      case 'anthropic':
+        apiKey = credentials[CredentialType.ANTHROPIC_CRED];
+        break;
+      case 'openrouter':
+        apiKey = credentials[CredentialType.OPENROUTER_CRED];
+        break;
+      default:
+        throw new Error(`Unsupported model provider: ${provider}`);
+    }
+
+    if (!apiKey) {
+      throw new Error(`No credential found for provider: ${provider}`);
+    }
 
     // Enable streaming if streamingCallback is provided
     const enableStreaming = !!this.streamingCallback;
@@ -1036,8 +1023,9 @@ export class AIAgentBubble extends ServiceBubble<
     message: string,
     images: AIAgentParamsParsed['images'],
     maxIterations: number,
-    jsonMode?: boolean
+    modelConfig: AIAgentParamsParsed['model']
   ): Promise<AIAgentResult> {
+    const jsonMode = modelConfig.jsonMode;
     const toolCalls: AIAgentResult['toolCalls'] = [];
     let iterations = 0;
 
@@ -1308,352 +1296,34 @@ export class AIAgentBubble extends ServiceBubble<
       console.log('[AIAgent] Tool calls before error:', toolCalls.length);
       console.log('[AIAgent] Iterations before error:', iterations);
 
+      // Model fallback logic - only retry if this config has a backup model
+      if (modelConfig.backupModel) {
+        console.log(
+          `[AIAgent] Retrying with backup model: ${modelConfig.backupModel.model}`
+        );
+        this.context?.logger?.info(
+          `[AIAgent] Retrying with backup model: ${modelConfig.backupModel.model}`
+        );
+        this.streamingCallback?.({
+          type: 'error',
+          data: {
+            error: `Primary model ${modelConfig.model} failed: ${error instanceof Error ? error.message : 'Unknown error'}. Retrying with backup model... ${modelConfig.backupModel.model}`,
+            recoverable: true,
+          },
+        });
+        const backupModelConfig = this.buildModelConfig(
+          modelConfig,
+          modelConfig.backupModel
+        );
+        const backupResult = await this.executeWithModel(backupModelConfig);
+        return backupResult;
+      }
+
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
 
       // Return partial results to allow execution to continue
       // Include any tool calls that were completed before the error
-      return {
-        response: `Execution error: ${errorMessage}`,
-        success: false, // Still false but don't completely halt execution
-        iterations,
-        toolCalls: toolCalls.length > 0 ? toolCalls : [], // Preserve completed tool calls
-        error: errorMessage,
-      };
-    }
-  }
-
-  /**
-   * Execute agent with streaming support using LangGraph streamEvents
-   */
-  private async executeAgentWithStreaming(
-    graph: ReturnType<typeof StateGraph.prototype.compile>,
-    message: string,
-    images: AIAgentParamsParsed['images'],
-    maxIterations: number,
-    jsonMode?: boolean,
-    streamingCallback?: StreamingCallback
-  ): Promise<AIAgentResult> {
-    const toolCalls: AIAgentResult['toolCalls'] = [];
-    let iterations = 0;
-    let currentMessageId = '';
-
-    console.log(
-      '[AIAgent] Starting streaming execution with message:',
-      message.substring(0, 100) + '...'
-    );
-
-    try {
-      // Create human message with text and optional images
-      let humanMessage: HumanMessage;
-
-      if (images && images.length > 0) {
-        console.log(
-          '[AIAgent] Creating multimodal message with',
-          images.length,
-          'images'
-        );
-
-        // Create multimodal content array
-        const content: Array<{
-          type: string;
-          text?: string;
-          image_url?: { url: string };
-        }> = [{ type: 'text', text: message }];
-
-        // Add images to content
-        for (const image of images) {
-          let imageUrl: string;
-
-          if (image.type === 'base64') {
-            // Base64 encoded image
-            imageUrl = `data:${image.mimeType};base64,${image.data}`;
-          } else {
-            // URL image - fetch and convert to base64 for Google Gemini compatibility
-            try {
-              console.log('[AIAgent] Fetching image from URL:', image.url);
-              const response = await fetch(image.url);
-              if (!response.ok) {
-                throw new Error(
-                  `Failed to fetch image: ${response.status} ${response.statusText}`
-                );
-              }
-
-              const arrayBuffer = await response.arrayBuffer();
-              const base64Data = Buffer.from(arrayBuffer).toString('base64');
-
-              // Detect MIME type from response or default to PNG
-              const contentType =
-                response.headers.get('content-type') || 'image/png';
-              imageUrl = `data:${contentType};base64,${base64Data}`;
-
-              console.log(
-                '[AIAgent] Successfully converted URL image to base64'
-              );
-            } catch (error) {
-              console.error('[AIAgent] Error fetching image from URL:', error);
-              throw new Error(
-                `Failed to load image from URL ${image.url}: ${error instanceof Error ? error.message : 'Unknown error'}`
-              );
-            }
-          }
-
-          content.push({
-            type: 'image_url',
-            image_url: { url: imageUrl },
-          });
-
-          // Add image description if provided
-          if (image.description) {
-            content.push({
-              type: 'text',
-              text: `Image description: ${image.description}`,
-            });
-          }
-        }
-
-        humanMessage = new HumanMessage({ content });
-      } else {
-        // Text-only message
-        humanMessage = new HumanMessage(message);
-      }
-
-      // Stream events from the graph
-      const eventStream = graph.streamEvents(
-        { messages: [humanMessage] },
-        {
-          version: 'v2',
-          recursionLimit: maxIterations,
-        }
-      );
-
-      let currentIteration = 0;
-      const toolCallMap = new Map<
-        string,
-        { name: string; args: unknown; startTime: number }
-      >();
-      let accumulatedContent = '';
-
-      // Track processed events to prevent duplicates
-      const processedIterationEvents = new Set<string>();
-
-      for await (const event of eventStream) {
-        if (!event || typeof event !== 'object') continue;
-
-        // Handle different types of streaming events
-        switch (event.event) {
-          case 'on_chat_model_start':
-            currentIteration++;
-            currentMessageId = `msg-${Date.now()}-${currentIteration}`;
-
-            if (streamingCallback) {
-              await streamingCallback({
-                type: 'iteration_start',
-                data: { iteration: currentIteration },
-              });
-            }
-            break;
-
-          case 'on_chat_model_stream':
-            // Stream individual tokens
-            if (event.data?.chunk?.content && streamingCallback) {
-              const content = event.data.chunk.content;
-              accumulatedContent += content;
-
-              await streamingCallback({
-                type: 'token',
-                data: {
-                  content,
-                  messageId: currentMessageId,
-                },
-              });
-            }
-            break;
-
-          case 'on_chat_model_end':
-            if (streamingCallback) {
-              const usageMetadata = event.data?.output?.usage_metadata;
-              const totalTokens = usageMetadata?.total_tokens;
-
-              // Track token usage if available
-              if (
-                usageMetadata &&
-                this.context != null &&
-                this.context.logger != null
-              ) {
-                const tokenUsage = {
-                  inputTokens: usageMetadata.input_tokens || 0,
-                  outputTokens: usageMetadata.output_tokens || 0,
-                  totalTokens: totalTokens || 0,
-                  modelName: this.params.model.model,
-                };
-
-                this.context.logger.logTokenUsage(
-                  {
-                    usage: tokenUsage.inputTokens || 0,
-                    service: this.getCredentialType(),
-                    unit: 'input_tokens',
-                    subService: this.params.model.model as CredentialType,
-                  },
-                  `LLM completion: ${tokenUsage.inputTokens} input`,
-                  {
-                    bubbleName: 'ai-agent',
-                    variableId: this.context?.variableId,
-                    operationType: 'bubble_execution',
-                  }
-                );
-
-                this.context.logger.logTokenUsage(
-                  {
-                    usage: tokenUsage.outputTokens || 0,
-                    service: this.getCredentialType(),
-                    unit: 'output_tokens',
-                    subService: this.params.model.model as CredentialType,
-                  },
-                  `LLM completion: ${tokenUsage.outputTokens} output`,
-                  {
-                    bubbleName: 'ai-agent',
-                    variableId: this.context?.variableId,
-                    operationType: 'bubble_execution',
-                  }
-                );
-              }
-
-              await streamingCallback({
-                type: 'llm_complete',
-                data: {
-                  messageId: currentMessageId,
-                  totalTokens,
-                },
-              });
-            }
-            break;
-
-          case 'on_tool_start':
-            if (event.name && event.data?.input && streamingCallback) {
-              const callId = `tool-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-              toolCallMap.set(callId, {
-                name: event.name,
-                args: event.data.input,
-                startTime: Date.now(),
-              });
-
-              await streamingCallback({
-                type: 'tool_start',
-                data: {
-                  tool: event.name,
-                  input: event.data.input,
-                  callId,
-                },
-              });
-            }
-            break;
-
-          case 'on_tool_end':
-            if (event.name && event.data?.output && streamingCallback) {
-              // Find matching tool call
-              const matchingCall = Array.from(toolCallMap.entries()).find(
-                ([, callData]) => callData.name === event.name
-              );
-
-              if (matchingCall) {
-                const [callId, callData] = matchingCall;
-                const duration = Date.now() - callData.startTime;
-
-                toolCalls.push({
-                  tool: callData.name,
-                  input: callData.args,
-                  output: event.data.output,
-                });
-
-                await streamingCallback({
-                  type: 'tool_complete',
-                  data: {
-                    callId,
-                    input: callData.args as { input: string },
-                    tool: callData.name,
-                    output: event.data.output,
-                    duration,
-                  },
-                });
-
-                toolCallMap.delete(callId);
-              }
-            }
-            break;
-
-          case 'on_chain_end':
-            // This indicates the completion of the entire graph
-            if (event.data?.output) {
-              iterations = currentIteration;
-
-              // Prevent duplicate iteration_complete events
-              const iterationKey = `iteration_${currentIteration}`;
-              if (
-                streamingCallback &&
-                !processedIterationEvents.has(iterationKey)
-              ) {
-                processedIterationEvents.add(iterationKey);
-                await streamingCallback({
-                  type: 'iteration_complete',
-                  data: {
-                    iteration: currentIteration,
-                    hasToolCalls: toolCalls.length > 0,
-                  },
-                });
-              }
-            }
-            break;
-        }
-      }
-
-      // Process final result
-      const accumulatedResponse = accumulatedContent || '';
-
-      // Use shared formatting method
-      const formattedResult = await formatFinalResponse(
-        accumulatedResponse,
-        this.params.model.model,
-        jsonMode
-      );
-
-      // If there's an error from formatting (e.g., invalid JSON), return early with consistent behavior
-      if (formattedResult.error) {
-        return {
-          response: formattedResult.response,
-          toolCalls: toolCalls.length > 0 ? toolCalls : [],
-          iterations,
-          error: formattedResult.error,
-          success: false,
-        };
-      }
-
-      const finalResponse = formattedResult.response;
-
-      console.log(
-        '[AIAgent] Streaming execution completed with',
-        iterations,
-        'iterations and',
-        toolCalls.length,
-        'tool calls'
-      );
-
-      return {
-        response:
-          typeof finalResponse === 'string'
-            ? finalResponse
-            : JSON.stringify(finalResponse),
-        toolCalls: toolCalls.length > 0 ? toolCalls : [],
-        iterations,
-        error: '',
-        success: true,
-      };
-    } catch (error) {
-      console.warn('[AIAgent] Streaming execution error (continuing):', error);
-
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-
       return {
         response: `Execution error: ${errorMessage}`,
         success: false, // Still false but don't completely halt execution

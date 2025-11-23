@@ -69,6 +69,7 @@ export async function runBoba(
   const mergedCredentials: Partial<Record<CredentialType, string>> = {
     [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY || '',
     [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_API_KEY || '',
+
     ...credentials,
   };
   const bubbleFactory = await getBubbleFactory();
