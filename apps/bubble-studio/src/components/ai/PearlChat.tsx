@@ -476,7 +476,7 @@ export function PearlChat() {
                         <AlertCircle className="w-4 h-4 text-red-400" />
                       )}
                       <span className="text-xs font-medium text-gray-400">
-                        Assistant
+                        Pearl
                         {message.resultType === 'code' && ' - Code Generated'}
                         {message.resultType === 'question' && ' - Question'}
                         {message.resultType === 'answer' && ' - Answer'}
@@ -525,7 +525,7 @@ export function PearlChat() {
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   <span className="text-xs font-medium text-gray-400">
-                    Assistant - Processing...
+                    Pearl - Processing...
                   </span>
                 </div>
                 <div className="space-y-2">
