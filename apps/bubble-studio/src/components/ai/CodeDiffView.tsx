@@ -19,7 +19,6 @@ export function CodeDiffView({
   originalCode,
   modifiedCode,
   onAccept,
-  onReject,
   isAccepted = false,
 }: CodeDiffViewProps) {
   const diffEditorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(
@@ -47,37 +46,6 @@ export function CodeDiffView({
 
   return (
     <div className="border border-gray-700 rounded-lg overflow-hidden bg-gray-900">
-      {/* Header with labels */}
-      <div className="flex items-center justify-between bg-gray-800/50 border-b border-gray-700 px-4 py-2">
-        <div className="flex items-center gap-4 text-xs text-gray-400">
-          <span>Proposed Changes</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {onReject && !isAccepted && (
-            <button
-              onClick={onReject}
-              className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-            >
-              Dismiss
-            </button>
-          )}
-          {!isAccepted && (
-            <button
-              onClick={onAccept}
-              className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors font-medium"
-            >
-              Accept Changes
-            </button>
-          )}
-          {isAccepted && (
-            <div className="px-3 py-1 text-xs bg-gray-600 text-white rounded flex items-center gap-1.5">
-              <Check className="w-3 h-3" />
-              Applied
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Diff Editor */}
       <div className="h-[400px]">
         <DiffEditor
@@ -116,6 +84,24 @@ export function CodeDiffView({
             },
           }}
         />
+      </div>
+
+      {/* Footer with centered action button */}
+      <div className="flex items-center justify-center bg-gray-800/50 border-t border-gray-700 px-4 py-2.5">
+        {!isAccepted && (
+          <button
+            onClick={onAccept}
+            className="px-6 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-green-600/20 hover:shadow-green-600/30"
+          >
+            Accept Changes
+          </button>
+        )}
+        {isAccepted && (
+          <div className="px-5 py-2 text-sm bg-gray-600 text-white rounded-lg flex items-center gap-2 font-medium">
+            <Check className="w-4 h-4" />
+            Applied
+          </div>
+        )}
       </div>
     </div>
   );

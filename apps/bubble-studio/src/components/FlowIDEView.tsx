@@ -285,7 +285,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
               {!isStreaming && (
                 <>
                   <Tooltip
-                    content="⚡ Run the flow at least once to enable export"
+                    content="Run the flow at least once to enable export"
                     show={
                       (!executionHistory || executionHistory.length === 0) &&
                       !executionState.isRunning

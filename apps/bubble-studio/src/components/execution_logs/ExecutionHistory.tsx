@@ -136,7 +136,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
                         {isCurrentlyExecuting ? (
-                          <div className="h-5 w-5 bg-red-500 rounded-full animate-pulse"></div>
+                          <div className="h-5 w-5 bg-amber-500 rounded-full animate-pulse"></div>
                         ) : execution.status === 'success' ? (
                           <CheckCircleIcon className="h-5 w-5 text-green-400" />
                         ) : execution.status === 'error' ? (
@@ -153,7 +153,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                           <span
                             className={`px-2 py-0.5 text-xs font-medium rounded ${
                               isCurrentlyExecuting
-                                ? 'bg-red-900/30 text-red-300'
+                                ? 'bg-amber-900/30 text-amber-300'
                                 : execution.status === 'success'
                                   ? 'bg-green-900/30 text-green-300'
                                   : execution.status === 'error'
