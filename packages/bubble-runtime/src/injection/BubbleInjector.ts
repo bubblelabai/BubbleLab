@@ -139,7 +139,7 @@ export class BubbleInjector {
           throw new Error('Model parameter value must be a string');
         }
         // Convert single quotes to double quotes (handle escaped quotes)
-        let jsonStr = modelParam.value
+        const jsonStr = modelParam.value
           .replace(/'/g, '"')
           .replace(/(\w+):/g, '"$1":');
         const modelObj = JSON.parse(jsonStr);
