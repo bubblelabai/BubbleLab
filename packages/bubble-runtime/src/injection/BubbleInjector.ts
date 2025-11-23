@@ -143,7 +143,6 @@ export class BubbleInjector {
           .replace(/'/g, '"')
           .replace(/(\w+):/g, '"$1":')
           .replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
-        console.log('Model object:', jsonStr);
         const modelObj = JSON.parse(jsonStr);
         // Extract primary model
         const nestedModel = modelObj.model;
