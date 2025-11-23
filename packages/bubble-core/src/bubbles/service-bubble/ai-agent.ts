@@ -123,9 +123,11 @@ const ModelConfigSchema = z.object({
     .describe(
       'When true, strips markdown formatting and returns clean JSON response'
     ),
-  backupModel: BackupModelConfigSchema.optional().describe(
-    'Backup model configuration to use if the primary model fails.'
-  ),
+  backupModel: BackupModelConfigSchema.default({
+    model: 'openai/gpt-5-mini',
+  })
+    .optional()
+    .describe('Backup model configuration to use if the primary model fails.'),
 });
 
 // Define tool configuration for pre-registered tools
@@ -445,8 +447,14 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   protected getCredentialType(): CredentialType {
-    const { model } = this.params;
-    const [provider] = model.model.split('/');
+    return this.getCredentialTypeForModel(this.params.model.model);
+  }
+
+  /**
+   * Get credential type for a specific model string
+   */
+  private getCredentialTypeForModel(model: string): CredentialType {
+    const [provider] = model.split('/');
     switch (provider) {
       case 'openai':
         return CredentialType.OPENAI_CRED;
@@ -1220,9 +1228,9 @@ export class AIAgentBubble extends ServiceBubble<
         this.context.logger.logTokenUsage(
           {
             usage: totalInputTokens,
-            service: this.getCredentialType(),
+            service: this.getCredentialTypeForModel(modelConfig.model),
             unit: 'input_tokens',
-            subService: this.params.model.model as CredentialType,
+            subService: modelConfig.model as CredentialType,
           },
           `LLM completion: ${totalInputTokens} input`,
           {
@@ -1234,9 +1242,9 @@ export class AIAgentBubble extends ServiceBubble<
         this.context.logger.logTokenUsage(
           {
             usage: totalOutputTokens,
-            service: this.getCredentialType(),
+            service: this.getCredentialTypeForModel(modelConfig.model),
             unit: 'output_tokens',
-            subService: this.params.model.model as CredentialType,
+            subService: modelConfig.model as CredentialType,
           },
           `LLM completion: ${totalOutputTokens} output`,
           {
@@ -1252,7 +1260,7 @@ export class AIAgentBubble extends ServiceBubble<
       // Use shared formatting method
       const formattedResult = formatFinalResponse(
         response,
-        this.params.model.model,
+        modelConfig.model,
         jsonMode
       );
       // If there's an error from formatting (e.g., invalid JSON), return early
@@ -1302,7 +1310,7 @@ export class AIAgentBubble extends ServiceBubble<
           `[AIAgent] Retrying with backup model: ${modelConfig.backupModel.model}`
         );
         this.context?.logger?.info(
-          `[AIAgent] Retrying with backup model: ${modelConfig.backupModel.model}`
+          `Primary model ${modelConfig.model} failed: ${error instanceof Error ? error.message : 'Unknown error'}. Retrying with backup model... ${modelConfig.backupModel.model}`
         );
         this.streamingCallback?.({
           type: 'error',

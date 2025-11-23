@@ -64,15 +64,15 @@ export class BubbleInjector {
 
       // For AI agent bubbles, optimize credential requirements based on model
       if (bubble.bubbleName === 'ai-agent' && credentialOptions) {
-        const modelCredentialType = this.extractModelCredentialType(bubble);
+        const modelCredentialTypes = this.extractModelCredentialType(bubble);
 
-        if (modelCredentialType !== null) {
-          // Model is static - only include the credential needed for this model
-          credentialOptions = credentialOptions.filter(
-            (credType) => credType === modelCredentialType
+        if (modelCredentialTypes !== null) {
+          // Model is static - only include the credentials needed for primary and backup models
+          credentialOptions = credentialOptions.filter((credType) =>
+            modelCredentialTypes.includes(credType)
           );
         }
-        // If modelCredentialType is null, model is dynamic - include all credentials
+        // If modelCredentialTypes is null, model is dynamic - include all credentials
       }
 
       if (credentialOptions && Array.isArray(credentialOptions)) {
@@ -102,13 +102,13 @@ export class BubbleInjector {
   }
 
   /**
-   * Extracts the required credential type from AI agent model parameter
+   * Extracts the required credential types from AI agent model parameter (including backup model)
    * @param bubble - The parsed bubble to extract model from
-   * @returns The credential type needed for the model, or null if dynamic (needs all)
+   * @returns Array of credential types needed for the models, or null if dynamic (needs all)
    */
   private extractModelCredentialType(
     bubble: ParsedBubbleWithInfo
-  ): CredentialType | null {
+  ): CredentialType[] | null {
     console.log(
       '[BubbleInjector] Extracting model credential type for bubble:',
       bubble.bubbleName
@@ -124,20 +124,29 @@ export class BubbleInjector {
     if (!modelParam) {
       console.log('[BubbleInjector] No model parameter found');
       // No model parameter, use default (google) or return null to include all
-      return CredentialType.GOOGLE_GEMINI_CRED;
+      return [CredentialType.GOOGLE_GEMINI_CRED];
     }
 
     // Try to extract the model string from the model object
     let modelString: string | undefined;
+    let backupModelString: string | undefined;
+
     if (modelParam.type === BubbleParameterType.OBJECT) {
       // Model is an object, try to extract the nested 'model' property
       try {
         // parse the string to json
         const modelObj = eval('(' + modelParam.value + ')');
-        // If model
+        // Extract primary model
         const nestedModel = modelObj.model;
         if (typeof nestedModel === 'string') {
           modelString = nestedModel;
+        }
+        // Extract backup model if present
+        if (
+          modelObj.backupModel &&
+          typeof modelObj.backupModel.model === 'string'
+        ) {
+          backupModelString = modelObj.backupModel.model;
         }
       } catch (error) {
         console.error(
@@ -151,19 +160,48 @@ export class BubbleInjector {
 
     // If we couldn't extract a static model string, treat as dynamic
     if (!modelString) {
-      return CredentialType.GOOGLE_GEMINI_CRED;
+      return [CredentialType.GOOGLE_GEMINI_CRED];
     }
 
-    // Extract provider prefix (e.g., "google" from "google/gemini-2.5-flash")
+    const credentialTypes: CredentialType[] = [];
+
+    // Get credential for primary model
+    const primaryCredential = this.getCredentialTypeForProvider(modelString);
+    if (primaryCredential === null) {
+      return null; // Unknown provider, include all
+    }
+    credentialTypes.push(primaryCredential);
+
+    // Get credential for backup model if present
+    if (backupModelString) {
+      const backupCredential =
+        this.getCredentialTypeForProvider(backupModelString);
+      if (backupCredential === null) {
+        return null; // Unknown provider, include all
+      }
+      if (!credentialTypes.includes(backupCredential)) {
+        credentialTypes.push(backupCredential);
+      }
+    }
+
+    return credentialTypes;
+  }
+
+  /**
+   * Maps a model string to its credential type
+   * @param modelString - Model string in format "provider/model-name"
+   * @returns The credential type for the provider, or null if unknown
+   */
+  private getCredentialTypeForProvider(
+    modelString: string
+  ): CredentialType | null {
     const slashIndex = modelString.indexOf('/');
     if (slashIndex === -1) {
-      // Invalid format, treat as dynamic
       return null;
     }
 
     const provider = modelString.substring(0, slashIndex).toLowerCase();
 
-    // Map provider to credential type
     switch (provider) {
       case 'openai':
         return CredentialType.OPENAI_CRED;
@@ -174,7 +212,6 @@ export class BubbleInjector {
       case 'openrouter':
         return CredentialType.OPENROUTER_CRED;
       default:
-        // Unknown provider, treat as dynamic (include all)
         return null;
     }
   }
@@ -286,15 +323,15 @@ export class BubbleInjector {
 
         // For AI agent bubbles, optimize credential injection based on model
         if (bubble.bubbleName === 'ai-agent') {
-          const modelCredentialType = this.extractModelCredentialType(bubble);
+          const modelCredentialTypes = this.extractModelCredentialType(bubble);
 
-          if (modelCredentialType !== null) {
-            // Model is static - only inject the credential needed for this model
+          if (modelCredentialTypes !== null) {
+            // Model is static - only inject the credentials needed for primary and backup models
             bubbleCredentialOptions = bubbleCredentialOptions.filter(
-              (credType) => credType === modelCredentialType
+              (credType) => modelCredentialTypes.includes(credType)
             );
           }
-          // If modelCredentialType is null, model is dynamic - include all credentials
+          // If modelCredentialTypes is null, model is dynamic - include all credentials
         }
 
         // For AI agent bubbles, also collect tool-level credential requirements
