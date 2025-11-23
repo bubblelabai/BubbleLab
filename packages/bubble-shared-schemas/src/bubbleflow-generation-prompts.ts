@@ -24,7 +24,7 @@ export const RECOMMENDED_MODELS = {
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
 2. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
-3. BEFORE writing any code, identify which bubbles you plan to use from the available list
+3. BEFORE writing any code, identify which bubbles you plan to use from the available list, prioritize choosing tools over services unless the user specifically requests a service. 
 4. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
    - The correct input parameters and their types
    - The expected output structure in result.data
@@ -258,7 +258,7 @@ BAD EXAMPLE:
 \`\`\`typescript
 // 1. Research Agent Tool
 // Performs deep research on the specified topic, finding relevant papers and summarizing them.
-// Using google/gemini-3-pro-preview for best research capabilities.
+// Using ${RECOMMENDED_MODELS.BEST} for best research capabilities.
 const researchTool = new ResearchAgentTool({...});
 \`\`\`
 ❌ Has step number

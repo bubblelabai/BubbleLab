@@ -26,6 +26,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   GitHub: '/integrations/github.svg',
   ElevenLabs: '/integrations/elevenlabs.png', // Placeholder path
   'Follow Up Boss': '/integrations/FUB.png',
+  'AGI Inc': '/integrations/agi-inc.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -118,6 +119,9 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   followupboss: 'Follow Up Boss',
   fub: 'Follow Up Boss',
   'follow-up-boss': 'Follow Up Boss',
+  'agi-inc': 'AGI Inc',
+  agiinc: 'AGI Inc',
+  agi: 'AGI Inc',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -210,6 +214,7 @@ export function findLogoForBubble(
     [/\bgithub\b/, 'GitHub'],
     [/\belevenlabs\b|\beleven-labs\b/, 'ElevenLabs'],
     [/\bfollow\s*up\s*boss\b|\bfollowupboss\b|\bfub\b/, 'Follow Up Boss'],
+    [/\bagi\s*inc\b|\bagi-inc\b|\bagiinc\b/, 'AGI Inc'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],

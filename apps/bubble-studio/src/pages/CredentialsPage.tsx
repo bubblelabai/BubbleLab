@@ -204,6 +204,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Eleven Labs Key',
     credentialConfigurations: {},
   },
+  [CredentialType.AGI_API_KEY]: {
+    label: 'AGI Inc API Key',
+    description: 'Your API key from AGI Inc',
+    placeholder: 'api_...',
+    namePlaceholder: 'My AGI Inc Key',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -230,6 +237,7 @@ const getServiceNameForCredentialType = (
 ): string => {
   const typeToServiceMap: Record<CredentialType, string> = {
     [CredentialType.OPENAI_CRED]: 'OpenAI',
+    [CredentialType.AGI_API_KEY]: 'AGI Inc',
     [CredentialType.GOOGLE_GEMINI_CRED]: 'Google',
     [CredentialType.ANTHROPIC_CRED]: 'Anthropic',
     [CredentialType.DATABASE_CRED]: 'Postgres',

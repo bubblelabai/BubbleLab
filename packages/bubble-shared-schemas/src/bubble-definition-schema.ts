@@ -22,6 +22,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.DATABASE_CRED]: {
     ignoreSSL: BubbleParameterType.BOOLEAN,
   },
+  [CredentialType.AGI_API_KEY]: {},
   [CredentialType.FUB_CRED]: {},
   [CredentialType.OPENAI_CRED]: {},
   [CredentialType.GOOGLE_GEMINI_CRED]: {},
