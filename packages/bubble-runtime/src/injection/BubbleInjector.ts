@@ -141,7 +141,9 @@ export class BubbleInjector {
         // Convert single quotes to double quotes (handle escaped quotes)
         const jsonStr = modelParam.value
           .replace(/'/g, '"')
-          .replace(/(\w+):/g, '"$1":');
+          .replace(/(\w+):/g, '"$1":')
+          .replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
+        console.log('Model object:', jsonStr);
         const modelObj = JSON.parse(jsonStr);
         // Extract primary model
         const nestedModel = modelObj.model;
