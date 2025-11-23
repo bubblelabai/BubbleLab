@@ -49,7 +49,7 @@ export async function getTotalServiceCostForUser(
   const usageRecords = await db.query.userServiceUsage.findMany({
     where: and(...whereConditions),
   });
-  console.log('[getTotalServiceUsageForUser] Usage records:', usageRecords);
+  console.debug('[getTotalServiceUsageForUser] Usage records:', usageRecords);
   return usageRecords.reduce((acc, curr) => acc + curr.totalCost, 0);
 }
 

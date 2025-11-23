@@ -1309,7 +1309,7 @@ export class AIAgentBubble extends ServiceBubble<
         console.log(
           `[AIAgent] Retrying with backup model: ${modelConfig.backupModel.model}`
         );
-        this.context?.logger?.info(
+        this.context?.logger?.warn(
           `Primary model ${modelConfig.model} failed: ${error instanceof Error ? error.message : 'Unknown error'}. Retrying with backup model... ${modelConfig.backupModel.model}`
         );
         this.streamingCallback?.({

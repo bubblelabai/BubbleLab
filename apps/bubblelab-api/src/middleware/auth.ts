@@ -157,26 +157,70 @@ export async function authMiddleware(c: Context, next: Next) {
     const subscriptionInfo = extractSubscriptionInfoFromPayload(payload);
     console.debug('[authMiddleware] subscriptionInfo', subscriptionInfo);
 
-    // Set user info and app context
+    // Fetch user from Clerk to check for private metadata overrides
+    let finalPlan = subscriptionInfo.plan;
+    let finalFeatures = subscriptionInfo.features;
+    const clerkClient = getClerkClient(appType);
+    if (clerkClient) {
+      try {
+        const clerkUser = await clerkClient.users.getUser(userId);
+        if (clerkUser) {
+          // Check for plan override in private metadata (for special users who bypass subscription system)
+          const privatePlanValue = clerkUser.privateMetadata?.plan;
+          if (privatePlanValue) {
+            const privatePlan =
+              typeof privatePlanValue === 'string' &&
+              ['free_user', 'pro_plan', 'pro_plus', 'unlimited'].includes(
+                privatePlanValue
+              )
+                ? (privatePlanValue as PLAN_TYPE)
+                : 'unlimited';
+            const privateFeatures = clerkUser.privateMetadata?.features as
+              | FEATURE_TYPE[]
+              | undefined;
+
+            // Override subscription info if private metadata contains plan
+            if (privatePlan) {
+              finalPlan = privatePlan;
+              console.debug(
+                `[authMiddleware] Overriding plan from private metadata: ${privatePlan}`
+              );
+            }
+            if (privateFeatures && privateFeatures.length > 0) {
+              finalFeatures = privateFeatures;
+              console.debug(
+                `[authMiddleware] Overriding features from private metadata: ${privateFeatures.join(', ')}`
+              );
+            }
+          }
+        }
+      } catch (err) {
+        console.error(
+          '[authMiddleware] Failed to fetch user from Clerk for private metadata check',
+          err
+        );
+        // Continue with JWT payload values if fetch fails
+      }
+    }
+
+    // Set user info and app context with final values (may be overridden by private metadata)
     c.set('userId', userId);
-    c.set('userPlan', subscriptionInfo.plan);
-    c.set('userFeatures', subscriptionInfo.features);
-    c.set('userTier', subscriptionInfo.plan); // Use plan as tier for now
+    c.set('userPlan', finalPlan);
+    c.set('userFeatures', finalFeatures);
+    c.set('userTier', finalPlan); // Use plan as tier for now
     c.set('appType', appType);
 
-    // Establish AsyncLocalStorage context for global access
+    // Establish AsyncLocalStorage context for global access with final values
     return await runWithContext(
       {
         userId,
-        userPlan: subscriptionInfo.plan,
-        userFeatures: subscriptionInfo.features,
+        userPlan: finalPlan,
+        userFeatures: finalFeatures,
         appType,
       },
       async () => {
         // --- Optional: persist / update user record in DB (lightweight upsert) ---
         try {
-          // Use the appropriate Clerk client for this app
-          const clerkClient = getClerkClient(appType);
           if (clerkClient) {
             const clerkUser = await clerkClient.users.getUser(userId);
             if (clerkUser) {
