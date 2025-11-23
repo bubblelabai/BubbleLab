@@ -1,4 +1,4 @@
-import { Bot, Code, Activity, Clock } from 'lucide-react';
+import { Code, Activity, Clock } from 'lucide-react';
 import { PearlChat } from './ai/PearlChat';
 import { MonacoEditor } from './MonacoEditor';
 import LiveOutput from './execution_logs/LiveOutput';
@@ -35,7 +35,7 @@ export function ConsolidatedSidePanel() {
     {
       id: 'pearl' as const,
       label: 'Pearl',
-      icon: Bot,
+      icon: Code, // Placeholder, not used for Pearl tab
       badge: null,
     },
     {
@@ -65,6 +65,7 @@ export function ConsolidatedSidePanel() {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const isPearl = tab.id === 'pearl';
 
           return (
             <button
@@ -77,7 +78,11 @@ export function ConsolidatedSidePanel() {
                   : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              {isPearl ? (
+                <img src="/pearl.png" alt="Pearl" className="w-4 h-4" />
+              ) : (
+                <Icon className="w-4 h-4" />
+              )}
               <span>{tab.label}</span>
               {tab.badge !== null && (
                 <span
