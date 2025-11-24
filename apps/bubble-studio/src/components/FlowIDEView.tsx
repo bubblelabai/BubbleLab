@@ -439,6 +439,8 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                                         syncInputsWithFlow: true,
                                         credentials:
                                           executionState.pendingCredentials,
+                                        defaultInputs:
+                                          executionState.executionInputs,
                                       })
                                     }
                                   />
