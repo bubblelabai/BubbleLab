@@ -303,7 +303,9 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
     content: z
       .string()
       .optional()
-      .describe('File content as base64 encoded string'),
+      .describe(
+        'File content as plain text (for text-based files) or base64 encoded string (for binary files)'
+      ),
     filename: z.string().optional().describe('Original filename'),
     mimeType: z
       .string()
@@ -735,6 +737,29 @@ export class GoogleDriveBubble<
     }
   }
 
+  private isTextMimeType(mimeType: string | undefined): boolean {
+    if (!mimeType) {
+      return false;
+    }
+
+    // Text-based MIME types that should be returned as plain text
+    const textMimeTypes = [
+      'text/',
+      'application/json',
+      'application/xml',
+      'application/javascript',
+      'application/typescript',
+      'application/x-sh',
+      'application/x-yaml',
+      'application/x-toml',
+      'application/csv',
+      'application/x-csv',
+      'text/csv',
+    ];
+
+    return textMimeTypes.some((prefix) => mimeType.startsWith(prefix));
+  }
+
   private async downloadFile(
     params: Extract<GoogleDriveParams, { operation: 'download_file' }>
   ): Promise<Extract<GoogleDriveResult, { operation: 'download_file' }>> {
@@ -762,8 +787,14 @@ export class GoogleDriveBubble<
         'arrayBuffer'
       );
 
-      content = Buffer.from(exportResponse).toString('base64');
       actualMimeType = export_format;
+
+      // Return as plain text for text-based formats, base64 for binary
+      if (this.isTextMimeType(actualMimeType)) {
+        content = Buffer.from(exportResponse).toString('utf-8');
+      } else {
+        content = Buffer.from(exportResponse).toString('base64');
+      }
     } else {
       // Regular file download
       const downloadResponse = await this.makeGoogleApiRequest(
@@ -774,8 +805,14 @@ export class GoogleDriveBubble<
         'arrayBuffer'
       );
 
-      content = Buffer.from(downloadResponse).toString('base64');
       actualMimeType = fileInfo.mimeType;
+
+      // Return as plain text for text-based formats, base64 for binary
+      if (this.isTextMimeType(actualMimeType)) {
+        content = Buffer.from(downloadResponse).toString('utf-8');
+      } else {
+        content = Buffer.from(downloadResponse).toString('base64');
+      }
     }
 
     return {
