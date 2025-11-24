@@ -6,6 +6,7 @@ import { useExecutionStore } from '../stores/executionStore';
 import { useRunExecution } from '../hooks/useRunExecution';
 import { filterEmptyInputs } from '../utils/inputUtils';
 import { BUBBLE_COLORS } from './BubbleColors';
+import { WebhookURLDisplay } from './WebhookURLDisplay';
 
 interface SchemaField {
   name: string;
@@ -185,6 +186,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         }`}
         style={{ right: -6 }}
       />
+
+      {/* Webhook section at the top (if webhook exists) */}
+      <WebhookURLDisplay flowId={flowId} />
 
       {/* Header */}
       <div className="px-4 py-3">

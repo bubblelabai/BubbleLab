@@ -23,7 +23,6 @@ import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
 import CronScheduleNode from './CronScheduleNode';
-import { WebhookURLDisplay } from './WebhookURLDisplay';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
 import { useEditorStore } from '@/stores/editorStore';
 
@@ -1108,9 +1107,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               Unsaved
             </div>
           )}
-          {currentFlow?.id ? (
-            <WebhookURLDisplay flowId={currentFlow.id} />
-          ) : null}
         </div>
       )}
 
