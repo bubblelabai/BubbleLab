@@ -332,7 +332,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col gap-0.5">
                       <div className="text-xs text-gray-400 font-medium">
-                        Total Active Flows
+                        Total Active Flows (Webhooks + Cron Schedules)
                       </div>
                       <div className="text-[10px] text-gray-500">
                         {subscription.planDisplayName}
