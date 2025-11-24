@@ -167,6 +167,13 @@ export class CredentialValidator {
         baseParams.owner = 'octocat';
         baseParams.repo = 'Hello-World';
         break;
+
+      case CredentialType.OPENROUTER_CRED:
+        baseParams.message = 'Hello, how are you?';
+        baseParams.model = {
+          model: 'openrouter/openai/gpt-oss-120b',
+        };
+        break;
       case CredentialType.ELEVENLABS_API_KEY:
         baseParams.operation = 'get_signed_url';
         baseParams.agentId = 'test-agent-id';

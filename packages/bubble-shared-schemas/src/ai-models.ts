@@ -21,6 +21,8 @@ export const AvailableModels = z.enum([
   'openrouter/x-ai/grok-code-fast-1',
   'openrouter/z-ai/glm-4.6',
   'openrouter/morph/morph-v3-large',
+  'openrouter/x-ai/grok-4.1-fast',
+  'openrouter/openai/gpt-oss-120b',
   'openrouter/deepseek/deepseek-chat-v3.1',
 ]);
 

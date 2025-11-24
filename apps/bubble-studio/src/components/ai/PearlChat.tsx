@@ -368,9 +368,6 @@ export function PearlChat() {
                               {suggestion.description}
                             </div>
                           </div>
-                          <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
-                          </div>
                         </div>
                       </button>
                     ))}
@@ -401,9 +398,6 @@ export function PearlChat() {
                                 <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
                                   {suggestion.description}
                                 </div>
-                              </div>
-                              <div className="flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <ArrowUp className="w-3.5 h-3.5 text-gray-500 rotate-45" />
                               </div>
                             </div>
                           </button>
