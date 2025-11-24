@@ -23,7 +23,6 @@ import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
 import { useEditor } from '../hooks/useEditor';
 import CronScheduleNode from './CronScheduleNode';
-import { WebhookURLDisplay } from './WebhookURLDisplay';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
 import { useEditorStore } from '@/stores/editorStore';
 
@@ -842,6 +841,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         prevExpandedRootIdsRef.current.includes(id)
       );
 
+    // Check if currentFlow data changed (e.g., cronActive, inputSchema, etc.)
+    const flowDataChanged = prevFlowRef.current !== currentFlow;
+
     setNodes((currentNodes) => {
       // If this is the first time we have nodes, just set them
       if (currentNodes.length === 0 || structureChanged) {
@@ -882,10 +884,16 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         if (nodeChanges.length > 0) {
           return applyNodeChanges(nodeChanges, currentNodes);
         }
+        // Even if no nodes were added/removed, we still need to update node data
+        // (e.g., when cronActive changes), so fall through to the merge logic below
+      }
+
+      // For flow data changes (like cronActive) or structure changes, merge positions and update
+      // Only skip if nothing has changed at all
+      if (!flowDataChanged && !expandedChanged && !structureChanged) {
         return currentNodes;
       }
 
-      // For flow structure changes, merge positions and update
       const updatedNodes = initialNodes.map((initialNode) => {
         const currentNode = currentNodes.find((n) => n.id === initialNode.id);
         if (currentNode) {
@@ -929,7 +937,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           ];
           return applyEdgeChanges(edgeChanges, currentEdges);
         }
-        return currentEdges;
+        // If no edges were added/removed but currentFlow changed, return the new edges
+        // to ensure edge styling is updated (e.g., cron node color changes)
+        return initialEdges;
+      }
+
+      // If flow data changed (like cronActive), update edges
+      if (flowDataChanged) {
+        return initialEdges;
       }
 
       return currentEdges;
@@ -1092,9 +1107,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               Unsaved
             </div>
           )}
-          {currentFlow?.id ? (
-            <WebhookURLDisplay flowId={currentFlow.id} />
-          ) : null}
         </div>
       )}
 

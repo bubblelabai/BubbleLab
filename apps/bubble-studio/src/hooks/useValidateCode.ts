@@ -69,7 +69,12 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
       }
 
       // Update visualizer with bubbles from validation
-      if (result.valid && result.bubbles) {
+      // Only update if bubbles are present and non-empty (to avoid clearing on cron toggle)
+      if (
+        result.valid &&
+        result.bubbles &&
+        Object.keys(result.bubbles).length > 0
+      ) {
         // Code was already optimistically updated in onMutate
         // Now update the validation results (bubbles, schema, credentials)
         updateBubbleParameters(result.bubbles);

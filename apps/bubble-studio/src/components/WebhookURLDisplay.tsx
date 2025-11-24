@@ -1,4 +1,4 @@
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Webhook } from 'lucide-react';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useWebhook } from '../hooks/useWebhook';
 import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
@@ -35,51 +35,61 @@ export function WebhookURLDisplay({ flowId }: WebhookURLDisplayProps) {
     }
   };
 
-  // Compact inline control for toolbar: status dot, label, toggle, copy
+  // Top section for Flow Inputs node (similar to Cron Schedule header)
   return (
-    <div className="ml-2 pl-2 border-l border-neutral-700 flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <span
-          className={`text-[10px] font-semibold ${
-            isActive ? 'text-green-400' : 'text-neutral-500'
-          }`}
-          aria-label={isActive ? 'Webhook active' : 'Webhook inactive'}
-        >
-          {isActive ? '●' : '○'}
-        </span>
-        <span className="text-[10px] font-medium text-neutral-400">
-          Webhook
-        </span>
+    <div className="p-4 border-b border-neutral-600 bg-neutral-800/50">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div
+            className={`h-8 w-8 flex-shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-green-600' : 'bg-neutral-600'}`}
+          >
+            <Webhook className="h-4 w-4 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-neutral-100">Webhook</h3>
+            <p className="text-xs text-neutral-400">
+              {isActive ? 'Active' : 'Inactive'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Toggle switch */}
+          <button
+            type="button"
+            onClick={handleToggleWebhook}
+            disabled={webhookMutation.isPending}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-800 ${
+              isActive
+                ? 'bg-green-500 focus:ring-green-500'
+                : 'bg-neutral-600 focus:ring-neutral-500'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={
+              isActive
+                ? 'Click to deactivate webhook'
+                : 'Click to activate webhook'
+            }
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isActive ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          {/* Copy button */}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex-shrink-0 p-2 rounded bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 transition-colors"
+            title="Copy webhook URL"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-green-400" />
+            ) : (
+              <Copy className="w-4 h-4 text-neutral-300" />
+            )}
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={handleToggleWebhook}
-        disabled={webhookMutation.isPending}
-        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-800 ${
-          isActive
-            ? 'bg-green-500 focus:ring-green-500'
-            : 'bg-neutral-600 focus:ring-neutral-500'
-        } disabled:opacity-50 disabled:cursor-not-allowed`}
-        title={isActive ? 'Click to deactivate' : 'Click to activate'}
-      >
-        <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-            isActive ? 'translate-x-5' : 'translate-x-0.5'
-          }`}
-        />
-      </button>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="flex-shrink-0 p-1 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 transition-colors"
-        title="Copy webhook URL"
-      >
-        {copied ? (
-          <Check className="w-3 h-3 text-green-400" />
-        ) : (
-          <Copy className="w-3 h-3 text-neutral-300" />
-        )}
-      </button>
     </div>
   );
 }

@@ -93,6 +93,48 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  // Centralized error messages
+  const limitMessages = {
+    credits: {
+      title: 'Credit limit reached.',
+      message:
+        'You can continue executing flows by using your own API keys, or upgrade your plan for more managed integration credits.',
+      full: "You've reached your plan's cap on credits. You can continue executing flows by using your own API keys, or upgrade your plan for more managed integration credits.",
+    },
+    executions: {
+      title: 'Execution limit reached.',
+      message:
+        "You've hit your monthly execution cap. Upgrade your plan to run more Bubble Lab workflows this month.",
+      full: "You've reached your plan's cap on executions. Upgrade your plan to run more Bubble Lab workflows this month.",
+    },
+    activeFlows: {
+      title: 'Active flow limit reached.',
+      message:
+        'Your existing active flows will continue running. To activate webhooks or cron schedules for additional workflows, please upgrade your plan.',
+      full: "You've reached your plan's cap on active flows. Your existing active flows will continue running. To activate webhooks or cron schedules for additional workflows, please upgrade your plan.",
+    },
+  };
+
+  // Get the error message based on which limits are exceeded
+  const getLimitExceededMessage = (): string => {
+    const messages: string[] = [];
+
+    if (isUsageExceeded) {
+      messages.push(limitMessages.credits.full);
+    }
+
+    if (isExecutionExceeded) {
+      messages.push(limitMessages.executions.full);
+    }
+
+    if (isActiveFlowsExceeded) {
+      messages.push(limitMessages.activeFlows.full);
+    }
+
+    // If multiple limits exceeded, join with a space
+    return messages.join(' ');
+  };
+
   return (
     <>
       <div className="relative group">
@@ -135,28 +177,11 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
               {/* Warning message if any limit exceeded */}
               {anyLimitExceeded && (
-                <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="mb-3 p-2 bg-orange-500/10 border border-orange-500/20 rounded-lg">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-xs text-red-300">
-                      <span className="font-medium">Limit exceeded.</span>{' '}
-                      You've reached your plan's cap
-                      {isUsageExceeded &&
-                      isExecutionExceeded &&
-                      isActiveFlowsExceeded
-                        ? ' on all metrics'
-                        : isUsageExceeded && isExecutionExceeded
-                          ? ' on credits and executions'
-                          : isUsageExceeded && isActiveFlowsExceeded
-                            ? ' on credits and active flows'
-                            : isExecutionExceeded && isActiveFlowsExceeded
-                              ? ' on executions and active flows'
-                              : isUsageExceeded
-                                ? ' on credits'
-                                : isExecutionExceeded
-                                  ? ' on executions'
-                                  : ' on active flows'}
-                      . Upgrade to continue building with Bubble Lab.
+                    <AlertCircle className="w-4 h-4 text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-orange-300">
+                      {getLimitExceededMessage()}
                     </div>
                   </div>
                 </div>
@@ -182,11 +207,9 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                         <Info className="w-3 h-3 text-red-400 cursor-help" />
                         <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                           <span className="font-medium text-red-300">
-                            Credit limit reached.
+                            {limitMessages.credits.title}
                           </span>{' '}
-                          You can continue executing flows by using your own API
-                          keys, or upgrade your plan for more managed
-                          integration credits.
+                          {limitMessages.credits.message}
                         </div>
                       </div>
                     )}
@@ -286,10 +309,9 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                       <span className="cursor-help">Limit reached</span>
                       <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                         <span className="font-medium text-red-300">
-                          Execution limit reached.
+                          {limitMessages.executions.title}
                         </span>{' '}
-                        You've hit your monthly execution cap. Upgrade your plan
-                        to run more Bubble Lab workflows this month.
+                        {limitMessages.executions.message}
                       </div>
                     </div>
                   )}
@@ -310,7 +332,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col gap-0.5">
                       <div className="text-xs text-gray-400 font-medium">
-                        Total Active Flows
+                        Total Active Flows (Webhooks + Cron Schedules)
                       </div>
                       <div className="text-[10px] text-gray-500">
                         {subscription.planDisplayName}
@@ -342,11 +364,9 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                       <span className="cursor-help">Limit reached</span>
                       <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                         <span className="font-medium text-red-300">
-                          Active flow limit reached.
+                          {limitMessages.activeFlows.title}
                         </span>{' '}
-                        Your existing active flows will continue running. To
-                        activate webhooks or cron schedules for additional
-                        workflows, please upgrade your plan.
+                        {limitMessages.activeFlows.message}
                       </div>
                     </div>
                   )}
