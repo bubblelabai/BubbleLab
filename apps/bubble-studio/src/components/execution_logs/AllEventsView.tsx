@@ -587,7 +587,8 @@ export default function AllEventsView({
                               Need help fixing this error?
                             </h4>
                             <p className="text-[10px] text-gray-400">
-                              Pearl can analyze the error and suggest fixes
+                              Please wait until the flow finishes executing
+                              before fixing!
                             </p>
                           </div>
                           <button

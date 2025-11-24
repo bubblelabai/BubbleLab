@@ -149,7 +149,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   const getRunDisabledReason = () => {
     if (!currentFlow) return 'Create or select a flow first';
     if (executionState.isValidating) return 'Validating code...';
-    if (isRunning) return 'Execution in progress...';
+    if (isRunning) return 'Working on it...please be patient :)';
 
     const { isValid, reasons } = canExecute();
     if (!isValid && reasons.length > 0) {
