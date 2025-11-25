@@ -279,12 +279,12 @@ export function ExportModal({
         <div className="bg-[#1a1a1a] px-6 border-b border-[#30363d]">
           <nav className="flex space-x-8">
             {[
+              { id: 'api', label: 'API Usage Guide', icon: Package },
               {
                 id: 'setup',
                 label: 'Export to Your Node.js App',
                 icon: Terminal,
               },
-              { id: 'api', label: 'API Usage Guide', icon: Package },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -315,7 +315,9 @@ export function ExportModal({
 
                 <p className="text-sm text-gray-400">
                   Get a complete, ready-to-run Node.js project with all
-                  dependencies included.
+                  dependencies included. You'll need to set up your own hosted
+                  runtime and configure credentials outside of the Bubble Lab
+                  system.
                 </p>
 
                 <div className="space-y-3">
@@ -468,6 +470,20 @@ export function ExportModal({
           {activeTab === 'api' && (
             <div className="p-6 space-y-6">
               <div className="space-y-4">
+                {/* API Usage Guide Header */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium text-gray-200 flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    API Usage Guide
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    Call your workflow via webhook endpoints hosted in Bubble
+                    Lab. All executions run on our infrastructure, and you can
+                    view execution history and logs here in Bubble Lab even when
+                    calling from external applications.
+                  </p>
+                </div>
+
                 {/* LLM Integration Instructions */}
                 {flowData?.webhook_url && (
                   <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
