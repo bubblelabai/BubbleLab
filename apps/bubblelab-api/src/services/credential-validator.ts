@@ -178,6 +178,12 @@ export class CredentialValidator {
         baseParams.operation = 'get_signed_url';
         baseParams.agentId = 'test-agent-id';
         break;
+      case CredentialType.APIFY_CRED:
+        baseParams.actorId = 'test-actor-id';
+        baseParams.input = {
+          message: 'Hello, how are you?',
+        };
+        break;
       default:
         break;
     }

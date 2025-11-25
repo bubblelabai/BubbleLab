@@ -630,7 +630,28 @@ private static createTestParameters(
 }
 ```
 
-**Why this matters:** The backend needs minimal valid parameters to instantiate your bubble for credential validation. Without this, you'll get `ZodError: expected object, received undefined` when adding credentials.
+**⚠️ CRITICAL: Include ALL Required Parameters Without Defaults**
+
+When adding test parameters for your credential type, you MUST include:
+
+1. **All required parameters** that don't have `.optional()` or `.default()` in your bubble's Zod schema
+2. **All parameters needed for instantiation** even if they have defaults (to ensure the bubble can be created)
+
+**Common failure case:**
+```typescript
+// ❌ WRONG - Missing required parameters
+case CredentialType.APIFY_CRED:
+  // Missing actorId and input - will cause ZodError during validation!
+  break;
+
+// ✅ CORRECT - Include all required parameters
+case CredentialType.APIFY_CRED:
+  baseParams.actorId = 'test-actor-id';
+  baseParams.input = { message: 'Hello, how are you?' };
+  break;
+```
+
+**Why this matters:** The credential validator instantiates your bubble to test the credential. If your bubble's schema has required parameters without defaults, the instantiation will fail with `ZodError` before the credential can even be tested. The validator doesn't automatically parse through your schema to apply defaults - you must provide complete test parameters.
 
 ### 8. **System Credential Auto-Injection** (Optional - if credentials should be auto-injected)
 📍 **File:** `apps/bubblelab-api/src/services/bubble-flow-parser.ts`
