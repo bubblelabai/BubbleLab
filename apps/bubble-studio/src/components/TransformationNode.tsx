@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Code2 } from 'lucide-react';
 
 export interface TransformationNodeData {
   flowId: number;
@@ -89,7 +88,6 @@ function TransformationNode({ data }: TransformationNodeProps) {
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-1">
-          <Code2 className="w-5 h-5 text-neutral-400" />
           <span className="text-lg font-semibold text-neutral-100">
             {variableName ? `${variableName} = ` : ''}
             {functionName}({args})

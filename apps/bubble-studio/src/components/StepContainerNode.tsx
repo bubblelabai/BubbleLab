@@ -82,12 +82,14 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg font-semibold text-neutral-100">
+          <span className="text-xl font-semibold text-white">
             {functionName}()
           </span>
         </div>
         {description && (
-          <p className="text-sm text-neutral-300 line-clamp-2">{description}</p>
+          <p className="text-base text-neutral-200 line-clamp-2">
+            {description}
+          </p>
         )}
       </div>
     </div>
