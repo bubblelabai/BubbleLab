@@ -52,7 +52,7 @@ export function ExportModal({
   }, [flowName]);
 
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('setup');
+  const [activeTab, setActiveTab] = useState<TabType>('api');
   const [copiedSetup, setCopiedSetup] = useState<string | null>(null);
 
   const mockData = useMemo(
