@@ -43,6 +43,7 @@ export const fixtures = {
   'param-as-var': '',
   'method-inside-handler': '',
   'flow-with-class-method-and-log': '',
+  'steps-workflow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

@@ -239,7 +239,12 @@ export type WorkflowNodeType =
   | 'for'
   | 'while'
   | 'try_catch'
-  | 'code_block';
+  | 'variable_declaration'
+  | 'return'
+  | 'function_call'
+  | 'code_block'
+  | 'parallel_execution'
+  | 'transformation_function';
 
 export interface BubbleWorkflowNode {
   type: 'bubble';
@@ -257,6 +262,8 @@ export interface ControlFlowWorkflowNode {
   condition?: string; // For if/for/while conditions
   children: WorkflowNode[];
   elseBranch?: WorkflowNode[]; // For if statements
+  thenTerminates?: boolean; // True if then branch contains return/throw
+  elseTerminates?: boolean; // True if else branch contains return/throw
 }
 
 export interface TryCatchWorkflowNode {
@@ -283,11 +290,122 @@ export interface CodeBlockWorkflowNode {
   children: WorkflowNode[]; // Nested bubbles/control flow within this block
 }
 
+export interface VariableDeclarationBlockNode {
+  type: 'variable_declaration';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  code: string; // The variable declarations code
+  variables: Array<{
+    name: string;
+    type: 'const' | 'let' | 'var';
+    hasInitializer: boolean;
+  }>;
+  children: WorkflowNode[];
+}
+
+export interface ReturnWorkflowNode {
+  type: 'return';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  code: string; // The return statement code
+  value?: string; // Extracted return value expression (optional, for easier access)
+  children: WorkflowNode[]; // Rare, but return could contain nested structures
+}
+
+export interface FunctionCallWorkflowNode {
+  type: 'function_call';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  functionName: string; // e.g., "processData"
+  isMethodCall: boolean; // true for this.method(), false for helper()
+  description?: string; // Method description from code comments
+  arguments?: string; // The arguments as code string
+  code: string; // Full call expression code
+  variableDeclaration?: {
+    // If this function call is part of a variable declaration
+    variableName: string;
+    variableType: 'const' | 'let' | 'var';
+  };
+  methodDefinition?: {
+    // If method definition found in class
+    location: {
+      startLine: number;
+      endLine: number;
+    };
+    isAsync: boolean;
+    parameters: string[]; // Parameter names
+  };
+  children: WorkflowNode[]; // If method definition found, expand its body here
+}
+
+export interface ParallelExecutionWorkflowNode {
+  type: 'parallel_execution';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  code: string; // Full Promise.all() code
+  variableDeclaration?: {
+    // If this parallel execution is part of a variable declaration
+    variableNames: string[]; // Array destructuring names
+    variableType: 'const' | 'let' | 'var';
+  };
+  children: WorkflowNode[]; // Parallel tasks (function calls inside Promise.all)
+}
+
+export interface TransformationFunctionWorkflowNode {
+  type: 'transformation_function';
+  location: {
+    startLine: number;
+    startCol: number;
+    endLine: number;
+    endCol: number;
+  };
+  code: string; // Entire function call code
+  functionName: string; // e.g., "validateInput"
+  isMethodCall: boolean; // true for this.method(), false for helper()
+  description?: string; // Method description from code comments
+  arguments?: string; // The arguments as code string
+  variableDeclaration?: {
+    // If this function call is part of a variable declaration
+    variableName: string;
+    variableType: 'const' | 'let' | 'var';
+  };
+  methodDefinition?: {
+    // If method definition found in class
+    location: {
+      startLine: number;
+      endLine: number;
+    };
+    isAsync: boolean;
+    parameters: string[]; // Parameter names
+  };
+}
+
 export type WorkflowNode =
   | BubbleWorkflowNode
   | ControlFlowWorkflowNode
   | TryCatchWorkflowNode
-  | CodeBlockWorkflowNode;
+  | CodeBlockWorkflowNode
+  | VariableDeclarationBlockNode
+  | ReturnWorkflowNode
+  | FunctionCallWorkflowNode
+  | ParallelExecutionWorkflowNode
+  | TransformationFunctionWorkflowNode;
 
 export interface ParsedWorkflow {
   root: WorkflowNode[];
@@ -301,7 +419,12 @@ export const WorkflowNodeTypeSchema = z.enum([
   'for',
   'while',
   'try_catch',
+  'variable_declaration',
+  'return',
+  'function_call',
   'code_block',
+  'parallel_execution',
+  'transformation_function',
 ]);
 
 export const LocationSchema = z.object({
@@ -326,6 +449,8 @@ export const ControlFlowWorkflowNodeSchema: z.ZodType<ControlFlowWorkflowNode> =
       condition: z.string().optional(),
       children: z.array(WorkflowNodeSchema),
       elseBranch: z.array(WorkflowNodeSchema).optional(),
+      thenTerminates: z.boolean().optional(),
+      elseTerminates: z.boolean().optional(),
     })
   );
 
@@ -349,12 +474,118 @@ export const CodeBlockWorkflowNodeSchema: z.ZodType<CodeBlockWorkflowNode> =
     })
   );
 
+export const VariableDeclarationBlockNodeSchema: z.ZodType<VariableDeclarationBlockNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.literal('variable_declaration'),
+      location: LocationSchema,
+      code: z.string(),
+      variables: z.array(
+        z.object({
+          name: z.string(),
+          type: z.enum(['const', 'let', 'var']),
+          hasInitializer: z.boolean(),
+        })
+      ),
+      children: z.array(WorkflowNodeSchema),
+    })
+  );
+
+export const ReturnWorkflowNodeSchema: z.ZodType<ReturnWorkflowNode> = z.lazy(
+  () =>
+    z.object({
+      type: z.literal('return'),
+      location: LocationSchema,
+      code: z.string(),
+      value: z.string().optional(),
+      children: z.array(WorkflowNodeSchema),
+    })
+);
+
+export const FunctionCallWorkflowNodeSchema: z.ZodType<FunctionCallWorkflowNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.literal('function_call'),
+      location: LocationSchema,
+      functionName: z.string(),
+      isMethodCall: z.boolean(),
+      description: z.string().optional(),
+      arguments: z.string().optional(),
+      code: z.string(),
+      variableDeclaration: z
+        .object({
+          variableName: z.string(),
+          variableType: z.enum(['const', 'let', 'var']),
+        })
+        .optional(),
+      methodDefinition: z
+        .object({
+          location: z.object({
+            startLine: z.number(),
+            endLine: z.number(),
+          }),
+          isAsync: z.boolean(),
+          parameters: z.array(z.string()),
+        })
+        .optional(),
+      children: z.array(WorkflowNodeSchema),
+    })
+  );
+
+export const ParallelExecutionWorkflowNodeSchema: z.ZodType<ParallelExecutionWorkflowNode> =
+  z.lazy(() =>
+    z.object({
+      type: z.literal('parallel_execution'),
+      location: LocationSchema,
+      code: z.string(),
+      variableDeclaration: z
+        .object({
+          variableNames: z.array(z.string()),
+          variableType: z.enum(['const', 'let', 'var']),
+        })
+        .optional(),
+      children: z.array(WorkflowNodeSchema),
+    })
+  );
+
+export const TransformationFunctionWorkflowNodeSchema: z.ZodType<TransformationFunctionWorkflowNode> =
+  z.object({
+    type: z.literal('transformation_function'),
+    location: LocationSchema,
+    code: z.string(),
+    functionName: z.string(),
+    isMethodCall: z.boolean(),
+    description: z.string().optional(),
+    arguments: z.string().optional(),
+    variableDeclaration: z
+      .object({
+        variableName: z.string(),
+        variableType: z.enum(['const', 'let', 'var']),
+      })
+      .optional(),
+    methodDefinition: z
+      .object({
+        location: z.object({
+          startLine: z.number(),
+          endLine: z.number(),
+        }),
+        isAsync: z.boolean(),
+        parameters: z.array(z.string()),
+      })
+      .optional(),
+  });
+
 export const WorkflowNodeSchema: z.ZodType<WorkflowNode> = z.lazy(() =>
   z.union([
     BubbleWorkflowNodeSchema,
     ControlFlowWorkflowNodeSchema,
     TryCatchWorkflowNodeSchema,
     CodeBlockWorkflowNodeSchema,
+    VariableDeclarationBlockNodeSchema,
+    ReturnWorkflowNodeSchema,
+    FunctionCallWorkflowNodeSchema,
+    ParallelExecutionWorkflowNodeSchema,
+    TransformationFunctionWorkflowNodeSchema,
   ])
 );
 

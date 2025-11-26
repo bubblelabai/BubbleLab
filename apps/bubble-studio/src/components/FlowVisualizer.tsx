@@ -14,10 +14,18 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
+import StepContainerNode from './StepContainerNode';
+import TransformationNode from './TransformationNode';
 import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
+import {
+  extractStepGraph,
+  type StepData,
+  type StepGraph,
+  type StepEdge,
+} from '../utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
@@ -38,6 +46,8 @@ const nodeTypes = {
   bubbleNode: BubbleNode,
   inputSchemaNode: InputSchemaNode,
   cronScheduleNode: CronScheduleNode,
+  stepContainerNode: StepContainerNode,
+  transformationNode: TransformationNode,
 };
 
 const proOptions = { hideAttribution: true };
@@ -48,6 +58,9 @@ const sanitizeIdSegment = (value: string) =>
 // Executing bubble viewport preferences (tweak these)
 const EXECUTION_LEFT_OFFSET_RATIO = 0.1; // 0 = center, 0.3 = ~30% from left
 const EXECUTION_ZOOM = 1.0; // Set desired zoom when centering during execution
+
+// Edge label visibility
+const SHOW_EDGE_LABELS = false; // Set to true to show conditional edge labels
 
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
@@ -400,6 +413,50 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     [autoVisibleNodes, currentFlow, flowId]
   );
 
+  // Generate within-step edges (connects bubbles horizontally inside each step)
+  const generateWithinStepEdges = useCallback(
+    (
+      steps: StepData[],
+      bubbles: Record<number, ParsedBubbleWithInfo>
+    ): Edge[] => {
+      const edges: Edge[] = [];
+
+      for (const step of steps) {
+        const stepBubbles = step.bubbleIds
+          .map((id) => bubbles[parseInt(id)])
+          .filter(Boolean)
+          .sort((a, b) => a.location.startLine - b.location.startLine);
+
+        // Connect each bubble to next in sequence (horizontal flow)
+        for (let i = 0; i < stepBubbles.length - 1; i++) {
+          const source = stepBubbles[i];
+          const target = stepBubbles[i + 1];
+
+          // Use the new node ID format: {stepId}-bubble-{bubbleId}
+          const sourceNodeId = `${step.id}-bubble-${source.variableId}`;
+          const targetNodeId = `${step.id}-bubble-${target.variableId}`;
+
+          edges.push({
+            id: `internal-${step.id}-${source.variableId}-to-${target.variableId}`,
+            source: sourceNodeId,
+            target: targetNodeId,
+            sourceHandle: 'right',
+            targetHandle: 'left',
+            type: 'smoothstep',
+            animated: false,
+            style: {
+              stroke: '#9ca3af', // Gray for consistency
+              strokeWidth: 1.5,
+            },
+          });
+        }
+      }
+
+      return edges;
+    },
+    []
+  );
+
   // Convert bubbles to React Flow nodes and edges
   const initialNodesAndEdges = () => {
     const nodes: Node[] = [];
@@ -617,133 +674,515 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       }
     }
 
-    // Create nodes for each bubble
-    bubbleEntries.forEach(([key, bubbleData], index) => {
+    // Extract steps with control flow graph from workflow
+    const stepGraph = extractStepGraph(currentFlow?.workflow, bubbleParameters);
+    const steps = stepGraph.steps;
+    const stepEdges = stepGraph.edges;
+
+    // Check if we should fallback to sequential horizontal layout
+    // Conditions: 1. No workflow attribute exists, OR 2. There are unparsed bubbles
+    const hasWorkflow =
+      currentFlow?.workflow && Object.keys(currentFlow.workflow).length > 0;
+
+    // Find bubbles that are not in any step (unparsed bubbles)
+    const bubblesInSteps = new Set<string>();
+    steps.forEach((step) => {
+      step.bubbleIds.forEach((id) => bubblesInSteps.add(id));
+    });
+    const unparsedBubbles = bubbleEntries.filter(([key, bubbleData]) => {
       const bubble = bubbleData;
-      const nodeId = bubble.variableId
-        ? String(bubble.variableId)
-        : String(key);
+      const id = bubble.variableId ? String(bubble.variableId) : String(key);
+      return !bubblesInSteps.has(id);
+    });
 
-      // Use persisted position if available, otherwise use initial position
-      const persistedPosition = persistedPositions.current.get(nodeId);
-      const initialPosition = {
-        x: startX + index * horizontalSpacing,
-        y: baseY,
-      };
+    const shouldUseSequentialLayout =
+      !hasWorkflow || unparsedBubbles.length > 0;
 
-      const node: Node = {
-        id: nodeId,
-        type: 'bubbleNode',
-        position: persistedPosition || initialPosition,
-        origin: [0, 0.5] as [number, number],
-        draggable: true,
-        data: {
-          flowId: currentFlow?.id || flowId,
-          bubble,
-          bubbleKey: key,
-          requiredCredentialTypes: (() => {
-            const keyCandidates = [
-              String(bubble.variableId),
-              bubble.variableName,
-              bubble.bubbleName,
-            ];
-            const credentialsKeyForBubble =
-              keyCandidates.find(
-                (k) =>
-                  k &&
-                  Array.isArray(
-                    (requiredCredentials as Record<string, unknown>)[k]
-                  )
-              ) || bubble.bubbleName;
-            return (
-              (requiredCredentials as Record<string, string[]>)[
-                credentialsKeyForBubble
-              ] || []
-            );
-          })(),
-          onHighlightChange: () => {
-            // BubbleNode will handle store updates
-          },
-          onBubbleClick: () => {
-            useUIStore.getState().showEditorPanel();
-            setExecutionHighlight({
-              startLine: bubble.location.startLine,
-              endLine: bubble.location.endLine,
-            });
-          },
-          onParamEditInCode: (paramName: string) => {
-            // Find the parameter in the bubble's parameters
-            const param = bubble.parameters.find((p) => p.name === paramName);
-            if (param && param.location) {
-              // Open editor if not visible
-              if (!useUIStore.getState().showEditor) {
-                useUIStore.getState().showEditorPanel();
-              }
+    // Use sequential horizontal layout as fallback
+    if (shouldUseSequentialLayout) {
+      // Create nodes for each bubble (sequential horizontal layout)
+      bubbleEntries.forEach(([key, bubbleData], index) => {
+        const bubble = bubbleData;
+        const nodeId = bubble.variableId
+          ? String(bubble.variableId)
+          : String(key);
 
-              // Highlight the parameter's location in the editor
-              setExecutionHighlight({
-                startLine: param.location.startLine,
-                endLine: param.location.endLine,
-              });
-            }
-          },
-          hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
-        },
-      };
-      nodes.push(node);
+        // Use persisted position if available, otherwise use initial position
+        const persistedPosition = persistedPositions.current.get(nodeId);
+        const initialPosition = {
+          x: startX + index * horizontalSpacing,
+          y: baseY,
+        };
 
-      // Create sub-bubbles from dependency graph
-      if (bubble.dependencyGraph?.dependencies) {
-        bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
-          createNodesFromDependencyGraph(
-            dep,
+        const node: Node = {
+          id: nodeId,
+          type: 'bubbleNode',
+          position: persistedPosition || initialPosition,
+          origin: [0, 0.5] as [number, number],
+          draggable: true,
+          data: {
+            flowId: currentFlow?.id || flowId,
             bubble,
-            nodes,
-            edges,
-            1,
-            nodeId,
-            idx,
-            arr.length,
-            `${idx}`,
-            nodeId
-          );
+            bubbleKey: key,
+            requiredCredentialTypes: (() => {
+              const keyCandidates = [
+                String(bubble.variableId),
+                bubble.variableName,
+                bubble.bubbleName,
+              ];
+              const credentialsKeyForBubble =
+                keyCandidates.find(
+                  (k) =>
+                    k &&
+                    Array.isArray(
+                      (requiredCredentials as Record<string, unknown>)[k]
+                    )
+                ) || bubble.bubbleName;
+              return (
+                (requiredCredentials as Record<string, string[]>)[
+                  credentialsKeyForBubble
+                ] || []
+              );
+            })(),
+            onHighlightChange: () => {
+              // BubbleNode will handle store updates
+            },
+            onBubbleClick: () => {
+              useUIStore.getState().showEditorPanel();
+              setExecutionHighlight({
+                startLine: bubble.location.startLine,
+                endLine: bubble.location.endLine,
+              });
+            },
+            onParamEditInCode: (paramName: string) => {
+              // Find the parameter in the bubble's parameters
+              const param = bubble.parameters.find((p) => p.name === paramName);
+              if (param && param.location) {
+                // Open editor if not visible
+                if (!useUIStore.getState().showEditor) {
+                  useUIStore.getState().showEditorPanel();
+                }
+
+                // Highlight the parameter's location in the editor
+                setExecutionHighlight({
+                  startLine: param.location.startLine,
+                  endLine: param.location.endLine,
+                });
+              }
+            },
+            hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
+          },
+        };
+        nodes.push(node);
+
+        // Create sub-bubbles from dependency graph
+        if (bubble.dependencyGraph?.dependencies) {
+          bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
+            createNodesFromDependencyGraph(
+              dep,
+              bubble,
+              nodes,
+              edges,
+              1,
+              nodeId,
+              idx,
+              arr.length,
+              `${idx}`,
+              nodeId
+            );
+          });
+        }
+      });
+
+      // Add sequential flow connections
+      const mainBubbles = bubbleEntries
+        .map(([key, bubbleData]) => {
+          const typedBubbleData = bubbleData as Partial<ParsedBubble>;
+          return {
+            key,
+            nodeId: typedBubbleData?.variableId
+              ? String(typedBubbleData.variableId)
+              : String(key),
+            startLine: typedBubbleData?.location?.startLine || 0,
+          };
+        })
+        .filter((bubble) => bubble.startLine > 0)
+        .sort((a, b) => a.startLine - b.startLine);
+
+      // Connect entry node to first bubble
+      if (
+        flowName &&
+        mainBubbles.length > 0 &&
+        nodes.some((n) => n.id === entryNodeId)
+      ) {
+        const firstBubbleId = mainBubbles[0].nodeId;
+        if (nodes.some((n) => n.id === firstBubbleId)) {
+          edges.push({
+            id: `${entryNodeId}-to-first-bubble`,
+            source: entryNodeId,
+            target: firstBubbleId,
+            sourceHandle: 'right',
+            targetHandle: 'left',
+            type: 'straight',
+            animated: true,
+            style: {
+              stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
+              strokeWidth: 2,
+              strokeDasharray: '5,5',
+            },
+          });
+        }
+      }
+
+      // Connect main bubbles sequentially
+      for (let i = 0; i < mainBubbles.length - 1; i++) {
+        const sourceNodeId = mainBubbles[i].nodeId;
+        const targetNodeId = mainBubbles[i + 1].nodeId;
+
+        if (
+          nodes.some((n) => n.id === sourceNodeId) &&
+          nodes.some((n) => n.id === targetNodeId)
+        ) {
+          // Read highlightedBubble directly from store (nodes/edges sync happens when needed)
+          const currentHighlighted = getExecutionStore(
+            currentFlow?.id || flowId
+          ).highlightedBubble;
+          const isSequentialEdgeHighlighted =
+            currentHighlighted === sourceNodeId ||
+            currentHighlighted === targetNodeId;
+
+          edges.push({
+            id: `sequential-${sourceNodeId}-${targetNodeId}`,
+            source: sourceNodeId,
+            target: targetNodeId,
+            sourceHandle: 'right',
+            targetHandle: 'left',
+            type: 'straight',
+            animated: true,
+            style: {
+              stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af',
+              strokeWidth: isSequentialEdgeHighlighted ? 3 : 2,
+              strokeDasharray: '5,5',
+            },
+          });
+        }
+      }
+
+      return { initialNodes: nodes, initialEdges: edges };
+    }
+
+    /**
+     * Calculate hierarchical layout positions for steps based on branch structure
+     */
+    function calculateHierarchicalLayout(
+      steps: StepData[]
+    ): Map<string, { x: number; y: number }> {
+      const positionMap = new Map<string, { x: number; y: number }>();
+
+      // Layout parameters
+      const startX = 500; // Start after entry node
+      const startY = 200;
+      const verticalSpacing = 400; // Vertical space between levels
+      const horizontalSpacing = 500; // Horizontal space between branches
+
+      // Build adjacency map: parent -> children
+      const childrenMap = new Map<string, StepData[]>();
+      const parentMap = new Map<string, string>();
+
+      for (const step of steps) {
+        if (step.parentStepId) {
+          if (!childrenMap.has(step.parentStepId)) {
+            childrenMap.set(step.parentStepId, []);
+          }
+          childrenMap.get(step.parentStepId)!.push(step);
+          parentMap.set(step.id, step.parentStepId);
+        }
+      }
+
+      // Find root steps (no parent)
+      const rootSteps = steps.filter((s) => !s.parentStepId);
+
+      // Track visited nodes
+      const visited = new Set<string>();
+
+      /**
+       * Recursively layout steps in tree structure
+       */
+      function layoutSubtree(
+        stepId: string,
+        x: number,
+        y: number,
+        depth: number
+      ): number {
+        if (visited.has(stepId)) {
+          return x;
+        }
+        visited.add(stepId);
+
+        // Position current step
+        positionMap.set(stepId, { x, y });
+
+        // Get children
+        const children = childrenMap.get(stepId) || [];
+
+        if (children.length === 0) {
+          return x;
+        }
+
+        // Sort children by branch type (then before else) for consistent layout
+        const sortedChildren = [...children].sort((a, b) => {
+          const order = { then: 0, sequential: 1, else: 2 };
+          const aOrder = order[a.branchType || 'sequential'];
+          const bOrder = order[b.branchType || 'sequential'];
+          return aOrder - bOrder;
         });
+
+        let currentX = x;
+
+        // Layout children horizontally
+        for (let i = 0; i < sortedChildren.length; i++) {
+          const child = sortedChildren[i];
+          const isBranch =
+            child.branchType && child.branchType !== 'sequential';
+
+          // Offset based on branch type
+          let childX = currentX;
+          if (isBranch) {
+            // Branches spread out horizontally
+            const branchOffset =
+              (i - (sortedChildren.length - 1) / 2) * horizontalSpacing;
+            childX = x + branchOffset;
+          } else {
+            // Sequential steps stay in line
+            childX = x;
+          }
+
+          const childY = y + verticalSpacing;
+
+          // Recursively layout child's subtree
+          const subtreeEndX = layoutSubtree(
+            child.id,
+            childX,
+            childY,
+            depth + 1
+          );
+
+          // Update currentX for next sibling
+          if (isBranch && i < sortedChildren.length - 1) {
+            currentX = subtreeEndX + horizontalSpacing;
+          }
+        }
+
+        return currentX;
+      }
+
+      // Layout from each root
+      let currentRootX = startX;
+      for (const rootStep of rootSteps) {
+        const endX = layoutSubtree(rootStep.id, currentRootX, startY, 0);
+        currentRootX = endX + horizontalSpacing;
+      }
+
+      return positionMap;
+    }
+
+    const stepPositions = calculateHierarchicalLayout(steps);
+
+    // Create step container nodes or transformation nodes with hierarchical positions
+    steps.forEach((step) => {
+      const stepNodeId = step.id;
+      const stepPosition = stepPositions.get(stepNodeId) || { x: 500, y: 200 };
+
+      // Check if this is a transformation step
+      if (step.isTransformation && step.transformationData) {
+        const transformationNode: Node = {
+          id: stepNodeId,
+          type: 'transformationNode',
+          position: stepPosition,
+          draggable: true,
+          data: {
+            flowId: currentFlow?.id || flowId,
+            transformationInfo: {
+              functionName: step.functionName,
+              description: step.description,
+              code: step.transformationData.code,
+              arguments: step.transformationData.arguments,
+              location: step.location,
+              isAsync: step.isAsync,
+              variableName: step.transformationData.variableName,
+            },
+          },
+          style: {
+            zIndex: -1,
+          },
+        };
+        nodes.push(transformationNode);
+      } else {
+        const stepNode: Node = {
+          id: stepNodeId,
+          type: 'stepContainerNode',
+          position: stepPosition,
+          draggable: true,
+          data: {
+            flowId: currentFlow?.id || flowId,
+            stepInfo: {
+              functionName: step.functionName,
+              description: step.description,
+              location: step.location,
+              isAsync: step.isAsync,
+            },
+            bubbleIds: step.bubbleIds,
+          },
+          style: {
+            zIndex: -1, // Behind bubbles
+          },
+        };
+        nodes.push(stepNode);
       }
     });
 
-    // Add sequential flow connections
-    const mainBubbles = bubbleEntries
-      .map(([key, bubbleData]) => {
-        const typedBubbleData = bubbleData as Partial<ParsedBubble>;
-        return {
-          key,
-          nodeId: typedBubbleData?.variableId
-            ? String(typedBubbleData.variableId)
-            : String(key),
-          startLine: typedBubbleData?.location?.startLine || 0,
-        };
-      })
-      .filter((bubble) => bubble.startLine > 0)
-      .sort((a, b) => a.startLine - b.startLine);
+    // Create bubble nodes for each step (allows duplicate bubbles in different steps)
+    // Skip transformation steps as they don't contain bubbles
+    steps.forEach((step) => {
+      if (step.isTransformation) {
+        return; // Skip transformation steps
+      }
 
-    // Connect entry node to first bubble
+      step.bubbleIds.forEach((bubbleId, bubbleIndexInStep) => {
+        // Find the bubble data
+        const bubbleEntry = bubbleEntries.find(([key, bubbleData]) => {
+          const bubble = bubbleData;
+          const id = bubble.variableId
+            ? String(bubble.variableId)
+            : String(key);
+          return id === bubbleId;
+        });
+
+        if (!bubbleEntry) {
+          console.warn(
+            `[FlowVisualizer] Bubble ${bubbleId} not found in bubbleParameters`
+          );
+          return;
+        }
+
+        const [key, bubbleData] = bubbleEntry;
+        const bubble = bubbleData;
+
+        // Create unique node ID for this bubble in this step
+        // Format: {stepId}-bubble-{bubbleId}
+        const nodeId = `${step.id}-bubble-${bubbleId}`;
+
+        // Position inside step container (relative to step)
+        // Container: 400px width, 20px padding = 360px internal width
+        // Bubble: 320px width, so center at (360 - 320) / 2 = 20px from internal edge
+        const initialPosition = {
+          x: 20, // Centered in 400px width container with 320px bubble width
+          y: 120 + bubbleIndexInStep * 180, // Header (110px) + spacing for better visibility
+        };
+
+        const node: Node = {
+          id: nodeId,
+          type: 'bubbleNode',
+          position: initialPosition,
+          origin: [0, 0.5] as [number, number],
+          draggable: true,
+          parentId: step.id, // Set parent relationship to the step
+          extent: 'parent', // Constrain to parent
+          data: {
+            flowId: currentFlow?.id || flowId,
+            bubble,
+            bubbleKey: key,
+            requiredCredentialTypes: (() => {
+              const keyCandidates = [
+                String(bubble.variableId),
+                bubble.variableName,
+                bubble.bubbleName,
+              ];
+              const credentialsKeyForBubble =
+                keyCandidates.find(
+                  (k) =>
+                    k &&
+                    Array.isArray(
+                      (requiredCredentials as Record<string, unknown>)[k]
+                    )
+                ) || bubble.bubbleName;
+              return (
+                (requiredCredentials as Record<string, string[]>)[
+                  credentialsKeyForBubble
+                ] || []
+              );
+            })(),
+            onHighlightChange: () => {
+              // BubbleNode will handle store updates
+            },
+            onBubbleClick: () => {
+              useUIStore.getState().showEditorPanel();
+              setExecutionHighlight({
+                startLine: bubble.location.startLine,
+                endLine: bubble.location.endLine,
+              });
+            },
+            onParamEditInCode: (paramName: string) => {
+              // Find the parameter in the bubble's parameters
+              const param = bubble.parameters.find((p) => p.name === paramName);
+              if (param && param.location) {
+                // Open editor if not visible
+                if (!useUIStore.getState().showEditor) {
+                  useUIStore.getState().showEditorPanel();
+                }
+
+                // Highlight the parameter's location in the editor
+                setExecutionHighlight({
+                  startLine: param.location.startLine,
+                  endLine: param.location.endLine,
+                });
+              }
+            },
+            hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
+          },
+        };
+        nodes.push(node);
+
+        // Create sub-bubbles from dependency graph
+        if (bubble.dependencyGraph?.dependencies) {
+          bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
+            createNodesFromDependencyGraph(
+              dep,
+              bubble,
+              nodes,
+              edges,
+              1,
+              nodeId,
+              idx,
+              arr.length,
+              `${idx}`,
+              nodeId
+            );
+          });
+        }
+      });
+    });
+
+    // Generate step-to-step edges (connects step containers with branch labels)
+
+    // Entry node to first step (if exists)
     if (
       flowName &&
-      mainBubbles.length > 0 &&
-      nodes.some((n) => n.id === entryNodeId)
+      nodes.some((n) => n.id === entryNodeId) &&
+      steps.length > 0
     ) {
-      const firstBubbleId = mainBubbles[0].nodeId;
-      if (nodes.some((n) => n.id === firstBubbleId)) {
+      const firstRootStep = steps.find((s) => !s.parentStepId);
+      if (firstRootStep) {
         edges.push({
-          id: `${entryNodeId}-to-first-bubble`,
+          id: 'entry-to-first-step',
           source: entryNodeId,
-          target: firstBubbleId,
+          target: firstRootStep.id,
           sourceHandle: 'right',
           targetHandle: 'left',
-          type: 'straight',
+          type: 'smoothstep',
           animated: true,
           style: {
-            stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
+            stroke: '#9ca3af', // Gray for consistency
             strokeWidth: 2,
             strokeDasharray: '5,5',
           },
@@ -751,39 +1190,51 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       }
     }
 
-    // Connect main bubbles sequentially
-    for (let i = 0; i < mainBubbles.length - 1; i++) {
-      const sourceNodeId = mainBubbles[i].nodeId;
-      const targetNodeId = mainBubbles[i + 1].nodeId;
+    // Generate edges from step graph (includes conditional branches with labels)
+    for (const stepEdge of stepEdges) {
+      const isConditional = stepEdge.edgeType === 'conditional';
 
-      if (
-        nodes.some((n) => n.id === sourceNodeId) &&
-        nodes.some((n) => n.id === targetNodeId)
-      ) {
-        // Read highlightedBubble directly from store (nodes/edges sync happens when needed)
-        const currentHighlighted = getExecutionStore(
-          currentFlow?.id || flowId
-        ).highlightedBubble;
-        const isSequentialEdgeHighlighted =
-          currentHighlighted === sourceNodeId ||
-          currentHighlighted === targetNodeId;
+      // Use consistent gray color for all edges
+      const edgeColor = '#9ca3af';
 
-        edges.push({
-          id: `sequential-${sourceNodeId}-${targetNodeId}`,
-          source: sourceNodeId,
-          target: targetNodeId,
-          sourceHandle: 'right',
-          targetHandle: 'left',
-          type: 'straight',
-          animated: true,
-          style: {
-            stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af',
-            strokeWidth: isSequentialEdgeHighlighted ? 3 : 2,
-            strokeDasharray: '5,5',
-          },
-        });
-      }
+      const edge: Edge = {
+        id: `${stepEdge.sourceStepId}-to-${stepEdge.targetStepId}`,
+        source: stepEdge.sourceStepId,
+        target: stepEdge.targetStepId,
+        sourceHandle: 'bottom',
+        targetHandle: 'top',
+        type: 'smoothstep',
+        animated: true,
+        label: SHOW_EDGE_LABELS ? stepEdge.label : undefined,
+        labelStyle: SHOW_EDGE_LABELS
+          ? {
+              fill: edgeColor,
+              fontWeight: 600,
+              fontSize: 12,
+            }
+          : undefined,
+        labelBgStyle: SHOW_EDGE_LABELS
+          ? {
+              fill: '#1e1e1e',
+              fillOpacity: 0.9,
+            }
+          : undefined,
+        labelBgPadding: SHOW_EDGE_LABELS
+          ? ([8, 4] as [number, number])
+          : undefined,
+        labelBgBorderRadius: SHOW_EDGE_LABELS ? 4 : undefined,
+        style: {
+          stroke: edgeColor,
+          strokeWidth: isConditional ? 2.5 : 2,
+          strokeDasharray: isConditional ? '5,5' : undefined,
+        },
+      };
+      edges.push(edge);
     }
+
+    // Generate within-step edges (connects bubbles horizontally inside each step)
+    const internalEdges = generateWithinStepEdges(steps, bubbleParameters);
+    edges.push(...internalEdges);
 
     return { initialNodes: nodes, initialEdges: edges };
   };
@@ -802,6 +1253,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     // Check if bubbleParameters changed (compare by serializing keys and variableIds)
     const prevBubbleParams = prevFlowRef.current?.bubbleParameters || {};
     const currentBubbleParams = currentFlow?.bubbleParameters || {};
+    const prevWorkflow = prevFlowRef.current?.workflow || {};
+    const currentWorkflow = currentFlow?.workflow || {};
+    const workflowChanged =
+      JSON.stringify(prevWorkflow) !== JSON.stringify(currentWorkflow);
     const prevBubbleKeys = JSON.stringify(
       Object.keys(prevBubbleParams)
         .sort()
@@ -822,7 +1277,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           return `${key}:${bubble?.variableId ?? 'no-id'}`;
         })
     );
-    const bubbleParametersChanged = prevBubbleKeys !== currentBubbleKeys;
+    const bubbleParametersChanged =
+      prevBubbleKeys !== currentBubbleKeys || workflowChanged;
 
     // Check if eventType changed (affects entry node type and edge connections)
     const eventTypeChanged =

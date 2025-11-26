@@ -2,12 +2,44 @@ import { describe, it, expect } from 'vitest';
 import { BubbleScript } from './BubbleScript';
 import { getFixture } from '../../tests/fixtures';
 import { BubbleFactory } from '@bubblelab/bubble-core';
-import { MockDataGenerator } from '@bubblelab/shared-schemas';
+import {
+  MockDataGenerator,
+  ParsedWorkflow,
+  WorkflowNode,
+} from '@bubblelab/shared-schemas';
 import { buildParametersObject } from '../utils/parameter-formatter';
 import {
   validateCronExpression,
   describeCronExpression,
 } from '@bubblelab/shared-schemas';
+// Function to recursively collect all unique bubble variableIds in the workflow
+const collectBubbleIds = (
+  nodes: WorkflowNode[],
+  seen: Set<number> = new Set()
+): Set<number> => {
+  for (const node of nodes) {
+    if (node.type === 'bubble') {
+      seen.add(node.variableId);
+    }
+
+    // Recursively traverse children based on node type
+    if ('children' in node && Array.isArray(node.children)) {
+      collectBubbleIds(node.children, seen);
+    }
+
+    // Handle else branch for control flow nodes
+    if (node.type === 'if' && node.elseBranch) {
+      collectBubbleIds(node.elseBranch, seen);
+    }
+
+    // Handle catch block for try-catch nodes
+    if (node.type === 'try_catch' && node.catchBlock) {
+      collectBubbleIds(node.catchBlock, seen);
+    }
+  }
+
+  return seen;
+};
 
 describe('BubbleAnalyzer', () => {
   let analyzer: BubbleScript;
@@ -565,10 +597,38 @@ describe('BubbleScript.getWorkflow()', () => {
     bubbleFactory = new BubbleFactory();
     await bubbleFactory.registerDefaults();
   });
+  it('should get workflow from steps workflow', () => {
+    const stepsWorkflowScript = getFixture('steps-workflow');
+    const analyzer = new BubbleScript(stepsWorkflowScript, bubbleFactory);
+    const workflow = analyzer.getWorkflow();
+    console.log(JSON.stringify(workflow, null, 2));
+  });
+
+  it('should get workflow from content creation trends script', () => {
+    const contentCreationTrendsScript = getFixture('content-creation');
+    const analyzer = new BubbleScript(
+      contentCreationTrendsScript,
+      bubbleFactory
+    );
+    const totalParsedBubbles = Object.values(
+      analyzer.getParsedBubbles()
+    ).length;
+    console.log('Total top-level bubbles in script:', totalParsedBubbles);
+    const workflow = analyzer.getWorkflow();
+
+    // Collect all unique bubble IDs from the entire workflow (root + bubbles object)
+    const bubbleIdsFromTraversal = new Set<number>();
+    collectBubbleIds(workflow.root, bubbleIdsFromTraversal);
+    const totalBubblesInWorkflow = bubbleIdsFromTraversal.size;
+    expect(totalBubblesInWorkflow).toEqual(totalParsedBubbles);
+  });
   it('should get workflow from reddit scraper script', () => {
     const redditScraperScript = getFixture('reddit-scraper');
     const analyzer = new BubbleScript(redditScraperScript, bubbleFactory);
     const workflow = analyzer.getWorkflow();
-    console.log(JSON.stringify(workflow, null, 2));
+    const totalBubblesInWorkflow = collectBubbleIds(workflow.root).size;
+    expect(totalBubblesInWorkflow).toEqual(
+      Object.values(analyzer.getParsedBubbles()).length
+    );
   });
 });

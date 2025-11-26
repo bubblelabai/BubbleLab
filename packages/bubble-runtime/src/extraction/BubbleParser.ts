@@ -1,4 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
+import { AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 import type { Scope, ScopeManager } from '@bubblelab/ts-scope-manager';
 import {
   BubbleFactory,
@@ -17,12 +18,18 @@ import type {
   ControlFlowWorkflowNode,
   TryCatchWorkflowNode,
   CodeBlockWorkflowNode,
+  VariableDeclarationBlockNode,
+  ReturnWorkflowNode,
+  FunctionCallWorkflowNode,
+  ParallelExecutionWorkflowNode,
+  TransformationFunctionWorkflowNode,
 } from '@bubblelab/shared-schemas';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
 export class BubbleParser {
   private bubbleScript: string;
+  private cachedAST: TSESTree.Program | null = null;
 
   constructor(bubbleScript: string) {
     this.bubbleScript = bubbleScript;
@@ -149,6 +156,8 @@ export class BubbleParser {
       );
     }
 
+    // Store AST for method definition lookup
+    this.cachedAST = ast;
     // Build hierarchical workflow structure
     const workflow = this.buildWorkflowTree(ast, nodes, scopeManager);
 
@@ -1759,6 +1768,52 @@ export class BubbleParser {
   }
 
   /**
+   * Check if a list of workflow nodes contains a terminating statement (return/throw)
+   * A branch terminates if its last statement is a return or throw
+   */
+  private branchTerminates(nodes: WorkflowNode[]): boolean {
+    if (nodes.length === 0) return false;
+
+    const lastNode = nodes[nodes.length - 1];
+
+    // Check if last node is a return statement
+    if (lastNode.type === 'return') {
+      return true;
+    }
+
+    // Check if last node is a code block containing return/throw
+    if (lastNode.type === 'code_block') {
+      const code = lastNode.code.trim();
+      return (
+        code.startsWith('return ') ||
+        code.startsWith('return;') ||
+        code === 'return' ||
+        code.startsWith('throw ')
+      );
+    }
+
+    // Check nested control flow - all branches must terminate
+    if (lastNode.type === 'if') {
+      const thenTerminates = this.branchTerminates(lastNode.children);
+      const elseTerminates = lastNode.elseBranch
+        ? this.branchTerminates(lastNode.elseBranch)
+        : false;
+      // Both branches must terminate for the if to terminate
+      return thenTerminates && elseTerminates;
+    }
+
+    if (lastNode.type === 'try_catch') {
+      const tryTerminates = this.branchTerminates(lastNode.children);
+      const catchTerminates = lastNode.catchBlock
+        ? this.branchTerminates(lastNode.catchBlock)
+        : false;
+      return tryTerminates && catchTerminates;
+    }
+
+    return false;
+  }
+
+  /**
    * Build hierarchical workflow structure from AST
    */
   private buildWorkflowTree(
@@ -1782,21 +1837,220 @@ export class BubbleParser {
     }
 
     // Process statements in handle method body
-    for (const stmt of handleNode.body.body) {
+    const statements = handleNode.body.body;
+    for (let i = 0; i < statements.length; i++) {
+      const stmt = statements[i];
       const node = this.buildWorkflowNodeFromStatement(
         stmt,
         bubbleMap,
         scopeManager
       );
       if (node) {
+        // Check if this is an if with terminating then branch but no else
+        // In this case, move subsequent statements into implicit else
+        if (
+          node.type === 'if' &&
+          node.thenTerminates &&
+          !node.elseBranch &&
+          i < statements.length - 1
+        ) {
+          // Collect remaining statements as implicit else branch
+          const implicitElse: WorkflowNode[] = [];
+          for (let j = i + 1; j < statements.length; j++) {
+            const remainingNode = this.buildWorkflowNodeFromStatement(
+              statements[j],
+              bubbleMap,
+              scopeManager
+            );
+            if (remainingNode) {
+              implicitElse.push(remainingNode);
+            }
+          }
+          if (implicitElse.length > 0) {
+            node.elseBranch = implicitElse;
+          }
+          workflowNodes.push(node);
+          break; // All remaining statements have been moved to else branch
+        }
         workflowNodes.push(node);
       }
     }
 
+    // Group consecutive nodes of the same type
+    const groupedNodes = this.groupConsecutiveNodes(workflowNodes);
+
     return {
-      root: workflowNodes,
+      root: groupedNodes,
       bubbles,
     };
+  }
+
+  /**
+   * Group consecutive nodes of the same type
+   * - Consecutive variable_declaration nodes → merge into one
+   * - Consecutive code_block nodes → merge into one
+   * - return nodes are NOT grouped (each is a distinct exit point)
+   */
+  private groupConsecutiveNodes(nodes: WorkflowNode[]): WorkflowNode[] {
+    if (nodes.length === 0) return [];
+
+    const result: WorkflowNode[] = [];
+    let currentGroup: WorkflowNode[] = [];
+    let currentType: string | null = null;
+
+    for (const node of nodes) {
+      // Control flow nodes break grouping
+      const isControlFlow =
+        node.type === 'if' ||
+        node.type === 'for' ||
+        node.type === 'while' ||
+        node.type === 'try_catch' ||
+        node.type === 'bubble' ||
+        node.type === 'function_call';
+
+      // Return nodes are never grouped
+      const isReturn = node.type === 'return';
+
+      // If we hit a control flow node or return, flush current group
+      if (isControlFlow || isReturn) {
+        if (currentGroup.length > 0) {
+          result.push(...this.mergeGroup(currentGroup, currentType!));
+          currentGroup = [];
+          currentType = null;
+        }
+        result.push(node);
+        continue;
+      }
+
+      // Check if this node can be grouped
+      const groupableType =
+        node.type === 'variable_declaration' || node.type === 'code_block';
+
+      if (groupableType) {
+        // Don't group if node has children (e.g., function calls)
+        const hasChildren = node.children && node.children.length > 0;
+        if (hasChildren) {
+          // Flush current group and add this node as-is
+          if (currentGroup.length > 0) {
+            result.push(...this.mergeGroup(currentGroup, currentType!));
+            currentGroup = [];
+            currentType = null;
+          }
+          result.push(node);
+        } else if (currentType === node.type) {
+          // Same type, no children, add to group
+          currentGroup.push(node);
+        } else {
+          // Different type, flush current group and start new one
+          if (currentGroup.length > 0) {
+            result.push(...this.mergeGroup(currentGroup, currentType!));
+          }
+          currentGroup = [node];
+          currentType = node.type;
+        }
+      } else {
+        // Not groupable, flush and add as-is
+        if (currentGroup.length > 0) {
+          result.push(...this.mergeGroup(currentGroup, currentType!));
+          currentGroup = [];
+          currentType = null;
+        }
+        result.push(node);
+      }
+    }
+
+    // Flush any remaining group
+    if (currentGroup.length > 0) {
+      result.push(...this.mergeGroup(currentGroup, currentType!));
+    }
+
+    return result;
+  }
+
+  /**
+   * Merge a group of nodes of the same type into a single node
+   */
+  private mergeGroup(group: WorkflowNode[], type: string): WorkflowNode[] {
+    if (group.length === 0) return [];
+    if (group.length === 1) return group;
+
+    if (type === 'variable_declaration') {
+      const first = group[0] as VariableDeclarationBlockNode;
+      const allVariables = first.variables.slice();
+      let startLine = first.location.startLine;
+      let startCol = first.location.startCol;
+      let endLine = first.location.endLine;
+      let endCol = first.location.endCol;
+      let code = first.code;
+
+      for (let i = 1; i < group.length; i++) {
+        const node = group[i] as VariableDeclarationBlockNode;
+        allVariables.push(...node.variables);
+        if (node.location.startLine < startLine) {
+          startLine = node.location.startLine;
+          startCol = node.location.startCol;
+        }
+        if (node.location.endLine > endLine) {
+          endLine = node.location.endLine;
+          endCol = node.location.endCol;
+        }
+        code += '\n' + node.code;
+      }
+
+      return [
+        {
+          type: 'variable_declaration',
+          location: {
+            startLine,
+            startCol,
+            endLine,
+            endCol,
+          },
+          code,
+          variables: allVariables,
+          children: [],
+        },
+      ];
+    }
+
+    if (type === 'code_block') {
+      const first = group[0] as CodeBlockWorkflowNode;
+      let startLine = first.location.startLine;
+      let startCol = first.location.startCol;
+      let endLine = first.location.endLine;
+      let endCol = first.location.endCol;
+      let code = first.code;
+
+      for (let i = 1; i < group.length; i++) {
+        const node = group[i] as CodeBlockWorkflowNode;
+        if (node.location.startLine < startLine) {
+          startLine = node.location.startLine;
+          startCol = node.location.startCol;
+        }
+        if (node.location.endLine > endLine) {
+          endLine = node.location.endLine;
+          endCol = node.location.endCol;
+        }
+        code += '\n' + node.code;
+      }
+
+      return [
+        {
+          type: 'code_block',
+          location: {
+            startLine,
+            startCol,
+            endLine,
+            endCol,
+          },
+          code,
+          children: [],
+        },
+      ];
+    }
+
+    // Fallback: return as-is
+    return group;
   }
 
   /**
@@ -1831,48 +2085,109 @@ export class BubbleParser {
       return this.buildTryCatchNode(stmt, bubbleMap, scopeManager);
     }
 
-    // Handle VariableDeclaration - check if it's a bubble
+    // Handle VariableDeclaration - check if it's a bubble, Promise.all, or function call
     if (stmt.type === 'VariableDeclaration') {
       for (const decl of stmt.declarations) {
-        if (decl.init && decl.id.type === 'Identifier') {
-          // Try to find bubble by variable name first (more reliable)
-          const variableName = decl.id.name;
-          const bubble = Array.from(bubbleMap.values()).find(
-            (b) => b.variableName === variableName
-          );
-          if (bubble) {
-            return {
-              type: 'bubble',
-              variableId: bubble.variableId,
-            };
+        if (decl.init) {
+          // Check if it's Promise.all (supports array destructuring)
+          const promiseAll = this.detectPromiseAll(decl.init);
+          if (promiseAll) {
+            return this.buildParallelExecutionNode(
+              promiseAll,
+              stmt,
+              bubbleMap,
+              scopeManager
+            );
           }
-          // Fallback to expression matching
-          const bubbleFromExpr = this.findBubbleInExpression(
-            decl.init,
-            bubbleMap
-          );
-          if (bubbleFromExpr) {
-            return {
-              type: 'bubble',
-              variableId: bubbleFromExpr.variableId,
-            };
+
+          // Handle Identifier declarations (const foo = ...)
+          if (decl.id.type === 'Identifier') {
+            // Try to find bubble by variable name first (more reliable)
+            const variableName = decl.id.name;
+            const bubble = Array.from(bubbleMap.values()).find(
+              (b) => b.variableName === variableName
+            );
+            if (bubble) {
+              return {
+                type: 'bubble',
+                variableId: bubble.variableId,
+              };
+            }
+            // Check if initializer is a function call
+            const functionCall = this.detectFunctionCall(decl.init);
+            if (functionCall) {
+              // If variable declaration contains a function call, represent it as function_call or transformation_function
+              // The function call node will contain the full statement code
+              // Variable declaration is already handled inside buildFunctionCallNode
+              return this.buildFunctionCallNode(
+                functionCall,
+                stmt,
+                bubbleMap,
+                scopeManager
+              );
+            }
+            // Fallback to expression matching for bubbles
+            const bubbleFromExpr = this.findBubbleInExpression(
+              decl.init,
+              bubbleMap
+            );
+            if (bubbleFromExpr) {
+              return {
+                type: 'bubble',
+                variableId: bubbleFromExpr.variableId,
+              };
+            }
           }
         }
       }
-      // If not a bubble, treat as code block
-      return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+      // If not a bubble or function call, create variable declaration node
+      return this.buildVariableDeclarationNode(stmt, bubbleMap, scopeManager);
     }
 
-    // Handle ExpressionStatement - check if it's a bubble
+    // Handle ExpressionStatement - check if it's a bubble or function call
     if (stmt.type === 'ExpressionStatement') {
-      const bubble = this.findBubbleInExpression(stmt.expression, bubbleMap);
-      if (bubble) {
-        return {
-          type: 'bubble',
-          variableId: bubble.variableId,
-        };
+      // Handle AssignmentExpression (e.g., agentResponse = await this.method())
+      if (stmt.expression.type === 'AssignmentExpression') {
+        const assignExpr = stmt.expression;
+        // Check if right-hand side is a bubble
+        const bubble = this.findBubbleInExpression(assignExpr.right, bubbleMap);
+        if (bubble) {
+          return {
+            type: 'bubble',
+            variableId: bubble.variableId,
+          };
+        }
+        // Check if right-hand side is a function call
+        const functionCall = this.detectFunctionCall(assignExpr.right);
+        if (functionCall) {
+          return this.buildFunctionCallNode(
+            functionCall,
+            stmt,
+            bubbleMap,
+            scopeManager
+          );
+        }
+      } else {
+        // Regular expression (not assignment)
+        const bubble = this.findBubbleInExpression(stmt.expression, bubbleMap);
+        if (bubble) {
+          return {
+            type: 'bubble',
+            variableId: bubble.variableId,
+          };
+        }
+        // Check for function calls
+        const functionCall = this.detectFunctionCall(stmt.expression);
+        if (functionCall) {
+          return this.buildFunctionCallNode(
+            functionCall,
+            stmt,
+            bubbleMap,
+            scopeManager
+          );
+        }
       }
-      // If not a bubble, treat as code block
+      // If not a bubble or function call, treat as code block
       return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
     }
 
@@ -1886,8 +2201,30 @@ export class BubbleParser {
             variableId: bubble.variableId,
           };
         }
+        // Check if return value is a function call
+        const functionCall = this.detectFunctionCall(stmt.argument);
+        if (functionCall) {
+          // Create return node with function call as child
+          const returnNode = this.buildReturnNode(
+            stmt,
+            bubbleMap,
+            scopeManager
+          );
+          if (returnNode) {
+            const funcCallNode = this.buildFunctionCallNode(
+              functionCall,
+              stmt,
+              bubbleMap,
+              scopeManager
+            );
+            if (funcCallNode) {
+              returnNode.children = [funcCallNode];
+            }
+            return returnNode;
+          }
+        }
       }
-      return this.buildCodeBlockNode(stmt, bubbleMap, scopeManager);
+      return this.buildReturnNode(stmt, bubbleMap, scopeManager);
     }
 
     // Default: treat as code block
@@ -1964,12 +2301,20 @@ export class BubbleParser {
         })()
       : undefined;
 
+    // Check if branches terminate (contain return/throw)
+    const thenTerminates = this.branchTerminates(children);
+    const elseTerminates = elseBranch
+      ? this.branchTerminates(elseBranch)
+      : false;
+
     return {
       type: 'if',
       location,
       condition,
       children,
       elseBranch,
+      thenTerminates: thenTerminates || undefined,
+      elseTerminates: elseTerminates || undefined,
     };
   }
 
@@ -2242,6 +2587,581 @@ export class BubbleParser {
     }
 
     return null;
+  }
+
+  /**
+   * Build a variable declaration node from a VariableDeclaration statement
+   */
+  private buildVariableDeclarationNode(
+    stmt: TSESTree.VariableDeclaration,
+    _bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    _scopeManager: ScopeManager
+  ): VariableDeclarationBlockNode | null {
+    const location = this.extractLocation(stmt);
+    if (!location) return null;
+
+    const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
+    const variables: Array<{
+      name: string;
+      type: 'const' | 'let' | 'var';
+      hasInitializer: boolean;
+    }> = [];
+
+    for (const decl of stmt.declarations) {
+      if (decl.id.type === 'Identifier') {
+        variables.push({
+          name: decl.id.name,
+          type: stmt.kind as 'const' | 'let' | 'var',
+          hasInitializer: decl.init !== null && decl.init !== undefined,
+        });
+      }
+    }
+
+    return {
+      type: 'variable_declaration',
+      location,
+      code,
+      variables,
+      children: [],
+    };
+  }
+
+  /**
+   * Build a return node from a ReturnStatement
+   */
+  private buildReturnNode(
+    stmt: TSESTree.ReturnStatement,
+    _bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    _scopeManager: ScopeManager
+  ): ReturnWorkflowNode | null {
+    const location = this.extractLocation(stmt);
+    if (!location) return null;
+
+    const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
+    const value = stmt.argument
+      ? this.bubbleScript.substring(
+          stmt.argument.range![0],
+          stmt.argument.range![1]
+        )
+      : undefined;
+
+    return {
+      type: 'return',
+      location,
+      code,
+      value,
+      children: [],
+    };
+  }
+
+  /**
+   * Detect if an expression is Promise.all([...])
+   */
+  private detectPromiseAll(expr: TSESTree.Expression): {
+    callExpr: TSESTree.CallExpression;
+    arrayExpr: TSESTree.ArrayExpression;
+  } | null {
+    // Handle await Promise.all([...])
+    let callExpr: TSESTree.CallExpression | null = null;
+    if (expr.type === 'AwaitExpression' && expr.argument) {
+      if (expr.argument.type === 'CallExpression') {
+        callExpr = expr.argument;
+      }
+    } else if (expr.type === 'CallExpression') {
+      callExpr = expr;
+    }
+
+    if (!callExpr) return null;
+
+    // Check if it's Promise.all
+    const callee = callExpr.callee;
+    if (
+      callee.type === 'MemberExpression' &&
+      callee.object.type === 'Identifier' &&
+      callee.object.name === 'Promise' &&
+      callee.property.type === 'Identifier' &&
+      callee.property.name === 'all'
+    ) {
+      // Check if the first argument is an array
+      if (
+        callExpr.arguments.length > 0 &&
+        callExpr.arguments[0].type === 'ArrayExpression'
+      ) {
+        return {
+          callExpr,
+          arrayExpr: callExpr.arguments[0] as TSESTree.ArrayExpression,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Detect if an expression is a function call
+   */
+  private detectFunctionCall(expr: TSESTree.Expression): {
+    functionName: string;
+    isMethodCall: boolean;
+    arguments: string;
+    callExpr: TSESTree.CallExpression;
+  } | null {
+    // Handle await functionCall()
+    let callExpr: TSESTree.CallExpression | null = null;
+    if (expr.type === 'AwaitExpression' && expr.argument) {
+      if (expr.argument.type === 'CallExpression') {
+        callExpr = expr.argument;
+      }
+    } else if (expr.type === 'CallExpression') {
+      callExpr = expr;
+    }
+
+    if (!callExpr) return null;
+
+    const callee = callExpr.callee;
+    let functionName: string | null = null;
+    let isMethodCall = false;
+
+    if (callee.type === 'Identifier') {
+      // Direct function call: functionName()
+      functionName = callee.name;
+      isMethodCall = false;
+    } else if (callee.type === 'MemberExpression') {
+      // Method call: this.methodName() or obj.methodName()
+      if (
+        callee.object.type === 'ThisExpression' &&
+        callee.property.type === 'Identifier'
+      ) {
+        functionName = callee.property.name;
+        isMethodCall = true;
+      } else if (callee.property.type === 'Identifier') {
+        functionName = callee.property.name;
+        isMethodCall = false; // External method call, not this.method()
+      }
+    }
+
+    if (!functionName) return null;
+
+    const args = callExpr.arguments
+      .map((arg) => this.bubbleScript.substring(arg.range![0], arg.range![1]))
+      .join(', ');
+
+    return {
+      functionName,
+      isMethodCall,
+      arguments: args,
+      callExpr,
+    };
+  }
+
+  /**
+   * Find a method definition in the class by name
+   */
+  private findMethodDefinition(
+    methodName: string,
+    ast: TSESTree.Program
+  ): {
+    method: TSESTree.MethodDefinition;
+    body: TSESTree.BlockStatement | null;
+    isAsync: boolean;
+    parameters: string[];
+  } | null {
+    const mainClass = this.findMainBubbleFlowClass(ast);
+    if (!mainClass || !mainClass.body) return null;
+
+    for (const member of mainClass.body.body) {
+      if (
+        member.type === 'MethodDefinition' &&
+        member.key.type === 'Identifier' &&
+        member.key.name === methodName &&
+        member.value.type === 'FunctionExpression'
+      ) {
+        const func = member.value;
+        const body = func.body.type === 'BlockStatement' ? func.body : null;
+        const isAsync = func.async || false;
+        const parameters = func.params
+          .map((param) => {
+            if (param.type === 'Identifier') return param.name;
+            if (
+              param.type === 'AssignmentPattern' &&
+              param.left.type === 'Identifier'
+            )
+              return param.left.name;
+            return '';
+          })
+          .filter((name) => name !== '');
+
+        return {
+          method: member,
+          body,
+          isAsync,
+          parameters,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a workflow node tree contains any bubbles (recursively)
+   */
+  private containsBubbles(nodes: WorkflowNode[]): boolean {
+    for (const node of nodes) {
+      if (node.type === 'bubble') {
+        return true;
+      }
+      // Check children recursively
+      if ('children' in node && Array.isArray(node.children)) {
+        if (this.containsBubbles(node.children)) {
+          return true;
+        }
+      }
+      // Check elseBranch for if statements
+      if (node.type === 'if' && node.elseBranch) {
+        if (this.containsBubbles(node.elseBranch)) {
+          return true;
+        }
+      }
+      // Check catchBlock for try_catch
+      if (node.type === 'try_catch' && node.catchBlock) {
+        if (this.containsBubbles(node.catchBlock)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Build a function call node from a function call expression
+   */
+  private buildFunctionCallNode(
+    callInfo: {
+      functionName: string;
+      isMethodCall: boolean;
+      arguments: string;
+      callExpr: TSESTree.CallExpression;
+    },
+    stmt: TSESTree.Statement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): FunctionCallWorkflowNode | TransformationFunctionWorkflowNode | null {
+    const location = this.extractLocation(stmt);
+    if (!location) return null;
+
+    const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
+
+    // Try to find method definition if it's a method call
+    let methodDefinition:
+      | {
+          location: { startLine: number; endLine: number };
+          isAsync: boolean;
+          parameters: string[];
+        }
+      | undefined = undefined;
+
+    let children: WorkflowNode[] = [];
+    let description: string | undefined = undefined;
+
+    if (callInfo.isMethodCall && this.cachedAST) {
+      const methodDef = this.findMethodDefinition(
+        callInfo.functionName,
+        this.cachedAST
+      );
+      if (methodDef && methodDef.body) {
+        methodDefinition = {
+          location: {
+            startLine: methodDef.method.loc?.start.line || 0,
+            endLine: methodDef.method.loc?.end.line || 0,
+          },
+          isAsync: methodDef.isAsync,
+          parameters: methodDef.parameters,
+        };
+
+        // Extract description from method comments
+        description = this.extractCommentForNode(methodDef.method);
+
+        // Filter bubbleMap to only include bubbles within this method's scope
+        const methodStartLine = methodDef.method.loc?.start.line || 0;
+        const methodEndLine = methodDef.method.loc?.end.line || 0;
+        const methodBubbleMap = new Map<number, ParsedBubbleWithInfo>();
+
+        for (const [id, bubble] of bubbleMap.entries()) {
+          // Include bubble if it's within the method's line range
+          if (
+            bubble.location.startLine >= methodStartLine &&
+            bubble.location.endLine <= methodEndLine
+          ) {
+            methodBubbleMap.set(id, bubble);
+          }
+        }
+
+        // Recursively build workflow nodes from method body
+        for (const childStmt of methodDef.body.body) {
+          const node = this.buildWorkflowNodeFromStatement(
+            childStmt,
+            methodBubbleMap,
+            scopeManager
+          );
+          if (node) {
+            children.push(node);
+          }
+        }
+      }
+    }
+
+    // After method definition processing, check for callback arguments
+    if (callInfo.callExpr && callInfo.callExpr.arguments.length > 0) {
+      for (const arg of callInfo.callExpr.arguments) {
+        // Check if argument is a callback function
+        if (
+          arg.type === 'ArrowFunctionExpression' ||
+          arg.type === 'FunctionExpression'
+        ) {
+          const callbackBody = this.extractCallbackBody(arg);
+          if (callbackBody && callbackBody.length > 0) {
+            // Filter bubbleMap to only include bubbles within this callback's scope
+            const callbackStartLine = arg.loc?.start.line || 0;
+            const callbackEndLine = arg.loc?.end.line || 0;
+
+            const callbackBubbleMap = new Map<number, ParsedBubbleWithInfo>();
+            for (const [id, bubble] of bubbleMap.entries()) {
+              if (
+                bubble.location.startLine >= callbackStartLine &&
+                bubble.location.endLine <= callbackEndLine
+              ) {
+                callbackBubbleMap.set(id, bubble);
+              }
+            }
+
+            // Recursively build workflow nodes from callback body
+            for (const callbackStmt of callbackBody) {
+              const node = this.buildWorkflowNodeFromStatement(
+                callbackStmt,
+                callbackBubbleMap,
+                scopeManager
+              );
+              if (node) {
+                children.push(node);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Check if this function call contains any bubbles
+    // Only create transformation_function if:
+    // 1. It's a method call (this.methodName())
+    // 2. A method definition was found (method exists in class)
+    // 3. It has no bubbles in its children
+    if (
+      callInfo.isMethodCall &&
+      methodDefinition &&
+      !this.containsBubbles(children)
+    ) {
+      // Get the entire method body code
+      let fullCode = code;
+      if (this.cachedAST) {
+        const methodDef = this.findMethodDefinition(
+          callInfo.functionName,
+          this.cachedAST
+        );
+        if (methodDef && methodDef.body) {
+          // Extract the entire method body code
+          fullCode = this.bubbleScript.substring(
+            methodDef.body.range![0],
+            methodDef.body.range![1]
+          );
+        }
+      }
+
+      const transformationNode: TransformationFunctionWorkflowNode = {
+        type: 'transformation_function',
+        location,
+        code: fullCode,
+        functionName: callInfo.functionName,
+        isMethodCall: callInfo.isMethodCall,
+        description,
+        arguments: callInfo.arguments,
+        methodDefinition,
+      };
+
+      // Add variable declaration if present
+      if (stmt.type === 'VariableDeclaration' && stmt.declarations.length > 0) {
+        const decl = stmt.declarations[0];
+        if (decl.id.type === 'Identifier') {
+          transformationNode.variableDeclaration = {
+            variableName: decl.id.name,
+            variableType: stmt.kind as 'const' | 'let' | 'var',
+          };
+        }
+      } else if (
+        stmt.type === 'ExpressionStatement' &&
+        stmt.expression.type === 'AssignmentExpression' &&
+        stmt.expression.left.type === 'Identifier'
+      ) {
+        transformationNode.variableDeclaration = {
+          variableName: stmt.expression.left.name,
+          variableType: 'let', // Assignment implies let/var, default to let
+        };
+      }
+
+      return transformationNode;
+    }
+
+    // Contains bubbles, return as regular function_call
+    const functionCallNode: FunctionCallWorkflowNode = {
+      type: 'function_call',
+      location,
+      functionName: callInfo.functionName,
+      isMethodCall: callInfo.isMethodCall,
+      description,
+      arguments: callInfo.arguments,
+      code,
+      methodDefinition,
+      children,
+    };
+
+    // Add variable declaration if present
+    if (stmt.type === 'VariableDeclaration' && stmt.declarations.length > 0) {
+      const decl = stmt.declarations[0];
+      if (decl.id.type === 'Identifier') {
+        functionCallNode.variableDeclaration = {
+          variableName: decl.id.name,
+          variableType: stmt.kind as 'const' | 'let' | 'var',
+        };
+      }
+    } else if (
+      stmt.type === 'ExpressionStatement' &&
+      stmt.expression.type === 'AssignmentExpression' &&
+      stmt.expression.left.type === 'Identifier'
+    ) {
+      functionCallNode.variableDeclaration = {
+        variableName: stmt.expression.left.name,
+        variableType: 'let', // Assignment implies let/var, default to let
+      };
+    }
+
+    return functionCallNode;
+  }
+
+  /**
+   * Extract the body of a callback function (arrow or regular function expression)
+   * Handles both block statements and concise arrow functions
+   */
+  private extractCallbackBody(
+    func: TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
+  ): TSESTree.Statement[] {
+    // Handle block statement body: (x) => { statements }
+    if (func.body.type === 'BlockStatement') {
+      return func.body.body;
+    }
+
+    // Handle concise arrow function: (x) => expression
+    // Convert expression to a synthetic return statement
+    const syntheticReturn: TSESTree.ReturnStatement = {
+      type: AST_NODE_TYPES.ReturnStatement,
+      argument: func.body as TSESTree.Expression,
+      range: func.body.range!,
+      loc: func.body.loc!,
+      parent: func as any,
+    } as TSESTree.ReturnStatement;
+
+    return [syntheticReturn];
+  }
+
+  /**
+   * Build a parallel execution node from Promise.all()
+   */
+  private buildParallelExecutionNode(
+    promiseAllInfo: {
+      callExpr: TSESTree.CallExpression;
+      arrayExpr: TSESTree.ArrayExpression;
+    },
+    stmt: TSESTree.Statement,
+    bubbleMap: Map<number, ParsedBubbleWithInfo>,
+    scopeManager: ScopeManager
+  ): ParallelExecutionWorkflowNode | null {
+    const location = this.extractLocation(stmt);
+    if (!location) return null;
+
+    const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
+
+    // Parse each element in the Promise.all array as a workflow node
+    const children: WorkflowNode[] = [];
+    for (const element of promiseAllInfo.arrayExpr.elements) {
+      if (!element) continue; // Skip holes in sparse arrays
+      if (element.type === 'SpreadElement') continue; // Skip spread elements for now
+
+      // Check if element is a bubble
+      const bubble = this.findBubbleInExpression(element, bubbleMap);
+      if (bubble) {
+        children.push({
+          type: 'bubble',
+          variableId: bubble.variableId,
+        });
+        continue;
+      }
+
+      // Check if element is a function call
+      const functionCall = this.detectFunctionCall(element);
+      if (functionCall) {
+        // Create a synthetic statement for this function call
+        // We need to wrap it in an expression statement for buildFunctionCallNode
+        const syntheticStmt: TSESTree.ExpressionStatement = {
+          type: AST_NODE_TYPES.ExpressionStatement,
+          expression: functionCall.callExpr,
+          range: element.range!,
+          loc: element.loc!,
+          parent: stmt as any, // Parent is the variable declaration
+        } as TSESTree.ExpressionStatement;
+        const funcCallNode = this.buildFunctionCallNode(
+          functionCall,
+          syntheticStmt,
+          bubbleMap,
+          scopeManager
+        );
+        if (funcCallNode) {
+          children.push(funcCallNode);
+        }
+      }
+    }
+
+    // Extract variable declaration info if this is part of a variable declaration
+    let variableDeclaration:
+      | {
+          variableNames: string[];
+          variableType: 'const' | 'let' | 'var';
+        }
+      | undefined;
+
+    if (
+      stmt.type === 'VariableDeclaration' &&
+      stmt.declarations.length > 0 &&
+      stmt.declarations[0].id.type === 'ArrayPattern'
+    ) {
+      const arrayPattern = stmt.declarations[0].id;
+      const variableNames: string[] = [];
+      for (const element of arrayPattern.elements) {
+        if (element && element.type === 'Identifier') {
+          variableNames.push(element.name);
+        }
+      }
+      variableDeclaration = {
+        variableNames,
+        variableType: stmt.kind as 'const' | 'let' | 'var',
+      };
+    }
+
+    return {
+      type: 'parallel_execution',
+      location,
+      code,
+      variableDeclaration,
+      children,
+    };
   }
 
   /**
