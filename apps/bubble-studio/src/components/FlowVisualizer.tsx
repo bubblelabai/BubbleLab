@@ -287,7 +287,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       siblingIndex: number = 0,
       siblingsTotal: number = 1,
       path: string = '',
-      rootId: string = ''
+      rootId: string = '',
+      usedHandlesMap?: Map<
+        string,
+        { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
+      >
     ) => {
       const verticalSpacing = 220;
       const siblingHorizontalSpacing = 200;
@@ -367,6 +371,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             // BubbleNode will handle store updates
           },
           onBubbleClick: () => {},
+          usedHandles: usedHandlesMap?.get(nodeId),
         },
       };
       nodes.push(node);
@@ -406,7 +411,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           idx,
           arr.length,
           path ? `${path}-${idx}` : `${idx}`,
-          rootId
+          rootId,
+          usedHandlesMap
         );
       });
     },
@@ -698,8 +704,55 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     const shouldUseSequentialLayout =
       !hasWorkflow || unparsedBubbles.length > 0;
 
+    // Calculate which handles are used for each step/transformation/bubble node
+    // Define this before sequential/step-based layout branches
+    const usedHandlesMap = new Map<
+      string,
+      { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
+    >();
+
+    const markHandleUsed = (
+      nodeId: string,
+      handle: 'top' | 'bottom' | 'left' | 'right'
+    ) => {
+      if (!usedHandlesMap.has(nodeId)) {
+        usedHandlesMap.set(nodeId, {});
+      }
+      usedHandlesMap.get(nodeId)![handle] = true;
+    };
+
     // Use sequential horizontal layout as fallback
     if (shouldUseSequentialLayout) {
+      // Track handles for sequential layout edges
+      const mainBubbles = bubbleEntries
+        .map(([key, bubbleData]) => {
+          const typedBubbleData = bubbleData as Partial<ParsedBubble>;
+          return {
+            key,
+            nodeId: typedBubbleData?.variableId
+              ? String(typedBubbleData.variableId)
+              : String(key),
+            startLine: typedBubbleData?.location?.startLine || 0,
+          };
+        })
+        .filter((bubble) => bubble.startLine > 0)
+        .sort((a, b) => a.startLine - b.startLine);
+
+      // Entry node to first bubble
+      if (flowName && mainBubbles.length > 0) {
+        const firstBubbleId = mainBubbles[0].nodeId;
+        markHandleUsed(entryNodeId, 'right'); // source
+        markHandleUsed(firstBubbleId, 'left'); // target
+      }
+
+      // Sequential bubble-to-bubble connections
+      for (let i = 0; i < mainBubbles.length - 1; i++) {
+        const sourceNodeId = mainBubbles[i].nodeId;
+        const targetNodeId = mainBubbles[i + 1].nodeId;
+        markHandleUsed(sourceNodeId, 'right'); // source
+        markHandleUsed(targetNodeId, 'left'); // target
+      }
+
       // Create nodes for each bubble (sequential horizontal layout)
       bubbleEntries.forEach(([key, bubbleData], index) => {
         const bubble = bubbleData;
@@ -771,6 +824,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               }
             },
             hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
+            usedHandles: usedHandlesMap.get(nodeId),
           },
         };
         nodes.push(node);
@@ -788,14 +842,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               idx,
               arr.length,
               `${idx}`,
-              nodeId
+              nodeId,
+              usedHandlesMap
             );
           });
         }
       });
 
-      // Add sequential flow connections
-      const mainBubbles = bubbleEntries
+      // Add sequential flow connections (already tracked in usedHandlesMap above)
+      const mainBubblesForEdges = bubbleEntries
         .map(([key, bubbleData]) => {
           const typedBubbleData = bubbleData as Partial<ParsedBubble>;
           return {
@@ -988,6 +1043,86 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
     const stepPositions = calculateHierarchicalLayout(steps);
 
+    // Track handles for step-based layout edges
+
+    // Entry node to first step connection
+    if (flowName && steps.length > 0) {
+      const firstRootStep = steps.find((s) => !s.parentStepId);
+      if (firstRootStep) {
+        markHandleUsed(entryNodeId, 'right'); // source
+        markHandleUsed(firstRootStep.id, 'left'); // target
+      }
+    }
+
+    // Step-to-step connections
+    for (const stepEdge of stepEdges) {
+      markHandleUsed(stepEdge.sourceStepId, 'bottom'); // source
+      markHandleUsed(stepEdge.targetStepId, 'top'); // target
+    }
+
+    // Within-step bubble connections (horizontal flow inside step containers)
+    for (const step of steps) {
+      if (step.isTransformation) continue; // Skip transformation steps
+
+      const stepBubbles = step.bubbleIds
+        .map((id) => bubbleParameters[parseInt(id)])
+        .filter(Boolean)
+        .sort((a, b) => a.location.startLine - b.location.startLine);
+
+      // Connect each bubble to next in sequence (horizontal flow)
+      for (let i = 0; i < stepBubbles.length - 1; i++) {
+        const source = stepBubbles[i];
+        const target = stepBubbles[i + 1];
+
+        const sourceNodeId = `${step.id}-bubble-${source.variableId}`;
+        const targetNodeId = `${step.id}-bubble-${target.variableId}`;
+
+        markHandleUsed(sourceNodeId, 'right'); // source
+        markHandleUsed(targetNodeId, 'left'); // target
+      }
+    }
+
+    // Sub-bubble connections (dependency graph)
+    const markSubBubbleHandles = (
+      parentNodeId: string,
+      dependencyNode: DependencyGraphNode,
+      path: string
+    ) => {
+      const childNodeId =
+        dependencyNode.variableId !== undefined &&
+        dependencyNode.variableId !== null &&
+        dependencyNode.variableId !== -1
+          ? String(dependencyNode.variableId)
+          : generateDependencyNodeId(dependencyNode, parentNodeId, path);
+
+      // Parent bubble uses bottom handle (source), child uses top handle (target)
+      markHandleUsed(parentNodeId, 'bottom');
+      markHandleUsed(childNodeId, 'top');
+
+      // Recursively mark handles for nested sub-bubbles
+      dependencyNode.dependencies?.forEach((child, idx) => {
+        markSubBubbleHandles(
+          childNodeId,
+          child,
+          path ? `${path}-${idx}` : `${idx}`
+        );
+      });
+    };
+
+    // Mark handles for all dependency graphs
+    bubbleEntries.forEach(([key, bubbleData]) => {
+      const bubble = bubbleData;
+      const parentNodeId = bubble.variableId
+        ? String(bubble.variableId)
+        : String(key);
+
+      if (bubble.dependencyGraph?.dependencies) {
+        bubble.dependencyGraph.dependencies.forEach((dep, idx) => {
+          markSubBubbleHandles(parentNodeId, dep, `${idx}`);
+        });
+      }
+    });
+
     // Create step container nodes or transformation nodes with hierarchical positions
     steps.forEach((step) => {
       const stepNodeId = step.id;
@@ -1011,6 +1146,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               isAsync: step.isAsync,
               variableName: step.transformationData.variableName,
             },
+            usedHandles: usedHandlesMap.get(stepNodeId),
           },
           style: {
             zIndex: -1,
@@ -1032,6 +1168,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               isAsync: step.isAsync,
             },
             bubbleIds: step.bubbleIds,
+            usedHandles: usedHandlesMap.get(stepNodeId),
           },
           style: {
             zIndex: -1, // Behind bubbles
@@ -1139,6 +1276,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               }
             },
             hasSubBubbles: !!bubble.dependencyGraph?.dependencies?.length,
+            usedHandles: usedHandlesMap.get(nodeId),
           },
         };
         nodes.push(node);
@@ -1156,7 +1294,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               idx,
               arr.length,
               `${idx}`,
-              nodeId
+              nodeId,
+              usedHandlesMap
             );
           });
         }

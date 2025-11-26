@@ -31,6 +31,12 @@ export interface BubbleNodeData {
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
   hasSubBubbles?: boolean;
+  usedHandles?: {
+    top?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+    right?: boolean;
+  };
 }
 
 interface BubbleNodeProps {
@@ -46,6 +52,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
+    usedHandles = {},
   } = data;
 
   // Determine the bubble ID for store lookups (prefer variableId, fallback to bubbleKey)
@@ -266,126 +273,139 @@ function BubbleNode({ data }: BubbleNodeProps) {
       }`}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
-      {/* Left Handle - Shows "Input" button after execution */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="left"
-          isConnectable={false}
-          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ left: -6, opacity: isCompleted ? 0 : 1 }}
-        />
-        {isCompleted && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-            style={{
-              left: '0',
-              backgroundColor: hasError
-                ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(245, 245, 244, 0.95)',
-              borderColor: hasError
-                ? '#dc2626'
-                : isInputSelected
-                  ? 'rgba(99, 102, 241, 0.9)'
-                  : 'rgba(212, 212, 211, 0.8)',
-              borderWidth: isInputSelected ? '2.5px' : '1.5px',
-              color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
-              boxShadow: isInputSelected
-                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                : undefined,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
+      {/* Left Handle - Shows "Input" button after execution - only render if used */}
+      {usedHandles.left && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left"
+            isConnectable={false}
+            className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+            style={{ left: -6, opacity: isCompleted ? 0 : 1 }}
+          />
+          {isCompleted && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+              style={{
+                left: '0',
+                backgroundColor: hasError
+                  ? 'rgba(239, 68, 68, 0.9)'
+                  : 'rgba(245, 245, 244, 0.95)',
+                borderColor: hasError
+                  ? '#dc2626'
+                  : isInputSelected
+                    ? 'rgba(99, 102, 241, 0.9)'
+                    : 'rgba(212, 212, 211, 0.8)',
+                borderWidth: isInputSelected ? '2.5px' : '1.5px',
+                color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
+                boxShadow: isInputSelected
+                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                  : undefined,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
 
-              // Navigate to console with first output
-              const liveOutputStore = getLiveOutputStore(flowId);
-              if (liveOutputStore) {
-                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
-                // Set to first event (index 0)
-                liveOutputStore.getState().setSelectedEventIndex(bubbleId, 0);
-              }
-            }}
-          >
-            Input
-          </div>
-        )}
-      </div>
+                // Navigate to console with first output
+                const liveOutputStore = getLiveOutputStore(flowId);
+                if (liveOutputStore) {
+                  liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                  // Set to first event (index 0)
+                  liveOutputStore.getState().setSelectedEventIndex(bubbleId, 0);
+                }
+              }}
+            >
+              Input
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Right Handle - Shows "Output" button after execution */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+      {/* Right Handle - Shows "Output" button after execution - only render if used */}
+      {usedHandles.right && (
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            isConnectable={false}
+            className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+            style={{ right: -6, opacity: isCompleted ? 0 : 1 }}
+          />
+          {isCompleted && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+              style={{
+                right: '0',
+                backgroundColor: hasError
+                  ? 'rgba(239, 68, 68, 0.9)'
+                  : 'rgba(23, 23, 23, 0.95)',
+                borderColor: hasError
+                  ? '#dc2626'
+                  : isOutputSelected
+                    ? 'rgba(99, 102, 241, 0.9)'
+                    : 'rgba(64, 64, 64, 0.8)',
+                borderWidth: isOutputSelected ? '2.5px' : '1.5px',
+                color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
+                boxShadow: isOutputSelected
+                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                  : undefined,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const liveOutputStore = getLiveOutputStore(flowId);
+                if (liveOutputStore) {
+                  // Navigate to console with last output
+                  liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                  // Get ordered items to find event count for this bubble
+                  const orderedItems = liveOutputStore
+                    .getState()
+                    .getOrderedItems();
+                  const bubbleGroup = orderedItems.find(
+                    (item) => item.kind === 'group' && item.name === bubbleId
+                  );
+                  if (bubbleGroup && bubbleGroup.kind === 'group') {
+                    // Set to last event (eventCount - 1 for 0-based index)
+                    const lastIndex = Math.max(
+                      0,
+                      bubbleGroup.events.length - 1
+                    );
+                    liveOutputStore
+                      .getState()
+                      .setSelectedEventIndex(bubbleId, lastIndex);
+                  }
+                }
+              }}
+            >
+              Output
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bottom handle - only render if used */}
+      {usedHandles.bottom && (
         <Handle
           type="source"
-          position={Position.Right}
-          id="right"
+          position={Position.Bottom}
+          id="bottom"
           isConnectable={false}
           className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ right: -6, opacity: isCompleted ? 0 : 1 }}
+          style={{ bottom: -6 }}
         />
-        {isCompleted && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-            style={{
-              right: '0',
-              backgroundColor: hasError
-                ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(23, 23, 23, 0.95)',
-              borderColor: hasError
-                ? '#dc2626'
-                : isOutputSelected
-                  ? 'rgba(99, 102, 241, 0.9)'
-                  : 'rgba(64, 64, 64, 0.8)',
-              borderWidth: isOutputSelected ? '2.5px' : '1.5px',
-              color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
-              boxShadow: isOutputSelected
-                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                : undefined,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const liveOutputStore = getLiveOutputStore(flowId);
-              if (liveOutputStore) {
-                // Navigate to console with last output
-                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
-                // Get ordered items to find event count for this bubble
-                const orderedItems = liveOutputStore
-                  .getState()
-                  .getOrderedItems();
-                const bubbleGroup = orderedItems.find(
-                  (item) => item.kind === 'group' && item.name === bubbleId
-                );
-                if (bubbleGroup && bubbleGroup.kind === 'group') {
-                  // Set to last event (eventCount - 1 for 0-based index)
-                  const lastIndex = Math.max(0, bubbleGroup.events.length - 1);
-                  liveOutputStore
-                    .getState()
-                    .setSelectedEventIndex(bubbleId, lastIndex);
-                }
-              }
-            }}
-          >
-            Output
-          </div>
-        )}
-      </div>
-      {/* Bottom handle */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ bottom: -6 }}
-      />
-      {/* Top handle */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ top: -6 }}
-      />
+      )}
+
+      {/* Top handle - only render if used */}
+      {usedHandles.top && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          isConnectable={false}
+          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ top: -6 }}
+        />
+      )}
 
       {/* Header */}
       <div

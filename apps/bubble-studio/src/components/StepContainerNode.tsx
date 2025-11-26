@@ -10,6 +10,12 @@ export interface StepContainerNodeData {
     isAsync: boolean;
   };
   bubbleIds: string[]; // IDs of bubbles inside this step
+  usedHandles?: {
+    top?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+    right?: boolean;
+  };
 }
 
 interface StepContainerNodeProps {
@@ -17,7 +23,7 @@ interface StepContainerNodeProps {
 }
 
 function StepContainerNode({ data }: StepContainerNodeProps) {
-  const { stepInfo, bubbleIds } = data;
+  const { stepInfo, bubbleIds, usedHandles = {} } = data;
   const { functionName, description } = stepInfo;
 
   // Calculate height based on number of bubbles
@@ -39,31 +45,39 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
         padding: '20px',
       }}
     >
-      {/* Connection handles */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
+      {/* Connection handles - only show if used */}
+      {usedHandles.top && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.bottom && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.left && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="left"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.right && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
 
       {/* Header */}
       <div className="mb-3">

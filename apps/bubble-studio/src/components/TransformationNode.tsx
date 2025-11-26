@@ -13,6 +13,12 @@ export interface TransformationNodeData {
     isAsync: boolean;
     variableName?: string;
   };
+  usedHandles?: {
+    top?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+    right?: boolean;
+  };
 }
 
 interface TransformationNodeProps {
@@ -20,7 +26,7 @@ interface TransformationNodeProps {
 }
 
 function TransformationNode({ data }: TransformationNodeProps) {
-  const { transformationInfo } = data;
+  const { transformationInfo, usedHandles = {} } = data;
   const {
     functionName,
     description,
@@ -46,31 +52,39 @@ function TransformationNode({ data }: TransformationNodeProps) {
         padding: '20px',
       }}
     >
-      {/* Connection handles */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ background: '#a3a3a3', opacity: 0.7 }}
-      />
+      {/* Connection handles - only show if used */}
+      {usedHandles.top && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.bottom && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.left && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="left"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
+      {usedHandles.right && (
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
+          style={{ background: '#a3a3a3', opacity: 0.7 }}
+        />
+      )}
 
       {/* Header */}
       <div className="mb-3">
