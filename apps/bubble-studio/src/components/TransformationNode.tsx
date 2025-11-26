@@ -25,7 +25,6 @@ function TransformationNode({ data }: TransformationNodeProps) {
     functionName,
     description,
     code,
-    isAsync,
     variableName,
     arguments: args,
   } = transformationInfo;
@@ -35,13 +34,12 @@ function TransformationNode({ data }: TransformationNodeProps) {
   const headerHeight = 80;
   const codeLineHeight = 18;
   const codeHeight = Math.max(codeLines * codeLineHeight + 20, 100);
-  const footerHeight = 30;
   const padding = 40;
-  const calculatedHeight = headerHeight + codeHeight + footerHeight + padding;
+  const calculatedHeight = headerHeight + codeHeight + padding;
 
   return (
     <div
-      className="relative bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg shadow-lg border-2 border-amber-400 dark:border-amber-600"
+      className="relative bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/60 shadow-xl"
       style={{
         width: '400px',
         height: `${calculatedHeight}px`,
@@ -53,56 +51,46 @@ function TransformationNode({ data }: TransformationNodeProps) {
         type="target"
         position={Position.Top}
         id="top"
-        style={{ background: '#f59e0b' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: '#f59e0b' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left"
-        style={{ background: '#f59e0b' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        style={{ background: '#f59e0b' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
 
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-1">
-          <Code2 className="w-5 h-5 text-amber-700 dark:text-amber-300" />
-          <span className="text-lg font-bold text-amber-900 dark:text-amber-100">
-            {isAsync && '⚡️ '}
+          <Code2 className="w-5 h-5 text-neutral-400" />
+          <span className="text-lg font-semibold text-neutral-100">
             {variableName ? `${variableName} = ` : ''}
             {functionName}({args})
           </span>
         </div>
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-            {description}
-          </p>
+          <p className="text-sm text-neutral-300 line-clamp-2">{description}</p>
         )}
       </div>
 
       {/* Code Display */}
-      <div className="mb-3 bg-gray-900 rounded-md overflow-hidden">
-        <pre className="text-xs text-gray-100 p-3 overflow-x-auto overflow-y-auto max-h-64">
+      <div className="mb-3 bg-neutral-900 rounded-md overflow-hidden">
+        <pre className="text-xs text-neutral-100 p-3 overflow-x-auto overflow-y-auto max-h-64">
           <code>{code}</code>
         </pre>
-      </div>
-
-      {/* Footer - shows transformation label */}
-      <div className="mt-2 pt-2 border-t border-amber-300 dark:border-amber-700">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          Transformation
-        </span>
       </div>
     </div>
   );

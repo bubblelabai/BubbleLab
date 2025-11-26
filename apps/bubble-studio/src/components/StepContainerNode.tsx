@@ -18,23 +18,21 @@ interface StepContainerNodeProps {
 
 function StepContainerNode({ data }: StepContainerNodeProps) {
   const { stepInfo, bubbleIds } = data;
-  const { functionName, description, isAsync } = stepInfo;
+  const { functionName, description } = stepInfo;
 
   // Calculate height based on number of bubbles
-  // Header: ~110px (increased for description), Each bubble: 180px spacing, Footer: ~40px, Padding: 40px (20*2)
+  // Header: ~110px (increased for description), Each bubble: 180px spacing, Padding: 40px (20*2)
   const headerHeight = 110;
   const bubbleSpacing = 180;
-  const footerHeight = 40;
   const padding = 40;
   const calculatedHeight =
     headerHeight +
     (bubbleIds.length > 0 ? bubbleIds.length * bubbleSpacing : 0) +
-    footerHeight +
     padding;
 
   return (
     <div
-      className="relative bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg shadow-lg border-2 border-purple-300 dark:border-purple-700"
+      className="relative bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/60 shadow-xl"
       style={{
         width: '400px',
         height: `${calculatedHeight}px`,
@@ -46,47 +44,37 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
         type="target"
         position={Position.Top}
         id="top"
-        style={{ background: '#9333ea' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: '#9333ea' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left"
-        style={{ background: '#9333ea' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right"
-        style={{ background: '#9333ea' }}
+        style={{ background: '#a3a3a3', opacity: 0.7 }}
       />
 
       {/* Header */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg font-bold text-purple-900 dark:text-purple-100">
-            {isAsync && '⚡️ '}
+          <span className="text-lg font-semibold text-neutral-100">
             {functionName}()
           </span>
         </div>
         {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-            {description}
-          </p>
+          <p className="text-sm text-neutral-300 line-clamp-2">{description}</p>
         )}
-      </div>
-
-      {/* Footer - shows bubble count */}
-      <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-700">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {bubbleIds.length} {bubbleIds.length === 1 ? 'bubble' : 'bubbles'}
-        </span>
       </div>
     </div>
   );
