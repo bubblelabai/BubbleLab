@@ -52,7 +52,7 @@ export function ExportModal({
   }, [flowName]);
 
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('setup');
+  const [activeTab, setActiveTab] = useState<TabType>('api');
   const [copiedSetup, setCopiedSetup] = useState<string | null>(null);
 
   const mockData = useMemo(
@@ -192,6 +192,39 @@ export function ExportModal({
         instructions += `**Example:**\n\`\`\`bash\n`;
         const dataString = JSON.stringify(mockData, null, 2);
         instructions += `curl -X POST \\\n  -H "Content-Type: application/json" \\\n  -d '${dataString}' \\\n  "${flowData.webhook_url}"\n\`\`\`\n\n`;
+
+        instructions += `### Webhook Response Schema\n\n`;
+        instructions += `The webhook endpoint returns a JSON response with the following structure:\n\n`;
+        instructions += `\`\`\`typescript\n`;
+        instructions += `{\n`;
+        instructions += `  executionId: number;        // Execution ID\n`;
+        instructions += `  success: boolean;           // Execution success status\n`;
+        instructions += `  data?: unknown;             // **The actual return data from the workflow**\n`;
+        instructions += `  error?: string;             // Error message (if execution failed)\n`;
+        instructions += `  webhook?: {                 // Webhook metadata\n`;
+        instructions += `    userId: string;           // User ID\n`;
+        instructions += `    path: string;             // Webhook path\n`;
+        instructions += `    triggeredAt: string;      // Trigger timestamp\n`;
+        instructions += `    method: string;           // HTTP method\n`;
+        instructions += `  };\n`;
+        instructions += `}\n`;
+        instructions += `\`\`\`\n\n`;
+        instructions += `**Important**: The actual return value from the workflow is in the \`data\` field. Check \`success\` to determine if the execution was successful, and access the workflow result via \`response.data\`.\n\n`;
+        instructions += `**Example Response:**\n\`\`\`json\n`;
+        instructions += `{\n`;
+        instructions += `  "executionId": 12345,\n`;
+        instructions += `  "success": true,\n`;
+        instructions += `  "data": {\n`;
+        instructions += `    // Your workflow's return value goes here\n`;
+        instructions += `  },\n`;
+        instructions += `  "webhook": {\n`;
+        instructions += `    "userId": "user123",\n`;
+        instructions += `    "path": "my-webhook",\n`;
+        instructions += `    "triggeredAt": "2024-01-01T00:00:00.000Z",\n`;
+        instructions += `    "method": "POST"\n`;
+        instructions += `  }\n`;
+        instructions += `}\n`;
+        instructions += `\`\`\`\n\n`;
       }
 
       if (inputsSchema) {
