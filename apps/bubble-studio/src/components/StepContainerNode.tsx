@@ -87,9 +87,7 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
           </span>
         </div>
         {description && (
-          <p className="text-base text-neutral-200 line-clamp-2">
-            {description}
-          </p>
+          <p className="text-base text-neutral-200">{description}</p>
         )}
       </div>
     </div>
