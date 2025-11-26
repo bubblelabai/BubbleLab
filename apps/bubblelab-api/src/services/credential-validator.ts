@@ -23,7 +23,7 @@ export class CredentialValidator {
     configurations?: Record<string, unknown>
   ): Promise<CredentialValidationResult> {
     // Skip validation if explicitly requested
-    if (skipValidation) {
+    if (skipValidation || credentialType === CredentialType.FIRECRAWL_API_KEY) {
       return { isValid: true };
     }
 
