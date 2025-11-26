@@ -44,6 +44,7 @@ export const fixtures = {
   'method-inside-handler': '',
   'flow-with-class-method-and-log': '',
   'steps-workflow': '',
+  'multi-agent': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

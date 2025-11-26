@@ -631,4 +631,9 @@ describe('BubbleScript.getWorkflow()', () => {
       Object.values(analyzer.getParsedBubbles()).length
     );
   });
+  it('should get workflow from multi-agent script', () => {
+    const multiAgentScript = getFixture('multi-agent');
+    const analyzer = new BubbleScript(multiAgentScript, bubbleFactory);
+    const workflow = analyzer.getWorkflow();
+  });
 });
