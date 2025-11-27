@@ -9,6 +9,7 @@ import { findLogoForBubble, findDocsUrlForBubble } from '../lib/integrations';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from './BubbleExecutionBadge';
+import BubbleDetailsOverlay from './BubbleDetailsOverlay';
 import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
 import { useUIStore } from '../stores/uiStore';
 import { useExecutionStore } from '../stores/executionStore';
@@ -187,13 +188,13 @@ function BubbleNode({ data }: BubbleNodeProps) {
     setCredential(credentialsKey, credType, credId);
   };
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [createModalForType, setCreateModalForType] = useState<string | null>(
     null
   );
   const [showDocsTooltip, setShowDocsTooltip] = useState(false);
-  const [showExpandTooltip, setShowExpandTooltip] = useState(false);
+  const [showDetailsTooltip, setShowDetailsTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
@@ -217,14 +218,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     [bubble?.bubbleName, bubble?.className, bubble?.variableName]
   );
 
-  // Separate parameters into display and sensitive categories
-  const displayParams = bubble.parameters.filter(
-    (param) => param.name !== 'credentials' && !param.name.includes('env')
-  );
-  const sensitiveEnvParams = bubble.parameters.filter((param) =>
-    param.name.includes('env')
-  );
-
   const isSystemCredential = useMemo(() => {
     return (credType: CredentialType) => SYSTEM_CREDENTIALS.has(credType);
   }, []);
@@ -237,15 +230,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   const createCredentialMutation = useCreateCredential();
 
-  const formatValue = (value: unknown): string => {
-    if (typeof value === 'string') {
-      return value.length > 50 ? value.substring(0, 47) + '...' : value;
-    }
-    if (typeof value === 'object' && value !== null) {
-      const jsonStr = JSON.stringify(value);
-      return jsonStr.length > 50 ? jsonStr.substring(0, 47) + '...' : jsonStr;
-    }
-    return String(value);
+  const handleFixWithPearl = () => {
+    const prompt = `I'm seeing an error in the ${bubble.variableName || bubble.bubbleName} bubble. Can you help me fix it?`;
+    pearl.startGeneration(prompt);
+    openConsolidatedPanelWith('pearl');
   };
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
   const isSubBubble =
@@ -423,9 +411,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const prompt = `I'm seeing an error in the ${bubble.variableName || bubble.bubbleName} bubble. Can you help me fix it?`;
-                    pearl.startGeneration(prompt);
-                    openConsolidatedPanelWith('pearl');
+                    handleFixWithPearl();
                   }}
                   disabled={pearl.isPending}
                   className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded transition-colors shadow-sm"
@@ -456,21 +442,21 @@ function BubbleNode({ data }: BubbleNodeProps) {
               {bubble.parameters.length > 0 && (
                 <div className="relative">
                   <button
-                    title={isExpanded ? 'Collapse' : 'Details'}
+                    title="View Details"
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsExpanded(!isExpanded);
+                      setIsDetailsOpen(true);
                     }}
-                    onMouseEnter={() => setShowExpandTooltip(true)}
-                    onMouseLeave={() => setShowExpandTooltip(false)}
+                    onMouseEnter={() => setShowDetailsTooltip(true)}
+                    onMouseLeave={() => setShowDetailsTooltip(false)}
                     className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
                   >
                     <Info className="h-3.5 w-3.5" />
                   </button>
-                  {showExpandTooltip && (
+                  {showDetailsTooltip && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                      {isExpanded ? 'Collapse' : 'Details'}
+                      View Details
                     </div>
                   )}
                 </div>
@@ -571,19 +557,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
         {(() => {
           const filteredCredentialTypes = requiredCredentialTypes.filter(
             (credType) => {
-              // When Details is collapsed, only show credentials that need configuring
-              if (!isExpanded) {
-                const systemCred = isSystemCredential(
-                  credType as CredentialType
-                );
-                const hasSelection =
-                  selectedBubbleCredentials[credType] !== undefined &&
-                  selectedBubbleCredentials[credType] !== null;
+              const systemCred = isSystemCredential(credType as CredentialType);
+              const hasSelection =
+                selectedBubbleCredentials[credType] !== undefined &&
+                selectedBubbleCredentials[credType] !== null;
 
-                // Hide system credentials that are using the default (no selection)
-                if (systemCred && !hasSelection) {
-                  return false;
-                }
+              // Hide system credentials that are using the default (no selection)
+              if (systemCred && !hasSelection) {
+                return false;
               }
               return true;
             }
@@ -666,51 +647,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
         })()}
       </div>
 
-      {/* Parameters (collapsible) */}
-      {isExpanded && bubble.parameters.length > 0 && (
-        <div className="p-4 space-y-3 border-b border-neutral-600">
-          {displayParams.map((param) => (
-            <div key={param.name} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-neutral-300">
-                  {param.name}
-                  <span className="ml-1 text-neutral-500">({param.type})</span>
-                </label>
-                {onParamEditInCode && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onParamEditInCode?.(param.name);
-                    }}
-                    className="text-xs text-blue-400 hover:text-blue-300 px-1"
-                  >
-                    View in code
-                  </button>
-                )}
-              </div>
-              {/* Display parameter value as read-only */}
-              <div className="px-2 py-1 text-xs bg-neutral-900 border border-neutral-600 rounded text-neutral-300">
-                {formatValue(param.value)}
-              </div>
-            </div>
-          ))}
-
-          {/* Sensitive ENV params remain hidden */}
-          {sensitiveEnvParams.map((param) => (
-            <div key={param.name} className="space-y-1">
-              <label className="block text-xs font-medium text-yellow-300">
-                {param.name}
-                <span className="ml-1 text-neutral-500">({param.type})</span>
-              </label>
-              <div className="px-2 py-1 text-xs bg-yellow-900 border border-yellow-600 rounded text-yellow-300">
-                [Hidden for security]
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {hasSubBubbles && (
         <div className="px-4 py-3 border-t border-neutral-600 bg-neutral-800/70">
           <button
@@ -731,6 +667,32 @@ function BubbleNode({ data }: BubbleNodeProps) {
           </button>
         </div>
       )}
+      <BubbleDetailsOverlay
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        bubble={bubble}
+        logo={logo}
+        logoErrored={logoError}
+        docsUrl={docsUrl}
+        hasError={hasError}
+        isExecuting={isExecuting}
+        isCompleted={isCompleted}
+        hasMissingRequirements={hasMissingRequirements}
+        executionStats={executionStats}
+        requiredCredentialTypes={requiredCredentialTypes}
+        selectedBubbleCredentials={selectedBubbleCredentials}
+        availableCredentials={availableCredentials}
+        onCredentialChange={handleCredentialChange}
+        onRequestCreateCredential={(credType) =>
+          setCreateModalForType(credType)
+        }
+        onParamEditInCode={onParamEditInCode}
+        onViewCode={() => onBubbleClick?.()}
+        showEditor={showEditor}
+        onFixWithPearl={hasError ? handleFixWithPearl : undefined}
+        isPearlPending={pearl.isPending}
+      />
+
       {/* Create Credential Modal */}
       {createModalForType && (
         <CreateCredentialModal
