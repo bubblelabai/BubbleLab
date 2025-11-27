@@ -940,7 +940,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       // Layout parameters
       const startX = 500; // Start after entry node
       const startY = 200;
-      const verticalSpacing = 400; // Vertical space between levels
+      const verticalSpacing = 520; // Vertical space between levels
       const horizontalSpacing = 500; // Horizontal space between branches
 
       // Build adjacency map: parent -> children
