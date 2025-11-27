@@ -422,7 +422,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     [autoVisibleNodes, currentFlow, flowId]
   );
 
-  // Generate within-step edges (connects bubbles horizontally inside each step)
+  // Generate within-step edges (connects bubbles vertically inside each step)
   const generateWithinStepEdges = useCallback(
     (
       steps: StepData[],
@@ -436,7 +436,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           .filter(Boolean)
           .sort((a, b) => a.location.startLine - b.location.startLine);
 
-        // Connect each bubble to next in sequence (horizontal flow)
+        // Connect each bubble to next in sequence (vertical flow)
         for (let i = 0; i < stepBubbles.length - 1; i++) {
           const source = stepBubbles[i];
           const target = stepBubbles[i + 1];
@@ -449,9 +449,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             id: `internal-${step.id}-${source.variableId}-to-${target.variableId}`,
             source: sourceNodeId,
             target: targetNodeId,
-            sourceHandle: 'right',
-            targetHandle: 'left',
-            type: 'smoothstep',
+            sourceHandle: 'bottom',
+            targetHandle: 'top',
+            type: 'straight',
             animated: false,
             style: {
               stroke: '#9ca3af', // Gray for consistency
@@ -1063,7 +1063,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       markHandleUsed(stepEdge.targetStepId, 'top'); // target
     }
 
-    // Within-step bubble connections (horizontal flow inside step containers)
+    // Within-step bubble connections (vertical flow inside step containers)
     for (const step of steps) {
       if (step.isTransformation) continue; // Skip transformation steps
 
@@ -1072,7 +1072,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         .filter(Boolean)
         .sort((a, b) => a.location.startLine - b.location.startLine);
 
-      // Connect each bubble to next in sequence (horizontal flow)
+      // Connect each bubble to next in sequence (vertical flow)
       for (let i = 0; i < stepBubbles.length - 1; i++) {
         const source = stepBubbles[i];
         const target = stepBubbles[i + 1];
@@ -1080,8 +1080,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         const sourceNodeId = `${step.id}-bubble-${source.variableId}`;
         const targetNodeId = `${step.id}-bubble-${target.variableId}`;
 
-        markHandleUsed(sourceNodeId, 'right'); // source
-        markHandleUsed(targetNodeId, 'left'); // target
+        markHandleUsed(sourceNodeId, 'bottom'); // source
+        markHandleUsed(targetNodeId, 'top'); // target
       }
     }
 
@@ -1370,7 +1370,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       edges.push(edge);
     }
 
-    // Generate within-step edges (connects bubbles horizontally inside each step)
+    // Generate within-step edges (connects bubbles vertically inside each step)
     const internalEdges = generateWithinStepEdges(steps, bubbleParameters);
     edges.push(...internalEdges);
 
