@@ -45,6 +45,7 @@ export const fixtures = {
   'flow-with-class-method-and-log': '',
   'steps-workflow': '',
   'multi-agent': '',
+  'calender-step-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

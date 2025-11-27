@@ -2137,6 +2137,35 @@ export class BubbleParser {
                 variableId: bubbleFromExpr.variableId,
               };
             }
+          } else if (
+            decl.id.type === 'ObjectPattern' ||
+            decl.id.type === 'ArrayPattern'
+          ) {
+            // Handle destructuring declarations (const { a, b } = ... or const [a, b] = ...)
+            // Check if initializer is a function call - transformation functions take precedence
+            const functionCall = this.detectFunctionCall(decl.init);
+            if (functionCall) {
+              // If variable declaration contains a function call, represent it as function_call or transformation_function
+              // The function call node will contain the full statement code
+              // Variable declaration is already handled inside buildFunctionCallNode
+              return this.buildFunctionCallNode(
+                functionCall,
+                stmt,
+                bubbleMap,
+                scopeManager
+              );
+            }
+            // Check for bubbles in the expression
+            const bubbleFromExpr = this.findBubbleInExpression(
+              decl.init,
+              bubbleMap
+            );
+            if (bubbleFromExpr) {
+              return {
+                type: 'bubble',
+                variableId: bubbleFromExpr.variableId,
+              };
+            }
           }
         }
       }
