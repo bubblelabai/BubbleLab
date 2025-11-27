@@ -16,6 +16,7 @@ import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
 import StepContainerNode, {
   calculateBubblePosition,
+  calculateStepContainerHeight,
   STEP_CONTAINER_LAYOUT,
 } from './StepContainerNode';
 import TransformationNode from './TransformationNode';
@@ -930,17 +931,41 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     }
 
     /**
+     * Calculate the height of a step based on its type and content
+     */
+    function calculateStepHeight(step: StepData): number {
+      if (step.isTransformation && step.transformationData) {
+        // Transformation node height calculation (matching TransformationNode.tsx)
+        const codeLines = step.transformationData.code.split('\n').length;
+        const headerHeight = 80;
+        const codeLineHeight = 18;
+        const codeHeight = Math.max(codeLines * codeLineHeight + 20, 100);
+        const padding = 40;
+        return headerHeight + codeHeight + padding;
+      } else {
+        // Step container height calculation (matching StepContainerNode.tsx)
+        return calculateStepContainerHeight(step.bubbleIds.length);
+      }
+    }
+
+    /**
      * Calculate hierarchical layout positions for steps based on branch structure
      */
     function calculateHierarchicalLayout(
       steps: StepData[]
     ): Map<string, { x: number; y: number }> {
       const positionMap = new Map<string, { x: number; y: number }>();
+      const heightMap = new Map<string, number>();
+
+      // Calculate heights for all steps
+      for (const step of steps) {
+        heightMap.set(step.id, calculateStepHeight(step));
+      }
 
       // Layout parameters
       const startX = 200; // Start after entry node
       const startY = 200;
-      const verticalSpacing = 520; // Vertical space between levels
+      const minVerticalSpacing = 80; // Minimum spacing between steps
       const horizontalSpacing = 500; // Horizontal space between branches
 
       // Build adjacency map: parent -> children (using step.parentStepId)
@@ -996,6 +1021,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           return x;
         }
 
+        // Get the height of the current step
+        const currentStepHeight = heightMap.get(stepId) || 200;
+
         // Sort children by branch type (then before else) for consistent layout
         const sortedChildren = [...children].sort((a, b) => {
           const order = { then: 0, sequential: 1, else: 2 };
@@ -1024,7 +1052,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             childX = x;
           }
 
-          const childY = y + verticalSpacing;
+          // Calculate child Y position based on parent's bottom + minimum spacing
+          const childY = y + currentStepHeight + minVerticalSpacing;
 
           // Recursively layout child's subtree
           const subtreeEndX = layoutSubtree(
@@ -1065,9 +1094,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           const allParents = allParentsMap.get(step.id) || [];
           if (allParents.length > 1) {
             const parentPositions = allParents
-              .map((parentId) => positionMap.get(parentId))
+              .map((parentId) => {
+                const pos = positionMap.get(parentId);
+                const height = heightMap.get(parentId) || 200;
+                return pos ? { ...pos, height } : undefined;
+              })
               .filter(
-                (pos): pos is { x: number; y: number } => pos !== undefined
+                (pos): pos is { x: number; y: number; height: number } =>
+                  pos !== undefined
               );
 
             if (parentPositions.length > 0) {
@@ -1075,8 +1109,11 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               const maxX = Math.max(...parentPositions.map((p) => p.x));
               const centerX = (minX + maxX) / 2;
 
-              const maxY = Math.max(...parentPositions.map((p) => p.y));
-              const stepY = maxY + verticalSpacing;
+              // Calculate Y position based on the bottom of the lowest parent
+              const maxBottomY = Math.max(
+                ...parentPositions.map((p) => p.y + p.height)
+              );
+              const stepY = maxBottomY + minVerticalSpacing;
 
               const currentPos = positionMap.get(step.id);
               if (
