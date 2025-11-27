@@ -14,7 +14,10 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
-import StepContainerNode from './StepContainerNode';
+import StepContainerNode, {
+  calculateBubblePosition,
+  STEP_CONTAINER_LAYOUT,
+} from './StepContainerNode';
 import TransformationNode from './TransformationNode';
 import type {
   DependencyGraphNode,
@@ -1210,12 +1213,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         const nodeId = `${step.id}-bubble-${bubbleId}`;
 
         // Position inside step container (relative to step)
-        // Container: 400px width, 20px padding = 360px internal width
-        // Bubble: 320px width, so center at (360 - 320) / 2 = 20px from internal edge
-        const initialPosition = {
-          x: 20, // Centered in 400px width container with 320px bubble width
-          y: 120 + bubbleIndexInStep * 180, // Header (110px) + spacing for better visibility
-        };
+        // Uses layout constants from StepContainerNode for consistency
+        const initialPosition = calculateBubblePosition(bubbleIndexInStep);
 
         const node: Node = {
           id: nodeId,
