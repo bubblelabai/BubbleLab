@@ -25,9 +25,8 @@ export const STEP_CONTAINER_LAYOUT = {
   INTERNAL_WIDTH: 360, // WIDTH - (PADDING * 2)
   HEADER_HEIGHT: 110,
   BUBBLE_SPACING: 180,
-  BOTTOM_PADDING: 40,
   BUBBLE_WIDTH: 320, // w-80 class
-  BUBBLE_X_OFFSET: 20, // (INTERNAL_WIDTH - BUBBLE_WIDTH) / 2
+  BUBBLE_X_OFFSET: 40, // (WIDTH - BUBBLE_WIDTH) / 2
 } as const;
 
 /**
@@ -36,8 +35,7 @@ export const STEP_CONTAINER_LAYOUT = {
 export function calculateStepContainerHeight(bubbleCount: number): number {
   return (
     STEP_CONTAINER_LAYOUT.HEADER_HEIGHT +
-    (bubbleCount > 0 ? bubbleCount * STEP_CONTAINER_LAYOUT.BUBBLE_SPACING : 0) +
-    STEP_CONTAINER_LAYOUT.BOTTOM_PADDING
+    (bubbleCount > 0 ? bubbleCount * STEP_CONTAINER_LAYOUT.BUBBLE_SPACING : 0)
   );
 }
 
