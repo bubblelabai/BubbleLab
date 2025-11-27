@@ -59,6 +59,7 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
 
   **Important**: There are a set of system credentials that automatically used to run flow if no user credentials are provided, they are handled by bubble studio they are optional to run a flow.
   System credentials are:
+  (IMPORTANT: NO DOT USE these credentials anywhere in the code, credentials values are not passed to the code, they are used automatically by the runtime engine, do not attempt to put credential type anywhere in the code. If custom credentials are needed, have payload interface include them and access them from the payload.)
   ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
 
 - Panels:

@@ -6,6 +6,7 @@ import { QueryProvider } from './providers/QueryProvider';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { AuthWrapper } from './components/AuthWrapper';
 import { OAuthCallback } from './components/OAuthCallback';
+import { WebViewWarning } from './components/WebViewWarning';
 import {
   CLERK_PUBLISHABLE_KEY,
   DISABLE_AUTH,
@@ -63,6 +64,7 @@ if (isOAuthCallback) {
   // Render OAuth callback UI (popup window)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
+      <WebViewWarning />
       <OAuthCallback apiBaseUrl={API_BASE_URL} />
     </StrictMode>
   );
@@ -70,6 +72,7 @@ if (isOAuthCallback) {
   // Normal app with router
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
+      <WebViewWarning />
       {DISABLE_AUTH ? (
         <AuthWrapper>
           <QueryProvider>
