@@ -943,9 +943,18 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const verticalSpacing = 520; // Vertical space between levels
       const horizontalSpacing = 500; // Horizontal space between branches
 
-      // Build adjacency map: parent -> children
+      // Build adjacency map: parent -> children (using step.parentStepId)
       const childrenMap = new Map<string, StepData[]>();
       const parentMap = new Map<string, string>();
+
+      // Build map of all parents for each step from edges (for convergence detection)
+      const allParentsMap = new Map<string, string[]>();
+      for (const stepEdge of stepEdges) {
+        if (!allParentsMap.has(stepEdge.targetStepId)) {
+          allParentsMap.set(stepEdge.targetStepId, []);
+        }
+        allParentsMap.get(stepEdge.targetStepId)!.push(stepEdge.sourceStepId);
+      }
 
       for (const step of steps) {
         if (step.parentStepId) {
@@ -977,7 +986,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         }
         visited.add(stepId);
 
-        // Position current step
+        // Position current step (will be adjusted later if it's a convergence point)
         positionMap.set(stepId, { x, y });
 
         // Get children
@@ -1039,6 +1048,48 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       for (const rootStep of rootSteps) {
         const endX = layoutSubtree(rootStep.id, currentRootX, startY, 0);
         currentRootX = endX + horizontalSpacing;
+      }
+
+      // Post-process: Re-position convergence points after all parents are positioned
+      // This ensures convergence points are properly centered even if parents were laid out in different subtrees
+      // We need to iterate multiple times until positions stabilize (in case convergence points depend on other convergence points)
+      let changed = true;
+      let iterations = 0;
+      const maxIterations = 10; // Safety limit
+
+      while (changed && iterations < maxIterations) {
+        changed = false;
+        iterations++;
+
+        for (const step of steps) {
+          const allParents = allParentsMap.get(step.id) || [];
+          if (allParents.length > 1) {
+            const parentPositions = allParents
+              .map((parentId) => positionMap.get(parentId))
+              .filter(
+                (pos): pos is { x: number; y: number } => pos !== undefined
+              );
+
+            if (parentPositions.length > 0) {
+              const minX = Math.min(...parentPositions.map((p) => p.x));
+              const maxX = Math.max(...parentPositions.map((p) => p.x));
+              const centerX = (minX + maxX) / 2;
+
+              const maxY = Math.max(...parentPositions.map((p) => p.y));
+              const stepY = maxY + verticalSpacing;
+
+              const currentPos = positionMap.get(step.id);
+              if (
+                !currentPos ||
+                Math.abs(currentPos.x - centerX) > 1 ||
+                Math.abs(currentPos.y - stepY) > 1
+              ) {
+                positionMap.set(step.id, { x: centerX, y: stepY });
+                changed = true;
+              }
+            }
+          }
+        }
       }
 
       return positionMap;
