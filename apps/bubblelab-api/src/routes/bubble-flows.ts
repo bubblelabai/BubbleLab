@@ -161,7 +161,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
   const data = c.req.valid('json');
 
   // Validate TypeScript code
-  const validationResult = await validateBubbleFlow(data.code);
+  const validationResult = await validateBubbleFlow(data.code, false);
 
   if (!validationResult.valid) {
     console.debug('Validation failed:', validationResult.errors);
@@ -910,7 +910,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
     }
 
     // Create a new BubbleFlowValidationTool instance
-    const result = await validateAndExtract(code, bubbleFactory);
+    const result = await validateAndExtract(code, bubbleFactory, false);
 
     // If validation is successful and flowId is provided, update the flow as well before returning the result
     if (

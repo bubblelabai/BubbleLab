@@ -16,11 +16,16 @@ export interface ValidationResult {
 }
 
 export async function validateBubbleFlow(
-  code: string
+  code: string,
+  requireLintErrors: boolean = true
 ): Promise<ValidationResult> {
   try {
     const bubbleFactory = await getBubbleFactory();
-    const result = await validateAndExtract(code, bubbleFactory);
+    const result = await validateAndExtract(
+      code,
+      bubbleFactory,
+      requireLintErrors
+    );
 
     return {
       valid: result.valid,
