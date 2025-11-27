@@ -938,7 +938,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const positionMap = new Map<string, { x: number; y: number }>();
 
       // Layout parameters
-      const startX = 500; // Start after entry node
+      const startX = 200; // Start after entry node
       const startY = 200;
       const verticalSpacing = 520; // Vertical space between levels
       const horizontalSpacing = 500; // Horizontal space between branches
