@@ -30,29 +30,40 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
    - The expected output structure in result.data
    - How to properly handle success/error cases
 5. IMPLEMENTATION ARCHITECTURE (CRITICAL):
-   - Break the workflow into atomic PRIVATE step methods.
-   - Types of steps:
-     a) Transformation Steps: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
-     b) Bubble Steps: Async functions that instantiate and run SINGLE Bubble (or logically grouped Bubbles).
+   - Break the workflow into atomic PRIVATE methods (do NOT call them "steps" or use "step" terminology).
+   - Types of methods:
+     a) Transformation Methods: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
+     b) Bubble Methods: Async functions that instantiate and run SINGLE Bubble (or logically grouped Bubbles).
    - The 'handle()' method must be a CLEAN orchestrator:
-     - ONLY call step methods sequentially.
-     - Use 'if' statements and 'for' loops inside handle() to control step execution flow.
+     - ONLY call private methods sequentially.
+     - Use 'if' statements and 'for' loops inside handle() to control execution flow.
      - NO switch statements.
      - NO direct Bubble instantiation inside handle().
-     - NO try-catch blocks inside handle() (handle errors inside steps if needed, otherwise let them bubble up).
-     - NO complex logic inside handle() - use Transformation Steps instead.
+     - NO try-catch blocks inside handle() (handle errors inside private methods if needed, otherwise let them bubble up).
+     - NO complex logic inside handle() - use Transformation Methods instead.
+   - CRITICAL: Each private method MUST have a comment with TWO lines:
+     Line 1: Describe WHAT the method does in specific, concrete terms (not generic phrases like "processes data" or "transforms input")
+     Line 2: Start with "Condition:" and explain WHEN this method runs (e.g., "Always runs first", "Only runs when X > 5", "Runs differently based on Y")
+   - Example:
+     // Sanitizes raw webhook input by trimming whitespace and converting to uppercase
+     // Condition: Always runs first to clean incoming data
+     private transformData(input: string): string { ... }
+
+     // Sends cleaned input to AI for natural language processing
+     // Condition: Only runs when input length is greater than 3 characters
+     private async processWithAI(input: string): Promise<string> { ... }
 6. Use the exact parameter structures shown in the bubble details
 7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
 8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
 9. Return meaningful data from the handle method
 10. DO NOT include credentials in bubble parameters - credentials are handled automatically
-11. CRITICAL: In Bubble Steps, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
+11. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
 12. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
 13. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
 14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), for each(), or other callback functions.
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
-17. Write short and concise comments throughout the code. Name step methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow.
+17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
 20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. ALL user-specific or environment-specific values MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). If a value needs to be configured by the user, it belongs in the payload interface, NOT in a constant.

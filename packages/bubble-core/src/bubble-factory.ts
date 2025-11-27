@@ -677,14 +677,16 @@ export interface CustomWebhookPayload extends WebhookEvent {
 
 export class ${className} extends BubbleFlow<'webhook/http'> {
   
-  // Atomic function: Data transformation (Transformation Step)
-  private transformData(input: string | undefined): string {
+  // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
+  // Condition: Always runs first to clean incoming data
+  private transformData(input: string | undefined): string | null {
     // Example: Transform or clean the input data
-    if (!input) return 'DEFAULT_VALUE';
+    if (!input || input.trim().length === 0) return null;
     return input.trim().toUpperCase();
   }
 
-  // Atomic function: Process data using a Bubble (Bubble Step)
+  // Sends cleaned input to AI agent for natural language processing and response generation
+  // Condition: Only runs when transformedInput is not null and has more than 3 characters
   private async processWithAI(input: string): Promise<string> {
     const agent = new AIAgentBubble({
       model: { model: 'google/gemini-2.5-flash' },
@@ -693,8 +695,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
     });
 
     const result = await agent.action();
-    
-    // Error handling happens inside the step
+
     if (!result.success) {
       throw new Error(\`AI Agent failed: \${result.error}\`);
     }
@@ -702,27 +703,29 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
     return result.data.response;
   }
 
-  // Atomic function: Output formatting (Transformation Step)
-  private formatOutput(response: string): Output {
+  // Constructs final output payload with either AI-generated response or default fallback message
+  // Condition: Always runs, but uses different message based on whether AI processing occurred
+  private formatOutput(response: string | null, wasProcessed: boolean): Output {
     return {
-      message: response,
-      processed: true,
+      message: response || 'No input provided',
+      processed: wasProcessed,
     };
   }
 
   // Main workflow orchestration
   // - No Bubbles directly in handle()
   // - No try/catch in handle() (let errors bubble up)
-  // - Only step function calls
+  // - Only calls to private methods
   async handle(payload: CustomWebhookPayload): Promise<Output> {
-    // Step 1: Transform data
     const transformedInput = this.transformData(payload.input);
 
-    // Step 2: Process with AI (Bubble Step)
-    const aiResponse = await this.processWithAI(transformedInput);
+    // Only process with AI if input meets minimum length requirement
+    let aiResponse: string | null = null;
+    if (transformedInput && transformedInput.length > 3) {
+      aiResponse = await this.processWithAI(transformedInput);
+    }
 
-    // Step 3: Format output
-    return this.formatOutput(aiResponse);
+    return this.formatOutput(aiResponse, aiResponse !== null);
   }
 }
 
@@ -745,14 +748,14 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   //   '0 0 1 * *'     = First day of every month at midnight
   readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
-  // Atomic function: Scheduled Task (Bubble Step)
+  // Performs scheduled database check or external API call to fetch latest data
+  // Condition: Runs on every cron trigger execution
   private async performScheduledTask(): Promise<string> {
      // Example: Check a database or API
      return "Task completed";
   }
 
   async handle(payload: CustomCronPayload): Promise<Output> {
-    // Step 1: Perform scheduled task
     const result = await this.performScheduledTask();
 
     return { message: result, processed: true };
