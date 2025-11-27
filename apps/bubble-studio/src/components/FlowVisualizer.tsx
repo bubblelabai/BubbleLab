@@ -442,9 +442,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           const source = stepBubbles[i];
           const target = stepBubbles[i + 1];
 
-          // Use the new node ID format: {stepId}-bubble-{bubbleId}
-          const sourceNodeId = `${step.id}-bubble-${source.variableId}`;
-          const targetNodeId = `${step.id}-bubble-${target.variableId}`;
+          const sourceNodeId = String(source.variableId);
+          const targetNodeId = String(target.variableId);
 
           edges.push({
             id: `internal-${step.id}-${source.variableId}-to-${target.variableId}`,
@@ -1165,8 +1164,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         const source = stepBubbles[i];
         const target = stepBubbles[i + 1];
 
-        const sourceNodeId = `${step.id}-bubble-${source.variableId}`;
-        const targetNodeId = `${step.id}-bubble-${target.variableId}`;
+        const sourceNodeId = String(source.variableId);
+        const targetNodeId = String(target.variableId);
 
         markHandleUsed(sourceNodeId, 'bottom'); // source
         markHandleUsed(targetNodeId, 'top'); // target
@@ -1296,9 +1295,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         const [key, bubbleData] = bubbleEntry;
         const bubble = bubbleData;
 
-        // Create unique node ID for this bubble in this step
-        // Format: {stepId}-bubble-{bubbleId}
-        const nodeId = `${step.id}-bubble-${bubbleId}`;
+        // Use the bubble's variableId or key as the node ID (consistent with sequential layout)
+        const nodeId = bubble.variableId
+          ? String(bubble.variableId)
+          : String(key);
 
         // Position inside step container (relative to step)
         // Uses layout constants from StepContainerNode for consistency
@@ -1381,7 +1381,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               idx,
               arr.length,
               `${idx}`,
-              nodeId,
+              bubbleId,
               usedHandlesMap
             );
           });
