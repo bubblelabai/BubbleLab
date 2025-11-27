@@ -12,6 +12,14 @@ describe('BubbleFlow Validation', () => {
   });
 
   describe('Valid BubbleFlow validation', () => {
+    it('should invalidate credential in flow', async () => {
+      const code = getFixture('credential-in-flow');
+      const result = await validateBubbleFlow(code);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors!.length).toBe(1);
+      expect(result.errors![0]).toContain('credentials');
+    });
     it('should validate calender step flow', async () => {
       const code = getFixture('invalid-step-flow');
       const result = await validateBubbleFlow(code);

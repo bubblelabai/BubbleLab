@@ -218,6 +218,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
         const properties: string[] = [];
 
         for (const [key, value] of Object.entries(shape)) {
+          if (this.isCredentialKey(key)) continue; // Skip credentials in nested objects
+
           if (value && typeof value === 'object' && '_def' in value) {
             const zodValue = value as z.ZodTypeAny;
             const typeInfo = this.generateTypeInfo(
@@ -378,7 +380,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
                 // Generate parameters for this specific operation
                 const operationParams: string[] = [];
                 Object.entries(shape).forEach(([key, value]) => {
-                  if (key === 'credentials') return; // Skip credentials
+                  if (this.isCredentialKey(key)) return; // Skip credentials
 
                   if (value && typeof value === 'object' && '_def' in value) {
                     const zodType = value as z.ZodTypeAny;
@@ -647,7 +649,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
 
                 // Add parameters for this operation
                 Object.entries(shape).forEach(([key, value]) => {
-                  if (key === 'credentials' || key === discriminatorKey) return; // Skip credentials and discriminator
+                  if (this.isCredentialKey(key) || key === discriminatorKey)
+                    return; // Skip credentials and discriminator
 
                   if (value && typeof value === 'object' && '_def' in value) {
                     const zodType = value as z.ZodTypeAny;
@@ -674,7 +677,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
         const shape = zodSchema.shape;
 
         Object.entries(shape).forEach(([key, value]) => {
-          if (key === 'credentials') return; // Skip credentials in examples
+          if (this.isCredentialKey(key)) return; // Skip credentials in examples
 
           if (value && typeof value === 'object' && '_def' in value) {
             const zodType = value as z.ZodTypeAny;
@@ -725,6 +728,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
         let count = 0;
 
         for (const [key, value] of Object.entries(shape)) {
+          if (this.isCredentialKey(key)) continue; // Skip credentials in nested objects
+
           if (value && typeof value === 'object' && '_def' in value) {
             const zodValue = value as z.ZodTypeAny;
             const exampleValue = this.generateExampleValue(zodValue);
@@ -868,6 +873,8 @@ export class GetBubbleDetailsTool extends ToolBubble<
             const properties: string[] = [];
 
             for (const [key, value] of Object.entries(shape)) {
+              if (this.isCredentialKey(key)) continue; // Skip credentials
+
               if (value && typeof value === 'object' && '_def' in value) {
                 const zodValue = value as z.ZodTypeAny;
                 const exampleValue = this.generateExampleValue(zodValue);
@@ -899,6 +906,15 @@ export class GetBubbleDetailsTool extends ToolBubble<
     }
 
     return null;
+  }
+
+  /**
+   * Checks if a key represents a credential parameter that should be omitted from examples
+   */
+  private isCredentialKey(key: string): boolean {
+    // Check for exact match or case-insensitive variations
+    const lowerKey = key.toLowerCase();
+    return lowerKey === 'credentials' || lowerKey === 'credential';
   }
 
   private toCamelCase(str: string): string {

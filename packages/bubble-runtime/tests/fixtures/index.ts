@@ -47,6 +47,7 @@ export const fixtures = {
   'multi-agent': '',
   'invalid-step-flow': '',
   'calender-step-flow': '',
+  'credential-in-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

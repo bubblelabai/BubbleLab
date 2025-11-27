@@ -68,6 +68,13 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('.action()');
     });
 
+    test('should not show credentials in usage example', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'ai-agent' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).not.toContain('credentials:');
+    });
+
     test('should show enum structure for google-sheets credential parameter', async () => {
       const tool = new GetBubbleDetailsTool({ bubbleName: 'google-sheets' });
       const result = await tool.action();

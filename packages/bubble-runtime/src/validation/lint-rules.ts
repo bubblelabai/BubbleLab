@@ -434,8 +434,110 @@ function isBubbleClass(
 }
 
 /**
+ * Lint rule that prevents credentials parameter from being used in bubble instantiations
+ */
+export const noCredentialsParameterRule: LintRule = {
+  name: 'no-credentials-parameter',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    // Traverse entire source file to find all bubble instantiations
+    const visit = (node: ts.Node) => {
+      // Check for new expressions (bubble instantiations)
+      if (ts.isNewExpression(node)) {
+        const className = getClassNameFromExpression(node.expression);
+        if (
+          className &&
+          isBubbleClass(className, context.importedBubbleClasses)
+        ) {
+          // Check constructor arguments for credentials parameter
+          if (node.arguments && node.arguments.length > 0) {
+            for (const arg of node.arguments) {
+              const credentialError = checkForCredentialsParameter(
+                arg,
+                context.sourceFile
+              );
+              if (credentialError) {
+                errors.push(credentialError);
+              }
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
+ * Checks if an expression (constructor argument) contains a credentials parameter
+ */
+function checkForCredentialsParameter(
+  expression: ts.Expression,
+  sourceFile: ts.SourceFile
+): LintError | null {
+  // Handle object literals: { credentials: {...} }
+  if (ts.isObjectLiteralExpression(expression)) {
+    for (const property of expression.properties) {
+      if (ts.isPropertyAssignment(property)) {
+        const name = property.name;
+        if (
+          (ts.isIdentifier(name) && name.text === 'credentials') ||
+          (ts.isStringLiteral(name) && name.text === 'credentials')
+        ) {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(
+            property.getStart(sourceFile)
+          );
+          return {
+            line: line + 1,
+            message:
+              'credentials parameter is not allowed in bubble instantiation. Credentials should be injected at runtime, not passed as parameters.',
+          };
+        }
+      }
+      // Handle shorthand property: { credentials }
+      if (ts.isShorthandPropertyAssignment(property)) {
+        const name = property.name;
+        if (ts.isIdentifier(name) && name.text === 'credentials') {
+          const { line } = sourceFile.getLineAndCharacterOfPosition(
+            property.getStart(sourceFile)
+          );
+          return {
+            line: line + 1,
+            message:
+              'credentials parameter is not allowed in bubble instantiation. Credentials should be injected at runtime, not passed as parameters.',
+          };
+        }
+      }
+    }
+  }
+
+  // Handle spread expressions that might contain credentials
+  if (ts.isSpreadElement(expression)) {
+    return checkForCredentialsParameter(expression.expression, sourceFile);
+  }
+
+  // Handle type assertions: { credentials: {...} } as Record<string, string>
+  if (ts.isAsExpression(expression)) {
+    return checkForCredentialsParameter(expression.expression, sourceFile);
+  }
+
+  // Handle parenthesized expressions: ({ credentials: {...} })
+  if (ts.isParenthesizedExpression(expression)) {
+    return checkForCredentialsParameter(expression.expression, sourceFile);
+  }
+
+  return null;
+}
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
 defaultLintRuleRegistry.register(noThrowInHandleRule);
 defaultLintRuleRegistry.register(noDirectBubbleInstantiationInHandleRule);
+defaultLintRuleRegistry.register(noCredentialsParameterRule);
