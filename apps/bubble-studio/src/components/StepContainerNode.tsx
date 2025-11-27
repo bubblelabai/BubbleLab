@@ -23,8 +23,9 @@ export const STEP_CONTAINER_LAYOUT = {
   WIDTH: 400,
   PADDING: 20,
   INTERNAL_WIDTH: 360, // WIDTH - (PADDING * 2)
-  HEADER_HEIGHT: 220,
-  BUBBLE_SPACING: 220,
+  HEADER_HEIGHT: 230,
+  BUBBLE_HEIGHT: 180, // Typical height of a bubble node
+  BUBBLE_SPACING: 80, // Gap between bubbles (vertical spacing)
   BUBBLE_WIDTH: 320, // w-80 class
   BUBBLE_X_OFFSET: 40, // (WIDTH - BUBBLE_WIDTH) / 2
 } as const;
@@ -33,9 +34,13 @@ export const STEP_CONTAINER_LAYOUT = {
  * Calculate the height of a step container based on the number of bubbles it contains
  */
 export function calculateStepContainerHeight(bubbleCount: number): number {
+  if (bubbleCount === 0) {
+    return STEP_CONTAINER_LAYOUT.HEADER_HEIGHT;
+  }
   return (
     STEP_CONTAINER_LAYOUT.HEADER_HEIGHT +
-    (bubbleCount > 0 ? bubbleCount * STEP_CONTAINER_LAYOUT.BUBBLE_SPACING : 0)
+    bubbleCount * STEP_CONTAINER_LAYOUT.BUBBLE_HEIGHT +
+    (bubbleCount - 1) * STEP_CONTAINER_LAYOUT.BUBBLE_SPACING
   );
 }
 
@@ -52,7 +57,9 @@ export function calculateBubblePosition(bubbleIndex: number): {
     x: STEP_CONTAINER_LAYOUT.BUBBLE_X_OFFSET,
     y:
       STEP_CONTAINER_LAYOUT.HEADER_HEIGHT +
-      bubbleIndex * STEP_CONTAINER_LAYOUT.BUBBLE_SPACING,
+      bubbleIndex *
+        (STEP_CONTAINER_LAYOUT.BUBBLE_HEIGHT +
+          STEP_CONTAINER_LAYOUT.BUBBLE_SPACING),
   };
 }
 

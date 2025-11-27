@@ -338,7 +338,7 @@ export function extractStepGraph(
               bubbleIds,
               controlFlowNodes,
               parentStepId,
-              branchType: 'sequential',
+              branchType: 'then',
             };
 
             steps.push(step);
