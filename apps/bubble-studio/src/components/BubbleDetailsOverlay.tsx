@@ -174,11 +174,6 @@ export function BubbleDetailsOverlay({
     );
   };
 
-  const averageRuntime =
-    executionStats && executionStats.count > 0
-      ? Math.round(executionStats.totalTime / executionStats.count)
-      : null;
-
   const renderLogo = () => {
     if (logo && !logoErrored) {
       return (
@@ -301,7 +296,7 @@ export function BubbleDetailsOverlay({
               </div>
             </header>
 
-            <section className="grid gap-6 border-b border-neutral-900 bg-neutral-950/90 p-8 lg:grid-cols-[1.5fr_1fr]">
+            <section className="border-b border-neutral-900 bg-neutral-950/90 p-8">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
                   <Info className="h-4 w-4" />
@@ -318,81 +313,6 @@ export function BubbleDetailsOverlay({
                     )}
                   </div>
                 )}
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                  <p className="text-sm font-semibold text-neutral-200">
-                    Execution
-                  </p>
-                  <div className="mt-3 space-y-2 text-sm text-neutral-400">
-                    <p>
-                      Status:{' '}
-                      <span className="font-medium text-white">
-                        {hasError
-                          ? 'Error'
-                          : isExecuting
-                            ? 'Running'
-                            : isCompleted
-                              ? 'Completed'
-                              : 'Idle'}
-                      </span>
-                    </p>
-                    {executionStats && (
-                      <>
-                        <p>
-                          Runs:{' '}
-                          <span className="font-medium text-white">
-                            {executionStats.count}
-                          </span>
-                        </p>
-                        {averageRuntime !== null && (
-                          <p>
-                            Avg runtime:{' '}
-                            <span className="font-medium text-white">
-                              {averageRuntime}ms
-                            </span>
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
-                  <p className="text-sm font-semibold text-neutral-200">
-                    Metadata
-                  </p>
-                  <div className="mt-3 space-y-2 text-sm text-neutral-400">
-                    <p>
-                      Node type:{' '}
-                      <span className="font-medium text-white">
-                        {bubble.nodeType || 'tool'}
-                      </span>
-                    </p>
-                    <p>
-                      Variable ID:{' '}
-                      <span className="font-medium text-white">
-                        {bubble.variableId ?? '—'}
-                      </span>
-                    </p>
-                    {bubble.hasAwait !== undefined && (
-                      <p>
-                        Awaited:{' '}
-                        <span className="font-medium text-white">
-                          {bubble.hasAwait ? 'Yes' : 'No'}
-                        </span>
-                      </p>
-                    )}
-                    {bubble.hasActionCall !== undefined && (
-                      <p>
-                        Action call:{' '}
-                        <span className="font-medium text-white">
-                          {bubble.hasActionCall ? 'Yes' : 'No'}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                </div>
               </div>
             </section>
 
