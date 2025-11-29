@@ -212,12 +212,12 @@ export function BubbleDetailsOverlay({
 
   return createPortal(
     <div
-      className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-[65%]"
+      className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-[53%]"
       style={{ '--bubble-overlay-z': DEFAULT_MODAL_Z_INDEX } as CSSProperties}
     >
       <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 lg:px-12">
-          <div className="ml-8 max-w-4xl overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/95 shadow-2xl">
+        <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="ml-8 max-w-3xl overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/95 shadow-2xl">
             <header className="relative border-b border-neutral-900 p-8">
               <button
                 type="button"
@@ -234,11 +234,6 @@ export function BubbleDetailsOverlay({
                     {bubble.bubbleName && (
                       <span className="rounded-full border border-purple-500/40 px-3 py-1 text-xs uppercase tracking-wide text-purple-200">
                         {bubble.bubbleName}
-                      </span>
-                    )}
-                    {bubble.className && (
-                      <span className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-400">
-                        {bubble.className}
                       </span>
                     )}
                   </div>
@@ -358,7 +353,7 @@ export function BubbleDetailsOverlay({
                           </button>
                         )}
                       </div>
-                      <pre className="mt-3 max-h-60 overflow-auto rounded-xl border border-neutral-800 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200">
+                      <pre className="mt-3 max-h-60 overflow-auto rounded-xl border border-neutral-800 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         {formatValue(param.value)}
                       </pre>
                     </div>
