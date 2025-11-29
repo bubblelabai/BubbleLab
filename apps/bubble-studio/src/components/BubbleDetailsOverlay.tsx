@@ -214,6 +214,7 @@ export function BubbleDetailsOverlay({
     <div
       className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-[53%]"
       style={{ '--bubble-overlay-z': DEFAULT_MODAL_Z_INDEX } as CSSProperties}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -221,7 +222,10 @@ export function BubbleDetailsOverlay({
             <header className="relative border-b border-neutral-900 p-8">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
                 className="absolute right-6 top-6 rounded-full border border-neutral-700 p-2 text-neutral-400 transition hover:text-white"
                 aria-label="Close bubble details"
               >

@@ -242,7 +242,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 ${
+      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 cursor-pointer ${
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isSubBubble
@@ -259,6 +259,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
                 : BUBBLE_COLORS.DEFAULT.border
       }`}
+      onClick={() => {
+        onBubbleClick?.();
+        setIsDetailsOpen(true);
+      }}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
       {/* Left Handle - Shows "Input" button after execution - only render if used */}
