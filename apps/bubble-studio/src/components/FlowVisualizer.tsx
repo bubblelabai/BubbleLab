@@ -297,7 +297,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
       >
     ) => {
-      const verticalSpacing = 220;
+      const verticalSpacing = 140; // Reduced from 220 to bring sub-bubbles closer to parent
       const siblingHorizontalSpacing = 200;
 
       const subBubble: ParsedBubble = {
@@ -346,8 +346,24 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       const parentNode =
         parentNodeId && nodes.find((n) => n.id === parentNodeId);
-      const baseX = parentNode ? parentNode.position.x : 50;
-      const baseY = parentNode ? parentNode.position.y : 50;
+      let baseX = 50;
+      let baseY = 50;
+
+      if (parentNode) {
+        baseX = parentNode.position.x;
+        baseY = parentNode.position.y;
+
+        // If parent node is inside a container (step), convert to absolute position
+        // Parent bubbles in step containers have relative positions, but sub-bubbles
+        // are positioned absolutely, so we need to add the container's position
+        if (parentNode.parentId) {
+          const containerNode = nodes.find((n) => n.id === parentNode.parentId);
+          if (containerNode) {
+            baseX += containerNode.position.x;
+            baseY += containerNode.position.y;
+          }
+        }
+      }
 
       const rowWidth =
         siblingsTotal > 1 ? (siblingsTotal - 1) * siblingHorizontalSpacing : 0;
@@ -367,6 +383,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         type: 'bubbleNode',
         position,
         draggable: true,
+        zIndex: 100 + level, // Sub-bubbles appear above other nodes, deeper levels on top
         data: {
           flowId: currentFlow?.id || flowId,
           bubble: subBubble,
