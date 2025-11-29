@@ -353,7 +353,7 @@ export function BubbleDetailsOverlay({
                             onClick={() => onParamEditInCode(param.name)}
                             className="text-sm font-medium text-purple-300 transition hover:text-purple-200"
                           >
-                            Jump to code
+                            View Code
                           </button>
                         )}
                       </div>

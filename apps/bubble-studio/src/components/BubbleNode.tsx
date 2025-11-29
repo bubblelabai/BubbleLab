@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, Info, Sparkles } from 'lucide-react';
+import { BookOpen, Code, Sparkles } from 'lucide-react';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '../pages/CredentialsPage';
 import { useCreateCredential } from '../hooks/useCredentials';
@@ -194,7 +194,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     null
   );
   const [showDocsTooltip, setShowDocsTooltip] = useState(false);
-  const [showDetailsTooltip, setShowDetailsTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
@@ -441,28 +440,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                     <span>⚠️</span>
                     <span>Missing</span>
                   </div>
-                </div>
-              )}
-              {bubble.parameters.length > 0 && (
-                <div className="relative">
-                  <button
-                    title="View Details"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsDetailsOpen(true);
-                    }}
-                    onMouseEnter={() => setShowDetailsTooltip(true)}
-                    onMouseLeave={() => setShowDetailsTooltip(false)}
-                    className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                  {showDetailsTooltip && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                      View Details
-                    </div>
-                  )}
                 </div>
               )}
             </>
