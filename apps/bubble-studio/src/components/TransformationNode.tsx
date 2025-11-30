@@ -1,9 +1,13 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
+import { Code } from 'lucide-react';
+import { useUIStore } from '../stores/uiStore';
+import { useExecutionStore } from '../stores/executionStore';
+import { BUBBLE_COLORS } from './BubbleColors';
 
 export interface TransformationNodeData {
   flowId: number;
+  transformationId: string; // Node ID for tracking highlight state
   transformationInfo: {
     functionName: string;
     description?: string;
@@ -19,6 +23,7 @@ export interface TransformationNodeData {
     left?: boolean;
     right?: boolean;
   };
+  onTransformationClick?: () => void;
 }
 
 interface TransformationNodeProps {
@@ -26,33 +31,45 @@ interface TransformationNodeProps {
 }
 
 function TransformationNode({ data }: TransformationNodeProps) {
-  const { transformationInfo, usedHandles = {} } = data;
+  const {
+    flowId,
+    transformationId,
+    transformationInfo,
+    usedHandles = {},
+    onTransformationClick,
+  } = data;
   const {
     functionName,
     description,
-    code,
     variableName,
     arguments: args,
+    location,
   } = transformationInfo;
 
-  // Calculate height based on code lines
-  const codeLines = code.split('\n').length;
-  const headerHeight = FLOW_LAYOUT.TRANSFORMATION.HEADER_HEIGHT;
-  const codeLineHeight = FLOW_LAYOUT.TRANSFORMATION.CODE_LINE_HEIGHT;
-  const codeHeight = Math.max(
-    codeLines * codeLineHeight + FLOW_LAYOUT.TRANSFORMATION.CODE_PADDING,
-    FLOW_LAYOUT.TRANSFORMATION.MIN_CODE_HEIGHT
+  const { showEditor } = useUIStore();
+  const [showCodeTooltip, setShowCodeTooltip] = useState(false);
+
+  // Get highlight state from execution store
+  const highlightedBubble = useExecutionStore(
+    flowId,
+    (s) => s.highlightedBubble
   );
-  const padding = FLOW_LAYOUT.TRANSFORMATION.NODE_PADDING;
-  const calculatedHeight = headerHeight + codeHeight + padding;
+  const isHighlighted = highlightedBubble === transformationId;
+
+  const handleViewCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onTransformationClick?.();
+  };
 
   return (
     <div
-      className="relative bg-neutral-800/60 backdrop-blur-sm rounded-lg border border-neutral-600/60 shadow-xl"
+      className={`relative rounded-lg border transition-all duration-300 shadow-xl ${
+        isHighlighted
+          ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+          : 'bg-neutral-800/90 border-neutral-600/60'
+      }`}
       style={{
         width: '400px',
-        height: `${calculatedHeight}px`,
-        padding: '20px',
       }}
     >
       {/* Connection handles - only show if used */}
@@ -61,7 +78,8 @@ function TransformationNode({ data }: TransformationNodeProps) {
           type="target"
           position={Position.Top}
           id="top"
-          style={{ background: '#a3a3a3', opacity: 0.7 }}
+          className={`w-3 h-3 ${isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ top: -6 }}
         />
       )}
       {usedHandles.bottom && (
@@ -69,7 +87,8 @@ function TransformationNode({ data }: TransformationNodeProps) {
           type="source"
           position={Position.Bottom}
           id="bottom"
-          style={{ background: '#a3a3a3', opacity: 0.7 }}
+          className={`w-3 h-3 ${isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ bottom: -6 }}
         />
       )}
       {usedHandles.left && (
@@ -77,7 +96,8 @@ function TransformationNode({ data }: TransformationNodeProps) {
           type="target"
           position={Position.Left}
           id="left"
-          style={{ background: '#a3a3a3', opacity: 0.7 }}
+          className={`w-3 h-3 ${isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ left: -6 }}
         />
       )}
       {usedHandles.right && (
@@ -85,28 +105,56 @@ function TransformationNode({ data }: TransformationNodeProps) {
           type="source"
           position={Position.Right}
           id="right"
-          style={{ background: '#a3a3a3', opacity: 0.7 }}
+          className={`w-3 h-3 ${isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ right: -6 }}
         />
       )}
 
       {/* Header */}
-      <div className="mb-3">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-lg font-semibold text-neutral-100">
-            {variableName ? `${variableName} = ` : ''}
-            {functionName}({args})
-          </span>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center">
+              <Code className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-neutral-100 truncate">
+                {variableName ? `${variableName} = ` : ''}
+                {functionName}({args})
+              </h3>
+              {location && location.startLine > 0 && (
+                <p className="text-xs text-neutral-500 truncate mt-0.5">
+                  Line {location.startLine}
+                  {location.startLine !== location.endLine &&
+                    ` - ${location.endLine}`}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* View Code Button */}
+          <div className="relative">
+            <button
+              type="button"
+              title="View Code"
+              onClick={handleViewCode}
+              onMouseEnter={() => setShowCodeTooltip(true)}
+              onMouseLeave={() => setShowCodeTooltip(false)}
+              className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+            >
+              <Code className="w-3.5 h-3.5" />
+            </button>
+            {showCodeTooltip && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                {showEditor ? 'Hide Code' : 'View Code'}
+              </div>
+            )}
+          </div>
         </div>
         {description && (
-          <p className="text-sm text-neutral-300 line-clamp-2">{description}</p>
+          <p className="text-xs text-neutral-400 mt-1.5 break-words">
+            {description}
+          </p>
         )}
-      </div>
-
-      {/* Code Display */}
-      <div className="mb-3 bg-neutral-900 rounded-md overflow-hidden">
-        <pre className="text-xs text-neutral-100 p-3 overflow-x-auto overflow-y-auto max-h-64">
-          <code>{code}</code>
-        </pre>
       </div>
     </div>
   );

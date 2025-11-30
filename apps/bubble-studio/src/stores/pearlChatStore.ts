@@ -35,6 +35,7 @@ interface PearlChatState {
   activeToolCallIds: Set<string>;
   prompt: string;
   selectedBubbleContext: number[]; // List of bubble variable IDs for context
+  selectedTransformationContext: string | null; // Transformation function name for context
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -49,6 +50,10 @@ interface PearlChatState {
   removeBubbleFromContext: (variableId: number) => void;
   toggleBubbleInContext: (variableId: number) => void;
   clearBubbleContext: () => void;
+
+  // Transformation context management
+  addTransformationToContext: (functionName: string) => void;
+  clearTransformationContext: () => void;
 
   // Event management
   addEventToCurrentTurn: (event: DisplayEvent) => void;
@@ -77,6 +82,7 @@ function createPearlChatStore(flowId: number) {
     activeToolCallIds: new Set(),
     prompt: '',
     selectedBubbleContext: [],
+    selectedTransformationContext: null,
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -95,6 +101,7 @@ function createPearlChatStore(flowId: number) {
         }
         return {
           selectedBubbleContext: [...state.selectedBubbleContext, variableId],
+          selectedTransformationContext: null, // Clear transformation context (exclusive mode)
         };
       }),
 
@@ -121,7 +128,20 @@ function createPearlChatStore(flowId: number) {
         }
       }),
 
-    clearBubbleContext: () => set({ selectedBubbleContext: [] }),
+    clearBubbleContext: () =>
+      set({
+        selectedBubbleContext: [],
+        selectedTransformationContext: null,
+      }),
+
+    addTransformationToContext: (functionName) =>
+      set({
+        selectedTransformationContext: functionName,
+        selectedBubbleContext: [], // Clear bubble context (exclusive mode)
+      }),
+
+    clearTransformationContext: () =>
+      set({ selectedTransformationContext: null }),
 
     startNewTurn: () =>
       set((state) => ({ eventsList: [...state.eventsList, []] })),
@@ -167,6 +187,7 @@ function createPearlChatStore(flowId: number) {
         activeToolCallIds: new Set(),
         prompt: '',
         selectedBubbleContext: [],
+        selectedTransformationContext: null,
       }),
   }));
 }

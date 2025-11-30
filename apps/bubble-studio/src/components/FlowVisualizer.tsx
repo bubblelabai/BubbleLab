@@ -22,6 +22,7 @@ import StepContainerNode, {
 import { calculateSubbubblePositionWithContext } from './utils/nodePositioning';
 import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
 import TransformationNode from './TransformationNode';
+import type { BubbleNodeData } from './BubbleNode';
 import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
@@ -1233,13 +1234,22 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       // Check if this is a transformation step
       if (step.isTransformation && step.transformationData) {
-        const transformationNode: Node = {
+        const transformationNode = {
           id: stepNodeId,
           type: 'transformationNode',
           position: stepPosition,
           draggable: true,
           data: {
             flowId: currentFlow?.id || flowId,
+            transformationId: stepNodeId,
+            onTransformationClick: () => {
+              console.log('onTransformationClick', step.transformationData);
+              useUIStore.getState().showEditorPanel();
+              setExecutionHighlight({
+                startLine: step.location.startLine,
+                endLine: step.location.endLine,
+              });
+            },
             transformationInfo: {
               functionName: step.functionName,
               description: step.description,
@@ -1812,32 +1822,60 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={(_event, node) => {
-          if (node.type === 'bubbleNode') {
+          const executionStore = getExecutionStore(currentFlow?.id || flowId);
+          const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
+
+          if (node.type === 'transformationNode') {
+            const transformationInfo = (node.data as any).transformationInfo;
+            const functionName = transformationInfo.functionName;
+
+            // Highlight the transformation node
+            executionStore.highlightBubble(node.id);
+
+            console.log('addTransformationToContext', functionName);
+
+            // Add transformation to context (automatically clears bubble context)
+            pearlChatStore.getState().addTransformationToContext(functionName);
+
+            // Open Pearl panel
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (node.type === 'bubbleNode') {
+            // For bubble nodes, use variableId
+            const bubbleData = (node.data as unknown as BubbleNodeData).bubble;
+            const bubbleId = bubbleData.variableId
+              ? String(bubbleData.variableId)
+              : node.id;
+
             // Highlight the bubble
-            getExecutionStore(currentFlow?.id || flowId).highlightBubble(
-              node.id
-            );
-            // Clear the bubble context
-            getPearlChatStore(currentFlow?.id || flowId)
-              .getState()
-              .clearBubbleContext();
-            // set context
-            getPearlChatStore(currentFlow?.id || flowId)
-              .getState()
-              .addBubbleToContext(Number(node.id));
+            executionStore.highlightBubble(bubbleId);
+
+            // Set execution highlight in editor
+            if (
+              bubbleData.location.startLine > 0 &&
+              bubbleData.location.endLine > 0
+            ) {
+              setExecutionHighlight({
+                startLine: bubbleData.location.startLine,
+                endLine: bubbleData.location.endLine,
+              });
+            }
+
+            // Clear and set context
+            pearlChatStore.getState().clearBubbleContext();
+            const contextKey = bubbleData.variableId
+              ? bubbleData.variableId
+              : Number(node.id);
+
+            pearlChatStore.getState().addBubbleToContext(contextKey);
             useUIStore.getState().openConsolidatedPanelWith('pearl');
           } else if (
             node.type === 'inputSchemaNode' ||
             node.type === 'cronScheduleNode'
           ) {
             // Highlight the entry node
-            getExecutionStore(currentFlow?.id || flowId).highlightBubble(
-              node.id
-            );
+            executionStore.highlightBubble(node.id);
             // Clear the bubble context (entry nodes don't have bubble context)
-            getPearlChatStore(currentFlow?.id || flowId)
-              .getState()
-              .clearBubbleContext();
+            pearlChatStore.getState().clearBubbleContext();
             useUIStore.getState().openConsolidatedPanelWith('pearl');
           }
         }}
@@ -1845,6 +1883,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           // Dismiss the highlighted bubble
           getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
           useEditorStore.getState().clearExecutionHighlight();
+
           // Clear the bubble context
           useUIStore.getState().openConsolidatedPanelWith('pearl');
           getPearlChatStore(currentFlow?.id || flowId)

@@ -143,6 +143,7 @@ export function BubbleDetailsOverlay({
           )}
         </div>
         <select
+          title={`${bubble.bubbleName} ${credType}`}
           className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus:border-purple-500 focus:outline-none"
           value={
             selectedValue !== undefined && selectedValue !== null
@@ -341,11 +342,11 @@ export function BubbleDetailsOverlay({
                               </span>
                             )}
                           </p>
-                          {param.description && (
+                          {/* {param.description && (
                             <p className="mt-1 text-sm text-neutral-400">
                               {param.description}
                             </p>
-                          )}
+                          )} */}
                         </div>
                         {onParamEditInCode && (
                           <button

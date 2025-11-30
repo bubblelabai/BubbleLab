@@ -24,6 +24,7 @@ import {
   HelpCircle,
   FileInput,
   Settings,
+  Code,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
@@ -176,6 +177,12 @@ export function PearlChat() {
       icon: React.ReactNode;
       description: string;
     }>;
+    transformationActions: Array<{
+      label: string;
+      prompt: string;
+      icon: React.ReactNode;
+      description: string;
+    }>;
     bubbleActions: Array<{
       label: string;
       prompt: string;
@@ -258,6 +265,32 @@ export function PearlChat() {
       ];
     }
 
+    // Build transformation-specific actions if a transformation is selected
+    const transformationActions: Array<{
+      label: string;
+      prompt: string;
+      icon: React.ReactNode;
+      description: string;
+    }> = [];
+
+    if (pearl.selectedTransformationContext) {
+      transformationActions.push(
+        {
+          label: `Describe what ${pearl.selectedTransformationContext} does`,
+          prompt: `Describe what this transformation function does`,
+          icon: <FileInput className="w-4 h-4" />,
+          description: `Explain the purpose and behavior of ${pearl.selectedTransformationContext}`,
+        },
+        {
+          label: `Modify ${pearl.selectedTransformationContext}`,
+          prompt: `Modify this transformation function`,
+          icon: <Code className="w-4 h-4" />,
+          description: `Change the implementation of ${pearl.selectedTransformationContext}`,
+        }
+      );
+    }
+
+    // Combine main actions: base suggestions and conversion suggestions
     const mainActions = [...baseSuggestions, ...conversionSuggestions];
 
     // Use selected bubble context to generate bubble-specific actions
@@ -308,6 +341,7 @@ export function PearlChat() {
 
     return {
       mainActions,
+      transformationActions,
       bubbleActions,
     };
   };
@@ -344,7 +378,7 @@ export function PearlChat() {
                 Quick Actions
               </div>
               {(() => {
-                const { mainActions, bubbleActions } =
+                const { mainActions, transformationActions, bubbleActions } =
                   getQuickStartSuggestions();
                 return (
                   <>
@@ -371,6 +405,39 @@ export function PearlChat() {
                         </div>
                       </button>
                     ))}
+
+                    {/* Transformation Specific Actions */}
+                    {transformationActions.length > 0 && (
+                      <>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3 px-1">
+                          Transformation specific Quick Actions
+                        </div>
+                        {transformationActions.map((suggestion, index) => (
+                          <button
+                            key={`transformation-${index}`}
+                            type="button"
+                            onClick={() =>
+                              handleSuggestionClick(suggestion.prompt)
+                            }
+                            className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                                {suggestion.icon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                                  {suggestion.label}
+                                </div>
+                                <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                  {suggestion.description}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    )}
 
                     {/* Bubble Specific Actions */}
                     {bubbleActions.length > 0 && (
@@ -587,7 +654,11 @@ export function PearlChat() {
               disabled={pearl.isPending}
               flowId={selectedFlowId}
               selectedBubbleContext={pearl.selectedBubbleContext}
+              selectedTransformationContext={
+                pearl.selectedTransformationContext
+              }
               onRemoveBubble={pearl.removeBubbleFromContext}
+              onRemoveTransformation={pearl.clearTransformationContext}
             />
             <div className="absolute right-0 top-1/2 -translate-y-1/2">
               <label className="cursor-pointer">
