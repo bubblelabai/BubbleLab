@@ -670,9 +670,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
         selectedBubbleCredentials={selectedBubbleCredentials}
         availableCredentials={availableCredentials}
         onCredentialChange={handleCredentialChange}
-        onRequestCreateCredential={(credType) =>
-          setCreateModalForType(credType)
-        }
         onParamEditInCode={onParamEditInCode}
         onViewCode={() => onBubbleClick?.()}
         showEditor={showEditor}

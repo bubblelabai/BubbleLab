@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo } from 'react';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, Sparkles, X, Shield, Info } from 'lucide-react';
@@ -10,6 +10,8 @@ import type {
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
 import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
+import { CreateCredentialModal } from '@/pages/CredentialsPage';
+import { useCreateCredential } from '@/hooks/useCredentials';
 
 interface BubbleDetailsOverlayProps {
   isOpen: boolean;
@@ -27,7 +29,6 @@ interface BubbleDetailsOverlayProps {
   selectedBubbleCredentials: Record<string, number | null>;
   availableCredentials: CredentialResponse[];
   onCredentialChange: (credType: string, credId: number | null) => void;
-  onRequestCreateCredential: (credType: string) => void;
   onParamEditInCode?: (paramName: string) => void;
   onViewCode?: () => void;
   showEditor: boolean;
@@ -70,13 +71,18 @@ export function BubbleDetailsOverlay({
   selectedBubbleCredentials,
   availableCredentials,
   onCredentialChange,
-  onRequestCreateCredential,
   onParamEditInCode,
   onViewCode,
   showEditor,
   onFixWithPearl,
   isPearlPending,
 }: BubbleDetailsOverlayProps) {
+  // Internal state for credential creation modal
+  const [createModalForType, setCreateModalForType] = useState<string | null>(
+    null
+  );
+  const createCredentialMutation = useCreateCredential();
+
   const displayParams = useMemo(
     () =>
       bubble.parameters.filter(
@@ -153,7 +159,7 @@ export function BubbleDetailsOverlay({
           onChange={(event) => {
             const val = event.target.value;
             if (val === '__ADD_NEW__') {
-              onRequestCreateCredential(credType);
+              setCreateModalForType(credType);
               return;
             }
             const parsed = val ? parseInt(val, 10) : null;
@@ -385,6 +391,26 @@ export function BubbleDetailsOverlay({
           </div>
         </div>
       </div>
+
+      {/* Create Credential Modal - rendered with higher z-index */}
+      {createModalForType && (
+        <div className="fixed inset-0 z-[1300]">
+          <CreateCredentialModal
+            isOpen={!!createModalForType}
+            onClose={() => setCreateModalForType(null)}
+            onSubmit={(data) => createCredentialMutation.mutateAsync(data)}
+            isLoading={createCredentialMutation.isPending}
+            lockedCredentialType={createModalForType as CredentialType}
+            lockType
+            onSuccess={(created) => {
+              if (createModalForType) {
+                onCredentialChange(createModalForType, created.id);
+              }
+              setCreateModalForType(null);
+            }}
+          />
+        </div>
+      )}
     </div>,
     document.body
   );
