@@ -166,14 +166,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     const currentExpanded = executionStore.expandedRootIds;
 
     if (isExecuting) {
-      const allRoots: string[] = [];
+      const allRoots: number[] = [];
       bubbleEntries.forEach(([key, bubbleData]) => {
         const bubble = bubbleData as ParsedBubbleWithInfo;
         if (bubble.dependencyGraph?.dependencies?.length) {
-          const nodeId = bubble.variableId
-            ? String(bubble.variableId)
-            : String(key);
-          allRoots.push(nodeId);
+          const nodeId = bubble.variableId ?? parseInt(key, 10);
+          if (!isNaN(nodeId)) {
+            allRoots.push(nodeId);
+          }
         }
       });
       // Only update if the roots are different
@@ -288,7 +288,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       siblingIndex: number = 0,
       siblingsTotal: number = 1,
       path: string = '',
-      rootId: string = '',
+      rootId: number = -1,
       usedHandlesMap?: Map<
         string,
         { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
@@ -435,7 +435,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       for (const step of steps) {
         const stepBubbles = step.bubbleIds
-          .map((id) => bubbles[parseInt(id)])
+          .map((id) => bubbles[id])
           .filter(Boolean)
           .sort((a, b) => a.location.startLine - b.location.startLine);
 
@@ -687,6 +687,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
     // Extract steps with control flow graph from workflow
     const stepGraph = extractStepGraph(currentFlow?.workflow, bubbleParameters);
+    console.log('stepGraph', stepGraph);
     const steps = stepGraph.steps;
     const stepEdges = stepGraph.edges;
 
@@ -696,13 +697,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       currentFlow?.workflow && Object.keys(currentFlow.workflow).length > 0;
 
     // Find bubbles that are not in any step (unparsed bubbles)
-    const bubblesInSteps = new Set<string>();
+    const bubblesInSteps = new Set<number>();
     steps.forEach((step) => {
       step.bubbleIds.forEach((id) => bubblesInSteps.add(id));
     });
     const unparsedBubbles = bubbleEntries.filter(([key, bubbleData]) => {
       const bubble = bubbleData;
-      const id = bubble.variableId ? String(bubble.variableId) : String(key);
+      const id = bubble.variableId;
       return !bubblesInSteps.has(id);
     });
 
@@ -836,6 +837,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
         // Create sub-bubbles from dependency graph
         if (bubble.dependencyGraph?.dependencies) {
+          const rootId = bubble.variableId ?? parseInt(key, 10);
           bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
             createNodesFromDependencyGraph(
               dep,
@@ -847,7 +849,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               idx,
               arr.length,
               `${idx}`,
-              nodeId,
+              rootId,
               usedHandlesMap
             );
           });
@@ -1148,7 +1150,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       if (step.isTransformation) continue; // Skip transformation steps
 
       const stepBubbles = step.bubbleIds
-        .map((id) => bubbleParameters[parseInt(id)])
+        .map((id) => bubbleParameters[id])
         .filter(Boolean)
         .sort((a, b) => a.location.startLine - b.location.startLine);
 
@@ -1283,9 +1285,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         // Find the bubble data
         const bubbleEntry = bubbleEntries.find(([key, bubbleData]) => {
           const bubble = bubbleData;
-          const id = bubble.variableId
-            ? String(bubble.variableId)
-            : String(key);
+          const id = bubble.variableId ? bubble.variableId : parseInt(key);
           return id === bubbleId;
         });
 
@@ -1470,7 +1470,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   };
 
   // Track previous expandedRootIds and currentFlow to detect changes
-  const prevExpandedRootIdsRef = useRef<string[]>([]);
+  const prevExpandedRootIdsRef = useRef<number[]>([]);
   const prevFlowRef = useRef<typeof currentFlow>(undefined);
 
   // Sync nodes and edges state with computed values, preserving positions

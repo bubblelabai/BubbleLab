@@ -64,12 +64,12 @@ export interface FlowExecutionState {
   /**
    * Root bubble IDs that are expanded (showing sub-bubbles)
    */
-  expandedRootIds: string[];
+  expandedRootIds: number[];
 
   /**
    * Root bubble IDs that are suppressed (manually hidden)
    */
-  suppressedRootIds: string[];
+  suppressedRootIds: number[];
 
   // ============= Execution Data =============
 
@@ -261,12 +261,12 @@ export interface FlowExecutionState {
   /**
    * Toggle expansion of a root bubble (show/hide sub-bubbles)
    */
-  toggleRootExpansion: (nodeId: string) => void;
+  toggleRootExpansion: (nodeId: number) => void;
 
   /**
    * Set expanded root IDs (for auto-expansion during execution)
    */
-  setExpandedRootIds: (ids: string[]) => void;
+  setExpandedRootIds: (ids: number[]) => void;
 
   /**
    * Get execution statistics from events

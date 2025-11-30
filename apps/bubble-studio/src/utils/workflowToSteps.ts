@@ -12,7 +12,7 @@ export interface StepData {
   description?: string;
   isAsync: boolean;
   location: { startLine: number; endLine: number };
-  bubbleIds: string[]; // IDs of bubbles inside this step
+  bubbleIds: number[]; // IDs of bubbles inside this step
   controlFlowNodes: WorkflowNode[]; // if/for/while nodes for edge generation
   // Branch information for hierarchical layout
   parentStepId?: string; // Parent step in the flow (or undefined for root)
@@ -302,6 +302,21 @@ export function extractStepGraph(
           `[StepGraph] After if/else, lastStepIds (convergence):`,
           lastStepIds
         );
+      } else if (node.type === 'for' || node.type === 'while') {
+        const loopNode = node;
+        // Process loop body - loops act like sequential execution
+        // The loop body is processed recursively, and steps from the loop body
+        // become the continuation point after the loop
+        if (loopNode.children && loopNode.children.length > 0) {
+          const loopLastSteps = processNodes(loopNode.children, {
+            parentStepIds: lastStepIds,
+            branchType: 'sequential',
+          });
+
+          // After loop, continue with the steps from the loop body
+          // If the loop body produced steps, use those; otherwise keep current lastStepIds
+          lastStepIds = loopLastSteps.length > 0 ? loopLastSteps : lastStepIds;
+        }
       } else if (node.type === 'parallel_execution') {
         const parallelNode = node as ParallelExecutionWorkflowNode;
 
@@ -486,7 +501,7 @@ export function extractStepsFromWorkflow(
           stepIndex++;
         } else if (child.type === 'bubble') {
           // Handle bubbles directly in Promise.all (less common)
-          const bubbleId = String(child.variableId);
+          const bubbleId = child.variableId;
           const stepId = `step-${stepIndex}`;
           steps.push({
             id: stepId,
@@ -525,13 +540,13 @@ export function extractStepsFromWorkflow(
  * Extract bubble IDs from workflow node children
  * Recursively searches for nodes of type 'bubble'
  */
-function extractBubbleIdsFromChildren(children: WorkflowNode[]): string[] {
-  const bubbleIds: string[] = [];
+function extractBubbleIdsFromChildren(children: WorkflowNode[]): number[] {
+  const bubbleIds: number[] = [];
 
   for (const child of children) {
     if (child.type === 'bubble') {
       // Bubble nodes have variableId
-      bubbleIds.push(String(child.variableId));
+      bubbleIds.push(child.variableId);
     } else if ('children' in child && Array.isArray(child.children)) {
       // Recursively search in nested children (e.g., inside if/for blocks)
       bubbleIds.push(...extractBubbleIdsFromChildren(child.children));
@@ -548,15 +563,15 @@ function extractBubbleIdsFromChildren(children: WorkflowNode[]): string[] {
 function extractBubbleIdsByLineRange(
   location: { startLine: number; endLine: number },
   allBubbles: Record<number, ParsedBubbleWithInfo>
-): string[] {
-  const bubbleIds: string[] = [];
+): number[] {
+  const bubbleIds: number[] = [];
 
   for (const bubble of Object.values(allBubbles)) {
     if (
       bubble.location.startLine >= location.startLine &&
       bubble.location.endLine <= location.endLine
     ) {
-      bubbleIds.push(String(bubble.variableId));
+      bubbleIds.push(bubble.variableId);
     }
   }
 
@@ -586,9 +601,9 @@ function extractControlFlowNodes(children: WorkflowNode[]): WorkflowNode[] {
 function extractTopLevelBubbles(
   workflow: ParsedWorkflow,
   bubbles: Record<number, ParsedBubbleWithInfo>
-): string[] {
+): number[] {
   // Get all bubble IDs that are inside function calls or parallel execution
-  const bubblesInSteps = new Set<string>();
+  const bubblesInSteps = new Set<number>();
 
   /**
    * Recursively collect bubbles from all nodes
@@ -642,9 +657,9 @@ function extractTopLevelBubbles(
   collectBubblesInSteps(workflow.root);
 
   // Find bubbles not in steps
-  const topLevelBubbleIds: string[] = [];
+  const topLevelBubbleIds: number[] = [];
   for (const [id, bubble] of Object.entries(bubbles)) {
-    const bubbleId = String(bubble.variableId || id);
+    const bubbleId = bubble.variableId || parseInt(id);
     if (!bubblesInSteps.has(bubbleId)) {
       topLevelBubbleIds.push(bubbleId);
     }

@@ -64,6 +64,13 @@ function BubbleNode({ data }: BubbleNodeProps) {
     ? String(bubble.variableId)
     : String(bubbleKey);
 
+  // Determine numeric root ID for expansion checks (expandedRootIds/suppressedRootIds are number[])
+  const rootId =
+    bubble.variableId ??
+    (typeof bubbleKey === 'number'
+      ? bubbleKey
+      : parseInt(String(bubbleKey), 10));
+
   // Determine credentials key (try variableId, variableName, bubbleName, fallback to bubbleKey)
   const credentialsKey = String(
     bubble.variableId || bubble.variableName || bubble.bubbleName || bubbleKey
@@ -100,10 +107,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Compute if sub-bubbles are visible (local to this bubble node)
   const areSubBubblesVisibleLocal = useMemo(() => {
     if (!hasSubBubbles) return false;
-    const rootExpanded = expandedRootIds.includes(bubbleId);
-    const rootSuppressed = suppressedRootIds.includes(bubbleId);
+    if (isNaN(rootId)) return false;
+    const rootExpanded = expandedRootIds.includes(rootId);
+    const rootSuppressed = suppressedRootIds.includes(rootId);
     return rootExpanded && !rootSuppressed;
-  }, [hasSubBubbles, expandedRootIds, suppressedRootIds, bubbleId]);
+  }, [hasSubBubbles, expandedRootIds, suppressedRootIds, rootId]);
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
@@ -637,7 +645,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              toggleRootExpansion(bubbleId);
+              if (!isNaN(rootId)) {
+                toggleRootExpansion(rootId);
+              }
             }}
             className={`w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-medium rounded ${
               areSubBubblesVisibleLocal
