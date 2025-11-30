@@ -14,25 +14,21 @@ import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
 import BubbleNode from './BubbleNode';
 import InputSchemaNode from './InputSchemaNode';
-import StepContainerNode, {
+import StepContainerNode from './StepContainerNode';
+import {
   calculateBubblePosition,
   calculateStepContainerHeight,
-  STEP_CONTAINER_LAYOUT,
-} from './StepContainerNode';
+} from './utils/stepContainerUtils';
 import { calculateSubbubblePositionWithContext } from './utils/nodePositioning';
 import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
 import TransformationNode from './TransformationNode';
+import type { TransformationNodeData } from './TransformationNode';
 import type { BubbleNodeData } from './BubbleNode';
 import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import {
-  extractStepGraph,
-  type StepData,
-  type StepGraph,
-  type StepEdge,
-} from '../utils/workflowToSteps';
+import { extractStepGraph, type StepData } from '../utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useUIStore } from '../stores/uiStore';
@@ -857,21 +853,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           });
         }
       });
-
-      // Add sequential flow connections (already tracked in usedHandlesMap above)
-      const mainBubblesForEdges = bubbleEntries
-        .map(([key, bubbleData]) => {
-          const typedBubbleData = bubbleData as Partial<ParsedBubble>;
-          return {
-            key,
-            nodeId: typedBubbleData?.variableId
-              ? String(typedBubbleData.variableId)
-              : String(key),
-            startLine: typedBubbleData?.location?.startLine || 0,
-          };
-        })
-        .filter((bubble) => bubble.startLine > 0)
-        .sort((a, b) => a.startLine - b.startLine);
 
       // Connect entry node to first bubble
       if (
@@ -1826,7 +1807,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
 
           if (node.type === 'transformationNode') {
-            const transformationInfo = (node.data as any).transformationInfo;
+            const transformationInfo = (
+              node.data as unknown as TransformationNodeData
+            ).transformationInfo;
             const functionName = transformationInfo.functionName;
 
             // Highlight the transformation node

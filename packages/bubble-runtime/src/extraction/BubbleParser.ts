@@ -2890,7 +2890,7 @@ export class BubbleParser {
         }
       | undefined = undefined;
 
-    let children: WorkflowNode[] = [];
+    const children: WorkflowNode[] = [];
     let description: string | undefined = undefined;
 
     if (callInfo.isMethodCall && this.cachedAST) {

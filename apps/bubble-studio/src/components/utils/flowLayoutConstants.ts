@@ -1,4 +1,4 @@
-import { STEP_CONTAINER_LAYOUT } from '../StepContainerNode';
+import { STEP_CONTAINER_LAYOUT } from './stepContainerUtils';
 
 /**
  * Centralized layout constants for flow visualization

@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react';
-import { STEP_CONTAINER_LAYOUT } from '../StepContainerNode';
+import { STEP_CONTAINER_LAYOUT } from './stepContainerUtils';
 import { FLOW_LAYOUT } from './flowLayoutConstants';
 
 /**
