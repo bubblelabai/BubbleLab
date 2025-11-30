@@ -19,6 +19,8 @@ import StepContainerNode, {
   calculateStepContainerHeight,
   STEP_CONTAINER_LAYOUT,
 } from './StepContainerNode';
+import { calculateSubbubblePositionWithContext } from './utils/nodePositioning';
+import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
 import TransformationNode from './TransformationNode';
 import type {
   DependencyGraphNode,
@@ -59,9 +61,7 @@ const proOptions = { hideAttribution: true };
 const sanitizeIdSegment = (value: string) =>
   value.replace(/[^a-zA-Z0-9_-]/g, '') || 'segment';
 
-// Executing bubble viewport preferences (tweak these)
-const EXECUTION_LEFT_OFFSET_RATIO = 0.1; // 0 = center, 0.3 = ~30% from left
-const EXECUTION_ZOOM = 1.0; // Set desired zoom when centering during execution
+// Executing bubble viewport preferences - now using FLOW_LAYOUT constants
 
 // Edge label visibility
 const SHOW_EDGE_LABELS = false; // Set to true to show conditional edge labels
@@ -297,9 +297,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
       >
     ) => {
-      const verticalSpacing = 140; // Reduced from 220 to bring sub-bubbles closer to parent
-      const siblingHorizontalSpacing = 200;
-
       const subBubble: ParsedBubble = {
         variableId: dependencyNode.variableId || -1,
         bubbleName: dependencyNode.name,
@@ -344,37 +341,28 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return;
       }
 
-      const parentNode =
-        parentNodeId && nodes.find((n) => n.id === parentNodeId);
-      let baseX = 50;
-      let baseY = 50;
+      const parentNode = parentNodeId
+        ? nodes.find((n) => n.id === parentNodeId)
+        : undefined;
 
-      if (parentNode) {
-        baseX = parentNode.position.x;
-        baseY = parentNode.position.y;
+      // Get all step container nodes for positioning context
+      const allStepNodes = nodes.filter((n) => n.type === 'stepContainerNode');
 
-        // If parent node is inside a container (step), convert to absolute position
-        // Parent bubbles in step containers have relative positions, but sub-bubbles
-        // are positioned absolutely, so we need to add the container's position
-        if (parentNode.parentId) {
-          const containerNode = nodes.find((n) => n.id === parentNode.parentId);
-          if (containerNode) {
-            baseX += containerNode.position.x;
-            baseY += containerNode.position.y;
-          }
-        }
-      }
+      // Find container node if parent is inside a step container
+      const containerNode = parentNode?.parentId
+        ? nodes.find((n) => n.id === parentNode.parentId) || null
+        : null;
 
-      const rowWidth =
-        siblingsTotal > 1 ? (siblingsTotal - 1) * siblingHorizontalSpacing : 0;
-      const initialPosition = {
-        x: baseX - rowWidth / 2 + siblingIndex * siblingHorizontalSpacing,
-        y: baseY + verticalSpacing,
-      };
-
-      // Use persisted position if available, otherwise use initial position
+      // Calculate position using the positioning utility
       const persistedPosition = persistedPositions.current.get(nodeId);
-      const position = persistedPosition || initialPosition;
+      const position = calculateSubbubblePositionWithContext(
+        parentNode,
+        containerNode,
+        allStepNodes,
+        siblingIndex,
+        siblingsTotal,
+        persistedPosition
+      );
 
       // Note: Sub-bubbles will subscribe to their own execution state via BubbleNode
 
@@ -383,7 +371,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         type: 'bubbleNode',
         position,
         draggable: true,
-        zIndex: 100 + level, // Sub-bubbles appear above other nodes, deeper levels on top
+        zIndex: FLOW_LAYOUT.Z_INDEX.SUBBUBBLE_BASE + level, // Sub-bubbles appear above other nodes, deeper levels on top
         data: {
           flowId: currentFlow?.id || flowId,
           bubble: subBubble,
@@ -487,9 +475,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const initialNodesAndEdges = () => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
-    const horizontalSpacing = 450;
-    const baseY = 300;
-    const startX = 50;
+    const horizontalSpacing = FLOW_LAYOUT.SEQUENTIAL.HORIZONTAL_SPACING;
+    const baseY = FLOW_LAYOUT.SEQUENTIAL.BASE_Y;
+    const startX = FLOW_LAYOUT.SEQUENTIAL.START_X;
 
     // Determine entry bubble as the one with the smallest startLine
     let smallestStartLine = Number.POSITIVE_INFINITY;
@@ -663,7 +651,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           id: entryNodeId,
           type: 'cronScheduleNode',
           position: persistedEntryPos || {
-            x: startX - 450,
+            x: startX - FLOW_LAYOUT.SEQUENTIAL.ENTRY_NODE_OFFSET,
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
@@ -685,7 +673,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           id: entryNodeId,
           type: 'inputSchemaNode',
           position: persistedEntryPos || {
-            x: startX - 450,
+            x: startX - FLOW_LAYOUT.SEQUENTIAL.ENTRY_NODE_OFFSET,
             y: baseY,
           },
           origin: [0, 0.5] as [number, number],
@@ -953,10 +941,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       if (step.isTransformation && step.transformationData) {
         // Transformation node height calculation (matching TransformationNode.tsx)
         const codeLines = step.transformationData.code.split('\n').length;
-        const headerHeight = 80;
-        const codeLineHeight = 18;
-        const codeHeight = Math.max(codeLines * codeLineHeight + 20, 100);
-        const padding = 40;
+        const headerHeight = FLOW_LAYOUT.TRANSFORMATION.HEADER_HEIGHT;
+        const codeLineHeight = FLOW_LAYOUT.TRANSFORMATION.CODE_LINE_HEIGHT;
+        const codeHeight = Math.max(
+          codeLines * codeLineHeight + FLOW_LAYOUT.TRANSFORMATION.CODE_PADDING,
+          FLOW_LAYOUT.TRANSFORMATION.MIN_CODE_HEIGHT
+        );
+        const padding = FLOW_LAYOUT.TRANSFORMATION.NODE_PADDING;
         return headerHeight + codeHeight + padding;
       } else {
         // Step container height calculation (matching StepContainerNode.tsx)
@@ -979,10 +970,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       }
 
       // Layout parameters
-      const startX = 200; // Start after entry node
-      const startY = 200;
-      const minVerticalSpacing = 80; // Minimum spacing between steps
-      const horizontalSpacing = 500; // Horizontal space between branches
+      const startX = FLOW_LAYOUT.HIERARCHICAL.START_X;
+      const startY = FLOW_LAYOUT.HIERARCHICAL.START_Y;
+      const minVerticalSpacing = FLOW_LAYOUT.HIERARCHICAL.MIN_VERTICAL_SPACING;
+      const horizontalSpacing = FLOW_LAYOUT.HIERARCHICAL.HORIZONTAL_SPACING;
 
       // Build adjacency map: parent -> children (using step.parentStepId)
       const childrenMap = new Map<string, StepData[]>();
@@ -1038,7 +1029,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         }
 
         // Get the height of the current step
-        const currentStepHeight = heightMap.get(stepId) || 200;
+        const currentStepHeight =
+          heightMap.get(stepId) || FLOW_LAYOUT.HIERARCHICAL.DEFAULT_HEIGHT;
 
         // Sort children by branch type (then before else) for consistent layout
         const sortedChildren = [...children].sort((a, b) => {
@@ -1100,7 +1092,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       // We need to iterate multiple times until positions stabilize (in case convergence points depend on other convergence points)
       let changed = true;
       let iterations = 0;
-      const maxIterations = 10; // Safety limit
+      const maxIterations = 10; // Safety limit (not a layout constant, but a convergence limit)
 
       while (changed && iterations < maxIterations) {
         changed = false;
@@ -1112,7 +1104,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             const parentPositions = allParents
               .map((parentId) => {
                 const pos = positionMap.get(parentId);
-                const height = heightMap.get(parentId) || 200;
+                const height =
+                  heightMap.get(parentId) ||
+                  FLOW_LAYOUT.HIERARCHICAL.DEFAULT_HEIGHT;
                 return pos ? { ...pos, height } : undefined;
               })
               .filter(
@@ -1233,7 +1227,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     // Create step container nodes or transformation nodes with hierarchical positions
     steps.forEach((step) => {
       const stepNodeId = step.id;
-      const stepPosition = stepPositions.get(stepNodeId) || { x: 500, y: 200 };
+      const stepPosition =
+        stepPositions.get(stepNodeId) ||
+        FLOW_LAYOUT.HIERARCHICAL.DEFAULT_POSITION;
 
       // Check if this is a transformation step
       if (step.isTransformation && step.transformationData) {
@@ -1676,14 +1672,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             entryNode.position.y,
             {
               zoom: zoom,
-              duration: 300,
+              duration: FLOW_LAYOUT.VIEWPORT.CENTER_DURATION,
             }
           );
 
           // Mark that we've set the initial view
           hasSetInitialView.current = true;
         }
-      }, 100);
+      }, FLOW_LAYOUT.VIEWPORT.INITIAL_VIEW_DELAY);
 
       return () => clearTimeout(timer);
     }
@@ -1729,10 +1725,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     if (!node) return;
 
     lastCenteredBubbleIdRef.current = chosenId;
-    const zoom = EXECUTION_ZOOM || 1;
+    const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
     const viewportWidth = window.innerWidth;
     const horizontalShift =
-      (viewportWidth * EXECUTION_LEFT_OFFSET_RATIO) / zoom;
+      (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) / zoom;
     setCenter(node.position.x + horizontalShift, node.position.y, {
       duration: 250,
       zoom,
@@ -1856,9 +1852,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             .clearBubbleContext();
         }}
         proOptions={proOptions}
-        minZoom={0.1}
-        maxZoom={2.0}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        minZoom={FLOW_LAYOUT.VIEWPORT.MIN_ZOOM}
+        maxZoom={FLOW_LAYOUT.VIEWPORT.MAX_ZOOM}
+        defaultViewport={{
+          x: 0,
+          y: 0,
+          zoom: FLOW_LAYOUT.VIEWPORT.INITIAL_ZOOM,
+        }}
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}

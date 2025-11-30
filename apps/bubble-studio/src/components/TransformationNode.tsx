@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
 
 export interface TransformationNodeData {
   flowId: number;
@@ -36,10 +37,13 @@ function TransformationNode({ data }: TransformationNodeProps) {
 
   // Calculate height based on code lines
   const codeLines = code.split('\n').length;
-  const headerHeight = 80;
-  const codeLineHeight = 18;
-  const codeHeight = Math.max(codeLines * codeLineHeight + 20, 100);
-  const padding = 40;
+  const headerHeight = FLOW_LAYOUT.TRANSFORMATION.HEADER_HEIGHT;
+  const codeLineHeight = FLOW_LAYOUT.TRANSFORMATION.CODE_LINE_HEIGHT;
+  const codeHeight = Math.max(
+    codeLines * codeLineHeight + FLOW_LAYOUT.TRANSFORMATION.CODE_PADDING,
+    FLOW_LAYOUT.TRANSFORMATION.MIN_CODE_HEIGHT
+  );
+  const padding = FLOW_LAYOUT.TRANSFORMATION.NODE_PADDING;
   const calculatedHeight = headerHeight + codeHeight + padding;
 
   return (
