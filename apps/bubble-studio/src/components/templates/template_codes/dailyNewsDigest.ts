@@ -60,7 +60,7 @@ interface DigestData {
 }
 
 export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
-  // Atomic function: Scrape all subreddits
+  // Scrape all subreddits
   private async scrapeAllSubreddits(subreddits: string[]): Promise<RedditPost[]> {
     const allPosts: RedditPost[] = [];
 
@@ -84,7 +84,7 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     return allPosts;
   }
 
-  // Atomic function: Scrape all news websites
+  // Scrape all news websites
   private async scrapeAllNewsUrls(newsUrls: string[]): Promise<NewsArticle[]> {
     const allArticles: NewsArticle[] = [];
 
@@ -112,7 +112,7 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     return allArticles;
   }
 
-  // Atomic function: Generate AI digest
+  // Generate AI digest
   private async generateDigest(headlines: (RedditPost | NewsArticle)[]): Promise<DigestData> {
     const prompt = \`
       You are an expert news editor. Analyze the following headlines and organize them into a structured digest.
@@ -169,7 +169,7 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     return digestData;
   }
 
-  // Atomic function: Build HTML email
+  // Build HTML email
   private buildEmailHtml(digestData: DigestData): string {
     return \`
 <!DOCTYPE html>
@@ -236,7 +236,7 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     \`;
   }
 
-  // Atomic function: Send email via Resend
+  // Send email via Resend
   private async sendDigestEmail(email: string, htmlEmail: string): Promise<string> {
     // Sends the formatted HTML news digest to the recipient's email address.
     // The 'from' parameter is automatically set to Bubble Lab's default sender
