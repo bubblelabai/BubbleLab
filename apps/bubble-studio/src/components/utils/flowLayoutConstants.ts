@@ -31,7 +31,7 @@ export const FLOW_LAYOUT = {
   SUBBUBBLE: {
     VERTICAL_SPACING: 140, // Vertical distance below parent
     SIBLING_HORIZONTAL_SPACING: 200, // Horizontal spacing between sibling subbubbles
-    HORIZONTAL_SPACING: 50, // Space between step container and subbubbles
+    HORIZONTAL_SPACING: 150, // Space between step container and subbubbles
     Y_THRESHOLD: 100, // Consider steps within this Y distance as same level
     SAME_X_THRESHOLD: 10, // Consider steps at same X if within this threshold
     DEFAULT_POSITION: { x: 50, y: 50 } as { x: number; y: number }, // Default position fallback
