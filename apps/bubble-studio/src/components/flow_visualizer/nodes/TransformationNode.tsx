@@ -1,9 +1,9 @@
 import { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Code } from 'lucide-react';
-import { useUIStore } from '../stores/uiStore';
-import { useExecutionStore } from '../stores/executionStore';
-import { BUBBLE_COLORS } from './BubbleColors';
+import { useUIStore } from '@/stores/uiStore';
+import { useExecutionStore } from '@/stores/executionStore';
+import { BUBBLE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 
 export interface TransformationNodeData {
   flowId: number;

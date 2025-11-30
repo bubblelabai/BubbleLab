@@ -11,9 +11,9 @@ import {
   X,
 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
-import FlowVisualizer from '@/components/FlowVisualizer';
+import FlowVisualizer from '@/components/flow_visualizer/FlowVisualizer';
 import { FlowGeneration } from '@/components/FlowGeneration';
-import { Tooltip } from '@/components/Tooltip';
+import { Tooltip } from '@/components/shared/Tooltip';
 import { ConsolidatedSidePanel } from '@/components/ConsolidatedSidePanel';
 import { useEditor } from '@/hooks/useEditor';
 import { useUIStore } from '@/stores/uiStore';

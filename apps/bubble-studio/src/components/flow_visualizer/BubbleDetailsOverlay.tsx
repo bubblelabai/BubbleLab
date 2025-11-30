@@ -8,8 +8,8 @@ import type {
   CredentialType,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import BubbleExecutionBadge from './BubbleExecutionBadge';
-import { BADGE_COLORS } from './BubbleColors';
+import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
+import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 
 interface BubbleDetailsOverlayProps {
   isOpen: boolean;

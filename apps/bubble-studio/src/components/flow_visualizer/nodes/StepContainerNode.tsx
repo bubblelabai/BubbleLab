@@ -3,7 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import {
   STEP_CONTAINER_LAYOUT,
   calculateStepContainerHeight,
-} from './utils/stepContainerUtils';
+} from '@/components/flow_visualizer/stepContainerUtils';
 
 export interface StepContainerNodeData {
   flowId: number;

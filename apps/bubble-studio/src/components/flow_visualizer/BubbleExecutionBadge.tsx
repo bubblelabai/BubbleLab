@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { BADGE_COLORS } from './BubbleColors';
+import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 
 interface BubbleExecutionBadgeProps {
   hasError?: boolean;

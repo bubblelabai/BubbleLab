@@ -3,23 +3,26 @@ import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, Sparkles } from 'lucide-react';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import { CreateCredentialModal } from '../pages/CredentialsPage';
-import { useCreateCredential } from '../hooks/useCredentials';
-import { findLogoForBubble, findDocsUrlForBubble } from '../lib/integrations';
+import { CreateCredentialModal } from '@/pages/CredentialsPage';
+import { useCreateCredential } from '@/hooks/useCredentials';
+import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
-import BubbleExecutionBadge from './BubbleExecutionBadge';
-import BubbleDetailsOverlay from './BubbleDetailsOverlay';
-import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
-import { useUIStore } from '../stores/uiStore';
-import { useExecutionStore } from '../stores/executionStore';
-import { useCredentials } from '../hooks/useCredentials';
-import { API_BASE_URL } from '../env';
+import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
+import BubbleDetailsOverlay from '@/components/flow_visualizer/BubbleDetailsOverlay';
+import {
+  BUBBLE_COLORS,
+  BADGE_COLORS,
+} from '@/components/flow_visualizer/BubbleColors';
+import { useUIStore } from '@/stores/uiStore';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useCredentials } from '@/hooks/useCredentials';
+import { API_BASE_URL } from '@/env';
 import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
-import { usePearlChatStore } from '../hooks/usePearlChatStore';
+import { usePearlChatStore } from '@/hooks/usePearlChatStore';
 
 export interface BubbleNodeData {
   flowId: number;

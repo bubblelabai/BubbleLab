@@ -12,30 +12,30 @@ import {
 import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
-import BubbleNode from './BubbleNode';
-import InputSchemaNode from './InputSchemaNode';
-import StepContainerNode from './StepContainerNode';
+import BubbleNode from './nodes/BubbleNode';
+import InputSchemaNode from './nodes/InputSchemaNode';
+import StepContainerNode from './nodes/StepContainerNode';
 import {
   calculateBubblePosition,
   calculateStepContainerHeight,
-} from './utils/stepContainerUtils';
-import { calculateSubbubblePositionWithContext } from './utils/nodePositioning';
-import { FLOW_LAYOUT } from './utils/flowLayoutConstants';
-import TransformationNode from './TransformationNode';
-import type { TransformationNodeData } from './TransformationNode';
-import type { BubbleNodeData } from './BubbleNode';
+} from './stepContainerUtils';
+import { calculateSubbubblePositionWithContext } from './nodePositioning';
+import { FLOW_LAYOUT } from './flowLayoutConstants';
+import TransformationNode from './nodes/TransformationNode';
+import type { TransformationNodeData } from './nodes/TransformationNode';
+import type { BubbleNodeData } from './nodes/BubbleNode';
 import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { extractStepGraph, type StepData } from '../utils/workflowToSteps';
-import { useExecutionStore, getExecutionStore } from '../stores/executionStore';
-import { useBubbleFlow } from '../hooks/useBubbleFlow';
-import { useUIStore } from '../stores/uiStore';
-import { useEditor } from '../hooks/useEditor';
-import CronScheduleNode from './CronScheduleNode';
-import { getPearlChatStore } from '@/stores/pearlChatStore';
+import { extractStepGraph, type StepData } from '@/utils/workflowToSteps';
+import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
+import { useBubbleFlow } from '@/hooks/useBubbleFlow';
+import { useUIStore } from '@/stores/uiStore';
+import { useEditor } from '@/hooks/useEditor';
+import CronScheduleNode from './nodes/CronScheduleNode';
 import { useEditorStore } from '@/stores/editorStore';
+import { getPearlChatStore } from '@/stores/pearlChatStore';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
