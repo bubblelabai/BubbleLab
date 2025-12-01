@@ -3,43 +3,17 @@
 // and sends digest via email
 
 export const templateCode = `import {
-  // Base classes
   BubbleFlow,
-  BaseBubble,
-  ServiceBubble,
-  WorkflowBubble,
-  ToolBubble,
-  
-  // Service Bubbles
-  HelloWorldBubble,
-  AIAgentBubble,
-  PostgreSQLBubble,
   SlackBubble,
+  AIAgentBubble,
   ResendBubble,
-  StorageBubble,
-  GoogleDriveBubble,
-  GmailBubble,
-  SlackFormatterAgentBubble,
-  
-  // Template Workflows
-  SlackDataAssistantWorkflow,
-  PDFFormOperationsWorkflow,
-
-  // Specialized Tool Bubbles
-  ResearchAgentTool,
-  RedditScrapeTool,
-    
-  // Types and utilities
-  BubbleFactory,
-  type BubbleClassWithMetadata,
-  type BubbleContext,
-  type BubbleOperationResult,
-  type BubbleTriggerEvent,
   type WebhookEvent,
 } from '@bubblelab/bubble-core';
 
 export interface Output {
   message: string;
+  emailId?: string;
+  totalMessages: number;
   summary?: {
     updates: string[];
     blockers: string[];
@@ -47,16 +21,28 @@ export interface Output {
   };
 }
 
-// Define your custom input interface
 export interface CustomWebhookPayload extends WebhookEvent {
+  /** Email address to send the daily digest to */
   recipientEmail: string;
+  /** Slack channel name to pull messages from (without #) */
   channelName: string;
 }
 
-export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const { recipientEmail, channelName } = payload;
+interface SlackMessage {
+  text?: string;
+  user?: string;
+  ts?: string;
+}
 
+interface DigestSummary {
+  updates: string[];
+  blockers: string[];
+  decisions: string[];
+}
+
+export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
+  // Fetch Slack messages from the last 24 hours
+  private async fetchSlackMessages(channelName: string): Promise<SlackMessage[]> {
     // Calculate the timestamp for 24 hours ago
     const oldest = String(Math.floor(Date.now() / 1000) - 24 * 60 * 60);
 
@@ -69,17 +55,26 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
       oldest,
     }).action();
 
-    if (!historyResult.success || !historyResult.data?.messages || historyResult.data.messages.length === 0) {
-      return { message: 'Could not retrieve Slack messages or no new messages in the last 24 hours.' };
+    if (!historyResult.success || !historyResult.data?.messages) {
+      throw new Error('Could not retrieve Slack messages');
     }
 
-    const messagesText = historyResult.data.messages
+    if (historyResult.data.messages.length === 0) {
+      throw new Error('No new messages in the last 24 hours');
+    }
+
+    return historyResult.data.messages;
+  }
+
+  // Generate AI summary from Slack messages
+  private async generateSummary(messages: SlackMessage[]): Promise<DigestSummary> {
+    const messagesText = messages
       .filter(msg => msg.text && msg.user) // Ensure message has text and a user
       .map(msg => \`User \${msg.user}: \${msg.text}\`)
       .join('\\n');
 
     if (!messagesText) {
-        return { message: 'No user messages with text found in the last 24 hours.' };
+      throw new Error('No user messages with text found in the last 24 hours');
     }
 
     const summaryPrompt = \`
@@ -96,52 +91,145 @@ export class SlackDigestAndEmailWorkflow extends BubbleFlow<'webhook/http'> {
     // history into a structured project management summary.
     const agentResult = await new AIAgentBubble({
       message: summaryPrompt,
-      model: { model: 'google/gemini-2.5-flash', jsonMode: true },
+      systemPrompt: 'You are an expert project manager. Analyze messages and organize them into Updates, Blockers, and Decisions. Return only valid JSON with no markdown formatting.',
+      model: { 
+        model: 'google/gemini-2.5-flash', 
+        jsonMode: true 
+      },
     }).action();
 
     if (!agentResult.success || !agentResult.data?.response) {
-      throw new Error('AI agent failed to summarize messages.');
+      throw new Error('AI agent failed to summarize messages');
     }
 
-    let summary: { updates: string[]; blockers: string[]; decisions: string[] };
+    let summary: DigestSummary;
     try {
       summary = JSON.parse(agentResult.data.response);
     } catch (error) {
-      throw new Error('Failed to parse AI summary response into valid JSON.');
+      throw new Error('Failed to parse AI summary response into valid JSON');
     }
-    
+
+    return summary;
+  }
+
+  // Build HTML email from summary
+  private buildEmailHtml(channelName: string, summary: DigestSummary): string {
     const { updates = [], blockers = [], decisions = [] } = summary;
 
     // Helper function to create HTML lists
-    const toHtmlList = (items: string[], title: string) => {
+    const toHtmlList = (items: string[], title: string, emoji: string) => {
       if (!items || items.length === 0) return '';
-      return \`<h2>\${title}</h2><ul>\${items.map(item => \`<li>\${item}</li>\`).join('')}</ul>\`;
+      return \`
+        <div style="margin-bottom: 30px;">
+          <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+            \${emoji} \${title}
+          </h2>
+          <ul style="list-style: none; padding: 0; margin: 0;">
+            \${items.map(item => \`
+              <li style="padding: 12px; margin-bottom: 8px; background-color: #f8fafc; border-radius: 6px; border-left: 4px solid #667eea;">
+                \${item}
+              </li>
+            \`).join('')}
+          </ul>
+        </div>
+      \`;
     };
 
-    const htmlBody = \`
-      <h1>Daily Digest for #\${channelName}</h1>
-      <p>Here is a summary of the last 24 hours of conversation.</p>
-      \${toHtmlList(updates, '✅ Updates')}
-      \${toHtmlList(blockers, '❗️ Blockers')}
-      \${toHtmlList(decisions, '⚖️ Decisions')}
-    \`;
+    return \`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Slack Digest</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">💬 Daily Slack Digest</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 16px;">#\${channelName}</p>
+              <p style="margin: 5px 0 0 0; color: #e0e7ff; font-size: 14px;">\${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </td>
+          </tr>
 
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="margin: 0 0 30px 0; color: #64748b; font-size: 15px; line-height: 1.6;">
+                Here is a summary of the last 24 hours of conversation in your Slack channel.
+              </p>
+
+              \${toHtmlList(updates, 'Updates', '✅')}
+              \${toHtmlList(blockers, 'Blockers', '❗')}
+              \${toHtmlList(decisions, 'Decisions', '⚖️')}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px; background-color: #1e293b; text-align: center;">
+              <p style="margin: 0; color: #94a3b8; font-size: 14px;">Stay aligned with your team's progress</p>
+              <p style="margin: 10px 0 0 0; color: #64748b; font-size: 12px;">
+                Powered by <a href="https://bubblelab.ai" style="color: #667eea; text-decoration: none; font-weight: 600;">bubble lab</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    \`;
+  }
+
+  // Send email via Resend
+  private async sendDigestEmail(recipientEmail: string, channelName: string, htmlEmail: string): Promise<string> {
     // Sends the AI-generated project management summary as a formatted HTML email
     // to the recipient, delivering categorized updates, blockers, and decisions
     // directly to their inbox.
     const emailResult = await new ResendBubble({
       operation: 'send_email',
       to: [recipientEmail],
-      subject: \`Daily Slack Summary for #\${channelName}\`,
-      html: htmlBody,
+      subject: \`Daily Slack Summary for #\${channelName} - \${new Date().toLocaleDateString()}\`,
+      html: htmlEmail,
     }).action();
 
-    if (!emailResult.success) {
-      throw new Error(\`Failed to send email: \${emailResult.error}\`);
+    if (!emailResult.success || !emailResult.data?.email_id) {
+      throw new Error(\`Failed to send email: \${emailResult.error || 'Unknown error'}\`);
     }
+
+    return emailResult.data.email_id;
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const {
+      recipientEmail = 'user@example.com',
+      channelName = 'general'
+    } = payload;
+
+    // Step 1: Fetch Slack messages from the last 24 hours
+    const messages = await this.fetchSlackMessages(channelName);
+
+    // Step 2: Generate AI-organized summary
+    const summary = await this.generateSummary(messages);
+
+    // Step 3: Build HTML email template
+    const htmlEmail = this.buildEmailHtml(channelName, summary);
+
+    // Step 4: Send email to recipient
+    const emailId = await this.sendDigestEmail(recipientEmail, channelName, htmlEmail);
 
     return {
       message: \`Successfully sent daily summary to \${recipientEmail}\`,
+      emailId,
+      totalMessages: messages.length,
       summary,
     };
   }
@@ -159,22 +247,13 @@ export const metadata = {
       channelName: {
         type: 'string',
         description: 'Slack channel name to pull messages from (without #)',
+        default: 'general',
       },
     },
     required: ['recipientEmail', 'channelName'],
   }),
   requiredCredentials: {
-    slack: {
-      description: 'Slack API credentials for accessing channel messages',
-      required: true,
-    },
-    resend: {
-      description: 'Resend API credentials for sending emails',
-      required: true,
-    },
-    ai: {
-      description: 'AI service credentials for message summarization',
-      required: true,
-    },
+    slack: ['read'],
+    resend: ['send'],
   },
 };

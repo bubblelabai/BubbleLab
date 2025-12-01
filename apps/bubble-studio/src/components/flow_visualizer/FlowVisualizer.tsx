@@ -921,16 +921,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
      */
     function calculateStepHeight(step: StepData): number {
       if (step.isTransformation && step.transformationData) {
-        // Transformation node height calculation (matching TransformationNode.tsx)
-        const codeLines = step.transformationData.code.split('\n').length;
-        const headerHeight = FLOW_LAYOUT.TRANSFORMATION.HEADER_HEIGHT;
-        const codeLineHeight = FLOW_LAYOUT.TRANSFORMATION.CODE_LINE_HEIGHT;
-        const codeHeight = Math.max(
-          codeLines * codeLineHeight + FLOW_LAYOUT.TRANSFORMATION.CODE_PADDING,
-          FLOW_LAYOUT.TRANSFORMATION.MIN_CODE_HEIGHT
-        );
-        const padding = FLOW_LAYOUT.TRANSFORMATION.NODE_PADDING;
-        return headerHeight + codeHeight + padding;
+        // Transformation nodes only show header (no code), so use fixed height
+        return FLOW_LAYOUT.TRANSFORMATION.FIXED_HEIGHT;
       } else {
         // Step container height calculation (matching StepContainerNode.tsx)
         return calculateStepContainerHeight(step.bubbleIds.length);
