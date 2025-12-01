@@ -556,7 +556,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={integration.file}
                         alt={`${integration.name} logo`}
@@ -580,7 +580,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {SCRAPING_SERVICES.map((service) => (
                   <div key={service.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={service.file}
                         alt={`${service.name} logo`}
@@ -604,7 +604,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
                   <div key={model.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={model.file}
                         alt={`${model.name} logo`}
