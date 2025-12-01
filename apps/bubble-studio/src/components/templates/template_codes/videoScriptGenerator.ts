@@ -127,12 +127,16 @@ interface ScriptVariations {
 }
 
 export class VideoScriptGeneratorFlow extends BubbleFlow<'webhook/http'> {
-  // Analyzes brand website to extract brand intelligence including name, voice, audience, and value propositions.
-  private async analyzeBrandWebsite(brandWebsite: string): Promise<BrandIntelligence | null> {
+  // Extracts brand intelligence by scraping website and analyzing content.
+  // Contains brandScraper and brandAnalyzer grouped together as a brand analysis step.
+  private async extractBrandIntelligence(brandWebsite: string | null): Promise<BrandIntelligence | null> {
+    if (!brandWebsite) {
+      return null;
+    }
+
     const formattedUrl = brandWebsite.startsWith('http://') || brandWebsite.startsWith('https://')
       ? brandWebsite
       : \`https://\${brandWebsite}\`;
-
     // Scrapes the brand website in markdown format to extract content for brand analysis.
     const brandScraper = new WebScrapeTool({
       url: formattedUrl,
@@ -185,6 +189,7 @@ Extract and return JSON:
       return null;
     }
   }
+
 
   // Discovers videos by searching YouTube or using provided URLs, returning video metadata.
   private async discoverVideos(
@@ -754,7 +759,7 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
     };
     const targetLength = lengthGuide[videoLength];
 
-    const brandIntel = brandWebsite ? await this.analyzeBrandWebsite(brandWebsite) : null;
+    const brandIntel = await this.extractBrandIntelligence(brandWebsite ?? null);
     const finalBrandContext = brandIntel
       ? \`\${brandIntel.name}: \${brandIntel.description}. Brand Voice: \${brandIntel.voice}. \${brandContext ? 'Additional context: ' + brandContext : ''}\`
       : brandContext || 'Generic content creator';
