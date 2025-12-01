@@ -60,6 +60,7 @@ function TransformationNode({ data }: TransformationNodeProps) {
     flowId,
     (s) => s.highlightedBubble
   );
+  const bubbleWithError = useExecutionStore(flowId, (s) => s.bubbleWithError);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
   const bubbleResults = useExecutionStore(flowId, (s) => s.bubbleResults);
@@ -84,8 +85,13 @@ function TransformationNode({ data }: TransformationNodeProps) {
 
   const hasError = useMemo(() => {
     if (!variableId) return false;
-    return bubbleResults[String(variableId)] === false;
-  }, [bubbleResults, variableId]);
+    const variableIdStr = String(variableId);
+    // Check both bubbleResults and bubbleWithError (which uses lastExecutingBubble as fallback)
+    return (
+      bubbleResults[variableIdStr] === false ||
+      bubbleWithError === variableIdStr
+    );
+  }, [bubbleResults, bubbleWithError, variableId]);
 
   const executionStats = useMemo(() => {
     if (!variableId) return undefined;
@@ -99,16 +105,16 @@ function TransformationNode({ data }: TransformationNodeProps) {
 
   return (
     <div
-      className={`relative rounded-lg border transition-all duration-300 shadow-xl ${
+      className={`relative rounded-lg border bg-neutral-800/90 transition-all duration-300 shadow-xl ${
         isExecuting
-          ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`
+          ? BUBBLE_COLORS.RUNNING.border
           : hasError
-            ? `${BUBBLE_COLORS.ERROR.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.ERROR.background}`
+            ? BUBBLE_COLORS.ERROR.border
             : isCompleted
-              ? `${BUBBLE_COLORS.COMPLETED.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.COMPLETED.background}`
+              ? BUBBLE_COLORS.COMPLETED.border
               : isHighlighted
-                ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-                : 'bg-neutral-800/90 border-neutral-600/60'
+                ? BUBBLE_COLORS.SELECTED.border
+                : 'border-neutral-600/60'
       }`}
       style={{
         width: '400px',
