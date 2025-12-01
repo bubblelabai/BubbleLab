@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, Sparkles } from 'lucide-react';
+import { BookOpen, Code } from 'lucide-react';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
@@ -22,7 +22,6 @@ import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
-import { usePearlChatStore } from '@/hooks/usePearlChatStore';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -115,10 +114,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
-
-  // Pearl chat integration for error fixing
-  const pearl = usePearlChatStore(flowId);
-  const { openConsolidatedPanelWith } = useUIStore();
 
   // Subscribe to selected event index and tab reactively (causes re-render when changed)
   const selectedEventIndexByVariableId = useLiveOutputStore(
@@ -240,10 +235,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   const createCredentialMutation = useCreateCredential();
 
-  const handleFixWithPearl = () => {
-    const prompt = `I'm seeing an error in the ${bubble.variableName || bubble.bubbleName} bubble. Can you help me fix it?`;
-    pearl.startGeneration(prompt);
-    openConsolidatedPanelWith('pearl');
+  const handleErrorClick = () => {
+    // Navigate to the console showing this bubble's last log
+    const liveOutputStore = getLiveOutputStore(flowId);
+    liveOutputStore?.getState().selectBubbleInConsole(bubbleId);
   };
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
   const isSubBubble =
@@ -422,19 +417,18 @@ function BubbleNode({ data }: BubbleNodeProps) {
             hasMissingRequirements ||
             bubble.parameters.length > 0) && (
             <>
-              {/* Show Fix with Pearl button when error, otherwise show standard badge */}
+              {/* Show Error badge when error, otherwise show standard badge */}
               {hasError ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleFixWithPearl();
+                    handleErrorClick();
                   }}
-                  disabled={pearl.isPending}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded transition-colors shadow-sm"
-                  title="Get help fixing this error with Pearl"
+                  className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-600/40 hover:bg-red-500/30 transition-colors cursor-pointer"
+                  title="View error in console"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                  <span>❌</span>
+                  <span>Error</span>
                 </button>
               ) : (
                 <BubbleExecutionBadge
@@ -442,6 +436,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   isCompleted={isCompleted}
                   isExecuting={isExecuting}
                   executionStats={executionStats}
+                  bubbleId={bubbleId}
+                  flowId={flowId}
                 />
               )}
               {!hasError && !isExecuting && hasMissingRequirements && (
@@ -671,11 +667,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
         logo={logo}
         logoErrored={logoError}
         docsUrl={docsUrl}
-        hasError={hasError}
-        isExecuting={isExecuting}
-        isCompleted={isCompleted}
-        hasMissingRequirements={hasMissingRequirements}
-        executionStats={executionStats}
         requiredCredentialTypes={requiredCredentialTypes}
         selectedBubbleCredentials={selectedBubbleCredentials}
         availableCredentials={availableCredentials}
@@ -683,8 +674,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
         onParamEditInCode={onParamEditInCode}
         onViewCode={() => onBubbleClick?.()}
         showEditor={showEditor}
-        onFixWithPearl={hasError ? handleFixWithPearl : undefined}
-        isPearlPending={pearl.isPending}
       />
 
       {/* Create Credential Modal */}

@@ -1,15 +1,13 @@
 import { type CSSProperties, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, Sparkles, X, Shield, Info } from 'lucide-react';
+import { BookOpen, Code, X, Info } from 'lucide-react';
 import type {
   CredentialResponse,
   ParsedBubbleWithInfo,
   CredentialType,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
-import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { useOverlay } from '@/hooks/useOverlay';
@@ -21,11 +19,6 @@ interface BubbleDetailsOverlayProps {
   logo: { name: string; file: string } | null;
   logoErrored: boolean;
   docsUrl: string | null;
-  hasError: boolean;
-  isExecuting: boolean;
-  isCompleted: boolean;
-  hasMissingRequirements: boolean;
-  executionStats?: { totalTime: number; count: number };
   requiredCredentialTypes: string[];
   selectedBubbleCredentials: Record<string, number | null>;
   availableCredentials: CredentialResponse[];
@@ -33,8 +26,6 @@ interface BubbleDetailsOverlayProps {
   onParamEditInCode?: (paramName: string) => void;
   onViewCode?: () => void;
   showEditor: boolean;
-  onFixWithPearl?: () => void;
-  isPearlPending: boolean;
 }
 
 const formatValue = (value: unknown): string => {
@@ -63,11 +54,6 @@ export function BubbleDetailsOverlay({
   logo,
   logoErrored,
   docsUrl,
-  hasError,
-  isExecuting,
-  isCompleted,
-  hasMissingRequirements,
-  executionStats,
   requiredCredentialTypes,
   selectedBubbleCredentials,
   availableCredentials,
@@ -75,8 +61,6 @@ export function BubbleDetailsOverlay({
   onParamEditInCode,
   onViewCode,
   showEditor,
-  onFixWithPearl,
-  isPearlPending,
 }: BubbleDetailsOverlayProps) {
   // Internal state for credential creation modal
   const [createModalForType, setCreateModalForType] = useState<string | null>(
@@ -181,25 +165,6 @@ export function BubbleDetailsOverlay({
     );
   };
 
-  const headerBadge = hasError ? (
-    <button
-      type="button"
-      onClick={onFixWithPearl}
-      disabled={isPearlPending}
-      className="flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:bg-orange-600/50"
-    >
-      <Sparkles className="h-4 w-4" />
-      {isPearlPending ? 'Analyzing...' : 'Fix with Pearl'}
-    </button>
-  ) : (
-    <BubbleExecutionBadge
-      hasError={false}
-      isCompleted={isCompleted}
-      isExecuting={isExecuting}
-      executionStats={executionStats}
-    />
-  );
-
   return createPortal(
     <div
       className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-[53%]"
@@ -250,15 +215,6 @@ export function BubbleDetailsOverlay({
                 </div>
               </div>
               <div className="mt-6 flex flex-wrap items-center gap-3">
-                {headerBadge}
-                {hasMissingRequirements && (
-                  <div
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${BADGE_COLORS.MISSING.background} ${BADGE_COLORS.MISSING.text} border ${BADGE_COLORS.MISSING.border}`}
-                  >
-                    <Shield className="h-3.5 w-3.5" />
-                    Missing credentials
-                  </div>
-                )}
                 {docsUrl && (
                   <a
                     href={docsUrl}

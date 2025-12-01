@@ -1,6 +1,6 @@
 /**
  * BubblePromptInput - Simple textarea that displays selected bubble context
- * Shows selected bubbles and transformations separately on top of the textarea
+ * Shows selected bubbles, steps, and transformations separately on top of the textarea
  */
 import {
   KeyboardEvent,
@@ -10,7 +10,7 @@ import {
   useRef,
 } from 'react';
 import { BubbleTag } from './BubbleTag';
-import { X, Code } from 'lucide-react';
+import { X, Code, Layers } from 'lucide-react';
 
 interface BubblePromptInputProps {
   value: string;
@@ -22,8 +22,10 @@ interface BubblePromptInputProps {
   flowId: number | null;
   selectedBubbleContext: number[]; // Bubble variable IDs from context
   selectedTransformationContext: string | null; // Transformation function name
+  selectedStepContext: string | null; // Step function name
   onRemoveBubble?: (variableId: number) => void;
   onRemoveTransformation?: () => void;
+  onRemoveStep?: () => void;
 }
 
 export interface BubblePromptInputRef {
@@ -44,8 +46,10 @@ export const BubblePromptInput = forwardRef<
     className = '',
     selectedBubbleContext,
     selectedTransformationContext,
+    selectedStepContext,
     onRemoveBubble,
     onRemoveTransformation,
+    onRemoveStep,
   },
   ref
 ) {
@@ -78,8 +82,10 @@ export const BubblePromptInput = forwardRef<
 
   return (
     <div className="space-y-2">
-      {/* Display selected bubble or transformation context on top if any exist */}
-      {(selectedBubbleContext.length > 0 || selectedTransformationContext) && (
+      {/* Display selected bubble, step, or transformation context on top if any exist */}
+      {(selectedBubbleContext.length > 0 ||
+        selectedTransformationContext ||
+        selectedStepContext) && (
         <div className="flex flex-wrap gap-2 px-1">
           {/* Bubble context */}
           {selectedBubbleContext.map((variableId) => (
@@ -101,6 +107,27 @@ export const BubblePromptInput = forwardRef<
               )}
             </div>
           ))}
+
+          {/* Step context */}
+          {selectedStepContext && (
+            <div className="relative group inline-flex items-center gap-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-600/20 border border-blue-500/40 rounded-full text-xs text-blue-200">
+                <Layers className="w-3 h-3" />
+                <span className="font-medium">{selectedStepContext}</span>
+              </div>
+              {onRemoveStep && (
+                <button
+                  type="button"
+                  onClick={onRemoveStep}
+                  disabled={disabled}
+                  className="absolute -top-1 -right-1 p-0.5 bg-red-500 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Remove step from context"
+                >
+                  <X className="w-2.5 h-2.5 text-white" />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Transformation context */}
           {selectedTransformationContext && (

@@ -151,7 +151,7 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
         formattedUrl = \`https://\${brandWebsite}\`;
       }
 
-      // Scrape the brand website in markdown format, focusing on main content
+      // Scrapes brand website to extract main content for brand analysis.
       const scraper = new WebScrapeTool({
         url: formattedUrl,
         format: 'markdown',
@@ -166,7 +166,6 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
 
       const content = scrapeResult.data.content;
 
-      // Analyze scraped website content using AI to extract structured brand intelligence
       const prompt = \`
 Analyze this brand's website and extract key information:
 
@@ -185,6 +184,7 @@ Extract and return JSON:
 }
       \`;
 
+      // Extracts structured brand intelligence from website content using AI with jsonMode.
       const analyzer = new AIAgentBubble({
         message: prompt,
         systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence. Return only valid JSON.',
@@ -231,7 +231,8 @@ Extract and return JSON:
   // ============================================================================
 
   // Plans comprehensive research strategy using AI to identify the best sources
-  // for discovering fresh, recent content opportunities
+  // for discovering fresh, recent content opportunities, generating news site URLs,
+  // YouTube queries, subreddits, and trend keywords tailored to the brand's industry.
   private async planResearchStrategy(context: BrandIntelligence): Promise<ResearchPlan> {
     const prompt = \`
 You are a research strategist specializing in finding FRESH, RECENT content opportunities.
@@ -283,6 +284,7 @@ Return JSON:
 }
     \`;
 
+    // Generates research plan using AI with jsonMode, identifying news sources, keywords, and communities.
     const planner = new AIAgentBubble({
       message: prompt,
       systemPrompt: 'You are an expert research strategist. Plan comprehensive research strategies for content trend discovery. Return only valid JSON.',
@@ -314,8 +316,8 @@ Return JSON:
   private async scrapeNewsSources(plan: ResearchPlan): Promise<string> {
     const scrapeResults: ScrapeResult[] = [];
 
-    // Scrape Google Trends
     try {
+      // Scrapes Google Trends daily trending searches for real-time trending topics.
       const googleTrendsResult = await new WebScrapeTool({
         url: 'https://trends.google.com/trends/trendingsearches/daily',
         format: 'markdown',
@@ -326,8 +328,8 @@ Return JSON:
       scrapeResults.push({ success: false, error: 'Failed to scrape Google Trends' });
     }
 
-    // Scrape Exploding Topics
     try {
+      // Scrapes Exploding Topics to discover emerging topics gaining rapid traction.
       const explodingTopicsResult = await new WebScrapeTool({
         url: 'https://www.explodingtopics.com',
         format: 'markdown',
@@ -338,9 +340,9 @@ Return JSON:
       scrapeResults.push({ success: false, error: 'Failed to scrape Exploding Topics' });
     }
 
-    // Scrape AI-suggested news sources
     for (const site of plan.newsSourceUrls) {
       try {
+        // Scrapes AI-suggested news source to gather recent articles and breaking news.
         const newsResult = await new WebScrapeTool({
           url: site.url,
           format: 'markdown',
@@ -411,6 +413,7 @@ Return JSON with RECENT, SPECIFIC phenomena:
 FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen trends.
     \`;
 
+    // Extracts 4-6 emerging phenomena from news using AI with jsonMode, identifying recent events.
     const extractor = new AIAgentBubble({
       message: prompt,
       systemPrompt: 'You are a news analyst specializing in identifying emerging phenomena and timely content opportunities. Focus on RECENT events with specific dates. Return only valid JSON.',
@@ -445,10 +448,11 @@ FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen 
   // ============================================================================
 
   // Searches YouTube for relevant videos and extracts full transcripts with timestamps
+  // to analyze creator presentation styles and audience engagement patterns.
   private async analyzeYouTubeContent(queries: string[]): Promise<YouTubeAnalysis> {
     const limitedQueries = queries.slice(0, 3);
 
-    // Search YouTube for videos
+    // Searches YouTube for relevant videos matching research queries.
     const youtubeSearch = new YouTubeTool({
       operation: 'searchVideos',
       searchQueries: limitedQueries,
@@ -464,9 +468,9 @@ FOCUS ON: Recent events that create TIMELY content opportunities, not evergreen 
       const topVideos = youtubeSearchResult.data.videos.slice(0, 5).filter(v => v.url);
       youtubeVideoTitles = topVideos.map(v => v.title || '').filter(Boolean);
 
-      // Extract full transcripts from all videos
       const transcriptPromises = topVideos.map(async (video) => {
         try {
+          // Extracts full transcript from a video for content analysis.
           const transcriptTool = new YouTubeTool({
             operation: 'getTranscript',
             videoUrl: video.url!,
@@ -547,6 +551,7 @@ Provide 2-3 specific content format examples showing how creators are responding
         ],
       });
 
+      // Researches how creators respond to each phenomenon, finding viral formats and engagement tactics.
       const topicResearch = new ResearchAgentTool({
         task: researchTask,
         expectedResultSchema: researchSchema,
@@ -570,9 +575,10 @@ Provide 2-3 specific content format examples showing how creators are responding
   }
 
   // Scrapes Reddit posts from AI-suggested subreddits to gather creator discussions
-  // and community insights about recent trends
+  // and community insights about recent trends, extracting top posts from the past week.
   private async scrapeRedditDiscussions(subreddits: string[]): Promise<string> {
     const redditPromises = subreddits.map(async (subreddit) => {
+      // Scrapes Reddit posts from subreddit, gathering hot posts from the past week.
       const redditScraper = new RedditScrapeTool({
         subreddit,
         limit: 10,
@@ -620,7 +626,8 @@ Content: \${content.substring(0, 500)}\${content.length > 500 ? '...' : ''}
   // ============================================================================
 
   // Generates 8-12 fresh, event-driven content ideas by synthesizing brand context,
-  // emerging phenomena, research data, YouTube transcripts, and Reddit discussions
+  // emerging phenomena, research data, YouTube transcripts, and Reddit discussions,
+  // creating timely ideas tied to specific recent events with adaptation strategies.
   private async generateContentIdeas(
     context: BrandIntelligence,
     phenomena: EmergingPhenomena,
@@ -704,6 +711,7 @@ Return ONLY valid JSON:
 }
     \`;
 
+    // Generates 8-12 fresh, event-driven content ideas using AI with jsonMode.
     const ideationAgent = new AIAgentBubble({
       message: prompt,
       systemPrompt:
@@ -731,7 +739,8 @@ Return ONLY valid JSON:
   // PHASE 6: Email Report Generation and Delivery
   // ============================================================================
 
-  // Sends the comprehensive HTML email report to the user
+  // Sends the comprehensive HTML email report to the user with all generated insights,
+  // ideas, emerging phenomena, trending formats, and research data in a professional format.
   private async sendEmailReport(
     email: string,
     context: BrandIntelligence,
@@ -900,6 +909,7 @@ Return ONLY valid JSON:
 </html>
     \`;
 
+    // Sends comprehensive HTML email report with all insights and content ideas.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],

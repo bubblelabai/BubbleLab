@@ -126,7 +126,7 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     commitFileContent: string,
     diffContent: string
   ): Promise<{ title: string; body: string }> {
-    // Analyzes commit guidelines and PR diff using gemini-2.5-flash with jsonMode to
+    // Analyzes commit guidelines and PR diff using to
     // generate structured PR title and description suggestions that combine project
     // style guidelines with actual code changes.
     const suggestionAgent = new AIAgentBubble({

@@ -36,6 +36,7 @@ interface PearlChatState {
   prompt: string;
   selectedBubbleContext: number[]; // List of bubble variable IDs for context
   selectedTransformationContext: string | null; // Transformation function name for context
+  selectedStepContext: string | null; // Step function name for context
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -54,6 +55,10 @@ interface PearlChatState {
   // Transformation context management
   addTransformationToContext: (functionName: string) => void;
   clearTransformationContext: () => void;
+
+  // Step context management
+  addStepToContext: (functionName: string) => void;
+  clearStepContext: () => void;
 
   // Event management
   addEventToCurrentTurn: (event: DisplayEvent) => void;
@@ -83,6 +88,7 @@ function createPearlChatStore(flowId: number) {
     prompt: '',
     selectedBubbleContext: [],
     selectedTransformationContext: null,
+    selectedStepContext: null,
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -102,6 +108,7 @@ function createPearlChatStore(flowId: number) {
         return {
           selectedBubbleContext: [...state.selectedBubbleContext, variableId],
           selectedTransformationContext: null, // Clear transformation context (exclusive mode)
+          selectedStepContext: null, // Clear step context (exclusive mode)
         };
       }),
 
@@ -132,16 +139,27 @@ function createPearlChatStore(flowId: number) {
       set({
         selectedBubbleContext: [],
         selectedTransformationContext: null,
+        selectedStepContext: null,
       }),
 
     addTransformationToContext: (functionName) =>
       set({
         selectedTransformationContext: functionName,
         selectedBubbleContext: [], // Clear bubble context (exclusive mode)
+        selectedStepContext: null, // Clear step context (exclusive mode)
       }),
 
     clearTransformationContext: () =>
       set({ selectedTransformationContext: null }),
+
+    addStepToContext: (functionName) =>
+      set({
+        selectedStepContext: functionName,
+        selectedBubbleContext: [], // Clear bubble context (exclusive mode)
+        selectedTransformationContext: null, // Clear transformation context (exclusive mode)
+      }),
+
+    clearStepContext: () => set({ selectedStepContext: null }),
 
     startNewTurn: () =>
       set((state) => ({ eventsList: [...state.eventsList, []] })),
@@ -188,6 +206,7 @@ function createPearlChatStore(flowId: number) {
         prompt: '',
         selectedBubbleContext: [],
         selectedTransformationContext: null,
+        selectedStepContext: null,
       }),
   }));
 }

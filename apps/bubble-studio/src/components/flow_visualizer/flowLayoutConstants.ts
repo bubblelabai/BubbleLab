@@ -7,7 +7,7 @@ import { STEP_CONTAINER_LAYOUT } from './stepContainerUtils';
 export const FLOW_LAYOUT = {
   // Bubble dimensions (from STEP_CONTAINER_LAYOUT - single source of truth)
   BUBBLE_WIDTH: STEP_CONTAINER_LAYOUT.BUBBLE_WIDTH, // 320px - same as w-80 class
-  BUBBLE_HEIGHT: STEP_CONTAINER_LAYOUT.BUBBLE_HEIGHT, // 180px - typical bubble height
+  BUBBLE_HEIGHT: STEP_CONTAINER_LAYOUT.BUBBLE_HEIGHT, // 280px - typical bubble height with credentials/params
 
   // Sequential layout (horizontal flow)
   SEQUENTIAL: {
