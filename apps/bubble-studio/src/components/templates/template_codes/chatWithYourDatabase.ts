@@ -3,7 +3,6 @@
 // and sends a beautifully formatted HTML report via email
 
 export const templateCode = `import {
-  // Base classes
   BubbleFlow,
   DatabaseAnalyzerWorkflowBubble,
   AIAgentBubble,
@@ -29,12 +28,10 @@ export interface CustomCronPayload extends CronEvent {
 export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
   readonly cronSchedule = '0 15 * * *';
 
-  async handle(payload: CustomCronPayload): Promise<Output> {
-    const { email, query, reportTitle = 'Daily Flows Report' } = payload;
-
-    // Examines the PostgreSQL database structure with metadata included to discover
-    // all available tables and columns, providing the AI agent with context needed
-    // to generate accurate SQL queries.
+  // Analyzes the PostgreSQL database schema to discover all available tables and columns.
+  private async analyzeDatabaseSchema(): Promise<string> {
+    // Examines the database metadata to discover all 
+    // tables and columns. 
     const schemaAnalyzer = new DatabaseAnalyzerWorkflowBubble({
       dataSourceType: 'postgresql',
       ignoreSSLErrors: true,
@@ -44,12 +41,25 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
     const schemaResult = await schemaAnalyzer.action();
 
     if (!schemaResult.success || !schemaResult.data?.databaseSchema?.cleanedJSON) {
-      throw new Error(\`Failed to analyze database schema: \${schemaResult.error}\`);
+      throw new Error(\`Failed to analyze database schema: \${schemaResult.error || 'No schema data'}\`);
     }
 
-    const dbSchema = schemaResult.data.databaseSchema.cleanedJSON;
+    return schemaResult.data.databaseSchema.cleanedJSON;
+  }
 
-
+  // Analyzes database data using AI agent with sql-query-tool and generates HTML report.
+  private async performDataAnalysis(
+    query: string,
+    dbSchema: string
+  ): Promise<{
+    queryExecuted: string;
+    rowsAnalyzed: number;
+    summary: string;
+    insights: string[];
+    metrics: Array<{ label: string; value: string; trend: string }>;
+    htmlReport: string;
+    sqlQueries?: string[];
+  }> {
     const dataAnalystPrompt = \`
       You are an expert data analyst. Based on the database schema and user query, provide comprehensive insights by exploring the database as needed.
 
@@ -89,10 +99,8 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       Return only valid JSON with no markdown formatting.
     \`;
 
-
-    // Performs intelligent data analysis using gemini-2.5-pro with jsonMode and the
-    // sql-query-tool, iteratively exploring the database to identify trends, calculate
-    // metrics, and generate a comprehensive HTML report with actionable insights.
+    // Analyzes database data using sql-query-tool with jsonMode enabled.
+    // Returns structured JSON with insights, metrics, and HTML report.
     const dataAnalyst = new AIAgentBubble({
       message: dataAnalystPrompt,
       systemPrompt: 'You are a comprehensive data analyst. Use tools iteratively to explore data, analyze trends, and generate automated reports. Return only valid JSON.',
@@ -101,13 +109,13 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
         jsonMode: true,
       },
       tools: [{ name: 'sql-query-tool' }],
-      maxIterations: 20, // Allow more iterations for thorough analysis
+      maxIterations: 20,
     });
 
     const analystResult = await dataAnalyst.action();
 
     if (!analystResult.success || !analystResult.data?.response) {
-      throw new Error(\`Failed to perform data analysis: \${analystResult.error}\`);
+      throw new Error(\`Failed to perform data analysis: \${analystResult.error || 'No response'}\`);
     }
 
     let analysis;
@@ -119,22 +127,21 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
 
     // Extract SQL queries from tool calls for display in the report
     const sqlQueries = analystResult.data.toolCalls
-      .filter(call => call.tool === 'sql-query-tool' && call.input)
-      .map(call => {
+      ?.filter((call: any) => call.tool === 'sql-query-tool' && call.input)
+      .map((call: any) => {
         const queryInput = call.input as any;
         return queryInput.query || queryInput.sql || JSON.stringify(queryInput);
       })
-      .filter(query => query && query.trim() !== '');
+      .filter((query: string) => query && query.trim() !== '') || [];
 
     // If we have SQL queries, add them to the analysis and update the HTML report
     if (sqlQueries.length > 0) {
       analysis.sqlQueries = sqlQueries;
-      
-      // Update the HTML report to include SQL queries section
+
       const sqlQueriesHtml = \`
         <div style="margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
           <h3 style="color: #333; margin-bottom: 15px;">🔍 SQL Queries Used</h3>
-          \${sqlQueries.map((query, index) => \`
+          \${sqlQueries.map((query: string, index: number) => \`
             <div style="margin-bottom: 15px;">
               <h4 style="color: #666; margin-bottom: 5px; font-size: 14px;">Query \${index + 1}:</h4>
               <pre style="
@@ -153,8 +160,7 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
           \`).join('')}
         </div>
       \`;
-      
-      // Insert the SQL queries section before the footer in the HTML report
+
       if (analysis.htmlReport && analysis.htmlReport.includes('<footer')) {
         analysis.htmlReport = analysis.htmlReport.replace('<footer', sqlQueriesHtml + '<footer');
       } else if (analysis.htmlReport) {
@@ -162,13 +168,23 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       }
     }
 
-    // Delivers the AI-generated database analysis report as a beautifully formatted
-    // HTML email to the recipient, making insights immediately accessible in their inbox.
+    return analysis;
+  }
+
+  // Sends the AI-generated database analysis report as a formatted HTML email.
+  private async sendAnalysisReport(
+    email: string,
+    reportTitle: string,
+    htmlReport: string
+  ): Promise<string> {
+    // Sends the database analysis report via email using Resend. The 'from' parameter
+    // is automatically set to Bubble Lab's default sender unless you have your own
+    // Resend account with a verified domain configured.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
       subject: \`📊 \${reportTitle} - \${new Date().toLocaleDateString()}\`,
-      html: analysis.htmlReport,
+      html: htmlReport,
     });
 
     const emailResult = await emailSender.action();
@@ -177,9 +193,20 @@ export class ChatWithYourDatabaseFlow extends BubbleFlow<'schedule/cron'> {
       throw new Error(\`Failed to send email: \${emailResult.error || 'Unknown error'}\`);
     }
 
+    return emailResult.data.email_id;
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomCronPayload): Promise<Output> {
+    const { email, query, reportTitle = 'Daily Flows Report' } = payload;
+
+    const dbSchema = await this.analyzeDatabaseSchema();
+    const analysis = await this.performDataAnalysis(query, dbSchema);
+    const emailId = await this.sendAnalysisReport(email, reportTitle, analysis.htmlReport);
+
     return {
       message: \`Successfully generated and sent daily flows report to \${email}\`,
-      emailId: emailResult.data.email_id,
+      emailId,
       queryResult: {
         rows: analysis.rowsAnalyzed,
         summary: analysis.summary,
