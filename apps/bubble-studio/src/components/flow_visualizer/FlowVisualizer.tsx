@@ -1455,6 +1455,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           draggable: true,
           data: {
             flowId: currentFlow?.id || flowId,
+            stepId: stepNodeId,
             stepInfo: {
               functionName: step.functionName,
               description: step.description,
@@ -2116,7 +2117,29 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           const executionStore = getExecutionStore(currentFlow?.id || flowId);
           const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
 
-          if (node.type === 'transformationNode') {
+          if (node.type === 'stepContainerNode') {
+            const stepData = node.data as unknown as {
+              stepId: string;
+              stepInfo: {
+                functionName: string;
+                description?: string;
+                location: { startLine: number; endLine: number };
+                isAsync: boolean;
+              };
+            };
+            const functionName = stepData.stepInfo.functionName;
+
+            // Highlight the step container
+            executionStore.highlightBubble(node.id);
+
+            console.log('addStepToContext', functionName);
+
+            // Add step to context (automatically clears bubble and transformation context)
+            pearlChatStore.getState().addStepToContext(functionName);
+
+            // Open Pearl panel
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (node.type === 'transformationNode') {
             const transformationInfo = (
               node.data as unknown as TransformationNodeData
             ).transformationInfo;
