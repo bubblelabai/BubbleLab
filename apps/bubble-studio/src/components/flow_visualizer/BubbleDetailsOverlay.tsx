@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, Sparkles, X, Shield, Info } from 'lucide-react';
@@ -12,6 +12,7 @@ import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBa
 import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
+import { useOverlay } from '@/hooks/useOverlay';
 
 interface BubbleDetailsOverlayProps {
   isOpen: boolean;
@@ -96,26 +97,8 @@ export function BubbleDetailsOverlay({
     [bubble.parameters]
   );
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  // Handle overlay behavior (escape key, body scroll prevention)
+  useOverlay({ isOpen, onClose });
 
   if (!isOpen) {
     return null;
