@@ -11,8 +11,8 @@ export const STEP_CONTAINER_LAYOUT = {
   DESCRIPTION_LINE_HEIGHT: 24, // Text-base line height (~1.5rem)
   TITLE_MARGIN_BOTTOM: 4, // mb-1 = 0.25rem = 4px
   CHARS_PER_LINE: 45, // Approximate characters per line given width
-  BUBBLE_HEIGHT: 280, // Typical height of a bubble node (increased to accommodate credentials/params)
-  BUBBLE_SPACING: 150, // Gap between bubbles (vertical spacing) - reduced for better fit
+  BUBBLE_HEIGHT: 280, // Fixed height allocation per bubble slot
+  BUBBLE_SPACING: 20, // Gap from bottom of one bubble to top of next (fixed distance)
   BUBBLE_WIDTH: 320, // w-80 class
   BUBBLE_X_OFFSET: 40, // (WIDTH - BUBBLE_WIDTH) / 2
 } as const;

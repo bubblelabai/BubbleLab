@@ -1519,7 +1519,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           id: nodeId,
           type: 'bubbleNode',
           position: initialPosition,
-          origin: [0, 0.5] as [number, number],
+          origin: [0, 0] as [number, number], // Position by top-left for consistent spacing
           draggable: true,
           parentId: step.id, // Set parent relationship to the step
           extent: [
