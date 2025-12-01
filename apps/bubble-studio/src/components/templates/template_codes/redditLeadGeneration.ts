@@ -30,26 +30,29 @@ interface RedditPost {
 }
 
 export class RedditFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const { spreadsheetId, subreddit, searchCriteria } = payload;
-
+  // Reads existing contact names from column A of the Google Sheet to prevent duplicate entries
+  private async readExistingContacts(spreadsheetId: string): Promise<string[]> {
     // Reads existing contact names from column A of the Google Sheet using the
     // spreadsheet_id to prevent duplicate entries and maintain data quality.
     const readSheet = new GoogleSheetsBubble({
       operation: 'read_values',
       spreadsheet_id: spreadsheetId,
-      range: 'Sheet1!A:A', // Read the entire 'Name' column
+      range: 'Sheet1!A:A',
     });
+
     const existingContactsResult = await readSheet.action();
 
     if (!existingContactsResult.success) {
       throw new Error(\`Failed to read from Google Sheet: \${existingContactsResult.error}\`);
     }
 
-    const existingNames = existingContactsResult.data?.values
-      ? existingContactsResult.data.values.flat()
+    return existingContactsResult.data?.values
+      ? existingContactsResult.data.values.flat().map((v) => String(v))
       : [];
+  }
 
+  // Fetches the 50 most recent posts from the target subreddit for lead analysis
+  private async scrapeRedditPosts(subreddit: string): Promise<RedditPost[]> {
     // Fetches the 50 most recent posts from the target subreddit, gathering raw
     // Reddit content that will be analyzed to identify users matching the search criteria.
     const redditScraper = new RedditScrapeTool({
@@ -57,13 +60,14 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
       sort: 'new',
       limit: 50,
     });
+
     const redditResult = await redditScraper.action();
 
     if (!redditResult.success || !redditResult.data?.posts) {
       throw new Error(\`Failed to scrape Reddit: \${redditResult.error}\`);
     }
 
-    const posts: RedditPost[] = redditResult.data.posts.map((p: any) => ({
+    return redditResult.data.posts.map((p: any) => ({
       author: p.author,
       title: p.title,
       selftext: p.selftext,
@@ -71,8 +75,15 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
       postUrl: p.postUrl,
       createdUtc: p.createdUtc,
     }));
+  }
 
-
+  // Analyzes Reddit posts using AI to identify potential leads matching search criteria
+  private async analyzePostsForLeads(
+    subreddit: string,
+    searchCriteria: string,
+    existingNames: string[],
+    posts: RedditPost[]
+  ): Promise<{ name: string; link: string; message: string }[]> {
     const systemPrompt = \`
       You are an expert analyst. Your task is to identify potential leads from a list of Reddit posts from the '\${subreddit}' subreddit.
       Your goal is to find exactly 10 new people who match the following criteria: \${searchCriteria}
@@ -120,59 +131,79 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
       throw new Error(\`AI agent failed: \${aiResult.error}\`);
     }
 
-    let newContacts: { name: string; link: string; message: string }[] = [];
     try {
-      newContacts = JSON.parse(aiResult.data.response);
+      const newContacts = JSON.parse(aiResult.data.response);
+      if (!Array.isArray(newContacts)) {
+        throw new Error('AI response is not a valid array');
+      }
+      return newContacts;
     } catch (error) {
       throw new Error('Failed to parse AI response as JSON.');
     }
-    
-    if (!Array.isArray(newContacts) || newContacts.length === 0) {
-      return { message: 'No new contacts were found.', newContactsAdded: 0 };
-    }
+  }
 
+  // Ensures the spreadsheet has proper column headers before adding new data
+  private async ensureHeadersExist(spreadsheetId: string): Promise<void> {
     // Verifies if the spreadsheet has column headers by reading the first row (A1:E1),
     // ensuring the sheet is properly structured before adding new data.
     const headerCheck = new GoogleSheetsBubble({
-        operation: 'read_values',
-        spreadsheet_id: spreadsheetId,
-        range: 'Sheet1!A1:E1',
+      operation: 'read_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A1:E1',
     });
+
     const headerResult = await headerCheck.action();
+
     if (!headerResult.success) {
-        throw new Error(\`Failed to read headers: \${headerResult.error}\`);
+      throw new Error(\`Failed to read headers: \${headerResult.error}\`);
     }
 
     const headers = headerResult.data?.values?.[0];
+
     if (!headers || headers.length < 5) {
-        // Writes column headers (Name, Link, Message, Date, Status) to cell A1 if they
-        // don't exist, ensuring the spreadsheet is properly formatted before adding lead data.
-        const writeHeaders = new GoogleSheetsBubble({
-            operation: 'write_values',
-            spreadsheet_id: spreadsheetId,
-            range: 'Sheet1!A1',
-            values: [['Name', 'Link to Original Post', 'Message', 'Date', 'Status']],
-        });
-        const writeResult = await writeHeaders.action();
-        if (!writeResult.success) {
-            throw new Error(\`Failed to write headers: \${writeResult.error}\`);
-        }
+      // Writes column headers (Name, Link, Message, Date, Status) to cell A1 if they
+      // don't exist, ensuring the spreadsheet is properly formatted before adding lead data.
+      const writeHeaders = new GoogleSheetsBubble({
+        operation: 'write_values',
+        spreadsheet_id: spreadsheetId,
+        range: 'Sheet1!A1',
+        values: [['Name', 'Link to Original Post', 'Message', 'Date', 'Status']],
+      });
+
+      const writeResult = await writeHeaders.action();
+
+      if (!writeResult.success) {
+        throw new Error(\`Failed to write headers: \${writeResult.error}\`);
+      }
     }
+  }
 
+  // Formats new contacts into rows ready for Google Sheets with date and status
+  private formatContactsForSheet(
+    newContacts: { name: string; link: string; message: string }[],
+    posts: RedditPost[]
+  ): string[][] {
+    return newContacts.map((contact) => {
+      const post = posts.find((p: RedditPost) => p.url === contact.link);
+      const postDate = post
+        ? new Date(post.createdUtc * 1000).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
 
-
-    const rowsToAppend = newContacts.map(contact => {
-        const post = posts.find((p: RedditPost) => p.url === contact.link);
-        const postDate = post ? new Date(post.createdUtc * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-        return [
-            contact.name,
-            contact.link,
-            contact.message,
-            postDate,
-            'Need to Reach Out',
-        ];
+      return [
+        contact.name,
+        contact.link,
+        contact.message,
+        postDate,
+        'Need to Reach Out',
+      ];
     });
+  }
 
+  // Appends newly identified leads to the Google Sheet with all contact information
+  private async appendNewContacts(
+    spreadsheetId: string,
+    rowsToAppend: string[][]
+  ): Promise<void> {
     // Appends the newly identified leads to columns A through E of the Google Sheet,
     // persisting lead data with name, link, message, date, and status for future
     // reference and outreach tracking.
@@ -188,6 +219,38 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     if (!appendResult.success) {
       throw new Error(\`Failed to append data to Google Sheet: \${appendResult.error}\`);
     }
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { spreadsheetId, subreddit, searchCriteria } = payload;
+
+    // Read existing contacts to prevent duplicates
+    const existingNames = await this.readExistingContacts(spreadsheetId);
+
+    // Scrape Reddit posts for analysis
+    const posts = await this.scrapeRedditPosts(subreddit);
+
+    // Analyze posts to identify new leads
+    const newContacts = await this.analyzePostsForLeads(
+      subreddit,
+      searchCriteria,
+      existingNames,
+      posts
+    );
+
+    if (!Array.isArray(newContacts) || newContacts.length === 0) {
+      return { message: 'No new contacts were found.', newContactsAdded: 0 };
+    }
+
+    // Ensure spreadsheet headers exist
+    await this.ensureHeadersExist(spreadsheetId);
+
+    // Format contacts for spreadsheet
+    const rowsToAppend = this.formatContactsForSheet(newContacts, posts);
+
+    // Append new contacts to spreadsheet
+    await this.appendNewContacts(spreadsheetId, rowsToAppend);
 
     return {
       message: \`Successfully added \${newContacts.length} new contacts to the spreadsheet.\`,
