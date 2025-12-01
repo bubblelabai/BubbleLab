@@ -1021,6 +1021,35 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
     const { prompt } = c.req.valid('json');
 
     return streamSSE(c, async (stream) => {
+      // Set up keep-alive interval to prevent connection timeout
+      // Send a heartbeat every 15 seconds to keep the connection alive
+      const HEARTBEAT_INTERVAL = 15000; // 15 seconds
+      let lastEventTime = Date.now();
+
+      const heartbeatInterval = setInterval(async () => {
+        const timeSinceLastEvent = Date.now() - lastEventTime;
+        // Only send heartbeat if no events have been sent recently
+        if (timeSinceLastEvent >= HEARTBEAT_INTERVAL - 1000) {
+          try {
+            await stream.writeSSE({
+              data: JSON.stringify({
+                type: 'heartbeat',
+                timestamp: new Date().toISOString(),
+              }),
+              event: 'heartbeat',
+              id: `heartbeat-${Date.now()}`,
+            });
+          } catch (error) {
+            // If we can't write to stream, it's likely closed
+            console.error(
+              '[API] Heartbeat failed, stream may be closed:',
+              error
+            );
+            clearInterval(heartbeatInterval);
+          }
+        }
+      }, HEARTBEAT_INTERVAL);
+
       try {
         // Use runBoba to generate the code with streaming
         const generationResult = await runBoba(
@@ -1037,6 +1066,9 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             },
           },
           async (event: StreamingEvent) => {
+            // Update last event time to track activity
+            lastEventTime = Date.now();
+
             // Capture validation events for analytics
             if (
               event.type === 'tool_complete' &&
@@ -1068,6 +1100,9 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             });
           }
         );
+
+        // Clear heartbeat interval once generation is complete
+        clearInterval(heartbeatInterval);
 
         // Send final result with code generation summary and extracted bubble parameters
         await stream.writeSSE({
