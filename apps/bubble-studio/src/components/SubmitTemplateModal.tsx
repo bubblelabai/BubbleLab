@@ -244,42 +244,33 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
             <p className="text-xs text-gray-500">
               Your template will be reviewed before publishing
             </p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                disabled={!isFormValid() || isSubmitting}
-                className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
-                  isFormValid() && !isSubmitting
-                    ? 'bg-white hover:bg-gray-100 text-black'
-                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {submitSuccess ? (
-                  <>
-                    <span className="text-green-600">✓</span>
-                    Submitted!
-                  </>
-                ) : isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Submit Template
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={!isFormValid() || isSubmitting}
+              className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
+                isFormValid() && !isSubmitting
+                  ? 'bg-white hover:bg-gray-100 text-black'
+                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {submitSuccess ? (
+                <>
+                  <span className="text-green-600">✓</span>
+                  Submitted!
+                </>
+              ) : isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Template
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
