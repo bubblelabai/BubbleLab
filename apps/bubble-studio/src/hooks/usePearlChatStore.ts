@@ -21,6 +21,7 @@ import type { StreamingEvent } from '@bubblelab/shared-schemas';
 import {
   ParsedBubbleWithInfo,
   cleanUpObjectForDisplayAndStorage,
+  PEARL_DEFAULT_MODEL,
 } from '@bubblelab/shared-schemas';
 import { usePearlStream } from './usePearl';
 import { useIsMutating } from '@tanstack/react-query';
@@ -412,7 +413,7 @@ export function usePearlChatStore(flowId: number | null) {
       conversationHistory: conversationMessages,
       availableVariables: [],
       currentCode: fullCode,
-      model: 'openrouter/z-ai/glm-4.6',
+      model: PEARL_DEFAULT_MODEL,
       additionalContext: context,
     });
   };

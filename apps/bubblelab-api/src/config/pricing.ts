@@ -300,6 +300,25 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: (2.19 * 1.05) / 1_000_000, // $2.19 per 1M tokens * 1.05 markup = $2.2995 per 1M tokens
   },
+  // anthropic/claude-sonnet-4.5: Official pricing from OpenRouter
+  // Note: Has tiered pricing (≤200K tokens vs >200K tokens). Using standard pricing (≤200K tokens) as base.
+  // For prompts >200K tokens: Input $6.30/MTok, Output $23.625/MTok
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/anthropic/claude-sonnet-4.5',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (3.0 * 1.05) / 1_000_000, // $3.00 per 1M tokens * 1.05 markup = $3.15 per 1M tokens (for prompts ≤200K tokens)
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/anthropic/claude-sonnet-4.5',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (15.0 * 1.05) / 1_000_000, // $15.00 per 1M tokens * 1.05 markup = $15.75 per 1M tokens (for prompts ≤200K tokens)
+  },
   // x-ai/grok-code-fast-1: Official pricing from OpenRouter
   // Note: Cache read pricing is $0.02 / 1M tokens (not tracked separately)
   [getPricingKey(
@@ -351,6 +370,25 @@ export const PRICING_TABLE: PricingTable = {
   )]: {
     unit: 'output_tokens',
     unitCost: (0.8 * 1.05) / 1_000_000, // $0.80 per 1M tokens * 1.05 markup = $0.84 per 1M tokens
+  },
+  // google/gemini-3-pro-preview: Official pricing from OpenRouter
+  // Note: Has tiered pricing (≤200K tokens vs >200K tokens). Using standard pricing (≤200K tokens) as base.
+  // For prompts >200K tokens: Input $4.20/MTok, Output $18.90/MTok
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/google/gemini-3-pro-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (2.0 * 1.05) / 1_000_000, // $2.00 per 1M tokens * 1.05 markup = $2.10 per 1M tokens (for prompts ≤200K tokens)
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/google/gemini-3-pro-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (12.0 * 1.05) / 1_000_000, // $12.00 per 1M tokens * 1.05 markup = $12.60 per 1M tokens (for prompts ≤200K tokens, includes thinking tokens)
   },
 
   // Legacy entries for services without subService (fallback pricing)
