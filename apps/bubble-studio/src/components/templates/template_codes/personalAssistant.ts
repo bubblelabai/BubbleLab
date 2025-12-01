@@ -44,10 +44,16 @@ export interface CustomWebhookPayload extends WebhookEvent {
   email: string;
 }
 
-export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const { email } = payload;
+interface CalendarEvent {
+  summary: string;
+  start: string;
+  end: string;
+  description?: string;
+}
 
+export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
+  // Retrieve calendar events for the next 30 days
+  private async getCalendarEvents(): Promise<CalendarEvent[]> {
     const timeMin = new Date().toISOString();
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -66,9 +72,7 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
     const eventsResult = await calendar.action();
 
     if (!eventsResult.success || !eventsResult.data || !eventsResult.data.events || eventsResult.data.events.length === 0) {
-      return {
-        status: 'No events found, no email sent.',
-      };
+      return [];
     }
 
     const events = eventsResult.data.events.map((event: any) => ({
@@ -78,6 +82,11 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       description: event.description,
     }));
 
+    return events;
+  }
+
+  // Generate HTML email summary from calendar events
+  private async generateEventSummary(events: CalendarEvent[]): Promise<string> {
     // Transforms raw calendar events into a beautifully formatted HTML email summary
     // by analyzing all events and creating a professional summary that highlights
     // important dates, meetings, and deadlines.
@@ -92,13 +101,18 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       throw new Error('Failed to generate event summary.');
     }
 
+    return agentResult.data.response;
+  }
+
+  // Send the calendar summary email
+  private async sendSummaryEmail(email: string, htmlContent: string): Promise<string> {
     // Sends the AI-generated calendar summary as an HTML email to the recipient,
     // delivering the formatted calendar report directly to their inbox.
     const emailBubble = new ResendBubble({
       operation: 'send_email',
       to: [email],
       subject: 'Your Weekly Calendar Summary',
-      html: agentResult.data.response,
+      html: htmlContent,
     });
 
     const emailResult = await emailBubble.action();
@@ -107,9 +121,31 @@ export class CalendarReportFlow extends BubbleFlow<'webhook/http'> {
       throw new Error(\`Failed to send email: \${emailResult.error}\`);
     }
 
+    return emailResult.data?.email_id || '';
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { email } = payload;
+
+    // Step 1: Retrieve calendar events for the next 30 days
+    const events = await this.getCalendarEvents();
+
+    if (events.length === 0) {
+      return {
+        status: 'No events found, no email sent.',
+      };
+    }
+
+    // Step 2: Generate HTML email summary from calendar events
+    const htmlContent = await this.generateEventSummary(events);
+
+    // Step 3: Send the calendar summary email
+    const messageId = await this.sendSummaryEmail(email, htmlContent);
+
     return {
       status: 'Report sent successfully',
-      messageId: emailResult.data?.email_id,
+      messageId,
     };
   }
 }`;

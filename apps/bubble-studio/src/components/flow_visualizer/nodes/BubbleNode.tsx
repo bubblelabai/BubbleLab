@@ -270,6 +270,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 : BUBBLE_COLORS.DEFAULT.border
       }`}
       onClick={() => {
+        // Don't open overlay if credential creation modal is open
+        if (createModalForType) return;
         onBubbleClick?.();
         setIsDetailsOpen(true);
       }}
@@ -604,6 +606,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                             ? String(selectedBubbleCredentials[credType])
                             : ''
                         }
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '__ADD_NEW__') {
@@ -677,9 +680,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
         selectedBubbleCredentials={selectedBubbleCredentials}
         availableCredentials={availableCredentials}
         onCredentialChange={handleCredentialChange}
-        onRequestCreateCredential={(credType) =>
-          setCreateModalForType(credType)
-        }
         onParamEditInCode={onParamEditInCode}
         onViewCode={() => onBubbleClick?.()}
         showEditor={showEditor}

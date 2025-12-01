@@ -41,17 +41,16 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      - NO direct Bubble instantiation inside handle().
      - NO try-catch blocks inside handle() (handle errors inside private methods if needed, otherwise let them bubble up).
      - NO complex logic inside handle() - use Transformation Methods instead.
-   - CRITICAL: Each private method MUST have a comment with TWO lines:
-     Line 1: Describe WHAT the method does in specific, concrete terms (not generic phrases like "processes data" or "transforms input")
-     Line 2: Start with "Condition:" and explain WHEN this method runs (e.g., "Always runs first", "Only runs when X > 5", "Runs differently based on Y")
+   - CRITICAL: Each private method MUST have a ONE-LINE comment describing WHAT the method does in specific, concrete terms (not generic phrases like "processes data" or "transforms input").
+     ONLY add a second "Condition:" line if the method is CONDITIONALLY executed (e.g., inside an if-statement, only runs when X is true). Do NOT add "Condition: Always runs" - if it always runs, omit the Condition line entirely.
    - Example:
      // Sanitizes raw webhook input by trimming whitespace and converting to uppercase
-     // Condition: Always runs first to clean incoming data
      private transformData(input: string): string { ... }
 
      // Sends cleaned input to AI for natural language processing
      // Condition: Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
+
 6. Use the exact parameter structures shown in the bubble details
 7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
 8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)

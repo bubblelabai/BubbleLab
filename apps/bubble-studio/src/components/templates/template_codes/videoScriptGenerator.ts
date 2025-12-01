@@ -127,48 +127,29 @@ interface ScriptVariations {
 }
 
 export class VideoScriptGeneratorFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const {
-      email,
-      topic,
-      targetAudience,
-      videoLength = 'medium',
-      brandWebsite,
-      brandContext,
-      specificVideoUrls,
-    } = payload;
+  // Extracts brand intelligence by scraping website and analyzing content.
+  private async extractBrandIntelligence(brandWebsite: string | null): Promise<BrandIntelligence | null> {
+    if (!brandWebsite) {
+      return null;
+    }
 
-    const lengthGuide = {
-      short: '1-3 minutes',
-      medium: '5-10 minutes',
-      long: '15-30 minutes',
-    };
-    const targetLength = lengthGuide[videoLength];
+    const formattedUrl = brandWebsite.startsWith('http://') || brandWebsite.startsWith('https://')
+      ? brandWebsite
+      : \`https://\${brandWebsite}\`;
+    // Scrapes the brand website in markdown format to extract content for brand analysis.
+    const brandScraper = new WebScrapeTool({
+      url: formattedUrl,
+      format: 'markdown',
+      onlyMainContent: true,
+    });
 
-    // Brand Intelligence: Scrape and analyze brand website if provided
-    let brandIntel: BrandIntelligence | null = null;
+    const brandResult = await brandScraper.action();
 
-    if (brandWebsite) {
-      // Auto-prepend https:// if no protocol specified
-      const formattedUrl = brandWebsite.startsWith('http://') || brandWebsite.startsWith('https://')
-        ? brandWebsite
-        : \`https://\${brandWebsite}\`;
+    if (!brandResult.success || !brandResult.data?.content) {
+      return null;
+    }
 
-      try {
-        // Scrapes the brand website in markdown format, focusing on main content to
-        // extract raw website content that will be analyzed for brand voice, audience,
-        // and value propositions.
-        const brandScraper = new WebScrapeTool({
-          url: formattedUrl,
-          format: 'markdown',
-          onlyMainContent: true,
-        });
-
-        const brandResult = await brandScraper.action();
-
-        if (brandResult.success && brandResult.data?.content) {
-          // Use AI to extract structured brand intelligence
-          const brandAnalysisPrompt = \`
+    const brandAnalysisPrompt = \`
 Analyze this brand's website and extract key information for video script creation:
 
 Website Content:
@@ -182,58 +163,48 @@ Extract and return JSON:
   "audience": "Target audience description",
   "valueProps": ["Key value propositions or unique selling points"]
 }
-          \`;
+    \`;
 
-          // Analyzes the scraped website content using gemini-2.5-flash with jsonMode
-          // to extract structured brand intelligence including name, description, voice,
-          // audience, and value propositions, ensuring video scripts align with the
-          // brand's identity and messaging.
-          const brandAnalyzer = new AIAgentBubble({
-            message: brandAnalysisPrompt,
-            systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence for content creation. Return only valid JSON.',
-            model: {
-              model: 'google/gemini-2.5-flash',
-              jsonMode: true,
-            },
-          });
+    // Analyzes scraped website content to extract structured brand intelligence.
+    // Returns JSON with name, description, voice, audience, and value propositions.
+    const brandAnalyzer = new AIAgentBubble({
+      message: brandAnalysisPrompt,
+      systemPrompt: 'You are a brand strategist. Analyze websites and extract structured brand intelligence for content creation. Return only valid JSON.',
+      model: {
+        model: 'google/gemini-2.5-flash',
+        jsonMode: true,
+      },
+    });
 
-          const brandAnalysisResult = await brandAnalyzer.action();
+    const brandAnalysisResult = await brandAnalyzer.action();
 
-          if (brandAnalysisResult.success && brandAnalysisResult.data?.response) {
-            try {
-              brandIntel = JSON.parse(brandAnalysisResult.data.response);
-            } catch (error) {
-              console.error('Failed to parse brand analysis JSON');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Failed to scrape brand website:', error);
-      }
+    if (!brandAnalysisResult.success || !brandAnalysisResult.data?.response) {
+      return null;
     }
 
-    // Combine brand context from website and manual input
-    const finalBrandContext = brandIntel
-      ? \`\${brandIntel.name}: \${brandIntel.description}. Brand Voice: \${brandIntel.voice}. \${brandContext ? 'Additional context: ' + brandContext : ''}\`
-      : brandContext || 'Generic content creator';
+    try {
+      return JSON.parse(brandAnalysisResult.data.response);
+    } catch (error) {
+      return null;
+    }
+  }
 
-    const finalTargetAudience = brandIntel?.audience || targetAudience || 'General audience';
 
-    let videoUrls: string[] = [];
-    let videoMetadata: Array<{
-      title: string | null;
-      url: string | null;
-      duration: string | null;
-      viewCount: number | null;
-      channelName: string | null;
-    }> = [];
-
+  // Discovers videos by searching YouTube or using provided URLs, returning video metadata.
+  private async discoverVideos(
+    topic: string,
+    specificVideoUrls?: string[]
+  ): Promise<Array<{
+    title: string | null;
+    url: string | null;
+    duration: string | null;
+    viewCount: number | null;
+    channelName: string | null;
+  }>> {
     if (specificVideoUrls && specificVideoUrls.length > 0) {
-      // Use provided URLs
-      videoUrls = specificVideoUrls.slice(0, 5); // Max 5 videos
+      const videoUrls = specificVideoUrls.slice(0, 5);
 
-      // Retrieves metadata (title, duration, views, channel) for the provided video
-      // URLs, gathering essential information about each video before transcript extraction.
+      // Retrieves metadata for provided video URLs.
       const metadataSearch = new YouTubeTool({
         operation: 'searchVideos',
         videoUrls: videoUrls,
@@ -242,65 +213,66 @@ Extract and return JSON:
       const metadataResult = await metadataSearch.action();
 
       if (metadataResult.success && metadataResult.data?.videos) {
-        videoMetadata = metadataResult.data.videos.filter(v => v.url).slice(0, 5);
-        videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
-      }
-    } else {
-      // Searches YouTube for the top 5 videos related to the topic, discovering
-      // relevant content that can be analyzed for successful patterns, hooks, and
-      // engagement tactics.
-      const youtubeSearch = new YouTubeTool({
-        operation: 'searchVideos',
-        searchQueries: [topic],
-        maxResults: 5,
-      });
-
-      const searchResult = await youtubeSearch.action();
-
-      if (!searchResult.success || !searchResult.data?.videos || searchResult.data.videos.length === 0) {
-        throw new Error(\`Failed to find videos for topic: \${topic}\`);
+        return metadataResult.data.videos.filter(v => v.url).slice(0, 5);
       }
 
-      videoMetadata = searchResult.data.videos.filter(v => v.url).slice(0, 5);
-      videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
+      return [];
     }
+
+    // Searches YouTube for top videos related to the topic.
+    const youtubeSearch = new YouTubeTool({
+      operation: 'searchVideos',
+      searchQueries: [topic],
+      maxResults: 5,
+    });
+
+    const searchResult = await youtubeSearch.action();
+
+    if (!searchResult.success || !searchResult.data?.videos || searchResult.data.videos.length === 0) {
+      throw new Error(\`Failed to find videos for topic: \${topic}\`);
+    }
+
+    return searchResult.data.videos.filter(v => v.url).slice(0, 5);
+  }
+
+  // Extracts full transcripts with timestamps from YouTube videos sequentially.
+  private async extractTranscripts(
+    videoMetadata: Array<{
+      title: string | null;
+      url: string | null;
+      duration: string | null;
+      viewCount: number | null;
+      channelName: string | null;
+    }>
+  ): Promise<VideoWithTranscript[]> {
+    const videosWithTranscripts: VideoWithTranscript[] = [];
+    const videoUrls = videoMetadata.map(v => v.url!).filter(Boolean);
 
     if (videoUrls.length === 0) {
       throw new Error('No valid video URLs found for analysis');
     }
 
-    // Extract transcripts from all videos SEQUENTIALLY (to avoid Apify memory limits)
-    const videosWithTranscripts: VideoWithTranscript[] = [];
-    
     for (const url of videoUrls) {
-      try {
-        // Extracts the full transcript with timestamps from a YouTube video, providing
-        // the complete spoken content needed to analyze patterns, hooks, structure,
-        // and engagement techniques.
-        const transcriptTool = new YouTubeTool({
-          operation: 'getTranscript',
-          videoUrl: url,
+      // Extracts full transcript with timestamps from a YouTube video.
+      const transcriptTool = new YouTubeTool({
+        operation: 'getTranscript',
+        videoUrl: url,
+      });
+
+      const result = await transcriptTool.action();
+
+      if (result.success && result.data?.fullTranscriptText) {
+        const metadata = videoMetadata.find(v => v.url === url);
+
+        videosWithTranscripts.push({
+          title: metadata?.title || 'Unknown Title',
+          url: url,
+          duration: metadata?.duration || null,
+          viewCount: metadata?.viewCount || null,
+          channelName: metadata?.channelName || null,
+          transcript: result.data.fullTranscriptText,
+          transcriptWithTimestamps: result.data.transcript || [],
         });
-
-        const result = await transcriptTool.action();
-
-        if (result.success && result.data?.fullTranscriptText) {
-          // Find matching metadata
-          const metadata = videoMetadata.find(v => v.url === url);
-
-          videosWithTranscripts.push({
-            title: metadata?.title || 'Unknown Title',
-            url: url,
-            duration: metadata?.duration || null,
-            viewCount: metadata?.viewCount || null,
-            channelName: metadata?.channelName || null,
-            transcript: result.data.fullTranscriptText,
-            transcriptWithTimestamps: result.data.transcript || [],
-          });
-        }
-      } catch (error) {
-        console.error(\`Failed to get transcript for \${url}:\`, error);
-        // Continue with next video instead of failing completely
       }
     }
 
@@ -308,13 +280,24 @@ Extract and return JSON:
       throw new Error('Failed to extract transcripts from any videos. Try different videos or topics.');
     }
 
+    return videosWithTranscripts;
+  }
+
+  // Analyzes video transcripts to identify successful patterns including hooks, structure, and engagement tactics.
+  private async analyzePatterns(
+    topic: string,
+    targetAudience: string,
+    targetLength: string,
+    brandContext: string,
+    videosWithTranscripts: VideoWithTranscript[]
+  ): Promise<PatternAnalysis> {
     const patternAnalysisPrompt = \`
 You are an expert video content analyst specializing in identifying successful patterns in YouTube videos.
 
 TOPIC: \${topic}
-TARGET AUDIENCE: \${finalTargetAudience}
+TARGET AUDIENCE: \${targetAudience}
 DESIRED VIDEO LENGTH: \${targetLength}
-BRAND CONTEXT: \${finalBrandContext}
+BRAND CONTEXT: \${brandContext}
 
 VIDEOS ANALYZED (\${videosWithTranscripts.length} videos):
 \${videosWithTranscripts.map((v, i) => \`
@@ -367,10 +350,8 @@ Extract and return JSON with the following structure:
 Focus on actionable patterns that can be adapted to create a new video on this topic.
     \`;
 
-    // Analyzes all video transcripts using gemini-2.5-pro with jsonMode to identify
-    // successful patterns including opening hooks, content structure, engagement tactics,
-    // visual suggestions, transitions, and CTA patterns, extracting actionable insights
-    // for script creation.
+    // Analyzes video transcripts to identify successful patterns including opening hooks,
+    // content structure, engagement tactics, visual suggestions, transitions, and CTA patterns.
     const patternAnalyzer = new AIAgentBubble({
       message: patternAnalysisPrompt,
       systemPrompt: 'You are an expert video content analyst. Analyze video transcripts and extract actionable patterns for content creation. Return only valid JSON.',
@@ -386,21 +367,30 @@ Focus on actionable patterns that can be adapted to create a new video on this t
       throw new Error(\`Failed to analyze patterns: \${analysisResult.error || 'No response'}\`);
     }
 
-    let patternAnalysis: PatternAnalysis;
     try {
-      patternAnalysis = JSON.parse(analysisResult.data.response);
+      return JSON.parse(analysisResult.data.response);
     } catch (error) {
       throw new Error('Failed to parse pattern analysis JSON');
     }
+  }
 
+  // Generates 4 complete video script variations in different styles using pattern analysis.
+  private async generateScripts(
+    topic: string,
+    targetAudience: string,
+    targetLength: string,
+    brandContext: string,
+    patternAnalysis: PatternAnalysis,
+    videosWithTranscripts: VideoWithTranscript[]
+  ): Promise<ScriptVariations> {
     const scriptGenerationPrompt = \`
 You are an expert video script writer. Create 4 complete video script variations in different styles.
 
 CONTEXT:
 - Topic: \${topic}
-- Target Audience: \${finalTargetAudience}
+- Target Audience: \${targetAudience}
 - Desired Length: \${targetLength}
-- Brand Context: \${finalBrandContext}
+- Brand Context: \${brandContext}
 
 PATTERN ANALYSIS FROM SUCCESSFUL VIDEOS:
 \${JSON.stringify(patternAnalysis, null, 2)}
@@ -453,9 +443,7 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
     \`;
 
     // Generates 4 complete video script variations in different styles (Educational,
-    // Storytelling, Professional, Casual) using gemini-2.5-pro with jsonMode, each
-    // including hooks, timing, talking points, visual suggestions, and CTAs, creating
-    // production-ready scripts that incorporate successful patterns from analyzed videos.
+    // Storytelling, Professional, Casual) using pattern analysis from successful videos.
     const scriptGenerator = new AIAgentBubble({
       message: scriptGenerationPrompt,
       systemPrompt: 'You are an expert video script writer. Create complete, actionable video scripts in multiple styles. Return only valid JSON.',
@@ -471,18 +459,27 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
       throw new Error(\`Failed to generate scripts: \${scriptResult.error || 'No response'}\`);
     }
 
-    let scriptVariations: ScriptVariations;
     try {
-      scriptVariations = JSON.parse(scriptResult.data.response);
+      const scriptVariations = JSON.parse(scriptResult.data.response);
+      if (!scriptVariations.scripts || scriptVariations.scripts.length === 0) {
+        throw new Error('No scripts generated');
+      }
+      return scriptVariations;
     } catch (error) {
       throw new Error('Failed to parse script variations JSON');
     }
+  }
 
-    if (!scriptVariations.scripts || scriptVariations.scripts.length === 0) {
-      throw new Error('No scripts generated');
-    }
-
-    const htmlEmail = \`
+  // Builds HTML email template with all scripts, pattern analysis, and video insights.
+  private buildScriptEmail(
+    topic: string,
+    targetLength: string,
+    brandIntel: BrandIntelligence | null,
+    videosWithTranscripts: VideoWithTranscript[],
+    patternAnalysis: PatternAnalysis,
+    scriptVariations: ScriptVariations
+  ): string {
+    return \`
 <!DOCTYPE html>
 <html>
 <head>
@@ -714,29 +711,74 @@ Make scripts COMPLETE and ACTIONABLE - ready to use for recording.
 </body>
 </html>
     \`;
+  }
 
-    // Sends a comprehensive HTML email containing all generated scripts, pattern
-    // analysis, video insights, and brand context directly to the user's inbox,
-    // delivering the complete video script package in a beautifully formatted format.
+  // Sends the comprehensive HTML email with all scripts and insights.
+  private async sendScriptEmail(
+    email: string,
+    topic: string,
+    htmlEmail: string,
+    scriptCount: number
+  ): Promise<string> {
+    // Sends comprehensive HTML email containing all generated scripts, pattern analysis,
+    // and video insights. The 'from' parameter is automatically set to Bubble Lab's
+    // default sender unless you have your own Resend account configured.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
-      subject: \`Video Script Variations: \${topic} - \${scriptVariations.scripts.length} Styles - \${new Date().toLocaleDateString()}\`,
+      subject: \`Video Script Variations: \${topic} - \${scriptCount} Styles - \${new Date().toLocaleDateString()}\`,
       html: htmlEmail,
     });
 
     const emailResult = await emailSender.action();
 
-    if (!emailResult.success) {
+    if (!emailResult.success || !emailResult.data?.email_id) {
       throw new Error(\`Failed to send email: \${emailResult.error || 'Unknown error'}\`);
     }
 
+    return emailResult.data.email_id;
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const {
+      email,
+      topic,
+      targetAudience,
+      videoLength = 'medium',
+      brandWebsite,
+      brandContext,
+      specificVideoUrls,
+    } = payload;
+
+    const lengthGuide = {
+      short: '1-3 minutes',
+      medium: '5-10 minutes',
+      long: '15-30 minutes',
+    };
+    const targetLength = lengthGuide[videoLength];
+
+    const brandIntel = await this.extractBrandIntelligence(brandWebsite ?? null);
+    const finalBrandContext = brandIntel
+      ? \`\${brandIntel.name}: \${brandIntel.description}. Brand Voice: \${brandIntel.voice}. \${brandContext ? 'Additional context: ' + brandContext : ''}\`
+      : brandContext || 'Generic content creator';
+    const finalTargetAudience = brandIntel?.audience || targetAudience || 'General audience';
+
+    const videoMetadata = await this.discoverVideos(topic, specificVideoUrls);
+    const videosWithTranscripts = await this.extractTranscripts(videoMetadata);
+    const patternAnalysis = await this.analyzePatterns(topic, finalTargetAudience, targetLength, finalBrandContext, videosWithTranscripts);
+    const scriptVariations = await this.generateScripts(topic, finalTargetAudience, targetLength, finalBrandContext, patternAnalysis, videosWithTranscripts);
+    const htmlEmail = this.buildScriptEmail(topic, targetLength, brandIntel, videosWithTranscripts, patternAnalysis, scriptVariations);
+    const emailId = await this.sendScriptEmail(email, topic, htmlEmail, scriptVariations.scripts.length);
+
     return {
       message: \`Successfully generated \${scriptVariations.scripts.length} video script variations from \${videosWithTranscripts.length} video transcripts\`,
-      videosAnalyzed: videoUrls.length,
+      videosAnalyzed: videoMetadata.length,
       transcriptsExtracted: videosWithTranscripts.length,
       scriptsGenerated: scriptVariations.scripts.length,
-      emailId: emailResult.data?.email_id as string,
+      emailId,
     };
   }
 }`;
+
+export const metadata = {};

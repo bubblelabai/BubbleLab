@@ -39,9 +39,9 @@ export interface CustomWebhookPayload extends WebhookEvent {
 }
 
 export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const { email = "emailtoreceivereport@gmail.com", leadPersona = "Devs who run automation agencies, or build extensively with n8n" } = payload;
-
+  // Generates relevant LinkedIn search keywords to analyze the lead persona
+  // and create optimized search terms for finding leads.
+  private async generateSearchKeywords(leadPersona: string): Promise<{ keywords: string[]; primaryKeyword: string }> {
     // Generates relevant LinkedIn search keywords using gemini-2.5-flash with low
     // temperature, analyzing the lead persona description to create optimized keywords
     // for finding potential leads on LinkedIn.
@@ -61,7 +61,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
       throw new Error(\`Failed to generate keywords: \${keywordResult.error}\`);
     }
     
-    // Extract keywords from AI response
     const generatedKeywords = keywordResult.data.response.trim();
     const keywords = generatedKeywords.split(',').map(k => k.trim()).filter(k => k);
     const primaryKeyword = keywords[0] || leadPersona.split(' ').slice(0, 2).join(' ') || 'business';
@@ -69,6 +68,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     this.logger?.info(\`Generated keywords: \${generatedKeywords}\`);
     this.logger?.info(\`Using primary keyword: \${primaryKeyword}\`);
 
+    return { keywords, primaryKeyword };
+  }
+
+  // Searches LinkedIn for posts matching the primary keyword to discover
+  // relevant content and authors that match the target persona.
+  private async searchLinkedInPosts(primaryKeyword: string): Promise<any[]> {
     // Searches LinkedIn for the 5 most relevant posts matching the generated keywords,
     // discovering relevant content and authors that match the target persona.
     const searchResult = await new LinkedInTool({
@@ -82,10 +87,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
       throw new Error(\`Failed to search LinkedIn posts: \${searchResult.error}\`);
     }
 
-    const posts = searchResult.data.posts;
-    
+    return searchResult.data.posts;
+  }
+
+  // Analyzes LinkedIn posts and qualifies leads.
+  private async analyzeAndQualifyLeads(posts: any[], leadPersona: string): Promise<{ leads: Lead[]; checkedProfiles: CheckedProfile[] }> {
     const analysisPromises = posts.map(async (post: any) => {
-      // Use AI heuristics to extract username from profileUrl
       let username: string | null = null;
       
       if (post.author?.profileUrl) {
@@ -111,7 +118,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
         } catch (aiExtractError) {
           this.logger?.error(\`AI extraction failed for \${post.author.profileUrl}: \${aiExtractError}\`);
           
-          // Fallback to regex-based extraction if AI fails
           try {
             const urlMatch = post.author.profileUrl.match(/linkedin\\.com\\/in\\/([^?\\/]+)/);
             if (urlMatch && urlMatch[1]) {
@@ -144,7 +150,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
         try {
           const analysis = JSON.parse(agentResult.data.response);
           
-          // Create checked profile object for both leads and non-leads
           const checkedProfile: CheckedProfile = {
             name: \`\${post.author?.firstName} \${post.author?.lastName}\`,
             headline: post.author?.headline,
@@ -156,7 +161,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
           };
 
           if (analysis.isLead && username) {
-            // Scrape additional posts from this lead's profile
             let additionalPosts: string[] = [];
             let storyAnalysis = "";
             
@@ -176,7 +180,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
                   .filter((p: any, index: number) => index < 5 && p.text && p.text !== post.text)
                   .map((p: any) => p.text!);
 
-                // Analyze the complete story of all posts
                 if (additionalPosts.length > 0) {
                   // Analyzes multiple LinkedIn posts from the same author using gemini-2.5-flash
                   // to understand their complete professional story, pain points, and engagement
@@ -208,7 +211,6 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
               isLead: true
             } as Lead;
           } else {
-            // Return non-lead profile for tracking
             return { ...checkedProfile, isLead: false };
           }
         } catch (e) {
@@ -222,40 +224,56 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     const leads = results.filter((result: any): result is Lead => result && result.isLead === true) as Lead[];
     const checkedProfiles = results.filter((result: any): result is CheckedProfile => result && (!result.isLead || result.isLead === false)) as CheckedProfile[];
 
-    let emailSent = false;
+    return { leads, checkedProfiles };
+  }
 
-    try {
-      const htmlContent = leads.length > 0
-        ? this.generateLeadsEmail(leads, checkedProfiles, leadPersona, primaryKeyword)
-        : this.generateNoLeadsEmail(checkedProfiles, leadPersona, primaryKeyword);
+  // Sends a comprehensive and actionable email report with all identified leads and checked profiles.
+  private async sendLeadReport(
+    email: string,
+    leads: Lead[],
+    checkedProfiles: CheckedProfile[],
+    leadPersona: string,
+    primaryKeyword: string
+  ): Promise<boolean> {
+    const htmlContent = leads.length > 0
+      ? this.generateLeadsEmail(leads, checkedProfiles, leadPersona, primaryKeyword)
+      : this.generateNoLeadsEmail(checkedProfiles, leadPersona, primaryKeyword);
 
-      const textContent = leads.length > 0
-        ? this.generateLeadsText(leads, checkedProfiles, leadPersona, primaryKeyword)
-        : this.generateNoLeadsText(checkedProfiles, leadPersona, primaryKeyword);
+    const textContent = leads.length > 0
+      ? this.generateLeadsText(leads, checkedProfiles, leadPersona, primaryKeyword)
+      : this.generateNoLeadsText(checkedProfiles, leadPersona, primaryKeyword);
 
-      // Sends a comprehensive email report with all identified leads, their story
-      // analyses, and checked profiles directly to the user's inbox, delivering qualified
-      // leads with deep insights in a convenient, actionable format.
-      const emailResult = await new ResendBubble({
-        operation: 'send_email',
-        from: 'Bubble Lab Team <welcome@hello.bubblelab.ai>',
-        to: [email],
-        subject: leads.length > 0 
-          ? \`🚀 Found \${leads.length} Enhanced LinkedIn Leads: \${primaryKeyword}\`
-          : \`🔍 LinkedIn Search Report: No Leads Found (\${primaryKeyword})\`,
-        text: textContent,
-        html: htmlContent,
-      }).action();
+    // Sends a comprehensive email report with all identified leads, their story
+    // analyses, and checked profiles directly to the user's inbox, delivering qualified
+    // leads with deep insights in a convenient, actionable format.
+    const emailResult = await new ResendBubble({
+      operation: 'send_email',
+      from: 'Bubble Lab Team <welcome@hello.bubblelab.ai>',
+      to: [email],
+      subject: leads.length > 0 
+        ? \`🚀 Found \${leads.length} Enhanced LinkedIn Leads: \${primaryKeyword}\`
+        : \`🔍 LinkedIn Search Report: No Leads Found (\${primaryKeyword})\`,
+      text: textContent,
+      html: htmlContent,
+    }).action();
 
-      if (emailResult.success) {
-        emailSent = true;
-        this.logger?.info(\`Email sent successfully to \${email}\`);
-      } else {
-        this.logger?.error(\`Failed to send email: \${emailResult.error}\`);
-      }
-    } catch (emailError) {
-      this.logger?.error(\`Email sending error: \${emailError}\`);
+    if (emailResult.success) {
+      this.logger?.info(\`Email sent successfully to \${email}\`);
+      return true;
+    } else {
+      this.logger?.error(\`Failed to send email: \${emailResult.error}\`);
+      return false;
     }
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const { email = "emailtoreceivereport@gmail.com", leadPersona = "Devs who run automation agencies, or build extensively with n8n" } = payload;
+
+    const { primaryKeyword } = await this.generateSearchKeywords(leadPersona);
+    const posts = await this.searchLinkedInPosts(primaryKeyword);
+    const { leads, checkedProfiles } = await this.analyzeAndQualifyLeads(posts, leadPersona);
+    const emailSent = await this.sendLeadReport(email, leads, checkedProfiles, leadPersona, primaryKeyword);
 
     return { leads, emailSent };
   }

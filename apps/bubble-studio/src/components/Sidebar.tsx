@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router';
 import {
   KeyRound,
   PanelLeft,
+  PanelLeftClose,
   Home,
   Workflow,
   User,
@@ -43,11 +44,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         >
           <span className="w-12 flex-none flex justify-center p-2">
             {isOpen ? (
-              <img
-                src="/favicon.ico"
-                alt="Bubble Lab"
-                className="w-8 h-8 rounded-lg"
-              />
+              <div className="relative w-8 h-8">
+                <img
+                  src="/favicon.ico"
+                  alt="Bubble Lab"
+                  className="w-8 h-8 rounded-lg transition-opacity group-hover:opacity-0"
+                />
+                <PanelLeftClose className="w-6 h-6 text-gray-200 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             ) : (
               <div className="relative w-8 h-8">
                 <img
@@ -61,8 +65,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
           </span>
           {/* Bubble Lab text when expanded */}
           {isOpen && (
-            <span className="text-lg font-semibold text-white">
+            <span className="text-lg font-semibold text-white group-hover:text-gray-400 transition-colors">
               Bubble Studio
+            </span>
+          )}
+          {/* Tooltip when expanded */}
+          {isOpen && (
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+              Close Sidebar
             </span>
           )}
           {/* Tooltip when collapsed */}

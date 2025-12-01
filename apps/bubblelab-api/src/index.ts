@@ -47,6 +47,7 @@ import subscriptionRoutes from './routes/subscription.js';
 import joinWaitlistRoutes from './routes/join-waitlist.js';
 import { startCronScheduler } from './services/cron-scheduler.js';
 import aiRoutes from './routes/ai.js';
+import templateSubmissionRoutes from './routes/template-submission.js';
 import { getBubbleFactory } from './services/bubble-factory-instance.js';
 
 const app = new OpenAPIHono({
@@ -96,6 +97,7 @@ app.route('/auth', authRoutes);
 app.route('/subscription', subscriptionRoutes);
 app.route('/join-waitlist', joinWaitlistRoutes);
 app.route('/ai', aiRoutes);
+app.route('/template-submission', templateSubmissionRoutes);
 console.log('[DEBUG] All routes mounted.');
 
 // OpenAPI documentation endpoint

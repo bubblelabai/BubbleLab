@@ -19,7 +19,7 @@ export const FLOW_LAYOUT = {
 
   // Hierarchical layout (step-based flow)
   HIERARCHICAL: {
-    START_X: 200, // Start after entry node
+    START_X: 50, // Start after entry node
     START_Y: 200,
     MIN_VERTICAL_SPACING: 80, // Minimum spacing between steps vertically
     HORIZONTAL_SPACING: 500, // Horizontal space between branches
@@ -40,6 +40,7 @@ export const FLOW_LAYOUT = {
 
   // Transformation node layout
   TRANSFORMATION: {
+    FIXED_HEIGHT: 100, // Fixed height since transformation nodes only show header (no code)
     HEADER_HEIGHT: 80,
     CODE_LINE_HEIGHT: 18,
     CODE_PADDING: 20, // Padding inside code area

@@ -18,8 +18,11 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /** Email address where the daily news digest will be sent. */
   email: string;
+  /** Subreddit names to scrape for news (without the r/ prefix). */
   subreddits?: string[];
+  /** Full URLs of news websites to scrape for headlines. */
   newsUrls?: string[];
 }
 
@@ -37,70 +40,80 @@ interface NewsArticle {
   title: string;
   url: string;
   source: string;
-  content: string
+  content: string;
+}
+
+interface DigestCategory {
+  name: string;
+  description: string;
+  headlines: {
+    title: string;
+    url: string;
+    source: string;
+    summary: string;
+  }[];
+}
+
+interface DigestData {
+  categories: DigestCategory[];
+  executiveSummary: string;
 }
 
 export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const {
-      email,
-      subreddits = ['news', 'worldnews', 'technology'],
-      newsUrls = ['https://news.ycombinator.com', 'https://techcrunch.com']
-    } = payload;
+  // Scrape all subreddits
+  private async scrapeAllSubreddits(subreddits: string[]): Promise<RedditPost[]> {
+    const allPosts: RedditPost[] = [];
 
-    const allHeadlines: (RedditPost | NewsArticle)[] = [];
+    for (const subreddit of subreddits) {
+      // Fetches the top 15 posts from each subreddit filtered by the past day.
+      // Adjust the limit parameter for more or fewer posts, or change timeFilter for different date ranges.
+      const redditScraper = new RedditScrapeTool({
+        subreddit,
+        limit: 15,
+        sort: 'top',
+        timeFilter: 'day',
+      });
 
-    if (subreddits && subreddits.length > 0) {
-      for (const subreddit of subreddits) {
-        // Scrapes the top 15 posts from the specified subreddit filtered by the past
-        // day, gathering Reddit headlines and discussions that will be included in
-        // the news digest.
-        const redditScraper = new RedditScrapeTool({
-          subreddit,
-          limit: 15,
-          sort: 'top',
-          timeFilter: 'day',
-        });
+      const scrapeResult = await redditScraper.action();
 
-        const scrapeResult = await redditScraper.action();
-
-        if (scrapeResult.success && scrapeResult.data?.posts) {
-          allHeadlines.push(...scrapeResult.data.posts);
-        }
+      if (scrapeResult.success && scrapeResult.data?.posts) {
+        allPosts.push(...scrapeResult.data.posts);
       }
     }
 
-    if (newsUrls && newsUrls.length > 0) {
-      for (const url of newsUrls) {
-        // Scrapes news websites in markdown format, focusing on main content to
-        // extract headlines and article content that will be organized into the
-        // daily news digest.
-        const webScraper = new WebScrapeTool({
-          url,
-          format: 'markdown',
-          onlyMainContent: true,
+    return allPosts;
+  }
+
+  // Scrape all news websites
+  private async scrapeAllNewsUrls(newsUrls: string[]): Promise<NewsArticle[]> {
+    const allArticles: NewsArticle[] = [];
+
+    for (const url of newsUrls) {
+      // Extracts the main content from each news website URL in markdown format.
+      // The onlyMainContent flag filters out navigation, ads, and other non-article content.
+      const webScraper = new WebScrapeTool({
+        url,
+        format: 'markdown',
+        onlyMainContent: true,
+      });
+
+      const scrapeResult = await webScraper.action();
+
+      if (scrapeResult.success && scrapeResult.data?.content) {
+        allArticles.push({
+          title: scrapeResult.data.title || 'News Article',
+          content: scrapeResult.data.content,
+          url: scrapeResult.data.url,
+          source: new URL(url).hostname,
         });
-
-        const scrapeResult = await webScraper.action();
-
-        if (scrapeResult.success && scrapeResult.data?.content) {
-          allHeadlines.push({
-            title: scrapeResult.data.title || 'News Article',
-            content: scrapeResult.data.content,
-            url: scrapeResult.data.url,
-            source: new URL(url).hostname,
-          });
-        }
       }
     }
 
-    if (allHeadlines.length === 0) {
-      throw new Error('No headlines found from any source');
-    }
+    return allArticles;
+  }
 
-    // Analyzes all collected headlines using gemini-2.5-flash with jsonMode to
-    // organize them into 3-5 meaningful categories, generate summaries, and create
-    // an executive summary, transforming raw headlines into a structured digest.
+  // Generate AI digest
+  private async generateDigest(headlines: (RedditPost | NewsArticle)[]): Promise<DigestData> {
     const prompt = \`
       You are an expert news editor. Analyze the following headlines and organize them into a structured digest.
 
@@ -127,12 +140,13 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
       Categories should be clear and descriptive (e.g., "Technology & AI", "World Politics", "Science & Health").
 
       Headlines:
-      \${JSON.stringify(allHeadlines)}
+      \${JSON.stringify(headlines)}
     \`;
 
-    // Organizes headlines into categories and generates summaries using gemini-2.5-flash
-    // with jsonMode, creating a structured digest with executive summary and categorized
-    // headlines ready for email formatting.
+    // Analyzes all collected headlines and organizes them into 3-5 meaningful categories using AI.
+    // Uses gemini-2.5-flash with jsonMode for structured output containing categorized headlines,
+    // per-headline summaries, and an executive summary synthesizing key themes across all sources.
+    // Switch to gemini-2.5-pro for more nuanced categorization of complex or specialized topics.
     const digestAgent = new AIAgentBubble({
       message: prompt,
       systemPrompt: 'You are an expert news editor. Analyze headlines and organize them into clear, logical categories. Return only valid JSON with no markdown formatting.',
@@ -141,7 +155,6 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
         jsonMode: true,
         maxTokens: 900000
       },
-      
     });
 
     const digestResult = await digestAgent.action();
@@ -149,16 +162,16 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
     if (!digestResult.success || !digestResult.data?.response) {
       throw new Error(\`Failed to generate digest: \${digestResult.error || 'No response'}\`);
     }
-    this.logger?.info(JSON.stringify(digestResult))
 
-    let digestData;
-    try {
-      digestData = JSON.parse(digestResult.data.response);
-    } catch (error) {
-      throw new Error('Failed to parse AI response as JSON');
-    }
+    this.logger?.info(JSON.stringify(digestResult));
 
-    const htmlEmail = \`
+    const digestData = JSON.parse(digestResult.data.response);
+    return digestData;
+  }
+
+  // Build HTML email
+  private buildEmailHtml(digestData: DigestData): string {
+    return \`
 <!DOCTYPE html>
 <html>
 <head>
@@ -188,13 +201,13 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
           </tr>
 
           <!-- Categories -->
-          \${digestData.categories.map((category: any) => \`
+          \${digestData.categories.map((category: DigestCategory) => \`
             <tr>
               <td style="padding: 30px;">
                 <h2 style="margin: 0 0 10px 0; color: #667eea; font-size: 20px; font-weight: 600; border-bottom: 2px solid #667eea; padding-bottom: 8px;">\${category.name}</h2>
                 <p style="margin: 0 0 20px 0; color: #64748b; font-size: 14px; font-style: italic;">\${category.description}</p>
 
-                \${category.headlines.map((headline: any) => \`
+                \${category.headlines.map((headline) => \`
                   <div style="margin-bottom: 20px; padding: 15px; background-color: #f8fafc; border-radius: 6px; border-left: 4px solid #667eea;">
                     <a href="\${headline.url}" style="color: #1e293b; text-decoration: none; font-weight: 600; font-size: 16px; display: block; margin-bottom: 8px;">\${headline.title}</a>
                     <p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px; line-height: 1.5;">\${headline.summary}</p>
@@ -221,10 +234,13 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
 </body>
 </html>
     \`;
+  }
 
-    // Sends the AI-generated news digest as a beautifully formatted HTML email
-    // to the recipient, delivering categorized headlines and executive summary
-    // directly to their inbox.
+  // Send email via Resend
+  private async sendDigestEmail(email: string, htmlEmail: string): Promise<string> {
+    // Sends the formatted HTML news digest to the recipient's email address.
+    // The 'from' parameter is automatically set to Bubble Lab's default sender
+    // unless you have your own Resend account with a verified domain configured.
     const emailSender = new ResendBubble({
       operation: 'send_email',
       to: [email],
@@ -238,9 +254,42 @@ export class DailyNewsDigestFlow extends BubbleFlow<'webhook/http'> {
       throw new Error(\`Failed to send email: \${emailResult.error || 'Unknown error'}\`);
     }
 
+    return emailResult.data.email_id;
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const {
+      email = 'user@example.com',
+      subreddits = ['news', 'worldnews', 'technology'],
+      newsUrls = ['https://news.ycombinator.com', 'https://techcrunch.com']
+    } = payload;
+
+    // Step 1: Scrape Reddit posts from all subreddits
+    const redditPosts = await this.scrapeAllSubreddits(subreddits);
+
+    // Step 2: Scrape news articles from all URLs
+    const newsArticles = await this.scrapeAllNewsUrls(newsUrls);
+
+    // Step 3: Combine all headlines
+    const allHeadlines: (RedditPost | NewsArticle)[] = [...redditPosts, ...newsArticles];
+
+    if (allHeadlines.length === 0) {
+      throw new Error('No headlines found from any source');
+    }
+
+    // Step 4: Generate AI-organized digest
+    const digestData = await this.generateDigest(allHeadlines);
+
+    // Step 5: Build HTML email template
+    const htmlEmail = this.buildEmailHtml(digestData);
+
+    // Step 6: Send email to recipient
+    const emailId = await this.sendDigestEmail(email, htmlEmail);
+
     return {
       message: \`Successfully sent news digest with \${allHeadlines.length} headlines to \${email}\`,
-      emailId: emailResult.data.email_id,
+      emailId,
       totalHeadlines: allHeadlines.length,
     };
   }
@@ -280,87 +329,5 @@ export const metadata = {
     reddit: ['read'],
     resend: ['send'],
     firecrawl: ['scrape'],
-  },
-  // Pre-validated bubble parameters for instant visualization
-  preValidatedBubbles: {
-    1: {
-      variableId: 1,
-      variableName: 'redditScraper',
-      bubbleName: 'RedditScrapeTool',
-      className: 'RedditScrapeTool',
-      nodeType: 'tool',
-      hasAwait: true,
-      hasActionCall: true,
-      location: { startLine: 1, startCol: 1, endLine: 1, endCol: 1 },
-      parameters: [
-        { name: 'subreddit', value: '${subreddit}', type: 'string' },
-        { name: 'limit', value: 15, type: 'number' },
-        { name: 'sort', value: 'top', type: 'string' },
-        { name: 'timeFilter', value: 'day', type: 'string' },
-      ],
-    },
-    2: {
-      variableId: 2,
-      variableName: 'webScraper',
-      bubbleName: 'WebScrapeTool',
-      className: 'WebScrapeTool',
-      nodeType: 'tool',
-      hasAwait: true,
-      hasActionCall: true,
-      location: { startLine: 1, startCol: 1, endLine: 1, endCol: 1 },
-      parameters: [
-        { name: 'url', value: '${url}', type: 'string' },
-        { name: 'format', value: 'markdown', type: 'string' },
-        { name: 'onlyMainContent', value: true, type: 'boolean' },
-      ],
-    },
-    3: {
-      variableId: 3,
-      variableName: 'digestAgent',
-      bubbleName: 'AIAgentBubble',
-      className: 'AIAgentBubble',
-      nodeType: 'service',
-      hasAwait: true,
-      hasActionCall: true,
-      location: { startLine: 1, startCol: 1, endLine: 1, endCol: 1 },
-      parameters: [
-        {
-          name: 'message',
-          value:
-            'Generate comprehensive daily news digest from headlines, grouped by topic with executive summary',
-          type: 'string',
-        },
-        {
-          name: 'systemPrompt',
-          value:
-            'Expert news editor generating professional HTML email digests',
-          type: 'string',
-        },
-        {
-          name: 'model',
-          value: { model: 'google/gemini-2.5-flash' },
-          type: 'object',
-        },
-      ],
-    },
-    4: {
-      variableId: 4,
-      variableName: 'emailSender',
-      bubbleName: 'ResendBubble',
-      className: 'ResendBubble',
-      nodeType: 'service',
-      hasAwait: true,
-      hasActionCall: true,
-      location: { startLine: 1, startCol: 1, endLine: 1, endCol: 1 },
-      parameters: [
-        { name: 'operation', value: 'send_email', type: 'string' },
-        { name: 'to', value: ['${email}'], type: 'array' },
-        {
-          name: 'subject',
-          value: 'Your Daily News Digest - ${date}',
-          type: 'string',
-        },
-      ],
-    },
   },
 };
