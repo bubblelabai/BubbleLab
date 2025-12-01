@@ -42,7 +42,7 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
   // Generates relevant LinkedIn search keywords to analyze the lead persona
   // and create optimized search terms for finding leads.
   private async generateSearchKeywords(leadPersona: string): Promise<{ keywords: string[]; primaryKeyword: string }> {
-    // Generates relevant LinkedIn search keywords using gemini-2.5-flash with low
+    // Generates relevant LinkedIn search keywords with low
     // temperature, analyzing the lead persona description to create optimized keywords
     // for finding potential leads on LinkedIn.
     const keywordGenerator = new AIAgentBubble({
@@ -97,8 +97,8 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
       
       if (post.author?.profileUrl) {
         try {
-          // Extracts the LinkedIn username from a profile URL using gemini-2.5-flash
-          // with very low temperature to handle complex URL formats and edge cases,
+          // Extracts the LinkedIn username from a profile URL with very low
+          // temperature to handle complex URL formats and edge cases,
           // enabling deeper profile analysis by getting the username needed for scraping.
           const usernameExtractor = new AIAgentBubble({
             model: {
@@ -130,9 +130,9 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
         }
       }
       
-      // Analyzes a LinkedIn post and author using gemini-2.5-flash with jsonMode to
-      // determine if they match the target lead persona, evaluating post content and
-      // author headline to classify them as a qualified lead or not.
+      // Analyzes a LinkedIn post and author with jsonMode to determine if they
+      // match the target lead persona, evaluating post content and author headline
+      // to classify them as a qualified lead or not.
       const leadGenAnalysisAgent = new AIAgentBubble({
         model: {
           model: 'google/gemini-2.5-flash',
@@ -181,8 +181,8 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
                   .map((p: any) => p.text!);
 
                 if (additionalPosts.length > 0) {
-                  // Analyzes multiple LinkedIn posts from the same author using gemini-2.5-flash
-                  // to understand their complete professional story, pain points, and engagement
+                  // Analyzes multiple LinkedIn posts from the same author to understand
+                  // their complete professional story, pain points, and engagement
                   // opportunities, creating a comprehensive profile analysis for effective outreach.
                   const storyAgent = new AIAgentBubble({
                     model: {
