@@ -454,7 +454,7 @@ export class BubbleLogger {
     // Track start time for this function call
     this.functionCallStartTimes.set(variableId, Date.now());
 
-    const logMessage = `Starting function call: ${functionName}${lineNumber ? ` at line ${lineNumber}` : ''}`;
+    const logMessage = `Starting step: ${functionName}`;
     this.log(LogLevel.DEBUG, logMessage, {
       variableId,
       lineNumber,
@@ -478,7 +478,7 @@ export class BubbleLogger {
     duration: number,
     lineNumber?: number
   ): string {
-    const logMessage = `Completed function call: ${functionName} in ${duration}ms${lineNumber ? ` at line ${lineNumber}` : ''}`;
+    const logMessage = `Completed step: ${functionName}`;
     this.log(LogLevel.DEBUG, logMessage, {
       variableId,
       lineNumber,
