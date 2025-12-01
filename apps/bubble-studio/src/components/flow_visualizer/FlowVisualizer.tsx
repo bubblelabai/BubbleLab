@@ -103,6 +103,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   );
   const isExecuting = useExecutionStore(flowId, (s) => s.isRunning);
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
+  const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
   // Subscribe to expandedRootIds so nodes/edges sync when toggled
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
@@ -429,7 +430,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const generateWithinStepEdges = useCallback(
     (
       steps: StepData[],
-      bubbles: Record<number, ParsedBubbleWithInfo>
+      bubbles: Record<number, ParsedBubbleWithInfo>,
+      completedBubbles: Record<string, { totalTime: number; count: number }>,
+      runningBubbles: Set<string>
     ): Edge[] => {
       const edges: Edge[] = [];
 
@@ -447,6 +450,33 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           const sourceNodeId = String(source.variableId);
           const targetNodeId = String(target.variableId);
 
+          // Check if target bubble is executing or completed
+          const targetKey = String(target.variableId);
+          const isTargetExecuting = runningBubbles.has(targetKey);
+          const isTargetCompleted = !!completedBubbles[targetKey];
+
+          // Edge stays green once execution starts (either executing or completed)
+          const isHighlighted = isTargetExecuting || isTargetCompleted;
+
+          let edgeColor: string;
+          let strokeWidth: number;
+          let strokeDasharray: string | undefined;
+          let strokeOpacity: number | undefined;
+
+          if (isHighlighted) {
+            // Highlighted edges: solid, thick, bright green
+            edgeColor = '#22c55e'; // green-500
+            strokeWidth = 3;
+            strokeDasharray = undefined;
+            strokeOpacity = 1;
+          } else {
+            // Non-highlighted edges: dashed, thin, subtle
+            edgeColor = '#6b7280'; // gray-500
+            strokeWidth = 1;
+            strokeDasharray = '6,3';
+            strokeOpacity = 0.4;
+          }
+
           edges.push({
             id: `internal-${step.id}-${source.variableId}-to-${target.variableId}`,
             source: sourceNodeId,
@@ -455,15 +485,174 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             targetHandle: 'top',
             type: 'straight',
             animated: false,
+            zIndex: isHighlighted ? 10 : 0, // Highlighted edges render on top
             style: {
-              stroke: '#9ca3af', // Gray for consistency
-              strokeWidth: 1.5,
+              stroke: edgeColor,
+              strokeWidth,
+              strokeDasharray,
+              strokeOpacity,
             },
           });
         }
       }
 
       return edges;
+    },
+    []
+  );
+
+  /**
+   * Determine which steps are completed or executing based on bubble execution state
+   * Returns a map of stepId -> { isCompleted: boolean, isExecuting: boolean }
+   */
+  const getStepExecutionState = useCallback(
+    (
+      steps: StepData[],
+      completedBubbles: Record<string, { totalTime: number; count: number }>,
+      runningBubbles: Set<string>
+    ): Map<string, { isCompleted: boolean; isExecuting: boolean }> => {
+      const stepState = new Map<
+        string,
+        { isCompleted: boolean; isExecuting: boolean }
+      >();
+
+      for (const step of steps) {
+        let isCompleted = false;
+        let isExecuting = false;
+
+        // Check if any bubble in this step is completed
+        for (const bubbleId of step.bubbleIds) {
+          const bubbleKey = String(bubbleId);
+          if (completedBubbles[bubbleKey]) {
+            isCompleted = true;
+            break;
+          }
+        }
+
+        // Check if any bubble in this step is currently executing
+        for (const bubbleId of step.bubbleIds) {
+          const bubbleKey = String(bubbleId);
+          if (runningBubbles.has(bubbleKey)) {
+            isExecuting = true;
+            break;
+          }
+        }
+
+        stepState.set(step.id, { isCompleted, isExecuting });
+      }
+
+      return stepState;
+    },
+    []
+  );
+
+  /**
+   * Determine which edges should be highlighted based on step execution state
+   * Traces the full execution path from start to executing/completed steps
+   * Returns a map of edgeId -> { isCompleted: boolean, isExecuting: boolean }
+   */
+  const getEdgeHighlightState = useCallback(
+    (
+      stepEdges: Array<{ sourceStepId: string; targetStepId: string }>,
+      stepState: Map<string, { isCompleted: boolean; isExecuting: boolean }>,
+      steps: StepData[]
+    ): Map<string, { isCompleted: boolean; isExecuting: boolean }> => {
+      const edgeState = new Map<
+        string,
+        { isCompleted: boolean; isExecuting: boolean }
+      >();
+
+      // Build a map of stepId -> all incoming edges (for reverse traversal)
+      const incomingEdgesMap = new Map<
+        string,
+        Array<{ sourceStepId: string; targetStepId: string }>
+      >();
+      for (const stepEdge of stepEdges) {
+        if (!incomingEdgesMap.has(stepEdge.targetStepId)) {
+          incomingEdgesMap.set(stepEdge.targetStepId, []);
+        }
+        incomingEdgesMap.get(stepEdge.targetStepId)!.push(stepEdge);
+      }
+
+      // Build a map of stepId -> step data for quick lookup
+      const stepMap = new Map<string, StepData>();
+      for (const step of steps) {
+        stepMap.set(step.id, step);
+      }
+
+      // Find all steps that are executing or completed
+      const executedSteps = new Set<string>();
+      for (const [stepId, state] of stepState.entries()) {
+        if (state.isExecuting || state.isCompleted) {
+          executedSteps.add(stepId);
+        }
+      }
+
+      // For each executed step, trace back the entire path to highlight all edges in the path
+      const visitedSteps = new Set<string>();
+
+      /**
+       * Recursively trace back from a step to find all edges in its execution path
+       * This ensures we highlight the entire branching path, not just the direct incoming edge
+       */
+      const tracePath = (stepId: string) => {
+        if (visitedSteps.has(stepId)) {
+          return;
+        }
+        visitedSteps.add(stepId);
+
+        // Get all incoming edges to this step
+        const incomingEdges = incomingEdgesMap.get(stepId) || [];
+
+        for (const edge of incomingEdges) {
+          const edgeId = `${edge.sourceStepId}-to-${edge.targetStepId}`;
+          const targetState = stepState.get(edge.targetStepId);
+
+          // Mark this edge as part of the execution path
+          // Use the target step's state to determine if it's executing or completed
+          edgeState.set(edgeId, {
+            isCompleted: targetState?.isCompleted || false,
+            isExecuting: targetState?.isExecuting || false,
+          });
+
+          // Recursively trace back from the source step to highlight the full path
+          tracePath(edge.sourceStepId);
+        }
+      };
+
+      // Trace path from all executed steps to highlight the entire execution path
+      for (const stepId of executedSteps) {
+        tracePath(stepId);
+      }
+
+      // Also mark direct edges to executed steps (in case they weren't caught by tracePath)
+      for (const stepEdge of stepEdges) {
+        const edgeId = `${stepEdge.sourceStepId}-to-${stepEdge.targetStepId}`;
+        const targetState = stepState.get(stepEdge.targetStepId);
+
+        if (
+          targetState &&
+          (targetState.isExecuting || targetState.isCompleted)
+        ) {
+          // This edge leads to an executed step, so it's part of the path
+          if (!edgeState.has(edgeId)) {
+            edgeState.set(edgeId, {
+              isCompleted: targetState.isCompleted,
+              isExecuting: targetState.isExecuting,
+            });
+          }
+        }
+      }
+
+      // Initialize all edges (those not in the path remain unhighlighted)
+      for (const stepEdge of stepEdges) {
+        const edgeId = `${stepEdge.sourceStepId}-to-${stepEdge.targetStepId}`;
+        if (!edgeState.has(edgeId)) {
+          edgeState.set(edgeId, { isCompleted: false, isExecuting: false });
+        }
+      }
+
+      return edgeState;
     },
     []
   );
@@ -690,6 +879,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     console.log('stepGraph', stepGraph);
     const steps = stepGraph.steps;
     const stepEdges = stepGraph.edges;
+
+    // Determine step and edge execution state for highlighting
+    const stepState = getStepExecutionState(
+      steps,
+      completedBubbles,
+      runningBubbles
+    );
+    const edgeState = getEdgeHighlightState(stepEdges, stepState, steps);
 
     // Check if we should fallback to sequential horizontal layout
     // Conditions: 1. No workflow attribute exists, OR 2. There are unparsed bubbles
@@ -1403,6 +1600,31 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     ) {
       const firstRootStep = steps.find((s) => !s.parentStepId);
       if (firstRootStep) {
+        const firstStepState = stepState.get(firstRootStep.id);
+
+        // Edge stays green once execution starts (either executing or completed)
+        const isHighlighted =
+          firstStepState?.isExecuting || firstStepState?.isCompleted;
+
+        let edgeColor: string;
+        let strokeWidth: number;
+        let strokeDasharray: string | undefined;
+        let strokeOpacity: number | undefined;
+
+        if (isHighlighted) {
+          // Highlighted edges: solid, thick, bright green
+          edgeColor = '#22c55e'; // green-500
+          strokeWidth = 4;
+          strokeDasharray = undefined;
+          strokeOpacity = 1;
+        } else {
+          // Non-highlighted edges: dashed, thin, subtle
+          edgeColor = '#6b7280'; // gray-500
+          strokeWidth = 1.5;
+          strokeDasharray = '8,4';
+          strokeOpacity = 0.4;
+        }
+
         edges.push({
           id: 'entry-to-first-step',
           source: entryNodeId,
@@ -1411,10 +1633,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           targetHandle: 'left',
           type: 'smoothstep',
           animated: true,
+          zIndex: isHighlighted ? 10 : 0, // Highlighted edges render on top
           style: {
-            stroke: '#9ca3af', // Gray for consistency
-            strokeWidth: 2,
-            strokeDasharray: '5,5',
+            stroke: edgeColor,
+            strokeWidth,
+            strokeDasharray,
+            strokeOpacity,
           },
         });
       }
@@ -1423,18 +1647,42 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     // Generate edges from step graph (includes conditional branches with labels)
     for (const stepEdge of stepEdges) {
       const isConditional = stepEdge.edgeType === 'conditional';
+      const edgeId = `${stepEdge.sourceStepId}-to-${stepEdge.targetStepId}`;
+      const highlightState = edgeState.get(edgeId);
 
-      // Use consistent gray color for all edges
-      const edgeColor = '#9ca3af';
+      // Determine edge color and style based on execution state
+      // Edge stays green once execution starts (either executing or completed)
+      const isHighlighted =
+        highlightState?.isExecuting || highlightState?.isCompleted;
+
+      let edgeColor: string;
+      let strokeWidth: number;
+      let strokeDasharray: string | undefined;
+      let strokeOpacity: number | undefined;
+
+      if (isHighlighted) {
+        // Highlighted edges: solid, thick, bright green - clearly visible
+        edgeColor = '#22c55e'; // green-500
+        strokeWidth = 4; // Thicker for better visibility
+        strokeDasharray = undefined; // Solid line - no dashes
+        strokeOpacity = 1; // Fully opaque
+      } else {
+        // Non-highlighted edges: dashed, thin, subtle gray - fade into background
+        edgeColor = '#6b7280'; // gray-500 (lighter than before)
+        strokeWidth = isConditional ? 1.5 : 1.5; // Thinner
+        strokeDasharray = '8,4'; // Dashed - more subtle
+        strokeOpacity = 0.4; // Semi-transparent to fade into background
+      }
 
       const edge: Edge = {
-        id: `${stepEdge.sourceStepId}-to-${stepEdge.targetStepId}`,
+        id: edgeId,
         source: stepEdge.sourceStepId,
         target: stepEdge.targetStepId,
         sourceHandle: 'bottom',
         targetHandle: 'top',
         type: 'smoothstep',
         animated: true,
+        zIndex: isHighlighted ? 10 : 0, // Highlighted edges render on top
         label: SHOW_EDGE_LABELS ? stepEdge.label : undefined,
         labelStyle: SHOW_EDGE_LABELS
           ? {
@@ -1455,15 +1703,21 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         labelBgBorderRadius: SHOW_EDGE_LABELS ? 4 : undefined,
         style: {
           stroke: edgeColor,
-          strokeWidth: isConditional ? 2.5 : 2,
-          strokeDasharray: isConditional ? '5,5' : undefined,
+          strokeWidth,
+          strokeDasharray,
+          strokeOpacity,
         },
       };
       edges.push(edge);
     }
 
     // Generate within-step edges (connects bubbles vertically inside each step)
-    const internalEdges = generateWithinStepEdges(steps, bubbleParameters);
+    const internalEdges = generateWithinStepEdges(
+      steps,
+      bubbleParameters,
+      completedBubbles,
+      runningBubbles
+    );
     edges.push(...internalEdges);
 
     return { initialNodes: nodes, initialEdges: edges };
@@ -1633,9 +1887,30 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return initialEdges;
       }
 
-      return currentEdges;
+      // If execution state changed (completedBubbles or runningBubbles), update edge styles
+      // Merge existing edges with updated styles from initialEdges to preserve positions
+      const updatedEdges = initialEdges.map((newEdge) => {
+        const existingEdge = currentEdges.find((e) => e.id === newEdge.id);
+        if (existingEdge) {
+          // Preserve existing edge properties, but update style for highlighting
+          return { ...existingEdge, style: newEdge.style };
+        }
+        return newEdge;
+      });
+
+      // Add any edges that exist in currentEdges but not in initialEdges (e.g., sub-bubble edges)
+      const newEdgeIds = new Set(initialEdges.map((e) => e.id));
+      const edgesToKeep = currentEdges.filter((e) => !newEdgeIds.has(e.id));
+
+      return [...updatedEdges, ...edgesToKeep];
     });
-  }, [currentFlow, expandedRootIds]);
+  }, [
+    currentFlow,
+    expandedRootIds,
+    completedBubbles,
+    runningBubbles,
+    isExecuting,
+  ]);
 
   // Reset view initialization flag when flowId changes
   useEffect(() => {
