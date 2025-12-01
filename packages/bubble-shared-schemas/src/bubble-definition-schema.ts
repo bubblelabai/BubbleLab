@@ -333,6 +333,7 @@ export interface FunctionCallWorkflowNode {
   description?: string; // Method description from code comments
   arguments?: string; // The arguments as code string
   code: string; // Full call expression code
+  variableId: number; // Unique variable ID for tracking execution (added for logging consistency)
   variableDeclaration?: {
     // If this function call is part of a variable declaration
     variableName: string;
@@ -380,6 +381,7 @@ export interface TransformationFunctionWorkflowNode {
   isMethodCall: boolean; // true for this.method(), false for helper()
   description?: string; // Method description from code comments
   arguments?: string; // The arguments as code string
+  variableId: number; // Unique variable ID for tracking execution
   variableDeclaration?: {
     // If this function call is part of a variable declaration
     variableName: string;
@@ -512,6 +514,7 @@ export const FunctionCallWorkflowNodeSchema: z.ZodType<FunctionCallWorkflowNode>
       description: z.string().optional(),
       arguments: z.string().optional(),
       code: z.string(),
+      variableId: z.number(),
       variableDeclaration: z
         .object({
           variableName: z.string(),
@@ -557,6 +560,7 @@ export const TransformationFunctionWorkflowNodeSchema: z.ZodType<TransformationF
     isMethodCall: z.boolean(),
     description: z.string().optional(),
     arguments: z.string().optional(),
+    variableId: z.number(),
     variableDeclaration: z
       .object({
         variableName: z.string(),

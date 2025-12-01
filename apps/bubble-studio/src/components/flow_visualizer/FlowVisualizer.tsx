@@ -1430,6 +1430,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               location: step.location,
               isAsync: step.isAsync,
               variableName: step.transformationData.variableName,
+              variableId: step.transformationData.variableId,
             },
             usedHandles: usedHandlesMap.get(stepNodeId),
           },

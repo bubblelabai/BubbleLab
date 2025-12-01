@@ -1,5 +1,7 @@
 import { BubbleScript } from '../parse/BubbleScript';
+import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
+import { hashToVariableId } from '@bubblelab/shared-schemas';
 
 export interface LoggingInjectionOptions {
   enableLineByLineLogging: boolean;
@@ -31,13 +33,21 @@ export class LoggerInjector {
     const modifiedScript = this.bubbleScript.currentBubbleScript;
     const lines = modifiedScript.split('\n');
 
-    // Inject statement-level logging in handle method
+    // Inject function call logging FIRST (before line logging shifts line numbers)
+    this.injectFunctionCallLogging(lines);
+
+    // Update the script and reparse AST after function call logging
+    this.bubbleScript.currentBubbleScript = lines.join('\n');
+    this.bubbleScript.reparseAST();
+
+    // Inject statement-level logging in handle method (now with updated AST)
     if (this.options.enableLineByLineLogging) {
-      this.injectLineLogging(lines);
+      const updatedLines = this.bubbleScript.currentBubbleScript.split('\n');
+      this.injectLineLogging(updatedLines);
+      this.bubbleScript.currentBubbleScript = updatedLines.join('\n');
     }
 
-    this.bubbleScript.currentBubbleScript = lines.join('\n');
-    return lines.join('\n');
+    return this.bubbleScript.currentBubbleScript;
   }
 
   /**
@@ -298,5 +308,157 @@ export class LoggerInjector {
 
       visitValue(value);
     }
+  }
+
+  /**
+   * Inject logging for all method invocations using pre-tracked invocation data
+   * Uses rich invocation info captured during AST parsing
+   */
+  private injectFunctionCallLogging(lines: string[]): void {
+    // Reparse AST to get current invocation lines (after script modifications)
+    this.bubbleScript.reparseAST();
+    const instanceMethods = this.bubbleScript.instanceMethodsLocation;
+
+    if (!instanceMethods || Object.keys(instanceMethods).length === 0) {
+      return;
+    }
+
+    // Collect all invocations with their rich metadata
+    const invocations: Array<
+      MethodInvocationInfo & { methodName: string; variableId: number }
+    > = [];
+
+    for (const [methodName, methodInfo] of Object.entries(instanceMethods)) {
+      for (const invocationInfo of methodInfo.invocationLines) {
+        // Generate a deterministic variableId based on method name only (not line number)
+        // This ensures consistency even when code changes and line numbers shift
+        const variableId = hashToVariableId(methodName);
+        invocations.push({ ...invocationInfo, methodName, variableId });
+      }
+    }
+
+    // Sort by line number in reverse order for safe insertion
+    invocations.sort((a, b) => b.lineNumber - a.lineNumber);
+
+    // Inject logging for each invocation
+    for (const invocation of invocations) {
+      this.injectLoggingForInvocation(lines, invocation);
+    }
+  }
+
+  /**
+   * Inject logging before and after a method invocation line
+   * Uses pre-parsed invocation data from AST analysis - no regex parsing needed
+   */
+  private injectLoggingForInvocation(
+    lines: string[],
+    invocation: MethodInvocationInfo & {
+      methodName: string;
+      variableId: number;
+    }
+  ): void {
+    const {
+      lineNumber,
+      endLineNumber,
+      methodName,
+      variableId,
+      hasAwait,
+      arguments: args,
+      statementType,
+      variableName,
+      variableType,
+    } = invocation;
+    const lineIndex = lineNumber - 1;
+    const endLineIndex = endLineNumber - 1;
+
+    if (lineIndex < 0 || lineIndex >= lines.length) {
+      return;
+    }
+
+    const line = lines[lineIndex];
+    const indentation = line.match(/^\s*/)?.[0] || '    ';
+
+    // Use pre-parsed arguments
+    const argsArray = args ? `[${args}]` : '[]';
+
+    const resultVar = `__functionCallResult_${variableId}`;
+    const durationVar = `__functionCallDuration_${variableId}`;
+    const argsVar = `__functionCallArgs_${variableId}`;
+
+    const startLog = `${indentation}const __functionCallStart_${variableId} = Date.now();`;
+    const argsLog = `${indentation}const ${argsVar} = ${argsArray};`;
+    const startCallLog = `${indentation}__bubbleFlowSelf.logger?.logFunctionCallStart(${variableId}, '${methodName}', ${argsVar}, ${lineNumber});`;
+
+    // Calculate how many lines to remove (from lineNumber to endLineNumber)
+    const linesToRemove = endLineIndex - lineIndex + 1;
+
+    // Use pre-determined statement type instead of regex matching
+    if (
+      statementType === 'variable_declaration' &&
+      variableName &&
+      variableType
+    ) {
+      const callLine = `${indentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
+      const completeLog = `${indentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
+      const assignLine = `${indentation}${variableType} ${variableName} = ${resultVar};`;
+      lines.splice(
+        lineIndex,
+        linesToRemove,
+        startLog,
+        argsLog,
+        startCallLog,
+        callLine,
+        completeLog,
+        assignLine
+      );
+      return;
+    }
+
+    if (statementType === 'return') {
+      const callLine = `${indentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
+      const completeLog = `${indentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
+      const returnLine = `${indentation}return ${resultVar};`;
+      lines.splice(
+        lineIndex,
+        linesToRemove,
+        startLog,
+        argsLog,
+        startCallLog,
+        callLine,
+        completeLog,
+        returnLine
+      );
+      return;
+    }
+
+    if (statementType === 'assignment' && variableName) {
+      const callLine = `${indentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
+      const completeLog = `${indentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
+      const assignLine = `${indentation}${variableName} = ${resultVar};`;
+      lines.splice(
+        lineIndex,
+        linesToRemove,
+        startLog,
+        argsLog,
+        startCallLog,
+        callLine,
+        completeLog,
+        assignLine
+      );
+      return;
+    }
+
+    // Simple statement (no assignment, no return)
+    const callLine = `${indentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
+    const completeLog = `${indentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
+    lines.splice(
+      lineIndex,
+      linesToRemove,
+      startLog,
+      argsLog,
+      startCallLog,
+      callLine,
+      completeLog
+    );
   }
 }

@@ -48,6 +48,8 @@ export const fixtures = {
   'invalid-step-flow': '',
   'calender-step-flow': '',
   'credential-in-flow': '',
+  'reddit-flow-step': '',
+  'categorizer-step-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

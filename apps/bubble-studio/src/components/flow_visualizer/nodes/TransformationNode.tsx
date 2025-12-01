@@ -1,9 +1,10 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Code } from 'lucide-react';
 import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { BUBBLE_COLORS } from '@/components/flow_visualizer/BubbleColors';
+import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
 
 export interface TransformationNodeData {
   flowId: number;
@@ -16,6 +17,7 @@ export interface TransformationNodeData {
     location: { startLine: number; endLine: number };
     isAsync: boolean;
     variableName?: string;
+    variableId?: number;
   };
   usedHandles?: {
     top?: boolean;
@@ -44,17 +46,51 @@ function TransformationNode({ data }: TransformationNodeProps) {
     variableName,
     arguments: args,
     location,
+    variableId,
   } = transformationInfo;
 
   const { showEditor } = useUIStore();
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
-  // Get highlight state from execution store
+  // Determine the transformation ID for store lookups (prefer variableId, fallback to transformationId)
+  const transformationKey = variableId ? String(variableId) : transformationId;
+
+  // Get execution state from execution store
   const highlightedBubble = useExecutionStore(
     flowId,
     (s) => s.highlightedBubble
   );
-  const isHighlighted = highlightedBubble === transformationId;
+  const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
+  const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
+  const bubbleResults = useExecutionStore(flowId, (s) => s.bubbleResults);
+
+  // Compute execution states
+  const isHighlighted = useMemo(() => {
+    if (variableId) {
+      return highlightedBubble === String(variableId);
+    }
+    return highlightedBubble === transformationId;
+  }, [highlightedBubble, variableId, transformationId]);
+
+  const isExecuting = useMemo(() => {
+    if (!variableId) return false;
+    return runningBubbles.has(String(variableId));
+  }, [runningBubbles, variableId]);
+
+  const isCompleted = useMemo(() => {
+    if (!variableId) return false;
+    return !!completedBubbles[String(variableId)];
+  }, [completedBubbles, variableId]);
+
+  const hasError = useMemo(() => {
+    if (!variableId) return false;
+    return bubbleResults[String(variableId)] === false;
+  }, [bubbleResults, variableId]);
+
+  const executionStats = useMemo(() => {
+    if (!variableId) return undefined;
+    return completedBubbles[String(variableId)];
+  }, [completedBubbles, variableId]);
 
   const handleViewCode = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,9 +100,15 @@ function TransformationNode({ data }: TransformationNodeProps) {
   return (
     <div
       className={`relative rounded-lg border transition-all duration-300 shadow-xl ${
-        isHighlighted
-          ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-          : 'bg-neutral-800/90 border-neutral-600/60'
+        isExecuting
+          ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`
+          : hasError
+            ? `${BUBBLE_COLORS.ERROR.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.ERROR.background}`
+            : isCompleted
+              ? `${BUBBLE_COLORS.COMPLETED.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.COMPLETED.background}`
+              : isHighlighted
+                ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+                : 'bg-neutral-800/90 border-neutral-600/60'
       }`}
       style={{
         width: '400px',
@@ -132,22 +174,32 @@ function TransformationNode({ data }: TransformationNodeProps) {
             </div>
           </div>
           {/* View Code Button */}
-          <div className="relative">
-            <button
-              type="button"
-              title="View Code"
-              onClick={handleViewCode}
-              onMouseEnter={() => setShowCodeTooltip(true)}
-              onMouseLeave={() => setShowCodeTooltip(false)}
-              className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-            >
-              <Code className="w-3.5 h-3.5" />
-            </button>
-            {showCodeTooltip && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                {showEditor ? 'Hide Code' : 'View Code'}
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            {/* Execution Badge */}
+            <BubbleExecutionBadge
+              hasError={hasError}
+              isCompleted={isCompleted}
+              isExecuting={isExecuting}
+              executionStats={executionStats}
+            />
+            {/* View Code Button */}
+            <div className="relative">
+              <button
+                type="button"
+                title="View Code"
+                onClick={handleViewCode}
+                onMouseEnter={() => setShowCodeTooltip(true)}
+                onMouseLeave={() => setShowCodeTooltip(false)}
+                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+              >
+                <Code className="w-3.5 h-3.5" />
+              </button>
+              {showCodeTooltip && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                  {showEditor ? 'Hide Code' : 'View Code'}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {description && (

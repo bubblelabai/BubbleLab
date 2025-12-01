@@ -20,7 +20,9 @@ export interface StreamingLogEvent {
     | 'fatal'
     | 'bubble_parameters_update' // New event for sending complete bubble parameters
     | 'tool_call_start' // New event for AI agent tool call start
-    | 'tool_call_complete'; // New event for AI agent tool call completion
+    | 'tool_call_complete' // New event for AI agent tool call completion
+    | 'function_call_start' // New event for transformation function call start
+    | 'function_call_complete'; // New event for transformation function call completion
   timestamp: string;
   lineNumber?: number;
   variableId?: number;
@@ -43,6 +45,11 @@ export interface StreamingLogEvent {
   toolInput?: unknown; // Input parameters for the tool
   toolOutput?: unknown; // Output from the tool (only for tool_call_complete)
   toolDuration?: number; // Duration in milliseconds (only for tool_call_complete)
+  // For function_call_start and function_call_complete events
+  functionName?: string; // Name of the transformation function being called
+  functionInput?: unknown; // Input parameters for the function
+  functionOutput?: unknown; // Output from the function (only for function_call_complete)
+  functionDuration?: number; // Duration in milliseconds (only for function_call_complete)
   // For token usage tracking
   tokenUsage?: {
     inputTokens: number;

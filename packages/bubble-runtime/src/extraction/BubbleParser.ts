@@ -5,6 +5,7 @@ import {
   BubbleFactory,
   BubbleTriggerEventRegistry,
 } from '@bubblelab/bubble-core';
+import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import { buildClassNameLookup } from '../utils/bubble-helper';
 import type {
   ParsedBubbleWithInfo,
@@ -24,7 +25,10 @@ import type {
   ParallelExecutionWorkflowNode,
   TransformationFunctionWorkflowNode,
 } from '@bubblelab/shared-schemas';
-import { BubbleParameterType } from '@bubblelab/shared-schemas';
+import {
+  BubbleParameterType,
+  hashToVariableId,
+} from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
 export class BubbleParser {
@@ -51,7 +55,7 @@ export class BubbleParser {
         endLine: number;
         definitionStartLine: number;
         bodyStartLine: number;
-        invocationLines: number[];
+        invocationLines: MethodInvocationInfo[];
       }
     >;
   } {
@@ -75,7 +79,7 @@ export class BubbleParser {
         endLine: number;
         definitionStartLine: number;
         bodyStartLine: number;
-        invocationLines: number[];
+        invocationLines: MethodInvocationInfo[];
       }
     > = {};
 
@@ -274,7 +278,7 @@ export class BubbleParser {
     const variableId =
       typeof explicitVariableId === 'number'
         ? explicitVariableId
-        : this.hashUniqueIdToVarId(uniqueId);
+        : hashToVariableId(uniqueId);
 
     const metadata = bubbleFactory.getMetadata(bubbleName);
 
@@ -318,7 +322,7 @@ export class BubbleParser {
             const aiOrdinal = (ordinalCounters.get(aiCountKey) || 0) + 1;
             ordinalCounters.set(aiCountKey, aiOrdinal);
             const aiAgentUniqueId = `${uniqueId}.ai-agent#${aiOrdinal}`;
-            const aiAgentVarId = this.hashUniqueIdToVarId(aiAgentUniqueId);
+            const aiAgentVarId = hashToVariableId(aiAgentUniqueId);
 
             const toolChildren: DependencyGraphNode[] = [];
             for (const toolName of toolsForChild) {
@@ -415,18 +419,6 @@ export class BubbleParser {
       dependencies: children,
     };
     return nodeObj;
-  }
-
-  // Deterministic non-negative integer ID from uniqueId string
-  private hashUniqueIdToVarId(input: string): number {
-    let hash = 2166136261; // FNV-1a 32-bit offset basis
-    for (let i = 0; i < input.length; i++) {
-      hash ^= input.charCodeAt(i);
-      hash = (hash * 16777619) >>> 0; // unsigned 32-bit
-    }
-    // Map to 6-digit range to avoid colliding with small AST ids while readable
-    const mapped = 100000 + (hash % 900000);
-    return mapped;
   }
 
   /**
@@ -999,23 +991,58 @@ export class BubbleParser {
   }
 
   /**
-   * Find all method invocations in the AST
+   * Find all method invocations in the AST with full details
    */
   private findMethodInvocations(
     ast: TSESTree.Program,
     methodNames: string[]
-  ): Record<string, number[]> {
-    const invocations: Record<string, Set<number>> = {};
+  ): Record<string, MethodInvocationInfo[]> {
+    const invocations: Record<string, MethodInvocationInfo[]> = {};
+
     const methodNameSet = new Set(methodNames);
     const visitedNodes = new WeakSet<TSESTree.Node>();
+    const parentMap = new WeakMap<TSESTree.Node, TSESTree.Node>();
 
-    // Initialize invocations map with Sets to avoid duplicates
+    // Initialize invocations map
     for (const methodName of methodNames) {
-      invocations[methodName] = new Set<number>();
+      invocations[methodName] = [];
     }
 
-    const visitNode = (node: TSESTree.Node): void => {
-      // Skip if already visited to avoid duplicate processing
+    // First pass: Build parent map
+    const buildParentMap = (
+      node: TSESTree.Node,
+      parent?: TSESTree.Node
+    ): void => {
+      if (parent) {
+        parentMap.set(node, parent);
+      }
+
+      // Visit children
+      const visitValue = (value: unknown): void => {
+        if (value && typeof value === 'object') {
+          if (Array.isArray(value)) {
+            value.forEach(visitValue);
+          } else if ('type' in value && typeof value.type === 'string') {
+            buildParentMap(value as TSESTree.Node, node);
+          } else {
+            Object.values(value).forEach(visitValue);
+          }
+        }
+      };
+
+      const nodeObj = node as unknown as Record<string, unknown>;
+      for (const [key, value] of Object.entries(nodeObj)) {
+        if (key === 'parent' || key === 'loc' || key === 'range') {
+          continue;
+        }
+        visitValue(value);
+      }
+    };
+
+    buildParentMap(ast);
+
+    const visitNode = (node: TSESTree.Node, parent?: TSESTree.Node): void => {
+      // Skip if already visited
       if (visitedNodes.has(node)) {
         return;
       }
@@ -1030,38 +1057,99 @@ export class BubbleParser {
           const object = callee.object;
           const property = callee.property;
 
-          // Check if it's this.methodName() or await this.methodName()
           if (
             object.type === 'ThisExpression' &&
             property.type === 'Identifier' &&
             methodNameSet.has(property.name)
           ) {
+            const methodName = property.name;
             const lineNumber = node.loc?.start.line;
-            if (lineNumber) {
-              invocations[property.name].add(lineNumber);
+            const endLineNumber = node.loc?.end.line;
+            if (!lineNumber || !endLineNumber) return;
+
+            // Extract arguments
+            const args = node.arguments
+              .map((arg) =>
+                this.bubbleScript.substring(arg.range![0], arg.range![1])
+              )
+              .join(', ');
+
+            // Determine statement type by looking at parent context
+            let statementType:
+              | 'variable_declaration'
+              | 'assignment'
+              | 'return'
+              | 'simple' = 'simple';
+            let variableName: string | undefined;
+            let variableType: 'const' | 'let' | 'var' | undefined;
+            let hasAwait = false;
+
+            // Check if parent is AwaitExpression
+            if (parent?.type === 'AwaitExpression') {
+              hasAwait = true;
             }
+
+            // Find the statement containing this call using parent map
+            // We need to check parent chain to identify:
+            // 1. VariableDeclarator -> VariableDeclaration (for const/let/var x = ...)
+            // 2. AssignmentExpression (for x = ...)
+            // 3. ReturnStatement (for return ...)
+            let currentParent: TSESTree.Node | undefined = parentMap.get(node);
+
+            while (currentParent) {
+              if (currentParent.type === 'VariableDeclarator') {
+                statementType = 'variable_declaration';
+                if (currentParent.id.type === 'Identifier') {
+                  variableName = currentParent.id.name;
+                }
+                // Continue to find the VariableDeclaration parent to get const/let/var
+              } else if (currentParent.type === 'VariableDeclaration') {
+                // This should only be reached if we found VariableDeclarator first
+                if (statementType === 'variable_declaration') {
+                  variableType = currentParent.kind as 'const' | 'let' | 'var';
+                  break;
+                }
+              } else if (currentParent.type === 'AssignmentExpression') {
+                statementType = 'assignment';
+                if (currentParent.left.type === 'Identifier') {
+                  variableName = currentParent.left.name;
+                }
+                break;
+              } else if (currentParent.type === 'ReturnStatement') {
+                statementType = 'return';
+                break;
+              }
+              // Move up the tree using parent map
+              currentParent = parentMap.get(currentParent);
+            }
+
+            invocations[methodName].push({
+              lineNumber,
+              endLineNumber,
+              hasAwait,
+              arguments: args,
+              statementType,
+              variableName,
+              variableType,
+            });
           }
         }
       }
 
-      // Also check for await this.methodName()
+      // Check for await expressions - pass current node as parent
       if (node.type === 'AwaitExpression' && node.argument) {
-        visitNode(node.argument);
+        visitNode(node.argument, node);
       }
 
-      // Recursively visit child nodes
-      this.visitChildNodesForInvocations(node, visitNode);
+      // Recursively visit child nodes with parent context
+      this.visitChildNodesForInvocations(node, (child) =>
+        visitNode(child, node)
+      );
     };
 
     visitNode(ast);
 
-    // Convert Sets to sorted Arrays
-    const result: Record<string, number[]> = {};
-    for (const [methodName, lineSet] of Object.entries(invocations)) {
-      result[methodName] = Array.from(lineSet).sort((a, b) => a - b);
-    }
-
-    return result;
+    return invocations;
   }
 
   /**
@@ -3006,6 +3094,10 @@ export class BubbleParser {
         }
       }
 
+      // Generate variable ID for this function call
+      // Use only function name to ensure consistency with LoggerInjector
+      const variableId = hashToVariableId(callInfo.functionName);
+
       const transformationNode: TransformationFunctionWorkflowNode = {
         type: 'transformation_function',
         location,
@@ -3014,6 +3106,7 @@ export class BubbleParser {
         isMethodCall: callInfo.isMethodCall,
         description,
         arguments: callInfo.arguments,
+        variableId,
         methodDefinition,
       };
 
@@ -3041,6 +3134,10 @@ export class BubbleParser {
     }
 
     // Contains bubbles, return as regular function_call
+    // Generate variable ID for this function call (same logic as transformation nodes)
+    // Use only function name to ensure consistency with LoggerInjector
+    const variableId = hashToVariableId(callInfo.functionName);
+
     const functionCallNode: FunctionCallWorkflowNode = {
       type: 'function_call',
       location,
@@ -3049,6 +3146,7 @@ export class BubbleParser {
       description,
       arguments: callInfo.arguments,
       code,
+      variableId,
       methodDefinition,
       children,
     };

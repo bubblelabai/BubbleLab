@@ -565,7 +565,7 @@ export class BubbleInjector {
       this.bubbleScript.showScript('[BubbleInjector] After injectLogging');
     }
     this.loggerInjector.injectSelfCapture();
-    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
+    // this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */

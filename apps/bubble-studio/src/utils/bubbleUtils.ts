@@ -133,6 +133,21 @@ export function getVariableNameForDisplay(
   events: StreamingLogEvent[],
   bubbleParameters: Record<string | number, unknown>
 ): string {
+  // Check if this is a function call (has functionName field in events)
+  const functionCallEvent = events.find(
+    (e) =>
+      (String(e.variableId) === varId ||
+        String((e.additionalData as { variableId?: number })?.variableId) ===
+          varId) &&
+      (e as { functionName?: string }).functionName
+  );
+  if (
+    functionCallEvent &&
+    (functionCallEvent as { functionName?: string }).functionName
+  ) {
+    return (functionCallEvent as { functionName: string }).functionName;
+  }
+
   // Try to find the bubble in bubble parameters first (authoritative source)
   const bubble = findBubbleByVariableId(bubbleParameters, Number(varId));
   if (bubble?.variableName) {

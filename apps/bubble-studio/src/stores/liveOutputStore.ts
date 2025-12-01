@@ -305,17 +305,26 @@ function createLiveOutputStore(flowId: number) {
             item.kind === 'group'
         )
         .map((item) => {
-          const bubbleName = (item.events[0] as { bubbleName?: string })
-            .bubbleName;
-          const displayName = getVariableNameForDisplay(
-            item.name,
-            item.events,
-            bubbleParameters
-          );
+          const firstEvent = item.events[0];
+          const bubbleName = (firstEvent as { bubbleName?: string }).bubbleName;
+
+          // Check if this is a function call (has functionName field)
+          const functionName = (firstEvent as { functionName?: string })
+            .functionName;
+
+          // For function calls, use functionName as display name
+          // For bubbles, use getVariableNameForDisplay
+          const displayName = functionName
+            ? functionName
+            : getVariableNameForDisplay(
+                item.name,
+                item.events,
+                bubbleParameters
+              );
 
           return {
             variableId: item.name,
-            bubbleName,
+            bubbleName: bubbleName || functionName,
             displayName,
             events: item.events,
             eventCount: item.events.length,

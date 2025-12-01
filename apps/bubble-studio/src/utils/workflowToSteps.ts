@@ -25,6 +25,7 @@ export interface StepData {
     code: string;
     arguments: string;
     variableName?: string;
+    variableId?: number;
   };
 }
 
@@ -160,6 +161,7 @@ export function extractStepGraph(
           description?: string;
           code: string;
           arguments: string;
+          variableId: number;
           location: {
             startLine: number;
             endLine: number;
@@ -201,6 +203,7 @@ export function extractStepGraph(
             code: transformationNode.code,
             arguments: transformationNode.arguments,
             variableName: transformationNode.variableDeclaration?.variableName,
+            variableId: transformationNode.variableId,
           },
         };
 

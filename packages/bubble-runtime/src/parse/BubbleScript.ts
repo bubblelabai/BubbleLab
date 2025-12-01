@@ -15,6 +15,19 @@ import type {
 } from '@bubblelab/shared-schemas';
 import { BubbleParser } from '../extraction/BubbleParser';
 
+/**
+ * Detailed information about a method invocation captured during AST parsing
+ */
+export interface MethodInvocationInfo {
+  lineNumber: number;
+  endLineNumber: number;
+  hasAwait: boolean;
+  arguments: string;
+  statementType: 'variable_declaration' | 'assignment' | 'return' | 'simple';
+  variableName?: string;
+  variableType?: 'const' | 'let' | 'var';
+}
+
 export class BubbleScript {
   private ast: TSESTree.Program;
   private scopeManager: ScopeManager;
@@ -35,7 +48,7 @@ export class BubbleScript {
       endLine: number;
       definitionStartLine: number;
       bodyStartLine: number;
-      invocationLines: number[];
+      invocationLines: MethodInvocationInfo[];
     }
   >;
   private bubbleScript: string;
@@ -551,7 +564,7 @@ export class BubbleScript {
     endLine: number;
     definitionStartLine: number;
     bodyStartLine: number;
-    invocationLines: number[];
+    invocationLines: MethodInvocationInfo[];
   } | null {
     return this.instanceMethodsLocation[methodName] || null;
   }

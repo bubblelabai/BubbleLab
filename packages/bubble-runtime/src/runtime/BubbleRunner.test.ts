@@ -1,6 +1,6 @@
 import { BubbleRunner } from './BubbleRunner';
 import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
-import { BubbleFactory } from '@bubblelab/bubble-core';
+import { BubbleFactory, WorkflowNode } from '@bubblelab/bubble-core';
 import { BubbleInjector } from '../injection/BubbleInjector';
 
 describe('BubbleRunner correctly runs and plans', () => {
@@ -390,6 +390,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
       expect(result).toBeDefined();
+      console.log(result.error);
       expect(result.success || result.error?.includes('credentials')).toBe(
         true
       );
@@ -435,6 +436,78 @@ describe('BubbleRunner correctly runs and plans', () => {
         );
       });
     });
+
+    describe('Function call logging', () => {
+      it('should inject function call logging with await', async () => {
+        const testScript = getFixture('categorizer-step-flow');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+        // expect schema validation error
+        expect(
+          result.success || result.error?.includes('credentials')
+        ).toBeTruthy();
+        expect(runner.bubbleScript.bubblescript).toContain(
+          '__bubbleFlowSelf.logger?.logFunctionCallComplete'
+        );
+        // SHould preserve agent response
+        expect(runner.bubbleScript.bubblescript).toContain(
+          'agentResponse = __functionCallResult'
+        );
+        // Should have injected logging for the formatOutput function
+        expect(runner.bubbleScript.bubblescript).toContain(
+          "__bubbleFlowSelf.logger?.logFunctionCallComplete(479784, 'formatOutput',"
+        );
+        // Make sure formatouput inside the tree also has the same variable id
+
+        const workflow = runner.bubbleScript.getWorkflow();
+        const findFormatOutputNode = (
+          nodes: WorkflowNode[]
+        ): WorkflowNode | null => {
+          for (const node of nodes) {
+            if (
+              node.type === 'transformation_function' &&
+              'functionName' in node &&
+              node.functionName === 'formatOutput'
+            ) {
+              return node;
+            }
+            if ('children' in node && Array.isArray(node.children)) {
+              const found = findFormatOutputNode(node.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const formatOutputNode = findFormatOutputNode(workflow?.root || []);
+        console.log('Format output node:', formatOutputNode);
+        if (formatOutputNode && 'variableId' in formatOutputNode) {
+          expect(formatOutputNode.variableId).toBe(479784);
+        }
+      });
+      it('should inject function call logging', async () => {
+        const testScript = getFixture('reddit-flow-step');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+
+        // print code before it runs
+        const result = await runner.runAll();
+        // expect schema validation error
+        expect(
+          result.success || result.error?.includes('validation failed')
+        ).toBeTruthy();
+
+        // Expect final exeucting script to contain the injection of the logger;
+        console.log('Final script:', runner.bubbleScript.bubblescript);
+        expect(runner.bubbleScript.bubblescript).toContain(
+          '__bubbleFlowSelf.logger?.logFunctionCallComplete'
+        );
+      });
+    });
+
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory, {
         pricingTable: {},

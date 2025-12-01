@@ -162,6 +162,83 @@ export class StreamingBubbleLogger extends BubbleLogger {
 
     return logMessage;
   }
+
+  /**
+   * Override logFunctionCallStart to emit streaming events
+   */
+  override logFunctionCallStart(
+    variableId: number,
+    functionName: string,
+    functionInput: unknown,
+    lineNumber?: number
+  ): string {
+    // Call parent method and use the returned message
+    const logMessage = super.logFunctionCallStart(
+      variableId,
+      functionName,
+      functionInput,
+      lineNumber
+    );
+
+    this.emitStreamEvent({
+      type: 'function_call_start',
+      timestamp: new Date().toISOString(),
+      variableId,
+      lineNumber,
+      message: logMessage,
+      functionName,
+      functionInput,
+      additionalData: { variableId, functionInput },
+      executionTime: this.getCurrentExecutionTime(),
+      memoryUsage: this.getCurrentMemoryUsage(),
+    });
+
+    return logMessage;
+  }
+
+  /**
+   * Override logFunctionCallComplete to emit streaming events
+   */
+  override logFunctionCallComplete(
+    variableId: number,
+    functionName: string,
+    functionOutput: unknown,
+    duration: number,
+    lineNumber?: number
+  ): string {
+    // Get individual function call execution time BEFORE calling parent method
+    // (parent method will clean up the start time)
+    const individualExecutionTime =
+      this.getFunctionCallExecutionTime(variableId);
+    const actualDuration =
+      individualExecutionTime > 0 ? individualExecutionTime : duration;
+
+    // Call parent method and use the returned message
+    const logMessage = super.logFunctionCallComplete(
+      variableId,
+      functionName,
+      functionOutput,
+      actualDuration,
+      lineNumber
+    );
+
+    this.emitStreamEvent({
+      type: 'function_call_complete',
+      timestamp: new Date().toISOString(),
+      variableId,
+      lineNumber,
+      message: logMessage,
+      functionName,
+      functionOutput,
+      functionDuration: actualDuration,
+      additionalData: { variableId, functionOutput, duration: actualDuration },
+      executionTime: this.getCurrentExecutionTime(),
+      memoryUsage: this.getCurrentMemoryUsage(),
+    });
+
+    return logMessage;
+  }
+
   /**
    * Log execution completion
    */
