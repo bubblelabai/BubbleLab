@@ -18,6 +18,8 @@ import StepContainerNode from './nodes/StepContainerNode';
 import {
   calculateBubblePosition,
   calculateStepContainerHeight,
+  calculateHeaderHeight,
+  STEP_CONTAINER_LAYOUT,
 } from './stepContainerUtils';
 import { calculateSubbubblePositionWithContext } from './nodePositioning';
 import { FLOW_LAYOUT } from './flowLayoutConstants';
@@ -1124,7 +1126,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return FLOW_LAYOUT.TRANSFORMATION.FIXED_HEIGHT;
       } else {
         // Step container height calculation (matching StepContainerNode.tsx)
-        return calculateStepContainerHeight(step.bubbleIds.length);
+        const stepHeaderHeight = calculateHeaderHeight(
+          step.functionName,
+          step.description
+        );
+        return calculateStepContainerHeight(
+          step.bubbleIds.length,
+          stepHeaderHeight
+        );
       }
     }
 
@@ -1470,6 +1479,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         return; // Skip transformation steps
       }
 
+      // Calculate dynamic header height for this step
+      const stepHeaderHeight = calculateHeaderHeight(
+        step.functionName,
+        step.description
+      );
+
       step.bubbleIds.forEach((bubbleId, bubbleIndexInStep) => {
         // Find the bubble data
         const bubbleEntry = bubbleEntries.find(([key, bubbleData]) => {
@@ -1495,7 +1510,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
         // Position inside step container (relative to step)
         // Uses layout constants from StepContainerNode for consistency
-        const initialPosition = calculateBubblePosition(bubbleIndexInStep);
+        const initialPosition = calculateBubblePosition(
+          bubbleIndexInStep,
+          stepHeaderHeight
+        );
 
         const node: Node = {
           id: nodeId,
@@ -1504,7 +1522,19 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           origin: [0, 0.5] as [number, number],
           draggable: true,
           parentId: step.id, // Set parent relationship to the step
-          extent: 'parent', // Constrain to parent
+          extent: [
+            [
+              STEP_CONTAINER_LAYOUT.PADDING,
+              stepHeaderHeight + STEP_CONTAINER_LAYOUT.PADDING, // Start of content area including padding
+            ],
+            [
+              STEP_CONTAINER_LAYOUT.WIDTH - STEP_CONTAINER_LAYOUT.PADDING,
+              calculateStepContainerHeight(
+                step.bubbleIds.length,
+                stepHeaderHeight
+              ) - STEP_CONTAINER_LAYOUT.PADDING,
+            ],
+          ] as [[number, number], [number, number]], // Constrain to content area below header
           data: {
             flowId: currentFlow?.id || flowId,
             bubble,

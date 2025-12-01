@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 import {
   STEP_CONTAINER_LAYOUT,
   calculateStepContainerHeight,
+  calculateHeaderHeight,
 } from '@/components/flow_visualizer/stepContainerUtils';
 
 export interface StepContainerNodeData {
@@ -30,7 +31,12 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
   const { stepInfo, bubbleIds, usedHandles = {} } = data;
   const { functionName, description } = stepInfo;
 
-  const calculatedHeight = calculateStepContainerHeight(bubbleIds.length);
+  // Calculate dynamic header height based on content
+  const headerHeight = calculateHeaderHeight(functionName, description);
+  const calculatedHeight = calculateStepContainerHeight(
+    bubbleIds.length,
+    headerHeight
+  );
 
   return (
     <div
@@ -38,7 +44,6 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
       style={{
         width: `${STEP_CONTAINER_LAYOUT.WIDTH}px`,
         height: `${calculatedHeight}px`,
-        padding: `${STEP_CONTAINER_LAYOUT.PADDING}px`,
       }}
     >
       {/* Connection handles - only show if used */}
@@ -75,8 +80,13 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
         />
       )}
 
-      {/* Header */}
-      <div className="mb-3">
+      {/* Header Section - Non-draggable zone */}
+      <div
+        className="bg-neutral-900/80 border-b border-neutral-600/60 rounded-t-lg px-5 py-4 pointer-events-none flex-shrink-0"
+        style={{
+          height: `${headerHeight}px`,
+        }}
+      >
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xl font-semibold text-white">
             {functionName}()
@@ -85,6 +95,17 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
         {description && (
           <p className="text-base text-neutral-200">{description}</p>
         )}
+      </div>
+
+      {/* Content Area - Draggable zone for bubbles */}
+      <div
+        className="relative flex-shrink-0"
+        style={{
+          height: `${calculatedHeight - headerHeight}px`,
+          padding: `${STEP_CONTAINER_LAYOUT.PADDING}px`,
+        }}
+      >
+        {/* Bubbles will be positioned here */}
       </div>
     </div>
   );
