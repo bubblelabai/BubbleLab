@@ -337,7 +337,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-5xl w-full mx-auto space-y-10 py-12 px-4 sm:px-6">
+        <div className="max-w-6xl w-full mx-auto space-y-10 py-12 px-4 sm:px-6">
           {/* Header */}
           <div className="text-center space-y-6">
             <div className="text-center mb-8">
