@@ -630,6 +630,29 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             {/* Templates Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Templates</h2>
+              <a
+                href="https://www.bubblelab.ai/community"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200"
+              >
+                <span className="border-b border-purple-400/30 group-hover:border-purple-300/50 transition-colors duration-200">
+                  See community projects
+                </span>
+                <svg
+                  className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
             </div>
 
             {/* Category Filter Buttons */}
