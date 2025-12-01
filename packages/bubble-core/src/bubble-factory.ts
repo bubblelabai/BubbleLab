@@ -678,7 +678,6 @@ export interface CustomWebhookPayload extends WebhookEvent {
 export class ${className} extends BubbleFlow<'webhook/http'> {
   
   // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
-  // Condition: Always runs first to clean incoming data
   private transformData(input: string | undefined): string | null {
     // Example: Transform or clean the input data
     if (!input || input.trim().length === 0) return null;
@@ -704,7 +703,6 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   }
 
   // Constructs final output payload with either AI-generated response or default fallback message
-  // Condition: Always runs, but uses different message based on whether AI processing occurred
   private formatOutput(response: string | null, wasProcessed: boolean): Output {
     return {
       message: response || 'No input provided',
@@ -749,7 +747,6 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
   // Performs scheduled database check or external API call to fetch latest data
-  // Condition: Runs on every cron trigger execution
   private async performScheduledTask(): Promise<string> {
      // Example: Check a database or API
      return "Task completed";
