@@ -67,20 +67,11 @@ export interface CustomWebhookPayload extends WebhookEvent {
 }
 
 export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const prData = payload.body;
-
-    // Only process newly opened pull requests to avoid spamming on updates.
-    if (prData.action !== 'opened') {
-      return {
-        message: \`Skipping action "\${prData.action}" for PR #\${prData.number}.\`,
-      };
-    }
-
-    const owner = prData.repository.owner.login;
-    const repo = prData.repository.name;
-    const pull_number = prData.number;
-
+  // Retrieves the COMMIT.md file from the repository to understand commit message conventions
+  private async getCommitGuidelines(
+    owner: string,
+    repo: string
+  ): Promise<string> {
     // Retrieves the COMMIT.md file from the repository using the owner, repo, and path
     // to understand commit message conventions, ensuring AI-generated PR suggestions
     // align with the project's style.
@@ -90,37 +81,51 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       repo,
       path: 'COMMIT.md',
     });
+
     const commitFileResult = await getCommitFileBubble.action();
 
-    let commitFileContent = 'No COMMIT.md file found or file is empty.';
-    // The file content is now directly in the result.data.content
     if (commitFileResult.success && commitFileResult.data?.content) {
-      commitFileContent = Buffer.from(
+      return Buffer.from(
         commitFileResult.data.content,
         'base64'
       ).toString('utf-8');
-    } else if (!commitFileResult.success) {
+    }
+
+    if (!commitFileResult.success) {
       this.logger?.warn(
         \`Could not retrieve COMMIT.md: \${commitFileResult.error}\`
       );
     }
 
+    return 'No COMMIT.md file found or file is empty.';
+  }
+
+  // Fetches the code changes (diff) from GitHub's diff URL for AI analysis
+  private async getPrDiff(diffUrl: string): Promise<string> {
     // Fetches the code changes (diff) from GitHub's diff URL using a GET request,
     // providing the AI agent with all file changes, additions, and deletions needed
     // to generate accurate PR descriptions.
     const getPrDiffBubble = new HttpBubble({
-      url: prData.pull_request.diff_url,
+      url: diffUrl,
       method: 'GET',
     });
+
     const diffResult = await getPrDiffBubble.action();
 
     if (!diffResult.success || !diffResult.data?.body) {
-      const errorMessage = \`Failed to get PR diff from \${prData.pull_request.diff_url}: \${diffResult.error}\`;
+      const errorMessage = \`Failed to get PR diff from \${diffUrl}: \${diffResult.error}\`;
       this.logger?.error(errorMessage);
       throw new BubbleError(errorMessage);
     }
-    const diffContent = diffResult.data.body;
 
+    return diffResult.data.body;
+  }
+
+  // Analyzes commit guidelines and PR diff using AI to generate PR title and description suggestions
+  private async generatePRSuggestions(
+    commitFileContent: string,
+    diffContent: string
+  ): Promise<{ title: string; body: string }> {
     // Analyzes commit guidelines and PR diff using gemini-2.5-flash with jsonMode to
     // generate structured PR title and description suggestions that combine project
     // style guidelines with actual code changes.
@@ -143,9 +148,16 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       throw new BubbleError(errorMessage);
     }
 
-    let suggestion: { title: string; body: string };
     try {
-      suggestion = JSON.parse(suggestionResult.data.response);
+      const suggestion = JSON.parse(suggestionResult.data.response);
+      if (
+        typeof suggestion !== 'object' ||
+        !suggestion.title ||
+        !suggestion.body
+      ) {
+        throw new Error('Invalid suggestion structure');
+      }
+      return suggestion as { title: string; body: string };
     } catch (error) {
       const errorMessage = \`Failed to parse AI response JSON: \${
         error instanceof Error ? error.message : 'Unknown error'
@@ -154,12 +166,26 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       this.logger?.info(\`Invalid AI Response: \${suggestionResult.data.response}\`);
       throw new BubbleError(errorMessage);
     }
+  }
 
+  // Formats PR suggestions into a markdown comment body for GitHub
+  private formatCommentBody(suggestion: {
+    title: string;
+    body: string;
+  }): string {
+    return \`### Suggested PR title from Pearl\\n\\n**Title:** \\\`\${suggestion.title}\\\`\\n\\n**Body:**\\n\${suggestion.body}\`;
+  }
+
+  // Posts the AI-generated PR suggestions as a comment on the pull request
+  private async postPRComment(
+    owner: string,
+    repo: string,
+    pull_number: number,
+    commentBody: string
+  ): Promise<void> {
     // Posts the AI-generated PR suggestions as a formatted markdown comment on the
     // pull request using the owner, repo, and pull_number, making the suggestions
     // immediately visible to the PR author and reviewers.
-    const commentBody = \`### Suggested PR title from Pearl\\n\\n**Title:** \\\`\${suggestion.title}\\\`\\n\\n**Body:**\\n\${suggestion.body}\`;
-
     const createCommentBubble = new GithubBubble({
       operation: 'create_pr_comment',
       owner,
@@ -167,6 +193,7 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
       pull_number,
       body: commentBody,
     });
+
     const commentResult = await createCommentBubble.action();
 
     if (!commentResult.success) {
@@ -176,6 +203,37 @@ export class GithubPRCommenter extends BubbleFlow<'webhook/http'> {
     }
 
     this.logger?.info(\`Posted comment to PR #\${pull_number} in \${owner}/\${repo}\`);
+  }
+
+  // Main workflow orchestration
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const prData = payload.body;
+
+    // Only process newly opened pull requests to avoid spamming on updates.
+    if (prData.action !== 'opened') {
+      return {
+        message: \`Skipping action "\${prData.action}" for PR #\${prData.number}.\`,
+      };
+    }
+
+    const owner = prData.repository.owner.login;
+    const repo = prData.repository.name;
+    const pull_number = prData.number;
+
+    // Get commit guidelines and PR diff
+    const commitFileContent = await this.getCommitGuidelines(owner, repo);
+    const diffContent = await this.getPrDiff(prData.pull_request.diff_url);
+
+    // Generate PR suggestions using AI
+    const suggestion = await this.generatePRSuggestions(
+      commitFileContent,
+      diffContent
+    );
+
+    // Format and post comment
+    const commentBody = this.formatCommentBody(suggestion);
+    await this.postPRComment(owner, repo, pull_number, commentBody);
+
     return {
       message: \`Successfully posted PR suggestion comment to PR #\${pull_number}.\`,
     };
