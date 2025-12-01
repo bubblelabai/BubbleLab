@@ -1990,12 +1990,25 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     const node = getNode(chosenId);
     if (!node) return;
 
+    // Calculate absolute position (account for parent if node is inside a step container)
+    let absoluteX = node.position.x;
+    let absoluteY = node.position.y;
+
+    if (node.parentId) {
+      // Node is inside a step container - get parent and calculate absolute position
+      const parentNode = getNode(node.parentId);
+      if (parentNode) {
+        absoluteX = parentNode.position.x + node.position.x;
+        absoluteY = parentNode.position.y + node.position.y;
+      }
+    }
+
     lastCenteredBubbleIdRef.current = chosenId;
     const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
     const viewportWidth = window.innerWidth;
     const horizontalShift =
       (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) / zoom;
-    setCenter(node.position.x + horizontalShift, node.position.y, {
+    setCenter(absoluteX + horizontalShift, absoluteY, {
       duration: 250,
       zoom,
     });
