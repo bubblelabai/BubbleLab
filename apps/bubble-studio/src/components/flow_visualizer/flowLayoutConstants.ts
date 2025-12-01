@@ -19,7 +19,7 @@ export const FLOW_LAYOUT = {
 
   // Hierarchical layout (step-based flow)
   HIERARCHICAL: {
-    START_X: 200, // Start after entry node
+    START_X: 50, // Start after entry node
     START_Y: 200,
     MIN_VERTICAL_SPACING: 80, // Minimum spacing between steps vertically
     HORIZONTAL_SPACING: 500, // Horizontal space between branches
