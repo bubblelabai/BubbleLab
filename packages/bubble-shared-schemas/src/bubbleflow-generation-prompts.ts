@@ -51,12 +51,6 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      // Condition: Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
 
-     // Formats the response data into a structured output object
-     private formatOutput(data: any): Output { ... }
-
-     ❌ WRONG - Do NOT do this:
-     // Fetches data from the API
-     // Condition: Always runs to retrieve data   <-- WRONG! Remove this line if it always runs
 6. Use the exact parameter structures shown in the bubble details
 7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
 8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
