@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Send, Sparkles, Code, FileText, User } from 'lucide-react';
+import { X, Send, Code, FileText, User } from 'lucide-react';
 import { API_BASE_URL } from '../env';
 
 interface SubmitTemplateModalProps {
@@ -118,18 +118,13 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
       <div className="bg-[#12141a] border border-[#2a2f3a] rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#2a2f3a]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-gray-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">
-                Submit Your Template
-              </h2>
-              <p className="text-sm text-gray-400">
-                Share your automation with the community
-              </p>
-            </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">
+              Submit Your Template
+            </h2>
+            <p className="text-sm text-gray-400">
+              Share your Bubble Lab automation with the community
+            </p>
           </div>
           <button
             onClick={onClose}
