@@ -128,7 +128,6 @@ interface ScriptVariations {
 
 export class VideoScriptGeneratorFlow extends BubbleFlow<'webhook/http'> {
   // Extracts brand intelligence by scraping website and analyzing content.
-  // Contains brandScraper and brandAnalyzer grouped together as a brand analysis step.
   private async extractBrandIntelligence(brandWebsite: string | null): Promise<BrandIntelligence | null> {
     if (!brandWebsite) {
       return null;
