@@ -200,6 +200,7 @@ app.openapi(createBubbleFlowRoute, async (c) => {
       code: processedCode,
       originalCode: data.code,
       bubbleParameters: validationResult.bubbleParameters || {},
+      workflow: validationResult.workflow || null,
       inputSchema: validationResult.inputSchema || {},
       eventType: validationResult.trigger?.type || 'webhook/http',
       cron: validationResult.trigger?.cronSchedule || null,
@@ -419,7 +420,8 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     string,
     ParsedBubbleWithInfo
   >;
-  let workflow: ParsedWorkflow | undefined = undefined;
+  let workflow: ParsedWorkflow | undefined =
+    (flow.workflow as ParsedWorkflow) || undefined;
 
   if (!bubbleParameters || Object.keys(bubbleParameters).length === 0) {
     //Parse parameters
@@ -433,6 +435,7 @@ app.openapi(getBubbleFlowRoute, async (c) => {
       .update(bubbleFlows)
       .set({
         bubbleParameters: bubbleParameters,
+        workflow: workflow,
         inputSchema: inputSchema,
       })
       .where(eq(bubbleFlows.id, flow.id));
@@ -934,6 +937,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       const updateData: Partial<typeof bubbleFlows.$inferSelect> = {
         originalCode: code,
         bubbleParameters: finalBubbleParameters,
+        workflow: result.workflow || null,
         inputSchema: result.inputSchema || {},
         eventType: result.trigger?.type,
         updatedAt: new Date(),
