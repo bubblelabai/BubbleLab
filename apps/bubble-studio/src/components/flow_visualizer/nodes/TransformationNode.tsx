@@ -167,8 +167,7 @@ function TransformationNode({ data }: TransformationNodeProps) {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-neutral-100 truncate">
-                {variableName ? `${variableName} = ` : ''}
-                {functionName}({args})
+                {functionName}
               </h3>
               {location && location.startLine > 0 && (
                 <p className="text-xs text-neutral-500 truncate mt-0.5">
