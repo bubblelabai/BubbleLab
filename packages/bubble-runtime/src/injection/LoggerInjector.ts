@@ -367,6 +367,7 @@ export class LoggerInjector {
       statementType,
       variableName,
       variableType,
+      destructuringPattern,
     } = invocation;
     const lineIndex = lineNumber - 1;
     const endLineIndex = endLineNumber - 1;
@@ -395,12 +396,14 @@ export class LoggerInjector {
     // Use pre-determined statement type instead of regex matching
     if (
       statementType === 'variable_declaration' &&
-      variableName &&
+      (variableName || destructuringPattern) &&
       variableType
     ) {
       const callLine = `${indentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
       const completeLog = `${indentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
-      const assignLine = `${indentation}${variableType} ${variableName} = ${resultVar};`;
+      // Use destructuring pattern if present, otherwise use simple variable name
+      const assignPattern = destructuringPattern || variableName;
+      const assignLine = `${indentation}${variableType} ${assignPattern} = ${resultVar};`;
       lines.splice(
         lineIndex,
         linesToRemove,

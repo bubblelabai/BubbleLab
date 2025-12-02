@@ -17,7 +17,9 @@ describe('BubbleRunner correctly runs and plans', () => {
 
   describe('Execution', () => {
     it('should execute a simple bubble flow', async () => {
-      const runner = new BubbleRunner(helloWorldScript, bubbleFactory);
+      const runner = new BubbleRunner(helloWorldScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
@@ -25,7 +27,9 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(result).toBeDefined();
     });
     it('should execute multiple bubble flows', async () => {
-      const runner = new BubbleRunner(helloWorldMultipleScript, bubbleFactory);
+      const runner = new BubbleRunner(helloWorldMultipleScript, bubbleFactory, {
+        pricingTable: {},
+      });
       const result = await runner.runAll();
       console.log(runner.getLogger()?.getExecutionSummary());
       console.log(runner.getLogger()?.getLogs());
@@ -34,7 +38,9 @@ describe('BubbleRunner correctly runs and plans', () => {
     }, 300000); // 5 minutes timeout
 
     it('should inject logger and modify bubble parameters', async () => {
-      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory);
+      const runner = new BubbleRunner(researchWeatherScript, bubbleFactory, {
+        pricingTable: {},
+      });
 
       // Test parameter modification
       const bubbles = runner.getParsedBubbles();
@@ -47,7 +53,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         `What is the weather in ${city}? Find info from web.`
       );
       // runner.injector.changeCredentials(bubbleIds[0], getUserCredential());
-      runner.injector.injectCredentials(bubbles, [], getUserCredential());
+      runner.injector.injectCredentials([], getUserCredential());
       // runner.injector.injectCredentialsIntoBubble(
       //   bubbles[bubbleIds[0]],
       //   getUserCredential()

@@ -535,9 +535,119 @@ function checkForCredentialsParameter(
 }
 
 /**
+ * Lint rule that prevents method invocations inside complex expressions
+ */
+export const noMethodInvocationInComplexExpressionRule: LintRule = {
+  name: 'no-method-invocation-in-complex-expression',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    // Track parent nodes to detect complex expressions
+    const visitWithParents = (node: ts.Node, parents: ts.Node[] = []): void => {
+      // Check for method calls: this.methodName()
+      if (ts.isCallExpression(node)) {
+        if (ts.isPropertyAccessExpression(node.expression)) {
+          const object = node.expression.expression;
+          // Check if it's 'this' keyword (SyntaxKind.ThisKeyword)
+          if (object.kind === ts.SyntaxKind.ThisKeyword) {
+            // This is a method invocation: this.methodName()
+            // Check if any parent is a complex expression
+            const complexParent = findComplexExpressionParent(parents);
+            if (complexParent) {
+              const { line, character } =
+                context.sourceFile.getLineAndCharacterOfPosition(
+                  node.getStart(context.sourceFile)
+                );
+              const methodName = node.expression.name.text;
+              const parentType = getReadableParentType(complexParent);
+              errors.push({
+                line: line + 1,
+                column: character + 1,
+                message: `Method invocation 'this.${methodName}()' inside ${parentType} cannot be instrumented. Extract to a separate variable before using in ${parentType}.`,
+              });
+            }
+          }
+        }
+      }
+
+      // Recursively visit children with updated parent chain
+      ts.forEachChild(node, (child) => {
+        visitWithParents(child, [...parents, node]);
+      });
+    };
+
+    visitWithParents(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
+ * Finds if any parent node is a complex expression that cannot contain instrumented calls
+ */
+function findComplexExpressionParent(parents: ts.Node[]): ts.Node | null {
+  // Walk through parents to find complex expressions
+  // Stop at statement boundaries (these are safe)
+  for (let i = parents.length - 1; i >= 0; i--) {
+    const parent = parents[i];
+
+    // Stop at statement boundaries - these are safe contexts
+    if (
+      ts.isVariableDeclaration(parent) ||
+      ts.isExpressionStatement(parent) ||
+      ts.isReturnStatement(parent) ||
+      ts.isBlock(parent)
+    ) {
+      return null;
+    }
+
+    // Check for complex expressions
+    if (ts.isConditionalExpression(parent)) {
+      return parent; // Ternary operator
+    }
+    if (ts.isObjectLiteralExpression(parent)) {
+      return parent; // Object literal
+    }
+    if (ts.isArrayLiteralExpression(parent)) {
+      return parent; // Array literal
+    }
+    if (ts.isPropertyAssignment(parent)) {
+      return parent; // Object property value
+    }
+    if (ts.isSpreadElement(parent)) {
+      return parent; // Spread expression
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Gets a human-readable description of the parent node type
+ */
+function getReadableParentType(node: ts.Node): string {
+  if (ts.isConditionalExpression(node)) {
+    return 'ternary operator';
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    return 'object literal';
+  }
+  if (ts.isArrayLiteralExpression(node)) {
+    return 'array literal';
+  }
+  if (ts.isPropertyAssignment(node)) {
+    return 'object property';
+  }
+  if (ts.isSpreadElement(node)) {
+    return 'spread expression';
+  }
+  return 'complex expression';
+}
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
 defaultLintRuleRegistry.register(noThrowInHandleRule);
 defaultLintRuleRegistry.register(noDirectBubbleInstantiationInHandleRule);
 defaultLintRuleRegistry.register(noCredentialsParameterRule);
+defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);

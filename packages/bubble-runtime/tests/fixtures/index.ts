@@ -50,6 +50,7 @@ export const fixtures = {
   'credential-in-flow': '',
   'reddit-flow-step': '',
   'categorizer-step-flow': '',
+  'linkedin-gen-step-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

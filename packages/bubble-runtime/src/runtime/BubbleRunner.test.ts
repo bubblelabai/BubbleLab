@@ -2,7 +2,7 @@ import { BubbleRunner } from './BubbleRunner';
 import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
 import { BubbleFactory, WorkflowNode } from '@bubblelab/bubble-core';
 import { BubbleInjector } from '../injection/BubbleInjector';
-
+import { validateBubbleFlow } from '../validation/index';
 describe('BubbleRunner correctly runs and plans', () => {
   const bubbleFactory = new BubbleFactory();
   const redditLeadFinderScript = getFixture('reddit-lead-finder');
@@ -505,6 +505,23 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(runner.bubbleScript.bubblescript).toContain(
           '__bubbleFlowSelf.logger?.logFunctionCallComplete'
         );
+      });
+      it('should execute a flow with a linkedin gen step flow', async () => {
+        const testScript = getFixture('linkedin-gen-step-flow');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+
+        // Make sure the script passes parsing (final script)
+        const code = runner.bubbleScript.bubblescript;
+        const parseResult = await validateBubbleFlow(code, false);
+        console.log('Parse result:', parseResult);
+        expect(parseResult.valid).toBe(true);
+        expect(result).toBeDefined();
+        expect(
+          result.success || result.error?.includes('credential')
+        ).toBeTruthy();
       });
     });
 

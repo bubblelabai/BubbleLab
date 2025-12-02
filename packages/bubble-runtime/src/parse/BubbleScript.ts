@@ -26,6 +26,7 @@ export interface MethodInvocationInfo {
   statementType: 'variable_declaration' | 'assignment' | 'return' | 'simple';
   variableName?: string;
   variableType?: 'const' | 'let' | 'var';
+  destructuringPattern?: string; // e.g., "{ a, b }" or "[x, y]" for destructuring assignments
 }
 
 export class BubbleScript {

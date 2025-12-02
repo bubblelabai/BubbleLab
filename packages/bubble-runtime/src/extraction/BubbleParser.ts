@@ -1082,6 +1082,7 @@ export class BubbleParser {
               | 'simple' = 'simple';
             let variableName: string | undefined;
             let variableType: 'const' | 'let' | 'var' | undefined;
+            let destructuringPattern: string | undefined;
             let hasAwait = false;
 
             // Check if parent is AwaitExpression
@@ -1094,13 +1095,42 @@ export class BubbleParser {
             // 1. VariableDeclarator -> VariableDeclaration (for const/let/var x = ...)
             // 2. AssignmentExpression (for x = ...)
             // 3. ReturnStatement (for return ...)
+            // Also check for complex expressions that should not be instrumented
             let currentParent: TSESTree.Node | undefined = parentMap.get(node);
+            let isInComplexExpression = false;
 
             while (currentParent) {
+              // Check if we're inside a complex expression before reaching the statement level
+              // These expressions cannot be instrumented inline without breaking syntax
+              if (
+                currentParent.type === 'ConditionalExpression' || // Ternary: a ? b : c
+                currentParent.type === 'ObjectExpression' || // Object literal: { key: value }
+                currentParent.type === 'ArrayExpression' || // Array literal: [a, b, c]
+                currentParent.type === 'Property' || // Object property
+                currentParent.type === 'SpreadElement' // Spread: ...expr
+              ) {
+                isInComplexExpression = true;
+                break;
+              }
+
               if (currentParent.type === 'VariableDeclarator') {
                 statementType = 'variable_declaration';
                 if (currentParent.id.type === 'Identifier') {
                   variableName = currentParent.id.name;
+                } else if (
+                  currentParent.id.type === 'ObjectPattern' ||
+                  currentParent.id.type === 'ArrayPattern'
+                ) {
+                  // Extract the destructuring pattern from the source
+                  const declaratorNode =
+                    currentParent as TSESTree.VariableDeclarator;
+                  const patternRange = declaratorNode.id.range;
+                  if (patternRange) {
+                    destructuringPattern = this.bubbleScript.substring(
+                      patternRange[0],
+                      patternRange[1]
+                    );
+                  }
                 }
                 // Continue to find the VariableDeclaration parent to get const/let/var
               } else if (currentParent.type === 'VariableDeclaration') {
@@ -1123,6 +1153,12 @@ export class BubbleParser {
               currentParent = parentMap.get(currentParent);
             }
 
+            // Skip this invocation if it's inside a complex expression
+            // Instrumenting these would break the syntax
+            if (isInComplexExpression) {
+              return;
+            }
+
             invocations[methodName].push({
               lineNumber,
               endLineNumber,
@@ -1131,6 +1167,7 @@ export class BubbleParser {
               statementType,
               variableName,
               variableType,
+              destructuringPattern,
             });
           }
         }
