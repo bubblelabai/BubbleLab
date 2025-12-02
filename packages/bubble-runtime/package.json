@@ -19,6 +19,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./analysis": {
+      "import": "./dist/analysis.js",
+      "types": "./dist/analysis.d.ts"
     }
   },
   "scripts": {

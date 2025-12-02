@@ -2,7 +2,11 @@ import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { ListBubblesTool } from '../dist/bubbles/tool-bubble/list-bubbles-tool.js';
 import { GetBubbleDetailsTool } from '../dist/bubbles/tool-bubble/get-bubble-details-tool.js';
-import { BUBBLE_CREDENTIAL_OPTIONS } from '@bubblelab/shared-schemas';
+import {
+  BUBBLE_CREDENTIAL_OPTIONS,
+  BubbleName,
+} from '@bubblelab/shared-schemas';
+import { BubbleFactory } from '../dist/bubble-factory.js';
 
 interface BubbleMetadata {
   name: string;
@@ -15,6 +19,7 @@ interface BubbleMetadata {
   outputSchema: string;
   usageExample: string;
   requiredCredentials: string[];
+  className?: string; // Class name for browser factory (e.g., "AIAgentBubble")
 }
 
 interface BubblesManifest {
@@ -22,6 +27,11 @@ interface BubblesManifest {
   generatedAt: string;
   totalCount: number;
   bubbles: BubbleMetadata[];
+  classNameMapping?: Array<{
+    bubbleName: string;
+    className: string;
+    nodeType: string;
+  }>; // Class name mapping for browser factory
 }
 
 class BubbleMetadataBundler {
@@ -49,7 +59,19 @@ class BubbleMetadataBundler {
     this.log('Starting bubble metadata bundler...');
 
     try {
-      // Step 1: Get list of all bubbles
+      // Step 1: Initialize BubbleFactory and get class name mapping
+      this.log('Initializing BubbleFactory...');
+      const factory = new BubbleFactory();
+      await factory.registerDefaults();
+      const classNameMapping = factory.exportClassNameMapping();
+      this.log(`Found ${classNameMapping.length} bubbles in factory`);
+
+      // Create a map for quick lookup
+      const classNameMap = new Map(
+        classNameMapping.map((m) => [m.bubbleName, m])
+      );
+
+      // Step 2: Get list of all bubbles
       this.log('Fetching list of all bubbles...');
       const listTool = new ListBubblesTool({});
       const listResult = await listTool.action();
@@ -61,7 +83,7 @@ class BubbleMetadataBundler {
 
       this.log(`Found ${listResult.data.totalCount} bubbles`);
 
-      // Step 2: Get detailed info for each bubble
+      // Step 3: Get detailed info for each bubble
       this.log('Fetching detailed information for each bubble...');
       const bubbleMetadata: BubbleMetadata[] = [];
 
@@ -82,6 +104,9 @@ class BubbleMetadataBundler {
                 bubble.name as keyof typeof BUBBLE_CREDENTIAL_OPTIONS
               ] || [];
 
+            // Get class name from mapping
+            const classInfo = classNameMap.get(bubble.name as BubbleName);
+
             bubbleMetadata.push({
               name: bubble.name,
               alias: bubble.alias,
@@ -92,6 +117,7 @@ class BubbleMetadataBundler {
               outputSchema: detailsResult.data.outputSchema,
               usageExample: detailsResult.data.usageExample,
               requiredCredentials: requiredCredentials,
+              className: classInfo?.className, // Include class name
             });
           } else {
             this.error(
@@ -105,12 +131,17 @@ class BubbleMetadataBundler {
         }
       }
 
-      // Step 3: Create manifest
+      // Step 4: Create manifest
       const manifest: BubblesManifest = {
         version: '1.0.0',
         generatedAt: new Date().toISOString(),
         totalCount: bubbleMetadata.length,
         bubbles: bubbleMetadata,
+        classNameMapping: classNameMapping.map((m) => ({
+          bubbleName: m.bubbleName,
+          className: m.className,
+          nodeType: m.nodeType,
+        })),
       };
 
       // Step 4: Ensure output directory exists

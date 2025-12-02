@@ -423,6 +423,36 @@ export class BubbleFactory {
   }
 
   /**
+   * Export class name mapping for browser-safe factory
+   * Returns a map of bubble names to their class names and types
+   */
+  exportClassNameMapping(): Array<{
+    bubbleName: BubbleName;
+    className: string;
+    nodeType: BubbleNodeType;
+  }> {
+    const mapping: Array<{
+      bubbleName: BubbleName;
+      className: string;
+      nodeType: BubbleNodeType;
+    }> = [];
+
+    for (const BubbleClass of this.registry.values()) {
+      const className = (BubbleClass as unknown as { name: string }).name;
+      const bubbleName = BubbleClass.bubbleName;
+      const nodeType = BubbleClass.type;
+
+      mapping.push({
+        bubbleName,
+        className,
+        nodeType,
+      });
+    }
+
+    return mapping;
+  }
+
+  /**
    * Scan bubble source modules to infer direct dependencies between bubbles by
    * inspecting ES module import statements, then attach the resulting
    * `bubbleDependencies` array onto the corresponding registered classes.

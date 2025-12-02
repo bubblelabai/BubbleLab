@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { useBubbleFlow } from './useBubbleFlow';
+import { useSyncCode } from './useSyncCode';
 
 // ============= Code Helper Functions =============
 // Monaco's model is the source of truth for code
@@ -176,9 +177,14 @@ export function useEditor(flowId?: number) {
     executionHighlightRange,
   } = useEditorStore();
   const { data: currentFlow } = useBubbleFlow(flowId || 0);
+  const { syncCode } = useSyncCode({ flowId: flowId || null });
 
   // Get current editor code
   const currentEditorCode = getEditorCode();
+
+  // Debounce timer ref
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSyncedCodeRef = useRef<string>('');
 
   // Derived state: check if there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -187,6 +193,67 @@ export function useEditor(flowId?: number) {
     }
     return currentEditorCode !== currentFlow.code;
   }, [currentFlow?.code, currentEditorCode, flowId]);
+
+  // Reset sync state when flowId changes
+  useEffect(() => {
+    lastSyncedCodeRef.current = '';
+  }, [flowId]);
+
+  // Set up code change listener to sync code
+  useEffect(() => {
+    if (!editorInstance || !flowId) {
+      return;
+    }
+
+    const model = editorInstance.getModel();
+    if (!model) {
+      return;
+    }
+
+    // Debounced sync function
+    const debouncedSync = (code: string) => {
+      // Clear existing timeout
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+
+      // Skip if code hasn't changed
+      if (code === lastSyncedCodeRef.current) {
+        return;
+      }
+
+      // Set new timeout
+      syncTimeoutRef.current = setTimeout(async () => {
+        try {
+          await syncCode(code);
+          lastSyncedCodeRef.current = code;
+        } catch (error) {
+          // Silently fail - sync is best-effort, validation will catch errors
+          console.debug('[useEditor] Failed to sync code:', error);
+        }
+      }, 500); // 500ms debounce
+    };
+
+    // Listen to model content changes
+    const disposable = model.onDidChangeContent(() => {
+      const code = model.getValue();
+      debouncedSync(code);
+    });
+
+    // Initial sync if there's code
+    const initialCode = model.getValue();
+    if (initialCode && initialCode !== lastSyncedCodeRef.current) {
+      debouncedSync(initialCode);
+    }
+
+    // Cleanup
+    return () => {
+      disposable.dispose();
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [editorInstance, flowId, syncCode]);
 
   // Editor manipulation functions
   const editor = {

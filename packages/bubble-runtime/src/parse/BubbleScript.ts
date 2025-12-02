@@ -95,6 +95,7 @@ export class BubbleScript {
   }
 
   constructor(bubbleScript: string, bubbleFactory: BubbleFactory) {
+    console.log('BubbleScript constructor', bubbleScript, bubbleFactory);
     // Reset ID generator to ensure deterministic variable IDs
     resetIds();
 
@@ -107,6 +108,9 @@ export class BubbleScript {
       loc: true, // Location info for line numbers
       sourceType: 'module', // Treat as ES module
       ecmaVersion: 2022, // Modern JS/TS features
+      // Disable project resolution to avoid file system access in browser
+      project: false,
+      projectService: false,
     });
 
     // Analyze scope to build variable dependency graph
@@ -125,6 +129,8 @@ export class BubbleScript {
       this.ast,
       this.scopeManager
     );
+
+    console.log('parseResult', parseResult);
 
     this.parsedBubbles = parseResult.bubbles;
     this.originalParsedBubbles = parseResult.bubbles;

@@ -13,6 +13,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@bubblelab/bubble-core": "workspace:*",
+    "@bubblelab/bubble-runtime": "workspace:*",
     "@bubblelab/shared-schemas": "workspace:*",
     "@clerk/clerk-react": "^5.46.0",
     "@clerk/themes": "^2.4.21",

@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+// Polyfill Node.js 'process' global for browser compatibility
+import './utils/process-polyfill';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryProvider } from './providers/QueryProvider';
 import { ClerkProvider } from '@clerk/clerk-react';
