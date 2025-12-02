@@ -47,11 +47,7 @@ export const useFlowGeneration = () => {
   const processedEventCountRef = useRef<number>(0);
 
   // Use streamedQuery for code generation
-  const {
-    data: events = [],
-    error,
-    isFetching,
-  } = useQuery({
+  const { data: events = [], error } = useQuery({
     ...createGenerateCodeQuery({
       prompt: generationParams?.prompt || '',
     }),

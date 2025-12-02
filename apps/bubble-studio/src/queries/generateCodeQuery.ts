@@ -104,6 +104,8 @@ export const createGenerateCodeQuery = (params: GenerateCodeParams) => {
     retry: false,
     // Keep data fresh
     staleTime: 0,
+    // Clear cached data immediately to prevent showing old events
+    gcTime: 0,
     // Don't refetch on window focus during generation
     refetchOnWindowFocus: false,
   });
