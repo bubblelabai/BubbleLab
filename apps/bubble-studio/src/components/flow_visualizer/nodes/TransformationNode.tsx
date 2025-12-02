@@ -40,14 +40,8 @@ function TransformationNode({ data }: TransformationNodeProps) {
     usedHandles = {},
     onTransformationClick,
   } = data;
-  const {
-    functionName,
-    description,
-    variableName,
-    arguments: args,
-    location,
-    variableId,
-  } = transformationInfo;
+  const { functionName, description, location, variableId } =
+    transformationInfo;
 
   const { showEditor } = useUIStore();
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);

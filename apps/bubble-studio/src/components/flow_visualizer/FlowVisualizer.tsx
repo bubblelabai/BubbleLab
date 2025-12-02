@@ -522,21 +522,32 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         let isCompleted = false;
         let isExecuting = false;
 
-        // Check if any bubble in this step is completed
-        for (const bubbleId of step.bubbleIds) {
-          const bubbleKey = String(bubbleId);
-          if (completedBubbles[bubbleKey]) {
+        // Check transformation steps
+        if (step.isTransformation && step.transformationData?.variableId) {
+          const transformationKey = String(step.transformationData.variableId);
+          if (completedBubbles[transformationKey]) {
             isCompleted = true;
-            break;
           }
-        }
-
-        // Check if any bubble in this step is currently executing
-        for (const bubbleId of step.bubbleIds) {
-          const bubbleKey = String(bubbleId);
-          if (runningBubbles.has(bubbleKey)) {
+          if (runningBubbles.has(transformationKey)) {
             isExecuting = true;
-            break;
+          }
+        } else {
+          // Check if any bubble in this step is completed
+          for (const bubbleId of step.bubbleIds) {
+            const bubbleKey = String(bubbleId);
+            if (completedBubbles[bubbleKey]) {
+              isCompleted = true;
+              break;
+            }
+          }
+
+          // Check if any bubble in this step is currently executing
+          for (const bubbleId of step.bubbleIds) {
+            const bubbleKey = String(bubbleId);
+            if (runningBubbles.has(bubbleKey)) {
+              isExecuting = true;
+              break;
+            }
           }
         }
 
