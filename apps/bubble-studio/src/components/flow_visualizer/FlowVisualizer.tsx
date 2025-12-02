@@ -30,7 +30,11 @@ import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import { extractStepGraph, type StepData } from '@/utils/workflowToSteps';
+import {
+  extractStepGraph,
+  type StepData,
+  type StepEdge,
+} from '@/utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useUIStore } from '@/stores/uiStore';
@@ -1666,7 +1670,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           target: firstRootStep.id,
           sourceHandle: 'right',
           targetHandle: 'left',
-          type: 'smoothstep',
+          // Slightly curved but mostly straight
+          type: 'simplebezier',
           animated: true,
           zIndex: isHighlighted ? 10 : 0, // Highlighted edges render on top
           style: {
@@ -1715,7 +1720,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         target: stepEdge.targetStepId,
         sourceHandle: 'bottom',
         targetHandle: 'top',
-        type: 'smoothstep',
+        // Slightly curved, more organic than straight/step lines
+        type: 'simplebezier',
         animated: true,
         zIndex: isHighlighted ? 10 : 0, // Highlighted edges render on top
         label: SHOW_EDGE_LABELS ? stepEdge.label : undefined,

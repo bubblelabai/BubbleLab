@@ -25,6 +25,7 @@ export const FLOW_LAYOUT = {
     HORIZONTAL_SPACING: 500, // Horizontal space between branches
     DEFAULT_POSITION: { x: 500, y: 200 }, // Default position for steps
     DEFAULT_HEIGHT: 200, // Default step height fallback
+    MERGE_VERTICAL_OFFSET: 40, // Distance between merge junction and target step
   },
 
   // Subbubble positioning

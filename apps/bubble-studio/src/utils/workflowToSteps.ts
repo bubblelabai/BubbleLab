@@ -14,11 +14,17 @@ export interface StepData {
   location: { startLine: number; endLine: number };
   bubbleIds: number[]; // IDs of bubbles inside this step
   controlFlowNodes: WorkflowNode[]; // if/for/while nodes for edge generation
-  // Branch information for hierarchical layout
+
+  // New: layout / structural metadata
+  level: number; // 0,1,2,... step “row” in the flow
+  branchIndex?: number; // 0,1,2,... within a level (for siblings)
+
+  // Branch information for hierarchical layout (kept for compatibility)
   parentStepId?: string; // Parent step in the flow (or undefined for root)
   branchType?: 'then' | 'else' | 'sequential'; // Type of connection to parent
   branchCondition?: string; // Condition text for conditional branches
   branchLabel?: string; // Display label for the edge (e.g., "if x > 0", "else")
+
   // Transformation-specific data
   isTransformation?: boolean;
   transformationData?: {
@@ -45,7 +51,7 @@ export interface StepEdge {
 
 /**
  * Extract steps with control flow graph from ParsedWorkflow
- * Recursively walks the workflow tree to build branch relationships
+ * Level-based: steps at the same depth share a level, edges only go between adjacent levels.
  */
 export function extractStepGraph(
   workflow: ParsedWorkflow | undefined,
@@ -59,33 +65,96 @@ export function extractStepGraph(
   const edges: StepEdge[] = [];
   let stepCounter = 0;
 
-  interface ProcessContext {
-    parentStepIds?: string[]; // Multiple parent step IDs for convergence
-    branchType?: 'then' | 'else' | 'sequential';
-    isElseIf?: boolean; // Track if this is part of else-if chain
-    edgeLabel?: string; // Pre-determined edge label (for else-if chains)
+  type BranchType = 'then' | 'else' | 'sequential';
+
+  interface Frontier {
+    level: number;
+    parents: string[]; // step IDs at previous level that can lead into the next node(s)
   }
 
-  /**
-   * Process workflow nodes recursively, tracking branches
-   * Returns an array of last step IDs (for handling convergence/merge points)
-   */
-  function processNodes(
-    nodes: WorkflowNode[],
-    context: ProcessContext = {}
-  ): string[] {
-    let lastStepIds: string[] = context.parentStepIds || [];
+  interface ProcessContext {
+    frontier: Frontier;
+    // For conditional labeling
+    branchType?: BranchType;
+    edgeLabel?: string;
+    isElseIf?: boolean;
+  }
+
+  function createStepBase(
+    id: string,
+    level: number,
+    functionName: string,
+    description: string | undefined,
+    isAsync: boolean,
+    location: { startLine: number; endLine: number },
+    bubbleIds: number[],
+    controlFlowNodes: WorkflowNode[],
+    parentFrontier: Frontier,
+    ctx: ProcessContext
+  ): StepData {
+    const parentStepId =
+      parentFrontier.parents.length > 0 ? parentFrontier.parents[0] : undefined;
+
+    const step: StepData = {
+      id,
+      functionName,
+      description,
+      isAsync,
+      location,
+      bubbleIds,
+      controlFlowNodes,
+      level,
+      parentStepId,
+      branchType: ctx.branchType,
+      branchLabel: ctx.edgeLabel,
+    };
+
+    return step;
+  }
+
+  function connectFrontierToStep(
+    sourceFrontier: Frontier,
+    targetStepId: string,
+    ctx: ProcessContext
+  ) {
+    const edgeType: StepEdge['edgeType'] =
+      ctx.branchType === 'sequential' || !ctx.branchType
+        ? 'sequential'
+        : 'conditional';
+
+    for (const sourceStepId of sourceFrontier.parents) {
+      const edge: StepEdge = {
+        sourceStepId,
+        targetStepId,
+        edgeType,
+        branchType: ctx.branchType ?? 'sequential',
+      };
+
+      if (ctx.edgeLabel) {
+        edge.label = ctx.edgeLabel;
+      }
+
+      edges.push(edge);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[StepGraph]   Edge: ${sourceStepId} → ${targetStepId} (${edge.edgeType}, label: ${edge.label || 'none'})`
+      );
+    }
+  }
+
+  function processNodes(nodes: WorkflowNode[], ctx: ProcessContext): Frontier {
+    let frontier = ctx.frontier;
 
     for (const node of nodes) {
       if (node.type === 'function_call') {
         const functionCallNode = node as FunctionCallWorkflowNode;
-
-        // Only process function calls with method definitions (class methods)
         if (!functionCallNode.methodDefinition) {
           continue;
         }
 
-        // Extract bubbles and control flow nodes
+        const stepId = `step-${stepCounter++}`;
+        const stepLevel = frontier.level;
+
         const bubbleIds = extractBubbleIdsByLineRange(
           functionCallNode.methodDefinition.location,
           bubbles
@@ -94,67 +163,31 @@ export function extractStepGraph(
           functionCallNode.children || []
         );
 
-        const stepId = `step-${stepCounter++}`;
-
-        // Use the first parent for the step data (arbitrary choice)
-        const parentStepId =
-          lastStepIds.length > 0 ? lastStepIds[0] : undefined;
-
-        const step: StepData = {
-          id: stepId,
-          functionName: functionCallNode.functionName,
-          description: functionCallNode.description,
-          isAsync: functionCallNode.methodDefinition.isAsync,
-          location: functionCallNode.location,
+        const step = createStepBase(
+          stepId,
+          stepLevel,
+          functionCallNode.functionName,
+          functionCallNode.description,
+          functionCallNode.methodDefinition.isAsync,
+          functionCallNode.location,
           bubbleIds,
           controlFlowNodes,
-          parentStepId,
-          branchType: context.branchType,
-          branchLabel: context.edgeLabel, // Use pre-determined label if provided
-        };
-
+          frontier,
+          ctx
+        );
         steps.push(step);
 
-        // Create edges from ALL parent steps to this step (convergence/merge point)
-        console.log(
-          `[StepGraph] Creating step ${stepId} (${functionCallNode.functionName}) with ${lastStepIds.length} parent(s):`,
-          lastStepIds
-        );
+        connectFrontierToStep(frontier, stepId, ctx);
 
-        for (const sourceStepId of lastStepIds) {
-          const edge: StepEdge = {
-            sourceStepId,
-            targetStepId: stepId,
-            edgeType:
-              context.branchType === 'sequential'
-                ? 'sequential'
-                : 'conditional',
-            branchType: context.branchType,
-          };
+        frontier = { level: stepLevel, parents: [stepId] };
 
-          // Use pre-determined label if provided (for else-if chains)
-          if (context.edgeLabel) {
-            edge.label = context.edgeLabel;
-          }
-
-          edges.push(edge);
-          console.log(
-            `[StepGraph]   Edge: ${sourceStepId} → ${stepId} (${edge.edgeType}, label: ${edge.label || 'none'})`
-          );
-        }
-
-        // Update lastStepIds to point to this new step
-        lastStepIds = [stepId];
-
-        // Process children recursively (may contain if/else branches)
         if (functionCallNode.children && functionCallNode.children.length > 0) {
-          processNodes(functionCallNode.children, {
-            parentStepIds: [stepId],
+          frontier = processNodes(functionCallNode.children, {
+            frontier: { level: stepLevel + 1, parents: [stepId] },
             branchType: 'sequential',
           });
         }
       } else if (node.type === 'transformation_function') {
-        // Handle transformation functions (inline code transformations)
         const transformationNode = node as unknown as {
           type: 'transformation_function';
           functionName: string;
@@ -181,8 +214,7 @@ export function extractStepGraph(
         };
 
         const stepId = `step-${stepCounter++}`;
-        const parentStepId =
-          lastStepIds.length > 0 ? lastStepIds[0] : undefined;
+        const stepLevel = frontier.level;
 
         const step: StepData = {
           id: stepId,
@@ -193,11 +225,13 @@ export function extractStepGraph(
             startLine: transformationNode.location.startLine,
             endLine: transformationNode.location.endLine,
           },
-          bubbleIds: [], // Transformations don't contain bubbles
+          bubbleIds: [],
           controlFlowNodes: [],
-          parentStepId,
-          branchType: context.branchType,
-          branchLabel: context.edgeLabel,
+          level: stepLevel,
+          parentStepId:
+            frontier.parents.length > 0 ? frontier.parents[0] : undefined,
+          branchType: ctx.branchType,
+          branchLabel: ctx.edgeLabel,
           isTransformation: true,
           transformationData: {
             code: transformationNode.code,
@@ -208,187 +242,145 @@ export function extractStepGraph(
         };
 
         steps.push(step);
-
-        // Create edges from ALL parent steps to this step
-        console.log(
-          `[StepGraph] Creating transformation step ${stepId} (${transformationNode.functionName}) with ${lastStepIds.length} parent(s):`,
-          lastStepIds
-        );
-
-        for (const sourceStepId of lastStepIds) {
-          const edge: StepEdge = {
-            sourceStepId,
-            targetStepId: stepId,
-            edgeType:
-              context.branchType === 'sequential'
-                ? 'sequential'
-                : 'conditional',
-            branchType: context.branchType,
-          };
-
-          if (context.edgeLabel) {
-            edge.label = context.edgeLabel;
-          }
-
-          edges.push(edge);
-          console.log(
-            `[StepGraph]   Edge: ${sourceStepId} → ${stepId} (${edge.edgeType}, label: ${edge.label || 'none'})`
-          );
-        }
-
-        // Update lastStepIds to point to this new step
-        lastStepIds = [stepId];
+        connectFrontierToStep(frontier, stepId, ctx);
+        frontier = { level: stepLevel, parents: [stepId] };
       } else if (node.type === 'if') {
         const ifNode =
           node as import('@bubblelab/shared-schemas').ControlFlowWorkflowNode;
 
         const condition = ifNode.condition || 'condition';
-
-        // Determine the label for the 'then' branch
-        // If this is part of an else-if chain, use "else if", otherwise use "if"
-        const thenLabel = context.isElseIf
+        const thenLabel = ctx.isElseIf
           ? `else if ${condition}`
           : `if ${condition}`;
 
-        // Collect last step IDs from all branches for convergence
-        const branchEndSteps: string[] = [];
+        const branchLevel = frontier.level + 1;
+        const branchEndParents: string[] = [];
 
-        // Process 'then' branch
+        // THEN branch
         if (ifNode.children && ifNode.children.length > 0) {
-          const thenLastSteps = processNodes(ifNode.children, {
-            parentStepIds: lastStepIds, // Pass ALL parent step IDs
+          const thenFrontier = processNodes(ifNode.children, {
+            frontier: { level: branchLevel, parents: frontier.parents },
             branchType: 'then',
             edgeLabel: thenLabel,
           });
-
-          branchEndSteps.push(...thenLastSteps);
+          branchEndParents.push(...thenFrontier.parents);
         }
 
-        // Process 'else' branch (could be else or else-if)
+        // ELSE / ELSE-IF branch
         if (ifNode.elseBranch && ifNode.elseBranch.length > 0) {
-          // Check if else branch starts with another 'if' (else-if chain)
           const isElseIf =
             ifNode.elseBranch.length === 1 &&
             ifNode.elseBranch[0].type === 'if';
 
           if (isElseIf) {
-            // For else-if, process the nested if with isElseIf flag
-            // The nested if will handle its own labeling
-            const elseLastSteps = processNodes(ifNode.elseBranch, {
-              parentStepIds: lastStepIds, // Pass ALL parent step IDs
-              branchType: 'then', // The else-if behaves like a then branch
+            const elseIfFrontier = processNodes(ifNode.elseBranch, {
+              frontier: { level: branchLevel, parents: frontier.parents },
+              branchType: 'then',
               isElseIf: true,
             });
-
-            branchEndSteps.push(...elseLastSteps);
+            branchEndParents.push(...elseIfFrontier.parents);
           } else {
-            // For pure else, process with "else" label
-            const elseLastSteps = processNodes(ifNode.elseBranch, {
-              parentStepIds: lastStepIds, // Pass ALL parent step IDs
+            const elseFrontier = processNodes(ifNode.elseBranch, {
+              frontier: { level: branchLevel, parents: frontier.parents },
               branchType: 'else',
               edgeLabel: 'else',
             });
-
-            branchEndSteps.push(...elseLastSteps);
+            branchEndParents.push(...elseFrontier.parents);
           }
-        } else {
-          // No else branch - the current lastStepIds could also be the end if the condition is false
-          // (This represents the case where the if condition fails and we skip to the next statement)
-          branchEndSteps.push(...lastStepIds);
         }
 
-        // Update lastStepIds to ALL branch endings (convergence point)
-        lastStepIds = branchEndSteps.length > 0 ? branchEndSteps : lastStepIds;
+        // If no branch produced any steps, fall back to original parents
+        const uniqueParents = Array.from(new Set(branchEndParents));
+        if (uniqueParents.length > 0) {
+          frontier = { level: branchLevel, parents: uniqueParents };
+        }
 
-        // Debug: Log branch convergence
+        // eslint-disable-next-line no-console
         console.log(
-          `[StepGraph] After if/else, lastStepIds (convergence):`,
-          lastStepIds
+          `[StepGraph] After if/else, frontier level=${frontier.level}, parents=`,
+          frontier.parents
         );
       } else if (node.type === 'for' || node.type === 'while') {
-        const loopNode = node;
-        // Process loop body - loops act like sequential execution
-        // The loop body is processed recursively, and steps from the loop body
-        // become the continuation point after the loop
+        const loopNode =
+          node as import('@bubblelab/shared-schemas').ControlFlowWorkflowNode;
+
         if (loopNode.children && loopNode.children.length > 0) {
-          const loopLastSteps = processNodes(loopNode.children, {
-            parentStepIds: lastStepIds,
+          const loopFrontier = processNodes(loopNode.children, {
+            frontier: { level: frontier.level + 1, parents: frontier.parents },
             branchType: 'sequential',
           });
 
-          // After loop, continue with the steps from the loop body
-          // If the loop body produced steps, use those; otherwise keep current lastStepIds
-          lastStepIds = loopLastSteps.length > 0 ? loopLastSteps : lastStepIds;
+          const mergedParents = new Set([
+            ...frontier.parents,
+            ...loopFrontier.parents,
+          ]);
+          frontier = {
+            level: Math.max(frontier.level, loopFrontier.level),
+            parents: Array.from(mergedParents),
+          };
         }
       } else if (node.type === 'parallel_execution') {
         const parallelNode = node as ParallelExecutionWorkflowNode;
+        const parallelLevel = frontier.level + 1;
 
-        // Track all parallel task steps
-        const parallelStepIds: string[] = [];
+        const parallelParents: string[] = [];
 
-        // Create a separate step for each direct child in Promise.all
         for (const child of parallelNode.children) {
           if (child.type === 'function_call') {
-            const functionCallNode = child as FunctionCallWorkflowNode;
+            const fnChild = child as FunctionCallWorkflowNode;
+            if (!fnChild.methodDefinition) continue;
 
-            if (!functionCallNode.methodDefinition) {
-              continue;
-            }
-
+            const stepId = `step-${stepCounter++}`;
             const bubbleIds = extractBubbleIdsByLineRange(
-              functionCallNode.methodDefinition.location,
+              fnChild.methodDefinition.location,
               bubbles
             );
             const controlFlowNodes = extractControlFlowNodes(
-              functionCallNode.children || []
+              fnChild.children || []
             );
 
-            const stepId = `step-${stepCounter++}`;
-            const parentStepId =
-              lastStepIds.length > 0 ? lastStepIds[0] : undefined;
-
-            const step: StepData = {
-              id: stepId,
-              functionName: functionCallNode.functionName,
-              description: functionCallNode.description,
-              isAsync: functionCallNode.methodDefinition.isAsync,
-              location: functionCallNode.location,
-              bubbleIds,
-              controlFlowNodes,
-              parentStepId,
-              branchType: 'then',
+            const parentFrontier: Frontier = {
+              level: parallelLevel - 1,
+              parents: frontier.parents,
             };
 
+            const step = createStepBase(
+              stepId,
+              parallelLevel,
+              fnChild.functionName,
+              fnChild.description,
+              fnChild.methodDefinition.isAsync,
+              fnChild.location,
+              bubbleIds,
+              controlFlowNodes,
+              parentFrontier,
+              { frontier, branchType: 'sequential' }
+            );
             steps.push(step);
-
-            // Create edges from all parent steps
-            for (const sourceStepId of lastStepIds) {
-              edges.push({
-                sourceStepId,
-                targetStepId: stepId,
-                edgeType: 'sequential',
-                branchType: 'sequential',
-              });
-            }
-
-            parallelStepIds.push(stepId);
+            connectFrontierToStep(
+              { level: parallelLevel - 1, parents: frontier.parents },
+              stepId,
+              { frontier, branchType: 'sequential' }
+            );
+            parallelParents.push(stepId);
           }
         }
 
-        // After parallel execution, all parallel steps are potential parents
-        if (parallelStepIds.length > 0) {
-          lastStepIds = parallelStepIds;
+        if (parallelParents.length > 0) {
+          frontier = { level: parallelLevel, parents: parallelParents };
         }
       }
     }
 
-    return lastStepIds;
+    return frontier;
   }
 
-  // Process the workflow root
-  processNodes(workflow.root);
+  const initialFrontier: Frontier = { level: 0, parents: [] };
+  processNodes(workflow.root, {
+    frontier: initialFrontier,
+    branchType: 'sequential',
+  });
 
-  // Handle top-level bubbles (not inside any function call)
   const topLevelBubbleIds = extractTopLevelBubbles(workflow, bubbles);
   if (topLevelBubbleIds.length > 0) {
     const mainStep: StepData = {
@@ -399,11 +391,11 @@ export function extractStepGraph(
       location: { startLine: 0, endLine: 0 },
       bubbleIds: topLevelBubbleIds,
       controlFlowNodes: [],
+      level: 0,
       branchType: 'sequential',
     };
     steps.unshift(mainStep);
 
-    // Update edges to connect from main step
     if (steps.length > 1) {
       edges.unshift({
         sourceStepId: 'step-main',
@@ -463,6 +455,7 @@ export function extractStepsFromWorkflow(
         location: functionCallNode.location,
         bubbleIds,
         controlFlowNodes,
+        level: 0,
       });
 
       stepIndex++;
@@ -499,6 +492,7 @@ export function extractStepsFromWorkflow(
             location: functionCallNode.location,
             bubbleIds,
             controlFlowNodes,
+            level: 0,
           });
 
           stepIndex++;
@@ -514,6 +508,7 @@ export function extractStepsFromWorkflow(
             location: parallelNode.location,
             bubbleIds: [bubbleId],
             controlFlowNodes: [],
+            level: 0,
           });
 
           stepIndex++;
@@ -533,6 +528,7 @@ export function extractStepsFromWorkflow(
       location: { startLine: 0, endLine: 0 },
       bubbleIds: topLevelBubbleIds,
       controlFlowNodes: [],
+      level: 0,
     });
   }
 

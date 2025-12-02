@@ -46,9 +46,6 @@ function TransformationNode({ data }: TransformationNodeProps) {
   const { showEditor } = useUIStore();
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
-  // Determine the transformation ID for store lookups (prefer variableId, fallback to transformationId)
-  const transformationKey = variableId ? String(variableId) : transformationId;
-
   // Get execution state from execution store
   const highlightedBubble = useExecutionStore(
     flowId,
