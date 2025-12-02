@@ -197,6 +197,15 @@ body {
   }
 }
 
+@keyframes border-flash {
+  0%, 100% {
+    border-color: rgb(71, 85, 105);
+  }
+  50% {
+    border-color: rgb(100, 116, 139);
+  }
+}
+
 /* Toast customizations for dark theme */
 .Toastify__toast-container {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;

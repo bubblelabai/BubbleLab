@@ -1239,23 +1239,15 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
         let currentX = x;
 
-        // Layout children horizontally
+        // Layout children horizontally – all children (sequential and branches) are spread
+        // around the parent X to avoid overlapping at the same level.
         for (let i = 0; i < sortedChildren.length; i++) {
           const child = sortedChildren[i];
-          const isBranch =
-            child.branchType && child.branchType !== 'sequential';
 
-          // Offset based on branch type
-          let childX = currentX;
-          if (isBranch) {
-            // Branches spread out horizontally
-            const branchOffset =
-              (i - (sortedChildren.length - 1) / 2) * horizontalSpacing;
-            childX = x + branchOffset;
-          } else {
-            // Sequential steps stay in line
-            childX = x;
-          }
+          // Offset all children horizontally based on index
+          const branchOffset =
+            (i - (sortedChildren.length - 1) / 2) * horizontalSpacing;
+          const childX = x + branchOffset;
 
           // Calculate child Y position based on parent's bottom + minimum spacing
           const childY = y + currentStepHeight + minVerticalSpacing;
@@ -1269,7 +1261,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           );
 
           // Update currentX for next sibling
-          if (isBranch && i < sortedChildren.length - 1) {
+          if (i < sortedChildren.length - 1) {
             currentX = subtreeEndX + horizontalSpacing;
           }
         }

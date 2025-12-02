@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import {
   STEP_CONTAINER_LAYOUT,
@@ -34,12 +34,19 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
   const { flowId, stepId, stepInfo, bubbleIds, usedHandles = {} } = data;
   const { functionName, description } = stepInfo;
 
-  // Get highlight state from execution store
+  // Get execution state from execution store
   const highlightedBubble = useExecutionStore(
     flowId,
     (s) => s.highlightedBubble
   );
+  const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
+
   const isHighlighted = highlightedBubble === stepId;
+
+  // Check if any bubble in this step is currently executing
+  const isExecuting = useMemo(() => {
+    return bubbleIds.some((bubbleId) => runningBubbles.has(String(bubbleId)));
+  }, [bubbleIds, runningBubbles]);
 
   // Calculate dynamic header height based on content
   const headerHeight = calculateHeaderHeight(functionName, description);
@@ -50,14 +57,20 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
 
   return (
     <div
-      className={`relative bg-neutral-800/60 backdrop-blur-sm rounded-lg border shadow-xl transition-all duration-300 cursor-pointer ${
-        isHighlighted
-          ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-          : 'border-neutral-600/60 hover:border-neutral-500/80'
+      className={`relative backdrop-blur-sm rounded-lg border shadow-xl cursor-pointer ${
+        isExecuting
+          ? 'bg-neutral-800/60'
+          : isHighlighted
+            ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
+            : 'border-neutral-600/60 bg-neutral-800/60 hover:border-neutral-500/80'
       }`}
       style={{
         width: `${STEP_CONTAINER_LAYOUT.WIDTH}px`,
         height: `${calculatedHeight}px`,
+        ...(isExecuting && {
+          animation: 'border-flash 1s ease-in-out infinite',
+          borderWidth: '2px',
+        }),
       }}
     >
       {/* Connection handles - only show if used */}
