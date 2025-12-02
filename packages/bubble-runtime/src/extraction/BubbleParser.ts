@@ -1041,6 +1041,32 @@ export class BubbleParser {
 
     buildParentMap(ast);
 
+    const isPromiseAllArrayElement = (
+      arrayNode: TSESTree.ArrayExpression,
+      elementNode?: TSESTree.Node
+    ): boolean => {
+      if (!elementNode || !arrayNode.elements.includes(elementNode as any)) {
+        return false;
+      }
+      const parentCall = parentMap.get(arrayNode);
+      if (!parentCall || parentCall.type !== 'CallExpression') {
+        return false;
+      }
+      const callee = parentCall.callee;
+      if (
+        callee.type !== 'MemberExpression' ||
+        callee.object.type !== 'Identifier' ||
+        callee.object.name !== 'Promise' ||
+        callee.property.type !== 'Identifier' ||
+        callee.property.name !== 'all'
+      ) {
+        return false;
+      }
+      return (
+        parentCall.arguments.length > 0 && parentCall.arguments[0] === arrayNode
+      );
+    };
+
     const visitNode = (node: TSESTree.Node, parent?: TSESTree.Node): void => {
       // Skip if already visited
       if (visitedNodes.has(node)) {
@@ -1098,19 +1124,30 @@ export class BubbleParser {
             // Also check for complex expressions that should not be instrumented
             let currentParent: TSESTree.Node | undefined = parentMap.get(node);
             let isInComplexExpression = false;
+            let invocationContext: MethodInvocationInfo['context'] = 'default';
 
+            let currentChild: TSESTree.Node | undefined = node;
             while (currentParent) {
+              const parentIsPromiseAllElement =
+                currentParent.type === 'ArrayExpression' &&
+                isPromiseAllArrayElement(currentParent, currentChild);
+
               // Check if we're inside a complex expression before reaching the statement level
               // These expressions cannot be instrumented inline without breaking syntax
               if (
                 currentParent.type === 'ConditionalExpression' || // Ternary: a ? b : c
                 currentParent.type === 'ObjectExpression' || // Object literal: { key: value }
-                currentParent.type === 'ArrayExpression' || // Array literal: [a, b, c]
+                (currentParent.type === 'ArrayExpression' &&
+                  !parentIsPromiseAllElement) || // Array literal outside Promise.all
                 currentParent.type === 'Property' || // Object property
                 currentParent.type === 'SpreadElement' // Spread: ...expr
               ) {
                 isInComplexExpression = true;
                 break;
+              }
+
+              if (parentIsPromiseAllElement) {
+                invocationContext = 'promise_all_element';
               }
 
               if (currentParent.type === 'VariableDeclarator') {
@@ -1150,6 +1187,7 @@ export class BubbleParser {
                 break;
               }
               // Move up the tree using parent map
+              currentChild = currentParent;
               currentParent = parentMap.get(currentParent);
             }
 
@@ -1168,6 +1206,7 @@ export class BubbleParser {
               variableName,
               variableType,
               destructuringPattern,
+              context: invocationContext,
             });
           }
         }

@@ -368,6 +368,7 @@ export class LoggerInjector {
       variableName,
       variableType,
       destructuringPattern,
+      context = 'default',
     } = invocation;
     const lineIndex = lineNumber - 1;
     const endLineIndex = endLineNumber - 1;
@@ -392,6 +393,26 @@ export class LoggerInjector {
 
     // Calculate how many lines to remove (from lineNumber to endLineNumber)
     const linesToRemove = endLineIndex - lineIndex + 1;
+
+    if (context === 'promise_all_element') {
+      this.injectPromiseAllElementLogging(
+        lines,
+        lineIndex,
+        linesToRemove,
+        indentation,
+        {
+          args,
+          argsArray,
+          argsVar,
+          durationVar,
+          lineNumber,
+          methodName,
+          resultVar,
+          variableId,
+        }
+      );
+      return;
+    }
 
     // Use pre-determined statement type instead of regex matching
     if (
@@ -463,5 +484,52 @@ export class LoggerInjector {
       callLine,
       completeLog
     );
+  }
+
+  private injectPromiseAllElementLogging(
+    lines: string[],
+    lineIndex: number,
+    linesToRemove: number,
+    indentation: string,
+    details: {
+      args: string;
+      argsArray: string;
+      argsVar: string;
+      durationVar: string;
+      lineNumber: number;
+      methodName: string;
+      resultVar: string;
+      variableId: number;
+    }
+  ): void {
+    const {
+      args,
+      argsArray,
+      argsVar,
+      durationVar,
+      lineNumber,
+      methodName,
+      resultVar,
+      variableId,
+    } = details;
+
+    const originalLines = lines.slice(lineIndex, lineIndex + linesToRemove);
+    const lastOriginalLine = originalLines[originalLines.length - 1] || '';
+    const trailingComma = lastOriginalLine.trimEnd().endsWith(',');
+    const innerIndent = `${indentation}  `;
+
+    const wrappedLines = [
+      `${indentation}(async () => {`,
+      `${innerIndent}const __functionCallStart_${variableId} = Date.now();`,
+      `${innerIndent}const ${argsVar} = ${argsArray};`,
+      `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallStart(${variableId}, '${methodName}', ${argsVar}, ${lineNumber});`,
+      `${innerIndent}const ${resultVar} = await this.${methodName}(${args});`,
+      `${innerIndent}const ${durationVar} = Date.now() - __functionCallStart_${variableId};`,
+      `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`,
+      `${innerIndent}return ${resultVar};`,
+      `${indentation}})()${trailingComma ? ',' : ''}`,
+    ];
+
+    lines.splice(lineIndex, linesToRemove, ...wrappedLines);
   }
 }

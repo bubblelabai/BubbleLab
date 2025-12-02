@@ -552,7 +552,7 @@ export const noMethodInvocationInComplexExpressionRule: LintRule = {
           if (object.kind === ts.SyntaxKind.ThisKeyword) {
             // This is a method invocation: this.methodName()
             // Check if any parent is a complex expression
-            const complexParent = findComplexExpressionParent(parents);
+            const complexParent = findComplexExpressionParent(parents, node);
             if (complexParent) {
               const { line, character } =
                 context.sourceFile.getLineAndCharacterOfPosition(
@@ -584,9 +584,13 @@ export const noMethodInvocationInComplexExpressionRule: LintRule = {
 /**
  * Finds if any parent node is a complex expression that cannot contain instrumented calls
  */
-function findComplexExpressionParent(parents: ts.Node[]): ts.Node | null {
+function findComplexExpressionParent(
+  parents: ts.Node[],
+  node: ts.Node
+): ts.Node | null {
   // Walk through parents to find complex expressions
   // Stop at statement boundaries (these are safe)
+  let currentChild: ts.Node | null = node;
   for (let i = parents.length - 1; i >= 0; i--) {
     const parent = parents[i];
 
@@ -608,6 +612,13 @@ function findComplexExpressionParent(parents: ts.Node[]): ts.Node | null {
       return parent; // Object literal
     }
     if (ts.isArrayLiteralExpression(parent)) {
+      if (
+        currentChild &&
+        isPromiseAllArrayElement(parent, currentChild as ts.Expression)
+      ) {
+        currentChild = parent;
+        continue;
+      }
       return parent; // Array literal
     }
     if (ts.isPropertyAssignment(parent)) {
@@ -616,6 +627,8 @@ function findComplexExpressionParent(parents: ts.Node[]): ts.Node | null {
     if (ts.isSpreadElement(parent)) {
       return parent; // Spread expression
     }
+
+    currentChild = parent;
   }
 
   return null;
@@ -641,6 +654,33 @@ function getReadableParentType(node: ts.Node): string {
     return 'spread expression';
   }
   return 'complex expression';
+}
+
+function isPromiseAllArrayElement(
+  arrayNode: ts.ArrayLiteralExpression,
+  childNode: ts.Expression
+): boolean {
+  if (!arrayNode.elements.some((element) => element === childNode)) {
+    return false;
+  }
+
+  if (!arrayNode.parent || !ts.isCallExpression(arrayNode.parent)) {
+    return false;
+  }
+
+  const callExpr = arrayNode.parent;
+  const callee = callExpr.expression;
+
+  if (
+    !ts.isPropertyAccessExpression(callee) ||
+    !ts.isIdentifier(callee.expression) ||
+    callee.expression.text !== 'Promise' ||
+    callee.name.text !== 'all'
+  ) {
+    return false;
+  }
+
+  return callExpr.arguments.length > 0 && callExpr.arguments[0] === arrayNode;
 }
 
 /**

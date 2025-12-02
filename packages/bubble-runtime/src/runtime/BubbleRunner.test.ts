@@ -523,6 +523,24 @@ describe('BubbleRunner correctly runs and plans', () => {
           result.success || result.error?.includes('credential')
         ).toBeTruthy();
       });
+      it('should execute a flow with a content creation step', async () => {
+        const testScript = getFixture('content-creation-step');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+
+        // console.log('Result:', runner.bubbleScript.bubblescript);
+        // Check validation result
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          true
+        );
+        // console.log('Parse result:', parseResult);
+        expect(parseResult.valid).toBe(true);
+        console.log(result.error);
+        expect(result).toBeDefined();
+      });
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {

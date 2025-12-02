@@ -204,10 +204,12 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
               this.logger?.error(\`Failed to scrape additional posts for \${username}: \${scrapeError}\`);
             }
 
+            const formattedStoryAnalysis = this.markdownToHtml(storyAnalysis);
+            
             return {
               ...checkedProfile,
               additionalPosts,
-              storyAnalysis: this.markdownToHtml(storyAnalysis),
+              storyAnalysis: formattedStoryAnalysis,
               isLead: true
             } as Lead;
           } else {
@@ -235,13 +237,19 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
     leadPersona: string,
     primaryKeyword: string
   ): Promise<boolean> {
-    const htmlContent = leads.length > 0
-      ? this.generateLeadsEmail(leads, checkedProfiles, leadPersona, primaryKeyword)
-      : this.generateNoLeadsEmail(checkedProfiles, leadPersona, primaryKeyword);
+    let htmlContent: string;
+    if (leads.length > 0) {
+      htmlContent = this.generateLeadsEmail(leads, checkedProfiles, leadPersona, primaryKeyword);
+    } else {
+      htmlContent = this.generateNoLeadsEmail(checkedProfiles, leadPersona, primaryKeyword);
+    }
 
-    const textContent = leads.length > 0
-      ? this.generateLeadsText(leads, checkedProfiles, leadPersona, primaryKeyword)
-      : this.generateNoLeadsText(checkedProfiles, leadPersona, primaryKeyword);
+    let textContent: string;
+    if (leads.length > 0) {
+      textContent = this.generateLeadsText(leads, checkedProfiles, leadPersona, primaryKeyword);
+    } else {
+      textContent = this.generateNoLeadsText(checkedProfiles, leadPersona, primaryKeyword);
+    }
 
     // Sends a comprehensive email report with all identified leads, their story
     // analyses, and checked profiles directly to the user's inbox, delivering qualified
@@ -279,26 +287,30 @@ export class LinkedinLeadGen extends BubbleFlow<'webhook/http'> {
   }
 
   private markdownToHtml(markdown: string): string {
-    if (!markdown) return '';
+    let result = '';
     
-    return markdown
-      // Bold text **text** -> <strong>text</strong>
-      .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-      // Italic text *text* -> <em>text</em>
-      .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-      // Bullet points * item -> <li>item</li>
-      .replace(/^\\* (.+)$/gm, '<li>$1</li>')
-      // Wrap bullet lists in <ul> tags
-      .replace(/(<li>.*<\\/li>)/s, '<ul>$1</ul>')
-      // Line breaks
-      .replace(/\\n\\n/g, '</p><p>')
-      .replace(/\\n/g, '<br>')
-      // Wrap in paragraphs
-      .replace(/^(.+)$/gm, '<p>$1</p>')
-      // Clean up extra paragraphs around lists
-      .replace(/<p><ul>/g, '<ul>')
-      .replace(/<\\/ul><\\/p>/g, '</ul>')
-      .replace(/<p><\\/p>/g, '');
+    if (markdown) {
+      result = markdown
+        // Bold text **text** -> <strong>text</strong>
+        .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+        // Italic text *text* -> <em>text</em>
+        .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
+        // Bullet points * item -> <li>item</li>
+        .replace(/^\\* (.+)$/gm, '<li>$1</li>')
+        // Wrap bullet lists in <ul> tags
+        .replace(/(<li>.*<\\/li>)/s, '<ul>$1</ul>')
+        // Line breaks
+        .replace(/\\n\\n/g, '</p><p>')
+        .replace(/\\n/g, '<br>')
+        // Wrap in paragraphs
+        .replace(/^(.+)$/gm, '<p>$1</p>')
+        // Clean up extra paragraphs around lists
+        .replace(/<p><ul>/g, '<ul>')
+        .replace(/<\\/ul><\\/p>/g, '</ul>')
+        .replace(/<p><\\/p>/g, '');
+    }
+    
+    return result;
   }
 
   private generateLeadsEmail(leads: Lead[], checkedProfiles: CheckedProfile[], leadPersona: string, keyword: string): string {

@@ -27,6 +27,7 @@ export interface MethodInvocationInfo {
   variableName?: string;
   variableType?: 'const' | 'let' | 'var';
   destructuringPattern?: string; // e.g., "{ a, b }" or "[x, y]" for destructuring assignments
+  context?: 'default' | 'promise_all_element';
 }
 
 export class BubbleScript {
@@ -72,7 +73,6 @@ export class BubbleScript {
       sourceType: 'module', // Treat as ES module
       ecmaVersion: 2022, // Modern JS/TS features
     });
-    console.log('Done parsing AST');
 
     // Analyze scope to build variable dependency graph
     this.scopeManager = analyze(this.ast, {
