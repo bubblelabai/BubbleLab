@@ -455,10 +455,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(runner.bubbleScript.bubblescript).toContain(
           'agentResponse = __functionCallResult'
         );
-        // Should have injected logging for the formatOutput function
-        expect(runner.bubbleScript.bubblescript).toContain(
-          "__bubbleFlowSelf.logger?.logFunctionCallComplete(479784, 'formatOutput',"
-        );
+
         // Make sure formatouput inside the tree also has the same variable id
 
         const workflow = runner.bubbleScript.getWorkflow();
@@ -484,8 +481,13 @@ describe('BubbleRunner correctly runs and plans', () => {
         const formatOutputNode = findFormatOutputNode(workflow?.root || []);
         console.log('Format output node:', formatOutputNode);
         if (formatOutputNode && 'variableId' in formatOutputNode) {
-          expect(formatOutputNode.variableId).toBe(479784);
+          expect(formatOutputNode.variableId).toBe(851596);
         }
+
+        // Should have injected logging for the formatOutput function
+        expect(runner.bubbleScript.bubblescript).toContain(
+          "__bubbleFlowSelf.logger?.logFunctionCallComplete(851596, 'formatOutput',"
+        );
       });
       it('should inject function call logging', async () => {
         const testScript = getFixture('reddit-flow-step');

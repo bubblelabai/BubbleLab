@@ -21,6 +21,8 @@ import { BubbleParser } from '../extraction/BubbleParser';
 export interface MethodInvocationInfo {
   lineNumber: number;
   endLineNumber: number;
+  columnNumber: number;
+  invocationIndex: number;
   hasAwait: boolean;
   arguments: string;
   statementType: 'variable_declaration' | 'assignment' | 'return' | 'simple';

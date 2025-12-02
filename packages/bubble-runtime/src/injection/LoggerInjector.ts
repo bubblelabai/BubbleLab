@@ -1,7 +1,7 @@
 import { BubbleScript } from '../parse/BubbleScript';
 import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
-import { hashToVariableId } from '@bubblelab/shared-schemas';
+import { hashToVariableId, buildCallSiteKey } from '@bubblelab/shared-schemas';
 
 export interface LoggingInjectionOptions {
   enableLineByLineLogging: boolean;
@@ -330,9 +330,11 @@ export class LoggerInjector {
 
     for (const [methodName, methodInfo] of Object.entries(instanceMethods)) {
       for (const invocationInfo of methodInfo.invocationLines) {
-        // Generate a deterministic variableId based on method name only (not line number)
-        // This ensures consistency even when code changes and line numbers shift
-        const variableId = hashToVariableId(methodName);
+        // Generate a deterministic variableId based on method name + call site location
+        // This ensures each invocation gets a unique ID even when the same method is called multiple times
+        const variableId = hashToVariableId(
+          buildCallSiteKey(methodName, invocationInfo.invocationIndex)
+        );
         invocations.push({ ...invocationInfo, methodName, variableId });
       }
     }

@@ -23,3 +23,19 @@ export function hashToVariableId(input: string): number {
   const mapped = 100000 + (hash % 900000);
   return mapped;
 }
+
+/**
+ * Build a call site key from method name and invocation order.
+ * Using the ordinal position of the invocation within the method keeps the key
+ * stable even if lines shift after instrumentation.
+ *
+ * @param methodName - Name of the instance method being called
+ * @param invocationIndex - 1-based invocation index within that method
+ * @returns A string key in the format "methodName#invocationIndex"
+ */
+export function buildCallSiteKey(
+  methodName: string,
+  invocationIndex: number
+): string {
+  return `${methodName}#${invocationIndex}`;
+}

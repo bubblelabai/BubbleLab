@@ -28,12 +28,14 @@ import type {
 import {
   BubbleParameterType,
   hashToVariableId,
+  buildCallSiteKey,
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
 export class BubbleParser {
   private bubbleScript: string;
   private cachedAST: TSESTree.Program | null = null;
+  private methodInvocationOrdinalMap: Map<string, number> = new Map();
 
   constructor(bubbleScript: string) {
     this.bubbleScript = bubbleScript;
@@ -162,6 +164,7 @@ export class BubbleParser {
 
     // Store AST for method definition lookup
     this.cachedAST = ast;
+    this.methodInvocationOrdinalMap.clear();
     // Build hierarchical workflow structure
     const workflow = this.buildWorkflowTree(ast, nodes, scopeManager);
 
@@ -1002,6 +1005,7 @@ export class BubbleParser {
     const methodNameSet = new Set(methodNames);
     const visitedNodes = new WeakSet<TSESTree.Node>();
     const parentMap = new WeakMap<TSESTree.Node, TSESTree.Node>();
+    const invocationCounters = new Map<string, number>();
 
     // Initialize invocations map
     for (const methodName of methodNames) {
@@ -1091,6 +1095,7 @@ export class BubbleParser {
             const methodName = property.name;
             const lineNumber = node.loc?.start.line;
             const endLineNumber = node.loc?.end.line;
+            const columnNumber = node.loc?.start.column ?? -1;
             if (!lineNumber || !endLineNumber) return;
 
             // Extract arguments
@@ -1197,9 +1202,15 @@ export class BubbleParser {
               return;
             }
 
+            const invocationIndex =
+              (invocationCounters.get(methodName) ?? 0) + 1;
+            invocationCounters.set(methodName, invocationIndex);
+
             invocations[methodName].push({
               lineNumber,
               endLineNumber,
+              columnNumber,
+              invocationIndex,
               hasAwait,
               arguments: args,
               statementType,
@@ -3170,9 +3181,12 @@ export class BubbleParser {
         }
       }
 
-      // Generate variable ID for this function call
-      // Use only function name to ensure consistency with LoggerInjector
-      const variableId = hashToVariableId(callInfo.functionName);
+      const invocationIndex = callInfo.isMethodCall
+        ? this.getNextInvocationIndex(callInfo.functionName)
+        : 0;
+      const variableId = hashToVariableId(
+        buildCallSiteKey(callInfo.functionName, invocationIndex)
+      );
 
       const transformationNode: TransformationFunctionWorkflowNode = {
         type: 'transformation_function',
@@ -3209,10 +3223,12 @@ export class BubbleParser {
       return transformationNode;
     }
 
-    // Contains bubbles, return as regular function_call
-    // Generate variable ID for this function call (same logic as transformation nodes)
-    // Use only function name to ensure consistency with LoggerInjector
-    const variableId = hashToVariableId(callInfo.functionName);
+    const invocationIndex = callInfo.isMethodCall
+      ? this.getNextInvocationIndex(callInfo.functionName)
+      : 0;
+    const variableId = hashToVariableId(
+      buildCallSiteKey(callInfo.functionName, invocationIndex)
+    );
 
     const functionCallNode: FunctionCallWorkflowNode = {
       type: 'function_call',
@@ -3365,6 +3381,12 @@ export class BubbleParser {
       variableDeclaration,
       children,
     };
+  }
+
+  private getNextInvocationIndex(methodName: string): number {
+    const next = (this.methodInvocationOrdinalMap.get(methodName) ?? 0) + 1;
+    this.methodInvocationOrdinalMap.set(methodName, next);
+    return next;
   }
 
   /**
