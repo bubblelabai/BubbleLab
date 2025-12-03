@@ -930,7 +930,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       const id = bubble.variableId;
       return !bubblesInSteps.has(id);
     });
-    const stepsInMain = steps.filter((step) => step.id !== 'step-main');
+    const stepsInMain = steps.filter((step) => step.id == 'step-main');
 
     const shouldUseSequentialLayout =
       !hasWorkflow || unparsedBubbles.length > 0 || stepsInMain.length > 0;

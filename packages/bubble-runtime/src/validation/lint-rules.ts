@@ -257,16 +257,14 @@ export const noDirectBubbleInstantiationInHandleRule: LintRule = {
       return errors; // No handle method body found, skip this rule
     }
 
-    // Check only direct statements in the method body (not nested)
+    // Recursively check all statements in the method body, including nested blocks
     for (const statement of context.handleMethodBody.statements) {
-      const bubbleError = checkStatementForBubbleInstantiation(
+      const bubbleErrors = checkStatementForBubbleInstantiation(
         statement,
         context.sourceFile,
         context.importedBubbleClasses
       );
-      if (bubbleError) {
-        errors.push(bubbleError);
-      }
+      errors.push(...bubbleErrors);
     }
 
     return errors;
@@ -275,13 +273,15 @@ export const noDirectBubbleInstantiationInHandleRule: LintRule = {
 
 /**
  * Checks if a statement contains a direct bubble instantiation
- * Only checks direct statements, not nested blocks
+ * Recursively checks nested blocks to find all bubble instantiations
  */
 function checkStatementForBubbleInstantiation(
   statement: ts.Statement,
   sourceFile: ts.SourceFile,
   importedBubbleClasses: Set<string>
-): LintError | null {
+): LintError[] {
+  const errors: LintError[] = [];
+
   // Check for variable declaration with bubble instantiation
   if (ts.isVariableStatement(statement)) {
     for (const declaration of statement.declarationList.declarations) {
@@ -292,7 +292,7 @@ function checkStatementForBubbleInstantiation(
           importedBubbleClasses
         );
         if (error) {
-          return error;
+          errors.push(error);
         }
       }
     }
@@ -306,44 +306,123 @@ function checkStatementForBubbleInstantiation(
       importedBubbleClasses
     );
     if (error) {
-      return error;
+      errors.push(error);
     }
   }
 
-  // Check for if statement with direct bubble instantiation in then/else
+  // Check for if statement - recursively check then/else branches
   if (ts.isIfStatement(statement)) {
-    // Check if the then branch is a direct bubble instantiation (not inside a block)
-    if (!ts.isBlock(statement.thenStatement)) {
-      // If it's an expression statement, check the expression
-      if (ts.isExpressionStatement(statement.thenStatement)) {
-        const error = checkExpressionForBubbleInstantiation(
-          statement.thenStatement.expression,
+    // Check the then branch
+    if (ts.isBlock(statement.thenStatement)) {
+      // Recursively check all statements inside the block
+      for (const nestedStatement of statement.thenStatement.statements) {
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          nestedStatement,
           sourceFile,
           importedBubbleClasses
         );
-        if (error) {
-          return error;
-        }
+        errors.push(...nestedErrors);
       }
+    } else {
+      // Single statement (not a block) - check it directly
+      const nestedErrors = checkStatementForBubbleInstantiation(
+        statement.thenStatement,
+        sourceFile,
+        importedBubbleClasses
+      );
+      errors.push(...nestedErrors);
     }
 
-    // Check if the else branch is a direct bubble instantiation (not inside a block)
-    if (statement.elseStatement && !ts.isBlock(statement.elseStatement)) {
-      // If it's an expression statement, check the expression
-      if (ts.isExpressionStatement(statement.elseStatement)) {
-        const error = checkExpressionForBubbleInstantiation(
-          statement.elseStatement.expression,
+    // Check the else branch if it exists
+    if (statement.elseStatement) {
+      if (ts.isBlock(statement.elseStatement)) {
+        // Recursively check all statements inside the block
+        for (const nestedStatement of statement.elseStatement.statements) {
+          const nestedErrors = checkStatementForBubbleInstantiation(
+            nestedStatement,
+            sourceFile,
+            importedBubbleClasses
+          );
+          errors.push(...nestedErrors);
+        }
+      } else {
+        // Single statement (not a block) - check it directly
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          statement.elseStatement,
           sourceFile,
           importedBubbleClasses
         );
-        if (error) {
-          return error;
-        }
+        errors.push(...nestedErrors);
       }
     }
   }
 
-  return null;
+  // Check for other block statements (for, while, etc.)
+  if (
+    ts.isForStatement(statement) ||
+    ts.isWhileStatement(statement) ||
+    ts.isForInStatement(statement) ||
+    ts.isForOfStatement(statement)
+  ) {
+    const block = statement.statement;
+    if (ts.isBlock(block)) {
+      for (const nestedStatement of block.statements) {
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          nestedStatement,
+          sourceFile,
+          importedBubbleClasses
+        );
+        errors.push(...nestedErrors);
+      }
+    } else {
+      // Single statement (not a block) - check it directly
+      const nestedErrors = checkStatementForBubbleInstantiation(
+        block,
+        sourceFile,
+        importedBubbleClasses
+      );
+      errors.push(...nestedErrors);
+    }
+  }
+
+  // Check for try-catch-finally statements
+  if (ts.isTryStatement(statement)) {
+    // Check try block
+    if (ts.isBlock(statement.tryBlock)) {
+      for (const nestedStatement of statement.tryBlock.statements) {
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          nestedStatement,
+          sourceFile,
+          importedBubbleClasses
+        );
+        errors.push(...nestedErrors);
+      }
+    }
+    // Check catch clause
+    if (statement.catchClause && statement.catchClause.block) {
+      for (const nestedStatement of statement.catchClause.block.statements) {
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          nestedStatement,
+          sourceFile,
+          importedBubbleClasses
+        );
+        errors.push(...nestedErrors);
+      }
+    }
+    // Check finally block
+    if (statement.finallyBlock && ts.isBlock(statement.finallyBlock)) {
+      for (const nestedStatement of statement.finallyBlock.statements) {
+        const nestedErrors = checkStatementForBubbleInstantiation(
+          nestedStatement,
+          sourceFile,
+          importedBubbleClasses
+        );
+        errors.push(...nestedErrors);
+      }
+    }
+  }
+
+  return errors;
 }
 
 /**
