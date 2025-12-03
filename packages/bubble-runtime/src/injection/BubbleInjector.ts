@@ -603,6 +603,7 @@ export class BubbleInjector {
       'const __bubbleInvocationDependencyGraphs = Object.freeze(',
       ...literalLines,
       ');',
+      'globalThis["__bubbleInvocationDependencyGraphs"] = __bubbleInvocationDependencyGraphs;',
       INVOCATION_GRAPH_END_MARKER,
       '',
     ];

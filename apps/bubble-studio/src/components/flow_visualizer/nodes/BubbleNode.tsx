@@ -22,6 +22,7 @@ import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
+import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -95,6 +96,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
     flowId,
     (s) => s.toggleRootExpansion
   );
+
+  // Get flow data to find clones
+  const { data: currentFlow } = useBubbleFlow(flowId);
 
   // Get sub-bubble visibility state from store
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
@@ -191,7 +195,40 @@ function BubbleNode({ data }: BubbleNodeProps) {
   });
 
   const handleCredentialChange = (credType: string, credId: number | null) => {
+    // Update credential for this bubble
     setCredential(credentialsKey, credType, credId);
+
+    if (!currentFlow?.bubbleParameters) return;
+
+    const bubbleParameters = currentFlow.bubbleParameters;
+
+    // If this is a clone (has invocationCallSiteKey), also update the original
+    if (
+      bubble.invocationCallSiteKey &&
+      bubble.clonedFromVariableId !== undefined
+    ) {
+      // Find the original bubble (where variableId matches clonedFromVariableId)
+      Object.entries(bubbleParameters).forEach(([key, otherBubble]) => {
+        if (otherBubble.variableId === bubble.clonedFromVariableId) {
+          // This is the original - update its credential too
+          setCredential(key, credType, credId);
+        }
+      });
+    }
+
+    // If this is an original bubble (no invocationCallSiteKey), also update all its clones
+    if (!bubble.invocationCallSiteKey) {
+      // Find all clones of this bubble (clones have clonedFromVariableId matching this bubble's variableId)
+      Object.entries(bubbleParameters).forEach(([key, otherBubble]) => {
+        if (
+          otherBubble.invocationCallSiteKey &&
+          otherBubble.clonedFromVariableId === bubble.variableId
+        ) {
+          // This is a clone - update its credential too
+          setCredential(key, credType, credId);
+        }
+      });
+    }
   };
 
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);

@@ -19,7 +19,7 @@ function buildInvocationOverrideReference(
   if (typeof variableId !== 'number') {
     return undefined;
   }
-  return `__bubbleInvocationDependencyGraphs?.[${INVOCATION_KEY_EXPR}]?.[${JSON.stringify(
+  return `globalThis["__bubbleInvocationDependencyGraphs"]?.[${INVOCATION_KEY_EXPR}]?.[${JSON.stringify(
     String(variableId)
   )}]`;
 }
