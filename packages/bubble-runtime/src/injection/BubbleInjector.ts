@@ -651,6 +651,7 @@ export class BubbleInjector {
   injectBubbleLoggingAndReinitializeBubbleParameters(
     loggingEnabled: boolean = true
   ) {
+    const script = this.bubbleScript.currentBubbleScript;
     try {
       // STEP 1: Inject `__bubbleFlowSelf = this;` at the beginning of handle method
       // This must be done FIRST so that bubble instantiations can use __bubbleFlowSelf.logger
@@ -668,14 +669,16 @@ export class BubbleInjector {
         this.loggerInjector.injectLogging();
         this.bubbleScript.showScript('[BubbleInjector] After injectLogging');
       }
-      this.loggerInjector.injectSelfCapture();
     } catch (error) {
       console.error(
         'Error injecting bubble logging and reinitialize bubble parameters:',
         error
       );
+      // Revert the script to the original script
+      this.bubbleScript.currentBubbleScript = script;
     }
-    // this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
+    this.loggerInjector.injectSelfCapture();
+    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */

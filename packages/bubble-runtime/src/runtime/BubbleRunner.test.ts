@@ -543,6 +543,19 @@ describe('BubbleRunner correctly runs and plans', () => {
         console.log(result.error);
         expect(result).toBeDefined();
       });
+      it('should execute a flow with a for and promises flow', async () => {
+        const testScript = getFixture('for-and-promises-flow');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
+        //Check script is valid
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          true
+        );
+        expect(parseResult.valid).toBe(true);
+      });
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {
