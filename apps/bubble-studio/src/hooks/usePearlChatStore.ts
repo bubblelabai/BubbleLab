@@ -21,6 +21,7 @@ import type { StreamingEvent } from '@bubblelab/shared-schemas';
 import {
   ParsedBubbleWithInfo,
   cleanUpObjectForDisplayAndStorage,
+  PEARL_DEFAULT_MODEL,
 } from '@bubblelab/shared-schemas';
 import { usePearlStream } from './usePearl';
 import { useIsMutating } from '@tanstack/react-query';
@@ -316,6 +317,10 @@ export function usePearlChatStore(flowId: number | null) {
   const activeToolCallIds = store((s) => s.activeToolCallIds);
   const prompt = store((s) => s.prompt);
   const selectedBubbleContext = store((s) => s.selectedBubbleContext);
+  const selectedTransformationContext = store(
+    (s) => s.selectedTransformationContext
+  );
+  const selectedStepContext = store((s) => s.selectedStepContext);
 
   // ===== Main Generation Function =====
   const startGeneration = (
@@ -326,7 +331,7 @@ export function usePearlChatStore(flowId: number | null) {
 
     const storeState = store.getState();
 
-    // Build user message with bubble context injection
+    // Build user message with bubble, transformation, or step context injection
     let userContent = promptText.trim();
 
     // Inject bubble context if any bubbles are selected
@@ -342,6 +347,16 @@ export function usePearlChatStore(flowId: number | null) {
 
       // Prepend bubble context to the user's prompt
       userContent = `${bubbleContextText}${userContent ? '\n\n' + userContent : ''}`;
+    }
+    // Inject step context if a step is selected
+    else if (storeState.selectedStepContext) {
+      const stepContextText = `For the selected step: ${storeState.selectedStepContext}, please do the following: \n `;
+      userContent = `${stepContextText}${userContent ? '\n\n' + userContent : ''}`;
+    }
+    // Inject transformation context if a transformation is selected
+    else if (storeState.selectedTransformationContext) {
+      const transformationContextText = `For the selected transformation function: ${storeState.selectedTransformationContext}, please do the following: \n `;
+      userContent = `${transformationContextText}${userContent ? '\n\n' + userContent : ''}`;
     }
 
     if (uploadedFiles.length > 0) {
@@ -398,7 +413,7 @@ export function usePearlChatStore(flowId: number | null) {
       conversationHistory: conversationMessages,
       availableVariables: [],
       currentCode: fullCode,
-      model: 'openrouter/z-ai/glm-4.6',
+      model: PEARL_DEFAULT_MODEL,
       additionalContext: context,
     });
   };
@@ -459,6 +474,30 @@ export function usePearlChatStore(flowId: number | null) {
     store?.getState().clearBubbleContext();
   }, [store]);
 
+  // ===== Transformation context management =====
+  const addTransformationToContext = useCallback(
+    (functionName: string) => {
+      store?.getState().addTransformationToContext(functionName);
+    },
+    [store]
+  );
+
+  const clearTransformationContext = useCallback(() => {
+    store?.getState().clearTransformationContext();
+  }, [store]);
+
+  // ===== Step context management =====
+  const addStepToContext = useCallback(
+    (functionName: string) => {
+      store?.getState().addStepToContext(functionName);
+    },
+    [store]
+  );
+
+  const clearStepContext = useCallback(() => {
+    store?.getState().clearStepContext();
+  }, [store]);
+
   return {
     // State (components can subscribe)
     messages,
@@ -466,6 +505,8 @@ export function usePearlChatStore(flowId: number | null) {
     activeToolCallIds,
     prompt,
     selectedBubbleContext,
+    selectedTransformationContext,
+    selectedStepContext,
 
     // Actions
     startGeneration,
@@ -477,6 +518,10 @@ export function usePearlChatStore(flowId: number | null) {
     removeBubbleFromContext,
     toggleBubbleInContext,
     clearBubbleContext,
+    addTransformationToContext,
+    clearTransformationContext,
+    addStepToContext,
+    clearStepContext,
 
     // Mutation state (for loading indicators)
     isPending,

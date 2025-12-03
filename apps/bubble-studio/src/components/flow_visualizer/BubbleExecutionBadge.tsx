@@ -1,11 +1,14 @@
 import { memo } from 'react';
-import { BADGE_COLORS } from './BubbleColors';
+import { BADGE_COLORS } from '@/components/flow_visualizer/BubbleColors';
+import { getLiveOutputStore } from '@/stores/liveOutputStore';
 
 interface BubbleExecutionBadgeProps {
   hasError?: boolean;
   isCompleted?: boolean;
   isExecuting?: boolean;
   executionStats?: { totalTime: number; count: number };
+  bubbleId?: string;
+  flowId?: number;
 }
 
 function BubbleExecutionBadge({
@@ -13,6 +16,8 @@ function BubbleExecutionBadge({
   isCompleted = false,
   isExecuting = false,
   executionStats,
+  bubbleId,
+  flowId,
 }: BubbleExecutionBadgeProps) {
   // Don't render anything if no state to show
   if (!hasError && !isCompleted && !isExecuting) {
@@ -58,11 +63,20 @@ function BubbleExecutionBadge({
     );
     const isMultipleExecutions = executionStats.count > 1;
 
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (bubbleId && flowId) {
+        const liveOutputStore = getLiveOutputStore(flowId);
+        liveOutputStore?.getState().selectBubbleInConsole(bubbleId);
+      }
+    };
+
     return (
       <div className="flex-shrink-0">
-        <div
-          title={`Completed in ${averageTime}ms${isMultipleExecutions ? ` (${executionStats.count} runs)` : ''}`}
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.COMPLETED.background} ${BADGE_COLORS.COMPLETED.text}`}
+        <button
+          onClick={handleClick}
+          title={`Completed in ${averageTime}ms${isMultipleExecutions ? ` (${executionStats.count} runs)` : ''} - Click to view in console`}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${BADGE_COLORS.COMPLETED.background} ${BADGE_COLORS.COMPLETED.text} hover:opacity-80 transition-opacity cursor-pointer`}
         >
           <span>✓</span>
           <span>{averageTime}ms</span>
@@ -71,7 +85,7 @@ function BubbleExecutionBadge({
               {executionStats.count}×
             </span>
           )}
-        </div>
+        </button>
       </div>
     );
   }

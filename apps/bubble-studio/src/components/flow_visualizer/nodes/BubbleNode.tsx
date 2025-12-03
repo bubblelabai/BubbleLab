@@ -1,24 +1,28 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, Info, Sparkles } from 'lucide-react';
+import { BookOpen, Code } from 'lucide-react';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import { CreateCredentialModal } from '../pages/CredentialsPage';
-import { useCreateCredential } from '../hooks/useCredentials';
-import { findLogoForBubble, findDocsUrlForBubble } from '../lib/integrations';
+import { CreateCredentialModal } from '@/pages/CredentialsPage';
+import { useCreateCredential } from '@/hooks/useCredentials';
+import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
 import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
-import BubbleExecutionBadge from './BubbleExecutionBadge';
-import { BUBBLE_COLORS, BADGE_COLORS } from './BubbleColors';
-import { useUIStore } from '../stores/uiStore';
-import { useExecutionStore } from '../stores/executionStore';
-import { useCredentials } from '../hooks/useCredentials';
-import { API_BASE_URL } from '../env';
+import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
+import BubbleDetailsOverlay from '@/components/flow_visualizer/BubbleDetailsOverlay';
+import {
+  BUBBLE_COLORS,
+  BADGE_COLORS,
+} from '@/components/flow_visualizer/BubbleColors';
+import { useUIStore } from '@/stores/uiStore';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useCredentials } from '@/hooks/useCredentials';
+import { API_BASE_URL } from '@/env';
 import {
   getLiveOutputStore,
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
-import { usePearlChatStore } from '../hooks/usePearlChatStore';
+import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -31,6 +35,12 @@ export interface BubbleNodeData {
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
   hasSubBubbles?: boolean;
+  usedHandles?: {
+    top?: boolean;
+    bottom?: boolean;
+    left?: boolean;
+    right?: boolean;
+  };
 }
 
 interface BubbleNodeProps {
@@ -46,12 +56,20 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
+    usedHandles = {},
   } = data;
 
   // Determine the bubble ID for store lookups (prefer variableId, fallback to bubbleKey)
   const bubbleId = bubble.variableId
     ? String(bubble.variableId)
     : String(bubbleKey);
+
+  // Determine numeric root ID for expansion checks (expandedRootIds/suppressedRootIds are number[])
+  const rootId =
+    bubble.variableId ??
+    (typeof bubbleKey === 'number'
+      ? bubbleKey
+      : parseInt(String(bubbleKey), 10));
 
   // Determine credentials key (try variableId, variableName, bubbleName, fallback to bubbleKey)
   const credentialsKey = String(
@@ -79,6 +97,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
     (s) => s.toggleRootExpansion
   );
 
+  // Get flow data to find clones
+  const { data: currentFlow } = useBubbleFlow(flowId);
+
   // Get sub-bubble visibility state from store
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
   const suppressedRootIds = useExecutionStore(
@@ -89,17 +110,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
   // Compute if sub-bubbles are visible (local to this bubble node)
   const areSubBubblesVisibleLocal = useMemo(() => {
     if (!hasSubBubbles) return false;
-    const rootExpanded = expandedRootIds.includes(bubbleId);
-    const rootSuppressed = suppressedRootIds.includes(bubbleId);
+    if (isNaN(rootId)) return false;
+    const rootExpanded = expandedRootIds.includes(rootId);
+    const rootSuppressed = suppressedRootIds.includes(rootId);
     return rootExpanded && !rootSuppressed;
-  }, [hasSubBubbles, expandedRootIds, suppressedRootIds, bubbleId]);
+  }, [hasSubBubbles, expandedRootIds, suppressedRootIds, rootId]);
 
   // Get available credentials
   const { data: availableCredentials = [] } = useCredentials(API_BASE_URL);
-
-  // Pearl chat integration for error fixing
-  const pearl = usePearlChatStore(flowId);
-  const { openConsolidatedPanelWith } = useUIStore();
 
   // Subscribe to selected event index and tab reactively (causes re-render when changed)
   const selectedEventIndexByVariableId = useLiveOutputStore(
@@ -177,16 +195,48 @@ function BubbleNode({ data }: BubbleNodeProps) {
   });
 
   const handleCredentialChange = (credType: string, credId: number | null) => {
+    // Update credential for this bubble
     setCredential(credentialsKey, credType, credId);
+
+    if (!currentFlow?.bubbleParameters) return;
+
+    const bubbleParameters = currentFlow.bubbleParameters;
+
+    // If this is a clone (has invocationCallSiteKey), also update the original
+    if (
+      bubble.invocationCallSiteKey &&
+      bubble.clonedFromVariableId !== undefined
+    ) {
+      // Find the original bubble (where variableId matches clonedFromVariableId)
+      Object.entries(bubbleParameters).forEach(([key, otherBubble]) => {
+        if (otherBubble.variableId === bubble.clonedFromVariableId) {
+          // This is the original - update its credential too
+          setCredential(key, credType, credId);
+        }
+      });
+    }
+
+    // If this is an original bubble (no invocationCallSiteKey), also update all its clones
+    if (!bubble.invocationCallSiteKey) {
+      // Find all clones of this bubble (clones have clonedFromVariableId matching this bubble's variableId)
+      Object.entries(bubbleParameters).forEach(([key, otherBubble]) => {
+        if (
+          otherBubble.invocationCallSiteKey &&
+          otherBubble.clonedFromVariableId === bubble.variableId
+        ) {
+          // This is a clone - update its credential too
+          setCredential(key, credType, credId);
+        }
+      });
+    }
   };
 
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [createModalForType, setCreateModalForType] = useState<string | null>(
     null
   );
   const [showDocsTooltip, setShowDocsTooltip] = useState(false);
-  const [showExpandTooltip, setShowExpandTooltip] = useState(false);
   const [showCodeTooltip, setShowCodeTooltip] = useState(false);
 
   const { showEditor } = useUIStore();
@@ -210,14 +260,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
     [bubble?.bubbleName, bubble?.className, bubble?.variableName]
   );
 
-  // Separate parameters into display and sensitive categories
-  const displayParams = bubble.parameters.filter(
-    (param) => param.name !== 'credentials' && !param.name.includes('env')
-  );
-  const sensitiveEnvParams = bubble.parameters.filter((param) =>
-    param.name.includes('env')
-  );
-
   const isSystemCredential = useMemo(() => {
     return (credType: CredentialType) => SYSTEM_CREDENTIALS.has(credType);
   }, []);
@@ -230,15 +272,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   const createCredentialMutation = useCreateCredential();
 
-  const formatValue = (value: unknown): string => {
-    if (typeof value === 'string') {
-      return value.length > 50 ? value.substring(0, 47) + '...' : value;
-    }
-    if (typeof value === 'object' && value !== null) {
-      const jsonStr = JSON.stringify(value);
-      return jsonStr.length > 50 ? jsonStr.substring(0, 47) + '...' : jsonStr;
-    }
-    return String(value);
+  const handleErrorClick = () => {
+    // Navigate to the console showing this bubble's last log
+    const liveOutputStore = getLiveOutputStore(flowId);
+    liveOutputStore?.getState().selectBubbleInConsole(bubbleId);
   };
   // Determine if this is a sub-bubble based on variableId being negative or having a uniqueId with dots
   const isSubBubble =
@@ -247,7 +284,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 ${
+      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 cursor-pointer ${
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isSubBubble
@@ -264,128 +301,147 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
                 : BUBBLE_COLORS.DEFAULT.border
       }`}
+      onClick={() => {
+        // Don't open overlay if credential creation modal is open
+        if (createModalForType) return;
+        onBubbleClick?.();
+        setIsDetailsOpen(true);
+      }}
     >
       {/* Node handles for horizontal (main flow) and vertical (dependencies) connections */}
-      {/* Left Handle - Shows "Input" button after execution */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="left"
-          isConnectable={false}
-          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ left: -6, opacity: isCompleted ? 0 : 1 }}
-        />
-        {isCompleted && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-            style={{
-              left: '0',
-              backgroundColor: hasError
-                ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(245, 245, 244, 0.95)',
-              borderColor: hasError
-                ? '#dc2626'
-                : isInputSelected
-                  ? 'rgba(99, 102, 241, 0.9)'
-                  : 'rgba(212, 212, 211, 0.8)',
-              borderWidth: isInputSelected ? '2.5px' : '1.5px',
-              color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
-              boxShadow: isInputSelected
-                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                : undefined,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
+      {/* Left Handle - Shows "Input" button after execution - only render if used */}
+      {usedHandles.left && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left"
+            isConnectable={false}
+            className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+            style={{ left: -6, opacity: isCompleted ? 0 : 1 }}
+          />
+          {isCompleted && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+              style={{
+                left: '0',
+                backgroundColor: hasError
+                  ? 'rgba(239, 68, 68, 0.9)'
+                  : 'rgba(245, 245, 244, 0.95)',
+                borderColor: hasError
+                  ? '#dc2626'
+                  : isInputSelected
+                    ? 'rgba(99, 102, 241, 0.9)'
+                    : 'rgba(212, 212, 211, 0.8)',
+                borderWidth: isInputSelected ? '2.5px' : '1.5px',
+                color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
+                boxShadow: isInputSelected
+                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                  : undefined,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
 
-              // Navigate to console with first output
-              const liveOutputStore = getLiveOutputStore(flowId);
-              if (liveOutputStore) {
-                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
-                // Set to first event (index 0)
-                liveOutputStore.getState().setSelectedEventIndex(bubbleId, 0);
-              }
-            }}
-          >
-            Input
-          </div>
-        )}
-      </div>
+                // Navigate to console with first output
+                const liveOutputStore = getLiveOutputStore(flowId);
+                if (liveOutputStore) {
+                  liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                  // Set to first event (index 0)
+                  liveOutputStore.getState().setSelectedEventIndex(bubbleId, 0);
+                }
+              }}
+            >
+              Input
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Right Handle - Shows "Output" button after execution */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+      {/* Right Handle - Shows "Output" button after execution - only render if used */}
+      {usedHandles.right && (
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            isConnectable={false}
+            className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+            style={{ right: -6, opacity: isCompleted ? 0 : 1 }}
+          />
+          {isCompleted && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
+              style={{
+                right: '0',
+                backgroundColor: hasError
+                  ? 'rgba(239, 68, 68, 0.9)'
+                  : 'rgba(23, 23, 23, 0.95)',
+                borderColor: hasError
+                  ? '#dc2626'
+                  : isOutputSelected
+                    ? 'rgba(99, 102, 241, 0.9)'
+                    : 'rgba(64, 64, 64, 0.8)',
+                borderWidth: isOutputSelected ? '2.5px' : '1.5px',
+                color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
+                boxShadow: isOutputSelected
+                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
+                  : undefined,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const liveOutputStore = getLiveOutputStore(flowId);
+                if (liveOutputStore) {
+                  // Navigate to console with last output
+                  liveOutputStore.getState().selectBubbleInConsole(bubbleId);
+                  // Get ordered items to find event count for this bubble
+                  const orderedItems = liveOutputStore
+                    .getState()
+                    .getOrderedItems();
+                  const bubbleGroup = orderedItems.find(
+                    (item) => item.kind === 'group' && item.name === bubbleId
+                  );
+                  if (bubbleGroup && bubbleGroup.kind === 'group') {
+                    // Set to last event (eventCount - 1 for 0-based index)
+                    const lastIndex = Math.max(
+                      0,
+                      bubbleGroup.events.length - 1
+                    );
+                    liveOutputStore
+                      .getState()
+                      .setSelectedEventIndex(bubbleId, lastIndex);
+                  }
+                }
+              }}
+            >
+              Output
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bottom handle - only render if used */}
+      {usedHandles.bottom && (
         <Handle
           type="source"
-          position={Position.Right}
-          id="right"
+          position={Position.Bottom}
+          id="bottom"
           isConnectable={false}
           className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-          style={{ right: -6, opacity: isCompleted ? 0 : 1 }}
+          style={{ bottom: -6 }}
         />
-        {isCompleted && (
-          <div
-            className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-            style={{
-              right: '0',
-              backgroundColor: hasError
-                ? 'rgba(239, 68, 68, 0.9)'
-                : 'rgba(23, 23, 23, 0.95)',
-              borderColor: hasError
-                ? '#dc2626'
-                : isOutputSelected
-                  ? 'rgba(99, 102, 241, 0.9)'
-                  : 'rgba(64, 64, 64, 0.8)',
-              borderWidth: isOutputSelected ? '2.5px' : '1.5px',
-              color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
-              boxShadow: isOutputSelected
-                ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                : undefined,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const liveOutputStore = getLiveOutputStore(flowId);
-              if (liveOutputStore) {
-                // Navigate to console with last output
-                liveOutputStore.getState().selectBubbleInConsole(bubbleId);
-                // Get ordered items to find event count for this bubble
-                const orderedItems = liveOutputStore
-                  .getState()
-                  .getOrderedItems();
-                const bubbleGroup = orderedItems.find(
-                  (item) => item.kind === 'group' && item.name === bubbleId
-                );
-                if (bubbleGroup && bubbleGroup.kind === 'group') {
-                  // Set to last event (eventCount - 1 for 0-based index)
-                  const lastIndex = Math.max(0, bubbleGroup.events.length - 1);
-                  liveOutputStore
-                    .getState()
-                    .setSelectedEventIndex(bubbleId, lastIndex);
-                }
-              }
-            }}
-          >
-            Output
-          </div>
-        )}
-      </div>
-      {/* Bottom handle */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ bottom: -6 }}
-      />
-      {/* Top handle */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        isConnectable={false}
-        className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
-        style={{ top: -6 }}
-      />
+      )}
+
+      {/* Top handle - only render if used */}
+      {usedHandles.top && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="top"
+          isConnectable={false}
+          className={`w-3 h-3 ${hasError ? BUBBLE_COLORS.ERROR.handle : isExecuting ? BUBBLE_COLORS.RUNNING.handle : isCompleted ? BUBBLE_COLORS.COMPLETED.handle : isHighlighted ? BUBBLE_COLORS.SELECTED.handle : BUBBLE_COLORS.DEFAULT.handle}`}
+          style={{ top: -6 }}
+        />
+      )}
 
       {/* Header */}
       <div
@@ -398,21 +454,18 @@ function BubbleNode({ data }: BubbleNodeProps) {
             hasMissingRequirements ||
             bubble.parameters.length > 0) && (
             <>
-              {/* Show Fix with Pearl button when error, otherwise show standard badge */}
+              {/* Show Error badge when error, otherwise show standard badge */}
               {hasError ? (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const prompt = `I'm seeing an error in the ${bubble.variableName || bubble.bubbleName} bubble. Can you help me fix it?`;
-                    pearl.startGeneration(prompt);
-                    openConsolidatedPanelWith('pearl');
+                    handleErrorClick();
                   }}
-                  disabled={pearl.isPending}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-[10px] font-medium rounded transition-colors shadow-sm"
-                  title="Get help fixing this error with Pearl"
+                  className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/20 text-red-300 border border-red-600/40 hover:bg-red-500/30 transition-colors cursor-pointer"
+                  title="View error in console"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                  <span>❌</span>
+                  <span>Error</span>
                 </button>
               ) : (
                 <BubbleExecutionBadge
@@ -420,6 +473,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   isCompleted={isCompleted}
                   isExecuting={isExecuting}
                   executionStats={executionStats}
+                  bubbleId={bubbleId}
+                  flowId={flowId}
                 />
               )}
               {!hasError && !isExecuting && hasMissingRequirements && (
@@ -431,28 +486,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
                     <span>⚠️</span>
                     <span>Missing</span>
                   </div>
-                </div>
-              )}
-              {bubble.parameters.length > 0 && (
-                <div className="relative">
-                  <button
-                    title={isExpanded ? 'Collapse' : 'Details'}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                    onMouseEnter={() => setShowExpandTooltip(true)}
-                    onMouseLeave={() => setShowExpandTooltip(false)}
-                    className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                  {showExpandTooltip && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
-                      {isExpanded ? 'Collapse' : 'Details'}
-                    </div>
-                  )}
                 </div>
               )}
             </>
@@ -551,19 +584,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
         {(() => {
           const filteredCredentialTypes = requiredCredentialTypes.filter(
             (credType) => {
-              // When Details is collapsed, only show credentials that need configuring
-              if (!isExpanded) {
-                const systemCred = isSystemCredential(
-                  credType as CredentialType
-                );
-                const hasSelection =
-                  selectedBubbleCredentials[credType] !== undefined &&
-                  selectedBubbleCredentials[credType] !== null;
+              const systemCred = isSystemCredential(credType as CredentialType);
+              const hasSelection =
+                selectedBubbleCredentials[credType] !== undefined &&
+                selectedBubbleCredentials[credType] !== null;
 
-                // Hide system credentials that are using the default (no selection)
-                if (systemCred && !hasSelection) {
-                  return false;
-                }
+              // Hide system credentials that are using the default (no selection)
+              if (systemCred && !hasSelection) {
+                return false;
               }
               return true;
             }
@@ -611,6 +639,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
                             ? String(selectedBubbleCredentials[credType])
                             : ''
                         }
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (val === '__ADD_NEW__') {
@@ -646,58 +675,15 @@ function BubbleNode({ data }: BubbleNodeProps) {
         })()}
       </div>
 
-      {/* Parameters (collapsible) */}
-      {isExpanded && bubble.parameters.length > 0 && (
-        <div className="p-4 space-y-3 border-b border-neutral-600">
-          {displayParams.map((param) => (
-            <div key={param.name} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-neutral-300">
-                  {param.name}
-                  <span className="ml-1 text-neutral-500">({param.type})</span>
-                </label>
-                {onParamEditInCode && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onParamEditInCode?.(param.name);
-                    }}
-                    className="text-xs text-blue-400 hover:text-blue-300 px-1"
-                  >
-                    View in code
-                  </button>
-                )}
-              </div>
-              {/* Display parameter value as read-only */}
-              <div className="px-2 py-1 text-xs bg-neutral-900 border border-neutral-600 rounded text-neutral-300">
-                {formatValue(param.value)}
-              </div>
-            </div>
-          ))}
-
-          {/* Sensitive ENV params remain hidden */}
-          {sensitiveEnvParams.map((param) => (
-            <div key={param.name} className="space-y-1">
-              <label className="block text-xs font-medium text-yellow-300">
-                {param.name}
-                <span className="ml-1 text-neutral-500">({param.type})</span>
-              </label>
-              <div className="px-2 py-1 text-xs bg-yellow-900 border border-yellow-600 rounded text-yellow-300">
-                [Hidden for security]
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {hasSubBubbles && (
         <div className="px-4 py-3 border-t border-neutral-600 bg-neutral-800/70">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              toggleRootExpansion(bubbleId);
+              if (!isNaN(rootId)) {
+                toggleRootExpansion(rootId);
+              }
             }}
             className={`w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-medium rounded ${
               areSubBubblesVisibleLocal
@@ -711,6 +697,22 @@ function BubbleNode({ data }: BubbleNodeProps) {
           </button>
         </div>
       )}
+      <BubbleDetailsOverlay
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        bubble={bubble}
+        logo={logo}
+        logoErrored={logoError}
+        docsUrl={docsUrl}
+        requiredCredentialTypes={requiredCredentialTypes}
+        selectedBubbleCredentials={selectedBubbleCredentials}
+        availableCredentials={availableCredentials}
+        onCredentialChange={handleCredentialChange}
+        onParamEditInCode={onParamEditInCode}
+        onViewCode={() => onBubbleClick?.()}
+        showEditor={showEditor}
+      />
+
       {/* Create Credential Modal */}
       {createModalForType && (
         <CreateCredentialModal

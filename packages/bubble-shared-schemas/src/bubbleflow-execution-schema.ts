@@ -1,5 +1,8 @@
 import { z } from '@hono/zod-openapi';
-import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema';
+import {
+  ParsedBubbleWithInfoSchema,
+  ParsedWorkflowSchema,
+} from './bubble-definition-schema';
 import { CredentialType } from './types';
 
 export const ServiceUsageSchema = z
@@ -328,6 +331,9 @@ export const validateBubbleFlowCodeResponseSchema = z.object({
   }),
   bubbles: z.record(z.string(), ParsedBubbleWithInfoSchema).optional().openapi({
     description: 'Record mapping bubble IDs to their detailed information',
+  }),
+  workflow: ParsedWorkflowSchema.optional().openapi({
+    description: 'Hierarchical workflow structure with control flow',
   }),
   requiredCredentials: z
     .record(z.string(), z.array(z.string()))

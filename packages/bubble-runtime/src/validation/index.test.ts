@@ -12,9 +12,31 @@ describe('BubbleFlow Validation', () => {
   });
 
   describe('Valid BubbleFlow validation', () => {
+    it('should invalidate credential in flow', async () => {
+      const code = getFixture('credential-in-flow');
+      const result = await validateBubbleFlow(code);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors!.length).toBe(1);
+      expect(result.errors![0]).toContain('credentials');
+    });
+    it('should validate calender step flow', async () => {
+      const code = getFixture('invalid-step-flow');
+      const result = await validateBubbleFlow(code);
+
+      expect(result.valid).toBe(false);
+      // Expect error message to contain 'throw statements are not allowed directly in handle method. Move error handling into another step.'
+      expect(
+        result.errors?.some((error) =>
+          error.includes(
+            'throw statements are not allowed directly in handle method. Move error handling into another step.'
+          )
+        )
+      ).toBe(true);
+    });
     it('should validate simple HelloWorld BubbleFlow', async () => {
       const code = getFixture('hello-world');
-      const result = await validateBubbleFlow(code);
+      const result = await validateBubbleFlow(code, false);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toBeUndefined();
@@ -22,7 +44,7 @@ describe('BubbleFlow Validation', () => {
 
     it('should validate yfinance flow', async () => {
       const code = getFixture('yfinance');
-      const result = await validateAndExtract(code, bubbleFactory);
+      const result = await validateAndExtract(code, bubbleFactory, false);
       console.log(result.inputSchema);
       expect(result.inputSchema).toBeDefined();
       expect(result.errors).toBeUndefined();
@@ -30,7 +52,7 @@ describe('BubbleFlow Validation', () => {
 
     it('should validate HelloWorld with environment variables', async () => {
       const code = getFixture('hello-world-wrong-para');
-      const result = await validateBubbleFlow(code);
+      const result = await validateBubbleFlow(code, false);
 
       expect(result.valid).toBe(false);
       expect(result.errors).toBeDefined();
@@ -41,7 +63,7 @@ describe('BubbleFlow Validation', () => {
 
     it('should validate anonymous bubble instantiation', async () => {
       const code = getFixture('anonymous-bubble');
-      const result = await validateBubbleFlow(code);
+      const result = await validateBubbleFlow(code, false);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toBeUndefined();
@@ -49,7 +71,7 @@ describe('BubbleFlow Validation', () => {
 
     it('should validate complex workflow with multiple bubbles', async () => {
       const code = getFixture('complex-workflow');
-      const result = await validateBubbleFlow(code);
+      const result = await validateBubbleFlow(code, false);
 
       expect(result.valid).toBe(true);
       expect(result.errors).toBeUndefined();
@@ -59,7 +81,7 @@ describe('BubbleFlow Validation', () => {
   describe('Validation and Extraction', () => {
     it('should validate and extract simple HelloWorld BubbleFlow', async () => {
       const code = getFixture('hello-world');
-      const result = await validateAndExtract(code, bubbleFactory);
+      const result = await validateAndExtract(code, bubbleFactory, false);
       console.log(result);
 
       expect(result.valid).toBe(true);
@@ -74,7 +96,7 @@ describe('BubbleFlow Validation', () => {
 
     it('should validate and extract HelloWorld with environment variables', async () => {
       const code = getFixture('hello-world-wrong-type');
-      const result = await validateAndExtract(code, bubbleFactory);
+      const result = await validateAndExtract(code, bubbleFactory, false);
 
       expect(result.valid).toBe(false);
     });

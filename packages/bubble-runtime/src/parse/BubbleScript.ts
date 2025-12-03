@@ -11,8 +11,26 @@ import type {
   ParsedBubbleWithInfo,
   BubbleTrigger,
   BubbleTriggerEventRegistry,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { BubbleParser } from '../extraction/BubbleParser';
+
+/**
+ * Detailed information about a method invocation captured during AST parsing
+ */
+export interface MethodInvocationInfo {
+  lineNumber: number;
+  endLineNumber: number;
+  columnNumber: number;
+  invocationIndex: number;
+  hasAwait: boolean;
+  arguments: string;
+  statementType: 'variable_declaration' | 'assignment' | 'return' | 'simple';
+  variableName?: string;
+  variableType?: 'const' | 'let' | 'var';
+  destructuringPattern?: string; // e.g., "{ a, b }" or "[x, y]" for destructuring assignments
+  context?: 'default' | 'promise_all_element';
+}
 
 export class BubbleScript {
   private ast: TSESTree.Program;
@@ -21,6 +39,7 @@ export class BubbleScript {
   // Stores parsed bubble information with variable $id as key
   private parsedBubbles: Record<number, ParsedBubbleWithInfo>;
   private originalParsedBubbles: Record<number, ParsedBubbleWithInfo>;
+  private workflow: ParsedWorkflow;
   private scriptVariables: Record<number, Variable>; // Maps Variable.$id to Variable
   private variableLocations: Record<
     number,
@@ -33,7 +52,7 @@ export class BubbleScript {
       endLine: number;
       definitionStartLine: number;
       bodyStartLine: number;
-      invocationLines: number[];
+      invocationLines: MethodInvocationInfo[];
     }
   >;
   private bubbleScript: string;
@@ -56,7 +75,6 @@ export class BubbleScript {
       sourceType: 'module', // Treat as ES module
       ecmaVersion: 2022, // Modern JS/TS features
     });
-    console.log('Done parsing AST');
 
     // Analyze scope to build variable dependency graph
     this.scopeManager = analyze(this.ast, {
@@ -75,6 +93,7 @@ export class BubbleScript {
     );
     this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.parsedBubbles = parseResult.bubbles;
+    this.workflow = parseResult.workflow;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
@@ -112,6 +131,7 @@ export class BubbleScript {
 
     this.parsedBubbles = parseResult.bubbles;
     this.originalParsedBubbles = parseResult.bubbles;
+    this.workflow = parseResult.workflow;
     this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
@@ -514,6 +534,13 @@ export class BubbleScript {
   }
 
   /**
+   * Get the hierarchical workflow structure
+   */
+  getWorkflow(): ParsedWorkflow {
+    return this.workflow;
+  }
+
+  /**
    * Get the handle method location (start and end lines)
    */
   getHandleMethodLocation(): {
@@ -540,7 +567,7 @@ export class BubbleScript {
     endLine: number;
     definitionStartLine: number;
     bodyStartLine: number;
-    invocationLines: number[];
+    invocationLines: MethodInvocationInfo[];
   } | null {
     return this.instanceMethodsLocation[methodName] || null;
   }

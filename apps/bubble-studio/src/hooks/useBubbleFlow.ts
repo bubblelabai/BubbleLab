@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import type {
   BubbleFlowDetailsResponse,
   BubbleFlowListResponse,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 
 interface UseBubbleFlowResult {
@@ -24,6 +25,7 @@ interface UseBubbleFlowResult {
   updateBubbleParameters: (
     bubbleParameters: BubbleFlowDetailsResponse['bubbleParameters']
   ) => void;
+  updateWorkflow: (workflow: ParsedWorkflow | undefined) => void;
   syncWithBackend: () => Promise<void>;
 }
 
@@ -263,6 +265,26 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     [queryClient, flowId]
   );
 
+  const updateWorkflow = useCallback(
+    (workflow: ParsedWorkflow | undefined) => {
+      if (!flowId) return;
+
+      const currentData = queryClient.getQueryData<BubbleFlowDetailsResponse>([
+        'bubbleFlow',
+        flowId,
+      ]);
+      if (!currentData) return;
+
+      const updatedData: BubbleFlowDetailsResponse = {
+        ...currentData,
+        workflow,
+      };
+
+      queryClient.setQueryData(['bubbleFlow', flowId], updatedData);
+    },
+    [queryClient, flowId]
+  );
+
   const syncWithBackend = useCallback(async () => {
     if (!flowId) {
       throw new Error('Flow ID is required for backend synchronization');
@@ -280,6 +302,7 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     updateCronSchedule,
     updateInputSchema,
     updateBubbleParameters,
+    updateWorkflow,
     updateEventType,
     updateCode,
     updateRequiredCredentials,

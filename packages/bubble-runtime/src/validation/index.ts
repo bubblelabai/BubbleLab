@@ -2,21 +2,26 @@ import type {
   ParsedBubbleWithInfo,
   CredentialType,
   BubbleTrigger,
+  ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
-import { validateScript, VariableTypeInfo } from './BubbleValidator.js';
+import { validateScript } from './BubbleValidator.js';
 import { BubbleScript } from '../parse/BubbleScript.js';
 import { BubbleInjector } from '../injection/BubbleInjector.js';
 import { BubbleFactory } from '@bubblelab/bubble-core';
 import { validateCronExpression } from '@bubblelab/shared-schemas';
+import { defaultLintRuleRegistry } from './lint-rules.js';
+import ts from 'typescript';
 
 export interface ValidationResult {
   valid: boolean;
-  variableTypes?: VariableTypeInfo[];
-  errors?: string[];
+  errors?: string[]; // All errors combined (backward compatible)
+  syntaxErrors?: string[]; // Syntax, structural, and bubble usage errors (excludes lint errors)
+  lintErrors?: string[]; // Lint rule errors only
 }
 
 export interface ValidationAndExtractionResult extends ValidationResult {
   bubbleParameters?: Record<number, ParsedBubbleWithInfo>;
+  workflow?: ParsedWorkflow;
   inputSchema?: Record<string, unknown>;
   trigger?: BubbleTrigger;
   requiredCredentials?: Record<string, CredentialType[]>;
@@ -30,36 +35,60 @@ export interface ValidationAndExtractionResult extends ValidationResult {
  * @returns ValidationResult with success status and errors
  */
 export async function validateBubbleFlow(
-  code: string
+  code: string,
+  requireLintErrors: boolean = true
 ): Promise<ValidationResult> {
-  const errors: string[] = [];
+  const syntaxErrors: string[] = [];
+  const lintErrors: string[] = [];
 
   try {
     // Step 1: Basic syntax and structure validation
     const validationResult = validateScript(code);
     if (!validationResult.success) {
       if (validationResult.errors) {
-        errors.push(
-          ...Object.entries(validationResult.errors).map(
-            ([lineNumber, errorMessage]) =>
-              `line ${lineNumber}: ${errorMessage}`
-          )
+        const scriptErrors = Object.entries(validationResult.errors).map(
+          ([lineNumber, errorMessage]) => `line ${lineNumber}: ${errorMessage}`
         );
+        syntaxErrors.push(...scriptErrors);
       }
     }
 
     // Step 2: Validate BubbleFlow class requirements
     const structuralErrors = validateBubbleFlowStructure(code);
-    errors.push(...structuralErrors);
+    syntaxErrors.push(...structuralErrors);
 
     // Step 3: Validate bubble usage (only registered bubbles)
     const bubbleErrors = validateBubbleUsage(code);
-    errors.push(...bubbleErrors);
+    syntaxErrors.push(...bubbleErrors);
+
+    // Step 4: Run lint rules
+    try {
+      const sourceFile = ts.createSourceFile(
+        'bubbleflow.ts',
+        code,
+        ts.ScriptTarget.Latest,
+        true
+      );
+      const lintRuleErrors = defaultLintRuleRegistry.validateAll(sourceFile);
+      const lintErrorMessages = lintRuleErrors.map(
+        (err) => `line ${err.line}: ${err.message}`
+      );
+      lintErrors.push(...lintErrorMessages);
+    } catch (error) {
+      // If lint rule execution fails, log but don't fail validation
+      console.error('Error running lint rules:', error);
+    }
+
+    // Combine all errors for backward compatibility
+    const allErrors = requireLintErrors
+      ? [...syntaxErrors, ...lintErrors]
+      : syntaxErrors;
 
     return {
-      valid: errors.length === 0,
-      variableTypes: validationResult.variableTypes,
-      errors: errors.length > 0 ? errors : undefined,
+      valid: allErrors.length === 0,
+      errors: allErrors.length > 0 ? allErrors : undefined,
+      syntaxErrors: syntaxErrors.length > 0 ? syntaxErrors : undefined,
+      lintErrors: lintErrors.length > 0 ? lintErrors : undefined,
     };
   } catch (error) {
     const errorMessage =
@@ -67,6 +96,7 @@ export async function validateBubbleFlow(
     return {
       valid: false,
       errors: [errorMessage],
+      syntaxErrors: [errorMessage],
     };
   }
 }
@@ -80,10 +110,11 @@ export async function validateBubbleFlow(
  */
 export async function validateAndExtract(
   code: string,
-  bubbleFactory: BubbleFactory
+  bubbleFactory: BubbleFactory,
+  requireLintErrors: boolean = true
 ): Promise<ValidationAndExtractionResult> {
   // First validate the code
-  const validationResult = await validateBubbleFlow(code);
+  const validationResult = await validateBubbleFlow(code, requireLintErrors);
 
   // If validation fails, return early
   if (!validationResult.valid) {
@@ -120,6 +151,7 @@ export async function validateAndExtract(
     return {
       ...validationResult,
       bubbleParameters,
+      workflow: script.getWorkflow(),
       inputSchema: script.getPayloadJsonSchema() || {},
       trigger: script.getBubbleTriggerEventType() || undefined,
       requiredCredentials:

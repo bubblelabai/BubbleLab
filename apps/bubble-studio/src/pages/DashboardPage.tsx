@@ -22,6 +22,7 @@ import {
 } from '../components/templates/templateLoader';
 import { trackTemplate } from '../services/analytics';
 import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
+import { SubmitTemplateModal } from '../components/SubmitTemplateModal';
 
 // LoadingDots component using bouncing animation for code generation
 const LoadingDots: React.FC = () => {
@@ -70,6 +71,7 @@ export function DashboardPage({
   const { startStreaming, stopStreaming } = useGenerationStore();
   const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
+  const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -337,7 +339,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-5xl w-full mx-auto space-y-10 py-12 px-4 sm:px-6">
+        <div className="max-w-6xl w-full mx-auto space-y-10 py-12 px-4 sm:px-6">
           {/* Header */}
           <div className="text-center space-y-6">
             <div className="text-center mb-8">
@@ -556,7 +558,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={integration.file}
                         alt={`${integration.name} logo`}
@@ -580,7 +582,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {SCRAPING_SERVICES.map((service) => (
                   <div key={service.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={service.file}
                         alt={`${service.name} logo`}
@@ -604,7 +606,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
                   <div key={model.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 cursor-pointer">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
                       <img
                         src={model.file}
                         alt={`${model.name} logo`}
@@ -630,6 +632,29 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             {/* Templates Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Templates</h2>
+              <a
+                href="https://www.bubblelab.ai/community"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-1.5 text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200"
+              >
+                <span className="border-b border-purple-400/30 group-hover:border-purple-300/50 transition-colors duration-200">
+                  See community projects
+                </span>
+                <svg
+                  className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
             </div>
 
             {/* Category Filter Buttons */}
@@ -751,6 +776,27 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 );
               })}
             </div>
+
+            {/* Submit Template CTA */}
+            <div className="mt-8 pt-6 border-t border-[#30363d]">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left">
+                  <h3 className="text-base font-semibold text-white">
+                    Have a template to share?
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Submit your automation and help others in the community
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitTemplateModal(true)}
+                  className="px-6 py-3 rounded-xl text-sm font-medium bg-white text-black border border-white/80 hover:bg-gray-100 hover:scale-105 hover:shadow-lg hover:shadow-white/20 transition-all duration-200"
+                >
+                  Submit your Template
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -760,6 +806,13 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
       />
+
+      {/* Submit Template Modal */}
+      <SubmitTemplateModal
+        isVisible={showSubmitTemplateModal}
+        onClose={() => setShowSubmitTemplateModal(false)}
+      />
+
       <GenerationOutputOverlay />
     </div>
   );

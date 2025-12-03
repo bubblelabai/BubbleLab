@@ -26,6 +26,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
   const {
     // data: currentFlow,
     updateBubbleParameters,
+    updateWorkflow,
     updateInputSchema,
     updateRequiredCredentials,
     updateCode,
@@ -76,8 +77,9 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         Object.keys(result.bubbles).length > 0
       ) {
         // Code was already optimistically updated in onMutate
-        // Now update the validation results (bubbles, schema, credentials)
+        // Now update the validation results (bubbles, schema, credentials, workflow)
         updateBubbleParameters(result.bubbles);
+        updateWorkflow(result.workflow);
         updateInputSchema(result.inputSchema);
         updateEventType(result.eventType);
         updateCronSchedule(result.cron || '');

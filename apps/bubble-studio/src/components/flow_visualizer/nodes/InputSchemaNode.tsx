@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Play, FileInput } from 'lucide-react';
-import InputFieldsRenderer from './InputFieldsRenderer';
-import { useExecutionStore } from '../stores/executionStore';
-import { useRunExecution } from '../hooks/useRunExecution';
-import { filterEmptyInputs } from '../utils/inputUtils';
-import { BUBBLE_COLORS } from './BubbleColors';
-import { WebhookURLDisplay } from './WebhookURLDisplay';
+import InputFieldsRenderer from '@/components/InputFieldsRenderer';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useRunExecution } from '@/hooks/useRunExecution';
+import { filterEmptyInputs } from '@/utils/inputUtils';
+import { BUBBLE_COLORS } from '@/components/flow_visualizer/BubbleColors';
+import { WebhookURLDisplay } from '@/components/WebhookURLDisplay';
 
 interface SchemaField {
   name: string;

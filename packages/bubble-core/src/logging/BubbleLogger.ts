@@ -41,7 +41,8 @@ export interface LogMetadata {
     | 'condition'
     | 'loop_iteration'
     | 'script'
-    | 'bubble_execution_complete';
+    | 'bubble_execution_complete'
+    | 'function_call';
   memoryUsage?: NodeJS.MemoryUsage;
   stackTrace?: string;
   additionalData?: Record<string, unknown>;
@@ -97,6 +98,8 @@ export class BubbleLogger {
   > = new Map();
   // Track individual bubble execution times
   private bubbleStartTimes: Map<number, number> = new Map();
+  // Track individual function call execution times
+  private functionCallStartTimes: Map<number, number> = new Map();
   // Store user credential mapping for cost calculation
   private userCredentialMapping?: Map<number, Set<CredentialType>>;
 
@@ -437,6 +440,72 @@ export class BubbleLogger {
     });
 
     return logMessage;
+  }
+
+  /**
+   * Log transformation function call start
+   */
+  logFunctionCallStart(
+    variableId: number,
+    functionName: string,
+    functionInput: unknown,
+    lineNumber?: number
+  ): string {
+    // Track start time for this function call
+    this.functionCallStartTimes.set(variableId, Date.now());
+
+    const logMessage = `Starting step: ${functionName}`;
+    this.log(LogLevel.DEBUG, logMessage, {
+      variableId,
+      lineNumber,
+      operationType: 'function_call',
+      additionalData: {
+        functionName,
+        functionInput,
+        phase: 'function_call_start',
+      },
+    });
+    return logMessage;
+  }
+
+  /**
+   * Log transformation function call completion
+   */
+  logFunctionCallComplete(
+    variableId: number,
+    functionName: string,
+    functionOutput: unknown,
+    duration: number,
+    lineNumber?: number
+  ): string {
+    const logMessage = `Completed step: ${functionName}`;
+    this.log(LogLevel.DEBUG, logMessage, {
+      variableId,
+      lineNumber,
+      operationType: 'function_call',
+      additionalData: {
+        functionName,
+        functionOutput,
+        duration,
+        phase: 'function_call_complete',
+      },
+    });
+
+    // Clean up the start time for this function call
+    this.functionCallStartTimes.delete(variableId);
+
+    return logMessage;
+  }
+
+  /**
+   * Get execution time for a function call
+   */
+  protected getFunctionCallExecutionTime(variableId: number): number {
+    const functionCallStartTime = this.functionCallStartTimes.get(variableId);
+    if (!functionCallStartTime) {
+      return 0;
+    }
+    return Date.now() - functionCallStartTime;
   }
 
   /**

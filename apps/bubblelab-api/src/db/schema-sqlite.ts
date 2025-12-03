@@ -29,6 +29,7 @@ export const bubbleFlows = sqliteTable('bubble_flows', {
   originalCode: text('original_code'), // Store the original TypeScript code
   bubbleParameters: text('bubble_parameters', { mode: 'json' }), // Store parsed bubble parameters
   metadata: text('metadata', { mode: 'json' }), // Store workflow metadata (outputDescription, etc.)
+  workflow: text('workflow', { mode: 'json' }), // Store parsed workflow structure
   eventType: text('event_type').notNull(),
   inputSchema: text('input_schema', { mode: 'json' }), // Store input schema
   webhookExecutionCount: int('webhook_execution_count').notNull().default(0), // Track webhook executions

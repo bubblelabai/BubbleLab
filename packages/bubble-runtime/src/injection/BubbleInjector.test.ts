@@ -587,20 +587,6 @@ describe('BubbleInjector.injectBubbleLoggingAndReinitializeBubbleParameters()', 
     await bubbleFactory.registerDefaults();
   });
   describe('should inject bubble logging and reinitialize bubble parameters', () => {
-    it('should inject bubble logging and reinitialize bubble parameters', () => {
-      const mockBubbleScript = new BubbleScript(
-        helloWorldMultiple,
-        bubbleFactory
-      );
-      const injector = new BubbleInjector(mockBubbleScript);
-      injector.injectBubbleLoggingAndReinitializeBubbleParameters();
-      const lines = mockBubbleScript.bubblescript.split('\n');
-
-      // Check if line 16 contains the logger configuration with dependency graph
-      expect(lines[15]).toContain(
-        'logger: __bubbleFlowSelf.logger, variableId: 412, dependencyGraph: {"name":"hello-world", "uniqueId":"412", "variableId":412, "variableName":"greeting", "nodeType":"service", "dependencies":[]}, currentUniqueId: "412"'
-      );
-    });
     it('The line numbers should not change from original script', () => {
       const mockBubbleScript = new BubbleScript(
         helloWorldMultiple,

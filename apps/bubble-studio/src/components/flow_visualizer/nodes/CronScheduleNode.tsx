@@ -18,16 +18,16 @@ import {
   convertUtcCronToLocalParts,
   getSimplifiedSchedule,
   type CronParts,
-} from '../utils/cronUtils';
-import { parseJSONSchema } from '../utils/inputSchemaParser';
-import InputFieldsRenderer from './InputFieldsRenderer';
-import { CronToggle } from './CronToggle';
-import { useExecutionStore } from '../stores/executionStore';
-import { useValidateCode } from '../hooks/useValidateCode';
-import { useEditor } from '../hooks/useEditor';
-import { useRunExecution } from '../hooks/useRunExecution';
-import { filterEmptyInputs } from '../utils/inputUtils';
-import { BUBBLE_COLORS } from './BubbleColors';
+} from '@/utils/cronUtils';
+import { parseJSONSchema } from '@/utils/inputSchemaParser';
+import InputFieldsRenderer from '@/components/InputFieldsRenderer';
+import { CronToggle } from '@/components/CronToggle';
+import { useExecutionStore } from '@/stores/executionStore';
+import { useValidateCode } from '@/hooks/useValidateCode';
+import { useEditor } from '@/hooks/useEditor';
+import { useRunExecution } from '@/hooks/useRunExecution';
+import { filterEmptyInputs } from '@/utils/inputUtils';
+import { BUBBLE_COLORS } from '@/components/flow_visualizer/BubbleColors';
 
 interface CronScheduleNodeData {
   flowId: number;

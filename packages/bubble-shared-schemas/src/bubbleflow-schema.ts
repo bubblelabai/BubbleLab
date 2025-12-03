@@ -3,6 +3,7 @@ import {
   ParsedBubbleWithInfoSchema,
   ParsedBubbleSchema,
   BubbleParameterType,
+  ParsedWorkflowSchema,
 } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
 // POST /bubble-flow - Create new BubbleFlow schema
@@ -106,6 +107,9 @@ export const createBubbleFlowResponseSchema = z
     bubbleParameters: z.record(z.string(), ParsedBubbleWithInfoSchema).openapi({
       description: 'Parsed bubble parameters from the BubbleFlow code',
     }),
+    workflow: ParsedWorkflowSchema.optional().openapi({
+      description: 'Hierarchical workflow structure with control flow',
+    }),
     requiredCredentials: z
       .record(z.string(), z.array(z.nativeEnum(CredentialType)))
       .optional()
@@ -204,6 +208,9 @@ export const bubbleFlowDetailsResponseSchema = z
       }),
     bubbleParameters: z.record(z.string(), ParsedBubbleWithInfoSchema).openapi({
       description: 'Bubble parameters',
+    }),
+    workflow: ParsedWorkflowSchema.optional().openapi({
+      description: 'Hierarchical workflow structure with control flow',
     }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
     updatedAt: z.string().openapi({ description: 'Update timestamp' }),

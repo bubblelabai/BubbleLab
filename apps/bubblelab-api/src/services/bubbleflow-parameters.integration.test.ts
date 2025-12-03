@@ -222,6 +222,7 @@ describe('BubbleFlow Parameters Integration', () => {
 
     const executeAgainResult =
       (await executeAgainResponse.json()) as ExecuteBubbleFlowResponse;
+    console.log(executeAgainResult);
 
     expect(executeAgainResult.success).toBe(true);
 

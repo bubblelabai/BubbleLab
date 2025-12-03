@@ -23,6 +23,7 @@ import {
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
+  parseJsonWithFallbacks,
   type StreamingCallback,
   type ToolHookContext,
   type ToolHookBefore,
@@ -236,15 +237,29 @@ Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. 
     if (summarizeRun.success && response) {
       try {
         const raw = response.trim();
-        const parsed = JSON.parse(raw);
-        summary = typeof parsed.summary === 'string' ? parsed.summary : '';
-        inputsSchema =
-          typeof parsed.inputsSchema === 'string' ? parsed.inputsSchema : '';
+        const parseResult = parseJsonWithFallbacks(raw);
 
-        console.log('[BubbleFlowGenerator] Extracted summary and schema:', {
-          summary,
-          inputsSchema,
-        });
+        if (!parseResult.success || parseResult.error || !parseResult.parsed) {
+          console.error(
+            '[BubbleFlowGenerator] Failed to parse summarizeAgent response:',
+            parseResult.error
+          );
+          summary = '';
+          inputsSchema = '';
+        } else {
+          const parsed = parseResult.parsed as {
+            summary?: string;
+            inputsSchema?: string;
+          };
+          summary = typeof parsed.summary === 'string' ? parsed.summary : '';
+          inputsSchema =
+            typeof parsed.inputsSchema === 'string' ? parsed.inputsSchema : '';
+
+          console.log('[BubbleFlowGenerator] Extracted summary and schema:', {
+            summary,
+            inputsSchema,
+          });
+        }
       } catch (parseError) {
         console.error(
           '[BubbleFlowGenerator] Failed to parse summarizeAgent response:',

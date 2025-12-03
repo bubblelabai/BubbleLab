@@ -192,27 +192,51 @@ export function useRunExecution(
                     bubbleId,
                     executionTimeMs
                   );
-
-                  // Extract and store result success status for error styling
-                  const result = eventData.additionalData?.result as
-                    | { success?: boolean }
-                    | undefined;
-                  if (result && typeof result.success === 'boolean') {
-                    getExecutionStore(flowId).setBubbleResult(
-                      bubbleId,
-                      result.success
-                    );
-                    console.log(
-                      'Bubble result:',
-                      bubbleId,
-                      result.success ? '✓' : '✗'
-                    );
-                  }
-
-                  console.log('Bubble completed:', bubbleId, executionTimeMs);
                 }
               }
-              options.onBubbleExecutionComplete?.(eventData);
+            }
+
+            // Handle function call start events
+            if (eventData.type === 'function_call_start') {
+              if (eventData.variableId && eventData.functionName) {
+                const functionId = String(eventData.variableId);
+
+                // Track this as the last executing bubble in the store
+                getExecutionStore(flowId).setLastExecutingBubble(functionId);
+
+                // Mark function call as running
+                getExecutionStore(flowId).setBubbleRunning(functionId);
+                selectBubbleInConsole(functionId);
+
+                // Highlight the line range in the editor if line number is available
+                if (eventData.lineNumber && eventData.lineNumber > 0) {
+                  setExecutionHighlight({
+                    startLine: eventData.lineNumber,
+                    endLine: eventData.lineNumber,
+                  });
+                }
+              }
+            }
+
+            // Handle function call complete events
+            if (eventData.type === 'function_call_complete') {
+              if (eventData.variableId && eventData.functionName) {
+                const functionId = String(eventData.variableId);
+                getExecutionStore(flowId).setLastExecutingBubble(functionId);
+
+                // Mark function call as completed with execution time
+                const executionTimeMs =
+                  eventData.functionDuration ?? eventData.executionTime ?? 0;
+                getExecutionStore(flowId).setBubbleCompleted(
+                  functionId,
+                  executionTimeMs
+                );
+
+                // Check if there was an error (functionOutput might contain error info)
+                // For now, we'll assume success unless explicitly marked as error
+                // This could be enhanced to check functionOutput for error indicators
+                getExecutionStore(flowId).setBubbleResult(functionId, true);
+              }
             }
 
             if (

@@ -68,13 +68,25 @@ function validateResult(
     validationErrors.push('Expected message to be defined');
   }
 
+  // Early check for snippet if code type is expected
+  const needsSnippet =
+    testCase.expectedType === 'code' ||
+    (testCase.expectedType === 'mixed' && pearlResult.type === 'code');
+
+  if (needsSnippet && !pearlResult.snippet) {
+    validationErrors.push('Expected snippet to be defined for code type');
+    // Return early - no point checking snippetContains or snippetMatches
+    return {
+      isValid: validationErrors.length === 0,
+      errors: validationErrors,
+    };
+  }
+
   // Validate snippetContains
   for (const text of testCase.snippetContains) {
     if (testCase.expectedType === 'code') {
-      if (!pearlResult.snippet) {
-        validationErrors.push('Expected snippet to be defined for code type');
-        break; // No point checking further if snippet is undefined
-      } else if (!pearlResult.snippet.includes(text)) {
+      // snippet is guaranteed to exist here due to early return above
+      if (!pearlResult.snippet!.includes(text)) {
         validationErrors.push(`Expected snippet to contain "${text}"`);
       }
     } else if (testCase.expectedType === 'mixed') {
@@ -83,10 +95,8 @@ function validateResult(
       // If response is question, check message is non empty,
       // If response is reject, check message is non empty,
       if (pearlResult.type === 'code') {
-        if (!pearlResult.snippet) {
-          validationErrors.push('Expected snippet to be defined for code type');
-          break; // No point checking further if snippet is undefined
-        } else if (!pearlResult.snippet.includes(text)) {
+        // snippet is guaranteed to exist here due to early return above
+        if (!pearlResult.snippet!.includes(text)) {
           validationErrors.push(`Expected snippet to contain "${text}"`);
         }
       }
@@ -116,10 +126,8 @@ function validateResult(
   // Validate snippetMatches patterns
   for (const pattern of testCase.snippetMatches) {
     if (testCase.expectedType === 'code') {
-      if (!pearlResult.snippet) {
-        validationErrors.push('Expected snippet to be defined for code type');
-        break; // No point checking further if snippet is undefined
-      } else if (!pattern.test(pearlResult.snippet)) {
+      // snippet is guaranteed to exist here due to early return above
+      if (!pattern.test(pearlResult.snippet!)) {
         validationErrors.push(`Expected snippet to match pattern: ${pattern}`);
       }
     } else {

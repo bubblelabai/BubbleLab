@@ -663,25 +663,67 @@ import {
 } from '@bubblelab/bubble-core';
 
 export interface Output {
- // TODO: Add your output fields here
+  // TODO: Add your output fields here
   message: string;
+  processed: boolean;
 }
 
 // TRIGGER TYPE 1: Webhook HTTP Trigger
 // Define your custom input interface for webhook triggers
 export interface CustomWebhookPayload extends WebhookEvent {
-// TODO: Add your custom payload fields here
-  input: string;
+  // TODO: Add your custom payload fields here
+  input?: string;
 }
 
 export class ${className} extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    // TODO: Implement your workflow logic here
-    const { input = 'sensible example value' } = payload;
+  
+  // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
+  private transformData(input: string | undefined): string | null {
+    // Example: Transform or clean the input data
+    if (!input || input.trim().length === 0) return null;
+    return input.trim().toUpperCase();
+  }
 
+  // Sends cleaned input to AI agent for natural language processing and response generation
+  // Condition: Only runs when transformedInput is not null and has more than 3 characters
+  private async processWithAI(input: string): Promise<string> {
+    const agent = new AIAgentBubble({
+      model: { model: 'google/gemini-2.5-flash' },
+      systemPrompt: 'You are a helpful assistant.',
+      message: \`Process this input: \${input}\`
+    });
+
+    const result = await agent.action();
+
+    if (!result.success) {
+      throw new Error(\`AI Agent failed: \${result.error}\`);
+    }
+
+    return result.data.response;
+  }
+
+  // Constructs final output payload with either AI-generated response or default fallback message
+  private formatOutput(response: string | null, wasProcessed: boolean): Output {
     return {
-      message: \`Response from \${payload.path} (Request: \${payload.requestId})\`,
+      message: response || 'No input provided',
+      processed: wasProcessed,
     };
+  }
+
+  // Main workflow orchestration
+  // - No Bubbles directly in handle()
+  // - No try/catch in handle() (let errors bubble up)
+  // - Only calls to private methods
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const transformedInput = this.transformData(payload.input);
+
+    // Only process with AI if input meets minimum length requirement
+    let aiResponse: string | null = null;
+    if (transformedInput && transformedInput.length > 3) {
+      aiResponse = await this.processWithAI(transformedInput);
+    }
+
+    return this.formatOutput(aiResponse, aiResponse !== null);
   }
 }
 
@@ -692,7 +734,6 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
 /*
 export interface CustomCronPayload extends CronEvent {
   // TODO: Add your custom payload fields here
-  input: string;
 }
 
 export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
@@ -705,13 +746,16 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   //   '0 0 1 * *'     = First day of every month at midnight
   readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
-  async handle(payload: CustomCronPayload): Promise<Output> {
-    // TODO: Implement your scheduled workflow logic here
-    const { input = 'sensible example value', cron } = payload;
+  // Performs scheduled database check or external API call to fetch latest data
+  private async performScheduledTask(): Promise<string> {
+     // Example: Check a database or API
+     return "Task completed";
+  }
 
-    return {
-      message: \`Cron job executed at \${payload.timestamp} with schedule: \${cron}\`,
-    };
+  async handle(payload: CustomCronPayload): Promise<Output> {
+    const result = await this.performScheduledTask();
+
+    return { message: result, processed: true };
   }
 }
 */`;

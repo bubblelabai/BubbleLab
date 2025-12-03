@@ -2,38 +2,10 @@
 // This file contains the template code and metadata for the stock analysis workflow
 
 export const templateCode = `import {
-  // Base classes
   BubbleFlow,
-  BaseBubble,
-  ServiceBubble,
-  WorkflowBubble,
-  ToolBubble,
-  
-  // Service Bubbles
-  HelloWorldBubble,
   AIAgentBubble,
-  PostgreSQLBubble,
-  SlackBubble,
   ResendBubble,
-  StorageBubble,
-  GoogleDriveBubble,
-  GmailBubble,
-  SlackFormatterAgentBubble,
-  
-  // Template Workflows
-  SlackDataAssistantWorkflow,
-  PDFFormOperationsWorkflow,
-
-  // Specialized Tool Bubbles
   ResearchAgentTool,
-  RedditScrapeTool,
-    
-  // Types and utilities
-  BubbleFactory,
-  type BubbleClassWithMetadata,
-  type BubbleContext,
-  type BubbleOperationResult,
-  type BubbleTriggerEvent,
   type WebhookEvent,
 } from '@bubblelab/bubble-core';
 
@@ -51,6 +23,130 @@ export interface CustomWebhookPayload extends WebhookEvent {
 }
 
 export class StockAnalysisFlow extends BubbleFlow<'webhook/http'> {
+  // Researches recent news headlines and key events for the stock ticker from Yahoo Finance.
+  private async researchStockData(ticker: string): Promise<{
+    headlines: Array<{ title: string; link: string; source: string }>;
+    keyEvents: Array<{ event: string; date: string; impact: string }>;
+  }> {
+    const researchSchema = JSON.stringify({
+      type: 'object',
+      properties: {
+        headlines: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              link: { type: 'string' },
+              source: { type: 'string' },
+            },
+            required: ['title', 'link', 'source'],
+          },
+        },
+        keyEvents: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              event: { type: 'string' },
+              date: { type: 'string' },
+              impact: { type: 'string' },
+            },
+            required: ['event', 'date', 'impact'],
+          },
+        },
+      },
+      required: ['headlines', 'keyEvents'],
+    });
+
+    // Scrapes Yahoo Finance for latest news headlines and key events for the stock ticker.
+    // Returns structured data with headlines and keyEvents arrays.
+    const researchAgent = new ResearchAgentTool({
+      task: \`Scrape Yahoo Finance for the latest news headlines and key events for the stock ticker: \${ticker}. Focus on information that could influence the stock's price.\`,
+      expectedResultSchema: researchSchema,
+    });
+
+    const researchResult = await researchAgent.action();
+
+    if (!researchResult.success || !researchResult.data?.result) {
+      throw new Error(\`Research agent failed: \${researchResult.error || 'No result data'}\`);
+    }
+
+    return researchResult.data.result as {
+      headlines: Array<{ title: string; link: string; source: string }>;
+      keyEvents: Array<{ event: string; date: string; impact: string }>;
+    };
+  }
+
+  // Generates a 3-paragraph stock analysis covering market sentiment, risks, and opportunities.
+  private async generateAnalysis(
+    ticker: string,
+    researchData: {
+      headlines: Array<{ title: string; link: string; source: string }>;
+      keyEvents: Array<{ event: string; date: string; impact: string }>;
+    }
+  ): Promise<string> {
+    const analysisPrompt = \`
+      Based on the following financial data for the stock ticker "\${ticker}", please generate a 3-paragraph analysis.
+
+      **Recent News Headlines:**
+      \${researchData.headlines
+        .map((h) => \`- \${h.title} (Source: \${h.source})\`)
+        .join('\\n')}
+
+      **Key Events:**
+      \${researchData.keyEvents
+        .map((e) => \`- \${e.event} on \${e.date} (Impact: \${e.impact})\`)
+        .join('\\n')}
+
+      **Analysis Structure:**
+      1.  **Market Sentiment:** Analyze the overall feeling or tone of the news. Is it positive, negative, or neutral? What does this suggest about the market's current perception of the stock?
+      2.  **Potential Risks:** Identify any potential risks or challenges highlighted in the news or events. What could negatively impact the stock price?
+      3.  **Potential Opportunities:** Identify any potential opportunities or positive catalysts. What could drive the stock price up?
+
+      Please provide a concise, well-structured analysis in plain text format.
+    \`;
+
+    // Generates stock analysis from research data using gemini-2.5-pro.
+    // Returns plain text analysis covering market sentiment, risks, and opportunities.
+    const analysisAgent = new AIAgentBubble({
+      message: analysisPrompt,
+      systemPrompt: 'You are a financial analyst AI. Your task is to provide clear, concise, and unbiased analysis of financial data in plain text format.',
+      model: { model: 'google/gemini-2.5-pro' },
+    });
+
+    const analysisResult = await analysisAgent.action();
+
+    if (!analysisResult.success || !analysisResult.data?.response) {
+      throw new Error(\`Analysis agent failed: \${analysisResult.error || 'No response'}\`);
+    }
+
+    return analysisResult.data.response;
+  }
+
+  // Sends the stock analysis as a plain text email to the recipient.
+  private async sendAnalysisEmail(
+    ticker: string,
+    recipientEmail: string,
+    analysis: string
+  ): Promise<void> {
+    // Sends stock analysis via email using Resend. The 'from' parameter is automatically
+    // set to Bubble Lab's default sender unless you have your own Resend account configured.
+    const emailSender = new ResendBubble({
+      operation: 'send_email',
+      to: [recipientEmail],
+      subject: \`Stock Analysis for \${ticker}\`,
+      text: analysis,
+    });
+
+    const emailResult = await emailSender.action();
+
+    if (!emailResult.success) {
+      throw new Error(\`Failed to send email: \${emailResult.error || 'Unknown error'}\`);
+    }
+  }
+
+  // Main workflow orchestration
   async handle(payload: CustomWebhookPayload): Promise<Output> {
     const { ticker, recipientEmail } = payload;
 
@@ -63,140 +159,15 @@ export class StockAnalysisFlow extends BubbleFlow<'webhook/http'> {
       };
     }
 
-    try {
-      const researchSchema = JSON.stringify({
-        type: 'object',
-        properties: {
-          headlines: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                link: { type: 'string' },
-                source: { type: 'string' },
-              },
-              required: ['title', 'link', 'source'],
-            },
-          },
-          keyEvents: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                event: { type: 'string' },
-                date: { type: 'string' },
-                impact: { type: 'string' },
-              },
-              required: ['event', 'date', 'impact'],
-            },
-          },
-        },
-        required: ['headlines', 'keyEvents'],
-      });
+    const researchData = await this.researchStockData(ticker);
+    const analysis = await this.generateAnalysis(ticker, researchData);
+    await this.sendAnalysisEmail(ticker, recipientEmail, analysis);
 
-      // Researches recent news, headlines, and key events for the stock ticker from
-      // Yahoo Finance, gathering current information that could impact the stock's price,
-      // including earnings announcements, product launches, and market events.
-      const researchAgent = new ResearchAgentTool({
-        task: \`Scrape Yahoo Finance for the latest news headlines and key events for the stock ticker: \${ticker}. Focus on information that could influence the stock's price.\`,
-        expectedResultSchema: researchSchema,
-      });
-
-      const researchResult = await researchAgent.action();
-
-      if (!researchResult.success || !researchResult.data?.result) {
-        return {
-          status: 'error',
-          analysis: '',
-          emailSent: false,
-          error: \`Research agent failed: \${researchResult.error}\`,
-        };
-      }
-
-      const researchData = researchResult.data.result as any;
-
-      const analysisPrompt = \`
-        Based on the following financial data for the stock ticker "\${ticker}", please generate a 3-paragraph analysis.
-
-        **Recent News Headlines:**
-        \${researchData.headlines
-          .map((h: any) => \`- \${h.title} (Source: \${h.source})\`)
-          .join('\\n')}
-
-        **Key Events:**
-        \${researchData.keyEvents
-          .map((e: any) => \`- \${e.event} on \${e.date} (Impact: \${e.impact})\`)
-          .join('\\n')}
-
-        **Analysis Structure:**
-        1.  **Market Sentiment:** Analyze the overall feeling or tone of the news. Is it positive, negative, or neutral? What does this suggest about the market's current perception of the stock?
-        2.  **Potential Risks:** Identify any potential risks or challenges highlighted in the news or events. What could negatively impact the stock price?
-        3.  **Potential Opportunities:** Identify any potential opportunities or positive catalysts. What could drive the stock price up?
-
-        Please provide a concise, well-structured analysis in plain text format.
-      \`;
-
-      // Analyzes the financial research data using gemini-2.5-pro to generate a
-      // comprehensive 3-paragraph stock analysis covering market sentiment, potential
-      // risks, and opportunities, transforming raw financial news into actionable
-      // investment insights.
-      const analysisAgent = new AIAgentBubble({
-        message: analysisPrompt,
-        systemPrompt: 'You are a financial analyst AI. Your task is to provide clear, concise, and unbiased analysis of financial data in plain text format.',
-        model: { model: 'google/gemini-2.5-pro' },
-      });
-
-      const analysisResult = await analysisAgent.action();
-
-      if (!analysisResult.success || !analysisResult.data?.response) {
-        return {
-          status: 'error',
-          analysis: '',
-          emailSent: false,
-          error: \`Analysis agent failed: \${analysisResult.error}\`,
-        };
-      }
-
-      const analysis = analysisResult.data.response;
-
-      // Only send email if all previous steps succeeded
-      // Delivers the AI-generated stock analysis as a plain text email to the recipient,
-      // making investment insights immediately accessible for decision-making.
-      const emailSender = new ResendBubble({
-        operation: 'send_email',
-        to: [recipientEmail],
-        subject: \`Stock Analysis for \${ticker}\`,
-        text: analysis, // Use text instead of html
-      });
-
-      const emailResult = await emailSender.action();
-
-      if (!emailResult.success) {
-        return {
-          status: 'error',
-          analysis: analysis,
-          emailSent: false,
-          error: \`Failed to send email: \${emailResult.error}\`,
-        };
-      }
-
-      // Success case - email was sent
-      return {
-        status: \`Successfully sent analysis for \${ticker} to \${recipientEmail}\`,
-        analysis,
-        emailSent: true,
-      };
-
-    } catch (error) {
-      // Catch any unexpected errors
-      return {
-        status: 'error',
-        analysis: '',
-        emailSent: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
-    }
+    return {
+      status: \`Successfully sent analysis for \${ticker} to \${recipientEmail}\`,
+      analysis,
+      emailSent: true,
+    };
   }
 }`;
 

@@ -162,7 +162,7 @@ export class GoogleDriveFileOrganizerFlow extends BubbleFlow<'webhook/http'> {
 }`;
 
     // Use the validation service
-    const result = await validateBubbleFlow(googleDriveCode);
+    const result = await validateBubbleFlow(googleDriveCode, false);
     expect(result.valid).toBe(true);
   });
 });

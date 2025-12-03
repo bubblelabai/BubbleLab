@@ -10,6 +10,30 @@ import {
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
 
+const INVOCATION_KEY_EXPR =
+  '__bubbleFlowSelf?.__getInvocationCallSiteKey?.() ?? ""';
+
+function buildInvocationOverrideReference(
+  variableId: number | undefined
+): string | undefined {
+  if (typeof variableId !== 'number') {
+    return undefined;
+  }
+  return `globalThis["__bubbleInvocationDependencyGraphs"]?.[${INVOCATION_KEY_EXPR}]?.[${JSON.stringify(
+    String(variableId)
+  )}]`;
+}
+
+function buildDependencyGraphExpression(
+  dependencyGraphLiteral: string,
+  overrideRef?: string
+): string {
+  if (overrideRef) {
+    return `${overrideRef} ?? ${dependencyGraphLiteral}`;
+  }
+  return dependencyGraphLiteral;
+}
+
 export function buildParametersObject(
   parameters: BubbleParameter[],
   variableId?: number,
@@ -21,6 +45,24 @@ export function buildParametersObject(
     return '{}';
   }
 
+  const dependencyGraphLiteralSafe =
+    dependencyGraphLiteral && dependencyGraphLiteral.length > 0
+      ? dependencyGraphLiteral
+      : undefined;
+  const invocationOverrideRef = buildInvocationOverrideReference(variableId);
+  const dependencyGraphExpr =
+    dependencyGraphLiteralSafe !== undefined
+      ? buildDependencyGraphExpression(
+          dependencyGraphLiteralSafe,
+          invocationOverrideRef
+        )
+      : (invocationOverrideRef ?? undefined);
+  const currentUniqueIdLiteral = JSON.stringify(currentUniqueId);
+  const currentUniqueIdExpr =
+    invocationOverrideRef !== undefined
+      ? `${invocationOverrideRef}?.uniqueId ?? ${currentUniqueIdLiteral}`
+      : currentUniqueIdLiteral;
+
   // Handle single variable parameter case (e.g., new GoogleDriveBubble(params))
   if (parameters.length === 1 && parameters[0].type === 'variable') {
     const paramValue = formatParameterValue(
@@ -29,12 +71,18 @@ export function buildParametersObject(
     );
 
     if (includeLoggerConfig) {
+      const variableIdExpr =
+        typeof variableId === 'number'
+          ? `(__bubbleFlowSelf?.__computeInvocationVariableId?.(${variableId}) ?? ${variableId})`
+          : 'undefined';
       const depGraphPart =
-        dependencyGraphLiteral && dependencyGraphLiteral.length > 0
-          ? `, dependencyGraph: ${dependencyGraphLiteral}`
+        dependencyGraphExpr !== undefined
+          ? `, dependencyGraph: ${dependencyGraphExpr}`
           : '';
-      const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+      const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
+      const invocationKeyPart =
+        ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
+      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}}`;
     }
 
     return paramValue;
@@ -78,12 +126,18 @@ export function buildParametersObject(
       );
 
       if (includeLoggerConfig) {
+        const variableIdExpr =
+          typeof variableId === 'number'
+            ? `(__bubbleFlowSelf?.__computeInvocationVariableId?.(${variableId}) ?? ${variableId})`
+            : 'undefined';
         const depGraphPart =
-          dependencyGraphLiteral && dependencyGraphLiteral.length > 0
-            ? `, dependencyGraph: ${dependencyGraphLiteral}`
+          dependencyGraphExpr !== undefined
+            ? `, dependencyGraph: ${dependencyGraphExpr}`
             : '';
-        const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+        const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
+        const invocationKeyPart =
+          ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
+        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}}`;
       }
 
       return `{...${paramsValue}, credentials: ${credentialsValue}}`;
@@ -115,12 +169,18 @@ export function buildParametersObject(
 
   // Only add the logger configuration if explicitly requested
   if (includeLoggerConfig) {
+    const variableIdExpr =
+      typeof variableId === 'number'
+        ? `(__bubbleFlowSelf?.__computeInvocationVariableId?.(${variableId}) ?? ${variableId})`
+        : 'undefined';
     const depGraphPart =
-      dependencyGraphLiteral && dependencyGraphLiteral.length > 0
-        ? `, dependencyGraph: ${dependencyGraphLiteral}`
+      dependencyGraphExpr !== undefined
+        ? `, dependencyGraph: ${dependencyGraphExpr}`
         : '';
-    const currentIdPart = `, currentUniqueId: ${JSON.stringify(currentUniqueId)}`;
-    return `${paramsString}, {logger: __bubbleFlowSelf.logger, variableId: ${variableId}${depGraphPart}${currentIdPart}}`;
+    const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
+    const invocationKeyPart =
+      ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
+    return `${paramsString}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}}`;
   }
 
   return paramsString;
@@ -352,19 +412,25 @@ export function replaceBubbleInstantiation(
   lines: string[],
   bubble: ParsedBubbleWithInfo
 ) {
+  if (bubble.invocationCallSiteKey) {
+    // Invocation-specific clones are logical constructs and shouldn't rewrite source
+    return;
+  }
   const { location, className, parameters } = bubble;
 
   // Build the new single-line instantiation
   const dependencyGraphLiteral = JSON.stringify(
     bubble.dependencyGraph || { name: bubble.bubbleName, dependencies: [] }
   ).replace(/</g, '\u003c');
+  const currentUniqueIdValue =
+    bubble.dependencyGraph?.uniqueId ?? String(bubble.variableId);
 
   let parametersObject = buildParametersObject(
     parameters,
     bubble.variableId,
     true,
     dependencyGraphLiteral,
-    String(bubble.variableId)
+    currentUniqueIdValue
   );
 
   // Remove JS/TS comments that would otherwise break single-line formatting

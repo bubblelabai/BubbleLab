@@ -392,4 +392,31 @@ describe('BubbleParser.getPayloadJsonSchema()', () => {
       );
     }
   });
+
+  // Should identify calculate time range as a transformation step
+  it('should identify calculate time range as a transformation step', async () => {
+    const testScript = getFixture('calender-step-flow');
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+    //Check for where clacualte step is in workflow root
+    const calculateTimeRangeStep = parseResult.workflow.root.find(
+      (step) =>
+        step.type === 'transformation_function' &&
+        step.functionName === 'calculateTimeRange'
+    );
+    expect(calculateTimeRangeStep).toBeDefined();
+  });
 });

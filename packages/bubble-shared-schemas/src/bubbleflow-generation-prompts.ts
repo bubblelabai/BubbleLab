@@ -29,19 +29,40 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
    - The correct input parameters and their types
    - The expected output structure in result.data
    - How to properly handle success/error cases
-5. Replace the handle method with logic that fulfills the user's request
+5. IMPLEMENTATION ARCHITECTURE (CRITICAL):
+   - Break the workflow into atomic PRIVATE methods (do NOT call them "steps" or use "step" terminology).
+   - Types of methods:
+     a) Transformation Methods: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
+     b) Bubble Methods: Async functions that instantiate and run SINGLE Bubble (or logically grouped Bubbles).
+   - The 'handle()' method must be a CLEAN orchestrator:
+     - ONLY call private methods sequentially.
+     - Use 'if' statements and 'for' loops inside handle() to control execution flow.
+     - NO switch statements.
+     - NO direct Bubble instantiation inside handle().
+     - NO try-catch blocks inside handle() (handle errors inside private methods if needed, otherwise let them bubble up).
+     - NO complex logic inside handle() - use Transformation Methods instead.
+   - CRITICAL: Each private method MUST have a ONE-LINE comment describing WHAT the method does in specific, concrete terms (not generic phrases like "processes data" or "transforms input").
+     ONLY add a second "Condition:" line if the method is CONDITIONALLY executed (e.g., inside an if-statement, only runs when X is true). Do NOT add "Condition: Always runs" - if it always runs, omit the Condition line entirely.
+   - Example:
+     // Sanitizes raw webhook input by trimming whitespace and converting to uppercase
+     private transformData(input: string): string { ... }
+
+     // Sends cleaned input to AI for natural language processing
+     // Condition: Only runs when input length is greater than 3 characters
+     private async processWithAI(input: string): Promise<string> { ... }
+
 6. Use the exact parameter structures shown in the bubble details
 7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
 8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
 9. Return meaningful data from the handle method
 10. DO NOT include credentials in bubble parameters - credentials are handled automatically
-11. CRITICAL: Always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method
+11. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
 12. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
 13. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
-14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), forEach(), or other callback functions.
+14. When dealing with other async operations in for loops, batch the requests 5 at a time at most and use Promise.all to handle them efficiently. Always declare bubble instances separately outside of callbacks, loops, or maps before calling .action() - avoid instantiating bubbles directly within map(), for each(), or other callback functions.
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
-17. Write short and concise comment throughout the code and come up with good name about naming variables and functions. The variable name for bubble should describe the bubble's purpose and its role in the workflow. Be specific and make sure no same variable name is used for different bubbles. Bad name: slackNotifier, good name: slackOnChannelErrorNotifier.
+17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
 20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. ALL user-specific or environment-specific values MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). If a value needs to be configured by the user, it belongs in the payload interface, NOT in a constant.
@@ -58,8 +79,7 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
   - Credentials: add/update API keys required by flows
 
   **Important**: There are a set of system credentials that automatically used to run flow if no user credentials are provided, they are handled by bubble studio they are optional to run a flow.
-  System credentials are:
-  (IMPORTANT: NO DOT USE these credentials anywhere in the code, credentials values are not passed to the code, they are used automatically by the runtime engine, do not attempt to put credential type anywhere in the code. If custom credentials are needed, have payload interface include them and access them from the payload.)
+  System credentials are (WARNING: DO NOT use these credentials in the code, they are intended to be used by bubble studio and not accessible in side the workflow code! If a flow needs additional credential keys to run properly (for example calling HTTP endpoints with an integration that bubble lab doesn't yet support), ask user to provide in the payload.):
   ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
 
 - Panels:

@@ -1,7 +1,11 @@
 import { z } from 'zod';
-import { AvailableModels } from './ai-models.js';
+import { AvailableModels, type AvailableModel } from './ai-models.js';
 import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
+
+// Default model for Pearl AI agent
+export const PEARL_DEFAULT_MODEL: AvailableModel =
+  'openrouter/anthropic/claude-sonnet-4.5';
 
 // Reuse the ConversationMessageSchema from milk-tea to avoid duplication
 const ConversationMessageSchema = z.object({
@@ -36,7 +40,7 @@ export const PearlRequestSchema = z.object({
       'Previous conversation messages for multi-turn interactions (frontend manages state)'
     ),
 
-  model: AvailableModels.default('google/gemini-2.5-pro').describe(
+  model: AvailableModels.default(PEARL_DEFAULT_MODEL).describe(
     'AI model to use for Pearl agent'
   ),
 

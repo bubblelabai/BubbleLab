@@ -39,6 +39,7 @@ export const bubbleFlows = pgTable('bubble_flows', {
   originalCode: text('original_code'), // Store the original TypeScript code
   bubbleParameters: jsonb('bubble_parameters'), // Store parsed bubble parameters as JSONB
   metadata: jsonb('metadata'), // Store workflow metadata (outputDescription, etc.) as JSONB
+  workflow: jsonb('workflow'), // Store parsed workflow structure as JSONB
   eventType: text('event_type').notNull(),
   inputSchema: jsonb('input_schema'), // Store input schema
   webhookExecutionCount: integer('webhook_execution_count')

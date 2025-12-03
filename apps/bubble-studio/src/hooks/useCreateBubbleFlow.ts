@@ -107,6 +107,7 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         eventType: newFlow.eventType,
         webhookActive: newFlow.webhookActive,
         bubbleParameters: {}, // Will be populated by server response
+        workflow: undefined, // Will be populated by server response
         requiredCredentials: {},
         prompt: newFlow.prompt,
         inputSchema: null,

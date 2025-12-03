@@ -55,18 +55,13 @@ interface ContentIdeas {
 }
 
 export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const {
-      email,
-      productName,
-      industry = 'general',
-      targetAudience = 'general audience',
-      subreddits = ['ContentCreator', 'InstagramMarketing', 'NewTubers'],
-    } = payload;
+  // ============================================================================
+  // STEP 1: Scrape Exploding Topics
+  // ============================================================================
 
-    // STEP 1: Scrape Exploding Topics to discover trending topics related to the industry
-    // Exploding Topics aggregates emerging trends across tech, marketing, health, finance, etc.
-    // We'll use AI to extract topics relevant to the user's product/industry
+  // Scrapes Exploding Topics to discover trending topics related to the industry
+  // Exploding Topics aggregates emerging trends across tech, marketing, health, finance, etc.
+  private async scrapeExplodingTopics(): Promise<string> {
     const explodingTopicsScraper = new WebScrapeTool({
       url: 'https://www.explodingtopics.com',
       format: 'markdown',
@@ -80,7 +75,21 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       );
     }
 
-    // STEP 2: Use AI to extract trending topics relevant to the product/industry
+    return scrapeResult.data.content;
+  }
+
+  // ============================================================================
+  // STEP 2: Extract Trending Topics
+  // ============================================================================
+
+  // Uses AI to extract trending topics relevant to the product/industry
+  // from the scraped Exploding Topics content
+  private async extractTrendingTopics(
+    explodingTopicsContent: string,
+    productName: string,
+    industry: string,
+    targetAudience: string
+  ): Promise<{ topics: TrendTopic[] }> {
     const topicExtractionPrompt = `
   Analyze the following content from Exploding Topics and identify 3 trending topics
   that are most relevant to a product in the "${industry}" industry targeting "${targetAudience}".
@@ -90,7 +99,7 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
   Target Audience: ${targetAudience}
   
   Content from Exploding Topics:
-  ${scrapeResult.data.content.substring(0, 8000)}
+  ${explodingTopicsContent.substring(0, 8000)}
   
   Return a JSON object with:
   {
@@ -124,18 +133,25 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       );
     }
 
-    let extractedTopics: { topics: TrendTopic[] };
     try {
-      extractedTopics = JSON.parse(topicResult.data.response);
+      return JSON.parse(topicResult.data.response) as { topics: TrendTopic[] };
     } catch (error) {
       throw new Error('Failed to parse extracted topics JSON');
     }
+  }
 
-    // STEP 3: For each topic, do deep research sequentially (to avoid rate limits)
-    // This approach:
-    // - Avoids overwhelming the research agent with parallel requests
-    // - Provides better visibility in live output (you see each topic being researched)
-    // - Prevents rate limiting from search APIs
+  // ============================================================================
+  // STEP 3: Research Trending Topics
+  // ============================================================================
+
+  // For each topic, do deep research sequentially (to avoid rate limits)
+  // This approach:
+  // - Avoids overwhelming the research agent with parallel requests
+  // - Provides better visibility in live output (you see each topic being researched)
+  // - Prevents rate limiting from search APIs
+  private async researchTrendingTopics(extractedTopics: {
+    topics: TrendTopic[];
+  }): Promise<TrendData> {
     const allTrends: TrendData['trends'] = [];
 
     for (const topic of extractedTopics.topics) {
@@ -189,17 +205,23 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       throw new Error('Failed to research any trends - no data gathered');
     }
 
-    const trendData: TrendData = {
+    return {
       trends: allTrends,
     };
+  }
 
-    // STEP 4: Gather real-world creator insights from Reddit (in parallel)
-    // Reddit communities provide:
-    // - ContentCreator: General creator tips, what's working now, tool recommendations
-    // - tiktokcreators: TikTok-specific trends, algorithm insights, viral strategies
-    // - InstagramMarketing: IG Reels trends, hashtag strategies, posting best practices
-    // - NewTubers: YouTube Shorts trends, thumbnail strategies, what's getting views
-    // Running in parallel since Reddit API is separate and has its own rate limits
+  // ============================================================================
+  // STEP 4: Gather Reddit Insights
+  // ============================================================================
+
+  // Gather real-world creator insights from Reddit (in parallel)
+  // Reddit communities provide:
+  // - ContentCreator: General creator tips, what's working now, tool recommendations
+  // - tiktokcreators: TikTok-specific trends, algorithm insights, viral strategies
+  // - InstagramMarketing: IG Reels trends, hashtag strategies, posting best practices
+  // - NewTubers: YouTube Shorts trends, thumbnail strategies, what's getting views
+  // Running in parallel since Reddit API is separate and has its own rate limits
+  private async gatherRedditInsights(subreddits: string[]): Promise<string[]> {
     const redditPromises = subreddits.map(async (subreddit) => {
       const redditScraper = new RedditScrapeTool({
         subreddit,
@@ -223,14 +245,26 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
     });
 
     const redditResults = await Promise.all(redditPromises);
-    const redditInsights = redditResults.filter((r): r is string => r !== null);
+    return redditResults.filter((r): r is string => r !== null);
+  }
 
-    // STEP 5: Use AI to synthesize all research into actionable content ideas
-    // This combines:
-    // - Trending topics from Exploding Topics
-    // - Deep research on how each trend is being used in content
-    // - Real creator insights from Reddit communities
-    // The AI will adapt these trends specifically for the user's product/audience
+  // ============================================================================
+  // STEP 5: Generate Content Ideas
+  // ============================================================================
+
+  // Use AI to synthesize all research into actionable content ideas
+  // This combines:
+  // - Trending topics from Exploding Topics
+  // - Deep research on how each trend is being used in content
+  // - Real creator insights from Reddit communities
+  // The AI will adapt these trends specifically for the user's product/audience
+  private async generateContentIdeas(
+    trendData: TrendData,
+    redditInsights: string[],
+    productName: string,
+    industry: string,
+    targetAudience: string
+  ): Promise<ContentIdeas> {
     const adaptationPrompt = `
   You are a creative content strategist. Analyze the following trending content formats and generate actionable content ideas adapted for a specific product.
   
@@ -287,14 +321,24 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       );
     }
 
-    let contentIdeas: ContentIdeas;
     try {
-      contentIdeas = JSON.parse(ideationResult.data.response);
+      return JSON.parse(ideationResult.data.response) as ContentIdeas;
     } catch (error) {
       throw new Error('Failed to parse content ideas JSON');
     }
+  }
 
-    // 4. Create a beautifully formatted document for Google Drive
+  // ============================================================================
+  // STEP 6: Create Drive Document
+  // ============================================================================
+
+  // Creates a beautifully formatted document for Google Drive
+  private async createDriveDocument(
+    productName: string,
+    contentIdeas: ContentIdeas,
+    trendData: TrendData,
+    subreddits: string[]
+  ): Promise<{ fileId: string }> {
     const documentContent = `
   # 📈 Content Creation Trends Report
   **Generated for: ${productName}**
@@ -357,7 +401,6 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
   *Generated by BubbleLab Content Trends Workflow*
       `.trim();
 
-    // 5. Upload to Google Drive
     const driveUpload = new GoogleDriveBubble({
       operation: 'upload_file',
       name: `Content_Trends_${productName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`,
@@ -373,7 +416,23 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
       );
     }
 
-    // 6. Send email summary with HTML formatting
+    return {
+      fileId: driveResult.data?.file?.id as string,
+    };
+  }
+
+  // ============================================================================
+  // STEP 7: Send Email Report
+  // ============================================================================
+
+  // Sends email summary with HTML formatting
+  private async sendEmailReport(
+    email: string,
+    productName: string,
+    contentIdeas: ContentIdeas,
+    trendData: TrendData,
+    driveFileId: string
+  ): Promise<{ emailId: string }> {
     const htmlEmail = `
   <!DOCTYPE html>
   <html>
@@ -477,7 +536,7 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
             <tr>
               <td style="padding: 30px; background-color: #f8f9fa; text-align: center;">
                 <p style="margin: 0 0 15px 0; color: #495057; font-size: 15px;">Full report with all ${contentIdeas.ideas.length} ideas saved to Google Drive</p>
-                <a href="https://drive.google.com/file/d/${driveResult.data?.file?.id}/view" style="display: inline-block; padding: 12px 30px; background-color: #ff6b6b; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">View Full Report</a>
+                <a href="https://drive.google.com/file/d/${driveFileId}/view" style="display: inline-block; padding: 12px 30px; background-color: #ff6b6b; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">View Full Report</a>
               </td>
             </tr>
   
@@ -511,11 +570,72 @@ export class ContentCreationTrendsFlow extends BubbleFlow<'webhook/http'> {
     }
 
     return {
+      emailId: emailResult.data?.email_id as string,
+    };
+  }
+
+  // ============================================================================
+  // MAIN WORKFLOW ORCHESTRATION
+  // ============================================================================
+
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const {
+      email,
+      productName,
+      industry = 'general',
+      targetAudience = 'general audience',
+      subreddits = ['ContentCreator', 'InstagramMarketing', 'NewTubers'],
+    } = payload;
+
+    // STEP 1: Scrape Exploding Topics
+    const explodingTopicsContent = await this.scrapeExplodingTopics();
+
+    // STEP 2: Extract trending topics
+    const extractedTopics = await this.extractTrendingTopics(
+      explodingTopicsContent,
+      productName,
+      industry,
+      targetAudience
+    );
+
+    // STEP 3: Research each trending topic
+    const trendData = await this.researchTrendingTopics(extractedTopics);
+
+    // STEP 4: Gather Reddit insights (in parallel)
+    const redditInsights = await this.gatherRedditInsights(subreddits);
+
+    // STEP 5: Generate content ideas
+    const contentIdeas = await this.generateContentIdeas(
+      trendData,
+      redditInsights,
+      productName,
+      industry,
+      targetAudience
+    );
+
+    // STEP 6: Create and upload Drive document
+    const driveResult = await this.createDriveDocument(
+      productName,
+      contentIdeas,
+      trendData,
+      subreddits
+    );
+
+    // STEP 7: Send email report
+    const emailResult = await this.sendEmailReport(
+      email,
+      productName,
+      contentIdeas,
+      trendData,
+      driveResult.fileId
+    );
+
+    return {
       message: `Successfully generated ${contentIdeas.ideas.length} content ideas from ${trendData.trends.length} trending formats`,
       trendsCount: trendData.trends.length,
       ideasCount: contentIdeas.ideas.length,
-      fileId: driveResult.data?.file?.id as string,
-      emailId: emailResult.data?.email_id as string,
+      fileId: driveResult.fileId,
+      emailId: emailResult.emailId,
     };
   }
 }

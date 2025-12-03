@@ -64,10 +64,17 @@ export abstract class BaseBubble<
 
     try {
       this.params = this.schema.parse(params) as TParams;
+      const normalizedContext = context;
       // Enrich context with child variableId/currentUniqueId if dependencyGraph is provided
-      if (context && context.dependencyGraph && context.currentUniqueId) {
+      if (
+        normalizedContext &&
+        normalizedContext.dependencyGraph &&
+        normalizedContext.currentUniqueId
+      ) {
         console.debug('[BaseBubble] Computing child context');
-        const next = this.computeChildContext(context);
+        // Print current context
+        console.log('[BaseBubble] Current context:', normalizedContext);
+        const next = this.computeChildContext(normalizedContext);
         this.context = next;
         console.debug(
           '[BaseBubble] Computed child context unique id:',
@@ -79,7 +86,7 @@ export abstract class BaseBubble<
           this.context?.variableId
         );
       } else {
-        this.context = context;
+        this.context = normalizedContext;
       }
     } catch (error) {
       const errorMessage =
@@ -120,11 +127,15 @@ export abstract class BaseBubble<
       return null;
     };
 
+    console.log('Current ID:', this.name);
+    console.log('Current varid:', this.context?.variableId);
+    console.log('Finding parent node by uniqueId:', currentId);
     const parentNode = currentId ? findByUniqueId(graph, currentId) : graph;
 
     // If the current bubble matches the node at currentUniqueId, don't advance; keep IDs from that node
     if (parentNode && parentNode.name === this.name) {
       const sameNodeVarId =
+        parentContext.variableId ??
         (parentNode as unknown as { variableId?: number }).variableId ??
         parentContext.variableId;
       return {
@@ -161,7 +172,7 @@ export abstract class BaseBubble<
     let matchingChild = children.find(
       (c) => c.variableName === this.instanceId
     );
-    console.debug(
+    console.log(
       `[BaseBubble] ${this.name}.computeChildContext: Matching child by variableName:`,
       matchingChild
     );
@@ -170,7 +181,7 @@ export abstract class BaseBubble<
       matchingChild = children.find(
         (c) => c.uniqueId === childUniqueId || c.name === this.name
       );
-      console.debug(
+      console.log(
         `[BaseBubble] ${this.name}.computeChildContext: Matching child by uniqueId:`,
         matchingChild
       );
@@ -187,6 +198,7 @@ export abstract class BaseBubble<
       __uniqueIdCounters__: counters,
     };
   }
+
   saveResult<R extends BubbleOperationResult>(result: BubbleResult<R>): void {
     this.previousResult = result as BubbleResult<BubbleOperationResult>;
   }

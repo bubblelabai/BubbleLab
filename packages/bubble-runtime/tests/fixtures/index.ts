@@ -43,6 +43,15 @@ export const fixtures = {
   'param-as-var': '',
   'method-inside-handler': '',
   'flow-with-class-method-and-log': '',
+  'steps-workflow': '',
+  'multi-agent': '',
+  'invalid-step-flow': '',
+  'calender-step-flow': '',
+  'credential-in-flow': '',
+  'reddit-flow-step': '',
+  'categorizer-step-flow': '',
+  'content-creation-step': '',
+  'linkedin-gen-step-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

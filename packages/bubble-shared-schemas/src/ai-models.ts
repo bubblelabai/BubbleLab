@@ -20,6 +20,8 @@ export const AvailableModels = z.enum([
   // OpenRouter models
   'openrouter/x-ai/grok-code-fast-1',
   'openrouter/z-ai/glm-4.6',
+  'openrouter/anthropic/claude-sonnet-4.5',
+  'openrouter/google/gemini-3-pro-preview',
   'openrouter/morph/morph-v3-large',
   'openrouter/x-ai/grok-4.1-fast',
   'openrouter/openai/gpt-oss-120b',
