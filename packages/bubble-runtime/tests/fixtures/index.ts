@@ -52,6 +52,7 @@ export const fixtures = {
   'categorizer-step-flow': '',
   'content-creation-step': '',
   'linkedin-gen-step-flow': '',
+  'for-and-promises-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
