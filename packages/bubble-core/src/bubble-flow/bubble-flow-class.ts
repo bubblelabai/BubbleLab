@@ -1,4 +1,5 @@
 import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
+import { hashToVariableId } from '@bubblelab/shared-schemas';
 import type { BubbleFlowOperationResult } from '../types/bubble.js';
 import type { BubbleLogger } from '../logging/BubbleLogger.js';
 
@@ -8,6 +9,7 @@ export abstract class BubbleFlow<
   public readonly name: string;
   public readonly description: string;
   protected logger?: BubbleLogger;
+  private __currentInvocationCallSiteKey?: string;
 
   /**
    * Cron schedule expression for schedule/cron event types.
@@ -48,5 +50,33 @@ export abstract class BubbleFlow<
    */
   setLogger(logger: BubbleLogger): void {
     this.logger = logger;
+  }
+
+  __setInvocationCallSiteKey(key?: string): string | undefined {
+    const previous = this.__currentInvocationCallSiteKey;
+    this.__currentInvocationCallSiteKey = key || undefined;
+    return previous;
+  }
+
+  __restoreInvocationCallSiteKey(previous?: string | undefined): void {
+    this.__currentInvocationCallSiteKey = previous || undefined;
+  }
+
+  __getInvocationCallSiteKey(): string | undefined {
+    return this.__currentInvocationCallSiteKey;
+  }
+
+  __computeInvocationVariableId(
+    originalVariableId?: number
+  ): number | undefined {
+    if (
+      typeof originalVariableId !== 'number' ||
+      !this.__currentInvocationCallSiteKey
+    ) {
+      return originalVariableId;
+    }
+    return hashToVariableId(
+      `${originalVariableId}:${this.__currentInvocationCallSiteKey}`
+    );
   }
 }

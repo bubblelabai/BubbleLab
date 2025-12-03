@@ -9,6 +9,11 @@ import { BubbleScript } from '../parse/BubbleScript';
 import { LoggerInjector } from './LoggerInjector';
 import { replaceBubbleInstantiation } from '../utils/parameter-formatter';
 
+const INVOCATION_GRAPH_START_MARKER =
+  '// __BUBBLE_INVOCATION_DEPENDENCY_MAP_START__';
+const INVOCATION_GRAPH_END_MARKER =
+  '// __BUBBLE_INVOCATION_DEPENDENCY_MAP_END__';
+
 export interface UserCredentialWithId {
   /** The variable id of the bubble */
   bubbleVarId: number | string;
@@ -507,7 +512,9 @@ export class BubbleInjector {
    * tracks line shifts to adjust subsequent bubble locations.
    */
   private reapplyBubbleInstantiations(): string {
-    const bubbles = Object.values(this.bubbleScript.getParsedBubbles());
+    const bubbles = Object.values(this.bubbleScript.getParsedBubbles()).filter(
+      (bubble) => !bubble.invocationCallSiteKey
+    );
     const lines = this.bubbleScript.currentBubbleScript.split('\n');
     // Sort bubbles by start line to process in order
     const sortedBubbles = [...bubbles].sort(
@@ -543,6 +550,99 @@ export class BubbleInjector {
     return finalScript;
   }
 
+  private buildInvocationDependencyGraphLiteral(): string {
+    const callSiteMap: Record<string, Record<string, unknown>> = {};
+    for (const bubble of Object.values(this.bubbleScript.getParsedBubbles())) {
+      if (
+        !bubble.invocationCallSiteKey ||
+        typeof bubble.clonedFromVariableId !== 'number' ||
+        !bubble.dependencyGraph
+      ) {
+        continue;
+      }
+      const callSiteKey = bubble.invocationCallSiteKey;
+      const originalId = String(bubble.clonedFromVariableId);
+      if (!callSiteMap[callSiteKey]) {
+        callSiteMap[callSiteKey] = {};
+      }
+      callSiteMap[callSiteKey][originalId] = bubble.dependencyGraph;
+    }
+    const literal = JSON.stringify(callSiteMap, null, 2).replace(
+      /</g,
+      '\\u003c'
+    );
+    return literal || '{}';
+  }
+
+  private injectInvocationDependencyGraphMap(): void {
+    const literal = this.buildInvocationDependencyGraphLiteral();
+    const lines = this.bubbleScript.currentBubbleScript.split('\n');
+
+    const startIndex = lines.findIndex(
+      (line) => line.trim() === INVOCATION_GRAPH_START_MARKER
+    );
+    if (startIndex !== -1) {
+      const endIndex = lines.findIndex(
+        (line, idx) =>
+          idx >= startIndex && line.trim() === INVOCATION_GRAPH_END_MARKER
+      );
+      const removeUntil = endIndex !== -1 ? endIndex : startIndex;
+      lines.splice(startIndex, removeUntil - startIndex + 1);
+      if (lines[startIndex] === '') {
+        lines.splice(startIndex, 1);
+      }
+    }
+
+    const literalLines = literal
+      .split('\n')
+      .map((line) => (line.length > 0 ? `  ${line}` : line));
+
+    const blockLines = [
+      '',
+      INVOCATION_GRAPH_START_MARKER,
+      'const __bubbleInvocationDependencyGraphs = Object.freeze(',
+      ...literalLines,
+      ');',
+      INVOCATION_GRAPH_END_MARKER,
+      '',
+    ];
+
+    let insertIndex = 0;
+    let i = 0;
+    let insideImport = false;
+    while (i < lines.length) {
+      const trimmed = lines[i].trim();
+
+      if (!insideImport && trimmed.startsWith('import')) {
+        insideImport = !trimmed.includes(';');
+        insertIndex = i + 1;
+        i += 1;
+        continue;
+      }
+
+      if (insideImport) {
+        insertIndex = i + 1;
+        if (trimmed.includes(';')) {
+          insideImport = false;
+        }
+        i += 1;
+        continue;
+      }
+
+      if (trimmed === '') {
+        insertIndex = i + 1;
+        i += 1;
+        continue;
+      }
+
+      break;
+    }
+
+    lines.splice(insertIndex, 0, ...blockLines);
+    this.bubbleScript.currentBubbleScript = lines.join('\n');
+    this.bubbleScript.reparseAST();
+  }
+
   /**
    * Apply new bubble parameters by converting them back to code and injecting in place
    * Injects logger to the bubble instantiations
@@ -559,7 +659,7 @@ export class BubbleInjector {
         );
         // Normalize to single-line instantiations and refresh AST
         this.reapplyBubbleInstantiations();
-
+        this.injectInvocationDependencyGraphMap();
         this.bubbleScript.showScript(
           '[BubbleInjector] After reapplyBubbleInstantiations'
         );

@@ -138,12 +138,26 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
 
   const bubbleEntries = useMemo(() => {
-    const entries = Object.entries(bubbleParameters);
-    // Sort by startLine to ensure consistent ordering (matching edge creation logic)
-    return entries.sort(([, a], [, b]) => {
-      const aStartLine = (a as ParsedBubble)?.location?.startLine ?? 0;
-      const bStartLine = (b as ParsedBubble)?.location?.startLine ?? 0;
-      return aStartLine - bStartLine;
+    const entries = Object.entries(bubbleParameters).sort(([, a], [, b]) => {
+      const aStart = (a as ParsedBubble)?.location?.startLine ?? 0;
+      const bStart = (b as ParsedBubble)?.location?.startLine ?? 0;
+      return aStart - bStart;
+    });
+    // Drop original bubbles that were cloned for invocation context
+    const clonedFromSet = new Set(
+      entries
+        .map(
+          ([, bubble]) => (bubble as ParsedBubbleWithInfo)?.clonedFromVariableId
+        )
+        .filter((id): id is number => typeof id === 'number')
+    );
+    return entries.filter(([, bubble]) => {
+      const typedBubble = bubble as ParsedBubbleWithInfo;
+      if (typedBubble.invocationCallSiteKey) return true;
+      if (clonedFromSet.has(typedBubble.variableId)) {
+        return false;
+      }
+      return true;
     });
   }, [bubbleParameters]);
 

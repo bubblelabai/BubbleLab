@@ -481,12 +481,12 @@ describe('BubbleRunner correctly runs and plans', () => {
         const formatOutputNode = findFormatOutputNode(workflow?.root || []);
         console.log('Format output node:', formatOutputNode);
         if (formatOutputNode && 'variableId' in formatOutputNode) {
-          expect(formatOutputNode.variableId).toBe(851596);
+          expect(formatOutputNode.variableId).toBe(212544);
         }
 
         // Should have injected logging for the formatOutput function
         expect(runner.bubbleScript.bubblescript).toContain(
-          "__bubbleFlowSelf.logger?.logFunctionCallComplete(851596, 'formatOutput',"
+          "__bubbleFlowSelf.logger?.logFunctionCallComplete(212544, 'formatOutput',"
         );
       });
       it('should inject function call logging', async () => {

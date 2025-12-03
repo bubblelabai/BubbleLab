@@ -157,6 +157,16 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
     endCol: number;
   };
   description?: string;
+  /**
+   * Indicates that this bubble was cloned for a specific invocation context,
+   * using the provided call site key for uniqueness.
+   */
+  invocationCallSiteKey?: string;
+  /**
+   * Reference to the original parsed bubble's variableId when this entry
+   * represents an invocation-specific clone.
+   */
+  clonedFromVariableId?: number;
 }
 
 export const BubbleNodeTypeSchema = z.enum([
@@ -212,6 +222,8 @@ export const ParsedBubbleWithInfoSchema = z.object({
     endCol: z.number(),
   }),
   description: z.string().optional(),
+  invocationCallSiteKey: z.string().optional(),
+  clonedFromVariableId: z.number().optional(),
 });
 
 // Inferred types from Zod schemas

@@ -364,6 +364,7 @@ export class LoggerInjector {
       endLineNumber,
       methodName,
       variableId,
+      invocationIndex,
       hasAwait,
       arguments: args,
       statementType,
@@ -385,9 +386,14 @@ export class LoggerInjector {
     // Use pre-parsed arguments
     const argsArray = args ? `[${args}]` : '[]';
 
+    const callSiteKey = buildCallSiteKey(methodName, invocationIndex);
+    const callSiteKeyLiteral = JSON.stringify(callSiteKey);
     const resultVar = `__functionCallResult_${variableId}`;
     const durationVar = `__functionCallDuration_${variableId}`;
     const argsVar = `__functionCallArgs_${variableId}`;
+    const prevInvocationVar = `__prevInvocationCallSiteKey_${variableId}`;
+    const setInvocationLine = `${indentation}const ${prevInvocationVar} = __bubbleFlowSelf?.__setInvocationCallSiteKey?.(${callSiteKeyLiteral});`;
+    const restoreInvocationLine = `${indentation}__bubbleFlowSelf?.__restoreInvocationCallSiteKey?.(${prevInvocationVar});`;
 
     const startLog = `${indentation}const __functionCallStart_${variableId} = Date.now();`;
     const argsLog = `${indentation}const ${argsVar} = ${argsArray};`;
@@ -411,6 +417,7 @@ export class LoggerInjector {
           methodName,
           resultVar,
           variableId,
+          callSiteKeyLiteral,
         }
       );
       return;
@@ -433,8 +440,10 @@ export class LoggerInjector {
         startLog,
         argsLog,
         startCallLog,
+        setInvocationLine,
         callLine,
         completeLog,
+        restoreInvocationLine,
         assignLine
       );
       return;
@@ -450,8 +459,10 @@ export class LoggerInjector {
         startLog,
         argsLog,
         startCallLog,
+        setInvocationLine,
         callLine,
         completeLog,
+        restoreInvocationLine,
         returnLine
       );
       return;
@@ -467,8 +478,10 @@ export class LoggerInjector {
         startLog,
         argsLog,
         startCallLog,
+        setInvocationLine,
         callLine,
         completeLog,
+        restoreInvocationLine,
         assignLine
       );
       return;
@@ -483,8 +496,10 @@ export class LoggerInjector {
       startLog,
       argsLog,
       startCallLog,
+      setInvocationLine,
       callLine,
-      completeLog
+      completeLog,
+      restoreInvocationLine
     );
   }
 
@@ -502,6 +517,7 @@ export class LoggerInjector {
       methodName: string;
       resultVar: string;
       variableId: number;
+      callSiteKeyLiteral: string;
     }
   ): void {
     const {
@@ -513,21 +529,24 @@ export class LoggerInjector {
       methodName,
       resultVar,
       variableId,
+      callSiteKeyLiteral,
     } = details;
 
     const originalLines = lines.slice(lineIndex, lineIndex + linesToRemove);
     const lastOriginalLine = originalLines[originalLines.length - 1] || '';
     const trailingComma = lastOriginalLine.trimEnd().endsWith(',');
     const innerIndent = `${indentation}  `;
-
+    const prevInvocationVar = `__promiseAllPrevInvocationCallSiteKey_${variableId}`;
     const wrappedLines = [
       `${indentation}(async () => {`,
       `${innerIndent}const __functionCallStart_${variableId} = Date.now();`,
       `${innerIndent}const ${argsVar} = ${argsArray};`,
       `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallStart(${variableId}, '${methodName}', ${argsVar}, ${lineNumber});`,
+      `${innerIndent}const ${prevInvocationVar} = __bubbleFlowSelf?.__setInvocationCallSiteKey?.(${callSiteKeyLiteral});`,
       `${innerIndent}const ${resultVar} = await this.${methodName}(${args});`,
       `${innerIndent}const ${durationVar} = Date.now() - __functionCallStart_${variableId};`,
       `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`,
+      `${innerIndent}__bubbleFlowSelf?.__restoreInvocationCallSiteKey?.(${prevInvocationVar});`,
       `${innerIndent}return ${resultVar};`,
       `${indentation}})()${trailingComma ? ',' : ''}`,
     ];

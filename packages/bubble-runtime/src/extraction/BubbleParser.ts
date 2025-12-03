@@ -36,6 +36,8 @@ export class BubbleParser {
   private bubbleScript: string;
   private cachedAST: TSESTree.Program | null = null;
   private methodInvocationOrdinalMap: Map<string, number> = new Map();
+  private invocationBubbleCloneCache: Map<string, ParsedBubbleWithInfo> =
+    new Map();
 
   constructor(bubbleScript: string) {
     this.bubbleScript = bubbleScript;
@@ -165,8 +167,13 @@ export class BubbleParser {
     // Store AST for method definition lookup
     this.cachedAST = ast;
     this.methodInvocationOrdinalMap.clear();
+    this.invocationBubbleCloneCache.clear();
     // Build hierarchical workflow structure
     const workflow = this.buildWorkflowTree(ast, nodes, scopeManager);
+
+    for (const clone of this.invocationBubbleCloneCache.values()) {
+      nodes[clone.variableId] = clone;
+    }
 
     return {
       bubbles: nodes,
@@ -3065,8 +3072,10 @@ export class BubbleParser {
         }
       | undefined = undefined;
 
+    const methodChildren: WorkflowNode[] = [];
     const children: WorkflowNode[] = [];
     let description: string | undefined = undefined;
+    const methodBubbleMap = new Map<number, ParsedBubbleWithInfo>();
 
     if (callInfo.isMethodCall && this.cachedAST) {
       const methodDef = this.findMethodDefinition(
@@ -3089,7 +3098,6 @@ export class BubbleParser {
         // Filter bubbleMap to only include bubbles within this method's scope
         const methodStartLine = methodDef.method.loc?.start.line || 0;
         const methodEndLine = methodDef.method.loc?.end.line || 0;
-        const methodBubbleMap = new Map<number, ParsedBubbleWithInfo>();
 
         for (const [id, bubble] of bubbleMap.entries()) {
           // Include bubble if it's within the method's line range
@@ -3109,23 +3117,47 @@ export class BubbleParser {
             scopeManager
           );
           if (node) {
-            children.push(node);
+            methodChildren.push(node);
           }
         }
+      }
+    }
+
+    const shouldTrackInvocation = callInfo.isMethodCall && !!methodDefinition;
+    const invocationIndex = shouldTrackInvocation
+      ? this.getNextInvocationIndex(callInfo.functionName)
+      : 0;
+    const callSiteKey =
+      shouldTrackInvocation && invocationIndex > 0
+        ? buildCallSiteKey(callInfo.functionName, invocationIndex)
+        : null;
+    const invocationCloneMap =
+      callSiteKey !== null ? new Map<number, number>() : null;
+    const fallbackCallSiteKey = `${callInfo.functionName}:${location.startLine}:${location.startCol}`;
+
+    if (methodChildren.length > 0) {
+      if (callSiteKey && methodBubbleMap.size > 0 && invocationCloneMap) {
+        const clonedMethodChildren = this.cloneWorkflowNodesForInvocation(
+          methodChildren,
+          callSiteKey,
+          methodBubbleMap,
+          invocationCloneMap
+        );
+        children.push(...clonedMethodChildren);
+      } else {
+        children.push(...methodChildren);
       }
     }
 
     // After method definition processing, check for callback arguments
     if (callInfo.callExpr && callInfo.callExpr.arguments.length > 0) {
       for (const arg of callInfo.callExpr.arguments) {
-        // Check if argument is a callback function
         if (
           arg.type === 'ArrowFunctionExpression' ||
           arg.type === 'FunctionExpression'
         ) {
           const callbackBody = this.extractCallbackBody(arg);
           if (callbackBody && callbackBody.length > 0) {
-            // Filter bubbleMap to only include bubbles within this callback's scope
             const callbackStartLine = arg.loc?.start.line || 0;
             const callbackEndLine = arg.loc?.end.line || 0;
 
@@ -3139,7 +3171,7 @@ export class BubbleParser {
               }
             }
 
-            // Recursively build workflow nodes from callback body
+            const callbackNodes: WorkflowNode[] = [];
             for (const callbackStmt of callbackBody) {
               const node = this.buildWorkflowNodeFromStatement(
                 callbackStmt,
@@ -3147,8 +3179,20 @@ export class BubbleParser {
                 scopeManager
               );
               if (node) {
-                children.push(node);
+                callbackNodes.push(node);
               }
+            }
+
+            if (callSiteKey && callbackNodes.length > 0 && invocationCloneMap) {
+              const clonedCallbacks = this.cloneWorkflowNodesForInvocation(
+                callbackNodes,
+                callSiteKey,
+                callbackBubbleMap,
+                invocationCloneMap
+              );
+              children.push(...clonedCallbacks);
+            } else {
+              children.push(...callbackNodes);
             }
           }
         }
@@ -3181,12 +3225,8 @@ export class BubbleParser {
         }
       }
 
-      const invocationIndex = callInfo.isMethodCall
-        ? this.getNextInvocationIndex(callInfo.functionName)
-        : 0;
-      const variableId = hashToVariableId(
-        buildCallSiteKey(callInfo.functionName, invocationIndex)
-      );
+      const idKey = callSiteKey ?? fallbackCallSiteKey;
+      const variableId = hashToVariableId(idKey);
 
       const transformationNode: TransformationFunctionWorkflowNode = {
         type: 'transformation_function',
@@ -3223,12 +3263,7 @@ export class BubbleParser {
       return transformationNode;
     }
 
-    const invocationIndex = callInfo.isMethodCall
-      ? this.getNextInvocationIndex(callInfo.functionName)
-      : 0;
-    const variableId = hashToVariableId(
-      buildCallSiteKey(callInfo.functionName, invocationIndex)
-    );
+    const variableId = hashToVariableId(callSiteKey ?? fallbackCallSiteKey);
 
     const functionCallNode: FunctionCallWorkflowNode = {
       type: 'function_call',
@@ -3387,6 +3422,145 @@ export class BubbleParser {
     const next = (this.methodInvocationOrdinalMap.get(methodName) ?? 0) + 1;
     this.methodInvocationOrdinalMap.set(methodName, next);
     return next;
+  }
+
+  private cloneWorkflowNodesForInvocation(
+    nodes: WorkflowNode[],
+    callSiteKey: string,
+    bubbleSourceMap: Map<number, ParsedBubbleWithInfo>,
+    localCloneMap: Map<number, number>
+  ): WorkflowNode[] {
+    return nodes.map((node) =>
+      this.cloneWorkflowNodeForInvocation(
+        node,
+        callSiteKey,
+        bubbleSourceMap,
+        localCloneMap
+      )
+    );
+  }
+
+  private cloneWorkflowNodeForInvocation(
+    node: WorkflowNode,
+    callSiteKey: string,
+    bubbleSourceMap: Map<number, ParsedBubbleWithInfo>,
+    localCloneMap: Map<number, number>
+  ): WorkflowNode {
+    if (node.type === 'bubble') {
+      const originalId = Number(node.variableId);
+      const clonedId = this.ensureClonedBubbleForInvocation(
+        originalId,
+        callSiteKey,
+        bubbleSourceMap,
+        localCloneMap
+      );
+      return { ...node, variableId: clonedId };
+    }
+
+    const clonedNode: WorkflowNode = { ...node };
+    if ('children' in node && Array.isArray((node as any).children)) {
+      (clonedNode as any).children = (node as any).children.map(
+        (child: WorkflowNode) =>
+          this.cloneWorkflowNodeForInvocation(
+            child,
+            callSiteKey,
+            bubbleSourceMap,
+            localCloneMap
+          )
+      );
+    }
+    if ('elseBranch' in node && Array.isArray((node as any).elseBranch)) {
+      (clonedNode as any).elseBranch = (node as any).elseBranch.map(
+        (child: WorkflowNode) =>
+          this.cloneWorkflowNodeForInvocation(
+            child,
+            callSiteKey,
+            bubbleSourceMap,
+            localCloneMap
+          )
+      );
+    }
+    if ('catchBlock' in node && Array.isArray((node as any).catchBlock)) {
+      (clonedNode as any).catchBlock = (node as any).catchBlock.map(
+        (child: WorkflowNode) =>
+          this.cloneWorkflowNodeForInvocation(
+            child,
+            callSiteKey,
+            bubbleSourceMap,
+            localCloneMap
+          )
+      );
+    }
+    return clonedNode;
+  }
+
+  private ensureClonedBubbleForInvocation(
+    originalId: number,
+    callSiteKey: string,
+    bubbleSourceMap: Map<number, ParsedBubbleWithInfo>,
+    localCloneMap: Map<number, number>
+  ): number {
+    const existing = localCloneMap.get(originalId);
+    if (existing) {
+      return existing;
+    }
+    const sourceBubble = bubbleSourceMap.get(originalId);
+    if (!sourceBubble) {
+      return originalId;
+    }
+    const clonedId = this.cloneBubbleForInvocation(sourceBubble, callSiteKey);
+    localCloneMap.set(originalId, clonedId);
+    return clonedId;
+  }
+
+  private cloneBubbleForInvocation(
+    bubble: ParsedBubbleWithInfo,
+    callSiteKey: string
+  ): number {
+    const cacheKey = `${bubble.variableId}:${callSiteKey}`;
+    const existing = this.invocationBubbleCloneCache.get(cacheKey);
+    if (existing) {
+      return existing.variableId;
+    }
+
+    const clonedBubble: ParsedBubbleWithInfo = {
+      ...bubble,
+      variableId: hashToVariableId(cacheKey),
+      invocationCallSiteKey: callSiteKey,
+      clonedFromVariableId: bubble.variableId,
+      parameters: JSON.parse(JSON.stringify(bubble.parameters)),
+      dependencyGraph: bubble.dependencyGraph
+        ? this.cloneDependencyGraphNodeForInvocation(
+            bubble.dependencyGraph,
+            callSiteKey
+          )
+        : undefined,
+    };
+
+    this.invocationBubbleCloneCache.set(cacheKey, clonedBubble);
+    return clonedBubble.variableId;
+  }
+
+  private cloneDependencyGraphNodeForInvocation(
+    node: DependencyGraphNode,
+    callSiteKey: string
+  ): DependencyGraphNode {
+    const uniqueId = node.uniqueId
+      ? `${node.uniqueId}@${callSiteKey}`
+      : undefined;
+    const variableId =
+      typeof node.variableId === 'number'
+        ? hashToVariableId(`${node.variableId}:${callSiteKey}`)
+        : undefined;
+
+    return {
+      ...node,
+      uniqueId,
+      variableId,
+      dependencies: node.dependencies.map((child) =>
+        this.cloneDependencyGraphNodeForInvocation(child, callSiteKey)
+      ),
+    };
   }
 
   /**

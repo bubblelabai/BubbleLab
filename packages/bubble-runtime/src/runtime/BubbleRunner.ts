@@ -659,7 +659,7 @@ export class BubbleRunner {
       // Clean up temporary file
       if (tempFilePath) {
         try {
-          // await fs.unlink(tempFilePath);
+          await fs.unlink(tempFilePath);
         } catch (cleanupError) {
           // Ignore cleanup errors to avoid masking the original error
           console.warn(

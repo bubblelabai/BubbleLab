@@ -155,10 +155,16 @@ export function extractStepGraph(
         const stepId = `step-${stepCounter++}`;
         const stepLevel = frontier.level;
 
-        const bubbleIds = extractBubbleIdsByLineRange(
-          functionCallNode.methodDefinition.location,
-          bubbles
+        const childBubbleIds = extractBubbleIdsFromChildren(
+          functionCallNode.children || []
         );
+        const bubbleIds =
+          childBubbleIds.length > 0 && functionCallNode.isMethodCall
+            ? childBubbleIds
+            : extractBubbleIdsByLineRange(
+                functionCallNode.methodDefinition.location,
+                bubbles
+              );
         const controlFlowNodes = extractControlFlowNodes(
           functionCallNode.children || []
         );
@@ -331,10 +337,16 @@ export function extractStepGraph(
             if (!fnChild.methodDefinition) continue;
 
             const stepId = `step-${stepCounter++}`;
-            const bubbleIds = extractBubbleIdsByLineRange(
-              fnChild.methodDefinition.location,
-              bubbles
+            const childBubbleIds = extractBubbleIdsFromChildren(
+              fnChild.children || []
             );
+            const bubbleIds =
+              childBubbleIds.length > 0 && fnChild.isMethodCall
+                ? childBubbleIds
+                : extractBubbleIdsByLineRange(
+                    fnChild.methodDefinition.location,
+                    bubbles
+                  );
             const controlFlowNodes = extractControlFlowNodes(
               fnChild.children || []
             );
@@ -434,12 +446,16 @@ export function extractStepsFromWorkflow(
         continue;
       }
 
-      // Extract bubbles by line range - includes ALL bubbles in the method
-      // (even those in arrow functions, .map() callbacks, etc.)
-      const bubbleIds = extractBubbleIdsByLineRange(
-        functionCallNode.methodDefinition.location,
-        bubbles
+      const childBubbleIds = extractBubbleIdsFromChildren(
+        functionCallNode.children || []
       );
+      const bubbleIds =
+        childBubbleIds.length > 0 && functionCallNode.isMethodCall
+          ? childBubbleIds
+          : extractBubbleIdsByLineRange(
+              functionCallNode.methodDefinition.location,
+              bubbles
+            );
 
       // Extract control flow nodes (if/for/while) for edge generation
       const controlFlowNodes = extractControlFlowNodes(
@@ -472,11 +488,16 @@ export function extractStepsFromWorkflow(
             continue;
           }
 
-          // Extract bubbles by line range
-          const bubbleIds = extractBubbleIdsByLineRange(
-            functionCallNode.methodDefinition.location,
-            bubbles
+          const childBubbleIds = extractBubbleIdsFromChildren(
+            functionCallNode.children || []
           );
+          const bubbleIds =
+            childBubbleIds.length > 0 && functionCallNode.isMethodCall
+              ? childBubbleIds
+              : extractBubbleIdsByLineRange(
+                  functionCallNode.methodDefinition.location,
+                  bubbles
+                );
 
           // Extract control flow nodes
           const controlFlowNodes = extractControlFlowNodes(
@@ -655,13 +676,25 @@ function extractTopLevelBubbles(
   // Collect all bubbles inside function calls (recursively)
   collectBubblesInSteps(workflow.root);
 
+  const clonesReferencingOriginal = new Set<number>();
+  for (const bubble of Object.values(bubbles)) {
+    if (typeof bubble.clonedFromVariableId === 'number') {
+      clonesReferencingOriginal.add(bubble.clonedFromVariableId);
+    }
+  }
+
   // Find bubbles not in steps
   const topLevelBubbleIds: number[] = [];
   for (const [id, bubble] of Object.entries(bubbles)) {
-    const bubbleId = bubble.variableId || parseInt(id);
-    if (!bubblesInSteps.has(bubbleId)) {
-      topLevelBubbleIds.push(bubbleId);
+    const bubbleId = bubble.variableId || parseInt(id, 10);
+    // Skips invocation clones, original bubbles
+    if (
+      clonesReferencingOriginal.has(bubbleId) ||
+      bubblesInSteps.has(bubbleId)
+    ) {
+      continue;
     }
+    topLevelBubbleIds.push(bubbleId);
   }
 
   return topLevelBubbleIds;

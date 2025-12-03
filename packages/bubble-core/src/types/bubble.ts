@@ -82,6 +82,7 @@ export type BubbleFlowOperationResult = unknown;
 export interface BubbleContext {
   logger?: BubbleLogger;
   variableId?: number;
+  invocationCallSiteKey?: string;
   /**
    * Dependency graph for the current bubble flow, used to deduce child variable IDs.
    */
