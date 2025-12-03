@@ -73,6 +73,7 @@ export async function validateBubbleFlow(
       const lintErrorMessages = lintRuleErrors.map(
         (err) => `line ${err.line}: ${err.message}`
       );
+      console.log('Lint error messages:', lintErrorMessages);
       lintErrors.push(...lintErrorMessages);
     } catch (error) {
       // If lint rule execution fails, log but don't fail validation

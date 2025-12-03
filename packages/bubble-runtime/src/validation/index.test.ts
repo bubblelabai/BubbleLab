@@ -11,6 +11,16 @@ describe('BubbleFlow Validation', () => {
     await bubbleFactory.registerDefaults();
   });
 
+  describe('Lint styles', () => {
+    it('should fail lint style rules in github-pr-sequential flow', async () => {
+      const code = getFixture('github-pr-sequential');
+      const result = await validateBubbleFlow(code);
+      console.log(result);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors!.length).toBeGreaterThan(0);
+    });
+  });
   describe('Valid BubbleFlow validation', () => {
     it('should invalidate credential in flow', async () => {
       const code = getFixture('credential-in-flow');

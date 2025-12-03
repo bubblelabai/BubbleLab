@@ -53,6 +53,7 @@ export const fixtures = {
   'content-creation-step': '',
   'linkedin-gen-step-flow': '',
   'for-and-promises-flow': '',
+  'github-pr-sequential': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
