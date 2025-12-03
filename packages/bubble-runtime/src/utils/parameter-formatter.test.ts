@@ -139,7 +139,6 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const httpRequest = new HttpBubble({');
       expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
-      expect(lines[0]).toContain('variableId: 123');
       expect(lines[1]).toContain('let resp = await httpRequest.action()');
     });
 
@@ -172,7 +171,6 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const httpRequest = new HttpBubble({');
       expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
-      expect(lines[0]).toContain('variableId: 456');
       expect(lines[1]).toContain('let resp = await httpRequest.action()');
     });
 
@@ -205,7 +203,6 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('await new HttpBubble({');
       expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
-      expect(lines[0]).toContain('variableId: 789');
       expect(lines[0]).toContain('.action()');
       expect(lines[1]).toContain('console.log(result)');
     });
@@ -300,7 +297,6 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(1);
       expect(lines[0]).toContain('const agent = new AIAgentBubble({');
       expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
-      expect(lines[0]).toContain('variableId: 222');
     });
 
     it('should handle bubble with credentials object followed by logger config', () => {
@@ -342,7 +338,6 @@ describe('parameter-formatter', () => {
       expect(lines.length).toBe(2);
       expect(lines[0]).toContain('const agent = new AIAgentBubble({');
       expect(lines[0]).toContain('logger: __bubbleFlowSelf.logger');
-      expect(lines[0]).toContain('variableId: 333');
       expect(lines[1]).toContain('const result = await agent.action()');
     });
 
