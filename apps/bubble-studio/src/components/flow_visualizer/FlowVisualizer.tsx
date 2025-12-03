@@ -30,11 +30,7 @@ import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
-import {
-  extractStepGraph,
-  type StepData,
-  type StepEdge,
-} from '@/utils/workflowToSteps';
+import { extractStepGraph, type StepData } from '@/utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useUIStore } from '@/stores/uiStore';
@@ -929,7 +925,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     steps.forEach((step) => {
       step.bubbleIds.forEach((id) => bubblesInSteps.add(id));
     });
-    const unparsedBubbles = bubbleEntries.filter(([key, bubbleData]) => {
+    const unparsedBubbles = bubbleEntries.filter(([, bubbleData]) => {
       const bubble = bubbleData;
       const id = bubble.variableId;
       return !bubblesInSteps.has(id);
