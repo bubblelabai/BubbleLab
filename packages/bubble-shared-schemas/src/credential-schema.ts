@@ -12,6 +12,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.FIRECRAWL_API_KEY]: 'FIRE_CRAWL_API_KEY',
   [CredentialType.DATABASE_CRED]: 'BUBBLE_CONNECTING_STRING_URL',
   [CredentialType.SLACK_CRED]: 'SLACK_TOKEN',
+  [CredentialType.TELEGRAM_BOT_TOKEN]: 'TELEGRAM_BOT_TOKEN',
   [CredentialType.RESEND_CRED]: 'RESEND_API_KEY',
   [CredentialType.OPENROUTER_CRED]: 'OPENROUTER_API_KEY',
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'CLOUDFLARE_R2_ACCESS_KEY',
@@ -260,6 +261,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   ],
   postgresql: [CredentialType.DATABASE_CRED],
   slack: [CredentialType.SLACK_CRED],
+  telegram: [CredentialType.TELEGRAM_BOT_TOKEN],
   resend: [CredentialType.RESEND_CRED],
   'database-analyzer': [CredentialType.DATABASE_CRED],
   'slack-notifier': [

@@ -614,6 +614,49 @@ function checkForCredentialsParameter(
 }
 
 /**
+ * Lint rule that prevents usage of process.env
+ */
+export const noProcessEnvRule: LintRule = {
+  name: 'no-process-env',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    // Traverse entire source file to find all process.env usages
+    const visit = (node: ts.Node) => {
+      // Check for property access expression: process.env
+      if (ts.isPropertyAccessExpression(node)) {
+        const object = node.expression;
+        const property = node.name;
+
+        // Check if it's process.env
+        if (
+          ts.isIdentifier(object) &&
+          object.text === 'process' &&
+          ts.isIdentifier(property) &&
+          property.text === 'env'
+        ) {
+          const { line, character } =
+            context.sourceFile.getLineAndCharacterOfPosition(
+              node.getStart(context.sourceFile)
+            );
+          errors.push({
+            line: line + 1,
+            column: character + 1,
+            message:
+              'process.env is not allowed. Put the credential inside payload if the integration is not supported yet (service is not an available bubble).',
+          });
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
  * Lint rule that prevents method invocations inside complex expressions
  */
 export const noMethodInvocationInComplexExpressionRule: LintRule = {
@@ -770,3 +813,4 @@ defaultLintRuleRegistry.register(noThrowInHandleRule);
 defaultLintRuleRegistry.register(noDirectBubbleInstantiationInHandleRule);
 defaultLintRuleRegistry.register(noCredentialsParameterRule);
 defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);
+defaultLintRuleRegistry.register(noProcessEnvRule);

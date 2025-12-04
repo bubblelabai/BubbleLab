@@ -287,9 +287,7 @@ export abstract class BaseBubble<
 
         const finalResult = {
           success: result.success,
-          // For data we strip out any excessive fields
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          data: (({ ...rest }) => rest)(validatedResult) as TResult,
+          data: result,
           executionId: randomUUID(),
           error: validatedResult.error || '',
           timestamp: new Date(),

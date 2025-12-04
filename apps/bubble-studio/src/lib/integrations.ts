@@ -27,6 +27,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   ElevenLabs: '/integrations/elevenlabs.png', // Placeholder path
   'Follow Up Boss': '/integrations/FUB.png',
   'AGI Inc': '/integrations/agi-inc.svg',
+  Telegram: '/integrations/telegram.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -65,6 +66,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'GitHub', file: SERVICE_LOGOS['GitHub'] },
   { name: 'ElevenLabs', file: SERVICE_LOGOS['ElevenLabs'] },
   { name: 'Follow Up Boss', file: SERVICE_LOGOS['Follow Up Boss'] },
+  { name: 'Telegram', file: SERVICE_LOGOS['Telegram'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -122,6 +124,7 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'agi-inc': 'AGI Inc',
   agiinc: 'AGI Inc',
   agi: 'AGI Inc',
+  telegram: 'Telegram',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -215,6 +218,7 @@ export function findLogoForBubble(
     [/\belevenlabs\b|\beleven-labs\b/, 'ElevenLabs'],
     [/\bfollow\s*up\s*boss\b|\bfollowupboss\b|\bfub\b/, 'Follow Up Boss'],
     [/\bagi\s*inc\b|\bagi-inc\b|\bagiinc\b/, 'AGI Inc'],
+    [/\btelegram\b/, 'Telegram'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
@@ -279,6 +283,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       storagebubble: 'storage-bubble',
       githubbubble: 'github-bubble',
       followupbossbubble: 'followupboss-bubble',
+      telegrambubble: 'telegram-bubble',
     }
   );
 
@@ -321,6 +326,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     github: 'github-bubble',
     followupboss: 'followupboss-bubble',
     fub: 'followupboss-bubble',
+    telegram: 'telegram-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants
