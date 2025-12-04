@@ -85,7 +85,7 @@ app.openapi(
     const templateCode = generateSlackDataScientistTemplate(data);
 
     // Validate the generated code
-    const validationResult = await validateBubbleFlow(templateCode);
+    const validationResult = await validateBubbleFlow(templateCode, false);
 
     if (!validationResult.valid) {
       console.debug('Template validation failed:', validationResult.errors);

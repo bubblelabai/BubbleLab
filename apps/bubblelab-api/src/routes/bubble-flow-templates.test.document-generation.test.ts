@@ -31,7 +31,7 @@ describe('POST /bubbleflow-template/document-generation', () => {
     expect(generatedCode).toContain('GenerateDocumentWorkflow');
 
     // Test template validation
-    const validationResult = await validateBubbleFlow(generatedCode);
+    const validationResult = await validateBubbleFlow(generatedCode, false);
     if (!validationResult.valid) {
       console.error('Validation errors:', validationResult.errors);
     }
