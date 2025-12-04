@@ -411,6 +411,87 @@ const TelegramParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Set webhook operation
+  z.object({
+    operation: z
+      .literal('set_webhook')
+      .describe('Specify a URL to receive incoming updates via webhook'),
+    url: z
+      .union([z.literal(''), z.string().url()])
+      .describe(
+        'HTTPS URL to send updates to. Use an empty string to remove webhook integration'
+      ),
+    ip_address: z
+      .string()
+      .optional()
+      .describe(
+        'The fixed IP address which will be used to send webhook requests instead of the IP address resolved through DNS'
+      ),
+    max_connections: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .describe(
+        'Maximum allowed number of simultaneous HTTPS connections to the webhook for update delivery (1-100). Defaults to 40'
+      ),
+    allowed_updates: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'A list of update types you want your bot to receive (e.g., ["message", "callback_query"])'
+      ),
+    drop_pending_updates: z
+      .boolean()
+      .optional()
+      .describe('Pass True to drop all pending updates'),
+    secret_token: z
+      .string()
+      .min(1)
+      .max(256)
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .optional()
+      .describe(
+        'A secret token to be sent in the X-Telegram-Bot-Api-Secret-Token header (1-256 characters, A-Z, a-z, 0-9, _, -)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Delete webhook operation
+  z.object({
+    operation: z
+      .literal('delete_webhook')
+      .describe('Remove webhook integration to switch back to getUpdates'),
+    drop_pending_updates: z
+      .boolean()
+      .optional()
+      .describe('Pass True to drop all pending updates'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get webhook info operation
+  z.object({
+    operation: z
+      .literal('get_webhook_info')
+      .describe('Get current webhook status and information'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Type definitions
@@ -418,11 +499,61 @@ export type TelegramParams = z.infer<typeof TelegramParamsSchema>;
 export type TelegramParamsParsed = z.output<typeof TelegramParamsSchema>;
 export type TelegramParamsInput = z.input<typeof TelegramParamsSchema>;
 
+// Define WebhookInfo schema
+const TelegramWebhookInfoSchema = z.object({
+  url: z
+    .string()
+    .describe('Webhook URL, may be empty if webhook is not set up'),
+  has_custom_certificate: z
+    .boolean()
+    .describe(
+      'True, if a custom certificate was provided for webhook certificate checks'
+    ),
+  pending_update_count: z
+    .number()
+    .describe('Number of updates awaiting delivery'),
+  ip_address: z
+    .string()
+    .optional()
+    .describe('Currently used webhook IP address'),
+  last_error_date: z
+    .number()
+    .optional()
+    .describe(
+      'Unix time for the most recent error that happened when trying to deliver an update via webhook'
+    ),
+  last_error_message: z
+    .string()
+    .optional()
+    .describe(
+      'Error message in human-readable format for the most recent error that happened when trying to deliver an update via webhook'
+    ),
+  last_synchronization_error_date: z
+    .number()
+    .optional()
+    .describe(
+      'Unix time of the most recent error that happened when trying to synchronize available updates with Telegram datacenters'
+    ),
+  max_connections: z
+    .number()
+    .optional()
+    .describe(
+      'The maximum allowed number of simultaneous HTTPS connections to the webhook for update delivery'
+    ),
+  allowed_updates: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'A list of update types the bot is subscribed to. Defaults to all update types except chat_member'
+    ),
+});
+
 // Type aliases for schema inference (for type assertions without parsing)
 type TelegramMessage = z.infer<typeof TelegramMessageSchema>;
 type TelegramUser = z.infer<typeof TelegramUserSchema>;
 type TelegramChat = z.infer<typeof TelegramChatSchema>;
 type TelegramUpdate = z.infer<typeof TelegramUpdateSchema>;
+type TelegramWebhookInfo = z.infer<typeof TelegramWebhookInfoSchema>;
 
 // Define result schemas for different operations
 const TelegramMessageSchema = z.object({
@@ -625,6 +756,36 @@ const TelegramResultSchema = z.discriminatedUnion('operation', [
     error: z.string().describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
+
+  z.object({
+    operation: z
+      .literal('set_webhook')
+      .describe('Specify a URL to receive incoming updates via webhook'),
+    ok: z.boolean().describe('Whether the Telegram API call was successful'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('delete_webhook')
+      .describe('Remove webhook integration to switch back to getUpdates'),
+    ok: z.boolean().describe('Whether the Telegram API call was successful'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('get_webhook_info')
+      .describe('Get current webhook status and information'),
+    ok: z.boolean().describe('Whether the Telegram API call was successful'),
+    webhook_info: TelegramWebhookInfoSchema.optional().describe(
+      'Webhook information object'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
 ]);
 
 export type TelegramResult = z.infer<typeof TelegramResultSchema>;
@@ -724,6 +885,12 @@ export class TelegramBubble<
             return await this.sendChatAction(this.params);
           case 'set_message_reaction':
             return await this.setMessageReaction(this.params);
+          case 'set_webhook':
+            return await this.setWebhook(this.params);
+          case 'delete_webhook':
+            return await this.deleteWebhook(this.params);
+          case 'get_webhook_info':
+            return await this.getWebhookInfo(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1155,6 +1322,87 @@ export class TelegramBubble<
     return {
       operation: 'set_message_reaction',
       ok: response.ok,
+      error: !response.ok
+        ? response.description ||
+          `Error code: ${response.error_code || 'unknown'}`
+        : '',
+      success: response.ok,
+    };
+  }
+
+  private async setWebhook(
+    params: Extract<TelegramParams, { operation: 'set_webhook' }>
+  ): Promise<Extract<TelegramResult, { operation: 'set_webhook' }>> {
+    const {
+      url,
+      ip_address,
+      max_connections,
+      allowed_updates,
+      drop_pending_updates,
+      secret_token,
+    } = params;
+
+    const body: Record<string, unknown> = {
+      url,
+    };
+
+    if (ip_address !== undefined) body.ip_address = ip_address;
+    if (max_connections !== undefined) body.max_connections = max_connections;
+    if (allowed_updates !== undefined) body.allowed_updates = allowed_updates;
+    if (drop_pending_updates !== undefined)
+      body.drop_pending_updates = drop_pending_updates;
+    if (secret_token !== undefined) body.secret_token = secret_token;
+
+    const response = await this.makeTelegramApiCall('setWebhook', body);
+
+    return {
+      operation: 'set_webhook',
+      ok: response.ok,
+      error: !response.ok
+        ? response.description ||
+          `Error code: ${response.error_code || 'unknown'}`
+        : '',
+      success: response.ok,
+    };
+  }
+
+  private async deleteWebhook(
+    params: Extract<TelegramParams, { operation: 'delete_webhook' }>
+  ): Promise<Extract<TelegramResult, { operation: 'delete_webhook' }>> {
+    const { drop_pending_updates } = params;
+
+    const body: Record<string, unknown> = {};
+
+    if (drop_pending_updates !== undefined)
+      body.drop_pending_updates = drop_pending_updates;
+
+    const response = await this.makeTelegramApiCall('deleteWebhook', body);
+
+    return {
+      operation: 'delete_webhook',
+      ok: response.ok,
+      error: !response.ok
+        ? response.description ||
+          `Error code: ${response.error_code || 'unknown'}`
+        : '',
+      success: response.ok,
+    };
+  }
+
+  private async getWebhookInfo(
+    params: Extract<TelegramParams, { operation: 'get_webhook_info' }>
+  ): Promise<Extract<TelegramResult, { operation: 'get_webhook_info' }>> {
+    void params;
+
+    const response = await this.makeTelegramApiCall('getWebhookInfo', {});
+
+    return {
+      operation: 'get_webhook_info',
+      ok: response.ok,
+      webhook_info:
+        response.ok && response.result
+          ? (response.result as TelegramWebhookInfo)
+          : undefined,
       error: !response.ok
         ? response.description ||
           `Error code: ${response.error_code || 'unknown'}`

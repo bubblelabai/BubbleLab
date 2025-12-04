@@ -1,0 +1,628 @@
+# Telegram Bubble
+
+Telegram Bot API integration for messaging and bot management
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Quick Start
+
+```typescript
+import { TelegramBubble } from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+const result = await new TelegramBubble({
+  operation: 'send_message',
+  credentials: {
+    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+  },
+}).action();
+```
+
+## Operation Details
+
+### `send_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a text message to a Telegram chat</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username (e.g., @channelusername)</dd>
+
+  <dt><code>text</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Text of the message to be sent</dd>
+
+  <dt><code>parse_mode</code> <em>'HTML' | 'Markdown' | 'MarkdownV2'</em> </dt>
+  <dd>Text formatting mode (HTML, Markdown, or MarkdownV2)</dd>
+
+  <dt><code>entities</code> <em>unknown[]</em> </dt>
+  <dd>List of special entities in the message text</dd>
+
+  <dt><code>disable_web_page_preview</code> <em>boolean</em> </dt>
+  <dd>Disable link previews for links in this message</dd>
+
+  <dt><code>disable_notification</code> <em>boolean</em> </dt>
+  <dd>Sends the message silently</dd>
+
+  <dt><code>protect_content</code> <em>boolean</em> </dt>
+  <dd>Protects the content from forwarding and saving</dd>
+
+  <dt><code>reply_to_message_id</code> <em>number</em> </dt>
+  <dd>If the message is a reply, ID of the original message</dd>
+
+  <dt><code>allow_sending_without_reply</code> <em>boolean</em> </dt>
+  <dd>Allow sending message even if the replied message is not found</dd>
+
+  <dt><code>reply_markup</code> <em>unknown</em> </dt>
+  <dd>Inline keyboard or reply keyboard markup</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a text message to a Telegram chat</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>message</code> <em>object</em> </dt>
+  <dd>Sent message object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `send_photo`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_photo'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a photo to a Telegram chat</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>photo</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Photo to send (file_id, HTTP URL, or file path)</dd>
+
+  <dt><code>caption</code> <em>string</em> </dt>
+  <dd>Photo caption</dd>
+
+  <dt><code>parse_mode</code> <em>'HTML' | 'Markdown' | 'MarkdownV2'</em> </dt>
+  <dd>Text formatting mode (HTML, Markdown, or MarkdownV2)</dd>
+
+  <dt><code>caption_entities</code> <em>unknown[]</em> </dt>
+  <dd>List of special entities in the caption</dd>
+
+  <dt><code>has_spoiler</code> <em>boolean</em> </dt>
+  <dd>Mark photo as spoiler</dd>
+
+  <dt><code>disable_notification</code> <em>boolean</em> </dt>
+  <dd>Sends the message silently</dd>
+
+  <dt><code>protect_content</code> <em>boolean</em> </dt>
+  <dd>Protects the content from forwarding and saving</dd>
+
+  <dt><code>reply_to_message_id</code> <em>number</em> </dt>
+  <dd>If the message is a reply, ID of the original message</dd>
+
+  <dt><code>allow_sending_without_reply</code> <em>boolean</em> </dt>
+  <dd>Allow sending message even if the replied message is not found</dd>
+
+  <dt><code>reply_markup</code> <em>unknown</em> </dt>
+  <dd>Inline keyboard or reply keyboard markup</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_photo'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a photo to a Telegram chat</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>message</code> <em>object</em> </dt>
+  <dd>Sent message object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `send_document`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_document'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a document to a Telegram chat</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>document</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>File to send (file_id, HTTP URL, or file path)</dd>
+
+  <dt><code>thumbnail</code> <em>unknown</em> </dt>
+  <dd>Thumbnail of the file</dd>
+
+  <dt><code>caption</code> <em>string</em> </dt>
+  <dd>Document caption</dd>
+
+  <dt><code>parse_mode</code> <em>'HTML' | 'Markdown' | 'MarkdownV2'</em> </dt>
+  <dd>Text formatting mode (HTML, Markdown, or MarkdownV2)</dd>
+
+  <dt><code>caption_entities</code> <em>unknown[]</em> </dt>
+  <dd>List of special entities in the caption</dd>
+
+  <dt><code>disable_content_type_detection</code> <em>boolean</em> </dt>
+  <dd>Disable automatic file type detection</dd>
+
+  <dt><code>disable_notification</code> <em>boolean</em> </dt>
+  <dd>Sends the message silently</dd>
+
+  <dt><code>protect_content</code> <em>boolean</em> </dt>
+  <dd>Protects the content from forwarding and saving</dd>
+
+  <dt><code>reply_to_message_id</code> <em>number</em> </dt>
+  <dd>If the message is a reply, ID of the original message</dd>
+
+  <dt><code>allow_sending_without_reply</code> <em>boolean</em> </dt>
+  <dd>Allow sending message even if the replied message is not found</dd>
+
+  <dt><code>reply_markup</code> <em>unknown</em> </dt>
+  <dd>Inline keyboard or reply keyboard markup</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_document'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Send a document to a Telegram chat</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>message</code> <em>object</em> </dt>
+  <dd>Sent message object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `edit_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'edit_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Edit a previously sent message</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> </dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>message_id</code> <em>number</em> </dt>
+  <dd>Identifier of the message to edit</dd>
+
+  <dt><code>inline_message_id</code> <em>string</em> </dt>
+  <dd>Identifier of the inline message to edit</dd>
+
+  <dt><code>text</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>New text of the message</dd>
+
+  <dt><code>parse_mode</code> <em>'HTML' | 'Markdown' | 'MarkdownV2'</em> </dt>
+  <dd>Text formatting mode (HTML, Markdown, or MarkdownV2)</dd>
+
+  <dt><code>entities</code> <em>unknown[]</em> </dt>
+  <dd>List of special entities in the message text</dd>
+
+  <dt><code>disable_web_page_preview</code> <em>boolean</em> </dt>
+  <dd>Disable link previews for links in this message</dd>
+
+  <dt><code>reply_markup</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'edit_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Edit a previously sent message</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>message</code> <em>object</em> </dt>
+  <dd>Edited message object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_message`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a message</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>message_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Identifier of the message to delete</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_message'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Delete a message</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_me`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_me'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get bot information</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_me'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get bot information</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>user</code> <em>object</em> </dt>
+  <dd>Bot user object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_chat`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_chat'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get information about a chat</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_chat'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get information about a chat</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>chat</code> <em>object</em> </dt>
+  <dd>Chat object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_updates`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_updates'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Receive incoming updates using long polling</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Identifier of the first update to be returned</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Limits the number of updates to be retrieved (1-100)</dd>
+
+  <dt><code>timeout</code> <em>number</em> </dt>
+  <dd>Timeout in seconds for long polling</dd>
+
+  <dt><code>allowed_updates</code> <em>string[]</em> </dt>
+  <dd>List of update types to receive</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_updates'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Receive incoming updates using long polling</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>updates</code> <em>object[]</em> </dt>
+  <dd>Array of Update objects</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `send_chat_action`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_chat_action'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Tell the user that something is happening on the bot's side (typing, uploading photo, etc.)</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>action</code> <em>'typing' | 'upload_photo' | 'record_video' | 'upload_video' | 'record_voice' | 'upload_voice' | 'upload_document' | 'find_location' | 'record_video_note' | 'upload_video_note' | 'choose_sticker'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Type of action to broadcast</dd>
+
+  <dt><code>message_thread_id</code> <em>number</em> </dt>
+  <dd>Unique identifier for the target message thread (for forum topics)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'send_chat_action'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Tell the user that something is happening on the bot's side</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `set_message_reaction`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'set_message_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add a reaction to a message</dd>
+
+  <dt><code>chat_id</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Unique identifier for the target chat or username</dd>
+
+  <dt><code>message_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Identifier of the message to react to</dd>
+
+  <dt><code>reaction</code> <em>unknown[]</em> </dt>
+  <dd>Array of reactions to set (empty array to remove reactions)</dd>
+
+  <dt><code>is_big</code> <em>boolean</em> </dt>
+  <dd>Pass True to set the reaction with a bigger animation</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'set_message_reaction'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Add a reaction to a message</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
