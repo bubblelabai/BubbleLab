@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new TelegramBubble({
   operation: 'send_message',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.TELEGRAM_BOT_TOKEN]: process.env.TELEGRAM_BOT_TOKEN as string,
   },
 }).action();
 ```
@@ -613,6 +613,156 @@ const result = await new TelegramBubble({
 
   <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `set_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'set_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Specify a URL to receive incoming updates via webhook</dd>
+
+  <dt><code>url</code> <em>unknown</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>HTTPS URL to send updates to. Use an empty string to remove webhook integration</dd>
+
+  <dt><code>ip_address</code> <em>string</em> </dt>
+  <dd>The fixed IP address which will be used to send webhook requests instead of the IP address resolved through DNS</dd>
+
+  <dt><code>max_connections</code> <em>number</em> </dt>
+  <dd>Maximum allowed number of simultaneous HTTPS connections to the webhook for update delivery (1-100). Defaults to 40</dd>
+
+  <dt><code>allowed_updates</code> <em>string[]</em> </dt>
+  <dd>A list of update types you want your bot to receive (e.g., ["message", "callback_query"])</dd>
+
+  <dt><code>drop_pending_updates</code> <em>boolean</em> </dt>
+  <dd>Pass True to drop all pending updates</dd>
+
+  <dt><code>secret_token</code> <em>string</em> </dt>
+  <dd>A secret token to be sent in the X-Telegram-Bot-Api-Secret-Token header (1-256 characters, A-Z, a-z, 0-9, _, -)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'set_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Specify a URL to receive incoming updates via webhook</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `delete_webhook`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Remove webhook integration to switch back to getUpdates</dd>
+
+  <dt><code>drop_pending_updates</code> <em>boolean</em> </dt>
+  <dd>Pass True to drop all pending updates</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'delete_webhook'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Remove webhook integration to switch back to getUpdates</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_webhook_info`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_webhook_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get current webhook status and information</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_webhook_info'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get current webhook status and information</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Telegram API call was successful</dd>
+
+  <dt><code>webhook_info</code> <em>object</em> </dt>
+  <dd>Webhook information object</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Error message if operation failed</dd>

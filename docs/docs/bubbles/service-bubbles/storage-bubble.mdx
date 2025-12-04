@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new StorageBubble({
   operation: 'getUploadUrl',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: process.env.CLOUDFLARE_R2_ACCESS_KEY as string,
   },
 }).action();
 ```

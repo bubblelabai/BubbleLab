@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleSheetsBubble({
   operation: 'read_values',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.GOOGLE_SHEETS_CRED]: process.env.GOOGLE_SHEETS_CRED as string,
   },
 }).action();
 ```

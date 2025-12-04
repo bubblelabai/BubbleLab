@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new FollowUpBossBubble({
   operation: 'list_people',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.FUB_CRED]: process.env.FUB_CRED as string,
   },
 }).action();
 ```
@@ -973,6 +973,105 @@ const result = await new FollowUpBossBubble({
 
   <dt><code>deal</code> <em>object</em> </dt>
   <dd>FUB deal object</dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_events`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_events'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List/search events</dd>
+
+  <dt><code>limit</code> <em>number</em> </dt>
+  <dd>Number of results to return</dd>
+
+  <dt><code>offset</code> <em>number</em> </dt>
+  <dd>Number of results to skip</dd>
+
+  <dt><code>personId</code> <em>number</em> </dt>
+  <dd>Filter by person ID</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_events'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>events</code> <em>object[]</em> </dt>
+  <dd></dd>
+
+  <dt><code>_metadata</code> <em>object</em> </dt>
+  <dd></dd>
+
+  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_event`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get a specific event by ID</dd>
+
+  <dt><code>event_id</code> <em>number</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Event ID to retrieve</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_event'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd></dd>
+
+  <dt><code>event</code> <em>object</em> </dt>
+  <dd>FUB event object</dd>
 
   <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd></dd>

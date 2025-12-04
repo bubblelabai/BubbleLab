@@ -14,7 +14,7 @@ const result = await new WebSearchTool({
 
   query: 'example', // The search query to execute
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRECRAWL_API_KEY as string,
   },
 }).action();
 ```

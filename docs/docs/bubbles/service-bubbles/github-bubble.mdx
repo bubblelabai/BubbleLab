@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GithubBubble({
   operation: 'get_file',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.GITHUB_TOKEN]: process.env.GITHUB_TOKEN as string,
   },
 }).action();
 ```

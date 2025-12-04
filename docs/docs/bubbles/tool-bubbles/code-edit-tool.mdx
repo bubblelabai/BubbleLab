@@ -16,7 +16,7 @@ const result = await new EditBubbleFlowTool({
   instructions: 'example', // A single sentence instruction in first person describing what changes are being made (e.g., "I am adding error handling to the user auth and removing the old auth functions"). Used to help disambiguate uncertainty in the edit.
   codeEdit: 'example', // The code changes to apply. Specify ONLY the precise lines of code that you wish to edit. Use "// ... existing code ..." to represent unchanged sections. DO NOT omit spans of pre-existing code without using the marker, as this may cause inadvertent deletion.
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_CRED as string,
   },
 }).action();
 ```

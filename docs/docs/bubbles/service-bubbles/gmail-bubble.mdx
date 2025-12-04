@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GmailBubble({
   operation: 'send_email',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.GMAIL_CRED]: process.env.GMAIL_CRED as string,
   },
 }).action();
 ```

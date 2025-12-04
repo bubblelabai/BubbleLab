@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleCalendarBubble({
   operation: 'list_calendars',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.GOOGLE_CALENDAR_CRED]: process.env.GOOGLE_CALENDAR_CRED as string,
   },
 }).action();
 ```
