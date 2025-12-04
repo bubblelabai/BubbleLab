@@ -90,7 +90,7 @@ export class TelegramBotFlow extends BubbleFlow<'schedule/cron'> {
     const telegram = new TelegramBubble({
       operation: 'send_chat_action',
       chat_id: chatId,
-      action: 'find_location',
+      action: 'typing',
     });
     const result = await telegram.action();
 
