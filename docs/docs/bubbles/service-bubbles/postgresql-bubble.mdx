@@ -14,7 +14,7 @@ const result = await new PostgreSQLBubble({
 
   query: null, // SQL query to execute against the PostgreSQL database (use parameterized queries with $1, $2, etc.)
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.DATABASE_CRED]: process.env.DATABASE_URL as string,
   },
 }).action();
 ```

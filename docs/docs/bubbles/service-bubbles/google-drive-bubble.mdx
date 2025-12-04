@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new GoogleDriveBubble({
   operation: 'upload_file',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.GOOGLE_DRIVE_CRED]: process.env.GOOGLE_DRIVE_CRED as string,
   },
 }).action();
 ```
@@ -114,7 +114,7 @@ const result = await new GoogleDriveBubble({
   <dd>Whether the file was downloaded successfully</dd>
 
   <dt><code>content</code> <em>string</em> </dt>
-  <dd>File content as base64 encoded string</dd>
+  <dd>File content as plain text (for text-based files) or base64 encoded string (for binary files)</dd>
 
   <dt><code>filename</code> <em>string</em> </dt>
   <dd>Original filename</dd>

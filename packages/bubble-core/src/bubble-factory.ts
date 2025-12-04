@@ -131,6 +131,7 @@ export class BubbleFactory {
       'postgresql',
       'ai-agent',
       'slack',
+      'telegram',
       'resend',
       'google-drive',
       'gmail',
@@ -169,6 +170,9 @@ export class BubbleFactory {
       './bubbles/service-bubble/postgresql.js'
     );
     const { SlackBubble } = await import('./bubbles/service-bubble/slack.js');
+    const { TelegramBubble } = await import(
+      './bubbles/service-bubble/telegram.js'
+    );
     const { ResendBubble } = await import('./bubbles/service-bubble/resend.js');
     const { HttpBubble } = await import('./bubbles/service-bubble/http.js');
     const { StorageBubble } = await import(
@@ -268,6 +272,10 @@ export class BubbleFactory {
     this.register('ai-agent', AIAgentBubble as BubbleClassWithMetadata);
     this.register('postgresql', PostgreSQLBubble as BubbleClassWithMetadata);
     this.register('slack', SlackBubble as BubbleClassWithMetadata);
+    this.register(
+      'telegram' as BubbleName,
+      TelegramBubble as unknown as BubbleClassWithMetadata
+    );
     this.register('resend', ResendBubble as BubbleClassWithMetadata);
     this.register('http', HttpBubble as BubbleClassWithMetadata);
     this.register('storage', StorageBubble as BubbleClassWithMetadata);

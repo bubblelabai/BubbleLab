@@ -9,13 +9,9 @@ import TabItem from '@theme/TabItem';
 
 ```typescript
 import { BubbleFlowValidationTool } from '@bubblelab/bubble-core';
-import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new BubbleFlowValidationTool({
 
   code: 'example', // TypeScript code to validate
-  credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
-  },
 }).action();
 ```
 

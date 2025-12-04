@@ -211,6 +211,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My AGI Inc Key',
     credentialConfigurations: {},
   },
+  [CredentialType.TELEGRAM_BOT_TOKEN]: {
+    label: 'Telegram Bot Token',
+    description: 'Your Telegram bot token',
+    placeholder: 'bot_...',
+    namePlaceholder: 'My Telegram Bot Token',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -239,6 +246,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.OPENAI_CRED]: 'OpenAI',
     [CredentialType.AGI_API_KEY]: 'AGI Inc',
     [CredentialType.GOOGLE_GEMINI_CRED]: 'Google',
+    [CredentialType.TELEGRAM_BOT_TOKEN]: 'Telegram',
     [CredentialType.ANTHROPIC_CRED]: 'Anthropic',
     [CredentialType.DATABASE_CRED]: 'Postgres',
     [CredentialType.FIRECRAWL_API_KEY]: 'Firecrawl',

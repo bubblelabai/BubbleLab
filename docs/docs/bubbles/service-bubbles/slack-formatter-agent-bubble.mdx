@@ -14,7 +14,7 @@ const result = await new SlackFormatterAgentBubble({
 
   message: 'example', // The message or question to send to the AI agent
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.OPENAI_CRED]: process.env.OPENAI_CRED as string,
   },
 }).action();
 ```

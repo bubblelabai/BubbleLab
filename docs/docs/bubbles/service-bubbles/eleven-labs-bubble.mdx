@@ -13,7 +13,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new ElevenLabsBubble({
   operation: 'get_signed_url',
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.ELEVENLABS_API_KEY]: process.env.ELEVENLABS_API_KEY as string,
   },
 }).action();
 ```

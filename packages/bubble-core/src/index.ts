@@ -30,6 +30,7 @@ export {
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
 export { SlackBubble } from './bubbles/service-bubble/slack.js';
+export { TelegramBubble } from './bubbles/service-bubble/telegram.js';
 export { ResendBubble } from './bubbles/service-bubble/resend.js';
 export { HttpBubble } from './bubbles/service-bubble/http.js';
 export { SlackFormatterAgentBubble } from './bubbles/workflow-bubble/slack-formatter-agent.js';

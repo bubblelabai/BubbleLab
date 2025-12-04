@@ -15,7 +15,7 @@ const result = await new ApifyBubble({
   actorId: 'example', // The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc.
   input: null, // Input parameters for the actor. Structure depends on the specific actor being used.
   credentials: {
-    [CredentialType.API_KEY_CRED]: process.env.API_KEY as string,
+    [CredentialType.APIFY_CRED]: process.env.APIFY_CRED as string,
   },
 }).action();
 ```

@@ -12,6 +12,7 @@ export enum CredentialType {
   DATABASE_CRED = 'DATABASE_CRED',
   // Communication Credentials
   SLACK_CRED = 'SLACK_CRED',
+  TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN',
   // Email Credentials
   RESEND_CRED = 'RESEND_CRED',
   // Storage Credentials
@@ -80,4 +81,5 @@ export type BubbleName =
   | 'github'
   | 'eleven-labs'
   | 'followupboss'
-  | 'agi-inc';
+  | 'agi-inc'
+  | 'telegram';

@@ -420,7 +420,8 @@ function renderExampleForOp(
     { type: string; required: boolean; description: string }
   >,
   bubbleName: string,
-  className: string
+  className: string,
+  bubbleCredentialOptions: Record<string, string[]>
 ): string {
   // Filter out credentials and operation from required fields for the example
   const requiredEntries = Object.entries(inShape).filter(
@@ -436,7 +437,10 @@ function renderExampleForOp(
     .join('\n');
 
   // Determine credential type based on bubble name
-  const credType = getCredentialTypeForBubble(bubbleName);
+  const credType = getCredentialTypeForBubble(
+    bubbleName,
+    bubbleCredentialOptions
+  );
   const envVar = getEnvVarForCredentialType(credType);
 
   const exampleProps = props ? `\n${props}` : '';
@@ -459,35 +463,50 @@ function guessValueForType(type: string): string {
   return 'null';
 }
 
-function getCredentialTypeForBubble(bubbleName: string): string {
-  // Map bubble names to credential types
-  const credMap: Record<string, string> = {
-    slack: 'SLACK_CRED',
-    'sql-query-tool': 'DATABASE_CRED',
-    'web-crawl-tool': 'FIRECRAWL_API_KEY',
-    'web-extract-tool': 'FIRECRAWL_API_KEY',
-    'list-bubbles-tool': 'NONE',
-    'get-bubble-details-tool': 'NONE',
-  };
-
-  return credMap[bubbleName] || 'API_KEY_CRED';
+function getCredentialTypeForBubble(
+  bubbleName: string,
+  bubbleCredentialOptions: Record<string, string[]>
+): string {
+  // Get credential types from shared schemas
+  const credTypes = bubbleCredentialOptions[bubbleName];
+  if (!credTypes || credTypes.length === 0) {
+    return 'NONE';
+  }
+  // Return the first credential type
+  return credTypes[0];
 }
 
 function getEnvVarForCredentialType(credType: string): string {
-  const envMap: Record<string, string> = {
+  // Derive env var name from credential type
+  // Convert CredentialType enum value to env var name
+  // Examples: SLACK_CRED -> SLACK_TOKEN, TELEGRAM_BOT_TOKEN -> TELEGRAM_BOT_TOKEN
+  if (credType === 'NONE') {
+    return 'NONE';
+  }
+
+  // Special cases for common credential types
+  const specialCases: Record<string, string> = {
     SLACK_CRED: 'SLACK_TOKEN',
     DATABASE_CRED: 'DATABASE_URL',
-    FIRECRAWL_API_KEY: 'FIRECRAWL_API_KEY',
-    API_KEY_CRED: 'API_KEY',
-    NONE: 'NONE',
   };
 
-  return envMap[credType] || 'API_KEY';
+  if (specialCases[credType]) {
+    return specialCases[credType];
+  }
+
+  // Default: use the credential type as-is (already in uppercase with underscores)
+  return credType;
 }
 
-function renderQuickStart(bubble: BubbleClass): string {
+function renderQuickStart(
+  bubble: BubbleClass,
+  bubbleCredentialOptions: Record<string, string[]>
+): string {
   const className = bubble.name;
-  const credType = getCredentialTypeForBubble(bubble.bubbleName);
+  const credType = getCredentialTypeForBubble(
+    bubble.bubbleName,
+    bubbleCredentialOptions
+  );
   const envVar = getEnvVarForCredentialType(credType);
 
   // Get a sample operation from the schema
@@ -564,7 +583,8 @@ function renderHeader(bubble: BubbleClass): string {
 
 async function generateForBubble(
   bubble: BubbleClass,
-  outDir: string
+  outDir: string,
+  bubbleCredentialOptions: Record<string, string[]>
 ): Promise<void> {
   const fname =
     bubble.type === 'service'
@@ -582,19 +602,20 @@ async function generateForBubble(
 
   if (fileExists && !shouldForceRegenerate()) {
     // Update existing file - only replace Operation Details section
-    await updateExistingFile(bubble, outPath);
+    await updateExistingFile(bubble, outPath, bubbleCredentialOptions);
   } else {
     // Create new file with complete content (or regenerate if --force)
-    await createNewFile(bubble, outPath);
+    await createNewFile(bubble, outPath, bubbleCredentialOptions);
   }
 }
 
 async function createNewFile(
   bubble: BubbleClass,
-  outPath: string
+  outPath: string,
+  bubbleCredentialOptions: Record<string, string[]>
 ): Promise<void> {
   const header = renderHeader(bubble);
-  const quickStart = renderQuickStart(bubble);
+  const quickStart = renderQuickStart(bubble, bubbleCredentialOptions);
   const tabs = renderTabs(
     'Operation Details',
     bubble.schema,
@@ -619,12 +640,13 @@ async function createNewFile(
 
 async function updateExistingFile(
   bubble: BubbleClass,
-  outPath: string
+  outPath: string,
+  bubbleCredentialOptions: Record<string, string[]>
 ): Promise<void> {
   const existingContent = await fs.readFile(outPath, 'utf8');
 
   // Generate new Quick Start section
-  const newQuickStart = renderQuickStart(bubble);
+  const newQuickStart = renderQuickStart(bubble, bubbleCredentialOptions);
 
   // Generate new Operation Details section
   const newOperationDetails = renderTabs(
@@ -697,6 +719,38 @@ async function main(): Promise<void> {
     throw err;
   }
 
+  // Dynamically import shared schemas to get credential options
+  const sharedSchemasPath = path.resolve(
+    REPO_ROOT,
+    'packages',
+    'bubble-shared-schemas',
+    'dist',
+    'index.js'
+  );
+  let SharedSchemas: Record<string, unknown>;
+  try {
+    SharedSchemas = await import(pathToFileURL(sharedSchemasPath).href);
+  } catch (err) {
+    console.error(
+      `Failed to import shared-schemas at ${sharedSchemasPath}. Did you run pnpm build:core?`
+    );
+    throw err;
+  }
+
+  // Get BUBBLE_CREDENTIAL_OPTIONS and convert to string array format
+  const BUBBLE_CREDENTIAL_OPTIONS =
+    SharedSchemas.BUBBLE_CREDENTIAL_OPTIONS as Record<string, string[]>;
+
+  // Convert CredentialType enum values to strings
+  const bubbleCredentialOptions: Record<string, string[]> = {};
+  if (BUBBLE_CREDENTIAL_OPTIONS) {
+    for (const [bubbleName, credTypes] of Object.entries(
+      BUBBLE_CREDENTIAL_OPTIONS
+    )) {
+      bubbleCredentialOptions[bubbleName] = credTypes.map((ct) => String(ct));
+    }
+  }
+
   for (const exp of Object.values(BubbleCore)) {
     if (isBubbleClass(exp)) {
       // Limit to service/tool
@@ -726,7 +780,7 @@ async function main(): Promise<void> {
   for (const bubble of targets) {
     // Write directly to the target directory
     const outDir = bubble.type === 'service' ? DOCS_SERVICE_DIR : DOCS_TOOL_DIR;
-    await generateForBubble(bubble, outDir);
+    await generateForBubble(bubble, outDir, bubbleCredentialOptions);
   }
 
   console.log('Done.');

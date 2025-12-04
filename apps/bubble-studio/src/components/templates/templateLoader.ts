@@ -28,6 +28,7 @@ import * as contentCreationTemplate from './template_codes/contentCreationTrends
 import * as projectManagementTemplate from './template_codes/projectManagementAssistant';
 import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
 import * as githubPRCommenterTemplate from './template_codes/githubPRCommenter';
+import * as telegramBotTemplate from './template_codes/telegrambot';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -76,6 +77,15 @@ export const TEMPLATES: TemplateDefinition[] = [
       'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
     code: githubPRCommenterTemplate.templateCode,
     category: 'Engineering & Project Management',
+    isPopular: true,
+  },
+  {
+    id: 'telegram-bot',
+    name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
+    prompt:
+      'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
+    code: telegramBotTemplate.templateCode,
+    category: 'Personal Assistant',
     isPopular: true,
   },
   {
