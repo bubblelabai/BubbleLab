@@ -11,8 +11,10 @@ import {
 import { db } from '../db/index.js';
 import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
-import { calculateNextResetDate } from '../utils/subscription.js';
-import { getCurrentMonthYear } from '../utils/subscription.js';
+import {
+  calculateNextResetDate,
+  getCurrentMonthYearBillingCycle,
+} from '../utils/subscription.js';
 import { getSubscriptionStatusRoute } from '../schemas/subscription.js';
 import {
   CredentialType,
@@ -41,7 +43,9 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
 
   const currentUsage = userResult[0]?.monthlyUsageCount || 0;
   // Get current month-year for token usage query
-  const currentMonthYear = getCurrentMonthYear();
+  const currentBillingCycleMonthYear = getCurrentMonthYearBillingCycle(
+    userResult[0]?.monthlyResetDate || null
+  );
   const nextResetDate = calculateNextResetDate(
     userResult[0]?.monthlyResetDate || null
   );
@@ -57,7 +61,7 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
   const serviceUsageRecords = await db.query.userServiceUsage.findMany({
     where: and(
       eq(userServiceUsage.userId, userId),
-      eq(userServiceUsage.monthYear, currentMonthYear)
+      eq(userServiceUsage.monthYear, currentBillingCycleMonthYear)
     ),
   });
 

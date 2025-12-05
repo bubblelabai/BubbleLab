@@ -42,7 +42,7 @@ export function getCurrentMonthYear(): string {
  * - Feb 15 - Mar 14: billing period = "2025-02"
  * - Mar 15 - Apr 14: billing period = "2025-03"
  */
-export function getMonthYearFromUserCreatedDate(userCreatedAt: Date): string {
+export function getCurrentMonthYearBillingCycle(userCreatedAt: Date): string {
   const now = new Date();
   const createdDate = new Date(userCreatedAt);
 

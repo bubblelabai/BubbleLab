@@ -2,7 +2,7 @@ import { db } from '../db/index.js';
 import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and, or, isNull } from 'drizzle-orm';
 import type { CredentialType, ServiceUsage } from '@bubblelab/shared-schemas';
-import { getMonthYearFromUserCreatedDate } from '../utils/subscription.js';
+import { getCurrentMonthYearBillingCycle } from '../utils/subscription.js';
 import { getCurrentMonthYear } from '../utils/subscription.js';
 
 /**
@@ -25,7 +25,7 @@ export async function getTotalServiceCostForUser(
     );
   }
   const monthYear = userCreatedAt
-    ? getMonthYearFromUserCreatedDate(userCreatedAt.createdAt)
+    ? getCurrentMonthYearBillingCycle(userCreatedAt.createdAt)
     : getCurrentMonthYear();
   console.log(
     '[getTotalServiceUsageForUser] Month year:',
@@ -64,7 +64,7 @@ export async function trackServiceUsage(
   userCreatedAt?: Date
 ): Promise<void> {
   const monthYear = userCreatedAt
-    ? getMonthYearFromUserCreatedDate(userCreatedAt)
+    ? getCurrentMonthYearBillingCycle(userCreatedAt)
     : getCurrentMonthYear();
 
   try {
@@ -172,7 +172,7 @@ export async function trackServiceUsages(
   }
 
   const monthYear = userCreatedAt
-    ? getMonthYearFromUserCreatedDate(userCreatedAt)
+    ? getCurrentMonthYearBillingCycle(userCreatedAt)
     : getCurrentMonthYear();
 
   try {

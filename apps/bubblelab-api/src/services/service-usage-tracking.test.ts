@@ -1,8 +1,8 @@
 // @ts-expect-error - Bun test types
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getMonthYearFromUserCreatedDate } from '../utils/subscription';
+import { getCurrentMonthYearBillingCycle } from '../utils/subscription';
 
-describe('getMonthYearFromUserCreatedDate', () => {
+describe('getCurrentMonthYearBillingCycle', () => {
   let originalDate: typeof Date;
   let mockDate: Date;
 
@@ -73,7 +73,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       expect(testNow.getMonth()).toBe(0); // January is month 0
       expect(testNow.getDate()).toBe(10);
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       // The function subtracts 1 month when day < creation day, even in same month
       // So Jan 15 creation, Jan 10 today → Dec 2024 billing period
@@ -86,7 +86,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 15);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -97,7 +97,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 20);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -110,7 +110,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 10);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -121,7 +121,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 15);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-02');
     });
@@ -132,7 +132,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 20);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-02');
     });
@@ -145,7 +145,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 4, 10);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-03');
     });
@@ -156,7 +156,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 4, 15);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-04');
     });
@@ -167,7 +167,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 4, 20);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-04');
     });
@@ -178,7 +178,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 7, 20);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-07');
     });
@@ -191,7 +191,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 10);
       const userCreatedAt = new Date(2024, 11, 15); // Dec 15, 2024
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2024-12');
     });
@@ -202,7 +202,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 15);
       const userCreatedAt = new Date(2024, 11, 15); // Dec 15, 2024
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -213,7 +213,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 20);
       const userCreatedAt = new Date(2024, 11, 15); // Dec 15, 2024
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -224,7 +224,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 3, 20);
       const userCreatedAt = new Date(2023, 0, 15); // Jan 15, 2023
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-03');
     });
@@ -237,7 +237,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 28);
       const userCreatedAt = new Date(2025, 0, 31); // Jan 31, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -248,7 +248,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2024, 2, 28);
       const userCreatedAt = new Date(2024, 0, 29); // Jan 29, 2024
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2024-01');
     });
@@ -259,7 +259,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 1, 15);
       const userCreatedAt = new Date(2025, 0, 1); // Jan 1, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -270,7 +270,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 1);
       const userCreatedAt = new Date(2025, 0, 31); // Jan 31, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-01');
     });
@@ -281,7 +281,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 5, 29);
       const userCreatedAt = new Date(2025, 3, 30); // Apr 30, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-04');
     });
@@ -292,7 +292,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 2, 15);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-02'); // Should have leading zero if needed
     });
@@ -303,7 +303,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 10, 15);
       const userCreatedAt = new Date(2025, 0, 15); // Jan 15, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-10'); // Should not have leading zero for months 10-12
     });
@@ -316,7 +316,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 4, 10);
       const userCreatedAt = new Date(2025, 2, 20); // Mar 20, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-03');
     });
@@ -327,7 +327,7 @@ describe('getMonthYearFromUserCreatedDate', () => {
       mockCurrentDate(2025, 4, 25);
       const userCreatedAt = new Date(2025, 2, 20); // Mar 20, 2025
 
-      const result = getMonthYearFromUserCreatedDate(userCreatedAt);
+      const result = getCurrentMonthYearBillingCycle(userCreatedAt);
 
       expect(result).toBe('2025-04');
     });
