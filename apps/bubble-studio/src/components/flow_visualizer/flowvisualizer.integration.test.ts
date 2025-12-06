@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractStepGraph, type StepGraph } from './workflowToSteps';
+import { extractStepGraph, type StepGraph } from '../../utils/workflowToSteps';
 import type {
   ParsedBubbleWithInfo,
   ValidateBubbleFlowResponse,

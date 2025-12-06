@@ -3356,15 +3356,17 @@ export class BubbleParser {
         node.callee.property.type === 'Identifier' &&
         node.callee.property.name === 'push' &&
         node.callee.object.type === 'Identifier' &&
-        node.callee.object.name === arrayVarName &&
-        node.arguments.length > 0
+        node.callee.object.name === arrayVarName
       ) {
         const pushLine = node.loc?.start.line || 0;
         if (
           this.findVariableIdByName(arrayVarName, pushLine, scopeManager) ===
           varId
         ) {
-          pushedArgs.push(node.arguments[0] as TSESTree.Expression);
+          // Handle all arguments to .push(), not just the first one
+          node.arguments.forEach((arg) => {
+            pushedArgs.push(arg as TSESTree.Expression);
+          });
         }
       }
       for (const key in node) {
@@ -3448,7 +3450,7 @@ export class BubbleParser {
             expression: functionCall.callExpr,
             range: element.range!,
             loc: element.loc!,
-            parent: stmt as any,
+            parent: stmt,
           } as TSESTree.ExpressionStatement;
           const funcCallNode = this.buildFunctionCallNode(
             functionCall,
