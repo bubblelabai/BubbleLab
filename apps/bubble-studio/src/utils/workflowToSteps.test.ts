@@ -326,7 +326,6 @@ Please generate the best possible YC launch post based on the above.\`;
       expect(Array.isArray(validationResult.workflow.steps)).toBe(true);
       expect(validationResult.workflow.steps.length).toBeGreaterThan(0);
 
-      // // Ensure no steps have id 'step-main' (similar to FlowVisualizer.tsx check)
       const stepsInMain = stepGraph.steps.filter(
         (step) => step.id === 'step-main'
       );
