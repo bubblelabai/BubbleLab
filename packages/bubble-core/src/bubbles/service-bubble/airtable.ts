@@ -281,7 +281,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Pagination offset for retrieving next page of results'),
-    error: z.string().describe('Error message if operation failed'),
+    error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
 
@@ -291,7 +291,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
       .describe('Retrieve a single record by its ID'),
     ok: z.boolean().describe('Whether the Airtable API call was successful'),
     record: AirtableRecordSchema.optional().describe('Record object'),
-    error: z.string().describe('Error message if operation failed'),
+    error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
 
@@ -304,7 +304,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
       .array(AirtableRecordSchema)
       .optional()
       .describe('Array of created record objects'),
-    error: z.string().describe('Error message if operation failed'),
+    error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
 
@@ -317,7 +317,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
       .array(AirtableRecordSchema)
       .optional()
       .describe('Array of updated record objects'),
-    error: z.string().describe('Error message if operation failed'),
+    error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
 
@@ -337,7 +337,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
       )
       .optional()
       .describe('Array of deletion confirmation objects'),
-    error: z.string().describe('Error message if operation failed'),
+    error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
 ]);
