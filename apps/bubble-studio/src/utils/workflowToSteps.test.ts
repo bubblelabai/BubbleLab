@@ -45,7 +45,7 @@ async function getValidationResponse(
 
   // Convert bubbles from Record<string, ParsedBubbleWithInfo> to Record<number, ParsedBubbleWithInfo>
   // The API returns string keys, but extractStepGraph expects number keys
-  const bubbles: Record<number, any> = {};
+  const bubbles: Record<number, ParsedBubbleWithInfo> = {};
   if (validationResult.bubbles) {
     Object.entries(validationResult.bubbles).forEach(([key, bubble]) => {
       // Try to use variableId if available, otherwise parse the key
