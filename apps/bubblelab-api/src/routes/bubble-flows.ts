@@ -913,7 +913,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
     }
 
     // Create a new BubbleFlowValidationTool instance
-    const result = await validateAndExtract(code, bubbleFactory);
+    const result = await validateAndExtract(code, bubbleFactory, false);
 
     // If validation is successful and flowId is provided, update the flow as well before returning the result
     if (
