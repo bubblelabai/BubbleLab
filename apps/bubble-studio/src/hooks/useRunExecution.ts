@@ -381,8 +381,43 @@ export function useRunExecution(
       getExecutionStore(flowId).startExecution();
 
       try {
-        // 1. Validate inputs
-        const inputValidation = validateInputs(currentFlow);
+        // 1. Validate code FIRST if it has changed (this syncs the schema)
+        // This ensures we validate inputs against the UPDATED schema
+        let flowToValidate = currentFlow;
+        if (validateCode && editor.getCode() !== currentFlow?.code) {
+          try {
+            const validationResult = await validateCodeMutation.mutateAsync({
+              code: editor.getCode(),
+              flowId: flowId,
+              credentials: getExecutionStore(flowId).pendingCredentials,
+              syncInputsWithFlow: true,
+            });
+            if (!validationResult || !validationResult.valid) {
+              getExecutionStore(flowId).stopExecution();
+              return;
+            }
+            // After validation, bubbleParameters have changed - clear old execution state
+            getExecutionStore(flowId).clearHighlighting();
+            getExecutionStore(flowId).setBubbleError(null);
+
+            // Get the UPDATED flow from cache (schema is now synced)
+            const updatedFlow =
+              queryClient.getQueryData<BubbleFlowDetailsResponse>([
+                'bubbleFlow',
+                flowId,
+              ]);
+            if (updatedFlow) {
+              flowToValidate = updatedFlow;
+            }
+          } catch {
+            toast.error('Code validation failed');
+            getExecutionStore(flowId).stopExecution();
+            return;
+          }
+        }
+
+        // 2. Validate inputs against the UPDATED schema (after code sync)
+        const inputValidation = validateInputs(flowToValidate);
         if (!inputValidation.isValid) {
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
@@ -391,8 +426,8 @@ export function useRunExecution(
           return;
         }
 
-        // 2. Validate credentials
-        const credentialValidation = validateCredentials(currentFlow);
+        // 3. Validate credentials
+        const credentialValidation = validateCredentials(flowToValidate);
         if (!credentialValidation.isValid) {
           toast.error(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
@@ -401,7 +436,7 @@ export function useRunExecution(
           return;
         }
 
-        // 3. Update credentials if needed
+        // 4. Update credentials if needed
         if (
           updateCredentials &&
           Object.keys(getExecutionStore(flowId).pendingCredentials).length > 0
@@ -413,29 +448,6 @@ export function useRunExecution(
             });
           } catch {
             toast.error('Failed to update credentials');
-            getExecutionStore(flowId).stopExecution();
-            return;
-          }
-        }
-
-        // 4. Validate code if needed
-        if (validateCode && editor.getCode() !== currentFlow?.code) {
-          try {
-            const isValid = await validateCodeMutation.mutateAsync({
-              code: editor.getCode(),
-              flowId: flowId,
-              credentials: getExecutionStore(flowId).pendingCredentials,
-              syncInputsWithFlow: true,
-            });
-            if (!isValid) {
-              getExecutionStore(flowId).stopExecution();
-              return;
-            }
-            // After validation, bubbleParameters have changed - clear old execution state
-            getExecutionStore(flowId).clearHighlighting();
-            getExecutionStore(flowId).setBubbleError(null);
-          } catch {
-            toast.error('Code validation failed');
             getExecutionStore(flowId).stopExecution();
             return;
           }
@@ -471,6 +483,7 @@ export function useRunExecution(
       setExecutionHighlight,
       queryClient,
       refetchSubscriptionStatus,
+      editor,
     ]
   );
 
@@ -486,7 +499,6 @@ export function useRunExecution(
       reasons.push('No flow selected');
       return { isValid: false, reasons };
     }
-
     try {
       let schema = currentFlow.inputSchema;
       if (typeof schema === 'string') {
