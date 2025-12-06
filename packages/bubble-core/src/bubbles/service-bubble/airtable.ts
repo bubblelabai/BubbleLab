@@ -1163,14 +1163,129 @@ export class AirtableBubble<
     };
   }
 
+  /**
+   * Normalizes field definitions by adding required default options for field types that need them.
+   * This provides a better UX by auto-fixing common configuration issues.
+   */
+  private normalizeFieldOptions(
+    fields: Array<{
+      name: string;
+      type: string;
+      description?: string;
+      options?: Record<string, unknown>;
+    }>
+  ): Array<{
+    name: string;
+    type: string;
+    description?: string;
+    options?: Record<string, unknown>;
+  }> {
+    return fields.map((field) => {
+      const normalizedField = { ...field };
+
+      // Add default options for field types that require them
+      switch (field.type) {
+        case 'date':
+          // Date fields require a dateFormat option
+          if (!field.options || Object.keys(field.options).length === 0) {
+            normalizedField.options = {
+              dateFormat: {
+                name: 'local',
+                format: 'l',
+              },
+            };
+          }
+          break;
+
+        case 'dateTime':
+          // DateTime fields require dateFormat, timeFormat, and timeZone
+          if (!field.options || Object.keys(field.options).length === 0) {
+            normalizedField.options = {
+              dateFormat: {
+                name: 'local',
+                format: 'l',
+              },
+              timeFormat: {
+                name: '12hour',
+                format: 'h:mma',
+              },
+              timeZone: 'utc',
+            };
+          }
+          break;
+
+        case 'number':
+          // Number fields should have precision
+          if (!field.options || !('precision' in field.options)) {
+            normalizedField.options = {
+              ...field.options,
+              precision: 0,
+            };
+          }
+          break;
+
+        case 'currency':
+          // Currency fields need precision and symbol
+          if (!field.options || !('precision' in field.options)) {
+            normalizedField.options = {
+              ...field.options,
+              precision: 2,
+              symbol: '$',
+            };
+          }
+          break;
+
+        case 'percent':
+          // Percent fields need precision
+          if (!field.options || !('precision' in field.options)) {
+            normalizedField.options = {
+              ...field.options,
+              precision: 0,
+            };
+          }
+          break;
+
+        case 'rating':
+          // Rating fields need max, icon, and color
+          if (!field.options || !('max' in field.options)) {
+            normalizedField.options = {
+              ...field.options,
+              max: 5,
+              icon: 'star',
+              color: 'yellowBright',
+            };
+          }
+          break;
+
+        case 'duration':
+          // Duration fields need durationFormat
+          if (!field.options || !('durationFormat' in field.options)) {
+            normalizedField.options = {
+              ...field.options,
+              durationFormat: 'h:mm',
+            };
+          }
+          break;
+
+        // singleSelect and multipleSelects MUST have choices - don't auto-fix these
+        // as we can't guess what the choices should be. Let it fail with Airtable's error.
+      }
+
+      return normalizedField;
+    });
+  }
+
   private async createTable(
     params: Extract<AirtableParams, { operation: 'create_table' }>
   ): Promise<Extract<AirtableResult, { operation: 'create_table' }>> {
     const { baseId, name, description, fields } = params;
 
+    // Normalize field options to add sensible defaults where needed
+    const normalizedFields = this.normalizeFieldOptions(fields);
+
     const body: Record<string, unknown> = {
       name,
-      fields,
+      fields: normalizedFields,
     };
 
     if (description) {
@@ -1258,16 +1373,21 @@ export class AirtableBubble<
   ): Promise<Extract<AirtableResult, { operation: 'create_field' }>> {
     const { baseId, tableIdOrName, name, type, description, options } = params;
 
+    // Normalize the field to add default options if needed
+    const normalizedField = this.normalizeFieldOptions([
+      { name, type, description, options },
+    ])[0];
+
     const body: Record<string, unknown> = {
-      name,
-      type,
+      name: normalizedField.name,
+      type: normalizedField.type,
     };
 
-    if (description) {
-      body.description = description;
+    if (normalizedField.description) {
+      body.description = normalizedField.description;
     }
-    if (options) {
-      body.options = options;
+    if (normalizedField.options) {
+      body.options = normalizedField.options;
     }
 
     const response = await this.makeAirtableApiCall(

@@ -414,6 +414,78 @@ describe('AirtableBubble', () => {
       const bubble = new AirtableBubble(params);
       expect((bubble as any).params.description).toBe('Test table description');
     });
+
+    it('should accept date fields without options (will be auto-fixed)', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'Table with Date',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Start Date', type: 'date' }, // No options - should be auto-fixed
+        ],
+      };
+
+      // Should not throw - the bubble will auto-add date options during API call
+      expect(() => new AirtableBubble(params)).not.toThrow();
+    });
+
+    it('should accept dateTime fields without options (will be auto-fixed)', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'Table with DateTime',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Created At', type: 'dateTime' }, // No options - should be auto-fixed
+        ],
+      };
+
+      // Should not throw - the bubble will auto-add dateTime options during API call
+      expect(() => new AirtableBubble(params)).not.toThrow();
+    });
+
+    it('should accept number fields without precision (will be auto-fixed)', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'Table with Number',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Count', type: 'number' }, // No precision - should be auto-fixed
+        ],
+      };
+
+      expect(() => new AirtableBubble(params)).not.toThrow();
+    });
+
+    it('should accept currency fields without options (will be auto-fixed)', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'Table with Currency',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Price', type: 'currency' }, // No options - should be auto-fixed
+        ],
+      };
+
+      expect(() => new AirtableBubble(params)).not.toThrow();
+    });
+
+    it('should accept rating fields without options (will be auto-fixed)', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'Table with Rating',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Stars', type: 'rating' }, // No options - should be auto-fixed
+        ],
+      };
+
+      expect(() => new AirtableBubble(params)).not.toThrow();
+    });
   });
 
   describe('Schema Validation - update_table', () => {
