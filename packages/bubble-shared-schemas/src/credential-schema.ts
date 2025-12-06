@@ -27,6 +27,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.FUB_CRED]: '',
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
+  [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -343,6 +344,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'eleven-labs': [CredentialType.ELEVENLABS_API_KEY],
   followupboss: [CredentialType.FUB_CRED],
   'agi-inc': [CredentialType.AGI_API_KEY],
+  airtable: [CredentialType.AIRTABLE_CRED],
 };
 
 // POST /credentials - Create credential schema

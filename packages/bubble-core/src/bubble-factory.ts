@@ -152,6 +152,7 @@ export class BubbleFactory {
       'eleven-labs',
       'followupboss',
       'agi-inc',
+      'airtable',
     ];
   }
 
@@ -266,6 +267,9 @@ export class BubbleFactory {
     const { AGIIncBubble } = await import(
       './bubbles/service-bubble/agi-inc.js'
     );
+    const { AirtableBubble } = await import(
+      './bubbles/service-bubble/airtable.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -365,6 +369,7 @@ export class BubbleFactory {
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
     this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
     this.register('agi-inc', AGIIncBubble as BubbleClassWithMetadata);
+    this.register('airtable', AirtableBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
