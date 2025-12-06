@@ -92,7 +92,7 @@ const result = await new AirtableBubble({
   <dt><code>offset</code> <em>string</em> </dt>
   <dd>Pagination offset for retrieving next page of results</dd>
 
-  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>error</code> <em>string</em> </dt>
   <dd>Error message if operation failed</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
@@ -146,7 +146,7 @@ const result = await new AirtableBubble({
   <dt><code>record</code> <em>object</em> </dt>
   <dd>Record object</dd>
 
-  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>error</code> <em>string</em> </dt>
   <dd>Error message if operation failed</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
@@ -203,7 +203,7 @@ const result = await new AirtableBubble({
   <dt><code>records</code> <em>object[]</em> </dt>
   <dd>Array of created record objects</dd>
 
-  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>error</code> <em>string</em> </dt>
   <dd>Error message if operation failed</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
@@ -260,7 +260,7 @@ const result = await new AirtableBubble({
   <dt><code>records</code> <em>object[]</em> </dt>
   <dd>Array of updated record objects</dd>
 
-  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>error</code> <em>string</em> </dt>
   <dd>Error message if operation failed</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
@@ -314,7 +314,337 @@ const result = await new AirtableBubble({
   <dt><code>records</code> <em>object[]</em> </dt>
   <dd>Array of deletion confirmation objects</dd>
 
-  <dt><code>error</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `list_bases`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_bases'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all bases accessible with the current API key</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'list_bases'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>List all bases accessible with the current API key</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>bases</code> <em>object[]</em> </dt>
+  <dd>Array of base objects</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `get_base_schema`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_base_schema'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get the schema for a specific base including all tables and fields</dd>
+
+  <dt><code>baseId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Airtable base ID (e.g., appXXXXXXXXXXXXXX)</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'get_base_schema'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Get the schema for a specific base including all tables and fields</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>tables</code> <em>object[]</em> </dt>
+  <dd>Array of table schemas</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_table`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_table'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new table in an Airtable base</dd>
+
+  <dt><code>baseId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Airtable base ID (e.g., appXXXXXXXXXXXXXX)</dd>
+
+  <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name for the new table</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>Optional description for the table</dd>
+
+  <dt><code>fields</code> <em>object[]</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Array of field definitions for the table</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_table'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new table in an Airtable base</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>table</code> <em>object</em> </dt>
+  <dd>Created table object</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_table`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_table'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update table properties like name and description</dd>
+
+  <dt><code>baseId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Airtable base ID (e.g., appXXXXXXXXXXXXXX)</dd>
+
+  <dt><code>tableIdOrName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Table ID (e.g., tblXXXXXXXXXXXXXX) or table name</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>New name for the table</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>New description for the table</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_table'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update table properties like name and description</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>table</code> <em>object</em> </dt>
+  <dd>Updated table object</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `create_field`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_field'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new field in an Airtable table</dd>
+
+  <dt><code>baseId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Airtable base ID (e.g., appXXXXXXXXXXXXXX)</dd>
+
+  <dt><code>tableIdOrName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Table ID (e.g., tblXXXXXXXXXXXXXX) or table name</dd>
+
+  <dt><code>name</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Name for the new field</dd>
+
+  <dt><code>type</code> <em>'singleLineText' | 'multilineText' | 'richText' | 'email' | 'url' | 'phoneNumber' | 'number' | 'percent' | 'currency' | 'rating' | 'duration' | 'singleSelect' | 'multipleSelects' | 'singleCollaborator' | 'multipleCollaborators' | 'date' | 'dateTime' | 'checkbox' | 'multipleRecordLinks' | 'multipleAttachments' | 'barcode' | 'button' | 'formula' | 'createdTime' | 'lastModifiedTime' | 'createdBy' | 'lastModifiedBy' | 'autoNumber' | 'externalSyncSource' | 'count' | 'lookup' | 'rollup'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Field type</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>Field description</dd>
+
+  <dt><code>options</code> <em>Record&lt;string,unknown&gt;</em> </dt>
+  <dd>Field-specific options</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'create_field'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Create a new field in an Airtable table</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>field</code> <em>object</em> </dt>
+  <dd>Created field object</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
+  <dd>Error message if operation failed</dd>
+
+  <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the operation was successful</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+</Tabs>
+
+### `update_field`
+
+<Tabs values={[
+  { label: 'Input Schema', value: 'input' },
+  { label: 'Output Schema', value: 'output' }
+]} defaultValue="input">
+  <TabItem value="input">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_field'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update field properties like name, type, or description</dd>
+
+  <dt><code>baseId</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Airtable base ID (e.g., appXXXXXXXXXXXXXX)</dd>
+
+  <dt><code>tableIdOrName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Table ID (e.g., tblXXXXXXXXXXXXXX) or table name</dd>
+
+  <dt><code>fieldIdOrName</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Field ID (e.g., fldXXXXXXXXXXXXXX) or field name</dd>
+
+  <dt><code>name</code> <em>string</em> </dt>
+  <dd>New name for the field</dd>
+
+  <dt><code>description</code> <em>string</em> </dt>
+  <dd>New description for the field</dd>
+
+  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dd>Object mapping credential types to values (injected at runtime)</dd>
+</dl>
+
+</div>
+
+  </TabItem>
+  <TabItem value="output">
+
+<div className="schema-card">
+<dl>
+  <dt><code>operation</code> <em>'update_field'</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Update field properties like name, type, or description</dd>
+
+  <dt><code>ok</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>Whether the Airtable API call was successful</dd>
+
+  <dt><code>field</code> <em>object</em> </dt>
+  <dd>Updated field object</dd>
+
+  <dt><code>error</code> <em>string</em> </dt>
   <dd>Error message if operation failed</dd>
 
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>

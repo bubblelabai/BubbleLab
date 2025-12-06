@@ -262,6 +262,230 @@ const AirtableParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // List bases operation
+  z.object({
+    operation: z
+      .literal('list_bases')
+      .describe('List all bases accessible with the current API key'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Get base schema operation
+  z.object({
+    operation: z
+      .literal('get_base_schema')
+      .describe(
+        'Get the schema for a specific base including all tables and fields'
+      ),
+    baseId: z
+      .string()
+      .min(1, 'Base ID is required')
+      .describe('Airtable base ID (e.g., appXXXXXXXXXXXXXX)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Create table operation
+  z.object({
+    operation: z
+      .literal('create_table')
+      .describe('Create a new table in an Airtable base'),
+    baseId: z
+      .string()
+      .min(1, 'Base ID is required')
+      .describe('Airtable base ID (e.g., appXXXXXXXXXXXXXX)'),
+    name: z
+      .string()
+      .min(1, 'Table name is required')
+      .describe('Name for the new table'),
+    description: z
+      .string()
+      .optional()
+      .describe('Optional description for the table'),
+    fields: z
+      .array(
+        z.object({
+          name: z.string().describe('Field name'),
+          type: z
+            .enum([
+              'singleLineText',
+              'multilineText',
+              'richText',
+              'email',
+              'url',
+              'phoneNumber',
+              'number',
+              'percent',
+              'currency',
+              'rating',
+              'duration',
+              'singleSelect',
+              'multipleSelects',
+              'singleCollaborator',
+              'multipleCollaborators',
+              'date',
+              'dateTime',
+              'checkbox',
+              'multipleRecordLinks',
+              'multipleAttachments',
+              'barcode',
+              'button',
+              'formula',
+              'createdTime',
+              'lastModifiedTime',
+              'createdBy',
+              'lastModifiedBy',
+              'autoNumber',
+              'externalSyncSource',
+              'count',
+              'lookup',
+              'rollup',
+            ])
+            .describe('Field type'),
+          description: z.string().optional().describe('Field description'),
+          options: z.record(z.unknown()).optional().describe('Field options'),
+        })
+      )
+      .describe('Array of field definitions for the table'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Update table operation
+  z.object({
+    operation: z
+      .literal('update_table')
+      .describe('Update table properties like name and description'),
+    baseId: z
+      .string()
+      .min(1, 'Base ID is required')
+      .describe('Airtable base ID (e.g., appXXXXXXXXXXXXXX)'),
+    tableIdOrName: z
+      .string()
+      .min(1, 'Table ID or name is required')
+      .describe('Table ID (e.g., tblXXXXXXXXXXXXXX) or table name'),
+    name: z.string().optional().describe('New name for the table'),
+    description: z
+      .string()
+      .optional()
+      .describe('New description for the table'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Create field operation
+  z.object({
+    operation: z
+      .literal('create_field')
+      .describe('Create a new field in an Airtable table'),
+    baseId: z
+      .string()
+      .min(1, 'Base ID is required')
+      .describe('Airtable base ID (e.g., appXXXXXXXXXXXXXX)'),
+    tableIdOrName: z
+      .string()
+      .min(1, 'Table ID or name is required')
+      .describe('Table ID (e.g., tblXXXXXXXXXXXXXX) or table name'),
+    name: z
+      .string()
+      .min(1, 'Field name is required')
+      .describe('Name for the new field'),
+    type: z
+      .enum([
+        'singleLineText',
+        'multilineText',
+        'richText',
+        'email',
+        'url',
+        'phoneNumber',
+        'number',
+        'percent',
+        'currency',
+        'rating',
+        'duration',
+        'singleSelect',
+        'multipleSelects',
+        'singleCollaborator',
+        'multipleCollaborators',
+        'date',
+        'dateTime',
+        'checkbox',
+        'multipleRecordLinks',
+        'multipleAttachments',
+        'barcode',
+        'button',
+        'formula',
+        'createdTime',
+        'lastModifiedTime',
+        'createdBy',
+        'lastModifiedBy',
+        'autoNumber',
+        'externalSyncSource',
+        'count',
+        'lookup',
+        'rollup',
+      ])
+      .describe('Field type'),
+    description: z.string().optional().describe('Field description'),
+    options: z
+      .record(z.unknown())
+      .optional()
+      .describe('Field-specific options'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Update field operation
+  z.object({
+    operation: z
+      .literal('update_field')
+      .describe('Update field properties like name, type, or description'),
+    baseId: z
+      .string()
+      .min(1, 'Base ID is required')
+      .describe('Airtable base ID (e.g., appXXXXXXXXXXXXXX)'),
+    tableIdOrName: z
+      .string()
+      .min(1, 'Table ID or name is required')
+      .describe('Table ID (e.g., tblXXXXXXXXXXXXXX) or table name'),
+    fieldIdOrName: z
+      .string()
+      .min(1, 'Field ID or name is required')
+      .describe('Field ID (e.g., fldXXXXXXXXXXXXXX) or field name'),
+    name: z.string().optional().describe('New name for the field'),
+    description: z
+      .string()
+      .optional()
+      .describe('New description for the field'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -340,6 +564,162 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
     error: z.string().default('').describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
+
+  // List bases result
+  z.object({
+    operation: z
+      .literal('list_bases')
+      .describe('List all bases accessible with the current API key'),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    bases: z
+      .array(
+        z.object({
+          id: z.string().describe('Base ID'),
+          name: z.string().describe('Base name'),
+          permissionLevel: z
+            .string()
+            .describe('Permission level for this base'),
+        })
+      )
+      .optional()
+      .describe('Array of base objects'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Get base schema result
+  z.object({
+    operation: z
+      .literal('get_base_schema')
+      .describe(
+        'Get the schema for a specific base including all tables and fields'
+      ),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    tables: z
+      .array(
+        z.object({
+          id: z.string().describe('Table ID'),
+          name: z.string().describe('Table name'),
+          description: z.string().optional().describe('Table description'),
+          primaryFieldId: z.string().describe('ID of the primary field'),
+          fields: z
+            .array(
+              z.object({
+                id: z.string().describe('Field ID'),
+                name: z.string().describe('Field name'),
+                type: z.string().describe('Field type'),
+                description: z
+                  .string()
+                  .optional()
+                  .describe('Field description'),
+                options: z
+                  .record(z.unknown())
+                  .optional()
+                  .describe('Field options'),
+              })
+            )
+            .describe('Array of field definitions'),
+          views: z
+            .array(
+              z.object({
+                id: z.string().describe('View ID'),
+                name: z.string().describe('View name'),
+                type: z.string().describe('View type'),
+              })
+            )
+            .optional()
+            .describe('Array of view definitions'),
+        })
+      )
+      .optional()
+      .describe('Array of table schemas'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Create table result
+  z.object({
+    operation: z
+      .literal('create_table')
+      .describe('Create a new table in an Airtable base'),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    table: z
+      .object({
+        id: z.string().describe('Table ID'),
+        name: z.string().describe('Table name'),
+        description: z.string().optional().describe('Table description'),
+        primaryFieldId: z.string().describe('ID of the primary field'),
+        fields: z
+          .array(
+            z.object({
+              id: z.string().describe('Field ID'),
+              name: z.string().describe('Field name'),
+              type: z.string().describe('Field type'),
+            })
+          )
+          .describe('Array of field definitions'),
+      })
+      .optional()
+      .describe('Created table object'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Update table result
+  z.object({
+    operation: z
+      .literal('update_table')
+      .describe('Update table properties like name and description'),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    table: z
+      .object({
+        id: z.string().describe('Table ID'),
+        name: z.string().describe('Table name'),
+        description: z.string().optional().describe('Table description'),
+      })
+      .optional()
+      .describe('Updated table object'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Create field result
+  z.object({
+    operation: z
+      .literal('create_field')
+      .describe('Create a new field in an Airtable table'),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    field: z
+      .object({
+        id: z.string().describe('Field ID'),
+        name: z.string().describe('Field name'),
+        type: z.string().describe('Field type'),
+        description: z.string().optional().describe('Field description'),
+      })
+      .optional()
+      .describe('Created field object'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Update field result
+  z.object({
+    operation: z
+      .literal('update_field')
+      .describe('Update field properties like name, type, or description'),
+    ok: z.boolean().describe('Whether the Airtable API call was successful'),
+    field: z
+      .object({
+        id: z.string().describe('Field ID'),
+        name: z.string().describe('Field name'),
+        type: z.string().describe('Field type'),
+        description: z.string().optional().describe('Field description'),
+      })
+      .optional()
+      .describe('Updated field object'),
+    error: z.string().default('').describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
 ]);
 
 type AirtableResult = z.output<typeof AirtableResultSchema>;
@@ -412,13 +792,15 @@ export class AirtableBubble<
   static readonly shortDescription =
     'Airtable integration for managing records in bases and tables';
   static readonly longDescription = `
-    Comprehensive Airtable integration bubble for managing records in your Airtable bases.
+    Comprehensive Airtable integration bubble for managing bases, tables, fields, and records.
     Use cases:
     - List records with filtering, sorting, and pagination
     - Retrieve individual records by ID
-    - Create new records in tables
-    - Update existing records with new field values
-    - Delete records from tables
+    - Create, update, and delete records
+    - List all accessible bases
+    - Get base schema with all tables and fields
+    - Create and update tables
+    - Create and update fields
     - Support for all Airtable field types (text, number, attachments, links, etc.)
     
     Security Features:
@@ -461,6 +843,18 @@ export class AirtableBubble<
             return await this.updateRecords(this.params);
           case 'delete_records':
             return await this.deleteRecords(this.params);
+          case 'list_bases':
+            return await this.listBases(this.params);
+          case 'get_base_schema':
+            return await this.getBaseSchema(this.params);
+          case 'create_table':
+            return await this.createTable(this.params);
+          case 'update_table':
+            return await this.updateTable(this.params);
+          case 'create_field':
+            return await this.createField(this.params);
+          case 'update_field':
+            return await this.updateField(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -690,6 +1084,259 @@ export class AirtableBubble<
       operation: 'delete_records',
       ok: true,
       records: deleteRecords,
+      error: '',
+      success: true,
+    };
+  }
+
+  private async listBases(
+    params: Extract<AirtableParams, { operation: 'list_bases' }>
+  ): Promise<Extract<AirtableResult, { operation: 'list_bases' }>> {
+    void params;
+
+    const response = await this.makeAirtableApiCall('meta/bases', 'GET');
+
+    if ('error' in response) {
+      return {
+        operation: 'list_bases',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'list_bases',
+      ok: true,
+      bases: response.bases as Array<{
+        id: string;
+        name: string;
+        permissionLevel: string;
+      }>,
+      error: '',
+      success: true,
+    };
+  }
+
+  private async getBaseSchema(
+    params: Extract<AirtableParams, { operation: 'get_base_schema' }>
+  ): Promise<Extract<AirtableResult, { operation: 'get_base_schema' }>> {
+    const { baseId } = params;
+
+    const response = await this.makeAirtableApiCall(
+      `meta/bases/${baseId}/tables`,
+      'GET'
+    );
+
+    if ('error' in response) {
+      return {
+        operation: 'get_base_schema',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'get_base_schema',
+      ok: true,
+      tables: response.tables as Array<{
+        id: string;
+        name: string;
+        description?: string;
+        primaryFieldId: string;
+        fields: Array<{
+          id: string;
+          name: string;
+          type: string;
+          description?: string;
+          options?: Record<string, unknown>;
+        }>;
+        views?: Array<{
+          id: string;
+          name: string;
+          type: string;
+        }>;
+      }>,
+      error: '',
+      success: true,
+    };
+  }
+
+  private async createTable(
+    params: Extract<AirtableParams, { operation: 'create_table' }>
+  ): Promise<Extract<AirtableResult, { operation: 'create_table' }>> {
+    const { baseId, name, description, fields } = params;
+
+    const body: Record<string, unknown> = {
+      name,
+      fields,
+    };
+
+    if (description) {
+      body.description = description;
+    }
+
+    const response = await this.makeAirtableApiCall(
+      `meta/bases/${baseId}/tables`,
+      'POST',
+      body
+    );
+
+    if ('error' in response) {
+      return {
+        operation: 'create_table',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'create_table',
+      ok: true,
+      table: response as {
+        id: string;
+        name: string;
+        description?: string;
+        primaryFieldId: string;
+        fields: Array<{
+          id: string;
+          name: string;
+          type: string;
+        }>;
+      },
+      error: '',
+      success: true,
+    };
+  }
+
+  private async updateTable(
+    params: Extract<AirtableParams, { operation: 'update_table' }>
+  ): Promise<Extract<AirtableResult, { operation: 'update_table' }>> {
+    const { baseId, tableIdOrName, name, description } = params;
+
+    const body: Record<string, unknown> = {};
+
+    if (name) {
+      body.name = name;
+    }
+    if (description !== undefined) {
+      body.description = description;
+    }
+
+    const response = await this.makeAirtableApiCall(
+      `meta/bases/${baseId}/tables/${encodeURIComponent(tableIdOrName)}`,
+      'PATCH',
+      body
+    );
+
+    if ('error' in response) {
+      return {
+        operation: 'update_table',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'update_table',
+      ok: true,
+      table: response as {
+        id: string;
+        name: string;
+        description?: string;
+      },
+      error: '',
+      success: true,
+    };
+  }
+
+  private async createField(
+    params: Extract<AirtableParams, { operation: 'create_field' }>
+  ): Promise<Extract<AirtableResult, { operation: 'create_field' }>> {
+    const { baseId, tableIdOrName, name, type, description, options } = params;
+
+    const body: Record<string, unknown> = {
+      name,
+      type,
+    };
+
+    if (description) {
+      body.description = description;
+    }
+    if (options) {
+      body.options = options;
+    }
+
+    const response = await this.makeAirtableApiCall(
+      `meta/bases/${baseId}/tables/${encodeURIComponent(tableIdOrName)}/fields`,
+      'POST',
+      body
+    );
+
+    if ('error' in response) {
+      return {
+        operation: 'create_field',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'create_field',
+      ok: true,
+      field: response as {
+        id: string;
+        name: string;
+        type: string;
+        description?: string;
+      },
+      error: '',
+      success: true,
+    };
+  }
+
+  private async updateField(
+    params: Extract<AirtableParams, { operation: 'update_field' }>
+  ): Promise<Extract<AirtableResult, { operation: 'update_field' }>> {
+    const { baseId, tableIdOrName, fieldIdOrName, name, description } = params;
+
+    const body: Record<string, unknown> = {};
+
+    if (name) {
+      body.name = name;
+    }
+    if (description !== undefined) {
+      body.description = description;
+    }
+
+    const response = await this.makeAirtableApiCall(
+      `meta/bases/${baseId}/tables/${encodeURIComponent(tableIdOrName)}/fields/${encodeURIComponent(fieldIdOrName)}`,
+      'PATCH',
+      body
+    );
+
+    if ('error' in response) {
+      return {
+        operation: 'update_field',
+        ok: false,
+        error: (response as AirtableApiError).error.message,
+        success: false,
+      };
+    }
+
+    return {
+      operation: 'update_field',
+      ok: true,
+      field: response as {
+        id: string;
+        name: string;
+        type: string;
+        description?: string;
+      },
       error: '',
       success: true,
     };

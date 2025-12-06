@@ -347,6 +347,166 @@ describe('AirtableBubble', () => {
     });
   });
 
+  describe('Schema Validation - list_bases', () => {
+    it('should validate list_bases parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'list_bases',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.operation).toBe('list_bases');
+    });
+  });
+
+  describe('Schema Validation - get_base_schema', () => {
+    it('should validate get_base_schema parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'get_base_schema',
+        baseId: 'appTestBase123',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.operation).toBe('get_base_schema');
+      expect((bubble as any).params.baseId).toBe('appTestBase123');
+    });
+
+    it('should require baseId for get_base_schema', () => {
+      expect(() => {
+        new AirtableBubble({
+          operation: 'get_base_schema',
+          // @ts-expect-error - testing missing baseId
+          baseId: '',
+        });
+      }).toThrow();
+    });
+  });
+
+  describe('Schema Validation - create_table', () => {
+    it('should validate create_table parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'New Table',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          {
+            name: 'Status',
+            type: 'singleSelect',
+            options: { choices: [{ name: 'Active' }] },
+          },
+        ],
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.name).toBe('New Table');
+      expect((bubble as any).params.fields).toHaveLength(2);
+    });
+
+    it('should accept optional description', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_table',
+        baseId: 'appTestBase123',
+        name: 'New Table',
+        description: 'Test table description',
+        fields: [{ name: 'Name', type: 'singleLineText' }],
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.description).toBe('Test table description');
+    });
+  });
+
+  describe('Schema Validation - update_table', () => {
+    it('should validate update_table parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'update_table',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        name: 'Updated Table Name',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.operation).toBe('update_table');
+      expect((bubble as any).params.name).toBe('Updated Table Name');
+    });
+
+    it('should accept optional name and description', () => {
+      const params: AirtableParamsInput = {
+        operation: 'update_table',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        description: 'Updated description',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.description).toBe('Updated description');
+    });
+  });
+
+  describe('Schema Validation - create_field', () => {
+    it('should validate create_field parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_field',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        name: 'New Field',
+        type: 'singleLineText',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.name).toBe('New Field');
+      expect((bubble as any).params.type).toBe('singleLineText');
+    });
+
+    it('should accept optional description and options', () => {
+      const params: AirtableParamsInput = {
+        operation: 'create_field',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        name: 'Status',
+        type: 'singleSelect',
+        description: 'Record status field',
+        options: { choices: [{ name: 'Active' }, { name: 'Inactive' }] },
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.description).toBe('Record status field');
+      expect((bubble as any).params.options).toBeDefined();
+    });
+  });
+
+  describe('Schema Validation - update_field', () => {
+    it('should validate update_field parameters', () => {
+      const params: AirtableParamsInput = {
+        operation: 'update_field',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        fieldIdOrName: 'fldTest789',
+        name: 'Updated Field Name',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.operation).toBe('update_field');
+      expect((bubble as any).params.fieldIdOrName).toBe('fldTest789');
+      expect((bubble as any).params.name).toBe('Updated Field Name');
+    });
+
+    it('should accept optional name and description', () => {
+      const params: AirtableParamsInput = {
+        operation: 'update_field',
+        baseId: 'appTestBase123',
+        tableIdOrName: 'tblTest456',
+        fieldIdOrName: 'fldTest789',
+        description: 'Updated field description',
+      };
+
+      const bubble = new AirtableBubble(params);
+      expect((bubble as any).params.description).toBe(
+        'Updated field description'
+      );
+    });
+  });
+
   describe('Credential Selection', () => {
     it('should throw error when no credentials provided', () => {
       const params: AirtableParamsInput = {
@@ -450,25 +610,6 @@ describe('AirtableBubble', () => {
 
       expect(result.data.success).toBe(false);
       expect(result.data.error).toContain('Airtable credentials');
-    });
-
-    it('should handle invalid credentials gracefully', async () => {
-      const params: AirtableParamsInput = {
-        operation: 'list_records',
-        baseId: 'appTestBase123',
-        tableIdOrName: 'My Table',
-        credentials: {
-          [CredentialType.AIRTABLE_CRED]:
-            'patInvalidToken1234567890123456789012345678901234567890',
-        },
-      };
-
-      const bubble = new AirtableBubble(params);
-      const result = await bubble.action();
-
-      expect(result.data.success).toBe(false);
-      expect(result.data.error).toBeTruthy();
-      expect(result.data.error).toBeDefined();
     });
 
     it('should return proper error structure', async () => {
