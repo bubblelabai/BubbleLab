@@ -30,6 +30,7 @@ describe('BubbleFlow Validation', () => {
       expect(result.errors!.length).toBe(1);
       expect(result.errors![0]).toContain('credentials');
     });
+
     it('should validate calender step flow', async () => {
       const code = getFixture('invalid-step-flow');
       const result = await validateBubbleFlow(code);
@@ -141,6 +142,37 @@ describe('BubbleFlow Validation', () => {
       const result = await validateBubbleFlow(code);
       console.log(result);
       expect(result.valid).toBe(true);
+    });
+
+    it('should fail validation when a method calls another method', async () => {
+      const code = `
+import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';
+
+export class TestFlow extends BubbleFlow<'webhook/http'> {
+  private async helperMethod(): Promise<string> {
+    return 'test';
+  }
+
+  private async gatherContext(): Promise<string> {
+    // This should fail - calling another method from a method
+    const result = await this.helperMethod();
+    return result;
+  }
+
+  async handle(payload: any): Promise<any> {
+    const context = await this.gatherContext();
+    return { context };
+  }
+}
+`;
+      const result = await validateBubbleFlow(code);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(
+        result.errors?.some((error) =>
+          error.includes('cannot be called from another method')
+        )
+      ).toBe(true);
     });
   });
 });

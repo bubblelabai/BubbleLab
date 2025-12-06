@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest --exclude='**/*.integration.test.{ts,tsx,js,jsx}'"
   },
   "dependencies": {
     "@bubblelab/shared-schemas": "workspace:*",

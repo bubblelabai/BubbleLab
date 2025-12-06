@@ -806,6 +806,87 @@ function isPromiseAllArrayElement(
 }
 
 /**
+ * Lint rule that prevents methods from calling other methods
+ * Methods should only be called from the handle method, not from other methods
+ */
+export const noMethodCallingMethodRule: LintRule = {
+  name: 'no-method-calling-method',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    if (!context.bubbleFlowClass) {
+      return errors; // No BubbleFlow class found, skip this rule
+    }
+
+    // Find all methods in the BubbleFlow class
+    const methods: ts.MethodDeclaration[] = [];
+    if (context.bubbleFlowClass.members) {
+      for (const member of context.bubbleFlowClass.members) {
+        if (ts.isMethodDeclaration(member)) {
+          // Skip the handle method - it's allowed to call other methods
+          const methodName = member.name;
+          if (ts.isIdentifier(methodName) && methodName.text === 'handle') {
+            continue;
+          }
+          methods.push(member);
+        }
+      }
+    }
+
+    // For each method, check if it calls other methods
+    for (const method of methods) {
+      if (!method.body || !ts.isBlock(method.body)) {
+        continue;
+      }
+
+      const methodCallErrors = findMethodCallsInNode(
+        method.body,
+        context.sourceFile
+      );
+      errors.push(...methodCallErrors);
+    }
+
+    return errors;
+  },
+};
+
+/**
+ * Recursively finds all method calls (this.methodName()) in a node
+ */
+function findMethodCallsInNode(
+  node: ts.Node,
+  sourceFile: ts.SourceFile
+): LintError[] {
+  const errors: LintError[] = [];
+
+  const visit = (n: ts.Node) => {
+    // Check for call expressions: this.methodName()
+    if (ts.isCallExpression(n)) {
+      if (ts.isPropertyAccessExpression(n.expression)) {
+        const object = n.expression.expression;
+        // Check if it's 'this' keyword (SyntaxKind.ThisKeyword)
+        if (object.kind === ts.SyntaxKind.ThisKeyword) {
+          const methodName = n.expression.name.text;
+          const { line, character } = sourceFile.getLineAndCharacterOfPosition(
+            n.getStart(sourceFile)
+          );
+          errors.push({
+            line: line + 1,
+            column: character + 1,
+            message: `Method 'this.${methodName}()' cannot be called from another method. Methods should only be called from the handle method.`,
+          });
+        }
+      }
+    }
+
+    ts.forEachChild(n, visit);
+  };
+
+  visit(node);
+  return errors;
+}
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -814,3 +895,4 @@ defaultLintRuleRegistry.register(noDirectBubbleInstantiationInHandleRule);
 defaultLintRuleRegistry.register(noCredentialsParameterRule);
 defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);
 defaultLintRuleRegistry.register(noProcessEnvRule);
+defaultLintRuleRegistry.register(noMethodCallingMethodRule);

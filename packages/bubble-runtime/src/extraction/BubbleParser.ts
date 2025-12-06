@@ -2866,11 +2866,11 @@ export class BubbleParser {
   }
 
   /**
-   * Detect if an expression is Promise.all([...])
+   * Detect if an expression is Promise.all([...]) or Promise.all(variable)
    */
   private detectPromiseAll(expr: TSESTree.Expression): {
     callExpr: TSESTree.CallExpression;
-    arrayExpr: TSESTree.ArrayExpression;
+    arrayExpr: TSESTree.ArrayExpression | TSESTree.Identifier;
   } | null {
     // Handle await Promise.all([...])
     let callExpr: TSESTree.CallExpression | null = null;
@@ -2893,15 +2893,21 @@ export class BubbleParser {
       callee.property.type === 'Identifier' &&
       callee.property.name === 'all'
     ) {
-      // Check if the first argument is an array
-      if (
-        callExpr.arguments.length > 0 &&
-        callExpr.arguments[0].type === 'ArrayExpression'
-      ) {
-        return {
-          callExpr,
-          arrayExpr: callExpr.arguments[0] as TSESTree.ArrayExpression,
-        };
+      // Check if the first argument is an array or variable
+      if (callExpr.arguments.length > 0) {
+        const arg = callExpr.arguments[0];
+        if (arg.type === 'ArrayExpression') {
+          return {
+            callExpr,
+            arrayExpr: arg as TSESTree.ArrayExpression,
+          };
+        }
+        if (arg.type === 'Identifier') {
+          return {
+            callExpr,
+            arrayExpr: arg as TSESTree.Identifier,
+          };
+        }
       }
     }
 
@@ -3327,12 +3333,59 @@ export class BubbleParser {
   }
 
   /**
+   * Find all .push() calls for an array variable
+   */
+  private findArrayPushCalls(
+    arrayVarName: string,
+    ast: TSESTree.Program,
+    contextLine: number,
+    scopeManager: ScopeManager
+  ): TSESTree.Expression[] {
+    const pushedArgs: TSESTree.Expression[] = [];
+    const varId = this.findVariableIdByName(
+      arrayVarName,
+      contextLine,
+      scopeManager
+    );
+    if (varId === undefined) return pushedArgs;
+
+    const walk = (node: TSESTree.Node) => {
+      if (
+        node.type === 'CallExpression' &&
+        node.callee.type === 'MemberExpression' &&
+        node.callee.property.type === 'Identifier' &&
+        node.callee.property.name === 'push' &&
+        node.callee.object.type === 'Identifier' &&
+        node.callee.object.name === arrayVarName
+      ) {
+        const pushLine = node.loc?.start.line || 0;
+        if (
+          this.findVariableIdByName(arrayVarName, pushLine, scopeManager) ===
+          varId
+        ) {
+          // Handle all arguments to .push(), not just the first one
+          node.arguments.forEach((arg) => {
+            pushedArgs.push(arg as TSESTree.Expression);
+          });
+        }
+      }
+      for (const key in node) {
+        const child = (node as any)[key];
+        if (Array.isArray(child)) child.forEach(walk);
+        else if (child?.type) walk(child);
+      }
+    };
+    walk(ast);
+    return pushedArgs;
+  }
+
+  /**
    * Build a parallel execution node from Promise.all()
    */
   private buildParallelExecutionNode(
     promiseAllInfo: {
       callExpr: TSESTree.CallExpression;
-      arrayExpr: TSESTree.ArrayExpression;
+      arrayExpr: TSESTree.ArrayExpression | TSESTree.Identifier;
     },
     stmt: TSESTree.Statement,
     bubbleMap: Map<number, ParsedBubbleWithInfo>,
@@ -3342,43 +3395,70 @@ export class BubbleParser {
     if (!location) return null;
 
     const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
-
-    // Parse each element in the Promise.all array as a workflow node
     const children: WorkflowNode[] = [];
-    for (const element of promiseAllInfo.arrayExpr.elements) {
-      if (!element) continue; // Skip holes in sparse arrays
-      if (element.type === 'SpreadElement') continue; // Skip spread elements for now
 
-      // Check if element is a bubble
-      const bubble = this.findBubbleInExpression(element, bubbleMap);
-      if (bubble) {
-        children.push({
-          type: 'bubble',
-          variableId: bubble.variableId,
-        });
-        continue;
+    // Handle variable reference (e.g., Promise.all(exampleScrapers))
+    if (promiseAllInfo.arrayExpr.type === 'Identifier' && this.cachedAST) {
+      const arrayVarName = promiseAllInfo.arrayExpr.name;
+      const contextLine = promiseAllInfo.arrayExpr.loc?.start.line || 0;
+      const pushedArgs = this.findArrayPushCalls(
+        arrayVarName,
+        this.cachedAST,
+        contextLine,
+        scopeManager
+      );
+
+      for (const arg of pushedArgs) {
+        const methodCall = this.detectFunctionCall(arg);
+        if (methodCall) {
+          const syntheticStmt: TSESTree.ExpressionStatement = {
+            type: AST_NODE_TYPES.ExpressionStatement,
+            expression: methodCall.callExpr,
+            range: arg.range!,
+            loc: arg.loc!,
+            parent: stmt as any,
+          } as TSESTree.ExpressionStatement;
+          const funcCallNode = this.buildFunctionCallNode(
+            methodCall,
+            syntheticStmt,
+            bubbleMap,
+            scopeManager
+          );
+          if (funcCallNode) children.push(funcCallNode);
+        } else {
+          const bubble = this.findBubbleInExpression(arg, bubbleMap);
+          if (bubble) {
+            children.push({ type: 'bubble', variableId: bubble.variableId });
+          }
+        }
       }
+    } else if (promiseAllInfo.arrayExpr.type === 'ArrayExpression') {
+      // Handle direct array literal (existing logic)
+      for (const element of promiseAllInfo.arrayExpr.elements) {
+        if (!element || element.type === 'SpreadElement') continue;
 
-      // Check if element is a function call
-      const functionCall = this.detectFunctionCall(element);
-      if (functionCall) {
-        // Create a synthetic statement for this function call
-        // We need to wrap it in an expression statement for buildFunctionCallNode
-        const syntheticStmt: TSESTree.ExpressionStatement = {
-          type: AST_NODE_TYPES.ExpressionStatement,
-          expression: functionCall.callExpr,
-          range: element.range!,
-          loc: element.loc!,
-          parent: stmt as any, // Parent is the variable declaration
-        } as TSESTree.ExpressionStatement;
-        const funcCallNode = this.buildFunctionCallNode(
-          functionCall,
-          syntheticStmt,
-          bubbleMap,
-          scopeManager
-        );
-        if (funcCallNode) {
-          children.push(funcCallNode);
+        const bubble = this.findBubbleInExpression(element, bubbleMap);
+        if (bubble) {
+          children.push({ type: 'bubble', variableId: bubble.variableId });
+          continue;
+        }
+
+        const functionCall = this.detectFunctionCall(element);
+        if (functionCall) {
+          const syntheticStmt: TSESTree.ExpressionStatement = {
+            type: AST_NODE_TYPES.ExpressionStatement,
+            expression: functionCall.callExpr,
+            range: element.range!,
+            loc: element.loc!,
+            parent: stmt,
+          } as TSESTree.ExpressionStatement;
+          const funcCallNode = this.buildFunctionCallNode(
+            functionCall,
+            syntheticStmt,
+            bubbleMap,
+            scopeManager
+          );
+          if (funcCallNode) children.push(funcCallNode);
         }
       }
     }
