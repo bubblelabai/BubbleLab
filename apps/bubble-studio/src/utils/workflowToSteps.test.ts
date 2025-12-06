@@ -321,7 +321,10 @@ Please generate the best possible YC launch post based on the above.\`;
 
       const validationResult = await getValidationResponse(code);
       const stepGraph = await validateGraph(validationResult);
-      console.log(JSON.stringify(validationResult.workflow, null, 2));
+      // Assert that the workflow was correctly parsed for Promise.all with array.push pattern
+      expect(validationResult.workflow).toBeDefined();
+      expect(Array.isArray(validationResult.workflow.steps)).toBe(true);
+      expect(validationResult.workflow.steps.length).toBeGreaterThan(0);
 
       // // Ensure no steps have id 'step-main' (similar to FlowVisualizer.tsx check)
       const stepsInMain = stepGraph.steps.filter(
