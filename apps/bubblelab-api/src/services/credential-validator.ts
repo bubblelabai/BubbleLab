@@ -24,11 +24,7 @@ export class CredentialValidator {
   ): Promise<CredentialValidationResult> {
     // Skip validation if explicitly requested
     // Skip Airtable validation because PATs have varying scopes and require specific base/table access
-    if (
-      skipValidation ||
-      credentialType === CredentialType.FIRECRAWL_API_KEY ||
-      credentialType === CredentialType.AIRTABLE_CRED
-    ) {
+    if (skipValidation || credentialType === CredentialType.FIRECRAWL_API_KEY) {
       return { isValid: true };
     }
 

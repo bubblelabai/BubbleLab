@@ -379,23 +379,25 @@ export class AirtableBubble<
   Extract<AirtableResult, { operation: T['operation'] }>
 > {
   public async testCredential(): Promise<boolean> {
-    // Test credential by making a simple API call
-    // We'll try to list bases which requires valid authentication
+    // Test credential by checking the Authorization header format
+    // Note: We cannot test actual API access without knowing which base/table the user wants to access
+    // and what scopes their PAT has. Airtable PATs can have varying scopes and base restrictions.
+    //
+    // The best we can do is verify the token format is valid.
+    // Actual access will be validated when the user makes their first API call.
     try {
       const credential = this.chooseCredential();
       if (!credential) {
         return false;
       }
 
-      const response = await fetch('https://api.airtable.com/v0/meta/bases', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${credential}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Verify the token format looks like an Airtable PAT
+      // Format: patXXXXXXXXXX.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+      if (!credential.startsWith('pat') || credential.length < 50) {
+        return false;
+      }
 
-      return response.ok;
+      return true;
     } catch {
       return false;
     }
