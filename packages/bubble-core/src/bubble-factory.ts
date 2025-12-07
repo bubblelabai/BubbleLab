@@ -152,7 +152,7 @@ export class BubbleFactory {
       'eleven-labs',
       'followupboss',
       'agi-inc',
-      'airtable',
+      'notion',
     ];
   }
 
@@ -194,6 +194,7 @@ export class BubbleFactory {
     const { FollowUpBossBubble } = await import(
       './bubbles/service-bubble/followupboss.js'
     );
+    const { NotionBubble } = await import('./bubbles/service-bubble/notion.js');
     const { DatabaseAnalyzerWorkflowBubble } = await import(
       './bubbles/workflow-bubble/database-analyzer.workflow.js'
     );
@@ -299,6 +300,7 @@ export class BubbleFactory {
       'followupboss',
       FollowUpBossBubble as BubbleClassWithMetadata
     );
+    this.register('notion', NotionBubble as BubbleClassWithMetadata);
     this.register(
       'database-analyzer',
       DatabaseAnalyzerWorkflowBubble as BubbleClassWithMetadata

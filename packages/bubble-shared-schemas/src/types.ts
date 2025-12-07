@@ -31,6 +31,7 @@ export enum CredentialType {
   GOOGLE_SHEETS_CRED = 'GOOGLE_SHEETS_CRED',
   GOOGLE_CALENDAR_CRED = 'GOOGLE_CALENDAR_CRED',
   FUB_CRED = 'FUB_CRED',
+  NOTION_OAUTH_TOKEN = 'NOTION_OAUTH_TOKEN',
 
   // Development Platform Credentials
   GITHUB_TOKEN = 'GITHUB_TOKEN',
@@ -86,4 +87,5 @@ export type BubbleName =
   | 'followupboss'
   | 'agi-inc'
   | 'telegram'
-  | 'airtable';
+  | 'airtable'
+  | 'notion';

@@ -93,6 +93,24 @@ export class OAuthService {
         'Follow Up Boss OAuth credentials not configured. Set FUB_OAUTH_CLIENT_ID and FUB_OAUTH_CLIENT_SECRET'
       );
     }
+
+    // Notion OAuth 2.0 configuration
+    if (env.NOTION_OAUTH_CLIENT_ID && env.NOTION_OAUTH_CLIENT_SECRET) {
+      this.clients.set(
+        'notion',
+        new OAuth2Client({
+          server: 'https://api.notion.com',
+          clientId: env.NOTION_OAUTH_CLIENT_ID,
+          clientSecret: env.NOTION_OAUTH_CLIENT_SECRET,
+          authorizationEndpoint: '/v1/oauth/authorize',
+          tokenEndpoint: '/v1/oauth/token',
+        })
+      );
+    } else {
+      console.warn(
+        'Notion OAuth credentials not configured. Set NOTION_OAUTH_CLIENT_ID and NOTION_OAUTH_CLIENT_SECRET'
+      );
+    }
   }
 
   /**

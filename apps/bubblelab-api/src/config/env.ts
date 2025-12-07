@@ -80,6 +80,8 @@ export const env = {
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   FUB_OAUTH_CLIENT_ID: process.env.FUB_OAUTH_CLIENT_ID,
   FUB_OAUTH_CLIENT_SECRET: process.env.FUB_OAUTH_CLIENT_SECRET,
+  NOTION_OAUTH_CLIENT_ID: process.env.NOTION_OAUTH_CLIENT_ID,
+  NOTION_OAUTH_CLIENT_SECRET: process.env.NOTION_OAUTH_CLIENT_SECRET,
   FUB_SYSTEM_NAME: process.env.FUB_SYSTEM_NAME,
   FUB_SYSTEM_KEY: process.env.FUB_SYSTEM_KEY,
   POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
@@ -115,6 +117,10 @@ console.log('🔧 Environment variables loaded:', {
     : '❌ Missing',
   FUB_OAUTH_CLIENT_ID: env.FUB_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing',
   FUB_OAUTH_CLIENT_SECRET: env.FUB_OAUTH_CLIENT_SECRET
+    ? '✅ Set'
+    : '❌ Missing',
+  NOTION_OAUTH_CLIENT_ID: env.NOTION_OAUTH_CLIENT_ID ? '✅ Set' : '❌ Missing',
+  NOTION_OAUTH_CLIENT_SECRET: env.NOTION_OAUTH_CLIENT_SECRET
     ? '✅ Set'
     : '❌ Missing',
   FUB_SYSTEM_NAME: env.FUB_SYSTEM_NAME ? '✅ Set' : '❌ Missing',

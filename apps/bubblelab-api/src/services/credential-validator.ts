@@ -189,6 +189,9 @@ export class CredentialValidator {
         baseParams.operation = 'list_records';
         baseParams.baseId = 'test-base-id';
         baseParams.tableIdOrName = 'test-table';
+      case CredentialType.NOTION_OAUTH_TOKEN:
+        baseParams.operation = 'search';
+        baseParams.query = 'test';
         break;
       default:
         break;

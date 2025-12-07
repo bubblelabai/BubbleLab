@@ -28,6 +28,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
+  [CredentialType.NOTION_OAUTH_TOKEN]: '',
 };
 
 /** Used by bubblelab studio */
@@ -49,7 +50,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google' | 'followupboss';
+export type OAuthProvider = 'google' | 'followupboss' | 'notion';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -189,6 +190,18 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
     authorizationParams: {
       response_type: 'auth_code', // FUB uses 'auth_code' instead of standard 'code'
       prompt: 'login', // FUB supports 'login' to force re-authentication
+    },
+  },
+  notion: {
+    name: 'notion',
+    displayName: 'Notion',
+    credentialTypes: {
+      [CredentialType.NOTION_OAUTH_TOKEN]: {
+        displayName: 'Notion Workspace',
+        defaultScopes: [], // Notion scopes are managed in the integration capabilities
+        description:
+          'Authorize access to your Notion workspace for searching and reading pages/databases',
+      },
     },
   },
 };
@@ -345,6 +358,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   followupboss: [CredentialType.FUB_CRED],
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED],
+  notion: [CredentialType.NOTION_OAUTH_TOKEN],
 };
 
 // POST /credentials - Create credential schema

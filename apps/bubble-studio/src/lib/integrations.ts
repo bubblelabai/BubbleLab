@@ -29,6 +29,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   'AGI Inc': '/integrations/agi-inc.svg',
   Telegram: '/integrations/telegram.svg',
   Airtable: '/integrations/airtable.png',
+  Notion: '/integrations/notion.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -69,6 +70,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Follow Up Boss', file: SERVICE_LOGOS['Follow Up Boss'] },
   { name: 'Telegram', file: SERVICE_LOGOS['Telegram'] },
   { name: 'Airtable', file: SERVICE_LOGOS['Airtable'] },
+  { name: 'Notion', file: SERVICE_LOGOS['Notion'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -128,6 +130,7 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   agi: 'AGI Inc',
   telegram: 'Telegram',
   airtable: 'Airtable',
+  notion: 'Notion',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -223,6 +226,7 @@ export function findLogoForBubble(
     [/\bagi\s*inc\b|\bagi-inc\b|\bagiinc\b/, 'AGI Inc'],
     [/\btelegram\b/, 'Telegram'],
     [/\bairtable\b/, 'Airtable'],
+    [/\bnotion\b/, 'Notion'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],
