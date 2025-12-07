@@ -49,6 +49,41 @@ const SortSpecSchema = z
   })
   .describe('Sort specification for ordering records');
 
+const AirtableFieldTypeEnum = z.enum([
+  'singleLineText',
+  'multilineText',
+  'richText',
+  'email',
+  'url',
+  'phoneNumber',
+  'number',
+  'percent',
+  'currency',
+  'rating',
+  'duration',
+  'singleSelect',
+  'multipleSelects',
+  'singleCollaborator',
+  'multipleCollaborators',
+  'date',
+  'dateTime',
+  'checkbox',
+  'multipleRecordLinks',
+  'multipleAttachments',
+  'barcode',
+  'button',
+  'formula',
+  'createdTime',
+  'lastModifiedTime',
+  'createdBy',
+  'lastModifiedBy',
+  'autoNumber',
+  'externalSyncSource',
+  'count',
+  'lookup',
+  'rollup',
+]);
+
 // Define the parameters schema for different Airtable operations
 const AirtableParamsSchema = z.discriminatedUnion('operation', [
   // List records operation
@@ -316,42 +351,7 @@ const AirtableParamsSchema = z.discriminatedUnion('operation', [
       .array(
         z.object({
           name: z.string().describe('Field name'),
-          type: z
-            .enum([
-              'singleLineText',
-              'multilineText',
-              'richText',
-              'email',
-              'url',
-              'phoneNumber',
-              'number',
-              'percent',
-              'currency',
-              'rating',
-              'duration',
-              'singleSelect',
-              'multipleSelects',
-              'singleCollaborator',
-              'multipleCollaborators',
-              'date',
-              'dateTime',
-              'checkbox',
-              'multipleRecordLinks',
-              'multipleAttachments',
-              'barcode',
-              'button',
-              'formula',
-              'createdTime',
-              'lastModifiedTime',
-              'createdBy',
-              'lastModifiedBy',
-              'autoNumber',
-              'externalSyncSource',
-              'count',
-              'lookup',
-              'rollup',
-            ])
-            .describe('Field type'),
+          type: AirtableFieldTypeEnum.describe('Field type'),
           description: z.string().optional().describe('Field description'),
           options: z.record(z.unknown()).optional().describe('Field options'),
         })
@@ -408,42 +408,7 @@ const AirtableParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Field name is required')
       .describe('Name for the new field'),
-    type: z
-      .enum([
-        'singleLineText',
-        'multilineText',
-        'richText',
-        'email',
-        'url',
-        'phoneNumber',
-        'number',
-        'percent',
-        'currency',
-        'rating',
-        'duration',
-        'singleSelect',
-        'multipleSelects',
-        'singleCollaborator',
-        'multipleCollaborators',
-        'date',
-        'dateTime',
-        'checkbox',
-        'multipleRecordLinks',
-        'multipleAttachments',
-        'barcode',
-        'button',
-        'formula',
-        'createdTime',
-        'lastModifiedTime',
-        'createdBy',
-        'lastModifiedBy',
-        'autoNumber',
-        'externalSyncSource',
-        'count',
-        'lookup',
-        'rollup',
-      ])
-      .describe('Field type'),
+    type: AirtableFieldTypeEnum.describe('Field type'),
     description: z.string().optional().describe('Field description'),
     options: z
       .record(z.unknown())
@@ -654,7 +619,7 @@ const AirtableResultSchema = z.discriminatedUnion('operation', [
             z.object({
               id: z.string().describe('Field ID'),
               name: z.string().describe('Field name'),
-              type: z.string().describe('Field type'),
+              type: AirtableFieldTypeEnum.describe('Field type'),
             })
           )
           .describe('Array of field definitions'),
@@ -735,10 +700,14 @@ export type AirtableOperationResult<T extends AirtableParams['operation']> =
 
 // Airtable API error interface
 interface AirtableApiError {
-  error: {
-    type: string;
-    message: string;
-  };
+  error:
+    | string
+    | {
+        type?: string;
+        message?: string;
+        [key: string]: unknown;
+      };
+  message?: string;
 }
 
 // Successful Airtable API response interface
@@ -924,7 +893,7 @@ export class AirtableBubble<
       return {
         operation: 'list_records',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -955,7 +924,7 @@ export class AirtableBubble<
       return {
         operation: 'get_record',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -994,7 +963,7 @@ export class AirtableBubble<
       return {
         operation: 'create_records',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1035,7 +1004,7 @@ export class AirtableBubble<
       return {
         operation: 'update_records',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1069,7 +1038,7 @@ export class AirtableBubble<
       return {
         operation: 'delete_records',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1100,7 +1069,7 @@ export class AirtableBubble<
       return {
         operation: 'list_bases',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1132,7 +1101,7 @@ export class AirtableBubble<
       return {
         operation: 'get_base_schema',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1170,16 +1139,26 @@ export class AirtableBubble<
   private normalizeFieldOptions(
     fields: Array<{
       name: string;
-      type: string;
+      type: z.infer<typeof AirtableFieldTypeEnum>;
       description?: string;
       options?: Record<string, unknown>;
     }>
   ): Array<{
     name: string;
-    type: string;
+    type: z.infer<typeof AirtableFieldTypeEnum>;
     description?: string;
     options?: Record<string, unknown>;
   }> {
+    const typeRequiresOptions = new Set<z.infer<typeof AirtableFieldTypeEnum>>([
+      'multipleRecordLinks',
+      'lookup',
+      'rollup',
+      'count',
+      'button',
+      'externalSyncSource',
+      'formula',
+    ]);
+
     return fields.map((field) => {
       const normalizedField = { ...field };
 
@@ -1267,8 +1246,45 @@ export class AirtableBubble<
           }
           break;
 
+        // case 'checkbox':
+        //   // Checkbox fields support icon/color options; provide sensible defaults
+        //   if (!field.options || Object.keys(field.options).length === 0) {
+        //     normalizedField.options = {
+        //       icon: 'check',
+        //       color: 'greenBright',
+        //     };
+        //   }
+        //   break;
+
+        case 'singleSelect':
+        case 'multipleSelects':
+          // Select fields require an options object with choices.
+          // Provide an empty choices array if none are supplied so Airtable's schema validation passes.
+          if (
+            !field.options ||
+            typeof field.options !== 'object' ||
+            !('choices' in field.options)
+          ) {
+            normalizedField.options = {
+              ...field.options,
+              choices: [],
+            };
+          }
+          break;
+
         // singleSelect and multipleSelects MUST have choices - don't auto-fix these
         // as we can't guess what the choices should be. Let it fail with Airtable's error.
+      }
+
+      if (
+        typeRequiresOptions.has(field.type) &&
+        (!normalizedField.options ||
+          (typeof normalizedField.options === 'object' &&
+            Object.keys(normalizedField.options).length === 0))
+      ) {
+        throw new Error(
+          `Airtable field "${field.name}" of type "${field.type}" requires an options object`
+        );
       }
 
       return normalizedField;
@@ -1297,12 +1313,13 @@ export class AirtableBubble<
       'POST',
       body
     );
+    console.log('response', response);
 
     if ('error' in response) {
       return {
         operation: 'create_table',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1318,7 +1335,7 @@ export class AirtableBubble<
         fields: Array<{
           id: string;
           name: string;
-          type: string;
+          type: z.infer<typeof AirtableFieldTypeEnum>;
         }>;
       },
       error: '',
@@ -1350,7 +1367,7 @@ export class AirtableBubble<
       return {
         operation: 'update_table',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1400,7 +1417,7 @@ export class AirtableBubble<
       return {
         operation: 'create_field',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1443,7 +1460,7 @@ export class AirtableBubble<
       return {
         operation: 'update_field',
         ok: false,
-        error: (response as AirtableApiError).error.message,
+        error: this.formatAirtableError(response as AirtableApiError),
         success: false,
       };
     }
@@ -1460,6 +1477,23 @@ export class AirtableBubble<
       error: '',
       success: true,
     };
+  }
+
+  private formatAirtableError(errorResponse: AirtableApiError): string {
+    const topLevelMessage =
+      'message' in errorResponse ? errorResponse.message : undefined;
+    const { error } = errorResponse;
+
+    if (typeof error === 'string') {
+      return topLevelMessage ?? error;
+    }
+
+    if (error && typeof error === 'object' && !Array.isArray(error)) {
+      const { message, type } = error as { message?: string; type?: string };
+      return topLevelMessage ?? message ?? type ?? JSON.stringify(error);
+    }
+
+    return topLevelMessage ?? 'Unknown Airtable API error';
   }
 
   protected chooseCredential(): string | undefined {
