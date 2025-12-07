@@ -174,12 +174,15 @@ export class ResendBubble<
     Security Features:
     - API key-based authentication
     - Email address validation
+    - Domain enforcement for user credentials (validates that sender domain is verified in Resend)
+    - System credentials (bubblelab.ai domain) skip domain validation
     - Content sanitization
     - Rate limiting awareness
   `;
   static readonly alias = 'resend';
 
   private resend?: Resend;
+  private verifiedDomains?: Set<string>;
 
   constructor(
     params: T = {
@@ -194,12 +197,124 @@ export class ResendBubble<
     super(params, context);
   }
 
+  /**
+   * Extracts the domain from an email address.
+   * Handles both formats: "Name <email@domain.com>" and "email@domain.com"
+   */
+  private extractDomainFromEmail(email: string): string {
+    // Handle format: "Name <email@domain.com>"
+    const angleBracketMatch = email.match(/<([^>]+)>/);
+    if (angleBracketMatch) {
+      email = angleBracketMatch[1];
+    }
+
+    // Extract domain from email@domain.com
+    const emailMatch = email.match(/@([^\s]+)/);
+    if (emailMatch) {
+      return emailMatch[1].toLowerCase();
+    }
+
+    throw new Error(`Invalid email format: ${email}`);
+  }
+
+  /**
+   * Checks if the email domain is a system domain (BubbleLab's default domain).
+   * System credentials use bubblelab.ai domain and should skip domain validation.
+   */
+  private isSystemDomain(domain: string): boolean {
+    const systemDomains = ['bubblelab.ai', 'hello.bubblelab.ai'];
+    return systemDomains.includes(domain.toLowerCase());
+  }
+
+  /**
+   * Fetches and caches the list of verified domains from Resend API
+   */
+  private async getVerifiedDomains(): Promise<Set<string>> {
+    if (this.verifiedDomains) {
+      return this.verifiedDomains;
+    }
+
+    if (!this.resend) {
+      throw new Error('Resend client not initialized');
+    }
+
+    try {
+      const { data, error } = await this.resend.domains.list();
+
+      if (error) {
+        throw new Error(
+          `Failed to fetch verified domains: ${JSON.stringify(error)}`
+        );
+      }
+
+      // Extract verified domains (only domains with status 'verified')
+      const domains = new Set<string>();
+      if (data?.data) {
+        for (const domain of data.data) {
+          // Only include verified domains
+          if (domain.status === 'verified') {
+            domains.add(domain.name.toLowerCase());
+          }
+        }
+      }
+
+      this.verifiedDomains = domains;
+      return domains;
+    } catch (error) {
+      // If error is already our own error (API error), re-throw as-is
+      if (
+        error instanceof Error &&
+        error.message.startsWith('Failed to fetch verified domains:')
+      ) {
+        throw error;
+      }
+      // Otherwise, wrap unexpected errors
+      throw new Error(
+        `Failed to fetch verified domains: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Validates that the from email domain is verified in Resend.
+   * Skips validation for system domains (bubblelab.ai) as they use system credentials.
+   * Only enforces validation for user-provided credentials.
+   */
+  private async validateFromDomain(fromEmail: string): Promise<void> {
+    const domain = this.extractDomainFromEmail(fromEmail);
+
+    // Skip domain validation for system domains (using system credentials)
+    if (this.isSystemDomain(domain)) {
+      return;
+    }
+
+    // Enforce domain validation for user credentials
+    const verifiedDomains = await this.getVerifiedDomains();
+
+    if (!verifiedDomains.has(domain)) {
+      const domainList =
+        verifiedDomains.size > 0
+          ? Array.from(verifiedDomains).join(', ')
+          : 'none';
+      throw new Error(
+        `Domain "${domain}" is not verified in your Resend account. ` +
+          `Verified domains: ${domainList}. ` +
+          `Please verify the domain in your Resend dashboard or use a verified domain.`
+      );
+    }
+  }
+
   public async testCredential(): Promise<boolean> {
     try {
       // Test the API key by making a simple API call
-      if (!this.resend) {
-        this.resend = new Resend(this.chooseCredential());
+      const apiKey = this.chooseCredential();
+
+      // Clear cache if credentials changed (resend client will be recreated)
+      if (this.resend) {
+        this.verifiedDomains = undefined;
       }
+
+      this.resend = new Resend(apiKey);
       await this.resend?.domains.list();
       return true;
     } catch {
@@ -212,6 +327,12 @@ export class ResendBubble<
   ): Promise<Extract<ResendResult, { operation: T['operation'] }>> {
     void context;
     const apiKey = this.chooseCredential();
+
+    // Clear verified domains cache when credentials change
+    if (this.resend) {
+      this.verifiedDomains = undefined;
+    }
+
     this.resend = new Resend(apiKey);
     const { operation } = this.params;
 
@@ -263,6 +384,11 @@ export class ResendBubble<
     // Validate that either text or html content is provided
     if (!text && !html) {
       throw new Error('Either text or html content must be provided');
+    }
+
+    // Enforce domain validation - ensure the from domain is verified
+    if (from) {
+      await this.validateFromDomain(from);
     }
     // Build the email payload according to Resend API specification
     const emailPayload: CreateEmailOptions = {
