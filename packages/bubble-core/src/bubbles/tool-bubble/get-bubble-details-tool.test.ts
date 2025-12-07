@@ -67,6 +67,18 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('Bubble');
       expect(usageExample).toContain('.action()');
     });
+    test('should show usage example for notion bubble', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'notion' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).toBeDefined();
+      console.log(usageExample);
+      expect(usageExample).not.toContain('DiscriminatedUnion');
+      expect(usageExample).toContain('const');
+      expect(usageExample).toContain('new');
+      expect(usageExample).toContain('Bubble');
+      expect(usageExample).toContain('.action()');
+    });
 
     test('should not show credentials in usage example', async () => {
       const tool = new GetBubbleDetailsTool({ bubbleName: 'ai-agent' });

@@ -189,6 +189,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Follow Up Boss Connection',
     credentialConfigurations: {},
   },
+  [CredentialType.NOTION_OAUTH_TOKEN]: {
+    label: 'Notion',
+    description:
+      'OAuth connection to your Notion workspace (pages, databases, search)',
+    placeholder: '', // Not used for OAuth
+    namePlaceholder: 'My Notion Connection',
+    credentialConfigurations: {},
+  },
   [CredentialType.GITHUB_TOKEN]: {
     label: 'GitHub',
     description:
@@ -273,6 +281,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
+    [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

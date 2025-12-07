@@ -28,6 +28,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
+  [CredentialType.NOTION_OAUTH_TOKEN]: '',
 };
 
 /** Used by bubblelab studio */
@@ -49,7 +50,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google' | 'followupboss';
+export type OAuthProvider = 'google' | 'followupboss' | 'notion';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -191,6 +192,18 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'login', // FUB supports 'login' to force re-authentication
     },
   },
+  notion: {
+    name: 'notion',
+    displayName: 'Notion',
+    credentialTypes: {
+      [CredentialType.NOTION_OAUTH_TOKEN]: {
+        displayName: 'Notion Workspace',
+        defaultScopes: [], // Notion scopes are managed in the integration capabilities
+        description:
+          'Authorize access to your Notion workspace for searching and reading pages/databases',
+      },
+    },
+  },
 };
 
 /**
@@ -293,7 +306,10 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'code-edit-tool': [CredentialType.OPENROUTER_CRED],
   'web-search-tool': [CredentialType.FIRECRAWL_API_KEY],
   'web-scrape-tool': [CredentialType.FIRECRAWL_API_KEY],
-  'web-crawl-tool': [CredentialType.FIRECRAWL_API_KEY],
+  'web-crawl-tool': [
+    CredentialType.FIRECRAWL_API_KEY,
+    CredentialType.GOOGLE_GEMINI_CRED,
+  ],
   'web-extract-tool': [CredentialType.FIRECRAWL_API_KEY],
   'research-agent-tool': [
     CredentialType.FIRECRAWL_API_KEY,
@@ -345,6 +361,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   followupboss: [CredentialType.FUB_CRED],
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED],
+  notion: [CredentialType.NOTION_OAUTH_TOKEN],
 };
 
 // POST /credentials - Create credential schema
