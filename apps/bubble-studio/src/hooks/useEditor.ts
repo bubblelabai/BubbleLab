@@ -180,8 +180,8 @@ export function useEditor(flowId?: number) {
   // Get current editor code
   const currentEditorCode = getEditorCode();
 
-  // Derived state: check if there are unsaved changes
-  const hasUnsavedChanges = useMemo(() => {
+  // Derived state: check if there are unsaved code changes
+  const unsavedCode = useMemo(() => {
     if (!currentFlow?.code || !currentEditorCode || !flowId) {
       return false;
     }
@@ -225,7 +225,7 @@ export function useEditor(flowId?: number) {
     // Editor state
     editorInstance,
     currentEditorCode,
-    hasUnsavedChanges,
+    unsavedCode,
     // Editor manipulation functions
     editor,
     // Editor store functions

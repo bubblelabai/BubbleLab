@@ -95,7 +95,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
   // Get all data from global stores
   const { data: currentFlow, loading } = useBubbleFlow(flowId);
-  const { hasUnsavedChanges, setExecutionHighlight } = useEditor(flowId);
+  const { unsavedCode, setExecutionHighlight } = useEditor(flowId);
   // Select only needed execution store actions/state to avoid re-renders from events
   // Note: Individual nodes subscribe to their own state - FlowVisualizer only needs minimal state
   const setInputs = useExecutionStore(flowId, (s) => s.setInputs);
@@ -107,6 +107,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const runningBubbles = useExecutionStore(flowId, (s) => s.runningBubbles);
   const completedBubbles = useExecutionStore(flowId, (s) => s.completedBubbles);
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
+  const pendingCredentials = useExecutionStore(
+    flowId,
+    (s) => s.pendingCredentials
+  );
   // Subscribe to expandedRootIds so nodes/edges sync when toggled
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
   // Derive all state from global stores
@@ -175,6 +179,55 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       didInitDefaultsForFlow.current = currentFlow.id;
     }
   }, [currentFlow?.id, currentFlow?.defaultInputs, executionInputs, setInputs]);
+
+  // Check if there are unsaved input changes (comparing executionInputs with flow's defaultInputs)
+  const hasUnsavedInputChanges =
+    currentFlow?.defaultInputs && executionInputs
+      ? JSON.stringify(executionInputs) !==
+        JSON.stringify(currentFlow.defaultInputs)
+      : false;
+
+  // Extract saved credentials from bubbleParameters (similar to FlowIDEView.tsx)
+  const savedCredentials: Record<string, Record<string, number>> = {};
+  if (currentFlow?.bubbleParameters) {
+    Object.entries(currentFlow.bubbleParameters).forEach(
+      ([key, bubbleData]) => {
+        const bubble = bubbleData as Record<string, unknown>;
+        const credentialsParam = (
+          bubble.parameters as
+            | Array<{ name: string; type?: string; value?: unknown }>
+            | undefined
+        )?.find((param) => param.name === 'credentials');
+
+        if (
+          credentialsParam &&
+          credentialsParam.type === 'object' &&
+          credentialsParam.value
+        ) {
+          const credValue = credentialsParam.value as Record<string, unknown>;
+          const bubbleCredentials: Record<string, number> = {};
+
+          Object.entries(credValue).forEach(([credType, credId]) => {
+            if (typeof credId === 'number') {
+              bubbleCredentials[credType] = credId;
+            }
+          });
+
+          if (Object.keys(bubbleCredentials).length > 0) {
+            savedCredentials[key] = bubbleCredentials;
+          }
+        }
+      }
+    );
+  }
+
+  // Check if there are unsaved credential changes (comparing pendingCredentials with saved credentials)
+  const hasUnsavedCredentialChanges =
+    JSON.stringify(pendingCredentials) !== JSON.stringify(savedCredentials);
+
+  // Combined unsaved changes: code changes OR input changes OR credential changes
+  const hasUnsavedChanges =
+    unsavedCode || hasUnsavedInputChanges || hasUnsavedCredentialChanges;
 
   // Auto-expand roots when execution starts (but don't auto-collapse when execution stops)
   // This prevents flicker when execution completes - sub-bubbles stay visible
