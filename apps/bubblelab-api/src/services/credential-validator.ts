@@ -23,6 +23,7 @@ export class CredentialValidator {
     configurations?: Record<string, unknown>
   ): Promise<CredentialValidationResult> {
     // Skip validation if explicitly requested
+    // Skip Airtable validation because PATs have varying scopes and require specific base/table access
     if (skipValidation || credentialType === CredentialType.FIRECRAWL_API_KEY) {
       return { isValid: true };
     }
@@ -183,6 +184,11 @@ export class CredentialValidator {
         baseParams.input = {
           message: 'Hello, how are you?',
         };
+        break;
+      case CredentialType.AIRTABLE_CRED:
+        baseParams.operation = 'list_records';
+        baseParams.baseId = 'test-base-id';
+        baseParams.tableIdOrName = 'test-table';
         break;
       default:
         break;

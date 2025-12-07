@@ -37,6 +37,9 @@ export enum CredentialType {
 
   // Browser Automation Credentials
   AGI_API_KEY = 'AGI_API_KEY',
+
+  // Database/Storage Credentials
+  AIRTABLE_CRED = 'AIRTABLE_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -82,4 +85,5 @@ export type BubbleName =
   | 'eleven-labs'
   | 'followupboss'
   | 'agi-inc'
-  | 'telegram';
+  | 'telegram'
+  | 'airtable';

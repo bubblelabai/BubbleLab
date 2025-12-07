@@ -218,6 +218,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Telegram Bot Token',
     credentialConfigurations: {},
   },
+  [CredentialType.AIRTABLE_CRED]: {
+    label: 'Airtable',
+    description:
+      'Personal Access Token for Airtable API (manage bases, tables, records)',
+    placeholder: 'pat...',
+    namePlaceholder: 'My Airtable Token',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -264,6 +272,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.FUB_CRED]: 'Follow Up Boss',
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
+    [CredentialType.AIRTABLE_CRED]: 'Airtable',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
