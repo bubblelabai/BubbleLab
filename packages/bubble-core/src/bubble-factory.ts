@@ -152,6 +152,7 @@ export class BubbleFactory {
       'eleven-labs',
       'followupboss',
       'agi-inc',
+      'airtable',
       'notion',
     ];
   }
