@@ -1246,15 +1246,15 @@ export class AirtableBubble<
           }
           break;
 
-        // case 'checkbox':
-        //   // Checkbox fields support icon/color options; provide sensible defaults
-        //   if (!field.options || Object.keys(field.options).length === 0) {
-        //     normalizedField.options = {
-        //       icon: 'check',
-        //       color: 'greenBright',
-        //     };
-        //   }
-        //   break;
+        case 'checkbox':
+          // Checkbox fields support icon/color options; provide sensible defaults
+          if (!field.options || Object.keys(field.options).length === 0) {
+            normalizedField.options = {
+              icon: 'check',
+              color: 'greenBright',
+            };
+          }
+          break;
 
         case 'singleSelect':
         case 'multipleSelects':
