@@ -8,7 +8,6 @@ import {
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import {
   HumanMessage,
   AIMessage,
@@ -31,6 +30,11 @@ import {
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
+import {
+  SafeGeminiChat,
+  isGeminiErrorResponse,
+  getGeminiErrorDetails,
+} from '../../utils/safe-gemini-chat.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -548,7 +552,7 @@ export class AIAgentBubble extends ServiceBubble<
           maxRetries: retries,
         });
       case 'google':
-        return new ChatGoogleGenerativeAI({
+        return new SafeGeminiChat({
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
@@ -861,7 +865,7 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   private async createAgentGraph(
-    llm: ChatOpenAI | ChatGoogleGenerativeAI | ChatAnthropic,
+    llm: ChatOpenAI | SafeGeminiChat | ChatAnthropic,
     tools: DynamicStructuredTool[],
     systemPrompt: string
   ) {
@@ -893,6 +897,18 @@ export class AIAgentBubble extends ServiceBubble<
       const onFailedAttempt = async (error: any) => {
         const attemptNumber = error.attemptNumber;
         const retriesLeft = error.retriesLeft;
+
+        // Check if this is a candidateContent error
+        const errorMessage = error.message || String(error);
+        if (
+          errorMessage.includes('candidateContent') ||
+          errorMessage.includes('parts.reduce') ||
+          errorMessage.includes('undefined is not an object')
+        ) {
+          this.context?.logger?.error(
+            `[AIAgent] Gemini candidateContent error detected (attempt ${attemptNumber}). This indicates blocked/empty content from Gemini API.`
+          );
+        }
 
         this.context?.logger?.warn(
           `[AIAgent] LLM call failed (attempt ${attemptNumber}/${this.params.model.maxRetries}). Retries left: ${retriesLeft}. Error: ${error.message}`
@@ -928,52 +944,86 @@ export class AIAgentBubble extends ServiceBubble<
               onFailedAttempt,
             });
 
-      // Use streaming if streamingCallback is provided
-      if (this.streamingCallback) {
-        const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      try {
+        // Use streaming if streamingCallback is provided
+        if (this.streamingCallback) {
+          const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-        // Use invoke with callbacks for streaming
-        const response = await modelWithTools.invoke(allMessages, {
-          callbacks: [
-            {
-              handleLLMStart: async (): Promise<void> => {
-                await this.streamingCallback?.({
-                  type: 'llm_start',
-                  data: {
-                    model: this.params.model.model,
-                    temperature: this.params.model.temperature,
-                  },
-                });
-              },
-              handleLLMEnd: async (output): Promise<void> => {
-                // Extract thinking tokens from different model providers
-                const thinking = extractAndStreamThinkingTokens(output);
-                if (thinking) {
+          // Use invoke with callbacks for streaming
+          const response = await modelWithTools.invoke(allMessages, {
+            callbacks: [
+              {
+                handleLLMStart: async (): Promise<void> => {
                   await this.streamingCallback?.({
-                    type: 'think',
+                    type: 'llm_start',
                     data: {
-                      content: thinking,
-                      messageId,
+                      model: this.params.model.model,
+                      temperature: this.params.model.temperature,
                     },
                   });
-                }
-                await this.streamingCallback?.({
-                  type: 'llm_complete',
-                  data: {
-                    messageId,
-                    totalTokens: output.llmOutput?.usage_metadata?.total_tokens,
-                  },
-                });
+                },
+                handleLLMEnd: async (output): Promise<void> => {
+                  // Extract thinking tokens from different model providers
+                  const thinking = extractAndStreamThinkingTokens(output);
+                  if (thinking) {
+                    await this.streamingCallback?.({
+                      type: 'think',
+                      data: {
+                        content: thinking,
+                        messageId,
+                      },
+                    });
+                  }
+                  await this.streamingCallback?.({
+                    type: 'llm_complete',
+                    data: {
+                      messageId,
+                      totalTokens:
+                        output.llmOutput?.usage_metadata?.total_tokens,
+                    },
+                  });
+                },
               },
-            },
-          ],
-        });
+            ],
+          });
 
-        return { messages: [response] };
-      } else {
-        // Non-streaming fallback
-        const response = await modelWithTools.invoke(allMessages);
-        return { messages: [response] };
+          return { messages: [response] };
+        } else {
+          // Non-streaming fallback
+          const response = await modelWithTools.invoke(allMessages);
+          return { messages: [response] };
+        }
+      } catch (error) {
+        // Catch candidateContent errors that slip through SafeGeminiChat
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        if (
+          errorMessage.includes('candidateContent') ||
+          errorMessage.includes('parts.reduce') ||
+          errorMessage.includes('undefined is not an object')
+        ) {
+          console.error(
+            '[AIAgent] Caught candidateContent error in agentNode:',
+            errorMessage
+          );
+
+          // Return error as AIMessage instead of crashing
+          return {
+            messages: [
+              new AIMessage({
+                content: `[Gemini Error] Unable to generate response due to content filtering. Error: ${errorMessage}`,
+                additional_kwargs: {
+                  finishReason: 'ERROR',
+                  error: errorMessage,
+                },
+              }),
+            ],
+          };
+        }
+
+        // Rethrow other errors
+        throw error;
       }
     };
 
@@ -1191,6 +1241,43 @@ export class AIAgentBubble extends ServiceBubble<
       const finalMessage = aiMessages[aiMessages.length - 1] as
         | AIMessage
         | AIMessageChunk;
+
+      // Check if Gemini returned an error response (from SafeGeminiChat wrapper)
+      if (finalMessage && isGeminiErrorResponse(finalMessage as AIMessage)) {
+        const geminiError = getGeminiErrorDetails(finalMessage as AIMessage);
+        console.error(
+          '[AIAgent] Gemini returned blocked/error content:',
+          geminiError
+        );
+
+        // If we have a backup model, try it
+        if (modelConfig.backupModel) {
+          console.log(
+            `[AIAgent] Gemini content blocked, retrying with backup model: ${modelConfig.backupModel.model}`
+          );
+          this.context?.logger?.warn(
+            `Gemini content blocked or errored: ${geminiError}. Retrying with backup model ${modelConfig.backupModel.model}`
+          );
+          this.streamingCallback?.({
+            type: 'error',
+            data: {
+              error: `Gemini blocked content: ${geminiError}. Retrying with backup model ${modelConfig.backupModel.model}`,
+              recoverable: true,
+            },
+          });
+
+          const backupModelConfig = this.buildModelConfig(
+            modelConfig,
+            modelConfig.backupModel
+          );
+          return await this.executeWithModel(backupModelConfig);
+        }
+
+        // No backup model - return error
+        throw new Error(
+          `Gemini was unable to generate a response: ${geminiError || 'Content blocked or filtered'}`
+        );
+      }
 
       // Check for MAX_TOKENS finish reason
       if (finalMessage?.additional_kwargs?.finishReason === 'MAX_TOKENS') {

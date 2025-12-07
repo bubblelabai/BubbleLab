@@ -8,6 +8,8 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
+import { SafeGeminiChat } from '../../utils/safe-gemini-chat.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName } from '@bubblelab/shared-schemas';
@@ -584,11 +586,30 @@ Make your response clear and actionable.`;
           apiKey,
         });
       case 'google':
-        return new ChatGoogleGenerativeAI({
+        return new SafeGeminiChat({
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
           apiKey,
+          // Disable safety filters to reduce content blocking
+          safetySettings: [
+            {
+              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+              threshold: HarmBlockThreshold.BLOCK_NONE,
+            },
+          ],
         });
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
