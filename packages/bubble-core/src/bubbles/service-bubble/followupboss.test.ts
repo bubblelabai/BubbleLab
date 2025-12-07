@@ -1,6 +1,5 @@
 import { GetBubbleDetailsTool } from '../tool-bubble/get-bubble-details-tool.js';
 import { describe, expect } from 'vitest';
-import { FollowUpBossBubble } from '@bubblelab/bubble-core';
 
 describe('FollowUpBoss Bubble Details', () => {
   it('should get bubble details for followupboss', async () => {
@@ -12,8 +11,6 @@ describe('FollowUpBoss Bubble Details', () => {
     expect(result.data?.name).toBe('followupboss');
     expect(result.data?.alias).toBe('fub');
     expect(result.data?.usageExample).toBeDefined();
-    console.log(result.data?.usageExample);
-    // Should include enum values
     expect(result.data?.usageExample).toContain('peopleCreated');
     expect(result.data?.usageExample).toContain('peopleUpdated');
     expect(result.data?.usageExample).toContain('peopleDeleted');

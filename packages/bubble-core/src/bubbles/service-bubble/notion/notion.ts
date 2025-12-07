@@ -401,7 +401,10 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
       .literal('query_data_source')
       .describe('Query a data source to retrieve pages'),
     data_source_id: z.string().describe('UUID of the Notion data source'),
-    filter: z.unknown().optional().describe('Filter object for querying'),
+    filter: z
+      .record(z.unknown())
+      .optional()
+      .describe('Filter object for querying'),
     sorts: z.array(z.unknown()).optional().describe('Array of sort objects'),
     start_cursor: z.string().optional().describe('Cursor for pagination'),
     page_size: z
