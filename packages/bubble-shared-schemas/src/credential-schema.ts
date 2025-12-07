@@ -306,7 +306,10 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'code-edit-tool': [CredentialType.OPENROUTER_CRED],
   'web-search-tool': [CredentialType.FIRECRAWL_API_KEY],
   'web-scrape-tool': [CredentialType.FIRECRAWL_API_KEY],
-  'web-crawl-tool': [CredentialType.FIRECRAWL_API_KEY],
+  'web-crawl-tool': [
+    CredentialType.FIRECRAWL_API_KEY,
+    CredentialType.GOOGLE_GEMINI_CRED,
+  ],
   'web-extract-tool': [CredentialType.FIRECRAWL_API_KEY],
   'research-agent-tool': [
     CredentialType.FIRECRAWL_API_KEY,

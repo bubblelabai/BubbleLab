@@ -282,7 +282,58 @@ export class GetBubbleDetailsTool extends ToolBubble<
       }
       return 'Record<string, unknown>';
     } else if (def.typeName === 'ZodDiscriminatedUnion') {
-      return 'DiscriminatedUnion'; // Simplified for complex unions
+      // Expand discriminated union to show all possible options
+      const options = def.options as z.ZodTypeAny[];
+
+      if (options.length === 0) {
+        return 'DiscriminatedUnion';
+      }
+
+      // Generate type info for each option
+      const optionTypes: string[] = [];
+      for (const option of options) {
+        if (option && typeof option === 'object' && 'shape' in option) {
+          const shape = (option as z.ZodObject<z.ZodRawShape>).shape;
+          const properties: string[] = [];
+
+          for (const [key, value] of Object.entries(shape)) {
+            if (this.isCredentialKey(key)) continue;
+
+            if (value && typeof value === 'object' && '_def' in value) {
+              const zodValue = value as z.ZodTypeAny;
+              const typeInfo = this.generateTypeInfo(
+                zodValue,
+                includeNestedDescriptions
+              );
+
+              if (typeInfo) {
+                let propertyLine = `${key}: ${typeInfo}`;
+
+                // Include descriptions for nested properties if flag is set
+                if (includeNestedDescriptions) {
+                  const description = this.getParameterDescription(zodValue);
+                  if (description) {
+                    propertyLine += ` // ${description}`;
+                  }
+                }
+
+                properties.push(propertyLine);
+              }
+            }
+          }
+
+          if (properties.length > 0) {
+            optionTypes.push(`{ ${properties.join(', ')} }`);
+          }
+        }
+      }
+
+      if (optionTypes.length > 0) {
+        // Show all discriminated union options
+        return optionTypes.join(' | ');
+      }
+
+      return 'DiscriminatedUnion';
     }
 
     return 'unknown';
@@ -846,10 +897,7 @@ export class GetBubbleDetailsTool extends ToolBubble<
           if (option._def.typeName === 'ZodAny') {
             return `z.object({ result: z.array(z.object({ trend: z.string().describe('An array of trends') })) }) // Zod schema object or JSON schema string`;
           }
-          // For other types, show the example with union indicator if multiple options
-          if (options.length > 1) {
-            return `${example} // union: ${options.map((opt) => opt._def.typeName).join(' | ')}`;
-          }
+          // For other types, just show the example without internal Zod type names
           return example;
         }
       }
@@ -894,15 +942,26 @@ export class GetBubbleDetailsTool extends ToolBubble<
     } else if (def.typeName === 'ZodLiteral') {
       return JSON.stringify(def.value);
     } else if (def.typeName === 'ZodRecord') {
-      // For records, show an example with a key-value pair
+      // For records, check if value type is a discriminated union
       const valueType = def.valueType;
-      if (valueType) {
+      if (
+        valueType &&
+        valueType._def &&
+        valueType._def.typeName === 'ZodDiscriminatedUnion'
+      ) {
+        // For discriminated unions, show the type structure instead of multiple examples
+        const typeInfo = this.generateTypeInfo(valueType, true);
+        if (typeInfo) {
+          return `{ "PUT_PROPERTY_TYPE_HERE": ${typeInfo} }`;
+        }
+      } else if (valueType) {
+        // For non-discriminated union records, show single example
         const valueExample = this.generateExampleValue(valueType);
         if (valueExample) {
-          return `{ "example_key": ${valueExample} } // record/object with string keys`;
+          return `{ "example_key": ${valueExample} }`;
         }
       }
-      return '{} // record/object with string keys';
+      return '{}';
     }
 
     return null;

@@ -120,9 +120,7 @@ const ModelConfigSchema = z.object({
   jsonMode: z
     .boolean()
     .default(false)
-    .describe(
-      'When true, strips markdown formatting and returns clean JSON response'
-    ),
+    .describe('When true, returns clean JSON response'),
   backupModel: BackupModelConfigSchema.default({
     model: 'openai/gpt-5-mini',
   })
@@ -281,7 +279,7 @@ const AIAgentResultSchema = z.object({
   response: z
     .string()
     .describe(
-      'The AI agents final response to the user message. For text responses, returns plain text or JSON string. For image generation models (like gemini-2.5-flash-image-preview), returns base64-encoded image data with data URI format (data:image/png;base64,...)'
+      'The AI agents final response to the user message. For text responses, returns plain text. If JSON mode is enabled, returns a JSON string. For image generation models (like gemini-2.5-flash-image-preview), returns base64-encoded image data with data URI format (data:image/png;base64,...)'
     ),
   toolCalls: z
     .array(

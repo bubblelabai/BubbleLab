@@ -194,7 +194,9 @@ export class BubbleFactory {
     const { FollowUpBossBubble } = await import(
       './bubbles/service-bubble/followupboss.js'
     );
-    const { NotionBubble } = await import('./bubbles/service-bubble/notion.js');
+    const { NotionBubble } = await import(
+      './bubbles/service-bubble/notion/notion.js'
+    );
     const { DatabaseAnalyzerWorkflowBubble } = await import(
       './bubbles/workflow-bubble/database-analyzer.workflow.js'
     );

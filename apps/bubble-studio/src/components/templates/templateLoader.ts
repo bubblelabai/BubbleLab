@@ -29,6 +29,7 @@ import * as projectManagementTemplate from './template_codes/projectManagementAs
 import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
 import * as githubPRCommenterTemplate from './template_codes/githubPRCommenter';
 import * as telegramBotTemplate from './template_codes/telegrambot';
+import * as notionApprovalMonitorTemplate from './template_codes/notionApprovalMonitor';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -87,6 +88,14 @@ export const TEMPLATES: TemplateDefinition[] = [
     code: telegramBotTemplate.templateCode,
     category: 'Personal Assistant',
     isPopular: true,
+  },
+  {
+    id: 'notion-approval-monitor',
+    name: 'Lead Approval & Auto-Email System (Notion, Resend)',
+    prompt:
+      'Automated lead qualification workflow: monitor Notion approval database, auto-send personalized emails when approved, generate daily leads',
+    code: notionApprovalMonitorTemplate.templateCode,
+    category: 'Lead Generation',
   },
   {
     id: 'linkedin-lead-gen',

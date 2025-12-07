@@ -179,7 +179,7 @@ export class WebCrawlTool extends ToolBubble<
         const summarizePromises = batch.map(async (page, batchIndex) => {
           const summarizeAgent = new AIAgentBubble(
             {
-              message: `Summarize the crawled page to condense all information and remove any non-essential information, include all links, contact information, companies, don't omit any information. Content: ${page.content}`,
+              message: `Clean up the crawed page and condense the content to remove any non-essential information, include all links, contact information, companies, don't omit any information. Ex: if working on documentation, remove the navigation, footer, and any other non-essential information but preserve all examples and code blocks and api usage. Content: ${page.content}`,
               model: {
                 model: 'google/gemini-2.5-flash-lite',
               },
