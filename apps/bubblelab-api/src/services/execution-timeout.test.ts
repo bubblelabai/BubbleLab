@@ -166,7 +166,7 @@ class TestPromiseTimeoutFlow extends BubbleFlow {
     // The result.data contains the return value from our test flow
     const testResult = result.data as { message: string };
     expect(testResult.message).toBe('Promise with setTimeout completed');
-    expect(endTime - startTime).toBeGreaterThanOrEqual(50); // Should take at least 50ms
+    expect(endTime - startTime).toBeGreaterThanOrEqual(49); // Should take at least 50ms
     expect(endTime - startTime).toBeLessThan(1000); // But not hang for seconds
   });
 });

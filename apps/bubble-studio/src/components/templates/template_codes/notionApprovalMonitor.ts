@@ -4,7 +4,6 @@
 // - Optional daily mock lead generation at midnight UTC
 
 export const templateCode = `import { z } from 'zod';
-
 import {
   BubbleFlow,
   NotionBubble,
@@ -30,42 +29,50 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    * Default: false
    */
   createMockDb?: boolean;
+
   /**
    * The ID of the Notion database to monitor.
    * Open the database in Notion as a full page, the ID is the 32-character string in the URL.
    * Example: https://www.notion.so/myworkspace/a8aec43384f447ed84390e8e42c2e089?v=... -> a8aec43384f447ed84390e8e42c2e089
    */
   databaseId: string;
+
   /**
    * The name of the column in Notion that contains the recipient's email address.
    * Default: "Email"
    */
   emailField?: string;
+
   /**
    * The name of the Checkbox column in Notion that indicates approval.
    * Default: "Approved"
    */
   approvedField?: string;
+
   /**
    * The name of the column in Notion that contains the current status.
    * Default: "Status"
    */
   statusField?: string;
+
   /**
    * The list of valid status values that should trigger email sending when approved.
    * Default: ["Pending Review"]
    */
   validStatusValues?: string[];
+
   /**
    * The name of the column in Notion that contains the draft content to send.
    * Default: "Draft"
    */
   draftField?: string;
+
   /**
    * The subject line for the approval email.
    * Default: "Your draft has been approved"
    */
   emailSubject?: string;
+
   /**
    * Whether to automatically generate new lead records at midnight each day.
    * When enabled, the workflow will create mock lead records in the database at 00:00 UTC.
@@ -74,24 +81,6 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    */
   generateLead?: boolean;
 }
-
-const payloadSchema = z
-  .object({
-    createMockDb: z.boolean().optional(),
-    databaseId: z.string().min(1, 'databaseId is required unless createMockDb is true').optional(),
-    emailField: z.string().optional(),
-    approvedField: z.string().optional(),
-    statusField: z.string().optional(),
-    validStatusValues: z.array(z.string()).optional(),
-    draftField: z.string().optional(),
-    emailSubject: z.string().optional(),
-    generateLead: z.boolean().optional(),
-    timestamp: z.string().optional(),
-  })
-  .refine((data) => data.createMockDb || !!data.databaseId, {
-    path: ['databaseId'],
-    message: 'databaseId is required when createMockDb is false',
-  });
 
 export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
   // Run every 5 minutes
@@ -102,8 +91,10 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
    * The database includes columns: Email (email), Approved (checkbox), Status (status), Draft (rich_text).
    * Returns the ID of the newly created database and its first data source.
    */
+
   private async createMockDatabase(): Promise<{ databaseId: string; dataSourceId: string }> {
     // Creates a new database with the approval workflow schema using multi_select for Status
+
     const dbCreator = new NotionBubble({
       operation: 'create_database',
       parent: {
@@ -122,8 +113,7 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
         {
           type: 'text',
           text: {
-            content:
-              'Test database for the Approval Monitor workflow. Contains 5 sample records with different scenarios: approved records ready to send, pending approvals, already sent items, and not generated drafts. Columns: Email (recipient), Approved (checkbox), Status (multi-select: Pending Review/Sent/Not Generated), Draft (email content), Created At, and Sent At timestamps. Use this to test the workflow before connecting to your real approval database.',
+            content: 'Test database for the Approval Monitor workflow. Contains 5 sample records with different scenarios: approved records ready to send, pending approvals, already sent items, and not generated drafts. Columns: Email (recipient), Approved (checkbox), Status (multi-select: Pending Review/Sent/Not Generated), Draft (email content), Created At, and Sent At timestamps. Use this to test the workflow before connecting to your real approval database.',
           },
         },
       ],
@@ -329,7 +319,7 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
     }
 
     // The result.data.results contains the list of pages
-    return result.data?.results?.results || [];
+    return (result.data).results?.results || [];
   }
 
   /**
@@ -412,10 +402,21 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
   }
 
   /**
+   * Checks if the current timestamp is at midnight (00:00:00) in UTC.
+   * Used to trigger daily lead generation at a specific time.
+   */
+  private isTimestampMidnight(timestamp: string): boolean {
+    const date = new Date(timestamp);
+    return date.getUTCHours() === 0 && date.getUTCMinutes() === 0;
+  }
+
+
+  /**
    * Retrieves the data source ID from a database and generates mock leads if at midnight.
    * Returns the number of leads generated, or 0 if conditions aren't met.
    */
   private async checkAndGenerateLeads(databaseId: string, timestamp: string, shouldGenerate: boolean): Promise<number> {
+    // Check if midnight
     const date = new Date(timestamp);
     const isMidnight = date.getUTCHours() === 0 && date.getUTCMinutes() === 0;
 
@@ -430,14 +431,12 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
     });
 
     const dbResult = await dbRetriever.action();
-
     if (!dbResult.success) {
       return 0;
     }
 
     const database = (dbResult.data as any).database;
     const dataSources = database?.data_sources;
-
     if (!dataSources || dataSources.length === 0) {
       return 0;
     }
@@ -464,7 +463,6 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
     ];
 
     let createdCount = 0;
-
     for (const lead of mockLeads) {
       const pageCreator = new NotionBubble({
         operation: 'create_page',
@@ -513,7 +511,6 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
       });
 
       const result = await pageCreator.action();
-
       if (result.success) {
         createdCount++;
       }
@@ -523,13 +520,6 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
   }
 
   async handle(payload: NotionApprovalMonitorPayload): Promise<{ processed: number; message: string; databaseId?: string }> {
-    const parseResult = payloadSchema.safeParse(payload);
-
-    if (!parseResult.success) {
-      const errorMessage = parseResult.error.errors.map((err) => err.message).join('; ');
-      throw new Error(\`Invalid payload: \${errorMessage}\`);
-    }
-
     const {
       createMockDb = false,
       generateLead = true,
@@ -539,10 +529,9 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
       validStatusValues = ['Pending Review'],
       draftField = 'Draft',
       emailSubject = 'Your draft has been approved',
-    } = parseResult.data;
+    } = payload;
 
-    let { databaseId, timestamp } = parseResult.data;
-    const effectiveTimestamp = timestamp ?? new Date().toISOString();
+    let { databaseId, timestamp } = payload;
 
     // If createMockDb is true, create a new database with mock data
     if (createMockDb) {
@@ -553,11 +542,10 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
         processed: 0,
         message: \`Successfully created mock database. Use this database ID in future runs: \${databaseId}\`,
         databaseId: databaseId,
-      };
-    }
-
-    // Check if we should generate leads at midnight
-    const leadsGenerated = await this.checkAndGenerateLeads(databaseId, effectiveTimestamp, generateLead);
+      }
+    } else {
+      // Check if we should generate leads at midnight
+      const leadsGenerated = await this.checkAndGenerateLeads(databaseId, timestamp, generateLead);
 
     // 1. Fetch recent records from Notion
     const records = await this.fetchRecentRecords(databaseId);
@@ -576,8 +564,10 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
         if (email && draft) {
           // 3. Send the email
           await this.sendEmail(email, emailSubject, draft);
+
           // 4. Update the Status to "Sent" to prevent re-sending
           await this.markAsSent(record.id, statusField);
+
           processedCount++;
         }
       }
@@ -588,71 +578,7 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
       message: \`Successfully processed \${processedCount} approved records.\${leadsGenerated > 0 ? \` Generated \${leadsGenerated} new leads.\` : ''}\`,
       databaseId: databaseId,
     };
+    }
   }
 }
 `;
-
-export const metadata = {
-  inputsSchema: JSON.stringify({
-    type: 'object',
-    properties: {
-      createMockDb: {
-        type: 'boolean',
-        description:
-          'Create a mock Notion database with sample approval records',
-        default: false,
-      },
-      databaseId: {
-        type: 'string',
-        description:
-          'Notion database ID to monitor (32-character ID from Notion URL)',
-      },
-      emailField: {
-        type: 'string',
-        description: 'Name of the email property column',
-        default: 'Email',
-      },
-      approvedField: {
-        type: 'string',
-        description: 'Name of the checkbox column indicating approval',
-        default: 'Approved',
-      },
-      statusField: {
-        type: 'string',
-        description: 'Name of the status column',
-        default: 'Status',
-      },
-      validStatusValues: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Status values that should trigger sending when approved',
-        default: ['Pending Review'],
-      },
-      draftField: {
-        type: 'string',
-        description: 'Name of the draft content column',
-        default: 'Draft',
-      },
-      emailSubject: {
-        type: 'string',
-        description: 'Subject line for the approval email',
-        default: 'Your draft has been approved',
-      },
-      generateLead: {
-        type: 'boolean',
-        description: 'Automatically generate mock leads at midnight UTC',
-        default: true,
-      },
-      timestamp: {
-        type: 'string',
-        description:
-          'Cron timestamp used for midnight detection (defaults to now)',
-      },
-    },
-    required: [],
-  }),
-  requiredCredentials: {
-    notion: ['read', 'write'],
-    resend: ['send'],
-  },
-};
