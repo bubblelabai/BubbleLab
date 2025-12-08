@@ -1238,43 +1238,11 @@ export class AIAgentBubble extends ServiceBubble<
         | AIMessage
         | AIMessageChunk;
 
-      // Check if Gemini returned an error response (from SafeGeminiChat wrapper)
-      if (finalMessage && isGeminiErrorResponse(finalMessage as AIMessage)) {
-        const geminiError = getGeminiErrorDetails(finalMessage as AIMessage);
-        console.error(
-          '[AIAgent] Gemini returned blocked/error content:',
-          geminiError
-        );
-
-        // If we have a backup model, try it
-        if (modelConfig.backupModel) {
-          console.log(
-            `[AIAgent] Gemini content blocked, retrying with backup model: ${modelConfig.backupModel.model}`
-          );
-          this.context?.logger?.warn(
-            `Gemini content blocked or errored: ${geminiError}. Retrying with backup model ${modelConfig.backupModel.model}`
-          );
-          this.streamingCallback?.({
-            type: 'error',
-            data: {
-              error: `Gemini blocked content: ${geminiError}. Retrying with backup model ${modelConfig.backupModel.model}`,
-              recoverable: true,
-            },
-          });
-
-          const backupModelConfig = this.buildModelConfig(
-            modelConfig,
-            modelConfig.backupModel
-          );
-          return await this.executeWithModel(backupModelConfig);
-        }
-
-        // No backup model - return error
+      if (finalMessage?.additional_kwargs?.finishReason === 'SAFETY_BLOCKED') {
         throw new Error(
-          `Gemini was unable to generate a response: ${geminiError || 'Content blocked or filtered'}`
+          `[Gemini Error] Unable to generate response due to content filtering. Please try again with a different model.`
         );
       }
-
       // Check for MAX_TOKENS finish reason
       if (finalMessage?.additional_kwargs?.finishReason === 'MAX_TOKENS') {
         throw new Error(
