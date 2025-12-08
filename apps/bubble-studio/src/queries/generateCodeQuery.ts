@@ -104,11 +104,15 @@ export const createGenerateCodeQuery = (params: GenerateCodeParams) => {
     }),
     // Retry is handled inside streamFn for better control
     retry: false,
-    // Keep data fresh
-    staleTime: 0,
-    // Clear cached data immediately to prevent showing old events
-    gcTime: 0,
+    // Keep data fresh while streaming, but don't mark as stale during active generation
+    staleTime: 5 * 60 * 1000, // 5 minutes - keeps query fresh during generation
+    // Keep cached data for 5 minutes to allow remounting without retriggering
+    gcTime: 5 * 60 * 1000, // 5 minutes - prevents clearing cache when component unmounts
     // Don't refetch on window focus during generation
     refetchOnWindowFocus: false,
+    // Don't refetch when component remounts - reuse existing stream
+    refetchOnMount: false,
+    // Don't refetch on reconnect
+    refetchOnReconnect: false,
   });
 };

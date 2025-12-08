@@ -12,6 +12,7 @@ import {
 import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
+import { useOutputStore } from '@/stores/outputStore';
 import BubbleNode from './nodes/BubbleNode';
 import InputSchemaNode from './nodes/InputSchemaNode';
 import StepContainerNode from './nodes/StepContainerNode';
@@ -38,6 +39,7 @@ import { useEditor } from '@/hooks/useEditor';
 import CronScheduleNode from './nodes/CronScheduleNode';
 import { useEditorStore } from '@/stores/editorStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
+import { GeneratingOverlay } from './GeneratingOverlay';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -94,7 +96,19 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const { setCenter, getNode } = useReactFlow();
 
   // Get all data from global stores
-  const { data: currentFlow, loading } = useBubbleFlow(flowId);
+  // Poll every 10 seconds when flow is in pending/generating state (code is empty and no error)
+  const { data: currentFlow, loading } = useBubbleFlow(flowId, {
+    refetchInterval: (query) => {
+      // Check if flow is in pending/generating state
+      const data = query.state.data;
+      const isPending =
+        data &&
+        (!data.code || data.code.trim() === '') &&
+        !data.generationError;
+      // Poll every 10 seconds (10000ms) when pending, otherwise no polling
+      return isPending ? 10000 : false;
+    },
+  });
   const { unsavedCode, setExecutionHighlight } = useEditor(flowId);
   // Select only needed execution store actions/state to avoid re-renders from events
   // Note: Individual nodes subscribe to their own state - FlowVisualizer only needs minimal state
@@ -2237,17 +2251,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       {/* Show generating state overlay when code is empty */}
       {isGenerating ? (
-        <div className="h-full flex items-center justify-center">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <p className="text-purple-400 text-lg mb-2">Generating Code...</p>
-            <p className="text-gray-500 text-sm">
-              Pearl is creating your workflow. This may take a few minutes.
-            </p>
-          </div>
-        </div>
+        <GeneratingOverlay flowId={flowId} prompt={currentFlow?.prompt} />
       ) : (
         <ReactFlow
           nodes={nodes}
