@@ -1240,7 +1240,7 @@ export class AIAgentBubble extends ServiceBubble<
 
       if (finalMessage?.additional_kwargs?.finishReason === 'SAFETY_BLOCKED') {
         throw new Error(
-          `[Gemini Error] Unable to generate response due to content filtering. Please try again with a different model.`
+          `[Gemini Error] Unable to generate a response. Please increase maxTokens in model configuration or try again with a different model.`
         );
       }
       // Check for MAX_TOKENS finish reason
