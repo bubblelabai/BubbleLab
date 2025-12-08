@@ -489,7 +489,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               }
               disabled={isExecuting}
               aria-label="Schedule frequency"
-              className="w-full px-3 py-2 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="nodrag w-full px-3 py-2 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="minute">Every Minute</option>
               <option value="hour">Hourly</option>
@@ -528,7 +528,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting}
                     aria-label="Interval value"
-                    className="w-16 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-16 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -587,7 +587,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       handleHourChange(val);
                     }}
                     disabled={isExecuting}
-                    className="w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="HH"
                   />
                   <button
@@ -628,7 +628,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       handleMinuteChange(val);
                     }}
                     disabled={isExecuting}
-                    className="w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="MM"
                   />
                   <button
@@ -682,7 +682,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting}
                   aria-label="Minute at which to run"
-                  className="w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                  className="nodrag w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -762,7 +762,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting}
                   aria-label="Day of month"
-                  className="w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                  className="nodrag w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                 />
                 <button
                   type="button"

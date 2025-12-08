@@ -188,7 +188,9 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       />
 
       {/* Webhook section at the top (if webhook exists) */}
-      <WebhookURLDisplay flowId={flowId} />
+      <div>
+        <WebhookURLDisplay flowId={flowId} />
+      </div>
 
       {/* Header */}
       <div className="px-4 py-3">
@@ -235,6 +237,8 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
         <button
           type="button"
           onClick={handleExecuteFlow}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           disabled={!isFormValid || isExecuting}
           className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             isFormValid && !isExecuting

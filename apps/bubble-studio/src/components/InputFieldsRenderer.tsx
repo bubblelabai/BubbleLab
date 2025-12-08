@@ -701,7 +701,7 @@ function InputFieldsRenderer({
                                                       `Enter ${nestedPropName}...`
                                                 }
                                                 disabled={isExecuting}
-                                                className={`flex-1 px-2 py-1 text-[11px] bg-neutral-900 border-t border-b ${
+                                                className={`nodrag flex-1 px-2 py-1 text-[11px] bg-neutral-900 border-t border-b ${
                                                   nestedPropIsMissing
                                                     ? 'border-amber-500 focus:border-amber-400'
                                                     : 'border-neutral-500 focus:border-blue-500'
@@ -824,7 +824,7 @@ function InputFieldsRenderer({
                                         `Enter ${propName}...`
                                   }
                                   disabled={isExecuting}
-                                  className={`flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
+                                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
                                     propIsMissing
                                       ? 'border-amber-500 focus:border-amber-400'
                                       : 'border-neutral-600 focus:border-blue-500'
@@ -933,7 +933,7 @@ function InputFieldsRenderer({
                       : field.description || `Enter ${field.name}...`
                   }
                   disabled={isExecuting}
-                  className={`flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
+                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
                     isMissing
                       ? 'border-amber-500 focus:border-amber-400'
                       : 'border-neutral-600 focus:border-blue-500'
