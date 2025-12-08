@@ -17,6 +17,7 @@ import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 
 // AI Assistant name for user-facing messages
 const AI_NAME = 'Pearl';
@@ -24,6 +25,7 @@ const AI_NAME = 'Pearl';
 // Export the generateCode function for use in other components
 export const useFlowGeneration = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { setOutput } = useOutputStore();
   const { selectedFlowId: currentFlowId, selectFlow } = useUIStore();
   const {
@@ -33,7 +35,9 @@ export const useFlowGeneration = () => {
     setGenerationResult,
   } = useGenerationStore();
 
-  const createBubbleFlowMutation = useCreateBubbleFlow();
+  // Two mutation hooks: one for empty flows (AI generation), one for regular flows (templates/with code)
+  const createEmptyFlowMutation = useCreateBubbleFlow({ isEmpty: true });
+  const createRegularFlowMutation = useCreateBubbleFlow(); // Regular flow with code
   const executionState = useExecutionStore(currentFlowId);
   const { updateBubbleParameters: updateCurrentBubbleParameters } =
     useBubbleFlow(currentFlowId);
@@ -42,17 +46,20 @@ export const useFlowGeneration = () => {
   const [generationParams, setGenerationParams] = useState<{
     prompt: string;
     selectedPreset?: number;
+    flowId?: number; // Track the flow ID for streaming generation
   } | null>(null);
   const generationStartTimeRef = useRef<number>(0);
   const processedEventCountRef = useRef<number>(0);
 
-  // Use streamedQuery for code generation
+  // Use streamedQuery for code generation with flowId
   const { data: events = [], error } = useQuery({
     ...createGenerateCodeQuery({
       prompt: generationParams?.prompt || '',
+      flowId: generationParams?.flowId,
     }),
     enabled:
       !!generationParams &&
+      !!generationParams.flowId && // Only enable if we have a flowId
       (generationParams.selectedPreset === undefined ||
         !hasTemplate(generationParams.selectedPreset)),
   });
@@ -327,15 +334,14 @@ export const useFlowGeneration = () => {
         success: true,
       });
 
-      const flowId = await createFlowFromGeneration(
-        generatedResult.generatedCode,
-        generationParams.prompt,
-        true
-      );
+      // Flow is already created with the flowId in generationParams
+      // The backend has already updated the flow with the generated code
+      // We just need to mark generation as complete
+      const flowId = generationParams.flowId;
 
       if (!flowId) {
         throw new Error(
-          `Pearl failed to create the flow because ${generatedResult.error}. Please try again later.`
+          `No flow ID found. Generation completed but flow was not created.`
         );
       }
 
@@ -346,6 +352,19 @@ export const useFlowGeneration = () => {
       stopGenerationFlow();
       setGenerationParams(null);
       processedEventCountRef.current = 0;
+
+      // Invalidate flow query to refetch updated flow with generated code
+      await queryClient.invalidateQueries({
+        queryKey: ['bubbleFlow', flowId],
+      });
+
+      // Also invalidate flow list
+      await queryClient.invalidateQueries({
+        queryKey: ['bubbleFlowList'],
+      });
+
+      // Refetch subscription to update token usage after generation
+      refetchSubscriptionStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setOutput((prev) => prev + `\nGeneration Error: ${errorMessage}`);
@@ -376,67 +395,89 @@ export const useFlowGeneration = () => {
     prompt?: string,
     fromPearl: boolean = false
   ): Promise<number | null> => {
-    const codeToUse = generatedCode;
-    console.log('🚀 [createFlowFromGeneration] Starting flow creation...');
+    // Determine if we're creating an empty flow or a regular flow with code
+    const hasCode = generatedCode && generatedCode.trim() !== '';
 
-    if (!codeToUse || codeToUse.trim() === '') {
-      console.error('❌ [createFlowFromGeneration] No code to create flow');
-      setOutput((prev) => prev + '\n❌ No code to create flow');
-      return null;
-    }
+    console.log(
+      `🚀 [createFlowFromGeneration] Starting ${hasCode ? 'regular' : 'empty'} flow creation...`
+    );
 
     try {
       if (!fromPearl) {
         setOutput('Creating flow and preparing the visuals...');
       }
 
-      // Create the BubbleFlow using the mutation hook
-      // The mutation will optimistically update both the flow list and individual flow cache
-      const createResult = await createBubbleFlowMutation.mutateAsync({
-        name: getFlowNameFromCode(codeToUse),
-        description: 'Created from prompt: ' + prompt,
-        code: codeToUse,
-        prompt: prompt || '',
-        eventType: 'webhook/http',
-        webhookActive: false,
-      });
+      let createResult;
+
+      if (hasCode) {
+        // Create a regular flow WITH code (for templates)
+        createResult = await createRegularFlowMutation.mutateAsync({
+          name: getFlowNameFromCode(generatedCode),
+          description: 'Created from prompt: ' + (prompt || ''),
+          code: generatedCode,
+          prompt: prompt || '',
+          eventType: 'webhook/http',
+          webhookActive: false,
+        });
+      } else {
+        // Create an EMPTY flow (for AI generation)
+        createResult = await createEmptyFlowMutation.mutateAsync({
+          name: prompt ? prompt.substring(0, 50) : 'New Flow',
+          description: 'Created from prompt: ' + (prompt || ''),
+          prompt: prompt || '',
+          eventType: 'webhook/http',
+          webhookActive: false,
+        } as any); // Type assertion for empty flow
+      }
 
       console.log(
-        '📥 [createFlowFromGeneration] Flow created successfully with ID:',
+        `📥 [createFlowFromGeneration] ${hasCode ? 'Regular' : 'Empty'} flow created successfully with ID:`,
         createResult.id
       );
 
       const bubbleFlowId = createResult.id;
-      const bubbleParameters = createResult.bubbleParameters || {};
 
-      // Update current bubble parameters for visualization
-      updateCurrentBubbleParameters(
-        bubbleParameters as Record<string, ParsedBubbleWithInfo>
-      );
-
-      // Auto-select the newly created flow - this will now use the cached optimistic data
+      // Auto-select the newly created flow
       selectFlow(bubbleFlowId);
 
-      executionState.setAllCredentials({});
-      executionState.setInputs({});
+      // Navigate to the flow page
+      console.log('[createFlowFromGeneration] Navigating to flow IDE route');
+      navigate({
+        to: '/flow/$flowId',
+        params: { flowId: bubbleFlowId.toString() },
+      });
 
-      // If we are not generating from prompt, no confirmation is needed
-      if (!fromPearl) {
-        console.log(
-          '[createFlowFromGeneration] No generation result, navigating to flow IDE route'
+      if (hasCode) {
+        // For flows with code (templates), just stop generation and show the flow
+        const bubbleParameters = createResult.bubbleParameters || {};
+        updateCurrentBubbleParameters(
+          bubbleParameters as Record<string, ParsedBubbleWithInfo>
         );
-        navigate({
-          to: '/flow/$flowId',
-          params: { flowId: bubbleFlowId.toString() },
-        });
+        executionState.setAllCredentials({});
+        executionState.setInputs({});
         stopGenerationFlow();
         setOutput('');
       } else {
-        // Refetch subscription to update token usage after generation
-        refetchSubscriptionStatus();
+        // For empty flows (AI generation), stop the overlay and trigger generation stream
+        stopGenerationFlow();
+
+        if (fromPearl && prompt) {
+          console.log(
+            '[createFlowFromGeneration] Triggering generation stream for flow',
+            bubbleFlowId
+          );
+          // Update generation params to include flowId, which will trigger the streaming query
+          setGenerationParams({
+            prompt: prompt,
+            flowId: bubbleFlowId,
+            selectedPreset: generationParams?.selectedPreset,
+          });
+        } else {
+          setOutput('');
+        }
       }
 
-      // Return the flow ID for navigation
+      // Return the flow ID
       return bubbleFlowId;
     } catch (error) {
       const errorMessage =
@@ -451,12 +492,11 @@ export const useFlowGeneration = () => {
         error: error,
       });
 
-      // Track flow creation failure with generated code
+      // Track flow creation failure
       trackWorkflowGeneration({
         prompt: prompt || '',
         generatedBubbleCount: 0,
-        generatedCodeLength: codeToUse?.length || 0,
-        generatedCode: codeToUse,
+        generatedCodeLength: 0,
         success: false,
         errorMessage: `Flow creation failed: ${errorMessage}`,
       });
@@ -522,12 +562,13 @@ export const useFlowGeneration = () => {
     // Reset processed event count for new generation
     processedEventCountRef.current = 0;
 
-    // Trigger the streamedQuery by setting generation parameters
-    // This will cause the useQuery to enable and start fetching
-    setGenerationParams({
-      prompt: generationPrompt.trim(),
-      selectedPreset,
-    });
+    // For AI generation: Create empty flow first, then trigger generation
+    console.log('[generateCode] Creating empty flow and triggering generation');
+    await createFlowFromGeneration(
+      undefined, // No code yet - creating empty flow
+      generationPrompt.trim(),
+      true // fromPearl = true to trigger generation stream
+    );
   };
   return { generateCode };
 };

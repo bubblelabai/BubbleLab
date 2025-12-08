@@ -8,6 +8,7 @@ import type { GenerationStreamingEvent } from '@/types/generation';
 
 export interface GenerateCodeParams {
   prompt: string;
+  flowId?: number;
 }
 
 /**
@@ -28,6 +29,7 @@ async function* retryableStream(
     try {
       const response = await api.postStream('/bubble-flow/generate', {
         prompt: params.prompt.trim(),
+        ...(params.flowId && { flowId: params.flowId }),
       });
 
       // Consume the entire stream, yielding each event
@@ -82,7 +84,7 @@ async function* retryableStream(
 
 export const createGenerateCodeQuery = (params: GenerateCodeParams) => {
   return queryOptions({
-    queryKey: ['generate-code', params.prompt],
+    queryKey: ['generate-code', params.prompt, params.flowId],
     queryFn: streamedQuery({
       streamFn: async () => {
         // Return the retryable stream wrapper

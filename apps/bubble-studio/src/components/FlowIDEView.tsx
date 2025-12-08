@@ -163,6 +163,8 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     toggleExportModal();
   };
 
+  console.log('currentFlow in FlowIDEView', flowId);
+
   return (
     <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
       {/* Header */}
@@ -409,70 +411,62 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                   })()}
 
                   <div className="flex-1 min-h-0">
-                    {isStreaming ? (
-                      <FlowGeneration
-                        isStreaming={isStreaming}
-                        output={output}
-                        isRunning={executionState.isRunning}
-                      />
-                    ) : (
-                      <PanelGroup
-                        direction="horizontal"
-                        autoSaveId="bubbleflow-consolidated-layout"
-                        className="h-full"
+                    <PanelGroup
+                      direction="horizontal"
+                      autoSaveId="bubbleflow-consolidated-layout"
+                      className="h-full"
+                    >
+                      {/* Flow Visualizer Panel */}
+                      <Panel
+                        defaultSize={isConsolidatedPanelOpen ? 60 : 100}
+                        minSize={30}
                       >
-                        {/* Flow Visualizer Panel */}
-                        <Panel
-                          defaultSize={isConsolidatedPanelOpen ? 60 : 100}
-                          minSize={30}
-                        >
-                          <div className="h-full bg-[#1a1a1a] min-h-0">
-                            <div className="h-full min-h-0">
-                              <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
-                                {flowId ? (
-                                  <FlowVisualizer
-                                    flowId={flowId}
-                                    onValidate={() =>
-                                      validateCodeMutation.mutateAsync({
-                                        code: editor.getCode(),
-                                        flowId: flowId,
-                                        syncInputsWithFlow: true,
-                                        credentials:
-                                          executionState.pendingCredentials,
-                                        defaultInputs:
-                                          executionState.executionInputs,
-                                      })
-                                    }
-                                  />
-                                ) : (
-                                  <div className="h-full flex items-center justify-center">
-                                    <div className="text-center">
-                                      <p className="text-gray-400 text-lg mb-2">
-                                        No flow selected
-                                      </p>
-                                      <p className="text-gray-500 text-sm">
-                                        Please select a flow from the sidebar to
-                                        view its visualization
-                                      </p>
-                                    </div>
+                        <div className="h-full bg-[#1a1a1a] min-h-0">
+                          <div className="h-full min-h-0">
+                            <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
+                              {flowId ? (
+                                <FlowVisualizer
+                                  flowId={flowId}
+                                  onValidate={() =>
+                                    validateCodeMutation.mutateAsync({
+                                      code: editor.getCode(),
+                                      flowId: flowId,
+                                      syncInputsWithFlow: true,
+                                      credentials:
+                                        executionState.pendingCredentials,
+                                      defaultInputs:
+                                        executionState.executionInputs,
+                                    })
+                                  }
+                                />
+                              ) : (
+                                <div className="h-full flex items-center justify-center">
+                                  <div className="text-center">
+                                    <p className="text-gray-400 text-lg mb-2">
+                                      No flow selected
+                                    </p>
+                                    <p className="text-gray-500 text-sm">
+                                      Please select a flow from the sidebar to
+                                      view its visualization
+                                    </p>
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </Panel>
+                        </div>
+                      </Panel>
 
-                        {/* Consolidated Side Panel */}
-                        {isConsolidatedPanelOpen && (
-                          <>
-                            <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
-                            <Panel defaultSize={40} minSize={30} maxSize={50}>
-                              <ConsolidatedSidePanel />
-                            </Panel>
-                          </>
-                        )}
-                      </PanelGroup>
-                    )}
+                      {/* Consolidated Side Panel */}
+                      {isConsolidatedPanelOpen && (
+                        <>
+                          <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
+                          <Panel defaultSize={40} minSize={30} maxSize={50}>
+                            <ConsolidatedSidePanel />
+                          </Panel>
+                        </>
+                      )}
+                    </PanelGroup>
                   </div>
                 </div>
               </Panel>

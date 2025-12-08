@@ -2134,6 +2134,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     []
   );
 
+  console.log('currentFlow', currentFlow);
+
   // Show loading state
   if (loading) {
     return (
@@ -2154,6 +2156,58 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     );
   }
 
+  // Show generation error state
+  if (currentFlow?.generationError) {
+    return (
+      <div
+        className="h-full flex items-center justify-center"
+        style={{ backgroundColor: '#1e1e1e' }}
+      >
+        <div className="text-center max-w-md">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-red-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+          <p className="text-red-400 text-lg mb-2 font-medium">
+            Code Generation Failed
+          </p>
+          <p className="text-gray-400 text-sm mb-4">
+            {currentFlow.generationError}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              // TODO: Implement retry generation
+              console.log('Retry generation for flow', flowId);
+            }}
+            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Retry Generation
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if code is empty and no error (generating state)
+  // If there's an error, we show the error state instead
+  const isGenerating =
+    (!currentFlow?.code || currentFlow.code.trim() === '') &&
+    !currentFlow?.generationError;
+
   // Note: We no longer early return when there are no bubbles
   // The entry node (InputSchemaNode or CronScheduleNode) should always be visible
 
@@ -2162,7 +2216,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       className="h-full overflow-hidden relative"
       style={{ backgroundColor: '#1e1e1e' }}
     >
-      {onValidate && (
+      {onValidate && !isGenerating && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
             type="button"
@@ -2181,130 +2235,149 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         </div>
       )}
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        nodeTypes={nodeTypes}
-        onNodeClick={(_event, node) => {
-          const executionStore = getExecutionStore(currentFlow?.id || flowId);
-          const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
+      {/* Show generating state overlay when code is empty */}
+      {isGenerating ? (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className="text-purple-400 text-lg mb-2">Generating Code...</p>
+            <p className="text-gray-500 text-sm">
+              Pearl is creating your workflow. This may take a few minutes.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          onNodeClick={(_event, node) => {
+            const executionStore = getExecutionStore(currentFlow?.id || flowId);
+            const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
 
-          if (node.type === 'stepContainerNode') {
-            const stepData = node.data as unknown as {
-              stepId: string;
-              stepInfo: {
-                functionName: string;
-                description?: string;
-                location: { startLine: number; endLine: number };
-                isAsync: boolean;
+            if (node.type === 'stepContainerNode') {
+              const stepData = node.data as unknown as {
+                stepId: string;
+                stepInfo: {
+                  functionName: string;
+                  description?: string;
+                  location: { startLine: number; endLine: number };
+                  isAsync: boolean;
+                };
               };
-            };
-            const functionName = stepData.stepInfo.functionName;
+              const functionName = stepData.stepInfo.functionName;
 
-            // Highlight the step container
-            executionStore.highlightBubble(node.id);
+              // Highlight the step container
+              executionStore.highlightBubble(node.id);
 
-            console.log('addStepToContext', functionName);
+              console.log('addStepToContext', functionName);
 
-            // Add step to context (automatically clears bubble and transformation context)
-            pearlChatStore.getState().addStepToContext(functionName);
+              // Add step to context (automatically clears bubble and transformation context)
+              pearlChatStore.getState().addStepToContext(functionName);
 
-            // Open Pearl panel
-            useUIStore.getState().openConsolidatedPanelWith('pearl');
-          } else if (node.type === 'transformationNode') {
-            const transformationInfo = (
-              node.data as unknown as TransformationNodeData
-            ).transformationInfo;
-            const functionName = transformationInfo.functionName;
+              // Open Pearl panel
+              useUIStore.getState().openConsolidatedPanelWith('pearl');
+            } else if (node.type === 'transformationNode') {
+              const transformationInfo = (
+                node.data as unknown as TransformationNodeData
+              ).transformationInfo;
+              const functionName = transformationInfo.functionName;
 
-            // Highlight the transformation node
-            executionStore.highlightBubble(node.id);
+              // Highlight the transformation node
+              executionStore.highlightBubble(node.id);
 
-            console.log('addTransformationToContext', functionName);
+              console.log('addTransformationToContext', functionName);
 
-            // Add transformation to context (automatically clears bubble context)
-            pearlChatStore.getState().addTransformationToContext(functionName);
+              // Add transformation to context (automatically clears bubble context)
+              pearlChatStore
+                .getState()
+                .addTransformationToContext(functionName);
 
-            // Open Pearl panel
-            useUIStore.getState().openConsolidatedPanelWith('pearl');
-          } else if (node.type === 'bubbleNode') {
-            // For bubble nodes, use variableId
-            const bubbleData = (node.data as unknown as BubbleNodeData).bubble;
-            const bubbleId = bubbleData.variableId
-              ? String(bubbleData.variableId)
-              : node.id;
+              // Open Pearl panel
+              useUIStore.getState().openConsolidatedPanelWith('pearl');
+            } else if (node.type === 'bubbleNode') {
+              // For bubble nodes, use variableId
+              const bubbleData = (node.data as unknown as BubbleNodeData)
+                .bubble;
+              const bubbleId = bubbleData.variableId
+                ? String(bubbleData.variableId)
+                : node.id;
 
-            // Highlight the bubble
-            executionStore.highlightBubble(bubbleId);
+              // Highlight the bubble
+              executionStore.highlightBubble(bubbleId);
 
-            // Set execution highlight in editor
-            if (
-              bubbleData.location.startLine > 0 &&
-              bubbleData.location.endLine > 0
+              // Set execution highlight in editor
+              if (
+                bubbleData.location.startLine > 0 &&
+                bubbleData.location.endLine > 0
+              ) {
+                setExecutionHighlight({
+                  startLine: bubbleData.location.startLine,
+                  endLine: bubbleData.location.endLine,
+                });
+              }
+
+              // Clear and set context
+              pearlChatStore.getState().clearBubbleContext();
+              const contextKey = bubbleData.variableId
+                ? bubbleData.variableId
+                : Number(node.id);
+
+              pearlChatStore.getState().addBubbleToContext(contextKey);
+              useUIStore.getState().openConsolidatedPanelWith('pearl');
+            } else if (
+              node.type === 'inputSchemaNode' ||
+              node.type === 'cronScheduleNode'
             ) {
-              setExecutionHighlight({
-                startLine: bubbleData.location.startLine,
-                endLine: bubbleData.location.endLine,
-              });
+              // Highlight the entry node
+              executionStore.highlightBubble(node.id);
+              // Clear the bubble context (entry nodes don't have bubble context)
+              pearlChatStore.getState().clearBubbleContext();
+              useUIStore.getState().openConsolidatedPanelWith('pearl');
             }
+          }}
+          onPaneClick={() => {
+            // Dismiss the highlighted bubble
+            getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
+            useEditorStore.getState().clearExecutionHighlight();
 
-            // Clear and set context
-            pearlChatStore.getState().clearBubbleContext();
-            const contextKey = bubbleData.variableId
-              ? bubbleData.variableId
-              : Number(node.id);
-
-            pearlChatStore.getState().addBubbleToContext(contextKey);
+            // Clear the bubble context
             useUIStore.getState().openConsolidatedPanelWith('pearl');
-          } else if (
-            node.type === 'inputSchemaNode' ||
-            node.type === 'cronScheduleNode'
-          ) {
-            // Highlight the entry node
-            executionStore.highlightBubble(node.id);
-            // Clear the bubble context (entry nodes don't have bubble context)
-            pearlChatStore.getState().clearBubbleContext();
-            useUIStore.getState().openConsolidatedPanelWith('pearl');
-          }
-        }}
-        onPaneClick={() => {
-          // Dismiss the highlighted bubble
-          getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
-          useEditorStore.getState().clearExecutionHighlight();
-
-          // Clear the bubble context
-          useUIStore.getState().openConsolidatedPanelWith('pearl');
-          getPearlChatStore(currentFlow?.id || flowId)
-            .getState()
-            .clearBubbleContext();
-        }}
-        proOptions={proOptions}
-        minZoom={FLOW_LAYOUT.VIEWPORT.MIN_ZOOM}
-        maxZoom={FLOW_LAYOUT.VIEWPORT.MAX_ZOOM}
-        defaultViewport={{
-          x: 0,
-          y: 0,
-          zoom: FLOW_LAYOUT.VIEWPORT.INITIAL_ZOOM,
-        }}
-        nodesDraggable={true}
-        nodesConnectable={true}
-        elementsSelectable={true}
-        panOnDrag={true}
-        zoomOnScroll={true}
-        zoomOnPinch={true}
-        zoomOnDoubleClick={false}
-      >
-        <Controls className="!bg-neutral-900 !border-neutral-600 [&_button]:!bg-neutral-800 [&_button]:!text-neutral-200 [&_button]:!border-neutral-600 [&_button:hover]:!bg-neutral-700" />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-      </ReactFlow>
+            getPearlChatStore(currentFlow?.id || flowId)
+              .getState()
+              .clearBubbleContext();
+          }}
+          proOptions={proOptions}
+          minZoom={FLOW_LAYOUT.VIEWPORT.MIN_ZOOM}
+          maxZoom={FLOW_LAYOUT.VIEWPORT.MAX_ZOOM}
+          defaultViewport={{
+            x: 0,
+            y: 0,
+            zoom: FLOW_LAYOUT.VIEWPORT.INITIAL_ZOOM,
+          }}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          elementsSelectable={true}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          zoomOnDoubleClick={false}
+        >
+          <Controls className="!bg-neutral-900 !border-neutral-600 [&_button]:!bg-neutral-800 [&_button]:!text-neutral-200 [&_button]:!border-neutral-600 [&_button:hover]:!bg-neutral-700" />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        </ReactFlow>
+      )}
     </div>
   );
 }
 
 // Main component that provides ReactFlow context
 export default function FlowVisualizer(props: FlowVisualizerProps) {
+  console.log('currentFlow in FlowVisualizer', props.flowId);
   return (
     <ReactFlowProvider>
       <FlowVisualizerInner {...props} />
