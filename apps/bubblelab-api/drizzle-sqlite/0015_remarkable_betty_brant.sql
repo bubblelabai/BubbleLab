@@ -23,7 +23,7 @@ CREATE TABLE `__new_bubble_flows` (
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`clerk_id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-INSERT INTO `__new_bubble_flows`("id", "user_id", "name", "description", "prompt", "code", "original_code", "generation_error", "bubble_parameters", "metadata", "workflow", "event_type", "input_schema", "webhook_execution_count", "webhook_failure_count", "cron", "cron_active", "default_inputs", "created_at", "updated_at") SELECT "id", "user_id", "name", "description", "prompt", "code", "original_code", "generation_error", "bubble_parameters", "metadata", "workflow", "event_type", "input_schema", "webhook_execution_count", "webhook_failure_count", "cron", "cron_active", "default_inputs", "created_at", "updated_at" FROM `bubble_flows`;--> statement-breakpoint
+INSERT INTO `__new_bubble_flows`("id", "user_id", "name", "description", "prompt", "code", "original_code", "generation_error", "bubble_parameters", "metadata", "workflow", "event_type", "input_schema", "webhook_execution_count", "webhook_failure_count", "cron", "cron_active", "default_inputs", "created_at", "updated_at") SELECT "id", "user_id", "name", "description", "prompt", "code", "original_code", NULL, "bubble_parameters", "metadata", "workflow", "event_type", "input_schema", "webhook_execution_count", "webhook_failure_count", "cron", "cron_active", "default_inputs", "created_at", "updated_at" FROM `bubble_flows`;--> statement-breakpoint
 DROP TABLE `bubble_flows`;--> statement-breakpoint
 ALTER TABLE `__new_bubble_flows` RENAME TO `bubble_flows`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;
