@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createGenerateCodeQuery } from '@/queries/generateCodeQuery';
+import { useEditorStore } from '@/stores/editorStore';
 
 interface GeneratingOverlayProps {
   flowId: number;
@@ -15,6 +16,7 @@ export function GeneratingOverlay({ flowId, prompt }: GeneratingOverlayProps) {
   const [output, setOutput] = useState('');
   const outputEndRef = useRef<HTMLDivElement>(null);
   const processedEventCountRef = useRef(0);
+  const queryClient = useQueryClient(); // TODO: move this to a global query client
 
   // Query to get generation events for this flow
   const { data: events = [] } = useQuery({
@@ -69,9 +71,40 @@ export function GeneratingOverlay({ flowId, prompt }: GeneratingOverlayProps) {
           break;
         }
 
-        case 'generation_complete':
+        case 'generation_complete': {
           setOutput((prev) => prev + `\n✅ Code generation complete!\n`);
+
+          console.log(
+            '🔄 [generation_complete] Updating editor and refetching flow',
+            flowId
+          );
+
+          // Update Monaco editor with generated code
+          const generatedCode = eventData.data?.generatedCode;
+          if (generatedCode) {
+            const { editorInstance, setPendingCode } =
+              useEditorStore.getState();
+            if (editorInstance) {
+              const model = editorInstance.getModel();
+              if (model) {
+                model.setValue(generatedCode);
+                console.log(
+                  '[GeneratingOverlay] Editor updated with generated code'
+                );
+              } else {
+                setPendingCode(generatedCode);
+              }
+            } else {
+              setPendingCode(generatedCode);
+            }
+          }
+
+          // Refetch flow to sync with backend
+          queryClient.refetchQueries({
+            queryKey: ['bubbleFlow', flowId],
+          });
           break;
+        }
 
         case 'error':
           setOutput((prev) => prev + `\n❌ Error: ${eventData.data.error}\n`);
