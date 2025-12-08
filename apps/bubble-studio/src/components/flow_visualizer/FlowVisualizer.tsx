@@ -39,7 +39,6 @@ import { useEditor } from '@/hooks/useEditor';
 import CronScheduleNode from './nodes/CronScheduleNode';
 import { useEditorStore } from '@/stores/editorStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
-import { GeneratingOverlay } from './GeneratingOverlay';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -2249,9 +2248,35 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         </div>
       )}
 
-      {/* Show generating state overlay when code is empty */}
+      {/* Show blank state when code is empty (generating in Pearl) */}
       {isGenerating ? (
-        <GeneratingOverlay flowId={flowId} prompt={currentFlow?.prompt} />
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center max-w-md px-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-purple-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <p className="text-gray-400 text-base mb-2">
+              Pearl is generating your workflow
+            </p>
+            <p className="text-gray-500 text-sm">
+              Check the Pearl panel on the right to see progress
+            </p>
+          </div>
+        </div>
       ) : (
         <ReactFlow
           nodes={nodes}
