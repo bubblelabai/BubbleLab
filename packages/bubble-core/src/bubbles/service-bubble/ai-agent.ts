@@ -30,11 +30,7 @@ import {
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
-import {
-  SafeGeminiChat,
-  isGeminiErrorResponse,
-  getGeminiErrorDetails,
-} from '../../utils/safe-gemini-chat.js';
+import { SafeGeminiChat } from '../../utils/safe-gemini-chat.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {

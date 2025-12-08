@@ -6,6 +6,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage } from '@langchain/core/messages';
 import type { ChatResult } from '@langchain/core/outputs';
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
+import { RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 
 /**
  * SafeGeminiChat: A wrapper around ChatGoogleGenerativeAI that gracefully handles
@@ -62,7 +63,7 @@ Original error: ${errorMessage}
 
 Please try:
 - Rephrasing your prompt
-- Using a different model (e.g., gemini-1.5-flash)
+- Using a different model (e.g., ${RECOMMENDED_MODELS.FAST_ALT})
 - Checking the Google AI Studio for more details`,
           additional_kwargs: {
             finishReason: 'SAFETY_BLOCKED',

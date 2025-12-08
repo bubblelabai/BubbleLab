@@ -362,12 +362,6 @@ Format the response as a structured medical report with sections and bullet poin
           maxTokens: 12800,
           maxRetries: 3,
           jsonMode: false,
-          // Optional: Add backup model for automatic fallback
-          backupModel: {
-            model: 'google/gemini-1.5-flash', // Fallback to older model
-            temperature: 0.3,
-            maxTokens: 12800,
-          },
         },
         tools: [],
         maxIterations: 10,
@@ -486,103 +480,6 @@ Format the response as a structured medical report with sections and bullet poin
     },
     {
       timeout: 60000, // 60 second timeout
-    }
-  );
-
-  /**
-   * NEW TEST: Verify fallback model works when Gemini blocks content
-   */
-  it(
-    'should automatically fallback to backup model when primary model blocks content',
-    async () => {
-      if (shouldSkip) {
-        return;
-      }
-
-      // Skip if no OpenAI key for fallback
-      if (!process.env.OPENAI_API_KEY) {
-        console.log(
-          '⚠️  Skipping fallback test - no OPENAI_API_KEY for backup model'
-        );
-        return;
-      }
-
-      console.log('\n🔄 Testing automatic model fallback...\n');
-
-      const credentials = {
-        [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY!,
-        [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY!,
-      };
-
-      // Message that may trigger blocking (but backup model should handle)
-      const message = `
-Analyze this data breach incident report:
-
-Company: HealthTech Inc.
-Date: 2024-12-01
-Breach Type: Ransomware attack
-
-Affected Records: 50,000 patient records including:
-- Full names, dates of birth, Social Security numbers
-- Medical diagnoses and treatment histories  
-- Insurance policy numbers
-- Credit card information (last 4 digits)
-- Email addresses and phone numbers
-
-Attack Vector: Phishing email to HR department
-Ransom Demand: $500,000 in Bitcoin
-Status: Data exfiltrated, systems encrypted
-
-Please provide a brief summary of the security implications.
-`;
-
-      const agent = new AIAgentBubble({
-        message,
-        systemPrompt:
-          'You are a cybersecurity analyst. Provide brief analysis of security incidents.',
-        model: {
-          model: 'google/gemini-2.5-flash',
-          temperature: 0.3,
-          maxTokens: 5000,
-          // Add backup model
-          backupModel: {
-            model: 'openai/gpt-4o-mini', // Will try this if Gemini fails
-            temperature: 0.3,
-            maxTokens: 5000,
-          },
-        },
-        credentials,
-      });
-
-      console.log('🚀 Executing with primary model: google/gemini-2.5-flash');
-      console.log('🔄 Backup model configured: openai/gpt-4o-mini\n');
-
-      const result = await agent.action();
-
-      console.log('📊 Result success:', result.success);
-      console.log('📏 Response length:', result.data?.response?.length || 0);
-
-      // Should NOT crash regardless of which model was used
-      expect(result.error).not.toContain('candidateContent.parts.reduce');
-
-      // Should get SOME response (from either model)
-      if (result.success) {
-        expect(result.data?.response).toBeDefined();
-        expect(result.data?.response?.length).toBeGreaterThan(0);
-        console.log(
-          '✅ Got successful response (from primary or backup model)'
-        );
-      } else {
-        console.log('⚠️  Both models failed:', result.error);
-        // Even if both fail, should have descriptive error
-        expect(result.error).toBeDefined();
-        expect(result.error?.length).toBeGreaterThan(0);
-      }
-
-      console.log('✅ Fallback test completed without crashes\n');
-    },
-    {
-      timeout: 60000,
     }
   );
 });
