@@ -18,6 +18,7 @@ import { useUser } from '../hooks/useUser';
 import { useGitHubStars } from '../hooks/useGitHubStars';
 import { SignedIn } from './AuthComponents';
 import { DISABLE_AUTH } from '../env';
+import { AnimatedThemeToggle } from './animated-theme-toggle';
 
 export interface SidebarProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
   return (
     <div
-      className={`fixed inset-y-0 left-0 z-40 bg-[#0f1115] border-r border-[#30363d] transition-all duration-200 ${
+      className={`fixed inset-y-0 left-0 z-40 bg-sidebar border-r border-sidebar-border transition-all duration-200 ${
         isOpen ? 'w-56' : 'w-16'
       }`}
     >
@@ -39,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         <button
           type="button"
           onClick={onToggle}
-          className="relative group flex items-center h-12 rounded-lg hover:bg-[#21262d] focus:outline-none"
+          className="relative group flex items-center h-12 rounded-lg hover:bg-sidebar-hover focus:outline-none"
           aria-label={isOpen ? 'Close sidebar' : 'Open sidebar'}
         >
           <span className="w-12 flex-none flex justify-center p-2">
@@ -50,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   alt="Bubble Lab"
                   className="w-8 h-8 rounded-lg transition-opacity group-hover:opacity-0"
                 />
-                <PanelLeftClose className="w-6 h-6 text-gray-200 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <PanelLeftClose className="w-6 h-6 text-sidebar-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             ) : (
               <div className="relative w-8 h-8">
@@ -59,25 +60,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
                   alt="Bubble Lab"
                   className="w-8 h-8 rounded-lg transition-opacity group-hover:opacity-0"
                 />
-                <PanelLeft className="w-6 h-6 text-gray-200 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <PanelLeft className="w-6 h-6 text-sidebar-foreground absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             )}
           </span>
           {/* Bubble Lab text when expanded */}
           {isOpen && (
-            <span className="text-lg font-semibold text-white group-hover:text-gray-400 transition-colors">
+            <span className="text-lg font-semibold text-foreground group-hover:text-muted-foreground transition-colors">
               Bubble Studio
             </span>
           )}
           {/* Tooltip when expanded */}
           {isOpen && (
-            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity z-50">
               Close Sidebar
             </span>
           )}
           {/* Tooltip when collapsed */}
           {!isOpen && (
-            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
               Open Sidebar
             </span>
           )}
@@ -90,11 +91,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               to="/home"
               activeProps={{
                 className:
-                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg bg-sidebar-active text-sidebar-foreground transition-colors',
               }}
               inactiveProps={{
                 className:
-                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors',
               }}
               aria-label="Home"
             >
@@ -115,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Home
               </span>
             )}
@@ -129,11 +130,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               to="/flows"
               activeProps={{
                 className:
-                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg bg-sidebar-active text-sidebar-foreground transition-colors',
               }}
               inactiveProps={{
                 className:
-                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors',
               }}
               aria-label="My Flows"
             >
@@ -154,7 +155,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 My Flows
               </span>
             )}
@@ -168,11 +169,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               to="/credentials"
               activeProps={{
                 className:
-                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg bg-sidebar-active text-sidebar-foreground transition-colors',
               }}
               inactiveProps={{
                 className:
-                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+                  'w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors',
               }}
               aria-label="Credentials"
             >
@@ -193,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </Link>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Credentials
               </span>
             )}
@@ -205,7 +206,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
 
         {/* Divider */}
         <div className="px-3 py-2">
-          <div className="border-t border-[#30363d]" />
+          <div className="border-t border-sidebar-border" />
+        </div>
+
+        {/* Theme Toggle */}
+        <div className="mt-2">
+          <div className="relative group">
+            <div className="w-full flex items-center rounded-lg">
+              {/* Fixed icon column */}
+              <span className="w-12 flex-none flex justify-center p-2">
+                <AnimatedThemeToggle className="h-8 w-8" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap text-muted-foreground transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                Theme
+              </span>
+            </div>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                Toggle Theme
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Discord Community button */}
@@ -215,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               href="https://discord.com/invite/PkJvcU2myV"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              className="w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors"
               aria-label="Join Discord Community"
             >
               {/* Fixed icon column */}
@@ -235,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Get instant help, report bugs, join community!
               </span>
             )}
@@ -249,7 +278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               href="https://docs.bubblelab.ai/intro"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              className="w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors"
               aria-label="Read Documentation"
             >
               {/* Fixed icon column */}
@@ -269,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Read Documentation
               </span>
             )}
@@ -283,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               href="https://www.youtube.com/@bubblelab_ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              className="w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors"
               aria-label="Watch Demos"
             >
               {/* Fixed icon column */}
@@ -303,7 +332,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Watch Demos
               </span>
             )}
@@ -317,7 +346,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               href="https://github.com/bubblelabai/BubbleLab"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors"
+              className="w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors"
               aria-label="Star us on GitHub"
             >
               {/* Fixed icon column */}
@@ -344,7 +373,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
             </a>
             {/* Tooltip when collapsed */}
             {!isOpen && (
-              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-sidebar-tooltip px-2 py-1 text-xs text-sidebar-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                 Star us on GitHub
               </span>
             )}
@@ -354,13 +383,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
         {/* Profile button at sidebar bottom */}
         <div className="mb-3">
           <SignedIn>
-            <div className="w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors">
+            <div className="w-full flex items-center rounded-lg hover:bg-sidebar-hover text-muted-foreground hover:text-sidebar-foreground transition-colors">
               {/* Fixed icon column with Clerk UserButton or mock avatar */}
               <span className="w-12 flex-none flex justify-center p-2">
                 {DISABLE_AUTH ? (
                   // Mock avatar when auth is disabled
-                  <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-600/40 flex items-center justify-center">
-                    <User className="w-5 h-5 text-purple-400" />
+                  <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
                   </div>
                 ) : (
                   // Clerk UserButton when auth is enabled
