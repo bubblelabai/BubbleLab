@@ -427,7 +427,7 @@ export const useFlowGeneration = () => {
           prompt: prompt || '',
           eventType: 'webhook/http',
           webhookActive: false,
-        } as any); // Type assertion for empty flow
+        });
       }
 
       console.log(

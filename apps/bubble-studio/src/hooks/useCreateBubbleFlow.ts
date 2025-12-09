@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type {
   CreateBubbleFlowResponse,
-  CreateEmptyBubbleFlowResponse,
   BubbleFlowListResponse,
   BubbleFlowListItem,
   CreateBubbleFlowRequest,
@@ -49,16 +48,36 @@ interface UseCreateBubbleFlowResult {
   reset: () => void;
 }
 
+interface UseCreateEmptyBubbleFlowResult {
+  mutate: (request: CreateEmptyBubbleFlowWithOptimisticData) => void;
+  mutateAsync: (
+    request: CreateEmptyBubbleFlowWithOptimisticData
+  ) => Promise<CreateBubbleFlowResponse>;
+  isLoading: boolean;
+  error: Error | null;
+  data: CreateBubbleFlowResponse | undefined;
+  reset: () => void;
+}
+
+// Function overloads
+export function useCreateBubbleFlow(options: {
+  isEmpty: true;
+}): UseCreateEmptyBubbleFlowResult;
+export function useCreateBubbleFlow(options?: {
+  isEmpty?: false;
+}): UseCreateBubbleFlowResult;
 export function useCreateBubbleFlow(options?: {
   isEmpty?: boolean;
-}): UseCreateBubbleFlowResult {
+}): UseCreateBubbleFlowResult | UseCreateEmptyBubbleFlowResult {
   const queryClient = useQueryClient();
   const isEmpty = options?.isEmpty || false;
 
   const mutation = useMutation({
     mutationKey: isEmpty ? ['createEmptyBubbleFlow'] : ['createBubbleFlow'],
     mutationFn: async (
-      request: CreateBubbleFlowWithOptimisticData
+      request:
+        | CreateBubbleFlowWithOptimisticData
+        | CreateEmptyBubbleFlowWithOptimisticData
     ): Promise<CreateBubbleFlowResponse> => {
       console.log(
         `[useCreateBubbleFlow] Creating ${isEmpty ? 'empty' : 'new'} bubble flow:`,
@@ -123,7 +142,9 @@ export function useCreateBubbleFlow(options?: {
         id: tempId,
         name: newFlow.name,
         description: newFlow.description,
-        code: isEmpty ? '' : newFlow.code, // Empty code for empty flows
+        code: isEmpty
+          ? ''
+          : (newFlow as CreateBubbleFlowWithOptimisticData).code, // Empty code for empty flows
         eventType: newFlow.eventType,
         webhookActive: newFlow.webhookActive,
         bubbleParameters: {}, // Will be populated by server response
@@ -223,7 +244,9 @@ export function useCreateBubbleFlow(options?: {
           id: data.id,
           name: variables.name,
           description: variables.description,
-          code: isEmpty ? '' : variables.code,
+          code: isEmpty
+            ? ''
+            : (variables as CreateBubbleFlowWithOptimisticData).code,
           eventType: data.eventType || variables.eventType,
           webhookActive: variables.webhookActive,
           // Use server response data for these fields (populated for regular flows)

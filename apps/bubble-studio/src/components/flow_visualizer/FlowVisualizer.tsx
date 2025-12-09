@@ -12,7 +12,6 @@ import {
 import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { RefreshCw } from 'lucide-react';
-import { useOutputStore } from '@/stores/outputStore';
 import BubbleNode from './nodes/BubbleNode';
 import InputSchemaNode from './nodes/InputSchemaNode';
 import StepContainerNode from './nodes/StepContainerNode';

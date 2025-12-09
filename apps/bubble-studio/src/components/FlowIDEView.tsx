@@ -12,14 +12,12 @@ import {
 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/flow_visualizer/FlowVisualizer';
-import { FlowGeneration } from '@/components/FlowGeneration';
 import { Tooltip } from '@/components/shared/Tooltip';
 import { ConsolidatedSidePanel } from '@/components/ConsolidatedSidePanel';
 import { useEditor } from '@/hooks/useEditor';
 import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useGenerationStore } from '@/stores/generationStore';
-import { useOutputStore } from '@/stores/outputStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useExecutionHistory } from '@/hooks/useExecutionHistory';
 import { getFlowNameFromCode } from '@/utils/codeParser';
@@ -46,7 +44,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     isConsolidatedPanelOpen,
   } = useUIStore();
 
-  const { output } = useOutputStore();
   const { generationPrompt, isStreaming } = useGenerationStore();
   const { editor } = useEditor();
   // Use selector to only subscribe to specific fields and prevent unnecessary re-renders
