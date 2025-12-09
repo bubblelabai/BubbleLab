@@ -61,7 +61,7 @@ export function ConsolidatedSidePanel() {
   return (
     <div className="h-full flex flex-col bg-card border-l border-border">
       {/* Tab Bar */}
-      <div className="flex border-b border-border bg-panel">
+      <div className="flex border-b border-border bg-panel-header">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

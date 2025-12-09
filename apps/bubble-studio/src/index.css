@@ -117,98 +117,92 @@
 }
 
 /* ============================================
-   Dark theme overrides
+   Dark theme overrides - EXACTLY matching main branch
    ============================================ */
 
 html.dark {
-  /* All dark mode colors use pure neutral grays (chroma=0) to match VS Code style */
-  --theme-background: oklch(14.5% 0 0); /* #0a0a0a - dashboard background */
-  --theme-foreground: oklch(87% 0 0); /* #d4d4d4 - main text */
+  /* Main branch: body background #0f0f23, FlowIDEView uses #1a1a1a for panels */
+  --theme-background: #0f0f23; /* main branch body background - deep blue-black */
+  --theme-foreground: #cccccc; /* main branch text color */
 
-  --theme-card: oklch(23.5% 0 0); /* #1e1e1e */
-  --theme-card-foreground: oklch(87% 0 0); /* #d4d4d4 */
+  --theme-card: #1a1a1a; /* FlowIDEView panel background */
+  --theme-card-foreground: #d4d4d4;
 
-  --theme-popover: oklch(23.5% 0 0); /* #1e1e1e */
-  --theme-popover-foreground: oklch(84.5% 0 0); /* #cccccc */
+  --theme-popover: #1e1e1e;
+  --theme-popover-foreground: #cccccc;
 
-  --theme-primary: oklch(55.3% 0.267 293.4); /* purple - keep colored */
-  --theme-primary-foreground: oklch(98% 0 0);
+  --theme-primary: #9333ea; /* purple */
+  --theme-primary-foreground: #ffffff;
 
-  --theme-secondary: oklch(26.4% 0 0); /* #252526 */
-  --theme-secondary-foreground: oklch(87% 0 0);
+  --theme-secondary: #252526; /* main branch header */
+  --theme-secondary-foreground: #d4d4d4;
 
-  --theme-muted: oklch(26.4% 0 0); /* #252526 */
-  --theme-muted-foreground: oklch(60% 0 0); /* #6b6b6b */
+  --theme-muted: #252526;
+  --theme-muted-foreground: #7d8590;
 
-  --theme-accent: oklch(29.7% 0 0); /* #2d2d30 */
-  --theme-accent-foreground: oklch(87% 0 0);
+  --theme-accent: #2d2d30; /* main branch toolbar */
+  --theme-accent-foreground: #d4d4d4;
 
-  --theme-destructive: oklch(44.4% 0.177 27.3); /* red - keep colored */
-  --theme-destructive-foreground: oklch(98% 0 0);
+  --theme-destructive: #da3633;
+  --theme-destructive-foreground: #ffffff;
 
-  --theme-border: oklch(36.4% 0 0); /* #3e3e42 */
-  --theme-input: oklch(29.7% 0 0); /* #2d2d30 */
-  --theme-ring: oklch(50.4% 0.213 293.4); /* purple - keep colored */
+  --theme-border: #30363d; /* main branch toast border */
+  --theme-input: #0a0a0a; /* FlowIDEView input field bg */
+  --theme-ring: #9333ea;
 
-  /* Sidebar specific */
-  --theme-sidebar: oklch(23.5% 0 0); /* #1e1e1e */
-  --theme-sidebar-foreground: oklch(84.5% 0 0); /* #cccccc */
-  --theme-sidebar-border: oklch(36.4% 0 0); /* #3e3e42 */
-  --theme-sidebar-hover: oklch(26.4% 0 0); /* #252526 */
-  --theme-sidebar-active: oklch(29.7% 0 0); /* #2d2d30 */
-  --theme-sidebar-tooltip: oklch(23.5% 0 0); /* #1e1e1e */
+  /* Sidebar specific - main branch Sidebar.tsx uses bg-[#0f1115] */
+  --theme-sidebar: #0f1115; /* sidebar background from main */
+  --theme-sidebar-foreground: #cccccc;
+  --theme-sidebar-border: #30363d; /* main branch sidebar border */
+  --theme-sidebar-hover: #21262d; /* main branch hover state */
+  --theme-sidebar-active: #21262d; /* active item bg */
+  --theme-sidebar-tooltip: #0f1115; /* main branch tooltip bg */
 
-  /* Canvas/IDE specific */
-  --theme-canvas: oklch(23.5% 0 0); /* #1e1e1e - workflow canvas */
-  --theme-panel: oklch(23.5% 0 0); /* #1e1e1e */
-  --theme-panel-foreground: oklch(84.5% 0 0); /* #cccccc */
-  --theme-panel-border: oklch(36.4% 0 0); /* #3e3e42 */
-  --theme-panel-header: oklch(26.4% 0 0); /* #252526 */
+  /* Canvas/IDE specific - main branch uses #1e1e1e for canvas, #1a1a1a for panels */
+  --theme-canvas: #1e1e1e; /* main branch FlowVisualizer background */
+  --theme-panel: #1a1a1a; /* FlowIDEView panels */
+  --theme-panel-foreground: #cccccc;
+  --theme-panel-border: #30363d;
+  --theme-panel-header: #0f1115; /* ConsolidatedSidePanel tab bar bg */
 
   /* Code/Monaco specific */
-  --theme-code-background: oklch(23.5% 0 0); /* #1e1e1e */
+  --theme-code-background: #1e1e1e;
 
-  /* Status colors - keep colored but ensure foregrounds are neutral */
-  --theme-success: oklch(59.6% 0.177 145.4); /* green */
-  --theme-success-foreground: oklch(20% 0 0);
-  --theme-warning: oklch(82.5% 0.188 89.9); /* yellow/orange */
-  --theme-warning-foreground: oklch(20% 0 0);
-  --theme-info: oklch(62.3% 0.214 259.1); /* blue */
-  --theme-info-foreground: oklch(98% 0 0);
+  /* Status colors */
+  --theme-success: #22c55e;
+  --theme-success-foreground: #000000;
+  --theme-warning: #fb8500;
+  --theme-warning-foreground: #000000;
+  --theme-info: #1f6feb;
+  --theme-info-foreground: #ffffff;
 
-  /* Flow/Edge colors - matching original hex values exactly */
-  --theme-edge-default: oklch(70% 0 0); /* #9ca3af -> neutral gray-400 */
-  --theme-edge-highlighted: oklch(55.3% 0.267 293.4); /* #9333ea - purple */
-  --theme-edge-success: oklch(62.8% 0.209 145.4); /* #22c55e - green-500 */
-  --theme-edge-muted: oklch(53% 0 0); /* #6b7280 -> neutral gray-500 */
-  --theme-edge-schedule: oklch(68.5% 0.165 252.3); /* #60a5fa - blue-400 */
+  /* Flow/Edge colors - exact hex from main branch */
+  --theme-edge-default: #9ca3af; /* gray-400 */
+  --theme-edge-highlighted: #9333ea; /* purple */
+  --theme-edge-success: #22c55e; /* green-500 */
+  --theme-edge-muted: #6b7280; /* gray-500 */
+  --theme-edge-schedule: #60a5fa; /* blue-400 */
 
-  /* Node button colors - dark mode (same as light mode - these are absolute colors) */
-  --theme-node-badge-bg: oklch(96.5% 0 0 / 95%); /* rgba(245, 245, 244, 0.95) */
-  --theme-node-badge-text: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
-  --theme-node-badge-border: oklch(
-    85% 0 0 / 80%
-  ); /* rgba(212, 212, 211, 0.8) */
-  --theme-node-badge-selected: oklch(
-    55% 0.22 277 / 90%
-  ); /* rgba(99, 102, 241, 0.9) - indigo */
-  --theme-node-output-bg: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
-  --theme-node-output-text: oklch(
-    96.5% 0 0 / 95%
-  ); /* rgba(245, 245, 244, 0.95) */
-  --theme-node-output-border: oklch(35% 0 0 / 80%); /* rgba(64, 64, 64, 0.8) */
-  --theme-node-error-bg: oklch(60% 0.22 27 / 90%); /* rgba(239, 68, 68, 0.9) */
-  --theme-node-error-border: oklch(52% 0.22 27); /* #dc2626 */
+  /* Node button colors */
+  --theme-node-badge-bg: rgba(245, 245, 244, 0.95);
+  --theme-node-badge-text: rgba(23, 23, 23, 0.95);
+  --theme-node-badge-border: rgba(212, 212, 211, 0.8);
+  --theme-node-badge-selected: rgba(99, 102, 241, 0.9);
+  --theme-node-output-bg: rgba(23, 23, 23, 0.95);
+  --theme-node-output-text: rgba(245, 245, 244, 0.95);
+  --theme-node-output-border: rgba(64, 64, 64, 0.8);
+  --theme-node-error-bg: rgba(239, 68, 68, 0.9);
+  --theme-node-error-border: #dc2626;
 
-  /* Scrollbar - neutral grays */
-  --scrollbar-thumb: oklch(37.9% 0 0); /* #424242 */
-  --scrollbar-thumb-hover: oklch(42.8% 0 0); /* #4f4f4f */
+  /* Scrollbar - main branch uses #3a3f45, #4b5563 */
+  --scrollbar-thumb: #3a3f45;
+  --scrollbar-thumb-hover: #4b5563;
 
-  /* Toast colors - matching original dark theme exactly */
-  --theme-toast-success: oklch(50.2% 0.177 145.4); /* #238636 */
-  --theme-toast-error: oklch(53.5% 0.205 27.3); /* #da3633 */
-  --theme-toast-info: oklch(54.5% 0.205 259.1); /* #1f6feb */
-  --theme-toast-warning: oklch(72.5% 0.188 55.1); /* #fb8500 */
+  /* Toast colors - exact from main branch */
+  --theme-toast-success: #238636;
+  --theme-toast-error: #da3633;
+  --theme-toast-info: #1f6feb;
+  --theme-toast-warning: #fb8500;
 }
 
 /* ============================================
