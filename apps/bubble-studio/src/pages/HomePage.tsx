@@ -195,7 +195,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search flows..."
-              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border text-foreground text-sm rounded-lg focus:outline-none focus:border-border/80 placeholder-muted-foreground transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border dark:border-white/5 text-foreground text-sm rounded-lg focus:outline-none focus:border-border/80 dark:focus:border-white/10 placeholder-muted-foreground transition-all duration-200"
             />
           </div>
         </div>
@@ -245,10 +245,10 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={flow.id}
-                  className={`group relative rounded-lg border border-border bg-card transition-all duration-300 ${
+                  className={`group relative rounded-lg border border-border dark:border-white/5 bg-card transition-all duration-300 ${
                     isOptimisticLoading
                       ? 'opacity-70 cursor-wait'
-                      : 'hover:bg-card/80 hover:border-border/80 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
+                      : 'hover:bg-card/80 hover:border-border/80 dark:hover:border-white/10 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
                   }`}
                   onClick={() => !isOptimisticLoading && onFlowSelect(flow.id)}
                 >
@@ -357,7 +357,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
 
                     {/* Divider and Date/Toggle Row */}
-                    <div className="pt-2 mt-2 border-t border-border">
+                    <div className="pt-2 mt-2 border-t border-border dark:border-white/5">
                       <div
                         className="flex items-center justify-between flex-wrap gap-4 mt-2"
                         onClick={(e) => e.stopPropagation()}

@@ -158,7 +158,7 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               value={formData.title}
               onChange={handleInputChange}
               placeholder="e.g., GitHub PR Auto-Commenter"
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 focus:ring-1 focus:ring-ring/20 transition-all duration-200"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200"
               required
             />
           </div>
@@ -175,7 +175,7 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               onChange={handleInputChange}
               placeholder="Describe what your template does and how it can help others..."
               rows={3}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none"
               required
             />
           </div>
@@ -192,7 +192,7 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               value={formData.authorName}
               onChange={handleInputChange}
               placeholder="How would you like to be credited?"
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 focus:ring-1 focus:ring-ring/20 transition-all duration-200"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200"
             />
           </div>
 
@@ -216,7 +216,7 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
   }
 }`}
               rows={10}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none font-mono text-sm"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none font-mono text-sm"
               required
             />
           </div>
@@ -233,7 +233,7 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
               onChange={handleInputChange}
               placeholder="Any additional context, use cases, or setup instructions..."
               rows={2}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none"
             />
           </div>
         </form>
