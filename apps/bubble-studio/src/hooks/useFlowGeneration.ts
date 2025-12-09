@@ -422,7 +422,7 @@ export const useFlowGeneration = () => {
       } else {
         // Create an EMPTY flow (for AI generation)
         createResult = await createEmptyFlowMutation.mutateAsync({
-          name: prompt ? prompt.substring(0, 50) : 'New Flow',
+          name: 'New Flow',
           description: 'Created from prompt: ' + (prompt || ''),
           prompt: prompt || '',
           eventType: 'webhook/http',

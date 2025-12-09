@@ -11,6 +11,7 @@ import { ServiceUsage, type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
+import { getFlowNameFromCode } from '../utils/code-parser.js';
 import {
   extractRequiredCredentials,
   generateDisplayedBubbleParameters,
@@ -1251,10 +1252,16 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 generationResult.generatedCode
               );
 
+              // Extract flow name from the generated code
+              const flowName = getFlowNameFromCode(
+                generationResult.generatedCode
+              );
+
               // Update the flow with generated code
               await db
                 .update(bubbleFlows)
                 .set({
+                  name: flowName,
                   code: processedCode,
                   originalCode: generationResult.generatedCode,
                   bubbleParameters: validationResult.bubbleParameters || {},
@@ -1273,7 +1280,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 );
 
               console.log(
-                `[API] Successfully updated flow ${flowId} with generated code`
+                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}`
               );
             } else {
               // Validation failed - update with error
