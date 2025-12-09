@@ -15,6 +15,8 @@ import { formatTimestamp } from '../../utils/executionLogsFormatUtils';
 import { useEditor } from '../../hooks/useEditor';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { getExecutionStore } from '../../stores/executionStore';
+import { CodeRestoreModal } from './CodeRestoreModal';
+import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 
 interface ExecutionHistoryProps {
   flowId: number | null;
@@ -24,9 +26,15 @@ const ITEMS_PER_PAGE = 10;
 
 export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [restoreModal, setRestoreModal] = useState<{
+    isOpen: boolean;
+    code: string;
+    executionId: number;
+  }>({ isOpen: false, code: '', executionId: 0 });
   const prevExecutingRef = useRef<boolean>(false);
   const { editor } = useEditor(flowId || undefined);
   const validateCodeMutation = useValidateCode({ flowId });
+  const { data: currentFlow } = useBubbleFlow(flowId);
 
   // Get execution state from store
   const isCurrentlyExecuting = useExecutionStore(
@@ -80,7 +88,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
     }
   };
 
-  const handleApplyVersion = async (
+  const handlePreviewVersion = (
     code: string | undefined,
     executionId: number
   ) => {
@@ -93,7 +101,22 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
       toast.error('Cannot restore code: No flow selected');
       return;
     }
+    // Open diff preview modal
+    setRestoreModal({
+      isOpen: true,
+      code,
+      executionId,
+    });
+  };
 
+  const handleConfirmRestore = async () => {
+    const { code, executionId } = restoreModal;
+
+    if (!flowId || !code) {
+      return;
+    }
+
+    setRestoreModal({ isOpen: false, code: '', executionId: 0 });
     try {
       // Automatically validate and sync the code
       const validationResult = await validateCodeMutation.mutateAsync({
@@ -121,6 +144,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to sync applied code: ${errorMessage}`);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!validateCodeMutation.isPending) {
+      setRestoreModal({ isOpen: false, code: '', executionId: 0 });
     }
   };
 
@@ -233,10 +262,10 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleApplyVersion(execution.code, execution.id);
+                          handlePreviewVersion(execution.code, execution.id);
                         }}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
-                        title="Apply code from this execution"
+                        title="Preview and apply code from this execution"
                       >
                         <ArrowPathIcon className="w-3.5 h-3.5" />
                         Use Version
@@ -335,6 +364,17 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
           </div>
         )}
       </div>
+
+      {/* Code Restore Modal */}
+      <CodeRestoreModal
+        isOpen={restoreModal.isOpen}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmRestore}
+        currentCode={currentFlow?.code || ''}
+        restoredCode={restoreModal.code}
+        executionId={restoreModal.executionId}
+        isApplying={validateCodeMutation.isPending}
+      />
     </div>
   );
 }
