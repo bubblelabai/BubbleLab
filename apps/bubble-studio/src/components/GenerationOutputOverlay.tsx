@@ -140,9 +140,9 @@ export function GenerationOutputOverlay() {
     return {
       type: 'info',
       icon: <Info className="w-5 h-5 flex-shrink-0" />,
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-800/20',
-      borderColor: 'border-gray-700/30',
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted/20',
+      borderColor: 'border-border/30',
     };
   };
 
@@ -150,9 +150,9 @@ export function GenerationOutputOverlay() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 p-3 sm:p-4 md:p-6">
-      <div className="w-full max-w-4xl lg:max-w-5xl bg-gradient-to-b from-[#0d1117] to-[#0a0d12] border border-[#30363d] rounded-xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 duration-300">
+      <div className="w-full max-w-4xl lg:max-w-5xl bg-gradient-to-b from-panel to-background border border-border rounded-xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] md:max-h-[85vh] animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="flex items-center p-4 sm:p-6 border-b border-[#30363d]">
+        <div className="flex items-center p-4 sm:p-6 border-b border-border">
           <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
             {isStreaming ? (
               <div className="relative flex-shrink-0">
@@ -165,14 +165,14 @@ export function GenerationOutputOverlay() {
               <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-400 flex-shrink-0" />
             )}
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-100 truncate">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground truncate">
                 {isStreaming
                   ? 'Generating Your Flow'
                   : hasError
                     ? 'Generation Failed'
                     : 'Generation Complete'}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-400 mt-0.5 sm:mt-1 truncate">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 truncate">
                 {isStreaming
                   ? 'Pearl is crafting your workflow...'
                   : hasError
@@ -187,7 +187,7 @@ export function GenerationOutputOverlay() {
         {!summaryComplete && (
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2 sm:space-y-3 thin-scrollbar">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin mb-2 sm:mb-3" />
                 <p className="text-sm sm:text-base">
                   Initializing generation...
@@ -222,7 +222,7 @@ export function GenerationOutputOverlay() {
 
         {/* Footer - only show when not streaming */}
         {!isStreaming && (
-          <div className="p-4 sm:p-6 border-t border-[#30363d] bg-[#161b22]">
+          <div className="p-4 sm:p-6 border-t border-border bg-muted">
             {hasError ? (
               // Error State
               <div className="space-y-3 sm:space-y-4">
@@ -249,7 +249,7 @@ export function GenerationOutputOverlay() {
               <div className="space-y-4 sm:space-y-6">
                 {/* Pearl's Summary with Typewriter Effect and Markdown */}
                 <div className="space-y-3">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                     Summary
                   </p>
                   <div className="overflow-y-auto overflow-x-hidden max-h-[45vh] md:max-h-[50vh] thin-scrollbar pr-2">
@@ -265,25 +265,25 @@ export function GenerationOutputOverlay() {
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in fade-in duration-300">
                     {/* Tokens */}
                     <div className="flex flex-col">
-                      <p className="text-xl sm:text-2xl font-bold text-gray-100">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">
                         {generationResult.serviceUsage.reduce(
                           (sum, service) => sum + service.usage,
                           0
                         )}
                       </p>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
                         tokens
                       </p>
                     </div>
 
                     {/* Bubbles */}
                     <div className="flex flex-col">
-                      <p className="text-xl sm:text-2xl font-bold text-gray-100">
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">
                         {generationResult.bubbleCount
                           ? generationResult.bubbleCount
                           : 0}
                       </p>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
                         bubbles
                       </p>
                     </div>

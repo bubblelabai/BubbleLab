@@ -83,51 +83,52 @@
 }
 
 .dark {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
+  /* Match original dark theme colors from main branch */
+  --background: 240 40% 10%; /* #0f0f23 - original body background */
+  --foreground: 0 0% 80%; /* #cccccc - original body text */
 
-  --card: 224 71% 4%;
-  --card-foreground: 213 31% 91%;
+  --card: 0 0% 10%; /* #1a1a1a - card backgrounds */
+  --card-foreground: 0 0% 80%;
 
-  --popover: 224 71% 4%;
-  --popover-foreground: 213 31% 91%;
+  --popover: 216 28% 7%; /* #0d1117 - popover/modal backgrounds */
+  --popover-foreground: 0 0% 80%;
 
   --primary: 262.1 83.3% 57.8%;
   --primary-foreground: 210 40% 98%;
 
-  --secondary: 222.2 47.4% 11.2%;
+  --secondary: 215 21% 11%; /* #161b22 */
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 223 47% 11%;
-  --muted-foreground: 215.4 16.3% 56.9%;
+  --muted: 215 21% 11%; /* #161b22 - muted backgrounds */
+  --muted-foreground: 215 16% 57%; /* gray-400/500 equivalent */
 
-  --accent: 216 34% 17%;
+  --accent: 215 15% 15%; /* #21262d */
   --accent-foreground: 210 40% 98%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
+  --border: 215 15% 15%; /* #21262d - original border color */
+  --input: 215 15% 15%;
   --ring: 263.4 70% 50.4%;
 
   /* Sidebar specific - matches current dark sidebar */
-  --sidebar: 225 25% 6%;
-  --sidebar-foreground: 213 31% 91%;
-  --sidebar-border: 216 34% 17%;
-  --sidebar-hover: 216 34% 17%;
-  --sidebar-active: 216 34% 17%;
-  --sidebar-tooltip: 225 25% 6%;
+  --sidebar: 216 28% 7%; /* #0d1117 */
+  --sidebar-foreground: 0 0% 80%;
+  --sidebar-border: 215 15% 15%;
+  --sidebar-hover: 215 21% 11%;
+  --sidebar-active: 215 15% 15%;
+  --sidebar-tooltip: 216 28% 7%;
 
   /* Canvas/IDE specific */
-  --canvas: 225 25% 6%;
-  --panel: 220 20% 10%;
-  --panel-foreground: 213 31% 91%;
-  --panel-border: 216 34% 17%;
-  --panel-header: 220 25% 8%;
+  --canvas: 0 0% 4%; /* #0a0a0a */
+  --panel: 216 28% 7%; /* #0d1117 */
+  --panel-foreground: 0 0% 80%;
+  --panel-border: 215 15% 15%;
+  --panel-header: 215 21% 11%;
 
   /* Code/Monaco specific */
-  --code-background: 220 20% 10%;
+  --code-background: 216 28% 7%;
 
   /* Status colors */
   --success: 142.1 70.6% 45.3%;
@@ -137,9 +138,9 @@
   --info: 217.2 91.2% 59.8%;
   --info-foreground: 224 71% 4%;
 
-  /* Scrollbar */
-  --scrollbar-thumb: 220 13% 26%;
-  --scrollbar-thumb-hover: 220 13% 36%;
+  /* Scrollbar - match original */
+  --scrollbar-thumb: 213 9% 25%; /* #3a3f45 */
+  --scrollbar-thumb-hover: 215 14% 34%; /* #4b5563 */
 }
 
 * {

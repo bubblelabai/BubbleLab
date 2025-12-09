@@ -225,27 +225,27 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-[#2a2826] border border-[#3d3935] rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col mx-4">
+      <div className="relative bg-card border border-border rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#3d3935]">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl font-bold text-foreground">
               Managed Credentials Usage Details
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Usage of BubbleLab's managed API credentials. You're encouraged to
               bring your own API keys — when you do, you'll pay your provider
               directly and this usage won't apply.
             </p>
             {billingPeriod && (
-              <p className="text-xs text-gray-500 mt-2 font-mono">
+              <p className="text-xs text-muted-foreground mt-2 font-mono">
                 Billing Period: {billingPeriod.start} to {billingPeriod.end}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -253,28 +253,28 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         </div>
 
         {/* Search Bar */}
-        <div className="px-6 py-3 border-b border-[#3d3935]">
+        <div className="px-6 py-3 border-b border-border">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-500" />
+              <Search className="h-4 w-4 text-muted-foreground" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by service, sub-service, or unit..."
-              className="w-full pl-10 pr-4 py-2.5 bg-[#1a1816] border border-[#3d3935] text-gray-100 text-sm rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-500 transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-border text-foreground text-sm rounded-lg focus:outline-none focus:border-info placeholder-muted-foreground transition-all duration-200"
             />
           </div>
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-auto bg-[#1a1816]">
+        <div className="flex-1 overflow-auto bg-background">
           <table className="w-full">
-            <thead className="bg-[#2a2826] sticky top-0 z-10">
+            <thead className="bg-card sticky top-0 z-10">
               <tr>
                 <th
-                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
+                  className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-background/50 transition-colors"
                   onClick={() => handleSort('service')}
                 >
                   <div className="flex items-center gap-2">
@@ -283,7 +283,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
+                  className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-background/50 transition-colors"
                   onClick={() => handleSort('subService')}
                 >
                   <div className="flex items-center gap-2">
@@ -291,11 +291,11 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                     <SortIcon field="subService" />
                   </div>
                 </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Unit
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-background/50 transition-colors"
                   onClick={() => handleSort('usage')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -304,7 +304,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-background/50 transition-colors"
                   onClick={() => handleSort('unitCost')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -313,7 +313,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   </div>
                 </th>
                 <th
-                  className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-[#1a1816]/50 transition-colors"
+                  className="text-right px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-background/50 transition-colors"
                   onClick={() => handleSort('totalCost')}
                 >
                   <div className="flex items-center justify-end gap-2">
@@ -323,11 +323,11 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3d3935]">
+            <tbody className="divide-y divide-border">
               {filteredAndSortedData.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="text-gray-400">
+                    <div className="text-muted-foreground">
                       {searchQuery.trim()
                         ? 'No results found'
                         : 'No usage data available'}
@@ -341,7 +341,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                   return (
                     <tr
                       key={index}
-                      className="hover:bg-[#2a2826]/40 transition-colors"
+                      className="hover:bg-card/40 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
@@ -352,18 +352,18 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                               className="w-5 h-5 flex-shrink-0"
                             />
                           )}
-                          <span className="text-sm font-medium text-blue-400">
+                          <span className="text-sm font-medium text-info">
                             {item.service}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-300">
+                        <span className="text-sm text-foreground/80">
                           {item.subService || '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-xs text-gray-400 bg-[#2a2826]/60 px-2 py-1 rounded">
+                        <span className="text-xs text-muted-foreground bg-card/60 px-2 py-1 rounded">
                           {formatUnit(
                             item.unit,
                             unitCostFormatted.shouldAppendMillion
@@ -371,12 +371,12 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="text-sm text-gray-200 font-mono">
+                        <span className="text-sm text-foreground font-mono">
                           {formatUsage(item.usage, item.unit)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="text-sm text-gray-300 font-mono">
+                        <span className="text-sm text-foreground/80 font-mono">
                           {unitCostFormatted.cost}
                         </span>
                       </td>
@@ -385,7 +385,7 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
                           className={`text-sm font-semibold font-mono ${
                             item.totalCost > 0
                               ? 'text-purple-400'
-                              : 'text-gray-500'
+                              : 'text-muted-foreground'
                           }`}
                         >
                           {formatCost(item.totalCost)}
@@ -400,21 +400,21 @@ export const UsageDetailsModal: React.FC<UsageDetailsModalProps> = ({
         </div>
 
         {/* Footer with totals */}
-        <div className="border-t border-[#3d3935] bg-[#1a1816] p-6">
+        <div className="border-t border-border bg-background p-6">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-muted-foreground">
               Showing {filteredAndSortedData.length} of {serviceUsage.length}{' '}
               services
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-300">
+              <span className="text-sm font-semibold text-foreground/80">
                 Total Cost:
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-bold text-purple-400 font-mono">
                   {formatCost(totalCost)}
                 </span>
-                <span className="text-sm text-gray-500 font-mono">
+                <span className="text-sm text-muted-foreground font-mono">
                   / {formatLimit(limit)}
                 </span>
               </div>

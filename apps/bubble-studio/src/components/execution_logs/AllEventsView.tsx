@@ -147,11 +147,11 @@ export default function AllEventsView({
   };
 
   return (
-    <div className="flex h-full bg-[#0d1117]">
+    <div className="flex h-full bg-background">
       {/* Vertical Sidebar with Tabs */}
       <div
         ref={tabsRef}
-        className="flex-shrink-0 border-r border-[#21262d] bg-[#0d1117] overflow-y-auto thin-scrollbar w-20"
+        className="flex-shrink-0 border-r border-border bg-background overflow-y-auto thin-scrollbar w-20"
       >
         <div className="flex flex-col gap-0.5 p-1.5">
           {allTabs.map((tab) => {
@@ -163,8 +163,8 @@ export default function AllEventsView({
                 onClick={() => setSelectedTab(tab.type)}
                 className={`flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-md transition-all ${
                   isSelected
-                    ? 'bg-[#1f6feb]/10 text-[#58a6ff]'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#161b22]'
+                    ? 'bg-info/10 text-info'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 <div className="flex-shrink-0">{tab.icon}</div>
@@ -201,7 +201,7 @@ export default function AllEventsView({
             if (globalEvents.length === 0) {
               return (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-gray-600">
+                  <div className="text-center text-muted-foreground">
                     <InformationCircleIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No events</p>
                   </div>
@@ -274,12 +274,12 @@ export default function AllEventsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-sm text-gray-200 break-words flex-1 min-w-0 font-medium">
+                                <p className="text-sm text-foreground break-words flex-1 min-w-0 font-medium">
                                   {makeLinksClickable(
                                     formatEventMessage(event)
                                   )}
                                 </p>
-                                <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
                                 </span>
                               </div>
@@ -287,7 +287,7 @@ export default function AllEventsView({
                           </div>
                           {event.additionalData &&
                             Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-3 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                              <pre className="json-output text-xs mt-3 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                                 <JsonRenderer
                                   data={event.additionalData}
                                   flowId={flowId}
@@ -305,13 +305,13 @@ export default function AllEventsView({
                 {errorEvents.length > 0 && (
                   <div className="px-4">
                     {/* Prominent Fix with Pearl Banner */}
-                    <div className="mb-4 p-4 bg-[#161b22] border border-[#30363d] rounded-lg">
+                    <div className="mb-4 p-4 bg-muted border border-border rounded-lg">
                       <div className="flex items-center justify-between gap-4">
                         <div>
-                          <h4 className="text-sm font-medium text-gray-200 mb-1">
+                          <h4 className="text-sm font-medium text-foreground mb-1">
                             Need help fixing these errors?
                           </h4>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-muted-foreground">
                             Pearl can analyze your errors and suggest fixes
                             automatically
                           </p>
@@ -343,12 +343,12 @@ export default function AllEventsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
+                                <p className="text-xs text-foreground/80 break-words flex-1 min-w-0">
                                   {makeLinksClickable(
                                     formatEventMessage(event)
                                   )}
                                 </p>
-                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[9px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
                                 </span>
                               </div>
@@ -356,7 +356,7 @@ export default function AllEventsView({
                           </div>
                           {event.additionalData &&
                             Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                              <pre className="json-output text-xs mt-2 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                                 <JsonRenderer
                                   data={event.additionalData}
                                   flowId={flowId}
@@ -388,12 +388,12 @@ export default function AllEventsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
+                                <p className="text-xs text-foreground/80 break-words flex-1 min-w-0">
                                   {makeLinksClickable(
                                     formatEventMessage(event)
                                   )}
                                 </p>
-                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                <span className="text-[9px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                                   {formatTimestamp(event.timestamp)}
                                 </span>
                               </div>
@@ -401,7 +401,7 @@ export default function AllEventsView({
                           </div>
                           {event.additionalData &&
                             Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                              <pre className="json-output text-xs mt-2 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                                 <JsonRenderer
                                   data={event.additionalData}
                                   flowId={flowId}
@@ -419,7 +419,7 @@ export default function AllEventsView({
                 {infoEvents.length > 0 && (
                   <div className="px-4">
                     <details className="group">
-                      <summary className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide cursor-pointer hover:text-gray-400 flex items-center gap-2">
+                      <summary className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide cursor-pointer hover:text-muted-foreground flex items-center gap-2">
                         <svg
                           className="w-3 h-3 transition-transform group-open:rotate-90"
                           fill="none"
@@ -447,12 +447,12 @@ export default function AllEventsView({
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-3 min-w-0">
-                                  <p className="text-xs text-gray-400 break-words flex-1 min-w-0">
+                                  <p className="text-xs text-muted-foreground break-words flex-1 min-w-0">
                                     {makeLinksClickable(
                                       formatEventMessage(event)
                                     )}
                                   </p>
-                                  <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                  <span className="text-[9px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                                     {formatTimestamp(event.timestamp)}
                                   </span>
                                 </div>
@@ -460,7 +460,7 @@ export default function AllEventsView({
                             </div>
                             {event.additionalData &&
                               Object.keys(event.additionalData).length > 0 && (
-                                <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                <pre className="json-output text-xs mt-2 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                                   <JsonRenderer
                                     data={event.additionalData}
                                     flowId={flowId}
@@ -484,7 +484,7 @@ export default function AllEventsView({
             if (!item) {
               return (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-gray-600">
+                  <div className="text-center text-muted-foreground">
                     <PlayIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No event selected</p>
                   </div>
@@ -509,10 +509,10 @@ export default function AllEventsView({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 min-w-0">
-                          <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                          <p className="text-sm text-foreground/80 break-words flex-1 min-w-0">
                             {makeLinksClickable(formatEventMessage(event))}
                           </p>
-                          <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                             {formatTimestamp(event.timestamp)}
                           </span>
                         </div>
@@ -520,7 +520,7 @@ export default function AllEventsView({
                     </div>
                     {event.additionalData &&
                       Object.keys(event.additionalData).length > 0 && (
-                        <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                        <pre className="json-output text-xs mt-2 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                           <JsonRenderer
                             data={event.additionalData}
                             flowId={flowId}
@@ -557,8 +557,8 @@ export default function AllEventsView({
 
               return (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center gap-3 px-4 py-2.5 bg-[#161b22] border-b border-[#21262d]">
-                    <span className="text-xs text-gray-500 font-medium">
+                  <div className="flex items-center gap-3 px-4 py-2.5 bg-muted border-b border-border">
+                    <span className="text-xs text-muted-foreground font-medium">
                       Logs
                     </span>
                     <input
@@ -572,7 +572,7 @@ export default function AllEventsView({
                       className="flex-1 max-w-xs"
                       aria-label={`Select output for variable ${varId}`}
                     />
-                    <span className="text-xs text-gray-500 font-mono tabular-nums">
+                    <span className="text-xs text-muted-foreground font-mono tabular-nums">
                       {selectedIndex + 1}/{evs.length}
                     </span>
                   </div>
@@ -580,13 +580,13 @@ export default function AllEventsView({
                   {/* Fix with Pearl Banner - Show if bubble has errors */}
                   {hasErrorInBubble && (
                     <div className="px-4 pt-3 pb-2">
-                      <div className="p-3 bg-[#161b22] border border-[#30363d] rounded-lg">
+                      <div className="p-3 bg-muted border border-border rounded-lg">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-medium text-gray-200 mb-1">
+                            <h4 className="text-xs font-medium text-foreground mb-1">
                               Need help fixing this error?
                             </h4>
-                            <p className="text-[10px] text-gray-400">
+                            <p className="text-[10px] text-muted-foreground">
                               Please wait until the flow finishes executing
                               before fixing!
                             </p>
@@ -621,12 +621,12 @@ export default function AllEventsView({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3 min-w-0">
-                              <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                              <p className="text-sm text-foreground/80 break-words flex-1 min-w-0">
                                 {makeLinksClickable(
                                   formatEventMessage(selectedEvent)
                                 )}
                               </p>
-                              <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                              <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
                                 {formatTimestamp(selectedEvent.timestamp)}
                               </span>
                             </div>
@@ -635,7 +635,7 @@ export default function AllEventsView({
                         {selectedEvent.additionalData &&
                           Object.keys(selectedEvent.additionalData).length >
                             0 && (
-                            <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                            <pre className="json-output text-xs mt-2 bg-background border border-border rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
                               <JsonRenderer
                                 data={selectedEvent.additionalData}
                                 flowId={flowId}
@@ -647,7 +647,9 @@ export default function AllEventsView({
                     </div>
                   ) : (
                     <div className="flex-1 flex items-center justify-center">
-                      <p className="text-sm text-gray-600">No event selected</p>
+                      <p className="text-sm text-muted-foreground">
+                        No event selected
+                      </p>
                     </div>
                   )}
                 </div>
