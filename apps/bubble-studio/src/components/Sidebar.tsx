@@ -18,7 +18,7 @@ import { useUser } from '../hooks/useUser';
 import { useGitHubStars } from '../hooks/useGitHubStars';
 import { SignedIn } from './AuthComponents';
 import { DISABLE_AUTH } from '../env';
-import { AnimatedThemeToggle } from './animated-theme-toggle';
+import { AnimatedThemeToggle } from './AnimatedThemeToggle';
 
 export interface SidebarProps {
   isOpen: boolean;

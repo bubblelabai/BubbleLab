@@ -41,22 +41,22 @@ export const PricingPage: React.FC = () => {
         <button
           type="button"
           onClick={handleBack}
-          className="flex items-center gap-2 text-gray-400 hover:text-gray-200 transition-colors mb-4"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-foreground mb-2">
           Upgrade Your Plan
         </h1>
-        <p className="text-gray-400">
+        <p className="text-muted-foreground">
           Choose the plan that best fits your needs
         </p>
         <a
           href="https://www.bubblelab.ai/pricing"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors mt-2"
+          className="inline-flex items-center gap-2 text-info hover:text-info/80 transition-colors mt-2"
         >
           View full pricing details
           <ExternalLink className="w-4 h-4" />

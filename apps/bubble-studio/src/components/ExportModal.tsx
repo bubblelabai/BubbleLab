@@ -263,7 +263,7 @@ export function ExportModal({
   }) => (
     <button
       onClick={onClick ? onClick : () => handleCopyToClipboard(text, type)}
-      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
     >
       {copiedSetup === type || (type === 'code' && copied) ? (
         <>
@@ -288,20 +288,20 @@ export function ExportModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-[#0f1115] rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-[#30363d]">
+      <div className="relative bg-panel rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-border">
         {/* Header */}
-        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d]">
+        <div className="bg-card px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Package className="w-5 h-5 text-purple-400" />
-              <h2 className="text-lg font-semibold text-gray-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 Export Workflow
               </h2>
             </div>
             <button
               title="Close"
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -309,7 +309,7 @@ export function ExportModal({
         </div>
 
         {/* Tabs */}
-        <div className="bg-[#1a1a1a] px-6 border-b border-[#30363d]">
+        <div className="bg-card px-6 border-b border-border">
           <nav className="flex space-x-8">
             {[
               { id: 'api', label: 'API Usage Guide', icon: Package },
@@ -325,7 +325,7 @@ export function ExportModal({
                 className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
                   activeTab === id
                     ? 'border-purple-500 text-purple-400'
-                    : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-[#444c56]'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -341,12 +341,12 @@ export function ExportModal({
             <div className="p-6 space-y-6">
               {/* Setup Guide */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-200 flex items-center gap-2">
+                <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
                   <Terminal className="w-5 h-5" />
                   Export & Run Your Flow
                 </h3>
 
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Get a complete, ready-to-run Node.js project with all
                   dependencies included. You'll need to set up your own hosted
                   runtime and configure credentials outside of the Bubble Lab
@@ -355,13 +355,13 @@ export function ExportModal({
 
                 <div className="space-y-3">
                   {/* Step 1: Download */}
-                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                    <div className="bg-[#1a1a1a] px-4 py-2 border-b border-[#30363d] flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-200">
+                  <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                    <div className="bg-card px-4 py-2 border-b border-border flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
                         1.
                       </span>
                       <Download className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-medium text-gray-200">
+                      <span className="text-sm font-medium text-foreground">
                         Download project
                       </span>
                     </div>
@@ -370,7 +370,7 @@ export function ExportModal({
                         <div className="bg-purple-600/20 border border-purple-600/50 rounded-lg p-2">
                           <Workflow className="w-5 h-5 text-purple-400" />
                         </div>
-                        <code className="text-sm text-gray-200 font-medium font-mono">
+                        <code className="text-sm text-foreground font-medium font-mono">
                           {projectName}.zip
                         </code>
                       </div>
@@ -378,7 +378,7 @@ export function ExportModal({
                         <button
                           type="button"
                           onClick={() => handleCopyToClipboard(code, 'code')}
-                          className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1a1a] border border-[#30363d] hover:border-gray-500 rounded text-sm font-medium text-gray-300 hover:text-gray-100 transition-all flex items-center gap-2"
+                          className="px-3 py-2 bg-panel hover:bg-card border border-border hover:border-muted-foreground rounded text-sm font-medium text-foreground/80 hover:text-foreground transition-all flex items-center gap-2"
                         >
                           {copied ? (
                             <>
@@ -405,44 +405,44 @@ export function ExportModal({
                   </div>
 
                   {/* Step 2: Extract & Install */}
-                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                    <div className="bg-[#1a1a1a] px-4 py-2 border-b border-[#30363d] flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-200">
+                  <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                    <div className="bg-card px-4 py-2 border-b border-border flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
                         2.
                       </span>
-                      <TerminalSquare className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-200">
+                      <TerminalSquare className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">
                         Extract & install dependencies
                       </span>
                     </div>
                     <div className="p-4 space-y-3">
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           Extract and navigate to project:
                         </p>
-                        <code className="text-sm text-gray-300 font-mono block">
+                        <code className="text-sm text-foreground/80 font-mono block">
                           cd {projectName}
                         </code>
                       </div>
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           Install dependencies (choose your package manager):
                         </p>
                         <div className="flex gap-2">
                           <CopyButton text={installCommand} type="npm">
-                            <code className="text-xs text-gray-300 font-mono">
+                            <code className="text-xs text-foreground/80 font-mono">
                               npm install
                             </code>
                           </CopyButton>
-                          <span className="text-gray-600">|</span>
+                          <span className="text-muted-foreground/50">|</span>
                           <CopyButton text={yarnInstallCommand} type="yarn">
-                            <code className="text-xs text-gray-300 font-mono">
+                            <code className="text-xs text-foreground/80 font-mono">
                               yarn install
                             </code>
                           </CopyButton>
-                          <span className="text-gray-600">|</span>
+                          <span className="text-muted-foreground/50">|</span>
                           <CopyButton text={pnpmInstallCommand} type="pnpm">
-                            <code className="text-xs text-gray-300 font-mono">
+                            <code className="text-xs text-foreground/80 font-mono">
                               pnpm install
                             </code>
                           </CopyButton>
@@ -453,44 +453,45 @@ export function ExportModal({
 
                   {/* Step 3: Configure (conditional) */}
                   {Object.keys(requiredCredentials).length > 0 && (
-                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                      <div className="bg-[#1a1a1a] px-4 py-2 border-b border-[#30363d] flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-200">
+                    <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                      <div className="bg-card px-4 py-2 border-b border-border flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
                           3.
                         </span>
-                        <KeyRound className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-200">
+                        <KeyRound className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
                           Configure credentials
                         </span>
                       </div>
                       <div className="p-4">
-                        <code className="text-sm text-gray-300 font-mono block mb-2">
+                        <code className="text-sm text-foreground/80 font-mono block mb-2">
                           cp .env.example .env
                         </code>
-                        <p className="text-xs text-gray-400">
-                          Then edit <code className="text-gray-300">.env</code>{' '}
-                          with your API keys
+                        <p className="text-xs text-muted-foreground">
+                          Then edit{' '}
+                          <code className="text-foreground/80">.env</code> with
+                          your API keys
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* Step 4: Run */}
-                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                    <div className="bg-[#1a1a1a] px-4 py-2 border-b border-[#30363d] flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-200">
+                  <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                    <div className="bg-card px-4 py-2 border-b border-border flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
                         {Object.keys(requiredCredentials).length > 0
                           ? '4'
                           : '3'}
                         .
                       </span>
-                      <Terminal className="w-4 h-4 text-green-400" />
-                      <span className="text-sm font-medium text-gray-200">
+                      <Terminal className="w-4 h-4 text-success" />
+                      <span className="text-sm font-medium text-foreground">
                         Run your flow
                       </span>
                     </div>
                     <div className="p-4">
-                      <code className="text-sm text-gray-300 font-mono block">
+                      <code className="text-sm text-foreground/80 font-mono block">
                         npm run dev
                       </code>
                     </div>
@@ -505,11 +506,11 @@ export function ExportModal({
               <div className="space-y-4">
                 {/* API Usage Guide Header */}
                 <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-gray-200 flex items-center gap-2">
+                  <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
                     <Package className="w-5 h-5" />
                     API Usage Guide
                   </h3>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     Call your workflow via webhook endpoints hosted in Bubble
                     Lab. All executions run on our infrastructure, and you can
                     view execution history and logs here in Bubble Lab even when
@@ -519,16 +520,16 @@ export function ExportModal({
 
                 {/* LLM Integration Instructions */}
                 {flowData?.webhook_url && (
-                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                  <div className="bg-panel border border-border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <Package className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-200">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground">
                             Integrate into other apps
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           Copy complete integration guide with code and webhook
                           endpoints
                         </p>
@@ -550,8 +551,10 @@ export function ExportModal({
                         )}
                       </button>
                     </div>
-                    <div className="flex items-center gap-3 pt-2 border-t border-[#30363d]">
-                      <span className="text-xs text-gray-500">Works with:</span>
+                    <div className="flex items-center gap-3 pt-2 border-t border-border">
+                      <span className="text-xs text-muted-foreground">
+                        Works with:
+                      </span>
                       <div className="flex items-center gap-2">
                         <img
                           src="/integrations/claude.png"
@@ -598,27 +601,27 @@ export function ExportModal({
                 {flowData?.webhook_url && (
                   <div className="space-y-3">
                     {/* Webhook Stream Option */}
-                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                      <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d]">
+                    <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                      <div className="bg-card px-4 py-3 border-b border-border">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <TerminalSquare className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm font-medium text-gray-200">
+                              <TerminalSquare className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm font-medium text-foreground">
                                 Webhook Stream
                               </span>
-                              <span className="text-xs text-gray-500 bg-[#0d1117] px-2 py-0.5 rounded">
+                              <span className="text-xs text-muted-foreground bg-panel px-2 py-0.5 rounded">
                                 /stream
                               </span>
                             </div>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               Real-time streaming logs • No authentication •
                               Perfect for terminal/debugging
                             </p>
                           </div>
                           <button
                             onClick={handleCopyWebhookStreamCurl}
-                            className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] text-gray-300 hover:text-gray-100 border border-[#30363d] hover:border-gray-500 rounded text-sm font-medium transition-all flex items-center gap-2"
+                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground/80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
                           >
                             {copiedSetup === 'curl-webhook-stream' ? (
                               <>
@@ -636,7 +639,7 @@ export function ExportModal({
                       </div>
                       <div className="p-4">
                         <code
-                          className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                          className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
                           style={{
                             fontFamily:
                               "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
@@ -658,20 +661,20 @@ export function ExportModal({
                     </div>
 
                     {/* Webhook Non-Stream Option */}
-                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                      <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d]">
+                    <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                      <div className="bg-card px-4 py-3 border-b border-border">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <Workflow className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm font-medium text-gray-200">
+                              <Workflow className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm font-medium text-foreground">
                                 Webhook
                               </span>
-                              <span className="text-xs text-gray-500 bg-[#0d1117] px-2 py-0.5 rounded">
+                              <span className="text-xs text-muted-foreground bg-panel px-2 py-0.5 rounded">
                                 Standard
                               </span>
                             </div>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               JSON response on completion • No authentication •
                               Perfect for API integrations
                             </p>
@@ -692,7 +695,7 @@ export function ExportModal({
                                 'curl-webhook-normal'
                               );
                             }}
-                            className="px-3 py-1.5 bg-[#0f1115] hover:bg-[#1a1a1a] text-gray-300 hover:text-gray-100 border border-[#30363d] hover:border-gray-500 rounded text-sm font-medium transition-all flex items-center gap-2"
+                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground/80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
                           >
                             {copiedSetup === 'curl-webhook-normal' ? (
                               <>
@@ -710,7 +713,7 @@ export function ExportModal({
                       </div>
                       <div className="p-4">
                         <code
-                          className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                          className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
                           style={{
                             fontFamily:
                               "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
@@ -735,11 +738,11 @@ export function ExportModal({
 
                 {/* Fallback for flows without webhook */}
                 {!flowData?.webhook_url && (
-                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg overflow-hidden">
-                    <div className="bg-[#1a1a1a] px-4 py-3 border-b border-[#30363d] flex items-center justify-between">
+                  <div className="bg-panel border border-border rounded-lg overflow-hidden">
+                    <div className="bg-card px-4 py-3 border-b border-border flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <TerminalSquare className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-200">
+                        <TerminalSquare className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
                           Execute flow with API token
                         </span>
                       </div>
@@ -762,7 +765,7 @@ export function ExportModal({
                     </div>
                     <div className="p-4">
                       <code
-                        className="text-sm text-gray-300 break-words whitespace-pre-wrap"
+                        className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
                         style={{
                           fontFamily:
                             "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",

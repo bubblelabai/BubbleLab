@@ -1,7 +1,7 @@
 import { cn } from '../lib/utils';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { useSettingsStore } from '../stores/settingsStore';
-import { Button } from './button';
+import { Button } from './Button';
 
 export const AnimatedThemeToggle = ({ className }: { className?: string }) => {
   const { resolvedTheme, setTheme } = useSettingsStore();

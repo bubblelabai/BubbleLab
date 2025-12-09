@@ -508,14 +508,11 @@ export function CreateCredentialModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-background/80" onClick={onClose} />
 
-      <div className="relative bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[#30363d] max-h-[90vh] flex flex-col">
-        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] rounded-t-lg flex-shrink-0">
-          <h2 className="text-lg font-semibold text-gray-100">
+      <div className="relative bg-card rounded-lg shadow-xl max-w-md w-full mx-4 border border-border max-h-[90vh] flex flex-col">
+        <div className="bg-card px-6 py-4 border-b border-border rounded-t-lg flex-shrink-0">
+          <h2 className="text-lg font-semibold text-foreground">
             Add New Credential
           </h2>
         </div>
@@ -523,13 +520,15 @@ export function CreateCredentialModal({
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {error && (
-              <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-                <p className="text-sm text-red-200">{getErrorMessage(error)}</p>
+              <div className="bg-destructive/20 border border-destructive/50 rounded-lg p-3">
+                <p className="text-sm text-destructive">
+                  {getErrorMessage(error)}
+                </p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
                 Name *
               </label>
               <input
@@ -543,13 +542,13 @@ export function CreateCredentialModal({
                     formData.credentialType as CredentialType
                   ].namePlaceholder
                 }
-                className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                className="w-full bg-card text-foreground px-3 py-2 rounded-lg border border-border focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-foreground/80 mb-2">
                 Type *
               </label>
               <div className="relative">
@@ -571,7 +570,7 @@ export function CreateCredentialModal({
                     }));
                     setError(null);
                   }}
-                  className="w-full bg-[#1a1a1a] text-gray-100 pl-3 py-2 pr-16 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 appearance-none"
+                  className="w-full bg-card text-foreground pl-3 py-2 pr-16 rounded-lg border border-border focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200 appearance-none"
                   disabled={!!lockType || !!lockedCredentialType}
                   required
                 >
@@ -584,7 +583,7 @@ export function CreateCredentialModal({
                   )}
                 </select>
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                  <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div className="absolute right-10 top-1/2 transform -translate-y-1/2 pointer-events-none">
                   {(() => {
@@ -599,12 +598,12 @@ export function CreateCredentialModal({
                         className="h-5 w-5 object-contain"
                       />
                     ) : (
-                      <CogIcon className="h-5 w-5 text-gray-400" />
+                      <CogIcon className="h-5 w-5 text-muted-foreground" />
                     );
                   })()}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {
                   CREDENTIAL_TYPE_CONFIG[
                     formData.credentialType as CredentialType
@@ -615,7 +614,7 @@ export function CreateCredentialModal({
 
             {!isOAuthCredentialType && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Value *
                 </label>
                 <div className="relative">
@@ -633,13 +632,13 @@ export function CreateCredentialModal({
                         formData.credentialType as CredentialType
                       ].placeholder
                     }
-                    className="w-full bg-gray-700 text-gray-100 px-3 py-2 pr-10 rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                    className="w-full bg-muted text-foreground px-3 py-2 pr-10 rounded-lg border border-border focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? (
                       <EyeSlashIcon className="h-5 w-5" />
@@ -653,17 +652,17 @@ export function CreateCredentialModal({
 
             {isOAuthCredentialType && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
                   OAuth Connection
                 </label>
-                <div className="bg-[#1a1a1a] rounded-lg p-4 border border-[#30363d]">
+                <div className="bg-card rounded-lg p-4 border border-border">
                   <div className="flex items-center gap-3 mb-3">
-                    <ArrowTopRightOnSquareIcon className="h-5 w-5 text-blue-400" />
-                    <span className="text-sm text-gray-300">
+                    <ArrowTopRightOnSquareIcon className="h-5 w-5 text-info" />
+                    <span className="text-sm text-foreground/80">
                       This will open a secure OAuth connection window
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed mb-4">
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4">
                     You'll be redirected to authorize access to your account.
                     Once completed, the connection will be saved automatically.
                   </p>
@@ -672,8 +671,8 @@ export function CreateCredentialModal({
                   {getScopeDescriptions(
                     formData.credentialType as CredentialType
                   ).length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-[#30363d]">
-                      <p className="text-xs font-medium text-gray-300 mb-3">
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <p className="text-xs font-medium text-foreground/80 mb-3">
                         Select permissions to request:
                       </p>
                       <div className="space-y-2">
@@ -682,7 +681,7 @@ export function CreateCredentialModal({
                         ).map((scopeDesc: ScopeDescription) => (
                           <label
                             key={scopeDesc.scope}
-                            className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                            className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
                           >
                             <input
                               type="checkbox"
@@ -696,7 +695,7 @@ export function CreateCredentialModal({
                                 }
                                 setSelectedScopes(newSelected);
                               }}
-                              className="mt-0.5 w-4 h-4 rounded border-[#30363d] bg-[#1a1a1a] text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-0 cursor-pointer"
+                              className="mt-0.5 w-4 h-4 rounded border-border bg-card text-info focus:ring-2 focus:ring-info/20 focus:ring-offset-0 cursor-pointer"
                             />
                             <span className="flex-1">
                               {scopeDesc.description}
@@ -711,18 +710,18 @@ export function CreateCredentialModal({
             )}
           </div>
 
-          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-[#30363d] flex-shrink-0">
+          <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-border flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-[#30363d] hover:bg-[#444c56] text-gray-300 rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground/80 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading || isOAuthConnecting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-info hover:bg-info/90 text-info-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isOAuthConnecting
                 ? 'Connecting...'
@@ -794,27 +793,26 @@ function EditCredentialModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black bg-opacity-50"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-background/80" onClick={onClose} />
 
-      <div className="relative bg-[#1a1a1a] rounded-lg shadow-xl max-w-md w-full mx-4 border border-[#30363d]">
-        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] rounded-t-lg">
-          <h2 className="text-lg font-semibold text-gray-100">
+      <div className="relative bg-card rounded-lg shadow-xl max-w-md w-full mx-4 border border-border">
+        <div className="bg-card px-6 py-4 border-b border-border rounded-t-lg">
+          <h2 className="text-lg font-semibold text-foreground">
             Edit Credential
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="bg-red-900/50 border border-red-700 rounded-lg p-3">
-              <p className="text-sm text-red-200">{getErrorMessage(error)}</p>
+            <div className="bg-destructive/20 border border-destructive/50 rounded-lg p-3">
+              <p className="text-sm text-destructive">
+                {getErrorMessage(error)}
+              </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Type
             </label>
             <div className="relative">
@@ -827,7 +825,7 @@ function EditCredentialModal({
                   ]?.label || credential.credentialType
                 }
                 disabled
-                className="w-full bg-[#30363d] text-gray-400 px-3 py-2 pr-10 rounded-lg border border-[#30363d] cursor-not-allowed"
+                className="w-full bg-muted text-muted-foreground px-3 py-2 pr-10 rounded-lg border border-border cursor-not-allowed"
               />
               {/* Icon preview next to the input */}
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -843,18 +841,18 @@ function EditCredentialModal({
                       className="h-5 w-5 object-contain"
                     />
                   ) : (
-                    <CogIcon className="h-5 w-5 text-gray-400" />
+                    <CogIcon className="h-5 w-5 text-muted-foreground" />
                   );
                 })()}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Credential type cannot be changed
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Name *
             </label>
             <input
@@ -864,7 +862,7 @@ function EditCredentialModal({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+              className="w-full bg-card text-foreground px-3 py-2 rounded-lg border border-border focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
               required
             />
           </div>
@@ -873,14 +871,14 @@ function EditCredentialModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-[#30363d] hover:bg-[#444c56] text-gray-300 rounded-lg text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground/80 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-info hover:bg-info/90 text-info-foreground rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Updating...' : 'Update Credential'}
             </button>
@@ -927,7 +925,7 @@ function CredentialCard({
   const logo = useMemo(() => resolveLogoByName(serviceName), [serviceName]);
 
   return (
-    <div className="bg-[#1a1a1a] rounded-lg border border-[#30363d] p-4 hover:border-[#444c56] transition-all duration-200">
+    <div className="bg-card rounded-lg border border-border p-4 hover:border-border/80 transition-all duration-200">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           {/* Icon and Basic Info Row */}
@@ -943,8 +941,8 @@ function CredentialCard({
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-blue-600">
-                  <CogIcon className="h-4 w-4 text-white" />
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-info">
+                  <CogIcon className="h-4 w-4 text-info-foreground" />
                 </div>
               )}
             </div>
@@ -952,25 +950,25 @@ function CredentialCard({
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-semibold text-gray-100 truncate">
+                <h3 className="text-sm font-semibold text-foreground truncate">
                   {credential.name}
                 </h3>
                 {isOAuthCredentialType && (
                   <div className="flex items-center gap-1">
-                    <ArrowTopRightOnSquareIcon className="h-3 w-3 text-blue-400" />
-                    <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30">
+                    <ArrowTopRightOnSquareIcon className="h-3 w-3 text-info" />
+                    <span className="text-xs px-2 py-0.5 bg-info/20 text-info rounded-full border border-info/30">
                       OAuth
                     </span>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {credentialConfig?.label || credential.credentialType}
               </p>
               {isOAuthCredentialType && (
                 <div className="flex items-center gap-2 mt-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-xs text-green-400">Connected</span>
+                  <div className="w-2 h-2 bg-success rounded-full"></div>
+                  <span className="text-xs text-success">Connected</span>
                 </div>
               )}
             </div>
@@ -981,11 +979,11 @@ function CredentialCard({
             <button
               onClick={() => onRefreshOAuth(credential)}
               disabled={isRefreshing}
-              className="text-gray-400 hover:text-blue-400 p-1.5 hover:bg-blue-900/20 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-muted-foreground hover:text-info p-1.5 hover:bg-info/10 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh OAuth token"
             >
               {isRefreshing ? (
-                <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <ArrowPathIcon className="h-4 w-4" />
               )}
@@ -993,7 +991,7 @@ function CredentialCard({
           )}
           <button
             onClick={() => onEdit(credential)}
-            className="text-gray-400 hover:text-gray-300 p-1.5 hover:bg-[#30363d] rounded transition-all duration-200"
+            className="text-muted-foreground hover:text-foreground p-1.5 hover:bg-muted rounded transition-all duration-200"
             title="Edit credential"
           >
             <PencilIcon className="h-4 w-4" />
@@ -1001,7 +999,7 @@ function CredentialCard({
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-gray-400 hover:text-red-400 p-1.5 hover:bg-red-900/20 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-muted-foreground hover:text-destructive p-1.5 hover:bg-destructive/10 rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete credential"
           >
             <TrashIcon className="h-4 w-4" />
@@ -1009,7 +1007,7 @@ function CredentialCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-gray-500">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
           Created: {new Date(credential.createdAt).toLocaleDateString()}
         </span>
@@ -1103,30 +1101,32 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-sm text-gray-400">Loading credentials...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-info mx-auto mb-2"></div>
+          <p className="text-sm text-muted-foreground">
+            Loading credentials...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-[#0a0a0a] overflow-auto font-mono">
+    <div className="h-full bg-background overflow-auto font-mono">
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-white font-sans">
+              <h1 className="text-3xl font-bold text-foreground font-sans">
                 Credentials
               </h1>
-              <p className="text-gray-400 mt-2 text-sm font-sans">
+              <p className="text-muted-foreground mt-2 text-sm font-sans">
                 Manage your API keys and authentication credentials
               </p>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-5 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
+              className="px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
             >
               <PlusIcon className="h-5 w-5" />
               <span className="font-bold font-sans">Add Credential</span>
@@ -1137,9 +1137,9 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
         {/* Error */}
         {error && (
           <div className="mb-8">
-            <div className="bg-red-900/20 border border-red-800/50 rounded-xl p-4 flex items-center gap-3">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <p className="text-sm text-red-200 font-sans">{error}</p>
+            <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-center gap-3">
+              <div className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+              <p className="text-sm text-destructive font-sans">{error}</p>
             </div>
           </div>
         )}
@@ -1147,20 +1147,20 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
         {/* Content */}
         <div className="pb-12">
           {credentials.length === 0 ? (
-            <div className="text-center py-16 border border-[#30363d] border-dashed rounded-2xl bg-[#1a1a1a]/30">
-              <div className="bg-[#1a1a1a] p-4 rounded-full inline-flex mb-4 border border-[#30363d]">
-                <KeyIcon className="h-8 w-8 text-gray-500" />
+            <div className="text-center py-16 border border-border border-dashed rounded-2xl bg-card/30">
+              <div className="bg-card p-4 rounded-full inline-flex mb-4 border border-border">
+                <KeyIcon className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-medium text-white mb-2">
+              <h3 className="text-xl font-medium text-foreground mb-2">
                 No credentials yet
               </h3>
-              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+              <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                 Add your first credential to authenticate with external
                 services.
               </p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-6 py-3 bg-white text-black hover:bg-gray-200 font-medium rounded-full transition-all duration-200 shadow-lg hover:scale-105 flex items-center gap-2 mx-auto"
+                className="px-6 py-3 bg-primary text-primary-foreground hover:bg-primary/90 font-medium rounded-full transition-all duration-200 shadow-lg hover:scale-105 flex items-center gap-2 mx-auto"
               >
                 <PlusIcon className="h-5 w-5" />
                 <span className="font-sans font-bold">Add Credential</span>
