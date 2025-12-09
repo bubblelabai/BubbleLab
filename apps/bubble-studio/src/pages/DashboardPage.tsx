@@ -749,8 +749,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     disabled={isStreaming}
                     className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
                       isActive
-                        ? 'border-purple-500/30 bg-muted dark:bg-white/10 shadow-[0_0_20px_rgba(147,51,234,0.1)]'
-                        : 'border-border dark:border-white/5 bg-card dark:bg-[#1a1a1a] hover:border-border/80 dark:hover:border-white/10 hover:bg-card/80 dark:hover:bg-[#202020] hover:shadow-xl hover:-translate-y-0.5'
+                        ? 'border-primary/30 bg-muted shadow-[0_0_20px_rgba(147,51,234,0.1)]'
+                        : 'border-border bg-card hover:border-border/80 hover:bg-accent hover:shadow-xl hover:-translate-y-0.5'
                     } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     <div className="flex flex-col gap-3 flex-grow relative z-10">

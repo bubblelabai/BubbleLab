@@ -10,7 +10,9 @@
 }
 
 /* ============================================
-   shadcn-style CSS Variables for Theming
+   CSS Custom Properties for Theme Switching
+   Define base values in :root, override in html.dark
+   Use --theme-* prefix to avoid circular references with Tailwind
    ============================================ */
 
 :root {
@@ -19,128 +21,272 @@
   line-height: 1.5;
   font-weight: 400;
 
-  /* Light theme (default) */
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-
-  --primary: 262.1 83.3% 57.8%;
-  --primary-foreground: 210 40% 98%;
-
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 262.1 83.3% 57.8%;
-
-  /* Sidebar specific */
-  --sidebar: 0 0% 98%;
-  --sidebar-foreground: 222.2 84% 4.9%;
-  --sidebar-border: 214.3 31.8% 91.4%;
-  --sidebar-hover: 210 40% 96.1%;
-  --sidebar-active: 210 40% 93%;
-  --sidebar-tooltip: 0 0% 98%;
-
-  /* Canvas/IDE specific */
-  --canvas: 0 0% 96%;
-  --panel: 0 0% 100%;
-  --panel-foreground: 222.2 84% 4.9%;
-  --panel-border: 214.3 31.8% 91.4%;
-  --panel-header: 0 0% 98%;
-
-  /* Code/Monaco specific */
-  --code-background: 0 0% 98%;
-
-  /* Status colors */
-  --success: 142.1 76.2% 36.3%;
-  --success-foreground: 355.7 100% 97.3%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 48 96% 89%;
-  --info: 217.2 91.2% 59.8%;
-  --info-foreground: 210 40% 98%;
-
-  /* Scrollbar */
-  --scrollbar-thumb: 215 20% 75%;
-  --scrollbar-thumb-hover: 215 20% 65%;
-
   /* Radius */
   --radius: 0.5rem;
-}
 
-.dark {
-  /* Match original dark theme colors from main branch */
-  --background: 240 40% 10%; /* #0f0f23 - original body background */
-  --foreground: 0 0% 80%; /* #cccccc - original body text */
+  /* Light theme colors - using oklch for opacity support */
+  --theme-background: oklch(100% 0 0);
+  --theme-foreground: oklch(13.1% 0.046 264.7);
 
-  --card: 215 21% 11%; /* #161b22 - card backgrounds, matches original toast bg */
-  --card-foreground: 216 28% 90%; /* #e6edf3 - matches original toast text */
+  --theme-card: oklch(100% 0 0);
+  --theme-card-foreground: oklch(13.1% 0.046 264.7);
 
-  --popover: 216 28% 7%; /* #0d1117 - popover/modal backgrounds */
-  --popover-foreground: 0 0% 80%;
+  --theme-popover: oklch(100% 0 0);
+  --theme-popover-foreground: oklch(13.1% 0.046 264.7);
 
-  --primary: 262.1 83.3% 57.8%;
-  --primary-foreground: 210 40% 98%;
+  --theme-primary: oklch(55.3% 0.267 293.4);
+  --theme-primary-foreground: oklch(98.4% 0.003 247.9);
 
-  --secondary: 215 21% 11%; /* #161b22 */
-  --secondary-foreground: 210 40% 98%;
+  --theme-secondary: oklch(96.7% 0.003 264.5);
+  --theme-secondary-foreground: oklch(21.5% 0.022 264.7);
 
-  --muted: 215 21% 11%; /* #161b22 - muted backgrounds */
-  --muted-foreground: 215 16% 57%; /* gray-400/500 equivalent */
+  --theme-muted: oklch(96.7% 0.003 264.5);
+  --theme-muted-foreground: oklch(55.2% 0.014 264.4);
 
-  --accent: 215 15% 15%; /* #21262d */
-  --accent-foreground: 210 40% 98%;
+  --theme-accent: oklch(96.7% 0.003 264.5);
+  --theme-accent-foreground: oklch(21.5% 0.022 264.7);
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
+  --theme-destructive: oklch(57.7% 0.245 27.3);
+  --theme-destructive-foreground: oklch(98.4% 0.003 247.9);
 
-  --border: 212 12% 21%; /* #30363d - structural borders */
-  --input: 215 15% 15%;
-  --ring: 263.4 70% 50.4%;
+  --theme-border: oklch(91.4% 0.007 264.5);
+  --theme-input: oklch(91.4% 0.007 264.5);
+  --theme-ring: oklch(55.3% 0.267 293.4);
 
-  /* Sidebar specific - matches current dark sidebar */
-  --sidebar: 216 28% 7%; /* #0d1117 */
-  --sidebar-foreground: 0 0% 80%;
-  --sidebar-border: 215 15% 15%;
-  --sidebar-hover: 215 21% 11%;
-  --sidebar-active: 215 15% 15%;
-  --sidebar-tooltip: 216 28% 7%;
+  /* Sidebar specific */
+  --theme-sidebar: oklch(98.5% 0 0);
+  --theme-sidebar-foreground: oklch(13.1% 0.046 264.7);
+  --theme-sidebar-border: oklch(91.4% 0.007 264.5);
+  --theme-sidebar-hover: oklch(96.7% 0.003 264.5);
+  --theme-sidebar-active: oklch(94.5% 0.003 264.5);
+  --theme-sidebar-tooltip: oklch(98.5% 0 0);
 
   /* Canvas/IDE specific */
-  --canvas: 0 0% 4%; /* #0a0a0a */
-  --panel: 216 28% 7%; /* #0d1117 */
-  --panel-foreground: 0 0% 80%;
-  --panel-border: 215 15% 15%;
-  --panel-header: 215 21% 11%;
+  --theme-canvas: oklch(96.5% 0 0);
+  --theme-panel: oklch(100% 0 0);
+  --theme-panel-foreground: oklch(13.1% 0.046 264.7);
+  --theme-panel-border: oklch(91.4% 0.007 264.5);
+  --theme-panel-header: oklch(98.5% 0 0);
 
   /* Code/Monaco specific */
-  --code-background: 216 28% 7%;
+  --theme-code-background: oklch(98.5% 0 0);
 
   /* Status colors */
-  --success: 142.1 70.6% 45.3%;
-  --success-foreground: 144.9 80.4% 10%;
-  --warning: 48 96% 53%;
-  --warning-foreground: 48 96% 10%;
-  --info: 217.2 91.2% 59.8%;
-  --info-foreground: 224 71% 4%;
+  --theme-success: oklch(52.8% 0.177 145.4);
+  --theme-success-foreground: oklch(98.3% 0.014 343.2);
+  --theme-warning: oklch(76.9% 0.188 70.1);
+  --theme-warning-foreground: oklch(95.5% 0.053 89.9);
+  --theme-info: oklch(62.3% 0.214 259.1);
+  --theme-info-foreground: oklch(98.4% 0.003 247.9);
 
-  /* Scrollbar - match original */
-  --scrollbar-thumb: 213 9% 25%; /* #3a3f45 */
-  --scrollbar-thumb-hover: 215 14% 34%; /* #4b5563 */
+  /* Flow/Edge colors for visualization - matching original hex values */
+  --theme-edge-default: oklch(70.8% 0.015 256.8); /* #9ca3af - gray-400 */
+  --theme-edge-highlighted: oklch(55.3% 0.267 293.4); /* #9333ea - purple */
+  --theme-edge-success: oklch(62.8% 0.209 145.4); /* #22c55e - green-500 */
+  --theme-edge-muted: oklch(53.5% 0.014 256.8); /* #6b7280 - gray-500 */
+  --theme-edge-schedule: oklch(68.5% 0.165 252.3); /* #60a5fa - blue-400 */
+
+  /* Node button colors (Input/Output badges) - matching original rgba values */
+  --theme-node-badge-bg: oklch(
+    96.5% 0.003 90 / 95%
+  ); /* rgba(245, 245, 244, 0.95) */
+  --theme-node-badge-text: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
+  --theme-node-badge-border: oklch(
+    85% 0.003 90 / 80%
+  ); /* rgba(212, 212, 211, 0.8) */
+  --theme-node-badge-selected: oklch(
+    55% 0.22 277 / 90%
+  ); /* rgba(99, 102, 241, 0.9) - indigo */
+  --theme-node-output-bg: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
+  --theme-node-output-text: oklch(
+    96.5% 0.003 90 / 95%
+  ); /* rgba(245, 245, 244, 0.95) */
+  --theme-node-output-border: oklch(35% 0 0 / 80%); /* rgba(64, 64, 64, 0.8) */
+  --theme-node-error-bg: oklch(60% 0.22 27 / 90%); /* rgba(239, 68, 68, 0.9) */
+  --theme-node-error-border: oklch(52% 0.22 27); /* #dc2626 */
+
+  /* Scrollbar */
+  --scrollbar-thumb: oklch(75.8% 0.013 256.1);
+  --scrollbar-thumb-hover: oklch(65% 0.013 256.1);
+
+  /* Toast colors - light theme */
+  --theme-toast-success: oklch(50.2% 0.177 145.4); /* #238636 */
+  --theme-toast-error: oklch(53.5% 0.205 27.3); /* #da3633 */
+  --theme-toast-info: oklch(54.5% 0.205 259.1); /* #1f6feb */
+  --theme-toast-warning: oklch(72.5% 0.188 55.1); /* #fb8500 */
+}
+
+/* ============================================
+   Dark theme overrides
+   ============================================ */
+
+html.dark {
+  /* All dark mode colors use pure neutral grays (chroma=0) to match VS Code style */
+  --theme-background: oklch(14.5% 0 0); /* #0a0a0a - dashboard background */
+  --theme-foreground: oklch(87% 0 0); /* #d4d4d4 - main text */
+
+  --theme-card: oklch(23.5% 0 0); /* #1e1e1e */
+  --theme-card-foreground: oklch(87% 0 0); /* #d4d4d4 */
+
+  --theme-popover: oklch(23.5% 0 0); /* #1e1e1e */
+  --theme-popover-foreground: oklch(84.5% 0 0); /* #cccccc */
+
+  --theme-primary: oklch(55.3% 0.267 293.4); /* purple - keep colored */
+  --theme-primary-foreground: oklch(98% 0 0);
+
+  --theme-secondary: oklch(26.4% 0 0); /* #252526 */
+  --theme-secondary-foreground: oklch(87% 0 0);
+
+  --theme-muted: oklch(26.4% 0 0); /* #252526 */
+  --theme-muted-foreground: oklch(60% 0 0); /* #6b6b6b */
+
+  --theme-accent: oklch(29.7% 0 0); /* #2d2d30 */
+  --theme-accent-foreground: oklch(87% 0 0);
+
+  --theme-destructive: oklch(44.4% 0.177 27.3); /* red - keep colored */
+  --theme-destructive-foreground: oklch(98% 0 0);
+
+  --theme-border: oklch(36.4% 0 0); /* #3e3e42 */
+  --theme-input: oklch(29.7% 0 0); /* #2d2d30 */
+  --theme-ring: oklch(50.4% 0.213 293.4); /* purple - keep colored */
+
+  /* Sidebar specific */
+  --theme-sidebar: oklch(23.5% 0 0); /* #1e1e1e */
+  --theme-sidebar-foreground: oklch(84.5% 0 0); /* #cccccc */
+  --theme-sidebar-border: oklch(36.4% 0 0); /* #3e3e42 */
+  --theme-sidebar-hover: oklch(26.4% 0 0); /* #252526 */
+  --theme-sidebar-active: oklch(29.7% 0 0); /* #2d2d30 */
+  --theme-sidebar-tooltip: oklch(23.5% 0 0); /* #1e1e1e */
+
+  /* Canvas/IDE specific */
+  --theme-canvas: oklch(23.5% 0 0); /* #1e1e1e - workflow canvas */
+  --theme-panel: oklch(23.5% 0 0); /* #1e1e1e */
+  --theme-panel-foreground: oklch(84.5% 0 0); /* #cccccc */
+  --theme-panel-border: oklch(36.4% 0 0); /* #3e3e42 */
+  --theme-panel-header: oklch(26.4% 0 0); /* #252526 */
+
+  /* Code/Monaco specific */
+  --theme-code-background: oklch(23.5% 0 0); /* #1e1e1e */
+
+  /* Status colors - keep colored but ensure foregrounds are neutral */
+  --theme-success: oklch(59.6% 0.177 145.4); /* green */
+  --theme-success-foreground: oklch(20% 0 0);
+  --theme-warning: oklch(82.5% 0.188 89.9); /* yellow/orange */
+  --theme-warning-foreground: oklch(20% 0 0);
+  --theme-info: oklch(62.3% 0.214 259.1); /* blue */
+  --theme-info-foreground: oklch(98% 0 0);
+
+  /* Flow/Edge colors - matching original hex values exactly */
+  --theme-edge-default: oklch(70% 0 0); /* #9ca3af -> neutral gray-400 */
+  --theme-edge-highlighted: oklch(55.3% 0.267 293.4); /* #9333ea - purple */
+  --theme-edge-success: oklch(62.8% 0.209 145.4); /* #22c55e - green-500 */
+  --theme-edge-muted: oklch(53% 0 0); /* #6b7280 -> neutral gray-500 */
+  --theme-edge-schedule: oklch(68.5% 0.165 252.3); /* #60a5fa - blue-400 */
+
+  /* Node button colors - dark mode (same as light mode - these are absolute colors) */
+  --theme-node-badge-bg: oklch(96.5% 0 0 / 95%); /* rgba(245, 245, 244, 0.95) */
+  --theme-node-badge-text: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
+  --theme-node-badge-border: oklch(
+    85% 0 0 / 80%
+  ); /* rgba(212, 212, 211, 0.8) */
+  --theme-node-badge-selected: oklch(
+    55% 0.22 277 / 90%
+  ); /* rgba(99, 102, 241, 0.9) - indigo */
+  --theme-node-output-bg: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
+  --theme-node-output-text: oklch(
+    96.5% 0 0 / 95%
+  ); /* rgba(245, 245, 244, 0.95) */
+  --theme-node-output-border: oklch(35% 0 0 / 80%); /* rgba(64, 64, 64, 0.8) */
+  --theme-node-error-bg: oklch(60% 0.22 27 / 90%); /* rgba(239, 68, 68, 0.9) */
+  --theme-node-error-border: oklch(52% 0.22 27); /* #dc2626 */
+
+  /* Scrollbar - neutral grays */
+  --scrollbar-thumb: oklch(37.9% 0 0); /* #424242 */
+  --scrollbar-thumb-hover: oklch(42.8% 0 0); /* #4f4f4f */
+
+  /* Toast colors - matching original dark theme exactly */
+  --theme-toast-success: oklch(50.2% 0.177 145.4); /* #238636 */
+  --theme-toast-error: oklch(53.5% 0.205 27.3); /* #da3633 */
+  --theme-toast-info: oklch(54.5% 0.205 259.1); /* #1f6feb */
+  --theme-toast-warning: oklch(72.5% 0.188 55.1); /* #fb8500 */
+}
+
+/* ============================================
+   Tailwind v4 Theme Configuration
+   Reference --theme-* CSS custom properties for dynamic theming
+   ============================================ */
+
+@theme inline {
+  --color-background: var(--theme-background);
+  --color-foreground: var(--theme-foreground);
+
+  --color-card: var(--theme-card);
+  --color-card-foreground: var(--theme-card-foreground);
+
+  --color-popover: var(--theme-popover);
+  --color-popover-foreground: var(--theme-popover-foreground);
+
+  --color-primary: var(--theme-primary);
+  --color-primary-foreground: var(--theme-primary-foreground);
+
+  --color-secondary: var(--theme-secondary);
+  --color-secondary-foreground: var(--theme-secondary-foreground);
+
+  --color-muted: var(--theme-muted);
+  --color-muted-foreground: var(--theme-muted-foreground);
+
+  --color-accent: var(--theme-accent);
+  --color-accent-foreground: var(--theme-accent-foreground);
+
+  --color-destructive: var(--theme-destructive);
+  --color-destructive-foreground: var(--theme-destructive-foreground);
+
+  --color-border: var(--theme-border);
+  --color-input: var(--theme-input);
+  --color-ring: var(--theme-ring);
+
+  --color-sidebar: var(--theme-sidebar);
+  --color-sidebar-foreground: var(--theme-sidebar-foreground);
+  --color-sidebar-border: var(--theme-sidebar-border);
+  --color-sidebar-hover: var(--theme-sidebar-hover);
+  --color-sidebar-active: var(--theme-sidebar-active);
+  --color-sidebar-tooltip: var(--theme-sidebar-tooltip);
+
+  --color-canvas: var(--theme-canvas);
+  --color-panel: var(--theme-panel);
+  --color-panel-foreground: var(--theme-panel-foreground);
+  --color-panel-border: var(--theme-panel-border);
+  --color-panel-header: var(--theme-panel-header);
+
+  --color-code-background: var(--theme-code-background);
+
+  --color-success: var(--theme-success);
+  --color-success-foreground: var(--theme-success-foreground);
+  --color-warning: var(--theme-warning);
+  --color-warning-foreground: var(--theme-warning-foreground);
+  --color-info: var(--theme-info);
+  --color-info-foreground: var(--theme-info-foreground);
+
+  --color-edge-default: var(--theme-edge-default);
+  --color-edge-highlighted: var(--theme-edge-highlighted);
+  --color-edge-success: var(--theme-edge-success);
+  --color-edge-muted: var(--theme-edge-muted);
+  --color-edge-schedule: var(--theme-edge-schedule);
+
+  --color-node-badge-bg: var(--theme-node-badge-bg);
+  --color-node-badge-text: var(--theme-node-badge-text);
+  --color-node-badge-border: var(--theme-node-badge-border);
+  --color-node-badge-selected: var(--theme-node-badge-selected);
+  --color-node-output-bg: var(--theme-node-output-bg);
+  --color-node-output-text: var(--theme-node-output-text);
+  --color-node-output-border: var(--theme-node-output-border);
+  --color-node-error-bg: var(--theme-node-error-bg);
+  --color-node-error-border: var(--theme-node-error-border);
+
+  /* Radius */
+  --radius-lg: 0.5rem;
+  --radius-md: calc(0.5rem - 2px);
+  --radius-sm: calc(0.5rem - 4px);
 }
 
 * {
@@ -187,15 +333,15 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--theme-background);
+  color: var(--theme-foreground);
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 /* Thin, minimal scrollbar for prompt and other scroll areas */
 .thin-scrollbar {
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: hsl(var(--scrollbar-thumb)) transparent; /* Firefox */
+  scrollbar-color: var(--scrollbar-thumb) transparent; /* Firefox */
   scrollbar-gutter: stable; /* Keeps content from shifting */
 }
 
@@ -208,14 +354,14 @@ body {
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--scrollbar-thumb));
+  background-color: var(--scrollbar-thumb);
   border-radius: 9999px;
   border: 2px solid transparent; /* creates a slim pill */
   background-clip: content-box;
 }
 
 .thin-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--scrollbar-thumb-hover));
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 /* Ensure Monaco Editor containers have proper height */
@@ -237,105 +383,100 @@ body {
 
 /* Monaco Editor highlighting styles */
 .monaco-editor .highlighted-line {
-  background-color: rgba(
-    147,
-    51,
-    234,
-    0.15
-  ) !important; /* Purple highlight with transparency */
-  border-left: 3px solid hsl(var(--primary)) !important;
+  background-color: oklch(55.3% 0.267 293.4 / 15%) !important;
+  border-left: 3px solid var(--theme-primary) !important;
   animation: highlight-pulse 0.5s ease-in-out;
 }
 
 .monaco-editor .highlighted-line-margin {
-  background-color: rgba(147, 51, 234, 0.2) !important;
-  border-left: 3px solid hsl(var(--primary)) !important;
+  background-color: oklch(55.3% 0.267 293.4 / 20%) !important;
+  border-left: 3px solid var(--theme-primary) !important;
 }
 
 .monaco-editor .highlighted-line-inline {
-  background-color: rgba(147, 51, 234, 0.2) !important;
-  border-left: 3px solid hsl(var(--primary)) !important;
+  background-color: oklch(55.3% 0.267 293.4 / 20%) !important;
+  border-left: 3px solid var(--theme-primary) !important;
 }
 
 .monaco-editor .highlighted-line-glyph {
-  background-color: rgba(147, 51, 234, 0.3) !important;
-  border-left: 3px solid hsl(var(--primary)) !important;
+  background-color: oklch(55.3% 0.267 293.4 / 30%) !important;
+  border-left: 3px solid var(--theme-primary) !important;
 }
 
 .monaco-editor .highlighted-line-after {
-  color: hsl(var(--primary)) !important;
+  color: var(--theme-primary) !important;
   font-weight: bold !important;
   padding-left: 6px;
 }
 
 .monaco-editor .highlighted-line-before {
-  color: hsl(var(--primary)) !important;
+  color: var(--theme-primary) !important;
   font-weight: bold !important;
   margin-right: 4px;
 }
 
 /* Range highlighting styles */
 .monaco-editor .highlighted-range {
-  background-color: rgba(34, 197, 94, 0.2) !important;
-  border-left: 3px solid hsl(var(--success)) !important;
+  background-color: oklch(59.6% 0.177 145.4 / 20%) !important;
+  border-left: 3px solid var(--theme-success) !important;
   animation: range-highlight-pulse 2s ease-in-out infinite !important;
 }
 
 .monaco-editor .highlighted-range-margin {
-  background-color: rgba(34, 197, 94, 0.3) !important;
-  border-left: 3px solid hsl(var(--success)) !important;
+  background-color: oklch(59.6% 0.177 145.4 / 30%) !important;
+  border-left: 3px solid var(--theme-success) !important;
 }
 
 .monaco-editor .highlighted-range-inline {
-  background-color: rgba(34, 197, 94, 0.1) !important;
+  background-color: oklch(59.6% 0.177 145.4 / 10%) !important;
 }
 
 .monaco-editor .highlighted-range-glyph {
-  color: hsl(var(--success)) !important;
+  color: var(--theme-success) !important;
   font-weight: bold !important;
 }
 
 .monaco-editor .highlighted-range-after {
-  color: hsl(var(--success)) !important;
+  color: var(--theme-success) !important;
   font-weight: bold !important;
 }
 
 .monaco-editor .highlighted-range-before {
-  color: hsl(var(--success)) !important;
+  color: var(--theme-success) !important;
   font-weight: bold !important;
 }
 
 @keyframes highlight-pulse {
   0% {
-    background-color: rgba(147, 51, 234, 0.3);
+    background-color: oklch(55.3% 0.267 293.4 / 30%);
   }
   50% {
-    background-color: rgba(147, 51, 234, 0.1);
+    background-color: oklch(55.3% 0.267 293.4 / 10%);
   }
   100% {
-    background-color: rgba(147, 51, 234, 0.15);
+    background-color: oklch(55.3% 0.267 293.4 / 15%);
   }
 }
 
 @keyframes range-highlight-pulse {
   0% {
-    background-color: rgba(34, 197, 94, 0.2);
+    background-color: oklch(59.6% 0.177 145.4 / 20%);
   }
   50% {
-    background-color: rgba(34, 197, 94, 0.1);
+    background-color: oklch(59.6% 0.177 145.4 / 10%);
   }
   100% {
-    background-color: rgba(34, 197, 94, 0.15);
+    background-color: oklch(59.6% 0.177 145.4 / 15%);
   }
 }
 
 @keyframes border-flash {
   0%,
   100% {
-    border-color: hsl(var(--border));
+    border-color: var(--theme-border);
   }
   50% {
-    border-color: hsl(var(--muted-foreground));
+    border-color: var(--theme-muted-foreground);
   }
 }
 
@@ -347,45 +488,45 @@ body {
 }
 
 .Toastify__toast {
-  background: hsl(var(--card)) !important;
-  border: 1px solid hsl(var(--border)) !important;
-  color: hsl(var(--card-foreground)) !important;
+  background: var(--theme-card) !important;
+  border: 1px solid var(--theme-border) !important;
+  color: var(--theme-card-foreground) !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px oklch(0% 0 0 / 15%) !important;
 }
 
-.dark .Toastify__toast {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+html.dark .Toastify__toast {
+  box-shadow: 0 4px 12px oklch(0% 0 0 / 30%) !important;
 }
 
 .Toastify__toast--success {
-  border-color: hsl(var(--success)) !important;
+  border-color: var(--theme-toast-success) !important;
 }
 
 .Toastify__toast--error {
-  border-color: hsl(var(--destructive)) !important;
+  border-color: var(--theme-toast-error) !important;
 }
 
 .Toastify__toast--info {
-  border-color: hsl(var(--info)) !important;
+  border-color: var(--theme-toast-info) !important;
 }
 
 .Toastify__toast--warning {
-  border-color: hsl(var(--warning)) !important;
+  border-color: var(--theme-toast-warning) !important;
 }
 
 .Toastify__progress-bar {
   background: linear-gradient(
     90deg,
-    hsl(var(--info)),
-    hsl(var(--success))
+    var(--theme-toast-info),
+    var(--theme-toast-success)
   ) !important;
 }
 
 .Toastify__close-button {
-  color: hsl(var(--muted-foreground)) !important;
+  color: var(--theme-muted-foreground) !important;
 }
 
 .Toastify__close-button:hover {
-  color: hsl(var(--foreground)) !important;
+  color: var(--theme-foreground) !important;
 }

@@ -10,6 +10,8 @@ interface SettingsStore {
   initializeTheme: () => void;
 }
 
+const STORAGE_KEY = 'bubble-studio-settings';
+
 const getSystemTheme = (): 'light' | 'dark' => {
   if (typeof window === 'undefined') return 'dark';
   return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -24,11 +26,32 @@ const resolveTheme = (theme: Theme): 'light' | 'dark' => {
   return theme;
 };
 
+const loadStoredTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'dark';
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return 'dark';
+    const parsed = JSON.parse(raw);
+    return parsed?.state?.theme ?? 'dark';
+  } catch (err) {
+    console.warn('Failed to read stored theme, defaulting to dark', err);
+    return 'dark';
+  }
+};
+
+const initialTheme = loadStoredTheme();
+const initialResolvedTheme = resolveTheme(initialTheme);
+
+// Apply immediately to avoid flash during first paint
+if (typeof document !== 'undefined') {
+  applyTheme(initialResolvedTheme);
+}
+
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set, get) => ({
-      theme: 'system',
-      resolvedTheme: 'dark', // Default to dark until initialized
+      theme: initialTheme,
+      resolvedTheme: initialResolvedTheme,
       setTheme: (theme: Theme) => {
         const resolvedTheme = resolveTheme(theme);
         set({ theme, resolvedTheme });
@@ -42,7 +65,7 @@ export const useSettingsStore = create<SettingsStore>()(
       },
     }),
     {
-      name: 'bubble-studio-settings',
+      name: STORAGE_KEY,
       partialize: (state) => ({ theme: state.theme }),
       onRehydrateStorage: () => (state) => {
         if (state) {
