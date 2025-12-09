@@ -424,7 +424,7 @@ export function PearlChat() {
                         key={`main-${index}`}
                         type="button"
                         onClick={() => handleSuggestionClick(suggestion.prompt)}
-                        className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                        className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
@@ -455,7 +455,7 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
@@ -488,7 +488,7 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
@@ -521,7 +521,7 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
@@ -683,7 +683,7 @@ export function PearlChat() {
 
       {/* Compact chat input at bottom */}
       <div className="flex-shrink-0 p-4 pt-2">
-        <div className="bg-card border border-border dark:border-white/10 rounded-xl p-3 shadow-lg relative">
+        <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg relative">
           {uploadError && (
             <div className="text-[10px] text-warning mb-2">{uploadError}</div>
           )}
@@ -694,7 +694,7 @@ export function PearlChat() {
               {uploadedFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded border border-border dark:border-white/10"
+                  className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded border border-border/50"
                 >
                   <Paperclip className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                   <span className="text-xs text-foreground/80 truncate max-w-[120px]">

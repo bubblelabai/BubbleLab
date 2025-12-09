@@ -1790,7 +1790,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           : undefined,
         labelBgStyle: SHOW_EDGE_LABELS
           ? {
-              fill: '#1e1e1e',
+              fill: 'hsl(var(--canvas))',
               fillOpacity: 0.9,
             }
           : undefined,
@@ -2137,10 +2137,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // Show loading state
   if (loading) {
     return (
-      <div
-        className="h-full flex items-center justify-center"
-        style={{ backgroundColor: '#1e1e1e' }}
-      >
+      <div className="h-full flex items-center justify-center bg-canvas">
         <div className="text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
@@ -2158,10 +2155,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // The entry node (InputSchemaNode or CronScheduleNode) should always be visible
 
   return (
-    <div
-      className="h-full overflow-hidden relative"
-      style={{ backgroundColor: '#1e1e1e' }}
-    >
+    <div className="h-full overflow-hidden relative bg-canvas">
       {onValidate && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
