@@ -350,7 +350,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     href="https://discord.com/invite/PkJvcU2myV"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 border border-border text-muted-foreground hover:text-foreground text-xs font-medium rounded-full transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 border border-border dark:border-white/5 text-muted-foreground hover:text-foreground text-xs font-medium rounded-full transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5"
                   >
                     <svg
                       className="w-3.5 h-3.5 text-[#5865F2] group-hover:scale-110 transition-transform duration-300"
@@ -383,8 +383,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 selectedCategory === null
-                  ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
+                  ? 'bg-muted text-foreground border border-border dark:border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer'
               }`}
             >
               Prompt
@@ -394,8 +394,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               onClick={() => setSelectedCategory('Import JSON')}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 selectedCategory === 'Import JSON'
-                  ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
+                  ? 'bg-muted text-foreground border border-border dark:border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer'
               }`}
             >
               Import JSON
@@ -412,7 +412,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   });
                 }
               }}
-              className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer"
+              className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer"
             >
               Choose from template
             </button>
@@ -422,8 +422,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               disabled={isStreaming || isCreatingFromScratch}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 isStreaming || isCreatingFromScratch
-                  ? 'bg-muted/50 text-muted-foreground/50 border border-border/50 cursor-not-allowed opacity-50'
-                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
+                  ? 'bg-muted/50 text-muted-foreground/50 border border-border/50 dark:border-white/10 cursor-not-allowed opacity-50'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer'
               }`}
             >
               Start from empty Bubble flow
@@ -432,7 +432,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
           {/* HERO PROMPT SECTION */}
           <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20 -mt-4">
-            <div className="bg-card rounded-2xl p-4 shadow-2xl border border-border relative group transition-all duration-300 hover:border-border/80 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
+            <div className="bg-card rounded-2xl p-4 shadow-2xl border border-border dark:border-white/5 relative group transition-all duration-300 hover:border-border/80 dark:hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
               <textarea
                 ref={promptRef}
                 placeholder={
@@ -560,7 +560,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 hover:bg-muted transition-all duration-200">
                       <img
                         src={integration.file}
                         alt={`${integration.name} logo`}
@@ -584,7 +584,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {SCRAPING_SERVICES.map((service) => (
                   <div key={service.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 hover:bg-muted transition-all duration-200">
                       <img
                         src={service.file}
                         alt={`${service.name} logo`}
@@ -608,7 +608,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
                   <div key={model.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border dark:border-white/10 hover:border-border/80 dark:hover:border-white/20 hover:bg-muted transition-all duration-200">
                       <img
                         src={model.file}
                         alt={`${model.name} logo`}
@@ -667,8 +667,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 onClick={() => setSelectedCategory(null)}
                 className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                   !selectedCategory
-                    ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
+                    ? 'bg-muted text-foreground border border-border dark:border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer'
                 }`}
               >
                 All Templates
@@ -683,8 +683,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                     selectedCategory === category
-                      ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
+                      ? 'bg-muted text-foreground border border-border dark:border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 dark:border-white/10 hover:border-border dark:hover:border-white/20 cursor-pointer'
                   }`}
                 >
                   {category}
@@ -750,7 +750,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
                       isActive
                         ? 'border-purple-500/30 bg-muted shadow-[0_0_20px_rgba(147,51,234,0.1)]'
-                        : 'border-border bg-card hover:border-border/80 hover:bg-card/80 hover:shadow-xl hover:-translate-y-0.5'
+                        : 'border-border dark:border-white/5 bg-card hover:border-border/80 dark:hover:border-white/10 hover:bg-card/80 hover:shadow-xl hover:-translate-y-0.5'
                     } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     <div className="flex flex-col gap-3 flex-grow relative z-10">

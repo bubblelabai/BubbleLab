@@ -44,7 +44,7 @@
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214.3 31.8% 91.4%;
+  --border: 215 15% 15%;
   --input: 214.3 31.8% 91.4%;
   --ring: 262.1 83.3% 57.8%;
 
@@ -108,7 +108,7 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 215 15% 15%; /* #21262d - original border color */
+  --border: 215 15% 15%; /* #30363d - original visible border color */
   --input: 215 15% 15%;
   --ring: 263.4 70% 50.4%;
 
