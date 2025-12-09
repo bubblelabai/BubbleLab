@@ -65,6 +65,15 @@ const sanitizeIdSegment = (value: string) =>
 // Edge label visibility
 const SHOW_EDGE_LABELS = false; // Set to true to show conditional edge labels
 
+// Theme-aware edge colors using CSS custom properties
+const EDGE_COLORS = {
+  default: 'var(--color-edge-default)',
+  highlighted: 'var(--color-edge-highlighted)',
+  success: 'var(--color-edge-success)',
+  muted: 'var(--color-edge-muted)',
+  schedule: 'var(--color-edge-schedule)',
+} as const;
+
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
   parentNodeId: string,
@@ -470,7 +479,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           sourceHandle: 'bottom',
           targetHandle: 'top',
           style: {
-            stroke: isEdgeHighlighted ? '#9333ea' : '#9ca3af',
+            stroke: isEdgeHighlighted
+              ? EDGE_COLORS.highlighted
+              : EDGE_COLORS.default,
             strokeWidth: isEdgeHighlighted ? 3 : 2,
           },
         });
@@ -534,13 +545,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
           if (isHighlighted) {
             // Highlighted edges: solid, thick, bright green
-            edgeColor = '#22c55e'; // green-500
+            edgeColor = EDGE_COLORS.success; // green-500
             strokeWidth = 3;
             strokeDasharray = undefined;
             strokeOpacity = 1;
           } else {
             // Non-highlighted edges: dashed, thin, subtle
-            edgeColor = '#6b7280'; // gray-500
+            edgeColor = EDGE_COLORS.muted; // gray-500
             strokeWidth = 1;
             strokeDasharray = '6,3';
             strokeOpacity = 0.4;
@@ -1151,7 +1162,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type: 'straight',
             animated: true,
             style: {
-              stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
+              stroke:
+                eventType === 'schedule/cron'
+                  ? EDGE_COLORS.highlighted
+                  : EDGE_COLORS.schedule,
               strokeWidth: 2,
               strokeDasharray: '5,5',
             },
@@ -1185,7 +1199,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type: 'straight',
             animated: true,
             style: {
-              stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af',
+              stroke: isSequentialEdgeHighlighted
+                ? EDGE_COLORS.highlighted
+                : EDGE_COLORS.default,
               strokeWidth: isSequentialEdgeHighlighted ? 3 : 2,
               strokeDasharray: '5,5',
             },
@@ -1708,13 +1724,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
         if (isHighlighted) {
           // Highlighted edges: solid, thick, bright green
-          edgeColor = '#22c55e'; // green-500
+          edgeColor = EDGE_COLORS.success; // green-500
           strokeWidth = 4;
           strokeDasharray = undefined;
           strokeOpacity = 1;
         } else {
           // Non-highlighted edges: dashed, thin, subtle
-          edgeColor = '#6b7280'; // gray-500
+          edgeColor = EDGE_COLORS.muted; // gray-500
           strokeWidth = 1.5;
           strokeDasharray = '8,4';
           strokeOpacity = 0.4;
@@ -1758,13 +1774,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       if (isHighlighted) {
         // Highlighted edges: solid, thick, bright green - clearly visible
-        edgeColor = '#22c55e'; // green-500
+        edgeColor = EDGE_COLORS.success; // green-500
         strokeWidth = 4; // Thicker for better visibility
         strokeDasharray = undefined; // Solid line - no dashes
         strokeOpacity = 1; // Fully opaque
       } else {
         // Non-highlighted edges: dashed, thin, subtle gray - fade into background
-        edgeColor = '#6b7280'; // gray-500 (lighter than before)
+        edgeColor = EDGE_COLORS.muted; // gray-500
         strokeWidth = isConditional ? 1.5 : 1.5; // Thinner
         strokeDasharray = '8,4'; // Dashed - more subtle
         strokeOpacity = 0.4; // Semi-transparent to fade into background
