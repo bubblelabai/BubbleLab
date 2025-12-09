@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
-import { useUser } from '../hooks/useUser';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import { useGenerationStore } from '../stores/generationStore';
 import { useOutputStore } from '../stores/outputStore';
@@ -13,7 +12,6 @@ import {
   resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
-import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
   PRESET_PROMPTS,
@@ -25,6 +23,15 @@ import {
 import { trackTemplate } from '../services/analytics';
 import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
 import { SubmitTemplateModal } from '../components/SubmitTemplateModal';
+
+// LoadingDots component using bouncing animation for code generation
+const LoadingDots: React.FC = () => {
+  return (
+    <span className="inline-block animate-bounce text-purple-200 font-bold ml-1">
+      ●●●
+    </span>
+  );
+};
 
 // INTEGRATIONS and AI_MODELS now imported from shared lib
 
@@ -59,16 +66,12 @@ export function DashboardPage({
   autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
-  const { user, isLoaded: isUserLoaded } = useUser();
   const navigate = useNavigate();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const { startStreaming, stopStreaming } = useGenerationStore();
   const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
-  const [showOnboardingQuestionnaire, setShowOnboardingQuestionnaire] =
-    useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
-  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -329,42 +332,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     }
   }, [pendingJsonImport, generationPrompt, onGenerateCode]);
 
-  // Check if user needs to complete onboarding questionnaire
-  useEffect(() => {
-    if (
-      isSignedIn &&
-      isUserLoaded &&
-      user &&
-      !hasCheckedOnboarding &&
-      !showSignInModal
-    ) {
-      setHasCheckedOnboarding(true);
-
-      // Check if onboarding is already completed via Clerk metadata OR localStorage
-      // localStorage serves as a fallback since Clerk's cached user object may be stale
-      const publicMetadata = (
-        user as { publicMetadata?: { onboardingCompleted?: boolean } }
-      ).publicMetadata;
-      const hasCompletedOnboarding =
-        publicMetadata?.onboardingCompleted === true ||
-        localStorage.getItem('onboardingCompleted') === 'true';
-
-      if (!hasCompletedOnboarding) {
-        // Show onboarding questionnaire for new users
-        setShowOnboardingQuestionnaire(true);
-      }
-    }
-  }, [isSignedIn, isUserLoaded, user, hasCheckedOnboarding, showSignInModal]);
-
-  // Handle onboarding completion
-  const handleOnboardingComplete = () => {
-    setShowOnboardingQuestionnaire(false);
-    // Optionally reload user data to get updated metadata
-    // The user object will be updated on next render cycle
-  };
-
   return (
-    <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-100 font-sans selection:bg-purple-500/30 relative overflow-hidden">
+    <div className="h-screen flex flex-col bg-background text-foreground font-sans selection:bg-purple-500/30 relative overflow-hidden">
       {/* Background Effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-purple-900/10 rounded-[100%] blur-[100px] pointer-events-none" />
 
@@ -381,7 +350,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     href="https://discord.com/invite/PkJvcU2myV"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white text-xs font-medium rounded-full transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/80 border border-border text-muted-foreground hover:text-foreground text-xs font-medium rounded-full transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5"
                   >
                     <svg
                       className="w-3.5 h-3.5 text-[#5865F2] group-hover:scale-110 transition-transform duration-300"
@@ -393,15 +362,15 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     Join Discord Community
                   </a>
                   {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
                     Get instant help, request features, join community!
                   </div>
                 </div>
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight pb-2 animate-fade-in-up delay-100 drop-shadow-sm">
+              <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tight pb-2 animate-fade-in-up delay-100 drop-shadow-sm">
                 What do you want to automate?
               </h1>
-              <p className="text-base md:text-lg text-gray-400 mt-1 animate-fade-in-up delay-150">
+              <p className="text-base md:text-lg text-muted-foreground mt-1 animate-fade-in-up delay-150">
                 Make agentic workflows you can observe and export
               </p>
             </div>
@@ -414,8 +383,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 selectedCategory === null
-                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                  ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
               }`}
             >
               Prompt
@@ -425,8 +394,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               onClick={() => setSelectedCategory('Import JSON')}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 selectedCategory === 'Import JSON'
-                  ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                  ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
               }`}
             >
               Import JSON
@@ -443,7 +412,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   });
                 }
               }}
-              className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer"
+              className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer"
             >
               Choose from template
             </button>
@@ -453,8 +422,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               disabled={isStreaming || isCreatingFromScratch}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                 isStreaming || isCreatingFromScratch
-                  ? 'bg-white/5 text-gray-600 border border-white/10 cursor-not-allowed opacity-50'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                  ? 'bg-muted/50 text-muted-foreground/50 border border-border/50 cursor-not-allowed opacity-50'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
               }`}
             >
               Start from empty Bubble flow
@@ -463,7 +432,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
           {/* HERO PROMPT SECTION */}
           <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20 -mt-4">
-            <div className="bg-[#1a1a1a] rounded-2xl p-4 shadow-2xl border border-white/5 relative group transition-all duration-300 hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
+            <div className="bg-card rounded-2xl p-4 shadow-2xl border border-border relative group transition-all duration-300 hover:border-border/80 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
               <textarea
                 ref={promptRef}
                 placeholder={
@@ -488,7 +457,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   }
                 }}
                 onInput={(e) => autoResize(e.currentTarget)}
-                className={`bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar ${
+                className={`bg-transparent text-foreground text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-muted-foreground resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar ${
                   selectedCategory === 'Import JSON' ? 'font-mono' : ''
                 }`}
                 onKeyDown={(e) => {
@@ -505,10 +474,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     // Stop the animation by resetting to a stable state
                     setDisplayedPlaceholder(fullMessage);
                     setIsDeleting(false);
-                    // Reset selected preset to clear template selection
-                    if (selectedPreset !== -1) {
-                      setSelectedPreset(-1);
-                    }
                     return;
                   }
 
@@ -562,15 +527,21 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     disabled={isGenerateDisabled}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                       isGenerateDisabled
-                        ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                        : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+                        ? 'bg-muted border border-border cursor-not-allowed text-muted-foreground'
+                        : 'bg-primary text-primary-foreground border border-primary/80 hover:bg-primary/90 shadow-lg hover:scale-105'
                     }`}
                   >
-                    <ArrowUp className="w-5 h-5" />
+                    {isStreaming ? (
+                      <LoadingDots />
+                    ) : (
+                      <ArrowUp className="w-5 h-5" />
+                    )}
                   </button>
                   <div
                     className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                      isGenerateDisabled ? 'text-gray-500/60' : 'text-gray-400'
+                      isGenerateDisabled
+                        ? 'text-muted-foreground/60'
+                        : 'text-muted-foreground'
                     }`}
                   >
                     Ctrl+Enter
@@ -582,14 +553,14 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Current Supported Integrations Section */}
           <div className="mt-10 w-full max-w-3xl mx-auto space-y-4">
-            <div className="flex items-center gap-2 flex-col md:flex-row">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap w-48 flex-shrink-0">
                 Third Party Integrations
               </p>
-              <div className="flex flex-wrap gap-3 items-center justify-center md:justify-start">
+              <div className="flex flex-wrap gap-3 items-center">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
                       <img
                         src={integration.file}
                         alt={`${integration.name} logo`}
@@ -598,7 +569,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       />
                     </div>
                     {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
                       {integration.name}
                     </div>
                   </div>
@@ -606,14 +577,14 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-col md:flex-row">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap w-48 flex-shrink-0">
                 Scraping
               </p>
               <div className="flex flex-wrap gap-3 items-center">
                 {SCRAPING_SERVICES.map((service) => (
                   <div key={service.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
                       <img
                         src={service.file}
                         alt={`${service.name} logo`}
@@ -622,7 +593,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       />
                     </div>
                     {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
                       {service.name}
                     </div>
                   </div>
@@ -630,14 +601,14 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:flex-row flex-col">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap w-48 flex-shrink-0">
                 AI Models and Agents
               </p>
               <div className="flex flex-wrap gap-3 items-center">
                 {AI_MODELS.map((model) => (
                   <div key={model.name} className="relative group">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
+                    <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50 border border-border hover:border-border/80 hover:bg-muted transition-all duration-200">
                       <img
                         src={model.file}
                         alt={`${model.name} logo`}
@@ -646,7 +617,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       />
                     </div>
                     {/* Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 z-10">
                       {model.name}
                     </div>
                   </div>
@@ -658,11 +629,11 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
           {/* Templates Section Container */}
           <div
             id="templates-section"
-            className="mt-16 p-6 bg-[#0d1117] border border-[#30363d] rounded-xl animate-fade-in-up delay-300"
+            className="mt-16 p-6 bg-card border border-border rounded-xl animate-fade-in-up delay-300"
           >
             {/* Templates Header */}
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <h2 className="text-xl font-bold text-white">Templates</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-foreground">Templates</h2>
               <a
                 href="https://www.bubblelab.ai/community"
                 target="_blank"
@@ -696,8 +667,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 onClick={() => setSelectedCategory(null)}
                 className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                   !selectedCategory
-                    ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                    ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
                 }`}
               >
                 All Templates
@@ -712,21 +683,13 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
                     selectedCategory === category
-                      ? 'bg-white/10 text-white border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-300 border border-white/10 hover:border-white/20 cursor-pointer'
+                      ? 'bg-muted text-foreground border border-border shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground/80 border border-border/50 hover:border-border cursor-pointer'
                   }`}
                 >
                   {category}
                 </button>
               ))}
-              {/* Submit Template Button */}
-              <button
-                type="button"
-                onClick={() => setShowSubmitTemplateModal(true)}
-                className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-pink-500/15 text-pink-400 border border-pink-500/30 hover:bg-pink-500/25 hover:text-pink-300 hover:border-pink-400/50 cursor-pointer"
-              >
-                Submit Template
-              </button>
             </div>
 
             {/* Templates Grid */}
@@ -786,8 +749,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     disabled={isStreaming}
                     className={`w-full h-full text-left p-5 rounded-xl border transition-all duration-300 flex flex-col group relative overflow-hidden ${
                       isActive
-                        ? 'border-purple-500/30 bg-white/10 shadow-[0_0_20px_rgba(147,51,234,0.1)]'
-                        : 'border-white/5 bg-[#1a1a1a] hover:border-white/10 hover:bg-[#202020] hover:shadow-xl hover:-translate-y-0.5'
+                        ? 'border-purple-500/30 bg-muted shadow-[0_0_20px_rgba(147,51,234,0.1)]'
+                        : 'border-border bg-card hover:border-border/80 hover:bg-card/80 hover:shadow-xl hover:-translate-y-0.5'
                     } ${isStreaming ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     <div className="flex flex-col gap-3 flex-grow relative z-10">
@@ -804,16 +767,37 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                           ))}
                         </div>
                       )}
-                      <div className="text-base font-bold text-gray-200 mb-1 group-hover:text-white transition-colors">
+                      <div className="text-base font-bold text-foreground/80 mb-1 group-hover:text-foreground transition-colors">
                         {preset.name}
                       </div>
-                      <div className="text-sm font-medium text-gray-500 flex-grow leading-relaxed group-hover:text-gray-400 transition-colors line-clamp-3">
+                      <div className="text-sm font-medium text-muted-foreground flex-grow leading-relaxed group-hover:text-muted-foreground/80 transition-colors line-clamp-3">
                         {preset.prompt}
                       </div>
                     </div>
                   </button>
                 );
               })}
+            </div>
+
+            {/* Submit Template CTA */}
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left">
+                  <h3 className="text-base font-semibold text-foreground">
+                    Have a template to share?
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Submit your automation and help others in the community
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmitTemplateModal(true)}
+                  className="px-6 py-3 rounded-xl text-sm font-medium bg-primary text-primary-foreground border border-primary/80 hover:bg-primary/90 hover:scale-105 hover:shadow-lg transition-all duration-200"
+                >
+                  Submit your Template
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -823,12 +807,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       <SignInModal
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
-      />
-
-      {/* Onboarding Questionnaire - shows for new users after sign up */}
-      <OnboardingQuestionnaire
-        isVisible={showOnboardingQuestionnaire}
-        onComplete={handleOnboardingComplete}
       />
 
       {/* Submit Template Modal */}

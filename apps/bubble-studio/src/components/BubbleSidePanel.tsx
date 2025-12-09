@@ -155,7 +155,7 @@ export function BubbleSidePanel() {
       )}
 
       <div
-        className="fixed inset-y-0 left-0 bg-[#1e1e1e] border-r border-gray-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
+        className="fixed inset-y-0 left-0 bg-panel border-r border-border shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out"
         style={{
           width: `${panelWidth}px`,
           transform: 'translateX(0)',
@@ -170,18 +170,18 @@ export function BubbleSidePanel() {
           style={{ touchAction: 'none' }}
         />
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             {/* {(isPromptView || isGeneralChatView) && (
               <button
                 onClick={() => selectBubble(null)}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                className="p-1 hover:bg-muted rounded transition-colors"
                 title="Back to bubble list"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-300" />
+                <ArrowLeft className="w-5 h-5 text-foreground/80" />
               </button>
             )} */}
-            <h2 className="text-lg font-semibold text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               {isPromptView
                 ? `Configure ${selectedBubbleName}`
                 : isGeneralChatView
@@ -191,10 +191,10 @@ export function BubbleSidePanel() {
           </div>
           <button
             onClick={closeSidePanel}
-            className="p-1 hover:bg-gray-700 rounded transition-colors"
+            className="p-1 hover:bg-muted rounded transition-colors"
             title="Close panel"
           >
-            <X className="w-5 h-5 text-gray-300" />
+            <X className="w-5 h-5 text-foreground/80" />
           </button>
         </div>
 
@@ -266,7 +266,7 @@ function BubbleListView({
   return (
     <>
       {/* General Chat Button */}
-      <div className="p-4 border-b border-gray-700">
+      <div className="p-4 border-b border-border">
         <button
           onClick={onOpenGeneralChat}
           className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
@@ -276,16 +276,16 @@ function BubbleListView({
       </div>
 
       {/* Search and Filter */}
-      <div className="p-4 space-y-3 border-b border-gray-700">
+      <div className="p-4 space-y-3 border-b border-border">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search bubbles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#2d2d2d] border border-gray-600 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
 
@@ -298,7 +298,7 @@ function BubbleListView({
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 selectedType === type
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
               {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -322,7 +322,7 @@ function BubbleListView({
                 <button
                   key={bubble.name}
                   onClick={() => onSelectBubble(bubble.name)}
-                  className="w-full text-left p-3 bg-[#252526] hover:bg-[#2d2d2d] border border-gray-700 hover:border-purple-600 rounded-lg transition-all group"
+                  className="w-full text-left p-3 bg-card hover:bg-card/80 border border-border hover:border-purple-600 rounded-lg transition-all group"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -335,15 +335,15 @@ function BubbleListView({
                             loading="lazy"
                           />
                         )}
-                        <h3 className="font-medium text-gray-100 group-hover:text-purple-400 transition-colors">
+                        <h3 className="font-medium text-foreground group-hover:text-purple-400 transition-colors">
                           {bubble.name}
                         </h3>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                         {bubble.shortDescription}
                       </p>
                     </div>
-                    <span className="text-xs px-2 py-0.5 bg-gray-700 text-gray-300 rounded shrink-0">
+                    <span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded shrink-0">
                       {bubble.type.charAt(0).toUpperCase() +
                         bubble.type.slice(1)}
                     </span>
@@ -353,7 +353,7 @@ function BubbleListView({
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
             <Search className="w-8 h-8 mb-2 opacity-50" />
             <p className="text-sm">No bubbles found</p>
           </div>
@@ -485,7 +485,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
     <div className="flex-1 flex flex-col p-4">
       {/* Bubble Info */}
       {bubbleDefinition && (
-        <div className="mb-4 p-3 bg-[#252526] border border-gray-700 rounded-lg">
+        <div className="mb-4 p-3 bg-card border border-border rounded-lg">
           <div className="flex items-center gap-2 mb-1">
             {logo && (
               <img
@@ -495,11 +495,11 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 loading="lazy"
               />
             )}
-            <h3 className="font-medium text-gray-100">
+            <h3 className="font-medium text-foreground">
               {bubbleDefinition.name}
             </h3>
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {bubbleDefinition.shortDescription}
           </p>
           {bubbleDefinition.requiredCredentials.length > 0 && (
@@ -541,7 +541,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-2 space-y-3">
         {messages.length === 0 && !milkTeaMutation.isPending && (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             Start a conversation to configure this bubble
           </div>
         )}
@@ -554,19 +554,19 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
             }`}
           >
             {message.type === 'user' ? (
-              <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                <div className="text-sm text-gray-900">{message.content}</div>
+              <div className="bg-muted rounded-lg px-3 py-2 max-w-[80%]">
+                <div className="text-sm text-foreground">{message.content}</div>
               </div>
             ) : message.type === 'assistant' ? (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   {message.resultType === 'code' && (
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-success" />
                   )}
                   {message.resultType === 'reject' && (
-                    <AlertCircle className="w-4 h-4 text-red-400" />
+                    <AlertCircle className="w-4 h-4 text-destructive" />
                   )}
-                  <span className="text-xs font-medium text-gray-400">
+                  <span className="text-xs font-medium text-muted-foreground">
                     Pearl
                     {message.resultType === 'code' && ' - Code Generated'}
                     {message.resultType === 'question' && ' - Question'}
@@ -575,19 +575,21 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 </div>
                 {message.resultType === 'code' ? (
                   <>
-                    <pre className="text-xs text-gray-300 overflow-x-auto max-h-48 overflow-y-auto thin-scrollbar mb-2 p-2 bg-black/30 rounded">
+                    <pre className="text-xs text-foreground/80 overflow-x-auto max-h-48 overflow-y-auto thin-scrollbar mb-2 p-2 bg-muted rounded">
                       {message.content}
                     </pre>
                     <button
                       onClick={() => handleInsert(message.content)}
-                      className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-2 px-4 bg-success hover:bg-success/90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4" />
                       Insert Code
                     </button>
                   </>
                 ) : (
-                  <div className="text-sm text-gray-200">{message.content}</div>
+                  <div className="text-sm text-foreground/90">
+                    {message.content}
+                  </div>
                 )}
               </div>
             ) : null}
@@ -597,8 +599,8 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
         {milkTeaMutation.isPending && (
           <div className="p-3">
             <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-              <span className="text-sm text-gray-400">Thinking...</span>
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+              <span className="text-sm text-muted-foreground">Thinking...</span>
             </div>
           </div>
         )}
@@ -609,12 +611,12 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
 
       {/* Compact chat input at bottom */}
       <div className="p-2">
-        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg">
+        <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Example: Send an email to all users in the waitlist..."
-            className="bg-transparent text-gray-100 text-sm w-full h-20 placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
+            className="bg-transparent text-foreground text-sm w-full h-20 placeholder-muted-foreground resize-none focus:outline-none focus:ring-0 p-0"
             disabled={milkTeaMutation.isPending}
             onKeyDown={(e) => {
               if (
@@ -637,8 +639,8 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 disabled={!prompt.trim() || milkTeaMutation.isPending}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   !prompt.trim() || milkTeaMutation.isPending
-                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                    : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+                    ? 'bg-muted/40 border border-border cursor-not-allowed text-muted-foreground'
+                    : 'bg-foreground text-background border border-foreground/80 hover:bg-foreground/90 hover:border-foreground/60 shadow-lg hover:scale-105'
                 }`}
               >
                 {milkTeaMutation.isPending ? (
@@ -650,8 +652,8 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
               <div
                 className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
                   !prompt.trim() || milkTeaMutation.isPending
-                    ? 'text-gray-500/60'
-                    : 'text-gray-400'
+                    ? 'text-muted-foreground/60'
+                    : 'text-muted-foreground'
                 }`}
               >
                 Ctrl+Enter

@@ -3,19 +3,14 @@
  * Can read entire code and replace entire editor content
  *
  */
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useRef } from 'react';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
 import { usePearlChatStore } from '../../hooks/usePearlChatStore';
 import type { DisplayEvent } from '../../stores/pearlChatStore';
-import { getPearlChatStore } from '../../stores/pearlChatStore';
 import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
-import {
-  trackAIAssistant,
-  trackWorkflowGeneration,
-} from '../../services/analytics';
+import { trackAIAssistant } from '../../services/analytics';
 import {
   Check,
   AlertCircle,
@@ -23,24 +18,23 @@ import {
   ArrowUp,
   Paperclip,
   X,
-  MessageSquare,
+  Info,
   Calendar,
   Webhook,
   HelpCircle,
   FileInput,
   Settings,
   Code,
-  Image,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
 import {
   MAX_BYTES,
   bytesToMB,
-  isImageFile,
+  isAllowedType,
   isTextLike,
   readTextFile,
-  compressImageToBase64,
+  compressPngToBase64,
 } from '../../utils/fileUtils';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 import { useBubbleDetail } from '../../hooks/useBubbleDetail';
@@ -51,65 +45,12 @@ import {
   BubblePromptInput,
   type BubblePromptInputRef,
 } from './BubblePromptInput';
-import { ClarificationWidget } from './ClarificationWidget';
-import { PlanApprovalWidget } from './PlanApprovalWidget';
-import { ContextRequestWidget } from './ContextRequestWidget';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
-import { useEditorStore } from '../../stores/editorStore';
-import { API_BASE_URL } from '../../env';
-import {
-  useGenerateInitialFlow,
-  startBuildingPhase,
-  submitClarificationAndContinue,
-} from '../../hooks/usePearlStream';
-import type { ChatMessage, PlanApprovalMessage } from './type';
-import { playGenerationCompleteSound } from '../../utils/soundUtils';
-import { renderJson } from '../../utils/executionLogsFormatUtils';
-
-/**
- * LazyDetails component - only renders children when the details element is open.
- * This prevents expensive JSON rendering from happening when the details are collapsed,
- * improving performance when there are many tool_complete events.
- */
-const LazyDetails = memo(function LazyDetails({
-  summary,
-  summaryClassName,
-  children,
-}: {
-  summary: string;
-  summaryClassName?: string;
-  children: () => React.ReactNode;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <details
-      className="mt-1"
-      onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
-    >
-      <summary
-        className={
-          summaryClassName ||
-          'text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors'
-        }
-      >
-        {summary}
-      </summary>
-      {isOpen && (
-        <div className="mt-2 max-h-40 overflow-y-auto">
-          <pre className="text-xs bg-[#0d1117] border border-[#21262d] rounded p-2 overflow-x-auto">
-            {children()}
-          </pre>
-        </div>
-      )}
-    </details>
-  );
-});
 
 export function PearlChat() {
   // UI-only state (non-shared)
   const [uploadedFiles, setUploadedFiles] = useState<
-    Array<{ name: string; content: string; fileType: 'image' | 'text' }>
+    Array<{ name: string; content: string }>
   >([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
@@ -131,197 +72,57 @@ export function PearlChat() {
 
   // Pearl store hook - subscribes to state and provides generation API
   const pearl = usePearlChatStore(selectedFlowId);
-  const queryClient = useQueryClient();
-
-  // Check if this is an initial generation (flow has prompt but no code)
-  const isGenerating =
-    (!flowData?.code || flowData.code.trim() === '') &&
-    !flowData?.generationError &&
-    !!flowData?.prompt;
-
-  // Only enable query if we have all required data and are in generating state
-  const shouldEnableGeneration = Boolean(
-    selectedFlowId && flowData?.prompt && isGenerating
-  );
-
-  // Generation flow - uses pearlChatStore for events, callback handles editor update and refetch
-  useGenerateInitialFlow({
-    prompt: flowData?.prompt || '',
-    flowId: selectedFlowId ?? undefined,
-    enabled: shouldEnableGeneration,
-    onGenerationComplete: useCallback(
-      (data: {
-        generatedCode: string;
-        summary: string;
-        bubbleParameters?: Record<string, unknown>;
-      }) => {
-        // Play completion sound
-        playGenerationCompleteSound();
-
-        if (data.generatedCode) {
-          const { editorInstance, setPendingCode } = useEditorStore.getState();
-          if (editorInstance) {
-            const model = editorInstance.getModel();
-            if (model) {
-              model.setValue(data.generatedCode);
-              console.log('[PearlChat] Editor updated with generated code');
-            } else {
-              setPendingCode(data.generatedCode);
-            }
-          } else {
-            setPendingCode(data.generatedCode);
-          }
-        }
-
-        // Refetch flow to sync with backend
-        queryClient.refetchQueries({
-          queryKey: ['bubbleFlow', selectedFlowId],
-        });
-        queryClient.refetchQueries({
-          queryKey: ['bubbleFlowList'],
-        });
-        queryClient.refetchQueries({
-          queryKey: ['subscription'],
-        });
-
-        // Track generation
-        trackWorkflowGeneration({
-          prompt: flowData?.prompt || '',
-          generatedCode: data.generatedCode,
-          generatedCodeLength: data.generatedCode?.length || 0,
-          generatedBubbleCount: Object.keys(data.bubbleParameters || {}).length,
-          success: true,
-          errorMessage: '',
-        });
-      },
-      [queryClient, selectedFlowId, flowData?.prompt]
-    ),
-  });
-
-  // Track if we've initialized the generation conversation
-  const hasInitializedGenerationRef = useRef(false);
-
-  // Auto-open Pearl panel and add user prompt message when generation starts
-  useEffect(() => {
-    if (
-      isGenerating &&
-      flowData?.prompt &&
-      selectedFlowId &&
-      !hasInitializedGenerationRef.current
-    ) {
-      useUIStore.getState().openConsolidatedPanelWith('pearl');
-
-      // Add user's prompt as the first message
-      const pearlStore = getPearlChatStore(selectedFlowId);
-      const storeState = pearlStore.getState();
-
-      // Only add if there are no messages yet
-      if (storeState.messages.length === 0) {
-        const userMessage: ChatMessage = {
-          id: `gen-user-${Date.now()}`,
-          type: 'user',
-          content: flowData.prompt,
-          timestamp: new Date(),
-        };
-
-        storeState.addMessage(userMessage);
-        hasInitializedGenerationRef.current = true;
-      }
-    }
-  }, [isGenerating, flowData?.prompt, selectedFlowId]);
-
-  // Reset the initialization ref when flow changes
-  useEffect(() => {
-    hasInitializedGenerationRef.current = false;
-  }, [selectedFlowId]);
 
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pearl.timeline, pearl.isPending, pearl.isGenerating]);
+  }, [pearl.messages, pearl.eventsList, pearl.isPending]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploadError(null);
 
-    const newFiles: Array<{
-      name: string;
-      content: string;
-      fileType: 'image' | 'text';
-    }> = [];
+    const newFiles: Array<{ name: string; content: string }> = [];
 
-    const errors: string[] = [];
-
-    // Process all files
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // Auto-detect file type
-      const isImage = isImageFile(file);
-      const isText = isTextLike(file);
-
-      if (!isImage && !isText) {
-        errors.push(
-          `${file.name} is not supported. Please upload images (PNG, JPG, GIF, WebP) or text files (TXT, CSV, MD, HTML).`
+      if (!isAllowedType(file)) {
+        setUploadError(
+          `Unsupported file type: ${file.name}. Allowed: html, csv, txt, png`
         );
         continue;
       }
 
       try {
-        if (isText) {
+        if (isTextLike(file)) {
           if (file.size > MAX_BYTES) {
-            errors.push(
-              `${file.name} too large. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            setUploadError(
+              `File too large: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
             );
             continue;
           }
           const text = await readTextFile(file);
-          newFiles.push({ name: file.name, content: text, fileType: 'text' });
-        } else if (isImage) {
-          // Image path: compress and convert to base64
-          const base64 = await compressImageToBase64(file);
+          newFiles.push({ name: file.name, content: text });
+        } else {
+          // PNG path: compress client-side, convert to base64 (no data URL prefix)
+          const base64 = await compressPngToBase64(file);
           const approxBytes = Math.floor((base64.length * 3) / 4);
           if (approxBytes > MAX_BYTES) {
-            errors.push(
-              `${file.name} too large after compression. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            setUploadError(
+              `Image too large after compression: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
             );
             continue;
           }
-          newFiles.push({
-            name: file.name,
-            content: base64,
-            fileType: 'image',
-          });
+          newFiles.push({ name: file.name, content: base64 });
         }
-      } catch (error) {
-        errors.push(
-          `Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        continue;
+      } catch {
+        setUploadError(`Failed to read or process file: ${file.name}`);
       }
     }
 
-    // Log for debugging
-    console.log('Processed files:', {
-      totalSelected: files.length,
-      successfullyProcessed: newFiles.length,
-      errorCount: errors.length,
-      files: newFiles.map((f) => ({ name: f.name, type: f.fileType })),
-    });
-
-    // Update state only once at the end - replace instead of append
     if (newFiles.length > 0) {
-      setUploadedFiles(newFiles);
-      console.log('Uploaded file:', newFiles[0]?.name, newFiles[0]?.fileType);
-    }
-
-    // Set error message if any errors occurred (show first error)
-    if (errors.length > 0) {
-      setUploadError(
-        errors.length === 1
-          ? errors[0]
-          : `${errors.length} files failed: ${errors[0]}`
-      );
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
@@ -334,59 +135,12 @@ export function PearlChat() {
       return;
     }
 
-    // Use regular generation for Pearl chat (Coffee is handled via useGenerateInitialFlow)
+    // Call Pearl store to start generation
     pearl.startGeneration(pearl.prompt, uploadedFiles);
 
     // Clear UI state
     setUploadedFiles([]);
   };
-
-  // Handlers for initial generation Coffee flow (different from Pearl chat)
-  const handleInitialClarificationSubmit = useCallback(
-    async (answers: Record<string, string[]>) => {
-      if (!selectedFlowId || !flowData?.prompt) return;
-      await submitClarificationAndContinue(
-        selectedFlowId,
-        flowData.prompt,
-        answers
-      );
-    },
-    [selectedFlowId, flowData?.prompt]
-  );
-
-  const handleInitialPlanApprove = useCallback(
-    async (comment?: string) => {
-      if (!selectedFlowId || !flowData?.prompt || !pearl.pendingPlan) return;
-
-      // Add approval message to mark the plan as approved
-      const pearlStore = getPearlChatStore(selectedFlowId);
-      const storeState = pearlStore.getState();
-      const approvalMsg: PlanApprovalMessage = {
-        id: `plan-approval-${Date.now()}`,
-        type: 'plan_approval',
-        approved: true,
-        comment,
-        timestamp: new Date(),
-      };
-      storeState.addMessage(approvalMsg);
-
-      const plan = pearl.pendingPlan.plan;
-      // Build plan context string for Boba
-      const planContext = [
-        `Summary: ${plan.summary}`,
-        'Steps:',
-        ...plan.steps.map(
-          (step, i) =>
-            `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
-        ),
-        `Bubbles to use: ${plan.estimatedBubbles.join(', ')}`,
-        ...(comment ? [`\nAdditional user comments: ${comment}`] : []),
-      ].join('\n');
-
-      await startBuildingPhase(selectedFlowId, flowData.prompt, planContext);
-    },
-    [selectedFlowId, flowData?.prompt, pearl.pendingPlan]
-  );
 
   const handleReplace = (
     code: string,
@@ -395,6 +149,7 @@ export function PearlChat() {
   ) => {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response', message: code || '' });
+    toast.success('Workflow updated!');
 
     // Mark message as updated
     setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
@@ -407,7 +162,7 @@ export function PearlChat() {
         credentials: pendingCredentials,
         syncInputsWithFlow: true,
       });
-      toast.success('Workflow updated successfully');
+      toast.success('Bubble parameters, input schema, and credentials updated');
     } else {
       toast.error('No bubble parameters found');
     }
@@ -635,7 +390,7 @@ export function PearlChat() {
     <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
-        {pearl.timeline.length === 0 && !pearl.isPending && !isGenerating && (
+        {pearl.messages.length === 0 && !pearl.isPending && (
           <div className="flex flex-col items-center px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
@@ -644,14 +399,14 @@ export function PearlChat() {
                 alt="Pearl"
                 className="w-12 h-12 mb-3 mx-auto"
               />
-              <h3 className="text-base font-medium text-gray-200 mb-1">
+              <h3 className="text-base font-medium text-foreground mb-1">
                 Chat with Pearl
               </h3>
             </div>
 
             {/* Quick Start Suggestions */}
             <div className="w-full max-w-md space-y-2">
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3 px-1">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3 px-1">
                 Quick Actions
               </div>
               {(() => {
@@ -669,17 +424,17 @@ export function PearlChat() {
                         key={`main-${index}`}
                         type="button"
                         onClick={() => handleSuggestionClick(suggestion.prompt)}
-                        className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                        className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                          <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
                             {suggestion.icon}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                            <div className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors mb-0.5">
                               {suggestion.label}
                             </div>
-                            <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                            <div className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                               {suggestion.description}
                             </div>
                           </div>
@@ -690,7 +445,7 @@ export function PearlChat() {
                     {/* Transformation Specific Actions */}
                     {transformationActions.length > 0 && (
                       <>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3 px-1">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-4 mb-3 px-1">
                           Transformation specific Quick Actions
                         </div>
                         {transformationActions.map((suggestion, index) => (
@@ -700,17 +455,17 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                                <div className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors mb-0.5">
                                   {suggestion.label}
                                 </div>
-                                <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                <div className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                                   {suggestion.description}
                                 </div>
                               </div>
@@ -723,7 +478,7 @@ export function PearlChat() {
                     {/* Step Specific Actions */}
                     {stepActions.length > 0 && (
                       <>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3 px-1">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-4 mb-3 px-1">
                           Step specific Quick Actions
                         </div>
                         {stepActions.map((suggestion, index) => (
@@ -733,17 +488,17 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                                <div className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors mb-0.5">
                                   {suggestion.label}
                                 </div>
-                                <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                <div className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                                   {suggestion.description}
                                 </div>
                               </div>
@@ -756,7 +511,7 @@ export function PearlChat() {
                     {/* Bubble Specific Actions */}
                     {bubbleActions.length > 0 && (
                       <>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mt-4 mb-3 px-1">
+                        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mt-4 mb-3 px-1">
                           Bubble specific Quick Actions
                         </div>
                         {bubbleActions.map((suggestion, index) => (
@@ -766,17 +521,17 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-gray-800/40 hover:bg-gray-800/60 border border-gray-700/50 hover:border-gray-600 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-gray-400 group-hover:text-gray-300 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors mb-0.5">
+                                <div className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors mb-0.5">
                                   {suggestion.label}
                                 </div>
-                                <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                <div className="text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">
                                   {suggestion.description}
                                 </div>
                               </div>
@@ -792,44 +547,21 @@ export function PearlChat() {
           </div>
         )}
 
-        {/* Render unified timeline: messages and events in chronological order */}
-        {pearl.timeline.map((item, index) => {
-          const key =
-            item.kind === 'message'
-              ? item.data.id
-              : `event-${index}-${item.data.type}`;
-
-          // For events, check if we should filter transient ones
-          // Only show transient events (llm_thinking, tool_start, token) if they're recent (loading state)
-          if (item.kind === 'event') {
-            const event = item.data;
-            const isTransient =
-              event.type === 'llm_thinking' ||
-              event.type === 'tool_start' ||
-              event.type === 'token';
-
-            // For transient events, only show if we're in loading state
-            if (isTransient && !pearl.isPending && !pearl.isCoffeeLoading) {
-              return null;
-            }
-
-            return (
-              <div key={key} className="p-1">
-                <EventDisplay event={event} onRetry={pearl.retryAfterError} />
-              </div>
-            );
-          }
-
-          // It's a message
-          const message = item.data;
+        {/* Render messages: user → events → assistant → user → events → assistant */}
+        {pearl.messages.map((message, index) => {
+          // Calculate assistant index (how many assistant messages we've seen so far)
+          const assistantIndex =
+            pearl.messages
+              .slice(0, index + 1)
+              .filter((m) => m.type === 'assistant').length - 1;
 
           return (
-            <div key={key}>
-              {/* User Message */}
-              {message.type === 'user' && (
+            <div key={message.id}>
+              {message.type === 'user' ? (
+                /* User Message */
                 <div className="p-3 flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-[13px] text-gray-900">
+                  <div className="bg-muted rounded-lg px-3 py-2 max-w-[80%]">
+                    <div className="text-[13px] text-foreground">
                       {hasBubbleTags(message.content) ? (
                         <BubbleText text={message.content} />
                       ) : (
@@ -838,214 +570,112 @@ export function PearlChat() {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Clarification Request - render as widget if pending, as history if answered */}
-              {message.type === 'clarification_request' && (
-                <div className="p-3">
-                  {pearl.pendingClarification?.id === message.id ? (
-                    <ClarificationWidget
-                      questions={message.questions}
-                      onSubmit={
-                        isGenerating
-                          ? handleInitialClarificationSubmit
-                          : pearl.submitClarificationAnswers
-                      }
-                      isSubmitting={pearl.isCoffeeLoading}
-                    />
-                  ) : (
-                    <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                      <div className="text-xs text-blue-400 mb-2">
-                        Questions asked:
-                      </div>
-                      {message.questions.map((q, i) => (
-                        <div key={q.id} className="text-sm text-gray-300 mb-1">
-                          {i + 1}. {q.question}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Clarification Response - display user's answers */}
-              {message.type === 'clarification_response' && (
-                <div className="p-3 flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-xs text-gray-500 mb-1">
-                      Your answers:
-                    </div>
-                    {Object.entries(message.answers).map(([qId, choiceIds]) => {
-                      const question = message.originalQuestions?.find(
-                        (q) => q.id === qId
-                      );
-                      const choiceLabels = choiceIds.map(
-                        (cid) =>
-                          question?.choices.find((c) => c.id === cid)?.label ||
-                          cid
-                      );
-                      return (
-                        <div key={qId} className="text-sm text-gray-900">
-                          {question?.question || qId}: {choiceLabels.join(', ')}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Context Request - render as widget if pending, as history if answered */}
-              {message.type === 'context_request' && (
-                <div className="p-3">
-                  {pearl.pendingContextRequest?.id === message.id ? (
-                    <ContextRequestWidget
-                      request={message.request}
-                      credentials={pearl.coffeeContextCredentials}
-                      onCredentialChange={pearl.setCoffeeContextCredential}
-                      onSubmit={pearl.submitContext}
-                      onReject={pearl.rejectContext}
-                      isLoading={pearl.isCoffeeLoading}
-                      apiBaseUrl={API_BASE_URL}
-                    />
-                  ) : (
-                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
-                      <div className="text-xs text-amber-400 mb-2">
-                        Context request:
-                      </div>
-                      <div className="text-sm text-gray-300">
-                        {message.request.description}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Context Response - display result status */}
-              {message.type === 'context_response' && (
-                <div className="p-3 flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-sm text-gray-900">
-                      {message.answer.status === 'success' &&
-                        'Context gathered successfully'}
-                      {message.answer.status === 'rejected' &&
-                        'Skipped context gathering'}
-                      {message.answer.status === 'error' &&
-                        `Error: ${message.answer.error}`}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Plan Message - always show full widget, hide button when approved */}
-              {message.type === 'plan' && (
-                <div className="p-3">
-                  <PlanApprovalWidget
-                    plan={message.plan}
-                    onApprove={
-                      isGenerating
-                        ? handleInitialPlanApprove
-                        : pearl.approvePlanAndBuild
-                    }
-                    isApproved={pearl.pendingPlan?.id !== message.id}
-                  />
-                </div>
-              )}
-
-              {/* Plan Approval - display approval */}
-              {message.type === 'plan_approval' && (
-                <div className="p-3 flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-sm text-gray-900">
-                      {message.approved ? 'Plan approved' : 'Plan rejected'}
-                      {message.comment && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {message.comment}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Assistant Message */}
-              {message.type === 'assistant' && (
-                <div className="p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    {message.resultType === 'code' && (
-                      <Check className="w-4 h-4 text-green-400" />
-                    )}
-                    {message.resultType === 'answer' && (
-                      <MessageSquare className="w-4 h-4 text-white" />
-                    )}
-                    {message.resultType === 'reject' && (
-                      <AlertCircle className="w-4 h-4 text-red-400" />
-                    )}
-                    <span className="text-xs font-medium text-gray-400">
-                      Pearl
-                      {message.resultType === 'code' && ' - Code Generated'}
-                      {message.resultType === 'question' && ' - Question'}
-                      {message.resultType === 'answer' && ' - Answer'}
-                      {message.resultType === 'reject' && ' - Error'}
-                    </span>
-                  </div>
-                  {message.resultType === 'code' ? (
-                    <>
-                      {message.content && (
-                        <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
-                          <MarkdownWithBubbles content={message.content} />
-                        </div>
-                      )}
-                      {message.code && (
-                        <CodeDiffView
-                          originalCode={editor.getCode() || ''}
-                          modifiedCode={message.code}
-                          isAccepted={updatedMessageIds.has(message.id)}
-                          onAccept={() =>
-                            handleReplace(
-                              message.code!,
-                              message.id,
-                              message.bubbleParameters
+              ) : (
+                /* Assistant Response: Events then Message */
+                <>
+                  {/* Events (if any) */}
+                  {pearl.eventsList[assistantIndex] &&
+                    pearl.eventsList[assistantIndex].length > 0 && (
+                      <div className="p-3">
+                        <div className="space-y-2">
+                          {pearl.eventsList[assistantIndex].map(
+                            (event, eventIndex) => (
+                              <EventDisplay
+                                key={`${message.id}-event-${eventIndex}`}
+                                event={event}
+                              />
                             )
-                          }
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-                      <MarkdownWithBubbles content={message.content} />
-                    </div>
-                  )}
-                </div>
-              )}
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-              {/* System Message */}
-              {message.type === 'system' && (
-                <div className="p-3">
-                  <div className="text-xs text-gray-500 italic">
-                    {message.content}
+                  {/* Assistant Message */}
+                  <div className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      {message.resultType === 'code' && (
+                        <Check className="w-4 h-4 text-success" />
+                      )}
+                      {message.resultType === 'answer' && (
+                        <Info className="w-4 h-4 text-info" />
+                      )}
+                      {message.resultType === 'reject' && (
+                        <AlertCircle className="w-4 h-4 text-destructive" />
+                      )}
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Pearl
+                        {message.resultType === 'code' && ' - Code Generated'}
+                        {message.resultType === 'question' && ' - Question'}
+                        {message.resultType === 'answer' && ' - Answer'}
+                        {message.resultType === 'reject' && ' - Error'}
+                      </span>
+                    </div>
+                    {message.resultType === 'code' ? (
+                      <>
+                        {message.content && (
+                          <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
+                            <MarkdownWithBubbles content={message.content} />
+                          </div>
+                        )}
+                        {message.code && (
+                          <CodeDiffView
+                            originalCode={editor.getCode() || ''}
+                            modifiedCode={message.code}
+                            isAccepted={updatedMessageIds.has(message.id)}
+                            onAccept={() =>
+                              handleReplace(
+                                message.code!,
+                                message.id,
+                                message.bubbleParameters
+                              )
+                            }
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
+                        <MarkdownWithBubbles content={message.content} />
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
             </div>
           );
         })}
 
-        {/* Loading indicator when actively processing but no events yet */}
-        {(pearl.isPending || pearl.isCoffeeLoading || pearl.isGenerating) &&
-          !pearl.pendingClarification &&
-          !pearl.pendingContextRequest &&
-          !pearl.pendingPlan &&
-          pearl.timeline.filter((item) => item.kind === 'event').length ===
-            0 && (
-            <div className="p-1">
-              <div className="text-sm text-gray-400 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  <span>Thinking...</span>
+        {/* Current streaming events (for the active turn) */}
+        {pearl.isPending && pearl.eventsList.length > 0 && (
+          <div className="p-3">
+            {pearl.eventsList[pearl.eventsList.length - 1].length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="w-4 h-4 text-info animate-spin" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Pearl - Processing...
+                  </span>
                 </div>
+                <div className="space-y-2">
+                  {pearl.eventsList[pearl.eventsList.length - 1].map(
+                    (event, index) => (
+                      <EventDisplay
+                        key={`current-event-${index}`}
+                        event={event}
+                      />
+                    )
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                <span className="text-sm text-muted-foreground">
+                  Starting...
+                </span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
@@ -1053,9 +683,9 @@ export function PearlChat() {
 
       {/* Compact chat input at bottom */}
       <div className="flex-shrink-0 p-4 pt-2">
-        <div className="bg-[#252525] border border-gray-700 rounded-xl p-3 shadow-lg relative">
+        <div className="bg-card border border-border rounded-xl p-3 shadow-lg relative">
           {uploadError && (
-            <div className="text-[10px] text-amber-300 mb-2">{uploadError}</div>
+            <div className="text-[10px] text-warning mb-2">{uploadError}</div>
           )}
 
           {/* Uploaded files display */}
@@ -1064,104 +694,107 @@ export function PearlChat() {
               {uploadedFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded border border-gray-700"
+                  className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded border border-border"
                 >
-                  {file.fileType === 'image' ? (
-                    <Image className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                  ) : (
-                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                  )}
-                  <span className="text-xs text-gray-300 truncate max-w-[120px]">
+                  <Paperclip className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  <span className="text-xs text-foreground/80 truncate max-w-[120px]">
                     {file.name}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleDeleteFile(index)}
-                    disabled={pearl.isPending || isGenerating}
-                    className="p-0.5 hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    disabled={pearl.isPending}
+                    className="p-0.5 hover:bg-muted rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     aria-label={`Delete ${file.name}`}
                   >
-                    <X className="w-3 h-3 text-gray-400 hover:text-gray-200" />
+                    <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
                   </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Text input area */}
-          <BubblePromptInput
-            ref={promptInputRef}
-            value={pearl.prompt}
-            onChange={pearl.setPrompt}
-            onSubmit={handleGenerate}
-            placeholder="Get help modifying, debugging, or understanding your workflow..."
-            className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
-            disabled={pearl.isPending || isGenerating}
-            flowId={selectedFlowId}
-            selectedBubbleContext={pearl.selectedBubbleContext}
-            selectedTransformationContext={pearl.selectedTransformationContext}
-            selectedStepContext={pearl.selectedStepContext}
-            onRemoveBubble={pearl.removeBubbleFromContext}
-            onRemoveTransformation={pearl.clearTransformationContext}
-            onRemoveStep={pearl.clearStepContext}
-          />
+          <div className="relative">
+            <BubblePromptInput
+              ref={promptInputRef}
+              value={pearl.prompt}
+              onChange={pearl.setPrompt}
+              onSubmit={handleGenerate}
+              placeholder="Get help modifying, debugging, or understanding your workflow..."
+              className="bg-transparent text-foreground text-sm w-full placeholder-muted-foreground resize-none focus:outline-none focus:ring-0 p-0 pr-10"
+              disabled={pearl.isPending}
+              flowId={selectedFlowId}
+              selectedBubbleContext={pearl.selectedBubbleContext}
+              selectedTransformationContext={
+                pearl.selectedTransformationContext
+              }
+              selectedStepContext={pearl.selectedStepContext}
+              onRemoveBubble={pearl.removeBubbleFromContext}
+              onRemoveTransformation={pearl.clearTransformationContext}
+              onRemoveStep={pearl.clearStepContext}
+            />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".html,.csv,.txt,image/png"
+                  multiple
+                  disabled={pearl.isPending}
+                  aria-label="Upload files"
+                  onChange={(e) => {
+                    handleFileChange(e.target.files);
+                    // reset so selecting the same file again triggers onChange
+                    e.currentTarget.value = '';
+                  }}
+                />
+                <Paperclip
+                  className={`w-5 h-5 transition-colors ${
+                    pearl.isPending
+                      ? 'text-muted-foreground/50 cursor-not-allowed'
+                      : uploadedFiles.length > 0
+                        ? 'text-foreground/80'
+                        : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                />
+              </label>
+            </div>
+          </div>
 
-          {/* Bottom action bar - buttons grouped on the right */}
-          <div className="flex items-center justify-end gap-2 mt-2">
-            {/* Upload button - handles both images and text files */}
-            <label
-              className={`${
-                pearl.isPending || isGenerating
-                  ? 'cursor-not-allowed'
-                  : 'cursor-pointer'
-              }`}
-              title="Upload file (Images: PNG, JPG, GIF, WebP | Text: TXT, CSV, MD, HTML)"
-            >
-              <input
-                type="file"
-                className="hidden"
-                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,.txt,.csv,.md,.html,.htm"
-                disabled={pearl.isPending || isGenerating}
-                aria-label="Upload file"
-                onChange={(e) => {
-                  handleFileChange(e.target.files);
-                  e.currentTarget.value = '';
-                }}
-              />
-              <div
+          {/* Generate Button - Inside the prompt container */}
+          <div className="flex justify-end mt-2">
+            <div className="flex flex-col items-end">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
+                  pearl.isPending
+                }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  pearl.isPending || isGenerating
-                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                    : 'bg-gray-700/40 border border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
+                  pearl.isPending
+                    ? 'bg-muted/40 border border-border cursor-not-allowed text-muted-foreground'
+                    : 'bg-foreground text-background border border-foreground/80 hover:bg-foreground/90 hover:border-foreground/60 shadow-lg hover:scale-105'
                 }`}
               >
-                <Paperclip className="w-5 h-5" />
+                {pearl.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ArrowUp className="w-5 h-5" />
+                )}
+              </button>
+              <div
+                className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
+                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
+                  pearl.isPending
+                    ? 'text-muted-foreground/60'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                Ctrl+Enter
               </div>
-            </label>
-
-            {/* Send button */}
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={
-                (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                pearl.isPending ||
-                isGenerating
-              }
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                pearl.isPending ||
-                isGenerating
-                  ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                  : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
-              }`}
-            >
-              {pearl.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <ArrowUp className="w-5 h-5" />
-              )}
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1170,17 +803,11 @@ export function PearlChat() {
 }
 
 // Helper component to render individual events
-function EventDisplay({
-  event,
-  onRetry,
-}: {
-  event: DisplayEvent;
-  onRetry?: () => void;
-}) {
+function EventDisplay({ event }: { event: DisplayEvent }) {
   switch (event.type) {
     case 'llm_thinking':
       return (
-        <div className="text-sm text-gray-400 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
+        <div className="text-sm text-muted-foreground p-2 bg-muted/30 rounded border-l-2 border-border">
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span>Thinking...</span>
@@ -1194,21 +821,10 @@ function EventDisplay({
         return null;
       }
       return (
-        <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
-          <div className="text-xs text-gray-400 mb-1">Thinking Process</div>
-          <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-            <MarkdownWithBubbles content={event.content} />
+        <div className="text-sm text-foreground/80 p-2 bg-muted/30 rounded border-l-2 border-border">
+          <div className="text-xs text-muted-foreground mb-1">
+            Thinking Process
           </div>
-        </div>
-      );
-
-    case 'llm_complete_content':
-      // Don't render if content is empty or whitespace only
-      if (!event.content.trim()) {
-        return null;
-      }
-      return (
-        <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
           <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
             <MarkdownWithBubbles content={event.content} />
           </div>
@@ -1217,141 +833,45 @@ function EventDisplay({
 
     case 'tool_start':
       return (
-        <div className="p-2 bg-blue-900/20 border border-blue-800/30 rounded-lg">
+        <div className="p-2 bg-info/10 border border-info/20 rounded-lg">
           <div className="flex items-center gap-2 mb-1">
-            <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
-            <span className="text-xs text-blue-300">
-              Calling {event.tool}...
-            </span>
+            <Loader2 className="w-3 h-3 text-info animate-spin" />
+            <span className="text-xs text-info">Calling {event.tool}...</span>
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-muted-foreground">
             Duration: {Math.round((Date.now() - event.startTime) / 1000)}s
           </div>
         </div>
       );
 
-    case 'tool_complete': {
-      // Check if tool call failed (output has error property)
-      const isError =
-        event.output &&
-        typeof event.output === 'object' &&
-        'error' in event.output &&
-        event.output.error != '';
-      // Some tools return a valid property to indicate success
-      const isValid =
-        event.output &&
-        typeof event.output === 'object' &&
-        'valid' in event.output &&
-        event.output.valid == false;
-      if (isError || isValid) {
-        return (
-          <div className="p-2 bg-red-900/20 border border-red-800/30 rounded-lg">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-3 h-3 text-red-400" />
-                <span className="text-xs text-red-300">
-                  {event.tool} failed
-                </span>
-              </div>
-              <div className="text-xs text-gray-400">
-                Duration: {Math.round(event.duration / 1000)}s
-              </div>
-            </div>
-            <LazyDetails summary="Show error details">
-              {() =>
-                event.output != null &&
-                typeof event.output === 'object' &&
-                'error' in event.output ? (
-                  <span className="text-red-300">
-                    {String(event.output.error)}
-                  </span>
-                ) : (
-                  renderJson(event.output)
-                )
-              }
-            </LazyDetails>
-          </div>
-        );
-      }
-
+    case 'tool_complete':
       return (
-        <div className="p-2 bg-green-900/20 border border-green-800/30 rounded-lg">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2">
-              <Check className="w-3 h-3 text-green-400" />
-              <span className="text-xs text-green-300">
-                {event.tool} completed
-              </span>
-            </div>
-            <div className="text-xs text-gray-400">
-              Duration: {Math.round(event.duration / 1000)}s
-            </div>
+        <div className="p-2 bg-success/10 border border-success/20 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Check className="w-3 h-3 text-success" />
+            <span className="text-xs text-success">{event.tool} completed</span>
           </div>
-          <LazyDetails summary="Show details">
-            {() => renderJson(event.output)}
-          </LazyDetails>
+          <div className="text-xs text-muted-foreground">
+            Duration: {Math.round(event.duration / 1000)}s
+          </div>
+          <details className="mt-1">
+            <summary className="text-xs text-muted-foreground cursor-pointer">
+              Show details
+            </summary>
+            <div className="mt-1 text-xs text-muted-foreground max-h-40 overflow-y-auto">
+              <div className="mb-1">
+                Output: {JSON.stringify(event.output, null, 2)}
+              </div>
+            </div>
+          </details>
         </div>
       );
-    }
 
     case 'token':
       return (
-        <div className="text-sm text-gray-200 p-2 bg-blue-900/20 rounded border border-blue-800/30">
+        <div className="text-sm text-foreground/90 p-2 bg-info/10 rounded border border-info/20">
           {event.content}
           <span className="animate-pulse">|</span>
-        </div>
-      );
-
-    // Generation-specific events
-    case 'generation_progress':
-      return (
-        <div className="text-sm text-gray-400 p-2 bg-gray-800/30 rounded border-l-2 border-purple-500">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
-            <span>{event.message}</span>
-          </div>
-        </div>
-      );
-
-    case 'generation_complete':
-      return (
-        <div className="p-2 bg-green-900/20 border border-green-800/30 rounded-lg mt-2">
-          <div className="flex items-center gap-2">
-            <Check className="w-3.5 h-3.5 text-green-400" />
-            <span className="text-sm text-green-300 font-medium">
-              Code generation complete!
-            </span>
-          </div>
-        </div>
-      );
-
-    case 'generation_error':
-      return (
-        <div className="p-2 bg-red-900/20 border border-red-800/30 rounded-lg">
-          <div className="flex items-center gap-2">
-            <X className="w-3.5 h-3.5 text-red-400" />
-            <span className="text-sm text-red-300">Error: {event.message}</span>
-          </div>
-          {onRetry && (
-            <button
-              onClick={onRetry}
-              className="mt-2 px-3 py-1.5 text-xs bg-red-800/30 hover:bg-red-800/50 text-red-300 rounded border border-red-700/50 transition-colors"
-            >
-              Retry
-            </button>
-          )}
-        </div>
-      );
-
-    case 'retry_attempt':
-      return (
-        <div className="text-sm text-amber-400 p-2 bg-amber-900/10 rounded border-l-2 border-amber-500">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>
-              Retrying... (attempt {event.attempt}/{event.maxRetries})
-            </span>
-          </div>
         </div>
       );
 

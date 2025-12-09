@@ -45,7 +45,7 @@ export function CodeDiffView({
   };
 
   return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden bg-gray-900">
+    <div className="border border-border rounded-lg overflow-hidden bg-panel">
       {/* Diff Editor */}
       <div className="h-[400px]">
         <DiffEditor
@@ -87,17 +87,17 @@ export function CodeDiffView({
       </div>
 
       {/* Footer with centered action button */}
-      <div className="flex items-center justify-center bg-gray-800/50 border-t border-gray-700 px-4 py-2.5">
+      <div className="flex items-center justify-center bg-muted/50 border-t border-border px-4 py-2.5">
         {!isAccepted && (
           <button
             onClick={onAccept}
-            className="px-6 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-green-600/20 hover:shadow-green-600/30"
+            className="px-6 py-2 text-sm bg-success hover:bg-success/90 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-success/20 hover:shadow-success/30"
           >
             Accept Changes
           </button>
         )}
         {isAccepted && (
-          <div className="px-5 py-2 text-sm bg-gray-600 text-white rounded-lg flex items-center gap-2 font-medium">
+          <div className="px-5 py-2 text-sm bg-muted text-foreground rounded-lg flex items-center gap-2 font-medium">
             <Check className="w-4 h-4" />
             Applied
           </div>

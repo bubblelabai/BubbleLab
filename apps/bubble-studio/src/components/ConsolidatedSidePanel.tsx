@@ -59,9 +59,9 @@ export function ConsolidatedSidePanel() {
   ];
 
   return (
-    <div className="h-full flex flex-col bg-[#1a1a1a] border-l border-[#30363d]">
+    <div className="h-full flex flex-col bg-card border-l border-border">
       {/* Tab Bar */}
-      <div className="flex border-b border-[#30363d] bg-[#0f1115]">
+      <div className="flex border-b border-border bg-panel">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -74,8 +74,8 @@ export function ConsolidatedSidePanel() {
               onClick={() => setConsolidatedPanelTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 border-b-2 ${
                 isActive
-                  ? 'border-white text-white bg-[#1a1a1a]'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-[#161b22]'
+                  ? 'border-foreground text-foreground bg-card'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               {isPearl ? (
@@ -88,8 +88,8 @@ export function ConsolidatedSidePanel() {
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     tab.badge === 'running'
-                      ? 'bg-gray-700 text-white animate-pulse'
-                      : 'bg-gray-700/50 text-gray-400'
+                      ? 'bg-muted text-foreground animate-pulse'
+                      : 'bg-muted/50 text-muted-foreground'
                   }`}
                 >
                   {tab.badge === 'running' ? '●' : tab.badge}
@@ -127,10 +127,10 @@ export function ConsolidatedSidePanel() {
               />
             ) : (
               <div className="h-full flex items-center justify-center">
-                <div className="text-center text-gray-500">
+                <div className="text-center text-muted-foreground">
                   <Activity className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No flow selected</p>
-                  <p className="text-xs text-gray-600 mt-1">
+                  <p className="text-xs text-muted-foreground/70 mt-1">
                     Select a flow to view execution output
                   </p>
                 </div>
