@@ -6,6 +6,7 @@ import { type CreateEmailOptions, Resend } from 'resend';
 
 // Define email address schema
 const EmailAddressSchema = z.string().email('Invalid email address format');
+const SYSTEM_DOMAINS = ['bubblelab.ai', 'hello.bubblelab.ai'];
 
 // Define attachment schema
 const AttachmentSchema = z.object({
@@ -222,8 +223,7 @@ export class ResendBubble<
    * System credentials use bubblelab.ai domain and should skip domain validation.
    */
   private isSystemDomain(domain: string): boolean {
-    const systemDomains = ['bubblelab.ai', 'hello.bubblelab.ai'];
-    return systemDomains.includes(domain.toLowerCase());
+    return SYSTEM_DOMAINS.includes(domain.toLowerCase());
   }
 
   /**
@@ -388,7 +388,17 @@ export class ResendBubble<
 
     // Enforce domain validation - ensure the from domain is verified
     if (from) {
-      await this.validateFromDomain(from);
+      try {
+        await this.validateFromDomain(from);
+      } catch (error) {
+        // Don't throw error if account cannot access validate domain
+        if (
+          error instanceof Error &&
+          !error.message.includes('restricted_api_key')
+        ) {
+          throw error;
+        }
+      }
     }
     // Build the email payload according to Resend API specification
     const emailPayload: CreateEmailOptions = {
@@ -415,6 +425,16 @@ export class ResendBubble<
 
     const { data, error } = await this.resend.emails.send(emailPayload);
 
+    if (
+      error?.message &&
+      SYSTEM_DOMAINS.some((domain) => error.message.includes(domain))
+    ) {
+      return {
+        operation: 'send_email',
+        success: false,
+        error: `Only domains from ${SYSTEM_DOMAINS.join(',')} are supported for. Use your own resend credentials to send from ${from} or remove the 'from' field from the resend bubble.`,
+      } as Extract<ResendResult, { operation: 'send_email' }>;
+    }
     if (error) {
       throw new Error(`Failed to send email: ${JSON.stringify(error)}`);
     }
