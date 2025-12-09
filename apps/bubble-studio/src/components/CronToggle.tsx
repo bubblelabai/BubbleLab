@@ -125,7 +125,7 @@ export function CronToggle({
   }
 
   return (
-    <div className="bg-[#252525] rounded-lg p-4 border border-neutral-700">
+    <div className="bg-card rounded-lg p-4 border border-border">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div

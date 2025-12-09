@@ -256,7 +256,7 @@ function TruncatedContent({
           {fullContentFactory()}
           <button
             onClick={() => setIsExpanded(false)}
-            className="mt-2 text-xs text-gray-400 hover:text-white underline cursor-pointer"
+            className="mt-2 text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
           >
             Show less ({sizeKB}KB)
           </button>
@@ -264,12 +264,12 @@ function TruncatedContent({
       ) : (
         <>
           {previewContent}
-          <div className="mt-2 text-xs text-yellow-400 italic">
+          <div className="mt-2 text-xs text-warning italic">
             ... (preview only, {previewKB}KB of {sizeKB}KB total)
           </div>
           <button
             onClick={() => setIsExpanded(true)}
-            className="mt-1 text-xs text-gray-400 hover:text-white underline cursor-pointer"
+            className="mt-1 text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
           >
             Show full content ({sizeKB}KB)
           </button>
@@ -333,7 +333,7 @@ function renderStringValue(
   // Early bailout: Skip expensive parsing for very large JSON strings
   if (originalLength > MAX_JSON_STRING_LENGTH) {
     const previewString = (
-      <span className="text-gray-200">
+      <span className="text-foreground/90">
         "{renderStringWithLinks(displayValue)}"
       </span>
     );
@@ -341,7 +341,7 @@ function renderStringValue(
     return (
       <div>
         {previewString}
-        <div className="mt-2 text-xs text-yellow-400 italic">
+        <div className="mt-2 text-xs text-warning italic">
           Content too large to parse ({sizeKB}KB). Showing preview only.
         </div>
       </div>
@@ -384,7 +384,7 @@ function renderStringValue(
     // Skip expensive markdown parsing for very large content
     if (originalLength > MAX_MARKDOWN_LENGTH) {
       const previewString = (
-        <span className="text-gray-200">
+        <span className="text-foreground/90">
           "{renderStringWithLinks(displayValue)}"
         </span>
       );
@@ -392,7 +392,7 @@ function renderStringValue(
       return (
         <div>
           {previewString}
-          <div className="mt-2 text-xs text-yellow-400 italic">
+          <div className="mt-2 text-xs text-warning italic">
             Markdown content too large to render ({sizeKB}KB). Showing preview
             only.
           </div>
@@ -458,13 +458,13 @@ function renderStringValue(
       }: React.ComponentProps<'code'>) => {
         const isInlineCode = !className;
         return isInlineCode ? (
-          <code {...props} className="bg-gray-800 px-1 py-0.5 rounded text-xs">
+          <code {...props} className="bg-muted px-1 py-0.5 rounded text-xs">
             {children}
           </code>
         ) : (
           <code
             {...props}
-            className="block bg-gray-800 p-2 rounded my-2 overflow-x-auto"
+            className="block bg-muted p-2 rounded my-2 overflow-x-auto"
           >
             {children}
           </code>
@@ -507,7 +507,7 @@ function renderStringValue(
     // Skip expensive HTML rendering for very large content
     if (originalLength > MAX_HTML_LENGTH) {
       const previewString = (
-        <span className="text-gray-200">
+        <span className="text-foreground/90">
           "{renderStringWithLinks(displayValue)}"
         </span>
       );
@@ -515,7 +515,7 @@ function renderStringValue(
       return (
         <div>
           {previewString}
-          <div className="mt-2 text-xs text-yellow-400 italic">
+          <div className="mt-2 text-xs text-warning italic">
             HTML content too large to render ({sizeKB}KB). Showing preview only.
           </div>
         </div>
@@ -564,10 +564,10 @@ function renderStringValue(
 
   // Regular string - detect and highlight URLs, then truncate if too long
   const stringWithLinksFactory = () => (
-    <span className="text-gray-200">"{renderStringWithLinks(value)}"</span>
+    <span className="text-foreground/90">"{renderStringWithLinks(value)}"</span>
   );
   const previewStringWithLinks = (
-    <span className="text-gray-200">
+    <span className="text-foreground/90">
       "{renderStringWithLinks(displayValue)}"
     </span>
   );
@@ -612,21 +612,21 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
       return (
         <div>
           {/* Warning message */}
-          <div className="p-4 border border-yellow-600/50 rounded bg-yellow-900/10 mb-4">
-            <div className="text-yellow-400 font-semibold mb-2">
+          <div className="p-4 border border-warning/50 rounded bg-warning/10 mb-4">
+            <div className="text-warning font-semibold mb-2">
               Content too large to render
             </div>
-            <div className="text-xs text-yellow-300/80 mb-2">
+            <div className="text-xs text-warning/80 mb-2">
               Estimated size: {sizeKB}KB (limit: {limitKB}KB)
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-muted-foreground">
               This content is too large to render safely.
             </div>
           </div>
 
           {/* Preview content */}
           <div className="opacity-75">
-            <div className="text-xs text-gray-500 mb-2 italic">
+            <div className="text-xs text-muted-foreground/70 mb-2 italic">
               Preview (trimmed):
             </div>
             {renderValue(previewData, depth + 1)}
@@ -637,7 +637,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   if (value === null || value === undefined) {
-    return <span className="text-red-300">null</span>;
+    return <span className="text-destructive/80">null</span>;
   }
 
   if (typeof value === 'string') {
@@ -645,16 +645,16 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   if (typeof value === 'number') {
-    return <span className="text-white">{value}</span>;
+    return <span className="text-foreground">{value}</span>;
   }
 
   if (typeof value === 'boolean') {
-    return <span className="text-gray-100">{String(value)}</span>;
+    return <span className="text-foreground/90">{String(value)}</span>;
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <span className="text-gray-400">[]</span>;
+      return <span className="text-muted-foreground">[]</span>;
     }
 
     // Limit array items if too many
@@ -662,15 +662,15 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
     const itemsToShow = shouldLimit ? MAX_ARRAY_ITEMS : value.length;
 
     return (
-      <div className="ml-4 border-l border-gray-700 pl-2">
+      <div className="ml-4 border-l border-border pl-2">
         {value.slice(0, itemsToShow).map((item, index) => (
           <div key={index} className="my-1">
-            <span className="text-gray-500">[{index}]</span>{' '}
+            <span className="text-muted-foreground/70">[{index}]</span>{' '}
             {renderValue(item, depth + 1)}
           </div>
         ))}
         {shouldLimit && (
-          <div className="my-1 text-xs text-yellow-400 italic">
+          <div className="my-1 text-xs text-warning italic">
             ... ({value.length - MAX_ARRAY_ITEMS} more items)
           </div>
         )}
@@ -681,13 +681,13 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   if (typeof value === 'object') {
     const entries = Object.entries(value);
     if (entries.length === 0) {
-      return <span className="text-gray-400">{'{}'}</span>;
+      return <span className="text-muted-foreground">{'{}'}</span>;
     }
 
     // Limit depth and object keys
     if (depth >= MAX_DEPTH) {
       return (
-        <span className="text-gray-400 text-xs italic">
+        <span className="text-muted-foreground text-xs italic">
           (max depth reached)
         </span>
       );
@@ -697,11 +697,11 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
     const keysToShow = shouldLimit ? MAX_OBJECT_KEYS : entries.length;
 
     return (
-      <div className="ml-4 border-l border-gray-700 pl-2 py-1">
+      <div className="ml-4 border-l border-border pl-2 py-1">
         {entries.slice(0, keysToShow).map(([key, val]) => (
           <div key={key} className="my-1.5">
-            <span className="text-gray-400">"{key}"</span>
-            <span className="text-gray-500">:</span>{' '}
+            <span className="text-muted-foreground">"{key}"</span>
+            <span className="text-muted-foreground/70">:</span>{' '}
             {typeof val === 'string' &&
             (isJSONString(val) || isMarkdown(val) || isHTML(val)) ? (
               <div className="mt-1 -ml-2">
@@ -713,7 +713,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
           </div>
         ))}
         {shouldLimit && (
-          <div className="my-1 text-xs text-yellow-400 italic">
+          <div className="my-1 text-xs text-warning italic">
             ... ({entries.length - MAX_OBJECT_KEYS} more keys)
           </div>
         )}
@@ -722,7 +722,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   // Fallback
-  return <span className="text-gray-300">{String(value)}</span>;
+  return <span className="text-foreground/80">{String(value)}</span>;
 }
 
 /**

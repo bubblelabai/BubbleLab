@@ -193,23 +193,23 @@ export function WebViewWarning() {
 
   // Show full-screen warning
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full bg-[#1a1a1a] border border-[#30363d] rounded-2xl p-8 shadow-2xl">
+    <div className="fixed inset-0 z-[9999] bg-background flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full bg-card border border-border rounded-2xl p-8 shadow-2xl">
         {/* Header with Bubble Lab branding */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-info rounded-full mb-4">
             <ExclamationTriangleIcon className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2 font-sans">
+          <h1 className="text-3xl font-bold text-foreground mb-2 font-sans">
             Browser Not Supported
           </h1>
-          <p className="text-gray-400 text-lg font-sans">
+          <p className="text-muted-foreground text-lg font-sans">
             Bubble Lab does not support this browser
           </p>
         </div>
 
-        <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-xl p-4 mb-6">
-          <p className="text-yellow-200 text-sm font-sans">
+        <div className="bg-warning/20 border border-warning/50 rounded-xl p-4 mb-6">
+          <p className="text-warning text-sm font-sans">
             <strong>In-app browsers are not supported.</strong> Please use a
             full browser like Chrome, Safari, or Firefox for the best
             experience.
@@ -217,50 +217,50 @@ export function WebViewWarning() {
         </div>
 
         <div className="space-y-4 mb-8">
-          <h2 className="text-lg font-semibold text-white font-sans">
+          <h2 className="text-lg font-semibold text-foreground font-sans">
             How to access Bubble Lab:
           </h2>
 
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] rounded-lg border border-[#30363d]">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+            <div className="flex items-start gap-3 p-4 bg-background rounded-lg border border-border">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-info flex items-center justify-center text-white font-bold text-sm">
                 1
               </div>
               <div className="flex-1">
-                <p className="text-white font-medium mb-1 font-sans">
+                <p className="text-foreground font-medium mb-1 font-sans">
                   Open in your device's browser
                 </p>
-                <p className="text-gray-400 text-sm font-sans">
+                <p className="text-muted-foreground text-sm font-sans">
                   Look for a menu button (⋮ or ⋯) and select "Open in Browser"
                   or "Open in Safari/Chrome"
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] rounded-lg border border-[#30363d]">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+            <div className="flex items-start gap-3 p-4 bg-background rounded-lg border border-border">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-info flex items-center justify-center text-white font-bold text-sm">
                 2
               </div>
               <div className="flex-1">
-                <p className="text-white font-medium mb-1 font-sans">
+                <p className="text-foreground font-medium mb-1 font-sans">
                   Copy the URL and open in a browser
                 </p>
-                <p className="text-gray-400 text-sm font-sans">
+                <p className="text-muted-foreground text-sm font-sans">
                   Copy this page's URL and paste it directly in Chrome, Safari,
                   or Firefox
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-4 bg-[#0a0a0a] rounded-lg border border-[#30363d]">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+            <div className="flex items-start gap-3 p-4 bg-background rounded-lg border border-border">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-info flex items-center justify-center text-white font-bold text-sm">
                 3
               </div>
               <div className="flex-1">
-                <p className="text-white font-medium mb-1 font-sans">
+                <p className="text-foreground font-medium mb-1 font-sans">
                   Use a desktop browser
                 </p>
-                <p className="text-gray-400 text-sm font-sans">
+                <p className="text-muted-foreground text-sm font-sans">
                   For the best experience, access Bubble Lab from a desktop
                   browser
                 </p>
@@ -272,22 +272,24 @@ export function WebViewWarning() {
         <div className="space-y-3">
           <button
             onClick={handleOpenExternal}
-            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors font-sans shadow-lg hover:shadow-xl"
+            className="w-full px-6 py-3 bg-info hover:bg-info/90 text-white font-medium rounded-lg transition-colors font-sans shadow-lg hover:shadow-xl"
           >
             Open in External Browser
           </button>
 
           {showCopyUrl && (
             <div className="space-y-2">
-              <div className="p-3 bg-[#0a0a0a] border border-[#30363d] rounded-lg">
-                <p className="text-xs text-gray-400 mb-2 font-sans">URL:</p>
-                <p className="text-sm text-gray-300 break-all font-mono">
+              <div className="p-3 bg-background border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground mb-2 font-sans">
+                  URL:
+                </p>
+                <p className="text-sm text-foreground/80 break-all font-mono">
                   {currentUrl}
                 </p>
               </div>
               <button
                 onClick={handleCopyUrl}
-                className="w-full px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors font-sans"
+                className="w-full px-6 py-3 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-lg transition-colors font-sans"
               >
                 Copy URL
               </button>
@@ -299,7 +301,7 @@ export function WebViewWarning() {
               // Allow user to dismiss (they might want to try anyway)
               setIsWebViewEnv(false);
             }}
-            className="w-full text-gray-400 hover:text-gray-300 text-sm underline font-sans py-2"
+            className="w-full text-muted-foreground hover:text-foreground/80 text-sm underline font-sans py-2"
           >
             Continue anyway (limited functionality)
           </button>

@@ -66,15 +66,15 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
   // Helper to get color classes based on usage level
   const getProgressColor = (percentage: number): string => {
-    if (percentage >= 100) return 'bg-red-500';
-    if (percentage >= 80) return 'bg-yellow-500';
-    return 'bg-blue-500';
+    if (percentage >= 100) return 'bg-destructive';
+    if (percentage >= 80) return 'bg-warning';
+    return 'bg-info';
   };
 
   const getTextColor = (percentage: number): string => {
-    if (percentage >= 100) return 'text-red-400';
-    if (percentage >= 80) return 'text-yellow-400';
-    return 'text-gray-400';
+    if (percentage >= 100) return 'text-destructive';
+    if (percentage >= 80) return 'text-warning';
+    return 'text-muted-foreground';
   };
 
   // Format cost to 4 decimal places
@@ -139,7 +139,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     <>
       <div className="relative group">
         <div
-          className={`w-full rounded-lg bg-[#1a1a1a] border border-white/5 ${
+          className={`w-full rounded-lg bg-card border border-border/30 ${
             isOpen ? 'p-3' : 'justify-center p-2'
           }`}
         >
@@ -147,13 +147,13 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-200 font-medium">
+                  <div className="text-sm text-foreground/90 font-medium">
                     Plan Usage Limits
                   </div>
-                  <span className="text-xs text-gray-400 font-normal">
+                  <span className="text-xs text-muted-foreground font-normal">
                     · {subscription.planDisplayName}
                   </span>
-                  <span className="text-xs text-gray-400 font-normal">
+                  <span className="text-xs text-muted-foreground font-normal">
                     · Resets {formatResetDate(subscription.usage.resetDate)}
                   </span>
                 </div>
@@ -191,22 +191,22 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               <div
                 className={`mb-3 p-3 rounded-lg ${
                   isUsageExceeded
-                    ? 'bg-red-500/5 border border-red-500/30'
+                    ? 'bg-destructive/5 border border-destructive/30'
                     : isUsageNearLimit
-                      ? 'bg-yellow-500/5 border border-yellow-500/30'
+                      ? 'bg-warning/5 border border-warning/30'
                       : ''
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
-                    <div className="text-xs text-gray-400 font-medium">
+                    <div className="text-xs text-muted-foreground font-medium">
                       Monthly Credit Usage
                     </div>
                     {isUsageExceeded && (
                       <div className="relative group/credit-tooltip">
-                        <Info className="w-3 h-3 text-red-400 cursor-help" />
-                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
-                          <span className="font-medium text-red-300">
+                        <Info className="w-3 h-3 text-destructive cursor-help" />
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                          <span className="font-medium text-destructive">
                             {limitMessages.credits.title}
                           </span>{' '}
                           {limitMessages.credits.message}
@@ -215,7 +215,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-muted-foreground">
                       {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
                     </div>
                     <span
@@ -225,7 +225,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     </span>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 rounded-full ${getProgressColor(percentage)}`}
                     style={{ width: `${percentage}%` }}
@@ -234,12 +234,12 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               </div>
 
               {/* Divider and Details button */}
-              <div className="pt-2 border-t border-white/5">
+              <div className="pt-2 border-t border-border/30">
                 <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={() => setIsDetailsModalOpen(true)}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-300 font-medium transition-colors"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80 font-medium transition-colors"
                   >
                     View Detailed Breakdown
                     <ArrowRight className="w-3 h-3" />
@@ -249,8 +249,8 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center">
-                <span className="text-[10px] font-semibold text-gray-400">
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                <span className="text-[10px] font-semibold text-muted-foreground">
                   {formatCost(totalCost)}
                 </span>
               </div>
@@ -265,20 +265,20 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               {/* Execution count card */}
               <div className="flex-1">
                 <div
-                  className={`rounded-lg bg-[#1a1a1a] border p-3 ${
+                  className={`rounded-lg bg-card border p-3 ${
                     isExecutionExceeded
-                      ? 'border-red-500/30 bg-red-500/5'
+                      ? 'border-destructive/30 bg-destructive/5'
                       : isExecutionNearLimit
-                        ? 'border-yellow-500/30 bg-yellow-500/5'
-                        : 'border-white/5'
+                        ? 'border-warning/30 bg-warning/5'
+                        : 'border-border/30'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col gap-0.5">
-                      <div className="text-xs text-gray-400 font-medium">
+                      <div className="text-xs text-muted-foreground font-medium">
                         Monthly Executions
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-muted-foreground/70">
                         {subscription.planDisplayName} · Resets{' '}
                         {formatResetDate(subscription.usage.resetDate)}
                       </div>
@@ -290,25 +290,25 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1.5 mb-2">
-                    <div className="text-lg font-semibold text-white">
+                    <div className="text-lg font-semibold text-foreground">
                       {numberOfExecutions.toLocaleString()}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground/70">
                       / {executionLimit.toLocaleString()}
                     </div>
                   </div>
-                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${getProgressColor(executionPercentage)}`}
                       style={{ width: `${executionPercentage}%` }}
                     />
                   </div>
                   {isExecutionExceeded && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px] text-red-400 relative group/exec-tooltip">
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-destructive relative group/exec-tooltip">
                       <AlertCircle className="w-3 h-3" />
                       <span className="cursor-help">Limit reached</span>
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
-                        <span className="font-medium text-red-300">
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                        <span className="font-medium text-destructive">
                           {limitMessages.executions.title}
                         </span>{' '}
                         {limitMessages.executions.message}
@@ -321,20 +321,20 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               {/* Active Flows card */}
               <div className="flex-1">
                 <div
-                  className={`rounded-lg bg-[#1a1a1a] border p-3 ${
+                  className={`rounded-lg bg-card border p-3 ${
                     isActiveFlowsExceeded
-                      ? 'border-red-500/30 bg-red-500/5'
+                      ? 'border-destructive/30 bg-destructive/5'
                       : isActiveFlowsNearLimit
-                        ? 'border-yellow-500/30 bg-yellow-500/5'
-                        : 'border-white/5'
+                        ? 'border-warning/30 bg-warning/5'
+                        : 'border-border/30'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex flex-col gap-0.5">
-                      <div className="text-xs text-gray-400 font-medium">
+                      <div className="text-xs text-muted-foreground font-medium">
                         Total Active Flows (Webhooks + Cron Schedules)
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-muted-foreground/70">
                         {subscription.planDisplayName}
                       </div>
                     </div>
@@ -345,25 +345,25 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1.5 mb-2">
-                    <div className="text-lg font-semibold text-white">
+                    <div className="text-lg font-semibold text-foreground">
                       {numberOfActiveWebhooksOrCronSchedules}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground/70">
                       / {webHookLimit}
                     </div>
                   </div>
-                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${getProgressColor(activeFlowsPercentage)}`}
                       style={{ width: `${activeFlowsPercentage}%` }}
                     />
                   </div>
                   {isActiveFlowsExceeded && (
-                    <div className="mt-2 flex items-center gap-1 text-[10px] text-red-400 relative group/flow-tooltip">
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-destructive relative group/flow-tooltip">
                       <AlertCircle className="w-3 h-3" />
                       <span className="cursor-help">Limit reached</span>
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-[#0f1115] border border-red-500/30 rounded-lg text-[10px] text-gray-300 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
-                        <span className="font-medium text-red-300">
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                        <span className="font-medium text-destructive">
                           {limitMessages.activeFlows.title}
                         </span>{' '}
                         {limitMessages.activeFlows.message}
@@ -378,18 +378,18 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
         {/* Tooltip when collapsed */}
         {!isOpen && (
-          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-panel px-2 py-1 text-xs text-foreground/90 opacity-0 group-hover:opacity-100 transition-opacity z-50">
             <div className="font-semibold">
               {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
             </div>
-            <div className="text-[10px] text-gray-400">
+            <div className="text-[10px] text-muted-foreground">
               Total Executions: {numberOfExecutions} / {executionLimit}
             </div>
-            <div className="text-[10px] text-gray-400">
+            <div className="text-[10px] text-muted-foreground">
               Active Flows: {numberOfActiveWebhooksOrCronSchedules} /{' '}
               {webHookLimit}
             </div>
-            <div className="text-[10px] text-gray-400">
+            <div className="text-[10px] text-muted-foreground">
               {subscription.planDisplayName} · Resets{' '}
               {formatResetDate(subscription.usage.resetDate)}
             </div>

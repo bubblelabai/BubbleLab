@@ -154,12 +154,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#0f1115]">
+    <div className="h-full flex flex-col bg-panel">
       {/* Header */}
-      <div className="flex-shrink-0 border-b border-[#30363d] p-4">
+      <div className="flex-shrink-0 border-b border-border p-4">
         <div className="flex items-center gap-3">
-          <ClockIcon className="w-5 h-5 text-gray-400" />
-          <h3 className="text-sm font-medium text-gray-100">
+          <ClockIcon className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-sm font-medium text-foreground">
             Execution History
           </h3>
         </div>
@@ -169,16 +169,16 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex-1 overflow-y-auto thin-scrollbar p-4">
           {historyLoading ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-info mx-auto mb-2"></div>
                 <p className="text-sm">Loading execution history...</p>
               </div>
             </div>
           ) : historyError ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
-                <ExclamationCircleIcon className="h-8 w-8 text-red-400 mx-auto mb-2" />
+                <ExclamationCircleIcon className="h-8 w-8 text-destructive mx-auto mb-2" />
                 <p className="text-lg mb-2">Failed to load history</p>
                 <p className="text-sm mb-4">{historyError.message}</p>
                 <button
@@ -187,16 +187,16 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                     e.stopPropagation();
                     refetchHistory();
                   }}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                  className="px-3 py-1 bg-info hover:bg-info/80 text-white text-sm rounded transition-colors"
                 >
                   Retry
                 </button>
               </div>
             </div>
           ) : !executionHistory || executionHistory.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-muted-foreground">
               <div className="text-center">
-                <ClockIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <ClockIcon className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-lg mb-2">No execution history</p>
                 <p className="text-sm">
                   {!flowId
@@ -210,7 +210,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
               {executionHistory.map((execution) => (
                 <div
                   key={execution.id}
-                  className="rounded-lg border border-[#30363d] bg-[#21262d] p-4"
+                  className="rounded-lg border border-border bg-muted p-4"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-gray-400">
+                          <span className="font-mono text-sm text-muted-foreground">
                             #{execution.id}
                           </span>
                           <span
@@ -246,7 +246,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                               : execution.status}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           Started: {formatTimestamp(execution.startedAt)}
                           {execution.completedAt && (
                             <span className="ml-2">
@@ -287,12 +287,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                   {execution.result && (
                     <details className="mb-3">
                       <summary
-                        className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
+                        className="text-xs text-info cursor-pointer hover:text-info/80 font-medium mb-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         Execution Result
                       </summary>
-                      <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
+                      <pre className="json-output text-xs p-3 bg-background border border-border rounded-md overflow-x-auto whitespace-pre leading-relaxed">
                         <JsonRenderer
                           data={execution.result}
                           flowId={flowId}
@@ -308,12 +308,12 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                     Object.keys(execution.payload).length > 0 && (
                       <details className="mb-3">
                         <summary
-                          className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
+                          className="text-xs text-info cursor-pointer hover:text-info/80 font-medium mb-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Execution Payload
                         </summary>
-                        <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                        <pre className="json-output text-xs p-3 bg-background border border-border rounded-md whitespace-pre-wrap break-words leading-relaxed">
                           <JsonRenderer
                             data={execution.payload}
                             flowId={flowId}
@@ -331,8 +331,10 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
 
         {/* Pagination Controls */}
         {executionHistory && executionHistory.length > 0 && (
-          <div className="flex-shrink-0 border-t border-[#30363d] bg-[#0f1115] px-4 py-3 flex items-center justify-between">
-            <div className="text-xs text-gray-400">Page {currentPage}</div>
+          <div className="flex-shrink-0 border-t border-border bg-panel px-4 py-3 flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Page {currentPage}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -340,8 +342,8 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                 disabled={!hasPreviousPage || historyLoading}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
                   hasPreviousPage && !historyLoading
-                    ? 'bg-[#21262d] text-gray-300 hover:bg-[#30363d] border border-[#30363d]'
-                    : 'bg-[#21262d] text-gray-600 cursor-not-allowed border border-[#30363d] opacity-50'
+                    ? 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                    : 'bg-muted text-muted-foreground/50 cursor-not-allowed border border-border opacity-50'
                 }`}
               >
                 <ChevronLeftIcon className="w-4 h-4" />
@@ -353,8 +355,8 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                 disabled={!hasNextPage || historyLoading}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
                   hasNextPage && !historyLoading
-                    ? 'bg-[#21262d] text-gray-300 hover:bg-[#30363d] border border-[#30363d]'
-                    : 'bg-[#21262d] text-gray-600 cursor-not-allowed border border-[#30363d] opacity-50'
+                    ? 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                    : 'bg-muted text-muted-foreground/50 cursor-not-allowed border border-border opacity-50'
                 }`}
               >
                 Next

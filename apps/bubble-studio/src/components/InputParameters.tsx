@@ -462,7 +462,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
             }}
             onBlur={saveFieldName}
             autoFocus
-            className="text-sm font-medium text-gray-200 bg-[#0d1117] border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="text-sm font-medium text-foreground bg-background border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-info/20"
           />
           <button
             type="button"
@@ -486,14 +486,14 @@ export const InputParameters: React.FC<InputParametersProps> = ({
 
     return (
       <div className={`flex items-center gap-2 group ${className}`}>
-        <label className="block text-sm font-medium text-gray-200">
+        <label className="block text-sm font-medium text-foreground">
           {displayName}
           {required && <span className="text-red-400 ml-1">*</span>}
         </label>
         <button
           type="button"
           onClick={() => startEditingFieldName(fieldName)}
-          className="opacity-0 group-hover:opacity-100 text-xs text-gray-400 hover:text-gray-300 transition-all duration-200 p-1 rounded-full hover:bg-[#21262d]"
+          className="opacity-0 group-hover:opacity-100 text-xs text-muted-foreground hover:text-foreground/80 transition-all duration-200 p-1 rounded-full hover:bg-muted"
           title="Edit field name"
         >
           ✏️
@@ -592,7 +592,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
               fieldName={field.name}
               required={field.required}
             />
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {isFixedSize
                 ? `(${field.minItems} items required)`
                 : field.minItems && field.maxItems
@@ -617,14 +617,14 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         </div>
 
         {field.description && (
-          <p className="text-xs text-gray-400">{field.description}</p>
+          <p className="text-xs text-muted-foreground">{field.description}</p>
         )}
 
         <div className="space-y-3 pl-4 border-l-2 border-gray-700">
           {Array.from({ length: itemCount }, (_, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-300">
+                <span className="text-xs font-medium text-foreground/80">
                   Item {index + 1}
                 </span>
                 {!isFixedSize && canRemove && itemCount > 1 && (
@@ -651,7 +651,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
     // Handle array of objects (like the images case)
     if (field.items.type === 'object' && field.items.properties) {
       return (
-        <div className="space-y-3 bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+        <div className="space-y-3 bg-background border border-border rounded-lg p-4">
           {Object.entries(field.items.properties).map(
             ([propName, propSchema]) => {
               const fullFieldName = `${field.name}[${itemIndex}].${propName}`;
@@ -670,7 +670,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                       required={
                         field.items?.required?.includes(propName) || false
                       }
-                      className="text-xs font-medium text-gray-300"
+                      className="text-xs font-medium text-foreground/80"
                     />
                     <button
                       type="button"
@@ -686,7 +686,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                   </div>
 
                   {propSchema.description && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {propSchema.description}
                     </p>
                   )}
@@ -702,13 +702,13 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                             handleFileUpload(fullFieldName, file);
                           }
                         }}
-                        className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-[#30363d] rounded-lg bg-[#0d1117] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                        className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
                         accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
                       />
                       {fileNames[fullFieldName] && (
-                        <div className="flex items-center gap-2 text-xs bg-[#161b22] px-3 py-2 rounded-lg border border-[#30363d]">
+                        <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                           <span className="text-green-400">✅</span>
-                          <span className="text-gray-300">
+                          <span className="text-foreground/80">
                             {fileNames[fullFieldName]}
                           </span>
                           <span className="text-green-400 ml-auto">Ready</span>
@@ -753,7 +753,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                       placeholder={
                         propSchema.description || `Enter ${propName}...`
                       }
-                      className="w-full px-3 py-2 bg-[#161b22] border border-[#30363d] rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
+                      className="w-full px-3 py-2 bg-muted border border-border rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-info focus:border-info transition-all duration-200 text-sm"
                     />
                   )}
                 </div>
@@ -771,7 +771,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">Value</span>
+          <span className="text-xs text-muted-foreground">Value</span>
           <button
             type="button"
             onClick={() => toggleInputType(`${field.name}[${itemIndex}]`)}
@@ -796,13 +796,13 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                   handleFileUpload(`${field.name}[${itemIndex}]`, file);
                 }
               }}
-              className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-[#30363d] rounded-lg bg-[#0d1117] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+              className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
               accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
             />
             {fileNames[`${field.name}[${itemIndex}]`] && (
-              <div className="flex items-center gap-2 text-xs bg-[#161b22] px-3 py-2 rounded-lg border border-[#30363d]">
+              <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                 <span className="text-green-400">✅</span>
-                <span className="text-gray-300">
+                <span className="text-foreground/80">
                   {fileNames[`${field.name}[${itemIndex}]`]}
                 </span>
                 <span className="text-green-400 ml-auto">Ready</span>
@@ -828,7 +828,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
               handleArrayItemChange(field.name, itemIndex, newValue);
             }}
             placeholder={field.items?.type || 'Enter value...'}
-            className="w-full px-3 py-2 bg-[#161b22] border border-[#30363d] rounded text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
+            className="w-full px-3 py-2 bg-muted border border-border rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-info focus:border-info transition-all duration-200 text-sm"
           />
         )}
       </div>
@@ -865,7 +865,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         </div>
 
         {field.description && (
-          <p className="text-xs text-gray-400">{field.description}</p>
+          <p className="text-xs text-muted-foreground">{field.description}</p>
         )}
 
         {isFileInput ? (
@@ -880,13 +880,15 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                   handleFileUpload(field.name, file);
                 }
               }}
-              className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-[#30363d] rounded-lg bg-[#0d1117] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+              className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
               accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
             />
             {fileNames[field.name] && (
-              <div className="flex items-center gap-2 text-xs bg-[#161b22] px-3 py-2 rounded-lg border border-[#30363d]">
+              <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                 <span className="text-green-400">✅</span>
-                <span className="text-gray-300">{fileNames[field.name]}</span>
+                <span className="text-foreground/80">
+                  {fileNames[field.name]}
+                </span>
                 <span className="text-green-400 ml-auto">Ready</span>
               </div>
             )}
@@ -910,7 +912,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
               handleInputChange(field.name, newValue);
             }}
             placeholder={field.description || `Enter ${field.name}...`}
-            className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-info focus:border-info transition-all duration-200"
             required={field.required}
           />
         )}
@@ -919,17 +921,17 @@ export const InputParameters: React.FC<InputParametersProps> = ({
   };
 
   return (
-    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 hover:border-gray-600 transition-all duration-200">
+    <div className="bg-muted border border-border rounded-lg p-6 hover:border-gray-600 transition-all duration-200">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg">📝</span>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               Input Parameters
             </h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Configure inputs for your flow execution
             </p>
           </div>
@@ -937,7 +939,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         <button
           type="button"
           onClick={clearSavedInputs}
-          className="px-3 py-2 text-xs text-gray-400 hover:text-gray-200 hover:bg-[#21262d] rounded-lg border border-[#30363d] hover:border-gray-500 transition-all duration-200 flex items-center gap-1"
+          className="px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border hover:border-gray-500 transition-all duration-200 flex items-center gap-1"
           title="Clear all saved input values"
         >
           <span>🗑️</span>
@@ -948,7 +950,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
       {schemaFields.length > 0 ? (
         <div className="space-y-6">
           <div className="flex flex-col gap-2">
-            <div className="text-xs text-gray-500 bg-[#0d1117] border border-[#30363d] rounded-lg p-3 flex items-center gap-2">
+            <div className="text-xs text-muted-foreground bg-background border border-border rounded-lg p-3 flex items-center gap-2">
               <span className="text-blue-400">💡</span>
               <span>
                 Each field can be switched between text input and file upload
@@ -967,14 +969,14 @@ export const InputParameters: React.FC<InputParametersProps> = ({
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-[#0d1117] border border-[#30363d] rounded-lg">
+        <div className="text-center py-12 bg-background border border-border rounded-lg">
           <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl text-gray-500">⚡</span>
+            <span className="text-2xl text-muted-foreground">⚡</span>
           </div>
-          <h3 className="text-lg font-medium text-gray-100 mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             No input parameters required
           </h3>
-          <p className="text-sm text-gray-400 mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             This flow can be executed directly without additional inputs
           </p>
           {onExecute && (

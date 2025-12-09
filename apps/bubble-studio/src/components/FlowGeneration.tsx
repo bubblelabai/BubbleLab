@@ -21,7 +21,7 @@ const LoadingDots: React.FC = () => {
 
 // Helper function to render icons with text
 const renderIconWithText = (icon: React.ReactNode, text: string) => (
-  <span className="flex items-center gap-1 text-gray-400">
+  <span className="flex items-center gap-1 text-muted-foreground">
     <span className="w-4 h-4">{icon}</span>
     <span>{text}</span>
   </span>
@@ -54,10 +54,10 @@ export const FlowGeneration: React.FC<FlowGenerationProps> = ({
       <div className="h-full flex flex-col min-h-0">
         <div
           ref={outputRef}
-          className="flex-1 min-h-0 p-4 overflow-auto thin-scrollbar bg-[#1a1a1a] scroll-smooth"
+          className="flex-1 min-h-0 p-4 overflow-auto thin-scrollbar bg-card scroll-smooth"
         >
           <div className="relative">
-            <div className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed">
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
               {(() => {
                 const lines = output.split('\n');
                 const streamingActive = isStreaming;
