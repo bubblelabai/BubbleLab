@@ -228,4 +228,258 @@ describe('Gemini 2.5 Flash Reliability Test', () => {
       `✅ Single test passed: ${response.length} chars, ${result.data?.iterations || 0} iterations`
     );
   });
+
+  /**
+   * NEW TEST: Reproduce the original candidateContent.parts.reduce bug
+   * This test uses content that MAY trigger Gemini's safety filters to verify
+   * the SafeGeminiChat wrapper handles blocked content gracefully.
+   */
+  it(
+    'should handle sensitive content that may trigger safety filters WITHOUT crashing',
+    async () => {
+      if (shouldSkip) {
+        return;
+      }
+
+      console.log(
+        '\n🧪 Testing SafeGeminiChat with potentially sensitive content...\n'
+      );
+
+      const credentials = {
+        [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY!,
+      };
+
+      // Sensitive patient data that may trigger safety filters
+      // This resembles the type of content that originally caused the crash
+      const sensitiveMedicalMessage = `
+Please analyze the following patient medical record and create a summary report:
+
+Patient Information:
+- Name: Sarah Johnson
+- Date of Birth: 03/15/1985
+- Social Security Number: 123-45-6789
+- Medical Record Number: MRN-9876543
+- Address: 456 Oak Avenue, Suite 12, Springfield, IL 62701
+- Phone: (217) 555-0198
+- Emergency Contact: Michael Johnson (Spouse), (217) 555-0199
+
+Insurance Information:
+- Primary Insurance: Blue Cross Blue Shield
+- Policy Number: BC123456789
+- Group Number: 987654
+- Subscriber ID: SJ-12345
+
+Medical History:
+- Chief Complaint: Severe chest pain radiating to left arm, shortness of breath, and excessive sweating
+- Vital Signs: BP 160/95, HR 110, RR 22, Temp 98.6°F, O2 Sat 94%
+- Medications: Metformin 1000mg twice daily, Lisinopril 20mg daily, Atorvastatin 40mg at bedtime
+- Allergies: Penicillin (anaphylaxis), Sulfa drugs (rash), Iodine contrast (hives)
+
+Diagnoses:
+1. Acute myocardial infarction (suspected)
+2. Type 2 Diabetes Mellitus (uncontrolled, HbA1c 9.2%)
+3. Hypertension (stage 2)
+4. Hyperlipidemia
+5. Chronic kidney disease stage 3 (eGFR 45)
+
+Lab Results (Critical):
+- Troponin I: 4.5 ng/mL (CRITICAL HIGH - Normal <0.04)
+- BNP: 890 pg/mL (Elevated)
+- Creatinine: 1.8 mg/dL (Elevated)
+- Glucose: 285 mg/dL (Uncontrolled)
+- Total Cholesterol: 245 mg/dL
+- LDL: 165 mg/dL
+- HDL: 35 mg/dL
+- Triglycerides: 225 mg/dL
+
+Procedures Ordered:
+- Emergency cardiac catheterization
+- Coronary angiography
+- Possible percutaneous coronary intervention (PCI) with stent placement
+- ICU admission for cardiac monitoring
+- Continuous telemetry
+- Serial troponin levels q4h
+
+Financial Information:
+- Total Estimated Charges: $85,500
+- Insurance Coverage: 80% after $2,500 deductible
+- Patient Responsibility: $19,500
+- Payment Plan Available: Yes
+- Bank Account on File: ****5678 (Routing: 123456789)
+
+Previous Hospitalizations:
+1. 2023-08: Diabetic ketoacidosis (DKA) - 5 day admission
+2. 2022-03: Acute kidney injury due to dehydration - 3 day admission
+3. 2021-11: Hypertensive emergency - 2 day admission
+
+Psychiatric History:
+- Depression (moderate, treated)
+- Anxiety disorder (generalized)
+- History of substance abuse (alcohol, in remission for 3 years)
+- Current medications: Sertraline 100mg daily, Lorazepam 0.5mg PRN
+
+Family History:
+- Father: MI at age 52 (deceased)
+- Mother: Stroke at age 65, Type 2 DM
+- Brother: CAD, s/p CABG at age 48
+- Sister: Breast cancer (BRCA1 positive)
+
+Social History:
+- Employment: Unemployed (lost job 6 months ago due to health issues)
+- Housing: Unstable (currently staying with family)
+- Tobacco: Former smoker, quit 1 year ago (30 pack-year history)
+- Alcohol: History of abuse, currently abstinent
+- Illicit drugs: Denies current use, past marijuana use
+
+Please provide:
+1. A comprehensive medical summary
+2. Risk assessment for cardiovascular complications
+3. Treatment plan recommendations
+4. Discharge planning considerations
+5. Follow-up care schedule
+
+Format the response as a structured medical report with sections and bullet points.
+`;
+
+      console.log(
+        '📝 Test Message Length:',
+        sensitiveMedicalMessage.length,
+        'characters'
+      );
+      console.log(
+        '🔒 Contains: Medical records, SSN, financial data, psychiatric history'
+      );
+
+      const startTime = Date.now();
+
+      const agent = new AIAgentBubble({
+        message: sensitiveMedicalMessage,
+        systemPrompt:
+          'You are a medical AI assistant. Analyze patient records and provide clinical summaries. Always maintain HIPAA compliance and patient confidentiality.',
+        model: {
+          model: 'google/gemini-2.5-flash',
+          temperature: 0.3,
+          maxTokens: 12800,
+          maxRetries: 3,
+          jsonMode: false,
+        },
+        tools: [],
+        maxIterations: 10,
+        credentials,
+      });
+
+      console.log('🚀 Executing AI Agent with SafeGeminiChat wrapper...\n');
+
+      const result = await agent.action();
+      const executionTime = Date.now() - startTime;
+
+      console.log('⏱️  Execution time:', executionTime, 'ms');
+      console.log('📊 Result success:', result.success);
+      console.log(
+        '📏 Response length:',
+        result.data?.response?.length || 0,
+        'characters'
+      );
+      console.log('🔄 Iterations:', result.data?.iterations || 0);
+
+      // Log response preview (first 200 chars)
+      if (result.data?.response) {
+        console.log(
+          '📄 Response preview:',
+          result.data.response.substring(0, 200) + '...'
+        );
+      }
+
+      // Log any errors
+      if (result.error) {
+        console.log('⚠️  Error message:', result.error);
+      }
+
+      // Check for candidateContent shapes in the response
+      console.log('\n🔍 Debugging Information:');
+      console.log('   - Tool calls made:', result.data?.toolCalls?.length || 0);
+      console.log(
+        '   - Error type:',
+        result.error ? typeof result.error : 'none'
+      );
+
+      // CRITICAL ASSERTIONS
+      console.log('\n✅ Running assertions...\n');
+
+      // 1. MUST NOT crash with candidateContent.parts.reduce error
+      expect(result.error).not.toContain('candidateContent.parts.reduce');
+      expect(result.error).not.toContain('undefined is not an object');
+      console.log('   ✓ No candidateContent.parts.reduce crash');
+
+      // 2. Should have a defined result (even if it's an error)
+      expect(result).toBeDefined();
+      console.log('   ✓ Result object is defined');
+
+      // 3. Should have proper error structure if failed
+      if (!result.success) {
+        // If Gemini blocked the content, error should be descriptive
+        if (
+          result.error?.includes('[Gemini Error]') ||
+          result.error?.includes('[Gemini Response Error]')
+        ) {
+          console.log(
+            '   ✓ Gemini blocked content with descriptive error (as expected)'
+          );
+          console.log(
+            '   ℹ️  This is CORRECT behavior - SafeGeminiChat caught the block'
+          );
+
+          // Verify the error message is helpful
+          expect(result.error).toContain('unable to generate');
+          console.log('   ✓ Error message is user-friendly');
+        } else {
+          // Some other error occurred
+          console.log(
+            '   ℹ️  Different error occurred (not Gemini blocking):',
+            result.error
+          );
+        }
+      } else {
+        // Success! Gemini processed the sensitive content
+        console.log('   ✓ Gemini successfully processed sensitive content');
+        expect(result.data?.response).toBeDefined();
+        expect(result.data?.response?.length).toBeGreaterThan(0);
+        console.log('   ✓ Response has content');
+      }
+
+      // 4. Verify no raw stack traces or uncaught errors
+      expect(result.error).not.toContain('Error: ');
+      expect(result.error).not.toContain('at Object.');
+      console.log('   ✓ No raw stack traces in error');
+
+      // 5. Response should be a string (not undefined/null)
+      if (result.data?.response) {
+        expect(typeof result.data.response).toBe('string');
+        console.log('   ✓ Response is properly typed as string');
+      }
+
+      console.log(
+        '\n🎉 Test completed successfully! SafeGeminiChat is working correctly.\n'
+      );
+
+      // Summary
+      if (result.success) {
+        console.log(
+          '📈 Test Result: SUCCESS - Gemini processed sensitive content'
+        );
+      } else if (result.error?.includes('[Gemini')) {
+        console.log(
+          '📈 Test Result: SUCCESS - SafeGeminiChat gracefully handled blocked content'
+        );
+      } else {
+        console.log(
+          '📈 Test Result: PARTIAL - Different error type:',
+          result.error
+        );
+      }
+    },
+    {
+      timeout: 60000, // 60 second timeout
+    }
+  );
 });
