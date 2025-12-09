@@ -770,19 +770,27 @@ export function PearlChat() {
               ) : (
                 /* Assistant Response: Events then Message */
                 <>
-                  {/* Events (if any) */}
+                  {/* Events (if any) - filter out transient events for completed messages */}
                   {pearl.eventsList[assistantIndex] &&
                     pearl.eventsList[assistantIndex].length > 0 && (
                       <div className="p-3">
                         <div className="space-y-2">
-                          {pearl.eventsList[assistantIndex].map(
-                            (event, eventIndex) => (
+                          {pearl.eventsList[assistantIndex]
+                            .filter((event) => {
+                              // Only show persistent events for completed messages
+                              // Filter out transient events like llm_thinking and tool_start
+                              return (
+                                event.type !== 'llm_thinking' &&
+                                event.type !== 'tool_start' &&
+                                event.type !== 'token'
+                              );
+                            })
+                            .map((event, eventIndex) => (
                               <EventDisplay
                                 key={`${message.id}-event-${eventIndex}`}
                                 event={event}
                               />
-                            )
-                          )}
+                            ))}
                         </div>
                       </div>
                     )}
