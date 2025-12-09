@@ -9,6 +9,7 @@ import {
   loadMonacoTypes,
   loadBubbleCoreTypes,
 } from '../utils/monacoTypeLoader';
+import { useSettingsStore } from '../stores/settingsStore';
 
 // Import Monaco workers
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
@@ -35,6 +36,10 @@ export function MonacoEditor() {
   const [isLoading, setIsLoading] = useState(true);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const rangeDecorationRef = useRef<string[]>([]);
+
+  // Get current theme from settings store
+  const resolvedTheme = useSettingsStore((state) => state.resolvedTheme);
+  const monacoTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'vs';
 
   // Connect to Zustand store
   const setEditorInstance = useEditorStore((state) => state.setEditorInstance);
@@ -280,9 +285,9 @@ export function MonacoEditor() {
       translate="no"
     >
       {isLoading && (
-        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center z-10">
-          <div className="text-blue-400 text-sm flex items-center gap-2">
-            <div className="animate-spin w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+        <div className="absolute inset-0 bg-background flex items-center justify-center z-10">
+          <div className="text-info text-sm flex items-center gap-2">
+            <div className="animate-spin w-4 h-4 border-2 border-info border-t-transparent rounded-full"></div>
             Loading TypeScript support...
           </div>
         </div>
@@ -294,7 +299,7 @@ export function MonacoEditor() {
           defaultValue: selectedFlow?.code,
           width: '100%',
           language: 'typescript',
-          theme: 'vs-dark',
+          theme: monacoTheme,
           onMount: handleEditorDidMount,
           path: 'file:///main.ts',
           options: {

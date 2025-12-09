@@ -7,6 +7,7 @@ import { ClerkProvider } from '@clerk/clerk-react';
 import { AuthWrapper } from './components/AuthWrapper';
 import { OAuthCallback } from './components/OAuthCallback';
 import { WebViewWarning } from './components/WebViewWarning';
+import { ThemeProvider } from './components/ThemeProvider';
 import {
   CLERK_PUBLISHABLE_KEY,
   DISABLE_AUTH,
@@ -64,36 +65,40 @@ if (isOAuthCallback) {
   // Render OAuth callback UI (popup window)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <WebViewWarning />
-      <OAuthCallback apiBaseUrl={API_BASE_URL} />
+      <ThemeProvider>
+        <WebViewWarning />
+        <OAuthCallback apiBaseUrl={API_BASE_URL} />
+      </ThemeProvider>
     </StrictMode>
   );
 } else {
   // Normal app with router
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <WebViewWarning />
-      {DISABLE_AUTH ? (
-        <AuthWrapper>
-          <QueryProvider>
-            <RouterProvider router={router} />
-          </QueryProvider>
-        </AuthWrapper>
-      ) : (
-        <ClerkProvider
-          publishableKey={PUBLISHABLE_KEY!}
-          afterSignOutUrl="/"
-          appearance={{
-            baseTheme: dark,
-          }}
-        >
+      <ThemeProvider>
+        <WebViewWarning />
+        {DISABLE_AUTH ? (
           <AuthWrapper>
             <QueryProvider>
               <RouterProvider router={router} />
             </QueryProvider>
           </AuthWrapper>
-        </ClerkProvider>
-      )}
+        ) : (
+          <ClerkProvider
+            publishableKey={PUBLISHABLE_KEY!}
+            afterSignOutUrl="/"
+            appearance={{
+              baseTheme: dark,
+            }}
+          >
+            <AuthWrapper>
+              <QueryProvider>
+                <RouterProvider router={router} />
+              </QueryProvider>
+            </AuthWrapper>
+          </ClerkProvider>
+        )}
+      </ThemeProvider>
     </StrictMode>
   );
 }
