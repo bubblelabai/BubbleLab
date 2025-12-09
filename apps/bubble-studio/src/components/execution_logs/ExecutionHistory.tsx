@@ -5,11 +5,16 @@ import {
   ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/solid';
+import { toast } from 'react-toastify';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
 import { useExecutionStore } from '../../stores/executionStore';
 import { JsonRenderer } from './JsonRenderer';
 import { formatTimestamp } from '../../utils/executionLogsFormatUtils';
+import { useEditor } from '../../hooks/useEditor';
+import { useValidateCode } from '../../hooks/useValidateCode';
+import { getExecutionStore } from '../../stores/executionStore';
 
 interface ExecutionHistoryProps {
   flowId: number | null;
@@ -20,6 +25,8 @@ const ITEMS_PER_PAGE = 10;
 export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const prevExecutingRef = useRef<boolean>(false);
+  const { editor } = useEditor(flowId || undefined);
+  const validateCodeMutation = useValidateCode({ flowId });
 
   // Get execution state from store
   const isCurrentlyExecuting = useExecutionStore(
@@ -70,6 +77,50 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
   const handleNextPage = () => {
     if (hasNextPage) {
       setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handleApplyVersion = async (
+    code: string | undefined,
+    executionId: number
+  ) => {
+    if (!code) {
+      toast.error('No code available for this execution');
+      return;
+    }
+
+    if (!flowId) {
+      toast.error('Cannot restore code: No flow selected');
+      return;
+    }
+
+    try {
+      // Automatically validate and sync the code
+      const validationResult = await validateCodeMutation.mutateAsync({
+        code,
+        flowId,
+        credentials: getExecutionStore(flowId).pendingCredentials,
+        syncInputsWithFlow: true,
+      });
+
+      if (validationResult && validationResult.valid) {
+        toast.success(`Code applied from execution #${executionId}`, {
+          autoClose: 3000,
+        });
+        // Set code in editor after validation
+        editor.setCode(code);
+      } else {
+        toast.warning(
+          `Code validation failed for execution #${executionId} and cannot be applied`,
+          {
+            autoClose: 5000,
+          }
+        );
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to sync applied code: ${errorMessage}`);
     }
   };
 
@@ -177,6 +228,20 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                         </div>
                       </div>
                     </div>
+                    {execution.code && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApplyVersion(execution.code, execution.id);
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
+                        title="Apply code from this execution"
+                      >
+                        <ArrowPathIcon className="w-3.5 h-3.5" />
+                        Use Version
+                      </button>
+                    )}
                   </div>
 
                   {/* Execution Details */}
