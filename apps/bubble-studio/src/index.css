@@ -203,30 +203,30 @@
 html.dark {
   /* Main branch: body background #0f0f23, FlowIDEView uses #1a1a1a for panels */
   --theme-background: #0f0f23; /* main branch body background - deep blue-black */
-  --theme-foreground: #cccccc; /* main branch text color */
+  --theme-foreground: #e5e7eb; /* Tailwind gray-200 for better match with main */
 
   --theme-card: #1a1a1a; /* FlowIDEView panel background */
-  --theme-card-foreground: #d4d4d4;
+  --theme-card-foreground: #e5e7eb; /* Tailwind gray-200 */
 
   --theme-popover: #1e1e1e;
-  --theme-popover-foreground: #cccccc;
+  --theme-popover-foreground: #e5e7eb; /* Tailwind gray-200 */
 
   --theme-primary: #9333ea; /* purple */
   --theme-primary-foreground: #ffffff;
 
-  --theme-secondary: #252526; /* main branch header */
-  --theme-secondary-foreground: #d4d4d4;
+  --theme-secondary: #374151; /* Tailwind gray-700 */
+  --theme-secondary-foreground: #e5e7eb; /* Tailwind gray-200 */
 
-  --theme-muted: #252526;
-  --theme-muted-foreground: #7d8590;
+  --theme-muted: #1f2937; /* Tailwind gray-800 - matches main branch bg-gray-800 */
+  --theme-muted-foreground: #9ca3af; /* Tailwind gray-400 - matches main text-gray-400 */
 
-  --theme-accent: #2d2d30; /* main branch toolbar */
-  --theme-accent-foreground: #d4d4d4;
+  --theme-accent: #1f2937; /* Tailwind gray-800 for consistency */
+  --theme-accent-foreground: #e5e7eb; /* Tailwind gray-200 */
 
   --theme-destructive: #da3633;
   --theme-destructive-foreground: #ffffff;
 
-  --theme-border: #30363d; /* main branch toast border */
+  --theme-border: #374151; /* Tailwind gray-700 - matches main branch border-gray-700 */
   --theme-input: #0a0a0a; /* FlowIDEView input field bg */
   --theme-ring: #9333ea;
 
@@ -288,18 +288,20 @@ html.dark {
      Pre-computed opacity variants for Tailwind v4 (dark theme)
      ============================================ */
 
-  /* Foreground opacity variants */
-  --theme-foreground-60: rgb(204 204 204 / 60%);
-  --theme-foreground-80: rgb(204 204 204 / 80%);
-  --theme-foreground-90: rgb(204 204 204 / 90%);
+  /* Foreground opacity variants - using lighter gray for better readability */
+  /* Tailwind gray-200 (#e5e7eb = rgb(229, 231, 235)) for primary text */
+  --theme-foreground-60: rgb(229 231 235 / 60%);
+  --theme-foreground-80: rgb(229 231 235 / 80%);
+  --theme-foreground-90: rgb(229 231 235 / 90%);
 
-  /* Muted opacity variants */
-  --theme-muted-20: rgb(37 37 38 / 20%);
-  --theme-muted-30: rgb(37 37 38 / 30%);
-  --theme-muted-40: rgb(37 37 38 / 40%);
-  --theme-muted-50: rgb(37 37 38 / 50%);
-  --theme-muted-60: rgb(37 37 38 / 60%);
-  --theme-muted-80: rgb(37 37 38 / 80%);
+  /* Muted opacity variants - using Tailwind gray-800 for better visual match */
+  /* Tailwind gray-800 (#1f2937 = rgb(31, 41, 55)) instead of VS Code gray */
+  --theme-muted-20: rgb(31 41 55 / 20%);
+  --theme-muted-30: rgb(31 41 55 / 30%);
+  --theme-muted-40: rgb(31 41 55 / 40%);
+  --theme-muted-50: rgb(31 41 55 / 50%);
+  --theme-muted-60: rgb(31 41 55 / 60%);
+  --theme-muted-80: rgb(31 41 55 / 80%);
 
   /* Background opacity variants */
   --theme-background-20: rgb(15 15 35 / 20%);
@@ -312,10 +314,10 @@ html.dark {
   --theme-card-60: rgb(26 26 26 / 60%);
   --theme-card-80: rgb(26 26 26 / 80%);
 
-  /* Border opacity variants */
-  --theme-border-30: rgb(48 54 61 / 30%);
-  --theme-border-50: rgb(48 54 61 / 50%);
-  --theme-border-80: rgb(48 54 61 / 80%);
+  /* Border opacity variants - Tailwind gray-700 (#374151 = rgb(55, 65, 81)) */
+  --theme-border-30: rgb(55 65 81 / 30%);
+  --theme-border-50: rgb(55 65 81 / 50%);
+  --theme-border-80: rgb(55 65 81 / 80%);
 
   /* Primary opacity variants */
   --theme-primary-20: rgb(147 51 234 / 20%);
@@ -324,8 +326,8 @@ html.dark {
   --theme-primary-80: rgb(147 51 234 / 80%);
   --theme-primary-90: rgb(147 51 234 / 90%);
 
-  /* Secondary opacity variants */
-  --theme-secondary-80: rgb(37 37 38 / 80%);
+  /* Secondary opacity variants - Tailwind gray-700 (#374151 = rgb(55, 65, 81)) */
+  --theme-secondary-80: rgb(55 65 81 / 80%);
 
   /* Destructive opacity variants */
   --theme-destructive-5: rgb(218 54 51 / 5%);
