@@ -128,6 +128,12 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
     try {
       console.log(`[HttpBubble] Making ${method} request to ${url}`);
 
+      // Create abort controller for timeout
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, timeout);
+
       // Prepare request options
       const requestOptions: RequestInit = {
         method,
@@ -136,7 +142,7 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
           ...headers,
         },
         redirect: followRedirects ? 'follow' : 'manual',
-        signal: AbortSignal.timeout(timeout),
+        signal: abortController.signal,
       };
 
       // Add body for non-GET methods
@@ -154,6 +160,7 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
 
       // Make the request
       const response = await fetch(url, requestOptions);
+      clearTimeout(timeoutId); // Clear timeout if request completes
       const responseTime = Date.now() - startTime;
 
       // Read response body

@@ -13,6 +13,7 @@ export type GenerationStreamingEvent =
         isValid?: boolean;
         success?: boolean;
         error?: string;
+        summary?: string;
       };
     }
   | { type: 'stream_complete'; data: Record<string, unknown> }

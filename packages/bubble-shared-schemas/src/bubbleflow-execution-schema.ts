@@ -200,6 +200,10 @@ export const bubbleFlowExecutionSchema = z.object({
     .string()
     .optional()
     .openapi({ description: 'Execution completion timestamp' }),
+  code: z.string().optional().openapi({
+    description:
+      'The code that was executed (snapshot of the code at execution time)',
+  }),
 });
 
 // GET /bubble-flow/:id/executions - List BubbleFlow executions response

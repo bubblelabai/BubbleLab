@@ -25,8 +25,9 @@ export const bubbleFlows = sqliteTable('bubble_flows', {
   name: text().notNull(),
   description: text(),
   prompt: text(), // Store the original prompt used to generate the flow (nullable)
-  code: text().notNull(), // This will store the processed/transpiled code
+  code: text(), // This will store the processed/transpiled code (nullable for empty flows during generation)
   originalCode: text('original_code'), // Store the original TypeScript code
+  generationError: text('generation_error'), // Store any code generation errors
   bubbleParameters: text('bubble_parameters', { mode: 'json' }), // Store parsed bubble parameters
   metadata: text('metadata', { mode: 'json' }), // Store workflow metadata (outputDescription, etc.)
   workflow: text('workflow', { mode: 'json' }), // Store parsed workflow structure

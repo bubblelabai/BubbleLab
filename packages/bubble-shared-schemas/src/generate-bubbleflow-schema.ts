@@ -11,6 +11,11 @@ export const generateBubbleFlowCodeSchema = z.object({
     example:
       'Create a flow that queries my database and sends results to Slack',
   }),
+  flowId: z.number().optional().openapi({
+    description:
+      'Optional flow ID to update with generated code (for async generation)',
+    example: 123,
+  }),
 });
 
 export const generateBubbleFlowCodeResponseSchema = z.object({

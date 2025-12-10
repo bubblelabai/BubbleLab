@@ -24,15 +24,6 @@ import { trackTemplate } from '../services/analytics';
 import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
 import { SubmitTemplateModal } from '../components/SubmitTemplateModal';
 
-// LoadingDots component using bouncing animation for code generation
-const LoadingDots: React.FC = () => {
-  return (
-    <span className="inline-block animate-bounce text-purple-200 font-bold ml-1">
-      ●●●
-    </span>
-  );
-};
-
 // INTEGRATIONS and AI_MODELS now imported from shared lib
 
 // Removed initials helper; using image-only rendering
@@ -531,11 +522,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                         : 'bg-primary text-primary-foreground border border-primary-80 hover:bg-primary-90 shadow-lg hover:scale-105'
                     }`}
                   >
-                    {isStreaming ? (
-                      <LoadingDots />
-                    ) : (
-                      <ArrowUp className="w-5 h-5" />
-                    )}
+                    <ArrowUp className="w-5 h-5" />
                   </button>
                   <div
                     className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${

@@ -6,7 +6,7 @@ import {
   ParsedWorkflowSchema,
 } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
-// POST /bubble-flow - Create new BubbleFlow schema
+// POST /bubble-flow - Create new BubbleFlow schema (with code)
 export const createBubbleFlowSchema = z
   .object({
     name: z.string().min(1).max(100).openapi({
@@ -54,6 +54,43 @@ export const createBubbleFlowSchema = z
   })
   .openapi('CreateBubbleFlowRequest');
 
+// POST /bubble-flow - Create empty BubbleFlow schema (for async generation)
+export const createEmptyBubbleFlowSchema = z
+  .object({
+    name: z.string().min(1).max(100).openapi({
+      description: 'Name of the BubbleFlow',
+      example: 'My First BubbleFlow',
+    }),
+    description: z.string().optional().openapi({
+      description: 'Optional description of what this BubbleFlow does',
+      example: 'A flow that processes webhook data',
+    }),
+    prompt: z.string().openapi({
+      description: 'Prompt used to generate the flow code asynchronously',
+      example:
+        'Create a flow that processes webhook data and sends notifications',
+    }),
+    eventType: z.string().min(1).openapi({
+      description: 'Event type this BubbleFlow responds to',
+      example: 'webhook/http',
+    }),
+    webhookPath: z
+      .string()
+      .min(1)
+      .max(50)
+      .regex(/^[a-zA-Z0-9-_]+$/)
+      .optional()
+      .openapi({
+        description: 'Custom webhook path (auto-generated if not provided)',
+        example: 'my-webhook',
+      }),
+    webhookActive: z.boolean().default(false).optional().openapi({
+      description: 'Whether the webhook should be active immediately',
+      example: true,
+    }),
+  })
+  .openapi('CreateEmptyBubbleFlowRequest');
+
 // POST /:id/execute - Execute BubbleFlow schema
 export const executeBubbleFlowSchema = z
   .record(z.string(), z.unknown())
@@ -83,7 +120,7 @@ export const updateBubbleFlowNameSchema = z
 // RESPONSE SCHEMAS (Output Types)
 // ============================================================================
 
-// POST /bubble-flow - Create BubbleFlow response
+// POST /bubble-flow - Create BubbleFlow response (with code)
 export const createBubbleFlowResponseSchema = z
   .object({
     id: z.number().openapi({
@@ -149,6 +186,42 @@ export const createBubbleFlowResponseSchema = z
   })
   .openapi('CreateBubbleFlowResponse');
 
+// POST /bubble-flow - Create empty BubbleFlow response (for async generation)
+export const createEmptyBubbleFlowResponseSchema = z
+  .object({
+    id: z.number().openapi({
+      description:
+        'ID of the created BubbleFlow (code will be generated asynchronously)',
+      example: 123,
+    }),
+    message: z.string().openapi({
+      description: 'Success message',
+      example:
+        'BubbleFlow created successfully. Code generation in progress...',
+    }),
+    webhook: z
+      .object({
+        id: z.number().openapi({ description: 'Webhook ID', example: 456 }),
+        url: z.string().openapi({
+          description: 'Full webhook URL',
+          example: 'http://localhost:3001/webhook/user123/my-webhook',
+        }),
+        path: z.string().openapi({
+          description: 'Webhook path',
+          example: 'my-webhook',
+        }),
+        active: z.boolean().openapi({
+          description: 'Whether webhook is active',
+          example: false,
+        }),
+      })
+      .optional()
+      .openapi({
+        description: 'Webhook information (if webhook was created)',
+      }),
+  })
+  .openapi('CreateEmptyBubbleFlowResponse');
+
 // GET /bubble-flow/:id - Get BubbleFlow details response
 export const bubbleFlowDetailsResponseSchema = z
   .object({
@@ -161,6 +234,11 @@ export const bubbleFlowDetailsResponseSchema = z
       .openapi({ description: 'Original prompt used to generate the flow' }),
     eventType: z.string().openapi({ description: 'Event type' }),
     code: z.string().openapi({ description: 'TypeScript source code' }),
+    generationError: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({ description: 'Error message if code generation failed' }),
     inputSchema: z
       .record(z.string(), z.unknown())
       .optional()
@@ -290,6 +368,12 @@ export type CreateBubbleFlowResponse = z.infer<
   typeof createBubbleFlowResponseSchema
 >;
 export type CreateBubbleFlowRequest = z.infer<typeof createBubbleFlowSchema>;
+export type CreateEmptyBubbleFlowRequest = z.infer<
+  typeof createEmptyBubbleFlowSchema
+>;
+export type CreateEmptyBubbleFlowResponse = z.infer<
+  typeof createEmptyBubbleFlowResponseSchema
+>;
 export type ExecuteBubbleFlowRequest = z.infer<typeof executeBubbleFlowSchema>;
 
 export type UpdateBubbleFlowParametersRequest = z.infer<

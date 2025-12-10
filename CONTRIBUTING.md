@@ -32,7 +32,7 @@ Make sure you have the following installed:
 
 ## Development Setup
 
-### Quick Setup
+### Quick Setup (Mac/Linux)
 
 Run Bubble Studio locally in **2 commands**:
 
@@ -58,6 +58,51 @@ Open **http://localhost:3000** and start building workflows!
 
 - **Frontend**: http://localhost:3000 (Bubble Studio)
 - **Backend**: http://localhost:3001 (API Server)
+
+### Windows Setup (Separate Steps)
+
+Some scripts use Unix commands (`cp`, `bash`), so Windows requires manual steps:
+
+#### 1. Install Dependencies
+
+```powershell
+pnpm install
+```
+
+#### 2. Build Core Packages
+
+```powershell
+pnpm build:core
+```
+
+#### 3. Copy Required Files
+
+```powershell
+Copy-Item "packages/bubble-core/dist/bubble-bundle.d.ts" "apps/bubble-studio/public/bubble-types.txt" -Force
+Copy-Item "packages/bubble-core/dist/bubbles.json" "apps/bubble-studio/public/bubbles.json" -Force
+```
+
+#### 4. Start Servers (Two Terminals)
+
+**Terminal 1 – Backend (API):**
+
+```powershell
+cd apps/bubblelab-api
+& "$env:USERPROFILE\.bun\bin\bun.exe" run src/index.ts
+```
+
+- Runs on: [http://localhost:3001](http://localhost:3001)
+
+**Terminal 2 – Frontend (Studio):**
+
+```powershell
+cd apps/bubble-studio
+pnpm vite --host 0.0.0.0 --port 3000
+```
+
+- Runs on: [http://localhost:3000](http://localhost:3000)
+
+> ⚠ If you get "TypeScript validation failed," rebuild core packages.
 
 ## Environment Configuration
 
