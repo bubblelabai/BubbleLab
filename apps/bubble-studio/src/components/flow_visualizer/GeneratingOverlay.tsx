@@ -27,31 +27,89 @@ export function GeneratingOverlay() {
       {/* Message overlay */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center max-w-md px-4">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-purple-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
+          {/* Holographic Glass Bubble */}
+          <div className="flex items-center justify-center mb-6 relative">
+            {/* Main bubble container */}
+            <div className="relative w-24 h-24 animate-float">
+              {/* Outer glow/aura */}
+              <div className="absolute inset-0 rounded-full bg-purple-500/20 blur-xl" />
+
+              {/* Main glass sphere */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-300 via-purple-500 to-purple-700 shadow-2xl shadow-purple-500/40">
+                {/* Glass overlay for depth */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 via-transparent to-black/20" />
+
+                {/* Secondary highlight (bottom-right) */}
+                <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-purple-200/40 blur-sm" />
+
+                {/* Inner reflection spots */}
+                <div className="absolute top-5 right-7 w-4 h-4 rounded-full bg-white/20" />
+                <div className="absolute bottom-10 left-5 w-3 h-3 rounded-full bg-purple-100/25" />
+
+                {/* Holographic shimmer effect */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/5 to-transparent animate-shimmer" />
+
+                {/* Bottom shadow/depth */}
+                <div className="absolute bottom-0 left-1/4 right-1/4 h-1/3 bg-gradient-to-t from-purple-900/40 to-transparent rounded-full blur-sm" />
+              </div>
             </div>
           </div>
-          <p className="text-gray-400 text-base mb-2">
-            Pearl is generating your workflow
-          </p>
-          <p className="text-gray-500 text-sm">
-            Check the Pearl panel on the right to see progress
+
+          <p className="text-gray-300 text-base font-medium">
+            Bubble flow in generation...
           </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) scale(1);
+          }
+          50% {
+            transform: translateY(-12px) scale(1.03);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            transform: rotate(0deg);
+            opacity: 0.3;
+          }
+          50% {
+            opacity: 0.6;
+          }
+          100% {
+            transform: rotate(360deg);
+            opacity: 0.3;
+          }
+        }
+
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+
+        .animate-shimmer {
+          animation: shimmer 8s linear infinite;
+        }
+
+        .animate-pulse-slow {
+          animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .animate-pulse-slower {
+          animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.3;
+          }
+        }
+      `}</style>
     </div>
   );
 }
