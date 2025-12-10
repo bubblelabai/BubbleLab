@@ -7,7 +7,6 @@ import {
   PearlResponse,
   type StreamingEvent,
 } from '@bubblelab/shared-schemas';
-import { queryOptions } from '@tanstack/react-query';
 import { sseToAsyncIterable } from '@/utils/sseStream';
 import type { GenerationStreamingEvent } from '@/types/generation';
 import { useGenerationEventsStore } from '@/stores/generationEventsStore';
@@ -340,6 +339,7 @@ async function startGenerationStream(
 
   // All retries exhausted
   const errorMsg = lastError?.message || 'Stream failed after all retries';
+
   useGenerationEventsStore.getState().addEvent(flowId, {
     type: 'error',
     data: { error: errorMsg, recoverable: false },

@@ -12,7 +12,10 @@ import type { DisplayEvent } from '../../stores/pearlChatStore';
 import { getPearlChatStore } from '../../stores/pearlChatStore';
 import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
-import { trackAIAssistant } from '../../services/analytics';
+import {
+  trackAIAssistant,
+  trackWorkflowGeneration,
+} from '../../services/analytics';
 import {
   Check,
   AlertCircle,
@@ -265,6 +268,22 @@ export function PearlChat() {
           queryClient.refetchQueries({
             queryKey: ['bubbleFlow', selectedFlowId],
           });
+          queryClient.refetchQueries({
+            queryKey: ['bubbleFlowList'],
+          });
+          queryClient.refetchQueries({
+            queryKey: ['subscription'],
+          });
+          trackWorkflowGeneration({
+            prompt: flowData?.prompt || '',
+            generatedCode: generatedCode,
+            generatedCodeLength: generatedCode?.length || 0,
+            generatedBubbleCount: Object.keys(
+              eventData.data?.bubbleParameters || {}
+            ).length,
+            success: true,
+            errorMessage: eventData.data?.error || '',
+          });
           break;
         }
 
@@ -273,6 +292,13 @@ export function PearlChat() {
             ...prev,
             { type: 'error', message: eventData.data.error },
           ]);
+          trackWorkflowGeneration({
+            prompt: flowData?.prompt || '',
+            generatedCodeLength: 0,
+            generatedBubbleCount: 0,
+            success: false,
+            errorMessage: eventData.data?.error || '',
+          });
           break;
       }
     }
@@ -354,7 +380,6 @@ export function PearlChat() {
   ) => {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response', message: code || '' });
-    toast.success('Workflow updated!');
 
     // Mark message as updated
     setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
@@ -367,7 +392,7 @@ export function PearlChat() {
         credentials: pendingCredentials,
         syncInputsWithFlow: true,
       });
-      toast.success('Bubble parameters, input schema, and credentials updated');
+      toast.success('Workflow updated successfully');
     } else {
       toast.error('No bubble parameters found');
     }
@@ -976,7 +1001,7 @@ export function PearlChat() {
                   <button
                     type="button"
                     onClick={() => handleDeleteFile(index)}
-                    disabled={pearl.isPending}
+                    disabled={pearl.isPending || isGenerating}
                     className="p-0.5 hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     aria-label={`Delete ${file.name}`}
                   >
@@ -995,7 +1020,7 @@ export function PearlChat() {
               onSubmit={handleGenerate}
               placeholder="Get help modifying, debugging, or understanding your workflow..."
               className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
-              disabled={pearl.isPending}
+              disabled={pearl.isPending || isGenerating}
               flowId={selectedFlowId}
               selectedBubbleContext={pearl.selectedBubbleContext}
               selectedTransformationContext={
@@ -1013,7 +1038,7 @@ export function PearlChat() {
                   className="hidden"
                   accept=".html,.csv,.txt,image/png"
                   multiple
-                  disabled={pearl.isPending}
+                  disabled={pearl.isPending || isGenerating}
                   aria-label="Upload files"
                   onChange={(e) => {
                     handleFileChange(e.target.files);
@@ -1023,7 +1048,7 @@ export function PearlChat() {
                 />
                 <Paperclip
                   className={`w-5 h-5 transition-colors ${
-                    pearl.isPending
+                    pearl.isPending || isGenerating
                       ? 'text-gray-600 cursor-not-allowed'
                       : uploadedFiles.length > 0
                         ? 'text-gray-300'
@@ -1042,11 +1067,13 @@ export function PearlChat() {
                 onClick={handleGenerate}
                 disabled={
                   (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending
+                  pearl.isPending ||
+                  isGenerating
                 }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending
+                  pearl.isPending ||
+                  isGenerating
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                 }`}

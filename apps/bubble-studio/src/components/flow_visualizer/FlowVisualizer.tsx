@@ -2238,7 +2238,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
-            Sync with code
+            Sync changes
           </button>
           {hasUnsavedChanges && (
             <div className="bg-orange-500/20 border border-orange-500/50 px-2 py-1 rounded text-xs font-medium text-orange-300">

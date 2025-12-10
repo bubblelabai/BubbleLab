@@ -64,7 +64,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
-    limit: 50,
+    limit: 10,
   });
 
   // ============= Rename Flow Hook =============
