@@ -2159,7 +2159,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
           <p className="text-purple-400 text-lg mb-2">Loading Flow...</p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Processing flow data and setting up visualization
           </p>
         </div>
@@ -2178,7 +2178,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type="button"
             onClick={onValidate}
             disabled={isExecuting}
-            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-1"
+            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-secondary/20 disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
             Sync with code

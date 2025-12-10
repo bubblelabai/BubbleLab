@@ -164,7 +164,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     className={`px-3 py-1.5 ${
                       anyLimitExceeded
                         ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                        : 'bg-white text-black hover:bg-gray-200'
+                        : 'bg-white text-black hover:bg-foreground-20'
                     } text-xs font-medium rounded-full transition-all duration-200 flex items-center gap-1 shadow-lg hover:scale-105 font-sans`}
                   >
                     {anyLimitExceeded && <AlertCircle className="w-3 h-3" />}

@@ -445,7 +445,7 @@ function renderStringValue(
             href={safeHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-300 hover:text-white underline"
+            className="text-foreground-80 hover:text-foreground underline"
           >
             {children}
           </a>
@@ -529,8 +529,8 @@ function renderStringValue(
       ? sanitizeHTML(unescapeContent(displayValue))
       : sanitized;
     const containerClass = isInline
-      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none'
-      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none';
+      ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-foreground-80 [&_a]:hover:text-foreground [&_a]:underline [&_*]:outline-none'
+      : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-foreground-80 [&_a]:hover:text-foreground [&_a]:underline [&_*]:outline-none';
 
     const htmlContentFactory = () => (
       <div

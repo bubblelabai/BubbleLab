@@ -188,7 +188,7 @@ export function syntaxHighlightJson(json: string): string {
       if (JSON_KEY_COLON_REGEX.test(match)) {
         return `<span class="text-purple-300">${match}</span>`;
       } else {
-        return `<span class="text-gray-200">${match}</span>`;
+        return `<span class="text-foreground">${match}</span>`;
       }
     } else if (JSON_BOOLEAN_REGEX.test(match)) {
       return `<span class="text-blue-400">${match}</span>`;
@@ -338,11 +338,11 @@ export function getEventIcon(event: StreamingLogEvent) {
     case 'debug':
       return <BugAntIcon className="h-4 w-4 text-purple-400" />;
     case 'trace':
-      return <EyeIcon className="h-4 w-4 text-gray-400" />;
+      return <EyeIcon className="h-4 w-4 text-muted-foreground" />;
     case 'log_line':
-      return <div className="h-4 w-4 bg-gray-400 rounded-full"></div>;
+      return <div className="h-4 w-4 bg-muted-foreground rounded-full"></div>;
     default:
-      return <div className="h-4 w-4 bg-gray-400 rounded-full"></div>;
+      return <div className="h-4 w-4 bg-muted-foreground rounded-full"></div>;
   }
 }
 
@@ -379,11 +379,11 @@ export function getEventColor(event: StreamingLogEvent): string {
     case 'debug':
       return 'text-purple-300';
     case 'trace':
-      return 'text-gray-400';
+      return 'text-muted-foreground';
     case 'log_line':
-      return 'text-gray-300';
+      return 'text-foreground-80';
     default:
-      return 'text-gray-300';
+      return 'text-foreground-80';
   }
 }
 

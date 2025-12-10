@@ -516,7 +516,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
           )}
           {/* Model Selector - COMMENTED OUT: Using Grok Code Fast only */}
           {/* <div className="mt-3">
-            <label className="text-xs text-gray-400 mb-1 block">AI Model</label>
+            <label className="text-xs text-muted-foreground mb-1 block">AI Model</label>
             <div className="relative">
               <select
                 title="AI Model"
@@ -524,7 +524,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 onChange={(e) =>
                   setSelectedModel(e.target.value as AvailableModel)
                 }
-                className="w-full bg-[#1e1e1e] border border-gray-600 rounded px-3 py-2 text-sm text-gray-100 appearance-none cursor-pointer hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                className="w-full bg-code-background border border-border rounded px-3 py-2 text-sm text-foreground appearance-none cursor-pointer hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
               >
                 {AVAILABLE_MODELS.map((model) => (
                   <option key={model.value} value={model.value}>
@@ -532,7 +532,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           </div> */}
         </div>
