@@ -2,7 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock Monaco Editor
 vi.mock('@monaco-editor/react', () => ({
-  DiffEditor: ({ original, modified, onMount }: any) => {
+  DiffEditor: ({
+    original,
+    modified,
+    onMount,
+  }: {
+    original: string;
+    modified: string;
+    onMount?: (editor: unknown) => void;
+  }) => {
     // Simulate editor mount
     if (onMount) {
       setTimeout(() => {

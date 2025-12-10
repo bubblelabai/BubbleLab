@@ -23,7 +23,6 @@ describe('ExecutionHistory - Code Restore Logic', () => {
   describe('handlePreviewVersion logic', () => {
     it('should show error toast when code is undefined', () => {
       const code = undefined;
-      const executionId = 6;
 
       // Simulate the logic from handlePreviewVersion
       if (!code) {
@@ -36,7 +35,6 @@ describe('ExecutionHistory - Code Restore Logic', () => {
     });
 
     it('should show error toast when flowId is null', () => {
-      const code = 'const test = "code";';
       const flowId = null;
 
       // Simulate the logic from handlePreviewVersion
@@ -52,7 +50,6 @@ describe('ExecutionHistory - Code Restore Logic', () => {
     it('should proceed when code and flowId are valid', () => {
       const code = 'const test = "code";';
       const flowId = 1;
-      const executionId = 6;
 
       // Simulate the logic - should not call toast.error
       if (!code) {
@@ -87,7 +84,6 @@ describe('ExecutionHistory - Code Restore Logic', () => {
     it('should call validation with correct parameters', async () => {
       const flowId = 1;
       const code = 'const test = "code";';
-      const executionId = 6;
       const credentials = {};
 
       const mockValidateCodeMutation = {
