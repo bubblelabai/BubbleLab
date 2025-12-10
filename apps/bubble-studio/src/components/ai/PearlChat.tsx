@@ -20,7 +20,7 @@ import {
   ArrowUp,
   Paperclip,
   X,
-  Info,
+  MessageSquare,
   Calendar,
   Webhook,
   HelpCircle,
@@ -860,7 +860,7 @@ export function PearlChat() {
                         <Check className="w-4 h-4 text-green-400" />
                       )}
                       {message.resultType === 'answer' && (
-                        <Info className="w-4 h-4 text-blue-400" />
+                        <MessageSquare className="w-4 h-4 text-white" />
                       )}
                       {message.resultType === 'reject' && (
                         <AlertCircle className="w-4 h-4 text-red-400" />
