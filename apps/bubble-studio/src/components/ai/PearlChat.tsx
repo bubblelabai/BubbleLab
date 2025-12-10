@@ -61,7 +61,14 @@ export function PearlChat() {
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
     new Set()
   );
-  const [generationOutput, setGenerationOutput] = useState('');
+  const [generationSteps, setGenerationSteps] = useState<
+    Array<{
+      type: 'tool_start' | 'tool_complete' | 'generation_complete' | 'error';
+      message: string;
+      duration?: number;
+      summary?: string;
+    }>
+  >([]);
   const processedEventCountRef = useRef(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -129,9 +136,6 @@ export function PearlChat() {
 
         storeState.addMessage(userMessage);
         hasInitializedGenerationRef.current = true;
-
-        // Initialize generation output with "Generating..." message
-        setGenerationOutput('Pearl is generating your workflow...\n');
       }
     }
   }, [isGenerating, flowData?.prompt, selectedFlowId]);
@@ -140,6 +144,7 @@ export function PearlChat() {
   useEffect(() => {
     hasInitializedGenerationRef.current = false;
     processedEventCountRef.current = 0;
+    setGenerationSteps([]);
   }, [selectedFlowId]);
 
   // Process generation events as they stream in
@@ -174,15 +179,19 @@ export function PearlChat() {
             default:
               toolDesc = `Pearl is using ${tool}`;
           }
-          setGenerationOutput((prev) => prev + `${toolDesc}...\n`);
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'tool_start', message: toolDesc },
+          ]);
           break;
         }
 
         case 'tool_complete': {
-          const duration = eventData.data.duration
-            ? ` (${eventData.data.duration}ms)`
-            : '';
-          setGenerationOutput((prev) => prev + `✅ Complete${duration}\n`);
+          const duration = eventData.data.duration;
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'tool_complete', message: 'Complete', duration },
+          ]);
           break;
         }
 
@@ -190,9 +199,14 @@ export function PearlChat() {
           // Get summary from generation result
           const summary =
             eventData.data?.summary || 'Workflow generated successfully';
-          const finalOutput =
-            generationOutput + `\n✅ Code generation complete!\n\n${summary}`;
-          setGenerationOutput(finalOutput);
+          setGenerationSteps((prev) => [
+            ...prev,
+            {
+              type: 'generation_complete',
+              message: 'Code generation complete!',
+              summary,
+            },
+          ]);
 
           console.log(
             '🔄 [generation_complete] Updating editor and refetching flow',
@@ -243,9 +257,10 @@ export function PearlChat() {
         }
 
         case 'error':
-          setGenerationOutput(
-            (prev) => prev + `\n❌ Error: ${eventData.data.error}\n`
-          );
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'error', message: eventData.data.error },
+          ]);
           break;
       }
     }
@@ -254,7 +269,7 @@ export function PearlChat() {
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pearl.messages, pearl.eventsList, pearl.isPending, generationOutput]);
+  }, [pearl.messages, pearl.eventsList, pearl.isPending, generationSteps]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -751,18 +766,61 @@ export function PearlChat() {
                   </div>
 
                   {/* Show generation output immediately after user message if this is the first message and we're generating */}
-                  {index === 0 && isGenerating && generationOutput && (
+                  {index === 0 && isGenerating && (
                     <div className="p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                        <span className="text-xs font-medium text-gray-400">
-                          Pearl - Generating Code...
-                        </span>
-                      </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
-                          {generationOutput}
+                      <div className="text-sm text-gray-300 p-3 bg-gray-800/30 rounded border-l-2 border-purple-500">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+                          <span className="text-xs font-medium text-gray-400">
+                            Pearl is generating your workflow...
+                          </span>
                         </div>
+                        {generationSteps.length > 0 && (
+                          <div className="space-y-1.5 mt-3">
+                            {generationSteps.map((step, idx) => (
+                              <div
+                                key={idx}
+                                className="text-[13px] leading-relaxed"
+                              >
+                                {step.type === 'tool_start' && (
+                                  <div className="text-gray-400">
+                                    {step.message}...
+                                  </div>
+                                )}
+                                {step.type === 'tool_complete' && (
+                                  <div className="flex items-center gap-1.5 text-white">
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>
+                                      {step.message}
+                                      {step.duration
+                                        ? ` (${step.duration}ms)`
+                                        : ''}
+                                    </span>
+                                  </div>
+                                )}
+                                {step.type === 'generation_complete' && (
+                                  <div className="mt-2 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-white font-medium">
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>{step.message}</span>
+                                    </div>
+                                    {step.summary && (
+                                      <div className="text-gray-300 mt-2">
+                                        {step.summary}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {step.type === 'error' && (
+                                  <div className="flex items-center gap-1.5 text-red-400">
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Error: {step.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
