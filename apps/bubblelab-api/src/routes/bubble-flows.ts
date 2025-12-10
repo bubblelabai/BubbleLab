@@ -807,6 +807,7 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
     startedAt: execution.startedAt.toISOString(),
     completedAt: execution.completedAt?.toISOString(),
     webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
+    code: execution.code || undefined,
   }));
 
   return c.json(response, 200);
