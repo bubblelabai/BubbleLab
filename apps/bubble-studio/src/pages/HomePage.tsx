@@ -26,6 +26,8 @@ export interface HomePageProps {
   onNavigateToDashboard: () => void;
 }
 
+type Filter = 'all' | 'active' | 'inactive';
+
 export const HomePage: React.FC<HomePageProps> = ({
   onFlowSelect,
   onFlowDelete,
@@ -40,6 +42,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const [activeFilter, setActiveFilter] = useState<Filter>('all');
 
   // Duplicate flow hook
   const { duplicateFlow, isLoading: isDuplicating } = useDuplicateFlow({
@@ -83,8 +86,16 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   // Filter flows based on search query
   const flows = allFlows.filter((flow) => {
-    if (!searchQuery.trim()) return true;
-    return flow.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const filterStatus =
+      activeFilter === 'all' ||
+      (activeFilter === 'active' && flow.isActive) ||
+      (activeFilter === 'inactive' && !flow.isActive);
+
+    const matchesSearch =
+      !searchQuery.trim() ||
+      flow.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return filterStatus && matchesSearch;
   });
 
   const handleDeleteClick = (flowId: number, event: React.MouseEvent) => {
@@ -197,6 +208,65 @@ export const HomePage: React.FC<HomePageProps> = ({
               placeholder="Search flows..."
               className="w-full pl-10 pr-4 py-2.5 bg-[#1a1a1a] border border-white/5 text-gray-100 text-sm rounded-lg focus:outline-none focus:border-white/10 placeholder-gray-500 transition-all duration-200"
             />
+          </div>
+
+          <div className="pt-4">
+            <div className="rounded-md p-2 mb-6 w-fit border border-neutral-100/10">
+              <div className="relative flex gap-2">
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`
+                relative flex-1 px-2 py-1 rounded-xl font-normal text-sm
+                transition-all duration-300 ease-in-out
+                ${
+                  activeFilter === 'all'
+                    ? 'text-black bg-neutral-50'
+                    : 'text-gray-400'
+                }
+              `}
+                >
+                  {activeFilter === 'all' && (
+                    <span className="absolute inset-0  rounded-md  transition-all duration-300 ease-in-out -z-0" />
+                  )}
+                  <span className="relative z-10">All</span>
+                </button>
+                <button
+                  onClick={() => setActiveFilter('active')}
+                  className={`
+                relative flex-1 px-2 py-1 rounded-xl font-normal text-sm
+                transition-all duration-300 ease-in-out
+                ${
+                  activeFilter === 'active'
+                    ? 'text-black bg-neutral-50'
+                    : 'text-gray-400'
+                }
+              `}
+                >
+                  {activeFilter === 'active' && (
+                    <span className="absolute inset-0 rounded-md  transition-all duration-300 ease-in-out -z-0" />
+                  )}
+                  <span className="relative z-10">Active</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveFilter('inactive')}
+                  className={`
+                relative flex-1 px-2 py-1 rounded-xl font-normal text-sm
+                transition-all duration-300 ease-in-out
+               ${
+                 activeFilter === 'inactive'
+                   ? 'text-black bg-neutral-50'
+                   : 'text-gray-400'
+               }
+              `}
+                >
+                  {activeFilter === 'inactive' && (
+                    <span className="absolute inset-0 rounded-md  transition-all duration-300 ease-in-out -z-0" />
+                  )}
+                  <span className="relative z-10">Inactive</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
