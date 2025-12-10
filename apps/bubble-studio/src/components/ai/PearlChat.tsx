@@ -4,7 +4,7 @@
  *
  */
 import { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
 import { usePearlChatStore } from '../../hooks/usePearlChatStore';
@@ -48,8 +48,8 @@ import {
   type BubblePromptInputRef,
 } from './BubblePromptInput';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
-import { createGenerateCodeQuery } from '../../queries/generateCodeQuery';
 import { useEditorStore } from '../../stores/editorStore';
+import { useGenerateInitialFlow } from '../../hooks/usePearl';
 import {
   useGenerationEventsStore,
   selectFlowEvents,
@@ -108,14 +108,9 @@ export function PearlChat() {
   const storeEvents = useGenerationEventsStore(
     selectFlowEvents(selectedFlowId)
   );
-
-  // Query to trigger/manage generation stream
-  // The actual events come from the store subscription above
-  useQuery({
-    ...createGenerateCodeQuery({
-      prompt: flowData?.prompt || '',
-      flowId: selectedFlowId ?? undefined,
-    }),
+  useGenerateInitialFlow({
+    prompt: flowData?.prompt || '',
+    flowId: selectedFlowId ?? undefined,
     enabled: shouldEnableGeneration,
   });
 
