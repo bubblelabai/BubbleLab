@@ -160,8 +160,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     toggleExportModal();
   };
 
-  console.log('currentFlow in FlowIDEView', flowId);
-
   return (
     <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
       {/* Header */}

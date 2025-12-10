@@ -2147,8 +2147,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     []
   );
 
-  console.log('currentFlow', currentFlow);
-
   // Show loading state
   if (loading) {
     return (
@@ -2380,7 +2378,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
 // Main component that provides ReactFlow context
 export default function FlowVisualizer(props: FlowVisualizerProps) {
-  console.log('currentFlow in FlowVisualizer', props.flowId);
   return (
     <ReactFlowProvider>
       <FlowVisualizerInner {...props} />

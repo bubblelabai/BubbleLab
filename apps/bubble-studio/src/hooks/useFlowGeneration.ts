@@ -64,6 +64,7 @@ export const useFlowGeneration = () => {
           eventType: 'webhook/http',
           webhookActive: false,
         });
+        setGenerationPrompt('');
       } else {
         // Create an EMPTY flow (for AI generation)
         createResult = await createEmptyFlowMutation.mutateAsync({
