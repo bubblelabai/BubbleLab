@@ -225,9 +225,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 }
               `}
                 >
-                  {activeFilter === 'all' && (
-                    <span className="absolute inset-0  rounded-md  transition-all duration-300 ease-in-out -z-0" />
-                  )}
                   <span className="relative z-10">All</span>
                 </button>
                 <button
@@ -242,9 +239,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                 }
               `}
                 >
-                  {activeFilter === 'active' && (
-                    <span className="absolute inset-0 rounded-md  transition-all duration-300 ease-in-out -z-0" />
-                  )}
                   <span className="relative z-10">Active</span>
                 </button>
 
@@ -260,9 +254,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                }
               `}
                 >
-                  {activeFilter === 'inactive' && (
-                    <span className="absolute inset-0 rounded-md  transition-all duration-300 ease-in-out -z-0" />
-                  )}
                   <span className="relative z-10">Inactive</span>
                 </button>
               </div>
