@@ -50,6 +50,10 @@ import {
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
 import { createGenerateCodeQuery } from '../../queries/generateCodeQuery';
 import { useEditorStore } from '../../stores/editorStore';
+import {
+  useGenerationEventsStore,
+  selectFlowEvents,
+} from '../../stores/generationEventsStore';
 import type { ChatMessage } from './type';
 
 export function PearlChat() {
@@ -99,14 +103,24 @@ export function PearlChat() {
     selectedFlowId && flowData?.prompt && isGenerating
   );
 
-  // Query to get generation events for initial flow generation
-  const { data: generationEvents = [] } = useQuery({
+  // Subscribe directly to generation events store for real-time updates
+  // This ensures we get events even if the component was unmounted during streaming
+  const storeEvents = useGenerationEventsStore(
+    selectFlowEvents(selectedFlowId)
+  );
+
+  // Query to trigger/manage generation stream
+  // The actual events come from the store subscription above
+  useQuery({
     ...createGenerateCodeQuery({
       prompt: flowData?.prompt || '',
       flowId: selectedFlowId ?? undefined,
     }),
     enabled: shouldEnableGeneration,
   });
+
+  // Use events from store (primary source of truth)
+  const generationEvents = storeEvents;
 
   // Track if we've initialized the generation conversation
   const hasInitializedGenerationRef = useRef(false);
@@ -145,6 +159,9 @@ export function PearlChat() {
     hasInitializedGenerationRef.current = false;
     processedEventCountRef.current = 0;
     setGenerationSteps([]);
+
+    // Note: We don't reset the events store here because we want to preserve
+    // events if the user navigates away and back during generation
   }, [selectedFlowId]);
 
   // Process generation events as they stream in

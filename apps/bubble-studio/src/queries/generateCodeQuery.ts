@@ -1,10 +1,8 @@
-import {
-  queryOptions,
-  experimental_streamedQuery as streamedQuery,
-} from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { sseToAsyncIterable } from '@/utils/sseStream';
 import type { GenerationStreamingEvent } from '@/types/generation';
+import { useGenerationEventsStore } from '@/stores/generationEventsStore';
 
 export interface GenerateCodeParams {
   prompt: string;
@@ -12,38 +10,86 @@ export interface GenerateCodeParams {
 }
 
 /**
- * Creates a streamedQuery for code generation that handles SSE streaming.
- * Events are accumulated in an array as they arrive from the server.
+ * Starts a generation stream for a flow and stores events in the persistent store.
+ * This function runs independently of React component lifecycle.
  *
- * @param params - Generation parameters including the prompt
- * @returns TanStack Query options for the code generation stream
+ * @param params - Generation parameters
+ * @param maxRetries - Maximum retry attempts for failed streams
  */
-// Helper to wrap AsyncIterable with retry logic
-async function* retryableStream(
+async function startGenerationStream(
   params: GenerateCodeParams,
   maxRetries: number = 2
-): AsyncGenerator<GenerationStreamingEvent> {
+): Promise<void> {
+  const { flowId } = params;
+  if (!flowId) return;
+
+  const store = useGenerationEventsStore.getState();
+
+  // Don't start if already streaming or completed
+  if (store.hasActiveStream(flowId) || store.isCompleted(flowId)) {
+    console.log(
+      `[generateCodeQuery] Stream already active or completed for flow ${flowId}`
+    );
+    return;
+  }
+
+  // Create abort controller for this stream
+  const abortController = new AbortController();
+  store.registerStream(flowId, abortController);
+
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await api.postStream('/bubble-flow/generate', {
-        prompt: params.prompt.trim(),
-        ...(params.flowId && { flowId: params.flowId }),
-      });
+    if (abortController.signal.aborted) {
+      console.log(`[generateCodeQuery] Stream aborted for flow ${flowId}`);
+      return;
+    }
 
-      // Consume the entire stream, yielding each event
+    try {
+      const response = await api.postStream(
+        '/bubble-flow/generate',
+        {
+          prompt: params.prompt.trim(),
+          flowId: params.flowId,
+        },
+        { signal: abortController.signal }
+      );
+
+      // Consume the stream and store events
       for await (const event of sseToAsyncIterable(response)) {
-        yield event;
+        if (abortController.signal.aborted) {
+          console.log(
+            `[generateCodeQuery] Stream aborted during iteration for flow ${flowId}`
+          );
+          return;
+        }
+
+        // Add event to store
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+
+        // Mark as completed if this is the final event
+        if (event.type === 'generation_complete' || event.type === 'error') {
+          useGenerationEventsStore.getState().markCompleted(flowId);
+        }
       }
 
-      // If we got here, stream completed successfully
+      // Stream completed successfully
+      console.log(
+        `[generateCodeQuery] Stream completed successfully for flow ${flowId}`
+      );
       return;
     } catch (error) {
+      if (abortController.signal.aborted) {
+        console.log(
+          `[generateCodeQuery] Stream aborted during error handling for flow ${flowId}`
+        );
+        return;
+      }
+
       lastError = error instanceof Error ? error : new Error('Stream failed');
 
       console.error(
-        `❌ Stream attempt ${attempt + 1} failed:`,
+        `[generateCodeQuery] Stream attempt ${attempt + 1} failed:`,
         lastError.message
       );
 
@@ -52,18 +98,23 @@ async function* retryableStream(
         lastError.message.includes('Authentication failed') ||
         /HTTP 4\d{2}/.test(lastError.message)
       ) {
-        throw lastError;
+        useGenerationEventsStore.getState().addEvent(flowId, {
+          type: 'error',
+          data: { error: lastError.message, recoverable: false },
+        });
+        useGenerationEventsStore.getState().markCompleted(flowId);
+        return;
       }
 
       // If we have retries left, wait and try again
       if (attempt < maxRetries) {
         const delayMs = Math.min(5000 * Math.pow(2, attempt), 4000);
         console.log(
-          `🔄 Retrying in ${delayMs}ms... (attempt ${attempt + 2}/${maxRetries + 1})`
+          `[generateCodeQuery] Retrying in ${delayMs}ms... (attempt ${attempt + 2}/${maxRetries + 1})`
         );
 
-        // Yield a retry event so it shows in the UI
-        yield {
+        // Add a retry event
+        useGenerationEventsStore.getState().addEvent(flowId, {
           type: 'retry_attempt',
           data: {
             attempt: attempt + 1,
@@ -71,7 +122,7 @@ async function* retryableStream(
             delay: delayMs,
             error: lastError.message,
           },
-        };
+        });
 
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
@@ -79,39 +130,61 @@ async function* retryableStream(
   }
 
   // All retries exhausted
-  throw lastError || new Error('Stream failed after all retries');
+  const errorMsg = lastError?.message || 'Stream failed after all retries';
+  useGenerationEventsStore.getState().addEvent(flowId, {
+    type: 'error',
+    data: { error: errorMsg, recoverable: false },
+  });
+  useGenerationEventsStore.getState().markCompleted(flowId);
 }
 
+/**
+ * Creates a query for code generation that reads from the persistent events store.
+ * The actual streaming happens independently via startGenerationStream.
+ *
+ * @param params - Generation parameters including the prompt
+ * @returns TanStack Query options for reading generation events
+ */
 export const createGenerateCodeQuery = (params: GenerateCodeParams) => {
   return queryOptions({
     queryKey: ['generate-code', params.prompt, params.flowId],
-    queryFn: streamedQuery({
-      streamFn: async () => {
-        // Return the retryable stream wrapper
-        return retryableStream(params);
-      },
-      // Accumulate all events into an array
-      reducer: (
-        events: GenerationStreamingEvent[],
-        newEvent: GenerationStreamingEvent
-      ) => {
-        return [...events, newEvent];
-      },
-      // Start with empty array
-      initialValue: [] as GenerationStreamingEvent[],
-      // On refetch, reset and start fresh (don't append to old generation)
-      refetchMode: 'reset',
-    }),
-    // Retry is handled inside streamFn for better control
-    retry: false,
-    // Keep data fresh while streaming, but don't mark as stale during active generation
-    staleTime: 5 * 60 * 1000, // 5 minutes - keeps query fresh during generation
-    // Keep cached data for 5 minutes to allow remounting without retriggering
-    gcTime: 5 * 60 * 1000, // 5 minutes - prevents clearing cache when component unmounts
-    // Don't refetch on window focus during generation
+    queryFn: async (): Promise<GenerationStreamingEvent[]> => {
+      const { flowId } = params;
+      if (!flowId) return [];
+
+      const store = useGenerationEventsStore.getState();
+
+      // Start the stream if not already running and not completed
+      if (!store.hasActiveStream(flowId) && !store.isCompleted(flowId)) {
+        // Start stream in background (don't await)
+        startGenerationStream(params).catch((err) => {
+          console.error('[generateCodeQuery] Stream error:', err);
+        });
+      }
+
+      // Return current events from store
+      return store.getEvents(flowId);
+    },
+    // Re-run query periodically to pick up new events while streaming
+    refetchInterval: () => {
+      const flowId = params.flowId;
+      if (!flowId) return false;
+
+      const store = useGenerationEventsStore.getState();
+      // Keep polling while stream is active
+      if (store.hasActiveStream(flowId)) {
+        return 100; // Poll every 100ms while streaming
+      }
+      return false;
+    },
+    // Keep data fresh while streaming
+    staleTime: 0, // Always consider stale so refetchInterval works
+    // Keep cached data for 5 minutes
+    gcTime: 5 * 60 * 1000,
+    // Refetch on mount to get latest events
+    refetchOnMount: true,
+    // Don't refetch on window focus
     refetchOnWindowFocus: false,
-    // Don't refetch when component remounts - reuse existing stream
-    refetchOnMount: false,
     // Don't refetch on reconnect
     refetchOnReconnect: false,
   });
