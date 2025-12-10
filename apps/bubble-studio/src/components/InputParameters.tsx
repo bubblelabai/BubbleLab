@@ -620,7 +620,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
           <p className="text-xs text-muted-foreground">{field.description}</p>
         )}
 
-        <div className="space-y-3 pl-4 border-l-2 border-gray-700">
+        <div className="space-y-3 pl-4 border-l-2 border-border">
           {Array.from({ length: itemCount }, (_, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
@@ -921,7 +921,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
   };
 
   return (
-    <div className="bg-muted border border-border rounded-lg p-6 hover:border-gray-600 transition-all duration-200">
+    <div className="bg-muted border border-border rounded-lg p-6 hover:border-border-80 transition-all duration-200">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
@@ -939,7 +939,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         <button
           type="button"
           onClick={clearSavedInputs}
-          className="px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border hover:border-gray-500 transition-all duration-200 flex items-center gap-1"
+          className="px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border hover:border-border-80 transition-all duration-200 flex items-center gap-1"
           title="Clear all saved input values"
         >
           <span>🗑️</span>
@@ -970,7 +970,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         </div>
       ) : (
         <div className="text-center py-12 bg-background border border-border rounded-lg">
-          <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl text-muted-foreground">⚡</span>
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">

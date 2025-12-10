@@ -288,8 +288,8 @@ function BubbleNode({ data }: BubbleNodeProps) {
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isSubBubble
-          ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
-          : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
+          ? 'bg-muted border-border scale-75 w-64' // Sub-bubbles are smaller and darker
+          : 'bg-secondary border-border w-80' // Main bubbles fixed width
       } ${
         isExecuting
           ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`

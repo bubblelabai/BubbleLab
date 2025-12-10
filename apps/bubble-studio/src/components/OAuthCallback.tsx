@@ -180,13 +180,13 @@ export function OAuthCallback({ apiBaseUrl }: OAuthCallbackProps) {
   }, [apiBaseUrl]);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <h2 className="text-lg font-semibold text-gray-100 mb-2">
+        <h2 className="text-lg font-semibold text-foreground mb-2">
           Completing OAuth Connection...
         </h2>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Please wait while we finalize your credential setup.
         </p>
       </div>
