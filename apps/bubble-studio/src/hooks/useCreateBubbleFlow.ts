@@ -218,6 +218,7 @@ export function useCreateBubbleFlow(options?: {
             ...optimisticFlowDetails,
             id: data.id,
             // Override with server response data (for regular flows with code)
+            eventType: data.eventType || optimisticFlowDetails.eventType,
             bubbleParameters:
               data.bubbleParameters || optimisticFlowDetails.bubbleParameters,
             workflow: data.workflow || optimisticFlowDetails.workflow,
@@ -263,6 +264,7 @@ export function useCreateBubbleFlow(options?: {
           data.id
         );
       }
+      queryClient.invalidateQueries({ queryKey: ['bubbleFlow', data.id] });
     },
     onError: (error, _variables, context) => {
       console.error('[useCreateBubbleFlow] Flow creation failed:', error);
