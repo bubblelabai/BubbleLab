@@ -45,11 +45,11 @@ export default function LiveOutput({
   const currentLine = propsCurrentLine;
 
   return (
-    <div className="h-full flex flex-col bg-[#0f1115]">
+    <div className="h-full flex flex-col bg-panel">
       {/* Content Area - Full height AllEventsView */}
       <div className="flex-1 overflow-hidden">
         {events.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
               <p className="text-lg mb-2">No execution logs yet</p>
               <p className="text-sm">

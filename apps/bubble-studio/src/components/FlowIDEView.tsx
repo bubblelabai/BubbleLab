@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/flow_visualizer/FlowVisualizer';
+import { FlowGeneration } from '@/components/FlowGeneration';
 import { Tooltip } from '@/components/shared/Tooltip';
 import { ConsolidatedSidePanel } from '@/components/ConsolidatedSidePanel';
 import { useEditor } from '@/hooks/useEditor';
 import { useUIStore } from '@/stores/uiStore';
 import { useExecutionStore } from '@/stores/executionStore';
 import { useGenerationStore } from '@/stores/generationStore';
+import { useOutputStore } from '@/stores/outputStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useExecutionHistory } from '@/hooks/useExecutionHistory';
 import { getFlowNameFromCode } from '@/utils/codeParser';
@@ -44,6 +46,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     isConsolidatedPanelOpen,
   } = useUIStore();
 
+  const { output } = useOutputStore();
   const { generationPrompt, isStreaming } = useGenerationStore();
   const { editor } = useEditor();
   // Use selector to only subscribe to specific fields and prevent unnecessary re-renders
@@ -64,7 +67,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
-    limit: 10,
+    limit: 50,
   });
 
   // ============= Rename Flow Hook =============
@@ -161,9 +164,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#1a1a1a] text-gray-100">
+    <div className="h-screen flex flex-col bg-card text-foreground">
       {/* Header */}
-      <div className="bg-[#1a1a1a] px-6 py-3">
+      <div className="bg-card px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             {(() => {
@@ -203,13 +206,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                         value={newFlowName}
                         onChange={(e) => setNewFlowName(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
+                        className="px-2 py-1 text-base font-semibold bg-background text-foreground border border-border rounded focus:outline-none focus:border-border-80"
                         style={{ minWidth: '200px' }}
                       />
                       <button
                         type="button"
                         onClick={submitRename}
-                        className="p-1 rounded hover:bg-gray-700/50 text-green-400 hover:text-green-300"
+                        className="p-1 rounded hover:bg-muted text-success hover:text-success-80"
                         title="Confirm (Enter)"
                       >
                         <Check className="w-4 h-4" />
@@ -217,7 +220,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                       <button
                         type="button"
                         onClick={cancelRename}
-                        className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-300"
+                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
                         title="Cancel (Esc)"
                       >
                         <X className="w-4 h-4" />
@@ -226,14 +229,14 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                   ) : (
                     // Flow Name Display
                     <>
-                      <h2 className="text-lg font-semibold text-gray-100 font-sans truncate max-w-[50vw]">
+                      <h2 className="text-lg font-semibold text-foreground font-sans truncate max-w-[50vw]">
                         {name}
                       </h2>
                       {flowId && currentFlow && (
                         <button
                           type="button"
                           onClick={startRename}
-                          className="p-1.5 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200"
                           title="Rename Flow"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -244,7 +247,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                   {hasPrompt && (
                     <button
                       onClick={togglePrompt}
-                      className="border border-gray-600/50 hover:border-gray-500/70 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 flex items-center gap-1"
+                      className="border border-border hover:border-border-80 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground flex items-center gap-1"
                     >
                       {showPrompt ? (
                         <ChevronUpIcon className="w-3 h-3" />
@@ -264,13 +267,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
             <SignedOut>
               <div className="flex items-center gap-2">
                 <SignInButton mode="modal">
-                  <button className="bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/50 text-blue-300 hover:text-blue-200 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+                  <button className="bg-info-20 hover:bg-info-30 border border-info-50 text-info hover:text-info-80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
                     <span>🔑</span>
                     Sign In
                   </button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <button className="bg-green-600/20 hover:bg-green-600/30 border border-green-600/50 text-green-300 hover:text-green-200 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+                  <button className="bg-success-20 hover:bg-success-30 border border-success-50 text-success hover:text-success-80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
                     <span>✨</span>
                     Sign Up
                   </button>
@@ -297,7 +300,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                         !executionHistory ||
                         executionHistory.length === 0
                       }
-                      className="border border-gray-600/50 hover:border-gray-500/70 disabled:border-gray-600/30 disabled:cursor-not-allowed px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-gray-300 hover:text-gray-200 disabled:text-gray-500 flex items-center gap-1"
+                      className="border border-border hover:border-border-80 disabled:border-border-30 disabled:cursor-not-allowed px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground disabled:text-muted-foreground/50 flex items-center gap-1"
                     >
                       <FileJson2 className="w-3 h-3" />
                       Export
@@ -316,7 +319,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                       className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 flex items-center ${
                         isRunnable()
                           ? 'bg-pink-600/20 hover:bg-pink-600/30 border border-pink-600/50 text-pink-300 hover:text-pink-200 hover:border-pink-500/70 shadow-lg shadow-pink-600/10'
-                          : 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-gray-400'
+                          : 'bg-muted border border-border cursor-not-allowed text-muted-foreground'
                       }`}
                     >
                       {executionState.isValidating ? (
@@ -353,7 +356,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
               <Panel defaultSize={25} minSize={20} maxSize={40}>
                 {/* Left panel content if needed */}
               </Panel>
-              <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
+              <PanelResizeHandle className="w-2 bg-border hover:bg-foreground transition-colors" />
             </>
           )}
 
@@ -397,8 +400,8 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                     }
 
                     return currentFlowInfo && showPrompt ? (
-                      <div className="px-6 py-3 border-b border-[#30363d] bg-[#1a1a1a] flex-shrink-0">
-                        <p className="text-sm text-gray-100 leading-relaxed font-sans">
+                      <div className="px-6 py-3 border-b border-border bg-card flex-shrink-0">
+                        <p className="text-sm text-foreground leading-relaxed font-sans">
                           {currentFlowInfo.prompt}
                         </p>
                       </div>
@@ -406,62 +409,70 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                   })()}
 
                   <div className="flex-1 min-h-0">
-                    <PanelGroup
-                      direction="horizontal"
-                      autoSaveId="bubbleflow-consolidated-layout"
-                      className="h-full"
-                    >
-                      {/* Flow Visualizer Panel */}
-                      <Panel
-                        defaultSize={isConsolidatedPanelOpen ? 60 : 100}
-                        minSize={30}
+                    {isStreaming ? (
+                      <FlowGeneration
+                        isStreaming={isStreaming}
+                        output={output}
+                        isRunning={executionState.isRunning}
+                      />
+                    ) : (
+                      <PanelGroup
+                        direction="horizontal"
+                        autoSaveId="bubbleflow-consolidated-layout"
+                        className="h-full"
                       >
-                        <div className="h-full bg-[#1a1a1a] min-h-0">
-                          <div className="h-full min-h-0">
-                            <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
-                              {flowId ? (
-                                <FlowVisualizer
-                                  flowId={flowId}
-                                  onValidate={() =>
-                                    validateCodeMutation.mutateAsync({
-                                      code: editor.getCode(),
-                                      flowId: flowId,
-                                      syncInputsWithFlow: true,
-                                      credentials:
-                                        executionState.pendingCredentials,
-                                      defaultInputs:
-                                        executionState.executionInputs,
-                                    })
-                                  }
-                                />
-                              ) : (
-                                <div className="h-full flex items-center justify-center">
-                                  <div className="text-center">
-                                    <p className="text-gray-400 text-lg mb-2">
-                                      No flow selected
-                                    </p>
-                                    <p className="text-gray-500 text-sm">
-                                      Please select a flow from the sidebar to
-                                      view its visualization
-                                    </p>
+                        {/* Flow Visualizer Panel */}
+                        <Panel
+                          defaultSize={isConsolidatedPanelOpen ? 60 : 100}
+                          minSize={30}
+                        >
+                          <div className="h-full bg-card min-h-0">
+                            <div className="h-full min-h-0">
+                              <div className="h-full bg-card relative">
+                                {flowId ? (
+                                  <FlowVisualizer
+                                    flowId={flowId}
+                                    onValidate={() =>
+                                      validateCodeMutation.mutateAsync({
+                                        code: editor.getCode(),
+                                        flowId: flowId,
+                                        syncInputsWithFlow: true,
+                                        credentials:
+                                          executionState.pendingCredentials,
+                                        defaultInputs:
+                                          executionState.executionInputs,
+                                      })
+                                    }
+                                  />
+                                ) : (
+                                  <div className="h-full flex items-center justify-center">
+                                    <div className="text-center">
+                                      <p className="text-muted-foreground text-lg mb-2">
+                                        No flow selected
+                                      </p>
+                                      <p className="text-muted-foreground/70 text-sm">
+                                        Please select a flow from the sidebar to
+                                        view its visualization
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Panel>
+                        </Panel>
 
-                      {/* Consolidated Side Panel */}
-                      {isConsolidatedPanelOpen && (
-                        <>
-                          <PanelResizeHandle className="w-2 bg-[#30363d] hover:bg-white transition-colors" />
-                          <Panel defaultSize={40} minSize={30} maxSize={50}>
-                            <ConsolidatedSidePanel />
-                          </Panel>
-                        </>
-                      )}
-                    </PanelGroup>
+                        {/* Consolidated Side Panel */}
+                        {isConsolidatedPanelOpen && (
+                          <>
+                            <PanelResizeHandle className="w-2 bg-border hover:bg-foreground transition-colors" />
+                            <Panel defaultSize={40} minSize={30} maxSize={50}>
+                              <ConsolidatedSidePanel />
+                            </Panel>
+                          </>
+                        )}
+                      </PanelGroup>
+                    )}
                   </div>
                 </div>
               </Panel>
