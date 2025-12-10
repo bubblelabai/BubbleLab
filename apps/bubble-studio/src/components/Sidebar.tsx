@@ -390,7 +390,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, ref }) => {
               <span className="w-12 flex-none flex justify-center p-2">
                 {DISABLE_AUTH ? (
                   // Mock avatar when auth is disabled
-                  <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-primary-20 border border-primary-40 flex items-center justify-center">
                     <User className="w-5 h-5 text-primary" />
                   </div>
                 ) : (

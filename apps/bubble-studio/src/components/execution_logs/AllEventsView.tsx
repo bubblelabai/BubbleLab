@@ -163,7 +163,7 @@ export default function AllEventsView({
                 onClick={() => setSelectedTab(tab.type)}
                 className={`flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-md transition-all ${
                   isSelected
-                    ? 'bg-info/10 text-info'
+                    ? 'bg-info-10 text-info'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
@@ -343,7 +343,7 @@ export default function AllEventsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-foreground/80 break-words flex-1 min-w-0">
+                                <p className="text-xs text-foreground-80 break-words flex-1 min-w-0">
                                   {makeLinksClickable(
                                     formatEventMessage(event)
                                   )}
@@ -388,7 +388,7 @@ export default function AllEventsView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-foreground/80 break-words flex-1 min-w-0">
+                                <p className="text-xs text-foreground-80 break-words flex-1 min-w-0">
                                   {makeLinksClickable(
                                     formatEventMessage(event)
                                   )}
@@ -509,7 +509,7 @@ export default function AllEventsView({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3 min-w-0">
-                          <p className="text-sm text-foreground/80 break-words flex-1 min-w-0">
+                          <p className="text-sm text-foreground-80 break-words flex-1 min-w-0">
                             {makeLinksClickable(formatEventMessage(event))}
                           </p>
                           <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">
@@ -621,7 +621,7 @@ export default function AllEventsView({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-3 min-w-0">
-                              <p className="text-sm text-foreground/80 break-words flex-1 min-w-0">
+                              <p className="text-sm text-foreground-80 break-words flex-1 min-w-0">
                                 {makeLinksClickable(
                                   formatEventMessage(selectedEvent)
                                 )}

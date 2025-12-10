@@ -87,11 +87,11 @@ export function CodeDiffView({
       </div>
 
       {/* Footer with centered action button */}
-      <div className="flex items-center justify-center bg-muted/50 border-t border-border px-4 py-2.5">
+      <div className="flex items-center justify-center bg-muted-50 border-t border-border px-4 py-2.5">
         {!isAccepted && (
           <button
             onClick={onAccept}
-            className="px-6 py-2 text-sm bg-success hover:bg-success/90 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-success/20 hover:shadow-success/30"
+            className="px-6 py-2 text-sm bg-success hover:bg-success-90 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-success-20 hover:shadow-success-30"
           >
             Accept Changes
           </button>

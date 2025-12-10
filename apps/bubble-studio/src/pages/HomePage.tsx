@@ -178,7 +178,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button
               type="button"
               onClick={onNavigateToDashboard}
-              className="px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
+              className="px-5 py-2.5 bg-primary text-primary-foreground hover:bg-primary-90 text-sm font-medium rounded-full transition-all duration-200 flex items-center gap-2 shadow-lg hover:scale-105"
             >
               <Plus className="h-5 w-5" />
               <span className="font-bold font-sans">New Flow</span>
@@ -195,7 +195,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search flows..."
-              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border dark:border-white/5 text-foreground text-sm rounded-lg focus:outline-none focus:border-border/80 dark:focus:border-white/10 placeholder-muted-foreground transition-all duration-200"
+              className="w-full pl-10 pr-4 py-2.5 bg-card border border-border text-foreground text-sm rounded-lg focus:outline-none focus:border-border-80 placeholder-muted-foreground transition-all duration-200"
             />
           </div>
         </div>
@@ -212,7 +212,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div className="flex flex-col items-center justify-center py-24">
             {searchQuery ? (
               <>
-                <h2 className="text-xl font-semibold text-foreground/80 mb-2">
+                <h2 className="text-xl font-semibold text-foreground-80 mb-2">
                   No flows found
                 </h2>
                 <p className="text-muted-foreground text-sm mb-4">
@@ -228,7 +228,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               </>
             ) : (
               <>
-                <h2 className="text-xl font-semibold text-foreground/80 mb-2">
+                <h2 className="text-xl font-semibold text-foreground-80 mb-2">
                   No flows yet
                 </h2>
                 <p className="text-muted-foreground text-sm">
@@ -245,16 +245,16 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={flow.id}
-                  className={`group relative rounded-lg border border-border dark:border-white/5 bg-card transition-all duration-300 ${
+                  className={`group relative rounded-lg border border-border bg-card transition-all duration-300 ${
                     isOptimisticLoading
                       ? 'opacity-70 cursor-wait'
-                      : 'hover:bg-card/80 hover:border-border/80 dark:hover:border-white/10 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
+                      : 'hover:bg-card-80 hover:border-border-80 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer'
                   }`}
                   onClick={() => !isOptimisticLoading && onFlowSelect(flow.id)}
                 >
                   {/* Loading overlay for optimistic flows */}
                   {isOptimisticLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/20 rounded-lg z-20">
+                    <div className="absolute inset-0 flex items-center justify-center bg-background-20 rounded-lg z-20">
                       <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin" />
                     </div>
                   )}
@@ -310,7 +310,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                             }
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="flex-1 px-2 py-1 text-base font-semibold bg-background text-foreground border border-border rounded focus:outline-none focus:border-border/80"
+                          className="flex-1 px-2 py-1 text-base font-semibold bg-background text-foreground border border-border rounded focus:outline-none focus:border-border-80"
                         />
                         <button
                           type="button"
@@ -321,7 +321,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                               setRenamingFlowId(null);
                             }
                           }}
-                          className="p-1 rounded hover:bg-muted text-success hover:text-success/80"
+                          className="p-1 rounded hover:bg-muted text-success hover:text-success-80"
                           title="Confirm (Enter)"
                         >
                           <Check className="w-4 h-4" />
@@ -357,7 +357,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
 
                     {/* Divider and Date/Toggle Row */}
-                    <div className="pt-2 mt-2 border-t border-border dark:border-white/5">
+                    <div className="pt-2 mt-2 border-t border-border">
                       <div
                         className="flex items-center justify-between flex-wrap gap-4 mt-2"
                         onClick={(e) => e.stopPropagation()}

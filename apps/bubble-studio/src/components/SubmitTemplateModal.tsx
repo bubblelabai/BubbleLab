@@ -148,7 +148,7 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
 
           {/* Title */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground-80">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Template Title <span className="text-destructive">*</span>
             </label>
@@ -158,14 +158,14 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               value={formData.title}
               onChange={handleInputChange}
               placeholder="e.g., GitHub PR Auto-Commenter"
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border-80 focus:ring-1 focus:ring-ring/20 transition-all duration-200"
               required
             />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground-80">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Description <span className="text-destructive">*</span>
             </label>
@@ -175,14 +175,14 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               onChange={handleInputChange}
               placeholder="Describe what your template does and how it can help others..."
               rows={3}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border-80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none"
               required
             />
           </div>
 
           {/* Author Name */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground-80">
               <User className="w-4 h-4 text-muted-foreground" />
               Your Name
             </label>
@@ -192,13 +192,13 @@ export const SubmitTemplateModal: React.FC<SubmitTemplateModalProps> = ({
               value={formData.authorName}
               onChange={handleInputChange}
               placeholder="How would you like to be credited?"
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border-80 focus:ring-1 focus:ring-ring/20 transition-all duration-200"
             />
           </div>
 
           {/* Code */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground-80">
               <Code className="w-4 h-4 text-muted-foreground" />
               Flow Code <span className="text-destructive">*</span>
             </label>
@@ -216,14 +216,14 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
   }
 }`}
               rows={10}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none font-mono text-sm"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border-80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none font-mono text-sm"
               required
             />
           </div>
 
           {/* Additional Notes */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-medium text-foreground/80">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground-80">
               <FileText className="w-4 h-4 text-muted-foreground" />
               Additional Notes
             </label>
@@ -233,7 +233,7 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
               onChange={handleInputChange}
               placeholder="Any additional context, use cases, or setup instructions..."
               rows={2}
-              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border/80 dark:focus:border-white/30 focus:ring-1 focus:ring-ring/20 dark:focus:ring-white/20 transition-all duration-200 resize-none"
+              className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-border-80 focus:ring-1 focus:ring-ring/20 transition-all duration-200 resize-none"
             />
           </div>
         </form>
@@ -250,7 +250,7 @@ export class MyTemplate extends BubbleFlow<'webhook/http'> {
               disabled={!isFormValid() || isSubmitting}
               className={`px-6 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 transition-all duration-200 ${
                 isFormValid() && !isSubmitting
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  ? 'bg-primary hover:bg-primary-90 text-primary-foreground'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               }`}
             >

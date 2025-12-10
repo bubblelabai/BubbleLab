@@ -206,13 +206,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                         value={newFlowName}
                         onChange={(e) => setNewFlowName(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="px-2 py-1 text-base font-semibold bg-background text-foreground border border-border rounded focus:outline-none focus:border-border/80"
+                        className="px-2 py-1 text-base font-semibold bg-background text-foreground border border-border rounded focus:outline-none focus:border-border-80"
                         style={{ minWidth: '200px' }}
                       />
                       <button
                         type="button"
                         onClick={submitRename}
-                        className="p-1 rounded hover:bg-muted text-success hover:text-success/80"
+                        className="p-1 rounded hover:bg-muted text-success hover:text-success-80"
                         title="Confirm (Enter)"
                       >
                         <Check className="w-4 h-4" />
@@ -247,7 +247,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                   {hasPrompt && (
                     <button
                       onClick={togglePrompt}
-                      className="border border-border hover:border-border/80 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground flex items-center gap-1"
+                      className="border border-border hover:border-border-80 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground flex items-center gap-1"
                     >
                       {showPrompt ? (
                         <ChevronUpIcon className="w-3 h-3" />
@@ -267,13 +267,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
             <SignedOut>
               <div className="flex items-center gap-2">
                 <SignInButton mode="modal">
-                  <button className="bg-info/20 hover:bg-info/30 border border-info/50 text-info hover:text-info/80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+                  <button className="bg-info-20 hover:bg-info-30 border border-info-50 text-info hover:text-info-80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
                     <span>🔑</span>
                     Sign In
                   </button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <button className="bg-success/20 hover:bg-success/30 border border-success/50 text-success hover:text-success/80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
+                  <button className="bg-success-20 hover:bg-success-30 border border-success-50 text-success hover:text-success-80 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2">
                     <span>✨</span>
                     Sign Up
                   </button>
@@ -300,7 +300,7 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                         !executionHistory ||
                         executionHistory.length === 0
                       }
-                      className="border border-border hover:border-border/80 disabled:border-border/30 disabled:cursor-not-allowed px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground disabled:text-muted-foreground/50 flex items-center gap-1"
+                      className="border border-border hover:border-border-80 disabled:border-border-30 disabled:cursor-not-allowed px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-muted-foreground hover:text-foreground disabled:text-muted-foreground/50 flex items-center gap-1"
                     >
                       <FileJson2 className="w-3 h-3" />
                       Export

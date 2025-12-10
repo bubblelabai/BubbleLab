@@ -89,7 +89,7 @@ export function ConsolidatedSidePanel() {
                   className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     tab.badge === 'running'
                       ? 'bg-muted text-foreground animate-pulse'
-                      : 'bg-muted/50 text-muted-foreground'
+                      : 'bg-muted-50 text-muted-foreground'
                   }`}
                 >
                   {tab.badge === 'running' ? '●' : tab.badge}

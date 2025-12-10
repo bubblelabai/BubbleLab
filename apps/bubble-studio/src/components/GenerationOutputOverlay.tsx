@@ -141,8 +141,8 @@ export function GenerationOutputOverlay() {
       type: 'info',
       icon: <Info className="w-5 h-5 flex-shrink-0" />,
       color: 'text-muted-foreground',
-      bgColor: 'bg-muted/20',
-      borderColor: 'border-border/30',
+      bgColor: 'bg-muted-20',
+      borderColor: 'border-border-30',
     };
   };
 

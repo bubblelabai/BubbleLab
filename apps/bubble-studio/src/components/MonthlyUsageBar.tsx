@@ -139,7 +139,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     <>
       <div className="relative group">
         <div
-          className={`w-full rounded-lg bg-card border border-border/30 ${
+          className={`w-full rounded-lg bg-card border border-border-30 ${
             isOpen ? 'p-3' : 'justify-center p-2'
           }`}
         >
@@ -147,7 +147,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="text-sm text-foreground/90 font-medium">
+                  <div className="text-sm text-foreground-90 font-medium">
                     Plan Usage Limits
                   </div>
                   <span className="text-xs text-muted-foreground font-normal">
@@ -191,9 +191,9 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               <div
                 className={`mb-3 p-3 rounded-lg ${
                   isUsageExceeded
-                    ? 'bg-destructive/5 border border-destructive/30'
+                    ? 'bg-destructive-5 border border-destructive-30'
                     : isUsageNearLimit
-                      ? 'bg-warning/5 border border-warning/30'
+                      ? 'bg-warning-5 border border-warning-30'
                       : ''
                 }`}
               >
@@ -205,7 +205,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     {isUsageExceeded && (
                       <div className="relative group/credit-tooltip">
                         <Info className="w-3 h-3 text-destructive cursor-help" />
-                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                        <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive-30 rounded-lg text-[10px] text-foreground-80 leading-relaxed opacity-0 invisible group-hover/credit-tooltip:opacity-100 group-hover/credit-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                           <span className="font-medium text-destructive">
                             {limitMessages.credits.title}
                           </span>{' '}
@@ -234,12 +234,12 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
               </div>
 
               {/* Divider and Details button */}
-              <div className="pt-2 border-t border-border/30">
+              <div className="pt-2 border-t border-border-30">
                 <div className="flex justify-end">
                   <button
                     type="button"
                     onClick={() => setIsDetailsModalOpen(true)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground/80 font-medium transition-colors"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground-80 font-medium transition-colors"
                   >
                     View Detailed Breakdown
                     <ArrowRight className="w-3 h-3" />
@@ -267,10 +267,10 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 <div
                   className={`rounded-lg bg-card border p-3 ${
                     isExecutionExceeded
-                      ? 'border-destructive/30 bg-destructive/5'
+                      ? 'border-destructive-30 bg-destructive-5'
                       : isExecutionNearLimit
-                        ? 'border-warning/30 bg-warning/5'
-                        : 'border-border/30'
+                        ? 'border-warning-30 bg-warning-5'
+                        : 'border-border-30'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -307,7 +307,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     <div className="mt-2 flex items-center gap-1 text-[10px] text-destructive relative group/exec-tooltip">
                       <AlertCircle className="w-3 h-3" />
                       <span className="cursor-help">Limit reached</span>
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive-30 rounded-lg text-[10px] text-foreground-80 leading-relaxed opacity-0 invisible group-hover/exec-tooltip:opacity-100 group-hover/exec-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                         <span className="font-medium text-destructive">
                           {limitMessages.executions.title}
                         </span>{' '}
@@ -323,10 +323,10 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 <div
                   className={`rounded-lg bg-card border p-3 ${
                     isActiveFlowsExceeded
-                      ? 'border-destructive/30 bg-destructive/5'
+                      ? 'border-destructive-30 bg-destructive-5'
                       : isActiveFlowsNearLimit
-                        ? 'border-warning/30 bg-warning/5'
-                        : 'border-border/30'
+                        ? 'border-warning-30 bg-warning-5'
+                        : 'border-border-30'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -362,7 +362,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                     <div className="mt-2 flex items-center gap-1 text-[10px] text-destructive relative group/flow-tooltip">
                       <AlertCircle className="w-3 h-3" />
                       <span className="cursor-help">Limit reached</span>
-                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive/30 rounded-lg text-[10px] text-foreground/80 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
+                      <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-panel border border-destructive-30 rounded-lg text-[10px] text-foreground-80 leading-relaxed opacity-0 invisible group-hover/flow-tooltip:opacity-100 group-hover/flow-tooltip:visible transition-all duration-200 z-50 shadow-xl">
                         <span className="font-medium text-destructive">
                           {limitMessages.activeFlows.title}
                         </span>{' '}
@@ -378,7 +378,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
 
         {/* Tooltip when collapsed */}
         {!isOpen && (
-          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-panel px-2 py-1 text-xs text-foreground/90 opacity-0 group-hover:opacity-100 transition-opacity z-50">
+          <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-panel px-2 py-1 text-xs text-foreground-90 opacity-0 group-hover:opacity-100 transition-opacity z-50">
             <div className="font-semibold">
               {formatCost(totalCost)} / {formatLimit(monthlyLimit)}
             </div>

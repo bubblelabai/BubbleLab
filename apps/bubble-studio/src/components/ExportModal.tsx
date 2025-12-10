@@ -378,7 +378,7 @@ export function ExportModal({
                         <button
                           type="button"
                           onClick={() => handleCopyToClipboard(code, 'code')}
-                          className="px-3 py-2 bg-panel hover:bg-card border border-border hover:border-muted-foreground rounded text-sm font-medium text-foreground/80 hover:text-foreground transition-all flex items-center gap-2"
+                          className="px-3 py-2 bg-panel hover:bg-card border border-border hover:border-muted-foreground rounded text-sm font-medium text-foreground-80 hover:text-foreground transition-all flex items-center gap-2"
                         >
                           {copied ? (
                             <>
@@ -420,7 +420,7 @@ export function ExportModal({
                         <p className="text-xs text-muted-foreground">
                           Extract and navigate to project:
                         </p>
-                        <code className="text-sm text-foreground/80 font-mono block">
+                        <code className="text-sm text-foreground-80 font-mono block">
                           cd {projectName}
                         </code>
                       </div>
@@ -430,19 +430,19 @@ export function ExportModal({
                         </p>
                         <div className="flex gap-2">
                           <CopyButton text={installCommand} type="npm">
-                            <code className="text-xs text-foreground/80 font-mono">
+                            <code className="text-xs text-foreground-80 font-mono">
                               npm install
                             </code>
                           </CopyButton>
                           <span className="text-muted-foreground/50">|</span>
                           <CopyButton text={yarnInstallCommand} type="yarn">
-                            <code className="text-xs text-foreground/80 font-mono">
+                            <code className="text-xs text-foreground-80 font-mono">
                               yarn install
                             </code>
                           </CopyButton>
                           <span className="text-muted-foreground/50">|</span>
                           <CopyButton text={pnpmInstallCommand} type="pnpm">
-                            <code className="text-xs text-foreground/80 font-mono">
+                            <code className="text-xs text-foreground-80 font-mono">
                               pnpm install
                             </code>
                           </CopyButton>
@@ -464,12 +464,12 @@ export function ExportModal({
                         </span>
                       </div>
                       <div className="p-4">
-                        <code className="text-sm text-foreground/80 font-mono block mb-2">
+                        <code className="text-sm text-foreground-80 font-mono block mb-2">
                           cp .env.example .env
                         </code>
                         <p className="text-xs text-muted-foreground">
                           Then edit{' '}
-                          <code className="text-foreground/80">.env</code> with
+                          <code className="text-foreground-80">.env</code> with
                           your API keys
                         </p>
                       </div>
@@ -491,7 +491,7 @@ export function ExportModal({
                       </span>
                     </div>
                     <div className="p-4">
-                      <code className="text-sm text-foreground/80 font-mono block">
+                      <code className="text-sm text-foreground-80 font-mono block">
                         npm run dev
                       </code>
                     </div>
@@ -621,7 +621,7 @@ export function ExportModal({
                           </div>
                           <button
                             onClick={handleCopyWebhookStreamCurl}
-                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground/80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
+                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground-80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
                           >
                             {copiedSetup === 'curl-webhook-stream' ? (
                               <>
@@ -639,7 +639,7 @@ export function ExportModal({
                       </div>
                       <div className="p-4">
                         <code
-                          className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
+                          className="text-sm text-foreground-80 break-words whitespace-pre-wrap"
                           style={{
                             fontFamily:
                               "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
@@ -695,7 +695,7 @@ export function ExportModal({
                                 'curl-webhook-normal'
                               );
                             }}
-                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground/80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
+                            className="px-3 py-1.5 bg-panel hover:bg-card text-foreground-80 hover:text-foreground border border-border hover:border-muted-foreground rounded text-sm font-medium transition-all flex items-center gap-2"
                           >
                             {copiedSetup === 'curl-webhook-normal' ? (
                               <>
@@ -713,7 +713,7 @@ export function ExportModal({
                       </div>
                       <div className="p-4">
                         <code
-                          className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
+                          className="text-sm text-foreground-80 break-words whitespace-pre-wrap"
                           style={{
                             fontFamily:
                               "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",
@@ -765,7 +765,7 @@ export function ExportModal({
                     </div>
                     <div className="p-4">
                       <code
-                        className="text-sm text-foreground/80 break-words whitespace-pre-wrap"
+                        className="text-sm text-foreground-80 break-words whitespace-pre-wrap"
                         style={{
                           fontFamily:
                             "'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace",

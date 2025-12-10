@@ -187,7 +187,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                     e.stopPropagation();
                     refetchHistory();
                   }}
-                  className="px-3 py-1 bg-info hover:bg-info/80 text-white text-sm rounded transition-colors"
+                  className="px-3 py-1 bg-info hover:bg-info-80 text-white text-sm rounded transition-colors"
                 >
                   Retry
                 </button>
@@ -287,7 +287,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                   {execution.result && (
                     <details className="mb-3">
                       <summary
-                        className="text-xs text-info cursor-pointer hover:text-info/80 font-medium mb-2"
+                        className="text-xs text-info cursor-pointer hover:text-info-80 font-medium mb-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         Execution Result
@@ -308,7 +308,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                     Object.keys(execution.payload).length > 0 && (
                       <details className="mb-3">
                         <summary
-                          className="text-xs text-info cursor-pointer hover:text-info/80 font-medium mb-2"
+                          className="text-xs text-info cursor-pointer hover:text-info-80 font-medium mb-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Execution Payload
@@ -342,7 +342,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                 disabled={!hasPreviousPage || historyLoading}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
                   hasPreviousPage && !historyLoading
-                    ? 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                    ? 'bg-muted text-muted-foreground hover:bg-muted-80 border border-border'
                     : 'bg-muted text-muted-foreground/50 cursor-not-allowed border border-border opacity-50'
                 }`}
               >
@@ -355,7 +355,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                 disabled={!hasNextPage || historyLoading}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
                   hasNextPage && !historyLoading
-                    ? 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                    ? 'bg-muted text-muted-foreground hover:bg-muted-80 border border-border'
                     : 'bg-muted text-muted-foreground/50 cursor-not-allowed border border-border opacity-50'
                 }`}
               >
