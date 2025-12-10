@@ -136,7 +136,6 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
           ...headers,
         },
         redirect: followRedirects ? 'follow' : 'manual',
-        signal: AbortSignal.timeout(timeout),
       };
 
       // Add body for non-GET methods
