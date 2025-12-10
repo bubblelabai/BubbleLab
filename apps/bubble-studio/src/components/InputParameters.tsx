@@ -462,7 +462,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
             }}
             onBlur={saveFieldName}
             autoFocus
-            className="text-sm font-medium text-foreground bg-background border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-info/20"
+            className="text-sm font-medium text-foreground bg-background border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-info-20"
           />
           <button
             type="button"
@@ -493,7 +493,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         <button
           type="button"
           onClick={() => startEditingFieldName(fieldName)}
-          className="opacity-0 group-hover:opacity-100 text-xs text-muted-foreground hover:text-foreground/80 transition-all duration-200 p-1 rounded-full hover:bg-muted"
+          className="opacity-0 group-hover:opacity-100 text-xs text-muted-foreground hover:text-foreground-80 transition-all duration-200 p-1 rounded-full hover:bg-muted"
           title="Edit field name"
         >
           ✏️
@@ -624,7 +624,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
           {Array.from({ length: itemCount }, (_, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground/80">
+                <span className="text-xs font-medium text-foreground-80">
                   Item {index + 1}
                 </span>
                 {!isFixedSize && canRemove && itemCount > 1 && (
@@ -670,7 +670,7 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                       required={
                         field.items?.required?.includes(propName) || false
                       }
-                      className="text-xs font-medium text-foreground/80"
+                      className="text-xs font-medium text-foreground-80"
                     />
                     <button
                       type="button"
@@ -702,13 +702,13 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                             handleFileUpload(fullFieldName, file);
                           }
                         }}
-                        className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
+                        className="w-full text-sm text-foreground-80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info-20 transition-all duration-200"
                         accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
                       />
                       {fileNames[fullFieldName] && (
                         <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                           <span className="text-green-400">✅</span>
-                          <span className="text-foreground/80">
+                          <span className="text-foreground-80">
                             {fileNames[fullFieldName]}
                           </span>
                           <span className="text-green-400 ml-auto">Ready</span>
@@ -796,13 +796,13 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                   handleFileUpload(`${field.name}[${itemIndex}]`, file);
                 }
               }}
-              className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
+              className="w-full text-sm text-foreground-80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info-20 transition-all duration-200"
               accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
             />
             {fileNames[`${field.name}[${itemIndex}]`] && (
               <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                 <span className="text-green-400">✅</span>
-                <span className="text-foreground/80">
+                <span className="text-foreground-80">
                   {fileNames[`${field.name}[${itemIndex}]`]}
                 </span>
                 <span className="text-green-400 ml-auto">Ready</span>
@@ -880,13 +880,13 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                   handleFileUpload(field.name, file);
                 }
               }}
-              className="w-full text-sm text-foreground/80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info/20 transition-all duration-200"
+              className="w-full text-sm text-foreground-80 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600/20 file:text-blue-300 hover:file:bg-blue-600/30 file:cursor-pointer cursor-pointer border border-border rounded-lg bg-background focus:border-info focus:outline-none focus:ring-2 focus:ring-info-20 transition-all duration-200"
               accept=".pdf,.doc,.docx,.txt,image/*,.json,.csv,.xlsx"
             />
             {fileNames[field.name] && (
               <div className="flex items-center gap-2 text-xs bg-muted px-3 py-2 rounded-lg border border-border">
                 <span className="text-green-400">✅</span>
-                <span className="text-foreground/80">
+                <span className="text-foreground-80">
                   {fileNames[field.name]}
                 </span>
                 <span className="text-green-400 ml-auto">Ready</span>

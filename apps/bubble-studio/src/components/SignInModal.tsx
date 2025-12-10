@@ -44,7 +44,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <p className="text-foreground/80 text-2xl font-semibold">
+              <p className="text-foreground-80 text-2xl font-semibold">
                 Welcome to Bubble Lab
               </p>
               <p className="text-muted-foreground text-sm">
@@ -54,7 +54,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
 
             <div className="flex flex-col items-center gap-4">
               <SignInButton mode="modal">
-                <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                <button className="w-full bg-primary hover:bg-primary-90 text-primary-foreground px-6 py-3 rounded-lg font-medium transition-colors duration-200">
                   Sign In
                 </button>
               </SignInButton>
@@ -63,7 +63,7 @@ export const SignInModal: React.FC<SignInModalProps> = ({
                   Don't have an account?{' '}
                 </span>
                 <SignUpButton mode="modal">
-                  <button className="text-foreground hover:text-foreground/80 text-sm font-medium transition-colors duration-200 underline">
+                  <button className="text-foreground hover:text-foreground-80 text-sm font-medium transition-colors duration-200 underline">
                     Create Account now
                   </button>
                 </SignUpButton>

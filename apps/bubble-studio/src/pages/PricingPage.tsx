@@ -56,7 +56,7 @@ export const PricingPage: React.FC = () => {
           href="https://www.bubblelab.ai/pricing"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-info hover:text-info/80 transition-colors mt-2"
+          className="inline-flex items-center gap-2 text-info hover:text-info-80 transition-colors mt-2"
         >
           View full pricing details
           <ExternalLink className="w-4 h-4" />

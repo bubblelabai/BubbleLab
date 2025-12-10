@@ -114,6 +114,86 @@
   --theme-toast-error: oklch(53.5% 0.205 27.3); /* #da3633 */
   --theme-toast-info: oklch(54.5% 0.205 259.1); /* #1f6feb */
   --theme-toast-warning: oklch(72.5% 0.188 55.1); /* #fb8500 */
+
+  /* ============================================
+     Pre-computed opacity variants for Tailwind v4
+     Needed because opacity modifiers don't work reliably with CSS custom properties
+     ============================================ */
+
+  /* Foreground opacity variants */
+  --theme-foreground-60: oklch(13.1% 0.046 264.7 / 60%);
+  --theme-foreground-80: oklch(13.1% 0.046 264.7 / 80%);
+  --theme-foreground-90: oklch(13.1% 0.046 264.7 / 90%);
+
+  /* Muted opacity variants */
+  --theme-muted-20: oklch(96.7% 0.003 264.5 / 20%);
+  --theme-muted-30: oklch(96.7% 0.003 264.5 / 30%);
+  --theme-muted-40: oklch(96.7% 0.003 264.5 / 40%);
+  --theme-muted-50: oklch(96.7% 0.003 264.5 / 50%);
+  --theme-muted-60: oklch(96.7% 0.003 264.5 / 60%);
+  --theme-muted-80: oklch(96.7% 0.003 264.5 / 80%);
+
+  /* Background opacity variants */
+  --theme-background-20: oklch(100% 0 0 / 20%);
+  --theme-background-50: oklch(100% 0 0 / 50%);
+  --theme-background-80: oklch(100% 0 0 / 80%);
+
+  /* Card opacity variants */
+  --theme-card-30: oklch(100% 0 0 / 30%);
+  --theme-card-40: oklch(100% 0 0 / 40%);
+  --theme-card-60: oklch(100% 0 0 / 60%);
+  --theme-card-80: oklch(100% 0 0 / 80%);
+
+  /* Border opacity variants */
+  --theme-border-30: oklch(91.4% 0.007 264.5 / 30%);
+  --theme-border-50: oklch(91.4% 0.007 264.5 / 50%);
+  --theme-border-80: oklch(91.4% 0.007 264.5 / 80%);
+
+  /* Primary opacity variants */
+  --theme-primary-20: oklch(55.3% 0.267 293.4 / 20%);
+  --theme-primary-30: oklch(55.3% 0.267 293.4 / 30%);
+  --theme-primary-40: oklch(55.3% 0.267 293.4 / 40%);
+  --theme-primary-80: oklch(55.3% 0.267 293.4 / 80%);
+  --theme-primary-90: oklch(55.3% 0.267 293.4 / 90%);
+
+  /* Secondary opacity variants */
+  --theme-secondary-80: oklch(96.7% 0.003 264.5 / 80%);
+
+  /* Destructive opacity variants */
+  --theme-destructive-5: oklch(57.7% 0.245 27.3 / 5%);
+  --theme-destructive-10: oklch(57.7% 0.245 27.3 / 10%);
+  --theme-destructive-20: oklch(57.7% 0.245 27.3 / 20%);
+  --theme-destructive-30: oklch(57.7% 0.245 27.3 / 30%);
+  --theme-destructive-50: oklch(57.7% 0.245 27.3 / 50%);
+  --theme-destructive-80: oklch(57.7% 0.245 27.3 / 80%);
+  --theme-destructive-90: oklch(57.7% 0.245 27.3 / 90%);
+
+  /* Info opacity variants */
+  --theme-info-10: oklch(62.3% 0.214 259.1 / 10%);
+  --theme-info-20: oklch(62.3% 0.214 259.1 / 20%);
+  --theme-info-30: oklch(62.3% 0.214 259.1 / 30%);
+  --theme-info-50: oklch(62.3% 0.214 259.1 / 50%);
+  --theme-info-80: oklch(62.3% 0.214 259.1 / 80%);
+  --theme-info-90: oklch(62.3% 0.214 259.1 / 90%);
+
+  /* Success opacity variants */
+  --theme-success-10: oklch(52.8% 0.177 145.4 / 10%);
+  --theme-success-20: oklch(52.8% 0.177 145.4 / 20%);
+  --theme-success-30: oklch(52.8% 0.177 145.4 / 30%);
+  --theme-success-50: oklch(52.8% 0.177 145.4 / 50%);
+  --theme-success-80: oklch(52.8% 0.177 145.4 / 80%);
+  --theme-success-90: oklch(52.8% 0.177 145.4 / 90%);
+
+  /* Warning opacity variants */
+  --theme-warning-5: oklch(76.9% 0.188 70.1 / 5%);
+  --theme-warning-10: oklch(76.9% 0.188 70.1 / 10%);
+  --theme-warning-20: oklch(76.9% 0.188 70.1 / 20%);
+  --theme-warning-30: oklch(76.9% 0.188 70.1 / 30%);
+  --theme-warning-50: oklch(76.9% 0.188 70.1 / 50%);
+  --theme-warning-80: oklch(76.9% 0.188 70.1 / 80%);
+
+  /* Ring opacity variants */
+  --theme-ring-20: oklch(55.3% 0.267 293.4 / 20%);
 }
 
 /* ============================================
@@ -203,6 +283,85 @@ html.dark {
   --theme-toast-error: #da3633;
   --theme-toast-info: #1f6feb;
   --theme-toast-warning: #fb8500;
+
+  /* ============================================
+     Pre-computed opacity variants for Tailwind v4 (dark theme)
+     ============================================ */
+
+  /* Foreground opacity variants */
+  --theme-foreground-60: rgb(204 204 204 / 60%);
+  --theme-foreground-80: rgb(204 204 204 / 80%);
+  --theme-foreground-90: rgb(204 204 204 / 90%);
+
+  /* Muted opacity variants */
+  --theme-muted-20: rgb(37 37 38 / 20%);
+  --theme-muted-30: rgb(37 37 38 / 30%);
+  --theme-muted-40: rgb(37 37 38 / 40%);
+  --theme-muted-50: rgb(37 37 38 / 50%);
+  --theme-muted-60: rgb(37 37 38 / 60%);
+  --theme-muted-80: rgb(37 37 38 / 80%);
+
+  /* Background opacity variants */
+  --theme-background-20: rgb(15 15 35 / 20%);
+  --theme-background-50: rgb(15 15 35 / 50%);
+  --theme-background-80: rgb(15 15 35 / 80%);
+
+  /* Card opacity variants */
+  --theme-card-30: rgb(26 26 26 / 30%);
+  --theme-card-40: rgb(26 26 26 / 40%);
+  --theme-card-60: rgb(26 26 26 / 60%);
+  --theme-card-80: rgb(26 26 26 / 80%);
+
+  /* Border opacity variants */
+  --theme-border-30: rgb(48 54 61 / 30%);
+  --theme-border-50: rgb(48 54 61 / 50%);
+  --theme-border-80: rgb(48 54 61 / 80%);
+
+  /* Primary opacity variants */
+  --theme-primary-20: rgb(147 51 234 / 20%);
+  --theme-primary-30: rgb(147 51 234 / 30%);
+  --theme-primary-40: rgb(147 51 234 / 40%);
+  --theme-primary-80: rgb(147 51 234 / 80%);
+  --theme-primary-90: rgb(147 51 234 / 90%);
+
+  /* Secondary opacity variants */
+  --theme-secondary-80: rgb(37 37 38 / 80%);
+
+  /* Destructive opacity variants */
+  --theme-destructive-5: rgb(218 54 51 / 5%);
+  --theme-destructive-10: rgb(218 54 51 / 10%);
+  --theme-destructive-20: rgb(218 54 51 / 20%);
+  --theme-destructive-30: rgb(218 54 51 / 30%);
+  --theme-destructive-50: rgb(218 54 51 / 50%);
+  --theme-destructive-80: rgb(218 54 51 / 80%);
+  --theme-destructive-90: rgb(218 54 51 / 90%);
+
+  /* Info opacity variants */
+  --theme-info-10: rgb(31 111 235 / 10%);
+  --theme-info-20: rgb(31 111 235 / 20%);
+  --theme-info-30: rgb(31 111 235 / 30%);
+  --theme-info-50: rgb(31 111 235 / 50%);
+  --theme-info-80: rgb(31 111 235 / 80%);
+  --theme-info-90: rgb(31 111 235 / 90%);
+
+  /* Success opacity variants */
+  --theme-success-10: rgb(34 197 94 / 10%);
+  --theme-success-20: rgb(34 197 94 / 20%);
+  --theme-success-30: rgb(34 197 94 / 30%);
+  --theme-success-50: rgb(34 197 94 / 50%);
+  --theme-success-80: rgb(34 197 94 / 80%);
+  --theme-success-90: rgb(34 197 94 / 90%);
+
+  /* Warning opacity variants */
+  --theme-warning-5: rgb(251 133 0 / 5%);
+  --theme-warning-10: rgb(251 133 0 / 10%);
+  --theme-warning-20: rgb(251 133 0 / 20%);
+  --theme-warning-30: rgb(251 133 0 / 30%);
+  --theme-warning-50: rgb(251 133 0 / 50%);
+  --theme-warning-80: rgb(251 133 0 / 80%);
+
+  /* Ring opacity variants */
+  --theme-ring-20: rgb(147 51 234 / 20%);
 }
 
 /* ============================================
@@ -276,6 +435,70 @@ html.dark {
   --color-node-output-border: var(--theme-node-output-border);
   --color-node-error-bg: var(--theme-node-error-bg);
   --color-node-error-border: var(--theme-node-error-border);
+
+  /* Pre-computed opacity variants */
+  --color-foreground-60: var(--theme-foreground-60);
+  --color-foreground-80: var(--theme-foreground-80);
+  --color-foreground-90: var(--theme-foreground-90);
+
+  --color-muted-20: var(--theme-muted-20);
+  --color-muted-30: var(--theme-muted-30);
+  --color-muted-40: var(--theme-muted-40);
+  --color-muted-50: var(--theme-muted-50);
+  --color-muted-60: var(--theme-muted-60);
+  --color-muted-80: var(--theme-muted-80);
+
+  --color-background-20: var(--theme-background-20);
+  --color-background-50: var(--theme-background-50);
+  --color-background-80: var(--theme-background-80);
+
+  --color-card-30: var(--theme-card-30);
+  --color-card-40: var(--theme-card-40);
+  --color-card-60: var(--theme-card-60);
+  --color-card-80: var(--theme-card-80);
+
+  --color-border-30: var(--theme-border-30);
+  --color-border-50: var(--theme-border-50);
+  --color-border-80: var(--theme-border-80);
+
+  --color-primary-20: var(--theme-primary-20);
+  --color-primary-30: var(--theme-primary-30);
+  --color-primary-40: var(--theme-primary-40);
+  --color-primary-80: var(--theme-primary-80);
+  --color-primary-90: var(--theme-primary-90);
+
+  --color-secondary-80: var(--theme-secondary-80);
+
+  --color-destructive-5: var(--theme-destructive-5);
+  --color-destructive-10: var(--theme-destructive-10);
+  --color-destructive-20: var(--theme-destructive-20);
+  --color-destructive-30: var(--theme-destructive-30);
+  --color-destructive-50: var(--theme-destructive-50);
+  --color-destructive-80: var(--theme-destructive-80);
+  --color-destructive-90: var(--theme-destructive-90);
+
+  --color-info-10: var(--theme-info-10);
+  --color-info-20: var(--theme-info-20);
+  --color-info-30: var(--theme-info-30);
+  --color-info-50: var(--theme-info-50);
+  --color-info-80: var(--theme-info-80);
+  --color-info-90: var(--theme-info-90);
+
+  --color-success-10: var(--theme-success-10);
+  --color-success-20: var(--theme-success-20);
+  --color-success-30: var(--theme-success-30);
+  --color-success-50: var(--theme-success-50);
+  --color-success-80: var(--theme-success-80);
+  --color-success-90: var(--theme-success-90);
+
+  --color-warning-5: var(--theme-warning-5);
+  --color-warning-10: var(--theme-warning-10);
+  --color-warning-20: var(--theme-warning-20);
+  --color-warning-30: var(--theme-warning-30);
+  --color-warning-50: var(--theme-warning-50);
+  --color-warning-80: var(--theme-warning-80);
+
+  --color-ring-20: var(--theme-ring-20);
 
   /* Radius */
   --radius-lg: 0.5rem;

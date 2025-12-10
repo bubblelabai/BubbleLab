@@ -424,10 +424,10 @@ export function PearlChat() {
                         key={`main-${index}`}
                         type="button"
                         onClick={() => handleSuggestionClick(suggestion.prompt)}
-                        className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                        className="group w-full px-4 py-3.5 bg-muted-40 hover:bg-muted-60 border border-border-50 hover:border-border-80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                          <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground-80 transition-colors">
                             {suggestion.icon}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -455,10 +455,10 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted-40 hover:bg-muted-60 border border-border-50 hover:border-border-80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground-80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -488,10 +488,10 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted-40 hover:bg-muted-60 border border-border-50 hover:border-border-80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground-80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -521,10 +521,10 @@ export function PearlChat() {
                             onClick={() =>
                               handleSuggestionClick(suggestion.prompt)
                             }
-                            className="group w-full px-4 py-3.5 bg-muted/40 hover:bg-muted/60 border border-border/50 hover:border-border/80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                            className="group w-full px-4 py-3.5 bg-muted-40 hover:bg-muted-60 border border-border-50 hover:border-border-80 rounded-lg text-left transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                              <div className="flex-shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground-80 transition-colors">
                                 {suggestion.icon}
                               </div>
                               <div className="flex-1 min-w-0">
@@ -683,7 +683,7 @@ export function PearlChat() {
 
       {/* Compact chat input at bottom */}
       <div className="flex-shrink-0 p-4 pt-2">
-        <div className="bg-card border border-border/50 rounded-xl p-3 shadow-lg relative">
+        <div className="bg-card border border-border-50 rounded-xl p-3 shadow-lg relative">
           {uploadError && (
             <div className="text-[10px] text-warning mb-2">{uploadError}</div>
           )}
@@ -694,10 +694,10 @@ export function PearlChat() {
               {uploadedFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-1.5 px-2 py-1 bg-muted/50 rounded border border-border/50"
+                  className="flex items-center gap-1.5 px-2 py-1 bg-muted-50 rounded border border-border-50"
                 >
                   <Paperclip className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs text-foreground/80 truncate max-w-[120px]">
+                  <span className="text-xs text-foreground-80 truncate max-w-[120px]">
                     {file.name}
                   </span>
                   <button
@@ -753,7 +753,7 @@ export function PearlChat() {
                     pearl.isPending
                       ? 'text-muted-foreground/50 cursor-not-allowed'
                       : uploadedFiles.length > 0
-                        ? 'text-foreground/80'
+                        ? 'text-foreground-80'
                         : 'text-muted-foreground hover:text-foreground'
                   }`}
                 />
@@ -774,7 +774,7 @@ export function PearlChat() {
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                   pearl.isPending
-                    ? 'bg-muted/40 border border-border cursor-not-allowed text-muted-foreground'
+                    ? 'bg-muted-40 border border-border cursor-not-allowed text-muted-foreground'
                     : 'bg-foreground text-background border border-foreground/80 hover:bg-foreground/90 hover:border-foreground/60 shadow-lg hover:scale-105'
                 }`}
               >
@@ -807,7 +807,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
   switch (event.type) {
     case 'llm_thinking':
       return (
-        <div className="text-sm text-muted-foreground p-2 bg-muted/30 rounded border-l-2 border-border">
+        <div className="text-sm text-muted-foreground p-2 bg-muted-30 rounded border-l-2 border-border">
           <div className="flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" />
             <span>Thinking...</span>
@@ -821,7 +821,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
         return null;
       }
       return (
-        <div className="text-sm text-foreground/80 p-2 bg-muted/30 rounded border-l-2 border-border">
+        <div className="text-sm text-foreground-80 p-2 bg-muted-30 rounded border-l-2 border-border">
           <div className="text-xs text-muted-foreground mb-1">
             Thinking Process
           </div>
@@ -833,7 +833,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
 
     case 'tool_start':
       return (
-        <div className="p-2 bg-info/10 border border-info/20 rounded-lg">
+        <div className="p-2 bg-info-10 border border-info-20 rounded-lg">
           <div className="flex items-center gap-2 mb-1">
             <Loader2 className="w-3 h-3 text-info animate-spin" />
             <span className="text-xs text-info">Calling {event.tool}...</span>
@@ -846,7 +846,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
 
     case 'tool_complete':
       return (
-        <div className="p-2 bg-success/10 border border-success/20 rounded-lg">
+        <div className="p-2 bg-success-10 border border-success-20 rounded-lg">
           <div className="flex items-center gap-2 mb-1">
             <Check className="w-3 h-3 text-success" />
             <span className="text-xs text-success">{event.tool} completed</span>
@@ -869,7 +869,7 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
 
     case 'token':
       return (
-        <div className="text-sm text-foreground/90 p-2 bg-info/10 rounded border border-info/20">
+        <div className="text-sm text-foreground-90 p-2 bg-info-10 rounded border border-info-20">
           {event.content}
           <span className="animate-pulse">|</span>
         </div>

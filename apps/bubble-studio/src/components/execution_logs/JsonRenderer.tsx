@@ -292,7 +292,7 @@ function renderStringValue(
   // Early bailout: Skip expensive parsing for very large JSON strings
   if (originalLength > MAX_JSON_STRING_LENGTH) {
     const previewString = (
-      <span className="text-foreground/90">
+      <span className="text-foreground-90">
         "{renderStringWithLinks(displayValue)}"
       </span>
     );
@@ -343,7 +343,7 @@ function renderStringValue(
     // Skip expensive markdown parsing for very large content
     if (originalLength > MAX_MARKDOWN_LENGTH) {
       const previewString = (
-        <span className="text-foreground/90">
+        <span className="text-foreground-90">
           "{renderStringWithLinks(displayValue)}"
         </span>
       );
@@ -466,7 +466,7 @@ function renderStringValue(
     // Skip expensive HTML rendering for very large content
     if (originalLength > MAX_HTML_LENGTH) {
       const previewString = (
-        <span className="text-foreground/90">
+        <span className="text-foreground-90">
           "{renderStringWithLinks(displayValue)}"
         </span>
       );
@@ -521,10 +521,10 @@ function renderStringValue(
 
   // Regular string - detect and highlight URLs, then truncate if too long
   const stringWithLinksFactory = () => (
-    <span className="text-foreground/90">"{renderStringWithLinks(value)}"</span>
+    <span className="text-foreground-90">"{renderStringWithLinks(value)}"</span>
   );
   const previewStringWithLinks = (
-    <span className="text-foreground/90">
+    <span className="text-foreground-90">
       "{renderStringWithLinks(displayValue)}"
     </span>
   );
@@ -569,11 +569,11 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
       return (
         <div>
           {/* Warning message */}
-          <div className="p-4 border border-warning/50 rounded bg-warning/10 mb-4">
+          <div className="p-4 border border-warning-50 rounded bg-warning-10 mb-4">
             <div className="text-warning font-semibold mb-2">
               Content too large to render
             </div>
-            <div className="text-xs text-warning/80 mb-2">
+            <div className="text-xs text-warning-80 mb-2">
               Estimated size: {sizeKB}KB (limit: {limitKB}KB)
             </div>
             <div className="text-xs text-muted-foreground">
@@ -594,7 +594,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   if (value === null || value === undefined) {
-    return <span className="text-destructive/80">null</span>;
+    return <span className="text-destructive-80">null</span>;
   }
 
   if (typeof value === 'string') {
@@ -606,7 +606,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   if (typeof value === 'boolean') {
-    return <span className="text-foreground/90">{String(value)}</span>;
+    return <span className="text-foreground-90">{String(value)}</span>;
   }
 
   if (Array.isArray(value)) {
@@ -679,7 +679,7 @@ function renderValue(value: unknown, depth: number = 0): React.ReactNode {
   }
 
   // Fallback
-  return <span className="text-foreground/80">{String(value)}</span>;
+  return <span className="text-foreground-80">{String(value)}</span>;
 }
 
 /**

@@ -208,7 +208,7 @@ export function WebViewWarning() {
           </p>
         </div>
 
-        <div className="bg-warning/20 border border-warning/50 rounded-xl p-4 mb-6">
+        <div className="bg-warning-20 border border-warning-50 rounded-xl p-4 mb-6">
           <p className="text-warning text-sm font-sans">
             <strong>In-app browsers are not supported.</strong> Please use a
             full browser like Chrome, Safari, or Firefox for the best
@@ -272,7 +272,7 @@ export function WebViewWarning() {
         <div className="space-y-3">
           <button
             onClick={handleOpenExternal}
-            className="w-full px-6 py-3 bg-info hover:bg-info/90 text-white font-medium rounded-lg transition-colors font-sans shadow-lg hover:shadow-xl"
+            className="w-full px-6 py-3 bg-info hover:bg-info-90 text-white font-medium rounded-lg transition-colors font-sans shadow-lg hover:shadow-xl"
           >
             Open in External Browser
           </button>
@@ -283,13 +283,13 @@ export function WebViewWarning() {
                 <p className="text-xs text-muted-foreground mb-2 font-sans">
                   URL:
                 </p>
-                <p className="text-sm text-foreground/80 break-all font-mono">
+                <p className="text-sm text-foreground-80 break-all font-mono">
                   {currentUrl}
                 </p>
               </div>
               <button
                 onClick={handleCopyUrl}
-                className="w-full px-6 py-3 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-lg transition-colors font-sans"
+                className="w-full px-6 py-3 bg-muted hover:bg-muted-80 text-foreground font-medium rounded-lg transition-colors font-sans"
               >
                 Copy URL
               </button>
@@ -301,7 +301,7 @@ export function WebViewWarning() {
               // Allow user to dismiss (they might want to try anyway)
               setIsWebViewEnv(false);
             }}
-            className="w-full text-muted-foreground hover:text-foreground/80 text-sm underline font-sans py-2"
+            className="w-full text-muted-foreground hover:text-foreground-80 text-sm underline font-sans py-2"
           >
             Continue anyway (limited functionality)
           </button>

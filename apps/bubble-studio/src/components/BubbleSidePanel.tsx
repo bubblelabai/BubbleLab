@@ -178,7 +178,7 @@ export function BubbleSidePanel() {
                 className="p-1 hover:bg-muted rounded transition-colors"
                 title="Back to bubble list"
               >
-                <ArrowLeft className="w-5 h-5 text-foreground/80" />
+                <ArrowLeft className="w-5 h-5 text-foreground-80" />
               </button>
             )} */}
             <h2 className="text-lg font-semibold text-foreground">
@@ -194,7 +194,7 @@ export function BubbleSidePanel() {
             className="p-1 hover:bg-muted rounded transition-colors"
             title="Close panel"
           >
-            <X className="w-5 h-5 text-foreground/80" />
+            <X className="w-5 h-5 text-foreground-80" />
           </button>
         </div>
 
@@ -298,7 +298,7 @@ function BubbleListView({
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 selectedType === type
                   ? 'bg-purple-600 text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  : 'bg-muted text-muted-foreground hover:bg-muted-80'
               }`}
             >
               {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -322,7 +322,7 @@ function BubbleListView({
                 <button
                   key={bubble.name}
                   onClick={() => onSelectBubble(bubble.name)}
-                  className="w-full text-left p-3 bg-card hover:bg-card/80 border border-border hover:border-purple-600 rounded-lg transition-all group"
+                  className="w-full text-left p-3 bg-card hover:bg-card-80 border border-border hover:border-purple-600 rounded-lg transition-all group"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -575,19 +575,19 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 </div>
                 {message.resultType === 'code' ? (
                   <>
-                    <pre className="text-xs text-foreground/80 overflow-x-auto max-h-48 overflow-y-auto thin-scrollbar mb-2 p-2 bg-muted rounded">
+                    <pre className="text-xs text-foreground-80 overflow-x-auto max-h-48 overflow-y-auto thin-scrollbar mb-2 p-2 bg-muted rounded">
                       {message.content}
                     </pre>
                     <button
                       onClick={() => handleInsert(message.content)}
-                      className="w-full py-2 px-4 bg-success hover:bg-success/90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-2 px-4 bg-success hover:bg-success-90 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4" />
                       Insert Code
                     </button>
                   </>
                 ) : (
-                  <div className="text-sm text-foreground/90">
+                  <div className="text-sm text-foreground-90">
                     {message.content}
                   </div>
                 )}
@@ -639,7 +639,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                 disabled={!prompt.trim() || milkTeaMutation.isPending}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   !prompt.trim() || milkTeaMutation.isPending
-                    ? 'bg-muted/40 border border-border cursor-not-allowed text-muted-foreground'
+                    ? 'bg-muted-40 border border-border cursor-not-allowed text-muted-foreground'
                     : 'bg-foreground text-background border border-foreground/80 hover:bg-foreground/90 hover:border-foreground/60 shadow-lg hover:scale-105'
                 }`}
               >
