@@ -5,10 +5,21 @@ import type {
   BubbleFlowListResponse,
   BubbleFlowListItem,
   CreateBubbleFlowRequest,
+  CreateEmptyBubbleFlowRequest,
+  BubbleFlowDetailsResponse,
 } from '@bubblelab/shared-schemas';
 
 interface CreateBubbleFlowWithOptimisticData extends CreateBubbleFlowRequest {
   // Optional: bubble information for optimistic UI updates (e.g., when duplicating)
+  _optimisticBubbles?: Array<{
+    bubbleName: string;
+    className: string;
+  }>;
+}
+
+interface CreateEmptyBubbleFlowWithOptimisticData
+  extends CreateEmptyBubbleFlowRequest {
+  // Optional: bubble information for optimistic UI updates
   _optimisticBubbles?: Array<{
     bubbleName: string;
     className: string;
@@ -37,20 +48,48 @@ interface UseCreateBubbleFlowResult {
   reset: () => void;
 }
 
-export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
+interface UseCreateEmptyBubbleFlowResult {
+  mutate: (request: CreateEmptyBubbleFlowWithOptimisticData) => void;
+  mutateAsync: (
+    request: CreateEmptyBubbleFlowWithOptimisticData
+  ) => Promise<CreateBubbleFlowResponse>;
+  isLoading: boolean;
+  error: Error | null;
+  data: CreateBubbleFlowResponse | undefined;
+  reset: () => void;
+}
+
+// Function overloads
+export function useCreateBubbleFlow(options: {
+  isEmpty: true;
+}): UseCreateEmptyBubbleFlowResult;
+export function useCreateBubbleFlow(options?: {
+  isEmpty?: false;
+}): UseCreateBubbleFlowResult;
+export function useCreateBubbleFlow(options?: {
+  isEmpty?: boolean;
+}): UseCreateBubbleFlowResult | UseCreateEmptyBubbleFlowResult {
   const queryClient = useQueryClient();
+  const isEmpty = options?.isEmpty || false;
 
   const mutation = useMutation({
-    mutationKey: ['createBubbleFlow'],
+    mutationKey: isEmpty ? ['createEmptyBubbleFlow'] : ['createBubbleFlow'],
     mutationFn: async (
-      request: CreateBubbleFlowWithOptimisticData
+      request:
+        | CreateBubbleFlowWithOptimisticData
+        | CreateEmptyBubbleFlowWithOptimisticData
     ): Promise<CreateBubbleFlowResponse> => {
-      console.log('[useCreateBubbleFlow] Creating new bubble flow:', request);
+      console.log(
+        `[useCreateBubbleFlow] Creating ${isEmpty ? 'empty' : 'new'} bubble flow:`,
+        request
+      );
       // Remove optimistic data before sending to server
       const { _optimisticBubbles: _, ...serverRequest } = request;
       void _; // Silence unused variable warning
+
+      const endpoint = isEmpty ? '/bubble-flow/empty' : '/bubble-flow';
       const response = await api.post<CreateBubbleFlowResponse>(
-        '/bubble-flow',
+        endpoint,
         serverRequest
       );
       console.log('[useCreateBubbleFlow] Flow created successfully:', response);
@@ -103,7 +142,9 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         id: tempId,
         name: newFlow.name,
         description: newFlow.description,
-        code: newFlow.code,
+        code: isEmpty
+          ? ''
+          : (newFlow as CreateBubbleFlowWithOptimisticData).code, // Empty code for empty flows
         eventType: newFlow.eventType,
         webhookActive: newFlow.webhookActive,
         bubbleParameters: {}, // Will be populated by server response
@@ -164,21 +205,64 @@ export function useCreateBubbleFlow(): UseCreateBubbleFlowResult {
         }
       );
 
-      // Remove the optimistic flow details with temporary ID and replace with real ID
+      // Set the flow details cache with real ID immediately (before invalidation)
       if (context?.tempId) {
+        const optimisticFlowDetails = queryClient.getQueryData([
+          'bubbleFlow',
+          context.tempId,
+        ]) as BubbleFlowDetailsResponse;
+
+        if (optimisticFlowDetails) {
+          // Update the cached flow with real ID and server data
+          queryClient.setQueryData(['bubbleFlow', data.id], {
+            ...optimisticFlowDetails,
+            id: data.id,
+            // Override with server response data (for regular flows with code)
+            bubbleParameters:
+              data.bubbleParameters || optimisticFlowDetails.bubbleParameters,
+            workflow: data.workflow || optimisticFlowDetails.workflow,
+            requiredCredentials:
+              data.requiredCredentials ||
+              optimisticFlowDetails.requiredCredentials,
+            inputSchema: data.inputSchema || optimisticFlowDetails.inputSchema,
+          });
+          console.log(
+            '[useCreateBubbleFlow] Set flow cache with real ID:',
+            data.id
+          );
+        }
+
+        // Remove the optimistic flow details with temporary ID
         queryClient.removeQueries({ queryKey: ['bubbleFlow', context.tempId] });
         console.log(
           '[useCreateBubbleFlow] Removed optimistic flow data for tempId:',
           context.tempId
         );
+      } else {
+        // If no tempId, set the cache with data from server response
+        queryClient.setQueryData(['bubbleFlow', data.id], {
+          id: data.id,
+          name: variables.name,
+          description: variables.description,
+          code: isEmpty
+            ? ''
+            : (variables as CreateBubbleFlowWithOptimisticData).code,
+          eventType: data.eventType || variables.eventType,
+          webhookActive: variables.webhookActive,
+          // Use server response data for these fields (populated for regular flows)
+          bubbleParameters: data.bubbleParameters || {},
+          workflow: data.workflow || undefined,
+          requiredCredentials: data.requiredCredentials || {},
+          inputSchema: data.inputSchema || {},
+          prompt: variables.prompt,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        console.log(
+          '[useCreateBubbleFlow] Set flow cache for real ID (no tempId):',
+          data.id
+        );
       }
-
-      // Refetch the flow details
-      void queryClient.invalidateQueries({ queryKey: ['bubbleFlow', data.id] });
-      console.log(
-        '[useCreateBubbleFlow] Cached full flow details for real ID:',
-        data.id
-      );
     },
     onError: (error, _variables, context) => {
       console.error('[useCreateBubbleFlow] Flow creation failed:', error);
