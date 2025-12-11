@@ -1176,6 +1176,9 @@ export class FirecrawlBubble<
     const firecrawl = new Firecrawl({ apiKey });
     try {
       const _ = await firecrawl.getConcurrency();
+      if (_) {
+        // suppress ts(6133)
+      }
       return true;
     } catch (error) {
       console.error('Firecrawl credential test failed:', error);
