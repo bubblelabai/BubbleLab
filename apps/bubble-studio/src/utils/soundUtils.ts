@@ -15,6 +15,27 @@
  * - E5: 659.25 Hz
  */
 
+type WindowWithWebkitAudioContext = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+
+const getAudioContext = (): AudioContext | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const AudioContextConstructor =
+    window.AudioContext ||
+    (window as WindowWithWebkitAudioContext).webkitAudioContext;
+
+  if (!AudioContextConstructor) {
+    return null;
+  }
+
+  return new AudioContextConstructor();
+};
+
 const playSound = (
   frequency: number,
   duration: number,
@@ -22,8 +43,10 @@ const playSound = (
   volume: number = 0.3
 ) => {
   try {
-    const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+    const audioContext = getAudioContext();
+    if (!audioContext) {
+      return;
+    }
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
