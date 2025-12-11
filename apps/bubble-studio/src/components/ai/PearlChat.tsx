@@ -58,6 +58,7 @@ import {
   selectFlowEvents,
 } from '../../stores/generationEventsStore';
 import type { ChatMessage } from './type';
+import { playGenerationCompleteSound } from '../../utils/soundUtils';
 
 export function PearlChat() {
   // UI-only state (non-shared)
@@ -211,6 +212,9 @@ export function PearlChat() {
         }
 
         case 'generation_complete': {
+          // Play completion sound
+          playGenerationCompleteSound();
+
           // Get summary from generation result
           const summary =
             eventData.data?.summary || 'Workflow generated successfully';
