@@ -88,4 +88,5 @@ export type BubbleName =
   | 'agi-inc'
   | 'telegram'
   | 'airtable'
-  | 'notion';
+  | 'notion'
+  | 'firecrawl';
