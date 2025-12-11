@@ -415,6 +415,7 @@ export function usePearlChatStore(flowId: number | null) {
       currentCode: fullCode,
       model: PEARL_DEFAULT_MODEL,
       additionalContext: context,
+      uploadedFiles: uploadedFiles,
     });
   };
 

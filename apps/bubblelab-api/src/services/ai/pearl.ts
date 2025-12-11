@@ -163,9 +163,24 @@ ${bubbleFactory.generateBubbleFlowBoilerplate()}
 
 /**
  * Build the conversation messages from request and history
+ * Returns both messages and images for multimodal support
  */
-function buildConversationMessages(request: PearlRequest): BaseMessage[] {
+function buildConversationMessages(request: PearlRequest): {
+  messages: BaseMessage[];
+  images: Array<{
+    type: 'base64';
+    data: string;
+    mimeType: string;
+    description?: string;
+  }>;
+} {
   const messages: BaseMessage[] = [];
+  const images: Array<{
+    type: 'base64';
+    data: string;
+    mimeType: string;
+    description?: string;
+  }> = [];
 
   // Add conversation history if available
   if (request.conversationHistory && request.conversationHistory.length > 0) {
@@ -177,6 +192,32 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
       }
     }
   }
+
+  // Process uploaded files into images array
+  if (request.uploadedFiles && request.uploadedFiles.length > 0) {
+    for (const file of request.uploadedFiles) {
+      // Determine mime type from file name
+      const fileName = file.name.toLowerCase();
+      let mimeType = 'image/png'; // default
+      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg';
+      } else if (fileName.endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (fileName.endsWith('.gif')) {
+        mimeType = 'image/gif';
+      } else if (fileName.endsWith('.webp')) {
+        mimeType = 'image/webp';
+      }
+
+      images.push({
+        type: 'base64',
+        data: file.content,
+        mimeType,
+        description: file.name,
+      });
+    }
+  }
+
   // Add current request with code context if available
   const contextInfo = request.currentCode
     ? `\n\nCurrent workflow code:\n\`\`\`typescript\n${request.currentCode}\n\`\`\` Available Variables:${JSON.stringify(request.availableVariables)}`
@@ -193,7 +234,7 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
     )
   );
 
-  return messages;
+  return { messages, images };
 }
 
 /**
@@ -224,7 +265,8 @@ export async function runPearl(
 
       // Build system prompt and conversation messages
       const systemPrompt = await buildSystemPrompt(request.userName);
-      const conversationMessages = buildConversationMessages(request);
+      const { messages: conversationMessages, images } =
+        buildConversationMessages(request);
 
       // State to preserve current code and validation results across hook calls
       let currentCode: string | undefined = request.currentCode;
@@ -400,6 +442,7 @@ export async function runPearl(
           jsonMode: true,
           provider: ['fireworks', 'cerebras'],
         },
+        images: images.length > 0 ? images : undefined,
         tools: [
           {
             name: 'list-bubbles-tool',

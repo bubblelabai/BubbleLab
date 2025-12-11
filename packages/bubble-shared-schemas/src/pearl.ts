@@ -50,6 +50,17 @@ export const PearlRequestSchema = z.object({
     .describe(
       'Additional context information like timezone, user preferences, etc.'
     ),
+
+  uploadedFiles: z
+    .array(
+      z.object({
+        name: z.string().describe('File name'),
+        content: z.string().describe('Base64 encoded file content'),
+      })
+    )
+    .optional()
+    .default([])
+    .describe('Files uploaded by the user (base64 encoded)'),
 });
 
 /**
