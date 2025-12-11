@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { Firecrawl } from '@mendable/firecrawl-js';
 
 // Define the schema for Firecrawl document metadata
 const FirecrawlDocumentMetadataSchema = z
@@ -974,7 +975,7 @@ const FirecrawlParamsSchema = z.discriminatedUnion('operation', [
 // Define the base shared result schema for Firecrawl operations
 const FirecrawlResultBaseSchema = z.object({
   success: z.boolean().describe('Whether the operation succeeded'),
-  error: z.string().optional().describe('Error message if operation failed'),
+  error: z.string().describe('Error message if operation failed'),
 });
 
 // Define result schema for Firecrawl operations
@@ -1104,3 +1105,485 @@ const FirecrawlResultSchema = z.discriminatedUnion('operation', [
       .describe('Expiration time of the extraction job'),
   }),
 ]);
+
+type FirecrawlParams = z.input<typeof FirecrawlParamsSchema>;
+type FirecrawlResult = z.output<typeof FirecrawlResultSchema>;
+
+// Export the input type for external usage
+export type FirecrawlParamsInput = z.input<typeof FirecrawlParamsSchema>;
+
+// Helper type to get the result type for a specific operation
+export type FirecrawlOperationResult<T extends FirecrawlParams['operation']> =
+  Extract<FirecrawlResult, { operation: T }>;
+
+export class FirecrawlBubble<
+  T extends FirecrawlParams = FirecrawlParams,
+> extends ServiceBubble<
+  T,
+  Extract<FirecrawlResult, { operation: T['operation'] }>
+> {
+  static readonly type = 'service' as const;
+  static readonly service = 'firecrawl';
+  static readonly authType = 'apiKey' as const;
+  static readonly bubbleName = 'firecrawl';
+  static readonly schema = FirecrawlParamsSchema;
+  static readonly resultSchema = FirecrawlResultSchema;
+  static readonly shortDescription =
+    'Firecrawl API integration for web crawl operations.';
+  static readonly longDescription = `
+    Firecrawl API integration for web crawling, scraping, searching, and data extraction.
+
+    Features:
+    - Scrape content from any URL with customizable options.
+    - Perform web searches and scrape results.
+    - Map websites to discover URLs.
+    - Crawl entire domains recursively.
+    - Extract structured data using AI.
+
+    Use cases:
+    - Add web knowledge to your RAG chatbots and AI assistants.
+    - Extract and filter leads from websites to enrich your sales pipeline.
+    - Monitor SERP rankings and optimize content strategy.
+    - Build agentic research tools with deep web search capabilities.
+    - Monitor pricing and track inventory across e-commerce sites.
+    - Generate AI content based on website data and structure.
+    - Track companies and extract financial insights from web data.
+    - Monitor competitor websites and track changes in real-time.
+    - Transfer web data seamlessly between platforms and systems.
+    - Monitor websites, track uptime, and detect changes in real-time.
+
+    Security Features:
+    - API key authentication (FIRECRAWL_API_KEY)
+    - Secure credential injection at runtime
+  `;
+  static readonly alias = 'firecrawl';
+
+  constructor(
+    params: T = {
+      operation: 'scrape',
+    } as T,
+    context?: BubbleContext,
+    instanceId?: string
+  ) {
+    super(params, context, instanceId);
+  }
+
+  public async testCredential(): Promise<boolean> {
+    const apiKey = this.chooseCredential();
+    if (!apiKey) {
+      return false;
+    }
+    const firecrawl = new Firecrawl({ apiKey });
+    try {
+      const _ = await firecrawl.getConcurrency();
+      return true;
+    } catch (error) {
+      console.error('Firecrawl credential test failed:', error);
+      return false;
+    }
+  }
+
+  protected chooseCredential(): string | undefined {
+    const credentials = this.params.credentials;
+    if (!credentials || typeof credentials !== 'object') {
+      return undefined;
+    }
+    return credentials[CredentialType.FIRECRAWL_API_KEY];
+  }
+
+  protected async performAction(
+    context?: BubbleContext
+  ): Promise<Extract<FirecrawlResult, { operation: T['operation'] }>> {
+    void context;
+    const { operation } = this.params;
+    switch (operation) {
+      case 'scrape':
+        return this.handleScrape(
+          this.params as Extract<FirecrawlParams, { operation: 'scrape' }>
+        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+      case 'search':
+        return this.handleSearch(
+          this.params as Extract<FirecrawlParams, { operation: 'search' }>
+        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+      case 'map':
+        return this.handleMap(
+          this.params as Extract<FirecrawlParams, { operation: 'map' }>
+        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+      case 'crawl':
+        return this.handleCrawl(
+          this.params as Extract<FirecrawlParams, { operation: 'crawl' }>
+        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+      case 'extract':
+        return this.handleExtract(
+          this.params as Extract<FirecrawlParams, { operation: 'extract' }>
+        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+      default:
+        return {
+          operation: operation as T['operation'],
+          success: false,
+          error: `Unsupported operation: ${operation}`,
+        } as Extract<FirecrawlResult, { operation: T['operation'] }>;
+    }
+  }
+
+  private async handleScrape(
+    params: Extract<FirecrawlParams, { operation: 'scrape' }>
+  ): Promise<Extract<FirecrawlResult, { operation: 'scrape' }>> {
+    const apiKey = this.chooseCredential();
+    const {
+      maxRetries,
+      backoffFactor,
+      url,
+      formats,
+      headers,
+      includeTags,
+      excludeTags,
+      onlyMainContent,
+      timeout,
+      waitFor,
+      mobile,
+      parsers,
+      actions,
+      location,
+      skipTlsVerification,
+      removeBase64Images,
+      fastMode,
+      useMock,
+      blockAds,
+      proxy,
+      maxAge,
+      storeInCache,
+      integration,
+    } = params;
+    if (!apiKey) {
+      return {
+        operation: 'scrape',
+        success: false,
+        error: 'Firecrawl API Key is required but was not provided',
+      };
+    }
+    const firecrawl = new Firecrawl({
+      apiKey,
+      maxRetries,
+      backoffFactor,
+      // timeoutMs: timeout,
+    });
+    try {
+      const response = await firecrawl.scrape(url, {
+        formats,
+        headers,
+        includeTags,
+        excludeTags,
+        onlyMainContent,
+        timeout,
+        waitFor,
+        mobile,
+        parsers,
+        actions,
+        location,
+        skipTlsVerification,
+        removeBase64Images,
+        fastMode,
+        useMock,
+        blockAds,
+        proxy,
+        maxAge,
+        storeInCache,
+        integration,
+      });
+      return {
+        operation: 'scrape',
+        success: true,
+        error: '',
+        ...response,
+      };
+    } catch (error) {
+      return {
+        operation: 'scrape',
+        success: false,
+        error:
+          error instanceof Error ? error.message : `Unknown error occurred`,
+      };
+    }
+  }
+
+  private async handleSearch(
+    params: Extract<FirecrawlParams, { operation: 'search' }>
+  ): Promise<Extract<FirecrawlResult, { operation: 'search' }>> {
+    const apiKey = this.chooseCredential();
+    const {
+      maxRetries,
+      backoffFactor,
+      query,
+      sources,
+      categories,
+      limit,
+      tbs,
+      location,
+      ignoreInvalidURLs,
+      timeout,
+      scrapeOptions,
+      integration,
+    } = params;
+    if (!apiKey) {
+      return {
+        operation: 'search',
+        success: false,
+        error: 'Firecrawl API Key is required but was not provided',
+      };
+    }
+    const firecrawl = new Firecrawl({
+      apiKey,
+      maxRetries,
+      backoffFactor,
+      // timeoutMs: timeout,
+    });
+    try {
+      const response = await firecrawl.search(query, {
+        sources,
+        categories,
+        limit,
+        tbs,
+        location,
+        ignoreInvalidURLs,
+        timeout,
+        scrapeOptions,
+        integration,
+      });
+      return {
+        operation: 'search',
+        success: true,
+        error: '',
+        ...response,
+      };
+    } catch (error) {
+      return {
+        operation: 'search',
+        success: false,
+        error:
+          error instanceof Error ? error.message : `Unknown error occurred`,
+      };
+    }
+  }
+
+  private async handleMap(
+    params: Extract<FirecrawlParams, { operation: 'map' }>
+  ): Promise<Extract<FirecrawlResult, { operation: 'map' }>> {
+    const apiKey = this.chooseCredential();
+    const {
+      maxRetries,
+      backoffFactor,
+      url,
+      search,
+      sitemap,
+      includeSubdomains,
+      limit,
+      timeout,
+      integration,
+      location,
+    } = params;
+    if (!apiKey) {
+      return {
+        operation: 'map',
+        success: false,
+        error: 'Firecrawl API Key is required but was not provided',
+        links: [],
+      };
+    }
+    const firecrawl = new Firecrawl({
+      apiKey,
+      maxRetries,
+      backoffFactor,
+      // timeoutMs: timeout,
+    });
+    try {
+      const response = await firecrawl.map(url, {
+        search,
+        sitemap,
+        includeSubdomains,
+        limit,
+        timeout,
+        integration,
+        location,
+      });
+      return {
+        operation: 'map',
+        success: true,
+        error: '',
+        ...response,
+      };
+    } catch (error) {
+      return {
+        operation: 'map',
+        success: false,
+        error:
+          error instanceof Error ? error.message : `Unknown error occurred`,
+        links: [],
+      };
+    }
+  }
+
+  private async handleCrawl(
+    params: Extract<FirecrawlParams, { operation: 'crawl' }>
+  ): Promise<Extract<FirecrawlResult, { operation: 'crawl' }>> {
+    const apiKey = this.chooseCredential();
+    const {
+      maxRetries,
+      backoffFactor,
+      url,
+      prompt,
+      excludePaths,
+      includePaths,
+      maxDiscoveryDepth,
+      sitemap,
+      ignoreQueryParameters,
+      limit,
+      crawlEntireDomain,
+      allowExternalLinks,
+      allowSubdomains,
+      delay,
+      maxConcurrency,
+      webhook,
+      scrapeOptions,
+      zeroDataRetention,
+      integration,
+      pollInterval,
+      timeout,
+    } = params;
+    if (!apiKey) {
+      return {
+        operation: 'crawl',
+        success: false,
+        error: 'Firecrawl API Key is required but was not provided',
+        status: 'failed',
+        total: 0,
+        completed: 0,
+        data: [],
+      };
+    }
+    const firecrawl = new Firecrawl({
+      apiKey,
+      maxRetries,
+      backoffFactor,
+      // timeoutMs: timeout,
+    });
+    try {
+      const response = await firecrawl.crawl(url, {
+        prompt,
+        excludePaths,
+        includePaths,
+        maxDiscoveryDepth,
+        sitemap,
+        ignoreQueryParameters,
+        limit,
+        crawlEntireDomain,
+        allowExternalLinks,
+        allowSubdomains,
+        delay,
+        maxConcurrency,
+        webhook,
+        scrapeOptions,
+        zeroDataRetention,
+        integration,
+        pollInterval,
+        timeout,
+      });
+      return {
+        operation: 'crawl',
+        success: response.status === 'completed',
+        error:
+          response.status === 'completed' ? '' : `Crawl ${response.status}`,
+        ...response,
+      };
+    } catch (error) {
+      return {
+        operation: 'crawl',
+        success: false,
+        error:
+          error instanceof Error ? error.message : `Unknown error occurred`,
+        status: 'failed',
+        total: 0,
+        completed: 0,
+        data: [],
+      };
+    }
+  }
+
+  private async handleExtract(
+    params: Extract<FirecrawlParams, { operation: 'extract' }>
+  ): Promise<Extract<FirecrawlResult, { operation: 'extract' }>> {
+    const apiKey = this.chooseCredential();
+    const {
+      maxRetries,
+      backoffFactor,
+      urls,
+      prompt,
+      schema,
+      systemPrompt,
+      allowExternalLinks,
+      enableWebSearch,
+      showSources,
+      scrapeOptions,
+      ignoreInvalidURLs,
+      integration,
+      agent,
+      pollInterval,
+      timeout,
+    } = params;
+    if (!apiKey) {
+      return {
+        operation: 'extract',
+        success: false,
+        error: 'Firecrawl API Key is required but was not provided',
+      };
+    }
+    const firecrawl = new Firecrawl({
+      apiKey,
+      maxRetries,
+      backoffFactor,
+      // timeoutMs: timeout,
+    });
+    try {
+      const {
+        success: responseSuccess,
+        error: responseError,
+        ...response
+      } = await firecrawl.extract({
+        urls,
+        prompt,
+        schema,
+        systemPrompt,
+        allowExternalLinks,
+        enableWebSearch,
+        showSources,
+        scrapeOptions,
+        ignoreInvalidURLs,
+        integration,
+        agent,
+        pollInterval,
+        timeout,
+      });
+      const success = responseSuccess ?? response.status === 'completed';
+      const error =
+        responseError ??
+        (success
+          ? ''
+          : response.status === undefined
+            ? 'Unknown error occurred'
+            : `Extraction ${response.status}`);
+      return {
+        operation: 'extract',
+        success,
+        error,
+        ...response,
+      };
+    } catch (error) {
+      return {
+        operation: 'extract',
+        success: false,
+        error:
+          error instanceof Error ? error.message : `Unknown error occurred`,
+      };
+    }
+  }
+}
