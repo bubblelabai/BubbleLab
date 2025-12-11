@@ -26,6 +26,7 @@ import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { runBoba } from '../services/ai/boba.js';
+import { runCoffee } from '../services/ai/coffee.js';
 import {
   createBubbleFlowRoute,
   createEmptyBubbleFlowRoute,
@@ -1125,10 +1126,13 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 });
 
 // Generate BubbleFlow code with streaming from natural language
+// Supports two phases: 'planning' (Coffee agent) and 'building' (Boba agent)
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
   try {
-    const { prompt, flowId } = c.req.valid('json');
+    const { prompt, flowId, clarificationAnswers, planContext } =
+      c.req.valid('json');
+    const { phase } = c.req.valid('query');
 
     // If flowId is provided, verify the flow exists and user owns it
     if (flowId) {
@@ -1178,20 +1182,65 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         }
       }, HEARTBEAT_INTERVAL);
 
+      // Credentials for both Coffee and Boba
+      const credentials = {
+        [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_API_KEY || '',
+        [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY || '',
+        [CredentialType.ANTHROPIC_CRED]: process.env.ANTHROPIC_API_KEY || '',
+        [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY || '',
+      };
+
+      // Streaming callback for SSE events
+      const streamingCallback = async (event: StreamingEvent) => {
+        lastEventTime = Date.now();
+        await stream.writeSSE({
+          data: JSON.stringify(event),
+          event: event.type,
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        });
+      };
+
       try {
+        // PLANNING PHASE: Run Coffee agent for clarification and plan generation
+        if (phase === 'planning') {
+          console.log('[API] Running Coffee agent (planning phase)');
+
+          const coffeeResult = await runCoffee(
+            {
+              prompt,
+              flowId,
+              clarificationAnswers,
+            },
+            credentials,
+            streamingCallback
+          );
+
+          // Clear heartbeat and send stream completion
+          clearInterval(heartbeatInterval);
+
+          await stream.writeSSE({
+            data: JSON.stringify({
+              type: 'stream_complete',
+              timestamp: new Date().toISOString(),
+              coffeeResult,
+            }),
+            event: 'stream_complete',
+          });
+
+          return;
+        }
+
+        // BUILDING PHASE: Run Boba agent for code generation
+        // Enrich prompt with plan context if available
+        const enrichedPrompt = planContext
+          ? `${prompt}\n\n[Implementation Plan from Planning Phase]:\n${planContext}`
+          : prompt;
+
         // Use runBoba to generate the code with streaming
         const generationResult = await runBoba(
           {
-            prompt,
-            credentials: {
-              [CredentialType.OPENROUTER_CRED]:
-                process.env.OPENROUTER_API_KEY || '',
-              [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY || '',
-              [CredentialType.ANTHROPIC_CRED]:
-                process.env.ANTHROPIC_API_KEY || '',
-              [CredentialType.GOOGLE_GEMINI_CRED]:
-                process.env.GOOGLE_API_KEY || '',
-            },
+            prompt: enrichedPrompt,
+            credentials,
           },
           async (event: StreamingEvent) => {
             // Update last event time to track activity

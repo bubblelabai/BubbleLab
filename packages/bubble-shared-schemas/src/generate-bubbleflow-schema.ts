@@ -16,6 +16,20 @@ export const generateBubbleFlowCodeSchema = z.object({
       'Optional flow ID to update with generated code (for async generation)',
     example: 123,
   }),
+  // Coffee agent fields (for planning phase)
+  clarificationAnswers: z
+    .record(z.string(), z.array(z.string()))
+    .optional()
+    .openapi({
+      description:
+        'User answers to Coffee clarification questions (questionId -> choiceIds)',
+      example: { question_1: ['choice_a'] },
+    }),
+  planContext: z.string().optional().openapi({
+    description:
+      'Plan context from Coffee agent (passed to Boba for enriched generation)',
+    example: 'Plan: 1. Fetch data from API 2. Process with AI 3. Send to Slack',
+  }),
 });
 
 export const generateBubbleFlowCodeResponseSchema = z.object({
