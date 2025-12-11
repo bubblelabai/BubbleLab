@@ -970,3 +970,137 @@ const FirecrawlParamsSchema = z.discriminatedUnion('operation', [
       .describe('Timeout in milliseconds for the extraction operation'),
   }),
 ]);
+
+// Define the base shared result schema for Firecrawl operations
+const FirecrawlResultBaseSchema = z.object({
+  success: z.boolean().describe('Whether the operation succeeded'),
+  error: z.string().optional().describe('Error message if operation failed'),
+});
+
+// Define result schema for Firecrawl operations
+const FirecrawlResultSchema = z.discriminatedUnion('operation', [
+  // Scrape operation
+  FirecrawlResultBaseSchema.merge(FirecrawlDocumentSchema).extend({
+    operation: z.literal('scrape').describe('Scrape a single URL'),
+  }),
+
+  // Search operation
+  FirecrawlResultBaseSchema.extend({
+    operation: z
+      .literal('search')
+      .describe('Search the web and optionally scrape each result'),
+    web: z
+      .array(
+        z.union([
+          z.object({
+            url: z.string().url().describe('Result URL'),
+            title: z.string().optional().describe('Result title'),
+            description: z.string().optional().describe('Result description'),
+            category: z.string().optional().describe('Result category'),
+          }),
+          FirecrawlDocumentSchema,
+        ])
+      )
+      .optional()
+      .describe('Web search results'),
+    news: z
+      .array(
+        z.union([
+          z.object({
+            title: z.string().optional().describe('Result title'),
+            url: z.string().url().optional().describe('Result URL'),
+            snippet: z.string().optional().describe('Result snippet'),
+            date: z.string().optional().describe('Result date'),
+            imageUrl: z.string().url().optional().describe('Result image URL'),
+            position: z.number().optional().describe('Result position'),
+            category: z.string().optional().describe('Result category'),
+          }),
+          FirecrawlDocumentSchema,
+        ])
+      )
+      .optional()
+      .describe('News search results'),
+    images: z
+      .array(
+        z.union([
+          z.object({
+            title: z.string().optional().describe('Result title'),
+            imageUrl: z.string().url().optional().describe('Result image URL'),
+            imageWidth: z
+              .number()
+              .optional()
+              .describe('Result image width in pixels'),
+            imageHeight: z
+              .number()
+              .optional()
+              .describe('Result image height in pixels'),
+            url: z.string().url().optional().describe('Result URL'),
+            position: z.number().optional().describe('Result position'),
+          }),
+          FirecrawlDocumentSchema,
+        ])
+      )
+      .optional()
+      .describe('Image search results'),
+  }),
+
+  // Map operation
+  FirecrawlResultBaseSchema.extend({
+    operation: z.literal('map').describe('Map a site to discover URLs'),
+    links: z
+      .array(
+        z.object({
+          url: z.string().url().describe('Discovered URL'),
+          title: z.string().optional().describe('Page title'),
+          description: z.string().optional().describe('Page description'),
+          category: z.string().optional().describe('URL category'),
+        })
+      )
+      .describe('Discovered links'),
+  }),
+
+  // Crawl operation
+  FirecrawlResultBaseSchema.extend({
+    operation: z
+      .literal('crawl')
+      .describe(
+        'Recursively search through a urls subdomains, and gather the content'
+      ),
+    status: z
+      .enum(['scraping', 'completed', 'failed', 'cancelled'])
+      .describe('Status of the crawl job'),
+    total: z.number().describe('Total number of pages to crawl'),
+    completed: z.number().describe('Number of pages crawled'),
+    creditsUsed: z.number().optional().describe('Number of credits used'),
+    expiresAt: z
+      .string()
+      .optional()
+      .describe('Expiration time of the crawl job'),
+    // next: z
+    //   .string()
+    //   .url()
+    //   .nullable()
+    //   .optional()
+    //   .describe('URL to fetch the next batch of crawl results'),
+    data: z.array(FirecrawlDocumentSchema).describe('Crawled documents'),
+  }),
+
+  // Extract operation
+  FirecrawlResultBaseSchema.extend({
+    operation: z
+      .literal('extract')
+      .describe('Extract structured data from a URL'),
+    id: z.string().optional().describe('Extraction job identifier'),
+    status: z
+      .enum(['processing', 'completed', 'failed', 'cancelled'])
+      .optional()
+      .describe('Status of the extraction job'),
+    data: z.unknown().optional().describe('Extracted structured data'),
+    warning: z.string().optional().describe('Warning message if any'),
+    sources: z.record(z.unknown()).optional().describe('Extraction sources'),
+    expiresAt: z
+      .string()
+      .optional()
+      .describe('Expiration time of the extraction job'),
+  }),
+]);
