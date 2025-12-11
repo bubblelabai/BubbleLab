@@ -30,6 +30,7 @@ import {
   FileInput,
   Settings,
   Code,
+  Image,
 } from 'lucide-react';
 import { useValidateCode } from '../../hooks/useValidateCode';
 import { useExecutionStore } from '../../stores/executionStore';
@@ -1012,89 +1013,83 @@ export function PearlChat() {
             </div>
           )}
 
-          <div className="relative">
-            <BubblePromptInput
-              ref={promptInputRef}
-              value={pearl.prompt}
-              onChange={pearl.setPrompt}
-              onSubmit={handleGenerate}
-              placeholder="Get help modifying, debugging, or understanding your workflow..."
-              className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
-              disabled={pearl.isPending || isGenerating}
-              flowId={selectedFlowId}
-              selectedBubbleContext={pearl.selectedBubbleContext}
-              selectedTransformationContext={
-                pearl.selectedTransformationContext
-              }
-              selectedStepContext={pearl.selectedStepContext}
-              onRemoveBubble={pearl.removeBubbleFromContext}
-              onRemoveTransformation={pearl.clearTransformationContext}
-              onRemoveStep={pearl.clearStepContext}
-            />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2">
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".html,.csv,.txt,image/png"
-                  multiple
-                  disabled={pearl.isPending || isGenerating}
-                  aria-label="Upload files"
-                  onChange={(e) => {
-                    handleFileChange(e.target.files);
-                    // reset so selecting the same file again triggers onChange
-                    e.currentTarget.value = '';
-                  }}
-                />
-                <Paperclip
-                  className={`w-5 h-5 transition-colors ${
-                    pearl.isPending || isGenerating
-                      ? 'text-gray-600 cursor-not-allowed'
-                      : uploadedFiles.length > 0
-                        ? 'text-gray-300'
-                        : 'text-gray-400 hover:text-gray-200'
-                  }`}
-                />
-              </label>
-            </div>
-          </div>
+          {/* Text input area */}
+          <BubblePromptInput
+            ref={promptInputRef}
+            value={pearl.prompt}
+            onChange={pearl.setPrompt}
+            onSubmit={handleGenerate}
+            placeholder="Get help modifying, debugging, or understanding your workflow..."
+            className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
+            disabled={pearl.isPending || isGenerating}
+            flowId={selectedFlowId}
+            selectedBubbleContext={pearl.selectedBubbleContext}
+            selectedTransformationContext={pearl.selectedTransformationContext}
+            selectedStepContext={pearl.selectedStepContext}
+            onRemoveBubble={pearl.removeBubbleFromContext}
+            onRemoveTransformation={pearl.clearTransformationContext}
+            onRemoveStep={pearl.clearStepContext}
+          />
 
-          {/* Generate Button - Inside the prompt container */}
-          <div className="flex justify-end mt-2">
-            <div className="flex flex-col items-end">
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={
-                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending ||
-                  isGenerating
-                }
-                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending ||
-                  isGenerating
-                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                    : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
-                }`}
-              >
-                {pearl.isPending ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <ArrowUp className="w-5 h-5" />
-                )}
-              </button>
+          {/* Bottom action bar - buttons grouped on the right */}
+          <div className="flex items-center justify-end gap-2 mt-2">
+            {/* Upload button */}
+            <label
+              className={`${
+                pearl.isPending || isGenerating
+                  ? 'cursor-not-allowed'
+                  : 'cursor-pointer'
+              }`}
+            >
+              <input
+                type="file"
+                className="hidden"
+                accept=".html,.csv,.txt,image/png"
+                multiple
+                disabled={pearl.isPending || isGenerating}
+                aria-label="Upload files"
+                onChange={(e) => {
+                  handleFileChange(e.target.files);
+                  // reset so selecting the same file again triggers onChange
+                  e.currentTarget.value = '';
+                }}
+              />
               <div
-                className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                  (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending
-                    ? 'text-gray-500/60'
-                    : 'text-gray-400'
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  pearl.isPending || isGenerating
+                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                    : uploadedFiles.length > 0
+                      ? 'bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60'
+                      : 'bg-gray-700/40 border border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
                 }`}
               >
-                Ctrl+Enter
+                <Image className="w-5 h-5" />
               </div>
-            </div>
+            </label>
+
+            {/* Send button */}
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={
+                (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
+                pearl.isPending ||
+                isGenerating
+              }
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
+                pearl.isPending ||
+                isGenerating
+                  ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                  : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
+              }`}
+            >
+              {pearl.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <ArrowUp className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </div>
       </div>
