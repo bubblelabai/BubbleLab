@@ -16,7 +16,7 @@ export const FalAiParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Model is required')
       .describe(
-        'fal.ai model ID (e.g., "fal-ai/flux/dev", "fal-ai/stable-diffusion-v1-5")'
+        'Fal AI model ID (e.g., "fal-ai/flux/dev", "fal-ai/stable-diffusion-v1-5")'
       ),
     prompt: z
       .string()
@@ -96,7 +96,7 @@ export const FalAiParamsSchema = z.discriminatedUnion('operation', [
     model: z
       .string()
       .min(1, 'Model is required')
-      .describe('fal.ai model ID for image-to-image (e.g., "fal-ai/flux/dev")'),
+      .describe('Fal AI model ID for image-to-image (e.g., "fal-ai/flux/dev")'),
     prompt: z
       .string()
       .min(1, 'Prompt is required')
@@ -279,9 +279,9 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
   static readonly schema = FalAiParamsSchema;
   static readonly resultSchema = FalAiResultSchema;
   static readonly shortDescription =
-    'fal.ai integration for media generation (text-to-image, image-to-image)';
+    'Fal AI integration for media generation (text-to-image, image-to-image)';
   static readonly longDescription = `
-    Integrate with fal.ai's media generation APIs for creating and transforming images.
+    Integrate with Fal AI's media generation APIs for creating and transforming images.
 
     Features:
     - Text-to-image generation with various models (Flux, Stable Diffusion, etc.)
@@ -300,7 +300,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
     - fal-ai/flux/dev - Fast, high-quality image generation
     - fal-ai/stable-diffusion-v1-5 - Classic Stable Diffusion
     - fal-ai/flux/schnell - Ultra-fast generation
-    - And many more (check fal.ai docs for full list)
+    - And many more (check Fal AI docs for full list)
   `;
   static readonly alias = 'falai';
 
@@ -517,7 +517,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'text_to_image',
         success: false,
-        error: 'fal.ai API key is required',
+        error: 'Fal AI API key is required',
       };
     }
 
@@ -637,7 +637,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'image_to_image',
         success: false,
-        error: 'fal.ai API key is required',
+        error: 'Fal AI API key is required',
       };
     }
 
@@ -740,7 +740,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
         operation: 'get_status',
         status: 'FAILED',
         success: false,
-        error: 'fal.ai API key is required',
+        error: 'Fal AI API key is required',
       };
     }
 
@@ -790,7 +790,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'get_result',
         success: false,
-        error: 'fal.ai API key is required',
+        error: 'Fal AI API key is required',
       };
     }
 
