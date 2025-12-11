@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import Firecrawl from '@mendable/firecrawl-js';
+import { FirecrawlBubble } from '../service-bubble/firecrawl.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 
 // Parameters schema for web extraction
@@ -116,21 +116,10 @@ export class WebExtractTool extends ToolBubble<
   async performAction(context?: BubbleContext): Promise<WebExtractToolResult> {
     void context; // Context available but not currently used
 
-    const { url, prompt, schema, timeout } = this.params;
+    const { url, prompt, schema, timeout, credentials } = this.params;
     const startTime = Date.now();
 
     try {
-      // Get Firecrawl API key from credentials
-      const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          'FIRECRAWL_API_KEY is required but not provided in credentials'
-        );
-      }
-
-      // Initialize Firecrawl client
-      const firecrawl = new Firecrawl({ apiKey });
-
       console.log('[WebExtractTool] Extracting data from URL:', url);
       console.log(
         '[WebExtractTool] Using prompt:',
@@ -159,24 +148,36 @@ export class WebExtractTool extends ToolBubble<
         timeout: timeout ? timeout / 1000 : 30, // Convert to seconds
       };
 
+      // Initialize Firecrawl bubble
+      const firecrawlParams = {
+        operation: 'extract' as const,
+        credentials,
+        ...extractOptions,
+      };
+      const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
+        firecrawlParams,
+        this.context,
+        'web_extract_tool_firecrawl'
+      );
+
       // Execute extraction
-      const response = await firecrawl.extract(extractOptions);
+      const response = await firecrawl.action();
 
       // Handle the response
-      if (!response || typeof response !== 'object') {
+      if (!response.data || typeof response.data !== 'object') {
         throw new Error('Invalid response from Firecrawl extract API');
       }
 
       // Check if extraction was successful
-      if (response.success === false || response.status === 'failed') {
+      if (response.success === false || response.data.status === 'failed') {
         throw new Error(response.error || 'Extraction failed');
       }
 
       // Extract the data from the response
       let extractedData: Record<string, unknown> = {};
 
-      if (response.data) {
-        extractedData = response.data as Record<string, unknown>;
+      if (response.data.data) {
+        extractedData = response.data.data as Record<string, unknown>;
       } else {
         throw new Error('No data returned from extraction');
       }
@@ -191,8 +192,8 @@ export class WebExtractTool extends ToolBubble<
         extractionTime,
       };
 
-      if (response.sources) {
-        metadata.sources = response.sources;
+      if (response.data.sources) {
+        metadata.sources = response.data.sources;
       }
 
       console.log('[WebExtractTool] Successfully extracted data from:', url);
