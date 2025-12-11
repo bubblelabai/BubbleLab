@@ -11,6 +11,7 @@ import { ServiceUsage, type StreamingEvent } from '@bubblelab/shared-schemas';
 import { validateBubbleFlow } from '../services/validation.js';
 import { processUserCode } from '../services/code-processor.js';
 import { getWebhookUrl, generateWebhookPath } from '../utils/webhook.js';
+import { getFlowNameFromCode } from '../utils/code-parser.js';
 import {
   extractRequiredCredentials,
   generateDisplayedBubbleParameters,
@@ -27,6 +28,7 @@ import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { runBoba } from '../services/ai/boba.js';
 import {
   createBubbleFlowRoute,
+  createEmptyBubbleFlowRoute,
   executeBubbleFlowRoute,
   executeBubbleFlowStreamRoute,
   getBubbleFlowRoute,
@@ -276,6 +278,101 @@ app.openapi(createBubbleFlowRoute, async (c) => {
   return c.json(response, 201);
 });
 
+// POST /bubble-flow/empty - Create empty BubbleFlow (for async code generation)
+app.openapi(createEmptyBubbleFlowRoute, async (c) => {
+  const data = c.req.valid('json');
+
+  // Validate that eventType is a valid BubbleTriggerEventRegistry key
+  if (!isValidBubbleTriggerEvent(data.eventType)) {
+    return c.json(
+      {
+        error: 'Invalid event type for webhook',
+        details: `Event type '${data.eventType}' is not a valid BubbleTriggerEventRegistry key`,
+      },
+      400
+    );
+  }
+
+  const userId = getUserId(c);
+
+  // Create empty flow with no code
+  const [inserted] = await db
+    .insert(bubbleFlows)
+    .values({
+      userId,
+      name: data.name,
+      description: data.description,
+      prompt: data.prompt,
+      code: '', // Empty code - will be generated asynchronously
+      originalCode: '', // Empty original code
+      bubbleParameters: {}, // Empty bubble parameters
+      workflow: null,
+      inputSchema: {},
+      eventType: data.eventType,
+      cron: null,
+      cronActive: false,
+      defaultInputs: {},
+      generationError: null, // No error initially
+    })
+    .returning({ id: bubbleFlows.id });
+
+  // Always create webhook entry for all BubbleFlows
+  const webhookPath = data.webhookPath || generateWebhookPath();
+
+  try {
+    const [webhookInserted] = await db
+      .insert(webhooks)
+      .values({
+        userId,
+        path: webhookPath,
+        bubbleFlowId: inserted.id,
+        isActive: data.webhookActive || false, // Usually false for empty flows
+      })
+      .returning({ id: webhooks.id });
+
+    const response = {
+      id: inserted.id,
+      message:
+        'BubbleFlow created successfully. Code generation in progress...',
+      webhook: {
+        id: webhookInserted.id,
+        url: getWebhookUrl(userId, webhookPath),
+        path: webhookPath,
+        active: data.webhookActive || false,
+      },
+    };
+
+    return c.json(response, 201);
+  } catch (error: unknown) {
+    // Handle duplicate webhook path error
+    const errorObj = error as {
+      message?: string;
+      cause?: { message?: string; code?: string };
+      code?: string;
+    };
+    const errorMessage = errorObj?.message || String(error);
+    const causeMessage = errorObj?.cause?.message || '';
+    const errorCode = errorObj?.code || errorObj?.cause?.code;
+
+    if (
+      errorMessage.includes('UNIQUE constraint failed') ||
+      errorMessage.includes('SQLITE_CONSTRAINT_UNIQUE') ||
+      causeMessage.includes('UNIQUE constraint failed') ||
+      causeMessage.includes('SQLITE_CONSTRAINT_UNIQUE') ||
+      errorCode === 'SQLITE_CONSTRAINT_UNIQUE'
+    ) {
+      return c.json(
+        {
+          error: 'Webhook path already exists',
+          details: `Path '${webhookPath}' is already in use for this user`,
+        },
+        400
+      );
+    }
+    throw error;
+  }
+});
+
 app.openapi(executeBubbleFlowRoute, async (c) => {
   const id = parseInt(c.req.param('id'));
   const userPayload = c.req.valid('json') ?? {}; // Handle empty payloads gracefully
@@ -448,7 +545,8 @@ app.openapi(getBubbleFlowRoute, async (c) => {
     prompt: flow.prompt || undefined,
     eventType: flow.eventType,
     requiredCredentials: extractRequiredCredentials(bubbleParameters),
-    code: flow.originalCode || 'Unable to retrieve code',
+    code: flow.originalCode ?? '', // Return empty string if null/undefined, preserve empty string
+    generationError: flow.generationError || undefined,
     displayedBubbleParameters:
       generateDisplayedBubbleParameters(bubbleParameters),
     bubbleParameters: bubbleParameters,
@@ -807,6 +905,7 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
     startedAt: execution.startedAt.toISOString(),
     completedAt: execution.completedAt?.toISOString(),
     webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
+    code: execution.code || undefined,
   }));
 
   return c.json(response, 200);
@@ -1029,7 +1128,25 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
   try {
-    const { prompt } = c.req.valid('json');
+    const { prompt, flowId } = c.req.valid('json');
+
+    // If flowId is provided, verify the flow exists and user owns it
+    if (flowId) {
+      const existingFlow = await db.query.bubbleFlows.findFirst({
+        where: and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId)),
+        columns: { id: true },
+      });
+
+      if (!existingFlow) {
+        return c.json(
+          {
+            error: 'Flow not found or access denied',
+            details: `Flow with ID ${flowId} not found or you don't have access to it`,
+          },
+          404
+        );
+      }
+    }
 
     return streamSSE(c, async (stream) => {
       // Set up keep-alive interval to prevent connection timeout
@@ -1114,6 +1231,120 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
         // Clear heartbeat interval once generation is complete
         clearInterval(heartbeatInterval);
+
+        // If flowId is provided and generation is successful, update the flow
+        if (
+          flowId &&
+          generationResult.isValid &&
+          generationResult.generatedCode
+        ) {
+          try {
+            // Validate and extract metadata from generated code
+            const bubbleFactory = await getBubbleFactory();
+            const validationResult = await validateAndExtract(
+              generationResult.generatedCode,
+              bubbleFactory
+            );
+
+            if (validationResult.valid) {
+              // Process and transpile the code for execution
+              const processedCode = processUserCode(
+                generationResult.generatedCode
+              );
+
+              // Extract flow name from the generated code
+              const flowName = getFlowNameFromCode(
+                generationResult.generatedCode
+              );
+
+              // Update the flow with generated code
+              await db
+                .update(bubbleFlows)
+                .set({
+                  name: flowName,
+                  code: processedCode,
+                  originalCode: generationResult.generatedCode,
+                  bubbleParameters: validationResult.bubbleParameters || {},
+                  workflow: validationResult.workflow || null,
+                  inputSchema: validationResult.inputSchema || {},
+                  eventType: validationResult.trigger?.type || 'webhook/http',
+                  cron: validationResult.trigger?.cronSchedule || null,
+                  generationError: null, // Clear any previous errors
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(bubbleFlows.id, flowId),
+                    eq(bubbleFlows.userId, userId)
+                  )
+                );
+
+              console.log(
+                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}`
+              );
+            } else {
+              // Validation failed - update with error
+              await db
+                .update(bubbleFlows)
+                .set({
+                  generationError:
+                    validationResult.errors?.join('; ') ||
+                    'Code validation failed',
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(bubbleFlows.id, flowId),
+                    eq(bubbleFlows.userId, userId)
+                  )
+                );
+
+              console.error(
+                `[API] Flow ${flowId} validation failed:`,
+                validationResult.errors
+              );
+            }
+          } catch (updateError) {
+            console.error(`[API] Error updating flow ${flowId}:`, updateError);
+            // Update with error message
+            await db
+              .update(bubbleFlows)
+              .set({
+                generationError:
+                  updateError instanceof Error
+                    ? updateError.message
+                    : 'Unknown error during flow update',
+                updatedAt: new Date(),
+              })
+              .where(
+                and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
+              );
+          }
+        } else if (flowId && !generationResult.isValid) {
+          // Generation failed - update with error
+          try {
+            await db
+              .update(bubbleFlows)
+              .set({
+                generationError:
+                  generationResult.error || 'Code generation failed',
+                updatedAt: new Date(),
+              })
+              .where(
+                and(eq(bubbleFlows.id, flowId), eq(bubbleFlows.userId, userId))
+              );
+
+            console.error(
+              `[API] Flow ${flowId} generation failed:`,
+              generationResult.error
+            );
+          } catch (updateError) {
+            console.error(
+              `[API] Error updating flow ${flowId} with error:`,
+              updateError
+            );
+          }
+        }
 
         // Send final result with code generation summary and extracted bubble parameters
         await stream.writeSSE({

@@ -4,13 +4,18 @@
  *
  */
 import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
 import { usePearlChatStore } from '../../hooks/usePearlChatStore';
 import type { DisplayEvent } from '../../stores/pearlChatStore';
+import { getPearlChatStore } from '../../stores/pearlChatStore';
 import { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import { toast } from 'react-toastify';
-import { trackAIAssistant } from '../../services/analytics';
+import {
+  trackAIAssistant,
+  trackWorkflowGeneration,
+} from '../../services/analytics';
 import {
   Check,
   AlertCircle,
@@ -18,7 +23,7 @@ import {
   ArrowUp,
   Paperclip,
   X,
-  Info,
+  MessageSquare,
   Calendar,
   Webhook,
   HelpCircle,
@@ -46,6 +51,13 @@ import {
   type BubblePromptInputRef,
 } from './BubblePromptInput';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
+import { useEditorStore } from '../../stores/editorStore';
+import { useGenerateInitialFlow } from '../../hooks/usePearl';
+import {
+  useGenerationEventsStore,
+  selectFlowEvents,
+} from '../../stores/generationEventsStore';
+import type { ChatMessage } from './type';
 
 export function PearlChat() {
   // UI-only state (non-shared)
@@ -56,6 +68,15 @@ export function PearlChat() {
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
     new Set()
   );
+  const [generationSteps, setGenerationSteps] = useState<
+    Array<{
+      type: 'tool_start' | 'tool_complete' | 'generation_complete' | 'error';
+      message: string;
+      duration?: number;
+      summary?: string;
+    }>
+  >([]);
+  const processedEventCountRef = useRef(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<BubblePromptInputRef>(null);
@@ -72,11 +93,221 @@ export function PearlChat() {
 
   // Pearl store hook - subscribes to state and provides generation API
   const pearl = usePearlChatStore(selectedFlowId);
+  const queryClient = useQueryClient();
+
+  // Check if this is an initial generation (flow has prompt but no code)
+  const isGenerating =
+    (!flowData?.code || flowData.code.trim() === '') &&
+    !flowData?.generationError &&
+    !!flowData?.prompt;
+
+  // Only enable query if we have all required data and are in generating state
+  const shouldEnableGeneration = Boolean(
+    selectedFlowId && flowData?.prompt && isGenerating
+  );
+
+  // Subscribe directly to generation events store for real-time updates
+  // This ensures we get events even if the component was unmounted during streaming
+  const storeEvents = useGenerationEventsStore(
+    selectFlowEvents(selectedFlowId)
+  );
+  useGenerateInitialFlow({
+    prompt: flowData?.prompt || '',
+    flowId: selectedFlowId ?? undefined,
+    enabled: shouldEnableGeneration,
+  });
+
+  // Use events from store (primary source of truth)
+  const generationEvents = storeEvents;
+
+  // Track if we've initialized the generation conversation
+  const hasInitializedGenerationRef = useRef(false);
+
+  // Auto-open Pearl panel and add user prompt message when generation starts
+  useEffect(() => {
+    if (
+      isGenerating &&
+      flowData?.prompt &&
+      selectedFlowId &&
+      !hasInitializedGenerationRef.current
+    ) {
+      useUIStore.getState().openConsolidatedPanelWith('pearl');
+
+      // Add user's prompt as the first message
+      const pearlStore = getPearlChatStore(selectedFlowId);
+      const storeState = pearlStore.getState();
+
+      // Only add if there are no messages yet
+      if (storeState.messages.length === 0) {
+        const userMessage: ChatMessage = {
+          id: `gen-user-${Date.now()}`,
+          type: 'user',
+          content: flowData.prompt,
+          timestamp: new Date(),
+        };
+
+        storeState.addMessage(userMessage);
+        hasInitializedGenerationRef.current = true;
+      }
+    }
+  }, [isGenerating, flowData?.prompt, selectedFlowId]);
+
+  // Reset the initialization ref when flow changes
+  useEffect(() => {
+    hasInitializedGenerationRef.current = false;
+    processedEventCountRef.current = 0;
+    setGenerationSteps([]);
+
+    // Note: We don't reset the events store here because we want to preserve
+    // events if the user navigates away and back during generation
+  }, [selectedFlowId]);
+
+  // Process generation events as they stream in
+  useEffect(() => {
+    if (!isGenerating || generationEvents.length === 0) return;
+
+    const newEvents = generationEvents.slice(processedEventCountRef.current);
+    if (newEvents.length === 0) return;
+
+    processedEventCountRef.current = generationEvents.length;
+
+    for (const eventData of newEvents) {
+      switch (eventData.type) {
+        case 'llm_start':
+          // Skip - don't show "analyzing your prompt" message
+          break;
+
+        case 'tool_start': {
+          const tool = eventData.data.tool;
+          let toolDesc = '';
+          switch (tool) {
+            case 'bubble-discovery':
+              toolDesc = 'Pearl is discovering available bubbles';
+              break;
+            case 'template-generation':
+              toolDesc = 'Pearl is creating code template';
+              break;
+            case 'bubbleflow-validation':
+            case 'bubbleflow-validation-tool':
+              toolDesc = 'Pearl is validating generated code';
+              break;
+            default:
+              toolDesc = `Pearl is using ${tool}`;
+          }
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'tool_start', message: toolDesc },
+          ]);
+          break;
+        }
+
+        case 'tool_complete': {
+          const duration = eventData.data.duration;
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'tool_complete', message: 'Complete', duration },
+          ]);
+          break;
+        }
+
+        case 'generation_complete': {
+          // Get summary from generation result
+          const summary =
+            eventData.data?.summary || 'Workflow generated successfully';
+          setGenerationSteps((prev) => [
+            ...prev,
+            {
+              type: 'generation_complete',
+              message: 'Code generation complete!',
+              summary,
+            },
+          ]);
+
+          console.log(
+            '🔄 [generation_complete] Updating editor and refetching flow',
+            selectedFlowId
+          );
+
+          // Update Monaco editor with generated code
+          const generatedCode = eventData.data?.generatedCode;
+          if (generatedCode) {
+            const { editorInstance, setPendingCode } =
+              useEditorStore.getState();
+            if (editorInstance) {
+              const model = editorInstance.getModel();
+              if (model) {
+                model.setValue(generatedCode);
+                console.log('[PearlChat] Editor updated with generated code');
+              } else {
+                setPendingCode(generatedCode);
+              }
+            } else {
+              setPendingCode(generatedCode);
+            }
+          }
+
+          // Add Pearl's response to the conversation
+          // User message was already added when generation started
+          if (selectedFlowId) {
+            const pearlStore = getPearlChatStore(selectedFlowId);
+            const storeState = pearlStore.getState();
+
+            const assistantMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              type: 'assistant',
+              content: `I've generated your workflow:\n\n${summary}`,
+              resultType: 'answer',
+              timestamp: new Date(),
+            };
+
+            // Add assistant message to Pearl store
+            storeState.addMessage(assistantMessage);
+          }
+
+          // Refetch flow to sync with backend
+          queryClient.refetchQueries({
+            queryKey: ['bubbleFlow', selectedFlowId],
+          });
+          queryClient.refetchQueries({
+            queryKey: ['bubbleFlowList'],
+          });
+          queryClient.refetchQueries({
+            queryKey: ['subscription'],
+          });
+          trackWorkflowGeneration({
+            prompt: flowData?.prompt || '',
+            generatedCode: generatedCode,
+            generatedCodeLength: generatedCode?.length || 0,
+            generatedBubbleCount: Object.keys(
+              eventData.data?.bubbleParameters || {}
+            ).length,
+            success: true,
+            errorMessage: eventData.data?.error || '',
+          });
+          break;
+        }
+
+        case 'error':
+          setGenerationSteps((prev) => [
+            ...prev,
+            { type: 'error', message: eventData.data.error },
+          ]);
+          trackWorkflowGeneration({
+            prompt: flowData?.prompt || '',
+            generatedCodeLength: 0,
+            generatedBubbleCount: 0,
+            success: false,
+            errorMessage: eventData.data?.error || '',
+          });
+          break;
+      }
+    }
+  }, [generationEvents, isGenerating, selectedFlowId, queryClient]);
 
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pearl.messages, pearl.eventsList, pearl.isPending]);
+  }, [pearl.messages, pearl.eventsList, pearl.isPending, generationSteps]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -149,7 +380,6 @@ export function PearlChat() {
   ) => {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response', message: code || '' });
-    toast.success('Workflow updated!');
 
     // Mark message as updated
     setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
@@ -162,7 +392,7 @@ export function PearlChat() {
         credentials: pendingCredentials,
         syncInputsWithFlow: true,
       });
-      toast.success('Bubble parameters, input schema, and credentials updated');
+      toast.success('Workflow updated successfully');
     } else {
       toast.error('No bubble parameters found');
     }
@@ -390,7 +620,7 @@ export function PearlChat() {
     <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
-        {pearl.messages.length === 0 && !pearl.isPending && (
+        {pearl.messages.length === 0 && !pearl.isPending && !isGenerating && (
           <div className="flex flex-col items-center px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
@@ -547,7 +777,7 @@ export function PearlChat() {
           </div>
         )}
 
-        {/* Render messages: user → events → assistant → user → events → assistant */}
+        {/* Render messages: user → generation output (if generating) → events → assistant */}
         {pearl.messages.map((message, index) => {
           // Calculate assistant index (how many assistant messages we've seen so far)
           const assistantIndex =
@@ -558,34 +788,104 @@ export function PearlChat() {
           return (
             <div key={message.id}>
               {message.type === 'user' ? (
-                /* User Message */
-                <div className="p-3 flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                    <div className="text-[13px] text-gray-900">
-                      {hasBubbleTags(message.content) ? (
-                        <BubbleText text={message.content} />
-                      ) : (
-                        message.content
-                      )}
+                <>
+                  {/* User Message */}
+                  <div className="p-3 flex justify-end">
+                    <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                      <div className="text-[13px] text-gray-900">
+                        {hasBubbleTags(message.content) ? (
+                          <BubbleText text={message.content} />
+                        ) : (
+                          message.content
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Show generation output immediately after user message if this is the first message and we're generating */}
+                  {index === 0 && isGenerating && (
+                    <div className="p-3">
+                      <div className="text-sm text-gray-300 p-3 bg-gray-800/30 rounded border-l-2 border-purple-500">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+                          <span className="text-xs font-medium text-gray-400">
+                            Pearl is generating your workflow...
+                          </span>
+                        </div>
+                        {generationSteps.length > 0 && (
+                          <div className="space-y-1.5 mt-3">
+                            {generationSteps.map((step, idx) => (
+                              <div
+                                key={idx}
+                                className="text-[13px] leading-relaxed"
+                              >
+                                {step.type === 'tool_start' && (
+                                  <div className="text-gray-400">
+                                    {step.message}...
+                                  </div>
+                                )}
+                                {step.type === 'tool_complete' && (
+                                  <div className="flex items-center gap-1.5 text-white">
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>
+                                      {step.message}
+                                      {step.duration
+                                        ? ` (${step.duration}ms)`
+                                        : ''}
+                                    </span>
+                                  </div>
+                                )}
+                                {step.type === 'generation_complete' && (
+                                  <div className="mt-2 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-white font-medium">
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>{step.message}</span>
+                                    </div>
+                                    {step.summary && (
+                                      <div className="text-gray-300 mt-2">
+                                        {step.summary}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {step.type === 'error' && (
+                                  <div className="flex items-center gap-1.5 text-red-400">
+                                    <X className="w-3.5 h-3.5" />
+                                    <span>Error: {step.message}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 /* Assistant Response: Events then Message */
                 <>
-                  {/* Events (if any) */}
+                  {/* Events (if any) - filter out transient events for completed messages */}
                   {pearl.eventsList[assistantIndex] &&
                     pearl.eventsList[assistantIndex].length > 0 && (
                       <div className="p-3">
                         <div className="space-y-2">
-                          {pearl.eventsList[assistantIndex].map(
-                            (event, eventIndex) => (
+                          {pearl.eventsList[assistantIndex]
+                            .filter((event) => {
+                              // Only show persistent events for completed messages
+                              // Filter out transient events like llm_thinking and tool_start
+                              return (
+                                event.type !== 'llm_thinking' &&
+                                event.type !== 'tool_start' &&
+                                event.type !== 'token'
+                              );
+                            })
+                            .map((event, eventIndex) => (
                               <EventDisplay
                                 key={`${message.id}-event-${eventIndex}`}
                                 event={event}
                               />
-                            )
-                          )}
+                            ))}
                         </div>
                       </div>
                     )}
@@ -597,7 +897,7 @@ export function PearlChat() {
                         <Check className="w-4 h-4 text-green-400" />
                       )}
                       {message.resultType === 'answer' && (
-                        <Info className="w-4 h-4 text-blue-400" />
+                        <MessageSquare className="w-4 h-4 text-white" />
                       )}
                       {message.resultType === 'reject' && (
                         <AlertCircle className="w-4 h-4 text-red-400" />
@@ -701,7 +1001,7 @@ export function PearlChat() {
                   <button
                     type="button"
                     onClick={() => handleDeleteFile(index)}
-                    disabled={pearl.isPending}
+                    disabled={pearl.isPending || isGenerating}
                     className="p-0.5 hover:bg-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                     aria-label={`Delete ${file.name}`}
                   >
@@ -720,7 +1020,7 @@ export function PearlChat() {
               onSubmit={handleGenerate}
               placeholder="Get help modifying, debugging, or understanding your workflow..."
               className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 pr-10"
-              disabled={pearl.isPending}
+              disabled={pearl.isPending || isGenerating}
               flowId={selectedFlowId}
               selectedBubbleContext={pearl.selectedBubbleContext}
               selectedTransformationContext={
@@ -738,7 +1038,7 @@ export function PearlChat() {
                   className="hidden"
                   accept=".html,.csv,.txt,image/png"
                   multiple
-                  disabled={pearl.isPending}
+                  disabled={pearl.isPending || isGenerating}
                   aria-label="Upload files"
                   onChange={(e) => {
                     handleFileChange(e.target.files);
@@ -748,7 +1048,7 @@ export function PearlChat() {
                 />
                 <Paperclip
                   className={`w-5 h-5 transition-colors ${
-                    pearl.isPending
+                    pearl.isPending || isGenerating
                       ? 'text-gray-600 cursor-not-allowed'
                       : uploadedFiles.length > 0
                         ? 'text-gray-300'
@@ -767,11 +1067,13 @@ export function PearlChat() {
                 onClick={handleGenerate}
                 disabled={
                   (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending
+                  pearl.isPending ||
+                  isGenerating
                 }
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
-                  pearl.isPending
+                  pearl.isPending ||
+                  isGenerating
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                     : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                 }`}

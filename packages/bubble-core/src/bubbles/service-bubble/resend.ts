@@ -425,14 +425,11 @@ export class ResendBubble<
 
     const { data, error } = await this.resend.emails.send(emailPayload);
 
-    if (
-      error?.message &&
-      SYSTEM_DOMAINS.some((domain) => error.message.includes(domain))
-    ) {
+    if (error?.message) {
       return {
         operation: 'send_email',
         success: false,
-        error: `Only domains from ${SYSTEM_DOMAINS.join(',')} are supported for. Use your own resend credentials to send from ${from} or remove the 'from' field from the resend bubble.`,
+        error: `Available domains are: ${Array.from(this.verifiedDomains || []).join(', ')}. If you want to send from a different domain, use your own resend credentials and make sure a valid domain is verified in your resend account (use onboarding@resend.dev). If you are using system credentials, remove the 'from' field from the resend bubble. Original error: ${error.message}`,
       } as Extract<ResendResult, { operation: 'send_email' }>;
     }
     if (error) {
