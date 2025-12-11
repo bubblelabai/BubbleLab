@@ -282,20 +282,20 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
     'fal.ai integration for media generation (text-to-image, image-to-image)';
   static readonly longDescription = `
     Integrate with fal.ai's media generation APIs for creating and transforming images.
-    
+
     Features:
     - Text-to-image generation with various models (Flux, Stable Diffusion, etc.)
     - Image-to-image transformation
     - Configurable image sizes and quality settings
     - Async job status checking and result retrieval
     - Automatic polling for long-running operations
-    
+
     Use cases:
     - Generate images from text descriptions
     - Transform existing images with AI
     - Create multiple variations of images
     - Batch image generation workflows
-    
+
     Supported Models:
     - fal-ai/flux/dev - Fast, high-quality image generation
     - fal-ai/stable-diffusion-v1-5 - Classic Stable Diffusion
@@ -315,7 +315,6 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
     }
     return credentials[CredentialType.FAL_AI_API_KEY];
   }
-
   public async testCredential(): Promise<boolean> {
     const apiKey = this.chooseCredential();
     if (!apiKey) return false;
