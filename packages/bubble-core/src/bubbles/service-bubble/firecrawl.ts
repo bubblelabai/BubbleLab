@@ -1043,6 +1043,10 @@ const FirecrawlResultSchema = z.discriminatedUnion('operation', [
       )
       .optional()
       .describe('Image search results'),
+    other: z
+      .array(z.unknown())
+      .optional()
+      .describe('Unknown mystery search results'),
   }),
 
   // Map operation
@@ -1353,12 +1357,32 @@ export class FirecrawlBubble<
         scrapeOptions,
         integration,
       });
-      return {
-        operation: 'search',
-        success: true,
-        error: '',
-        ...response,
-      };
+      // Handle the response based on Firecrawl's actual API structure
+      // The search API might return different structures, so handle both cases
+      if (Array.isArray(response)) {
+        return {
+          operation: 'search',
+          success: true,
+          error: '',
+          other: response,
+        };
+      } else {
+        if ('data' in response && Array.isArray(response.data)) {
+          return {
+            operation: 'search',
+            success: true,
+            error: '',
+            other: response.data,
+          };
+        } else {
+          return {
+            operation: 'search',
+            success: true,
+            error: '',
+            ...response,
+          };
+        }
+      }
     } catch (error) {
       return {
         operation: 'search',
