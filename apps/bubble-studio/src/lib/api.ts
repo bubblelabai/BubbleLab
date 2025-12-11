@@ -77,11 +77,12 @@ class ApiClient {
 
       // Handle authentication errors
       if (response.status === 401) {
+        const text = await response.text();
         let errorData: unknown;
         try {
-          errorData = await response.json();
+          errorData = JSON.parse(text);
         } catch {
-          errorData = await response.text();
+          errorData = text;
         }
 
         const backendMessage = this.extractErrorMessage(errorData);
@@ -97,11 +98,12 @@ class ApiClient {
 
       // Handle other HTTP errors
       if (!response.ok) {
+        const text = await response.text();
         let errorData: unknown;
         try {
-          errorData = await response.json();
+          errorData = JSON.parse(text);
         } catch {
-          errorData = await response.text();
+          errorData = text;
         }
 
         const apiError: ApiError = {
@@ -180,11 +182,12 @@ class ApiClient {
     }
 
     if (!response.ok) {
+      const text = await response.text();
       let errorData: unknown;
       try {
-        errorData = await response.json();
+        errorData = JSON.parse(text);
       } catch {
-        errorData = await response.text();
+        errorData = text;
       }
       try {
         console.log('Error data:', errorData);
@@ -231,8 +234,11 @@ class ApiClient {
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.makeRequest<T>(endpoint, { method: 'DELETE' });
+  async delete<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.makeRequest<T>(endpoint, {
+      method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
+    });
   }
 
   // Streaming POST

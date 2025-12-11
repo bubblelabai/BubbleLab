@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { HomePage } from '@/pages/HomePage';
 import { useAuth } from '@/hooks/useAuth';
 import { useDeleteBubbleFlow } from '@/hooks/useDeleteBubbleFlow';
+import { useDeleteBubbleFlows } from '@/hooks/useDeleteBubbleFlows';
 import { useGenerationStore } from '@/stores/generationStore';
 import { useOutputStore } from '@/stores/outputStore';
 import { useBubbleFlowList } from '@/hooks/useBubbleFlowList';
@@ -15,6 +16,7 @@ function HomeRoute() {
   const navigate = useNavigate();
   const { isSignedIn } = useAuth();
   const deleteBubbleFlowMutation = useDeleteBubbleFlow();
+  const deleteBubbleFlowsMutation = useDeleteBubbleFlows();
   const { isStreaming } = useGenerationStore();
   const { setOutput } = useOutputStore();
   const { data: bubbleFlowList } = useBubbleFlowList();
@@ -85,6 +87,45 @@ function HomeRoute() {
     }
   };
 
+  const handleBulkDelete = async (
+    selectedFlowIds: number[],
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+
+    if (isStreaming) {
+      notifyNavigationLocked();
+      return;
+    }
+
+    const deleteCount = selectedFlowIds.length;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${deleteCount} workflows?\n\nThis action cannot be undone `
+    );
+
+    if (confirmed) {
+      try {
+        console.log('[deleteFlow] Deleting flows:', deleteCount);
+
+        // Use the delete mutation with optimistic updates
+        await deleteBubbleFlowsMutation.mutateAsync(selectedFlowIds);
+
+        console.log('[deleteFlow] Flow deletion completed successfully');
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        console.error('[deleteFlow] Error deleting flows:', error);
+
+        setOutput(
+          (prev) =>
+            prev +
+            `\n❌ Failed to delete flows "${deleteCount}": ${errorMessage}`
+        );
+      }
+    }
+  };
+
   const handleNavigateToDashboard = () => {
     if (isStreaming) {
       notifyNavigationLocked();
@@ -99,6 +140,7 @@ function HomeRoute() {
         <HomePage
           onFlowSelect={handleFlowSelect}
           onFlowDelete={handleFlowDelete}
+          onFlowsDelete={handleBulkDelete}
           onNavigateToDashboard={handleNavigateToDashboard}
         />
       </div>

@@ -16,6 +16,7 @@ import {
   generateBubbleFlowCodeSchema,
   validateBubbleFlowCodeResponseSchema,
 } from './index.js';
+import { object } from 'zod';
 
 // POST /bubble-flow - Validate and store BubbleFlow
 export const createBubbleFlowRoute = createRoute({
@@ -536,6 +537,64 @@ export const deleteBubbleFlowRoute = createRoute({
         },
       },
       description: 'BubbleFlow not found',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['BubbleFlow'],
+});
+
+// DELETE /bubble-flow/bulk/delete - Delete multiple flows
+export const deleteBubbleFlowRoutes = createRoute({
+  method: 'post',
+  path: '/bulk/delete',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: object({
+            ids: z
+              .array(z.coerce.string().regex(/^[0-9]+$/))
+              .min(2, 'Atleast 2 ids are required'),
+          }).openapi({
+            description: 'Bubbleflow ids',
+            example: { ids: ['124', '2124', '323'] },
+          }),
+        },
+      },
+      description: 'BubbleFlows deleted successfully',
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: successMessageResponseSchema,
+        },
+      },
+      description: 'BubbkeFlows deleted successfully',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid IDs or failed to delete bubbleflows',
+    },
+    404: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Bubbleflows not found',
     },
     500: {
       content: {

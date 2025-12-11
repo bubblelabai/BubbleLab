@@ -22,7 +22,7 @@ import {
   type ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { getUserId, getAppType } from '../middleware/auth.js';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, inArray } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { runBoba } from '../services/ai/boba.js';
 import {
@@ -39,6 +39,7 @@ import {
   listBubbleFlowExecutionsRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
+  deleteBubbleFlowRoutes,
 } from '../schemas/bubble-flows.js';
 
 import { createBubbleFlowResponseSchema } from '../schemas/index.js';
@@ -719,6 +720,42 @@ app.openapi(deactivateBubbleFlowRoute, async (c) => {
     },
     200
   );
+});
+
+app.openapi(deleteBubbleFlowRoutes, async (c) => {
+  const userId = getUserId(c);
+  const { ids } = c.req.valid('json');
+
+  const flowIds = ids
+    .map((id) => parseInt(id, 10))
+    .filter((n) => !Number.isNaN(n));
+
+  const flowsToDelete = await db.query.bubbleFlows.findMany({
+    where: and(
+      eq(bubbleFlows.userId, userId),
+      inArray(bubbleFlows.id, flowIds)
+    ),
+    columns: {
+      id: true,
+    },
+  });
+
+  if (flowsToDelete.length === 0) {
+    return c.json(
+      {
+        error: 'Bubbleflows not found',
+      },
+      404
+    );
+  }
+
+  const verifiedIds = flowsToDelete.map((flow) => flow.id);
+
+  const result = await db
+    .delete(bubbleFlows)
+    .where(inArray(bubbleFlows.id, verifiedIds));
+
+  return c.json({ message: 'BubbleFlows deleted successfully' }, 200);
 });
 
 app.openapi(deleteBubbleFlowRoute, async (c) => {

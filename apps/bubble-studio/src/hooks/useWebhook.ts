@@ -92,6 +92,13 @@ export function useWebhook() {
         queryKey: ['bubbleFlowList'],
       });
     },
-    onSuccess: () => {},
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['bubbleFlow', variables.flowId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['bubbleFlowList'],
+      });
+    },
   });
 }
