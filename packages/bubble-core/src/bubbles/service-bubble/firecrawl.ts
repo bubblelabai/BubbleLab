@@ -1368,11 +1368,13 @@ export class FirecrawlBubble<
         };
       } else {
         if ('data' in response && Array.isArray(response.data)) {
+          const { data, ...rest } = response;
           return {
             operation: 'search',
             success: true,
             error: '',
-            other: response.data,
+            other: data,
+            ...rest,
           };
         } else {
           return {
