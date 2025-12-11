@@ -235,11 +235,11 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     credentialConfigurations: {},
   },
   [CredentialType.FAL_AI_API_KEY]: {
-    label: 'fal.ai',
+    label: 'Fal AI',
     description:
-      'API key for fal.ai media generation services (text-to-image, image-to-image)',
+      'API key for Fal AI media generation services (text-to-image, image-to-image)',
     placeholder: 'your-fal-ai-api-key',
-    namePlaceholder: 'My fal.ai Key',
+    namePlaceholder: 'My Fal AI Key',
     credentialConfigurations: {},
   },
 } as const satisfies Record<CredentialType, CredentialConfig>;
@@ -290,7 +290,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
-    [CredentialType.FAL_AI_API_KEY]: 'FalAi',
+    [CredentialType.FAL_AI_API_KEY]: 'Fal AI',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
