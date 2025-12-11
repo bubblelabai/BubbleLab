@@ -578,7 +578,7 @@ export const deleteBubbleFlowRoutes = createRoute({
           schema: successMessageResponseSchema,
         },
       },
-      description: 'BubbkeFlows deleted successfully',
+      description: 'BubbleFlows deleted successfully',
     },
     400: {
       content: {
