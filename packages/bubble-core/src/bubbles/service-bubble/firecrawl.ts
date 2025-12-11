@@ -401,3 +401,572 @@ const FirecrawlDocumentSchema = z.object({
     'Branding profile associated with the document'
   ).optional(),
 });
+
+// Define the schema for Firecrawl scrape option FormatString
+const FirecrawlScrapeOptionsFormatStringSchema = z.enum([
+  'markdown',
+  'html',
+  'rawHtml',
+  'links',
+  'images',
+  'screenshot',
+  'summary',
+  'changeTracking',
+  'json',
+  'attributes',
+  'branding',
+]);
+
+// Define the schema for Firecrawl scrape options
+const FirecrawlScrapeOptionsSchema = z.object({
+  formats: z
+    .array(
+      z.union([
+        FirecrawlScrapeOptionsFormatStringSchema.describe('Scrape format'),
+        z.object({
+          type: FirecrawlScrapeOptionsFormatStringSchema.describe(
+            'Scrape format'
+          ),
+        }),
+        z.object({
+          type: z.literal('json'),
+          prompt: z
+            .string()
+            .optional()
+            .describe('Optional prompt for JSON extraction'),
+          schema: z
+            .union([z.record(z.unknown()), z.any()])
+            .optional()
+            .describe('Optional JSON schema for structured data extraction'),
+        }),
+        z.object({
+          type: z.literal('changeTracking'),
+          modes: z
+            .array(z.enum(['git-diff', 'json']))
+            .describe('Modes for change tracking'),
+          schema: z
+            .record(z.unknown())
+            .optional()
+            .describe('Optional schema for change tracking'),
+          prompt: z
+            .string()
+            .optional()
+            .describe('Optional prompt for change tracking'),
+          tag: z
+            .string()
+            .optional()
+            .describe('Optional tag for change tracking'),
+        }),
+        z.object({
+          type: z.literal('screenshot'),
+          fullPage: z
+            .boolean()
+            .optional()
+            .describe('Whether to capture full page screenshot'),
+          quality: z
+            .number()
+            .optional()
+            .describe('Quality of the screenshot (1-100)'),
+          viewport: z
+            .object({
+              width: z.number().describe('Viewport width in pixels'),
+              height: z.number().describe('Viewport height in pixels'),
+            })
+            .optional()
+            .describe('Viewport dimensions for the screenshot'),
+        }),
+        z.object({
+          type: z.literal('attributes'),
+          selectors: z
+            .array(
+              z.object({
+                selector: z.string().describe('CSS selector for the element'),
+                attribute: z.string().describe('Attribute name to extract'),
+              })
+            )
+            .describe('Array of selectors and attributes to extract'),
+        }),
+      ])
+    )
+    .default(['markdown'])
+    .describe('Formats to scrape from the URL'),
+  headers: z
+    .record(z.string())
+    .optional()
+    .describe('HTTP headers to include in the request'),
+  includeTags: z
+    .array(z.string())
+    .optional()
+    .describe('HTML tags/classes/ids to include in the scrape'),
+  excludeTags: z
+    .array(z.string())
+    .optional()
+    .describe('HTML tags/classes/ids to exclude from the scrape'),
+  onlyMainContent: z
+    .boolean()
+    .default(true)
+    .describe('Whether to extract only main content or full page content'),
+  timeout: z
+    .number()
+    .default(30000)
+    .describe('Max duration in milliseconds before aborting the request'),
+  waitFor: z
+    .number()
+    .default(0)
+    .describe(
+      'Milliseconds of extra wait time before scraping (use sparingly). This waiting time is in addition to Firecrawl\’s smart wait feature.'
+    ),
+  mobile: z.boolean().optional().describe('Whether to emulate a mobile device'),
+  parsers: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          type: z.literal('pdf'),
+          maxPages: z
+            .number()
+            .optional()
+            .describe('Maximum number of PDF pages to parse'),
+        }),
+      ])
+    )
+    .optional()
+    .describe('Extract structured content from various document formats'),
+  actions: z
+    .array(
+      z.union([
+        z.object({
+          type: z.literal('wait'),
+          milliseconds: z
+            .number()
+            .optional()
+            .describe('Time to wait in milliseconds (for wait)'),
+          selector: z
+            .string()
+            .optional()
+            .describe('CSS selector to wait for (for wait)'),
+        }),
+        z.object({
+          type: z.literal('screenshot'),
+          fullPage: z
+            .boolean()
+            .optional()
+            .describe('Whether to capture full page screenshot'),
+          quality: z
+            .number()
+            .optional()
+            .describe('Quality of the screenshot (1-100)'),
+          viewport: z
+            .object({
+              width: z.number().describe('Viewport width in pixels'),
+              height: z.number().describe('Viewport height in pixels'),
+            })
+            .optional()
+            .describe('Viewport dimensions for the screenshot'),
+        }),
+        z.object({
+          type: z.literal('click'),
+          selector: z.string().describe('CSS selector to click on'),
+        }),
+        z.object({
+          type: z.literal('write'),
+          text: z.string().describe('Text to write into the element'),
+        }),
+        z.object({
+          type: z.literal('press'),
+          key: z.string().describe('Key to press (e.g., "Enter")'),
+        }),
+        z.object({
+          type: z.literal('scroll'),
+          direction: z
+            .enum(['up', 'down'])
+            .describe('Scroll direction (for scroll)'),
+          selector: z
+            .string()
+            .optional()
+            .describe('CSS selector to scroll to (for scroll)'),
+        }),
+        z.object({
+          type: z.literal('scrape'),
+        }),
+        z.object({
+          type: z.literal('executeJavascript'),
+          script: z.string().describe('JavaScript code to execute on the page'),
+        }),
+        z.object({
+          type: z.literal('pdf'),
+          format: z
+            .enum([
+              'A0',
+              'A1',
+              'A2',
+              'A3',
+              'A4',
+              'A5',
+              'A6',
+              'Letter',
+              'Legal',
+              'Tabloid',
+              'Ledger',
+            ])
+            .optional()
+            .describe('Page format for PDF generation'),
+          landscape: z
+            .boolean()
+            .optional()
+            .describe('Whether to generate PDF in landscape orientation'),
+          scale: z
+            .number()
+            .optional()
+            .describe('Scale factor for PDF rendering'),
+        }),
+      ])
+    )
+    .optional()
+    .describe('Sequence of browser actions to perform before scraping'),
+  location: z
+    .object({
+      country: z
+        .string()
+        .optional()
+        .describe('Country code for proxy location'),
+      languages: z
+        .array(z.string())
+        .optional()
+        .describe('Preferred languages for proxy location'),
+    })
+    .optional()
+    .describe('Location configuration for proxy location'),
+  skipTlsVerification: z
+    .boolean()
+    .optional()
+    .describe('Whether to skip TLS certificate verification'),
+  removeBase64Images: z
+    .boolean()
+    .optional()
+    .describe('Whether to remove base64-encoded images from the content'),
+  fastMode: z
+    .boolean()
+    .optional()
+    .describe('Whether to enable fast mode for scraping'),
+  useMock: z
+    .string()
+    .optional()
+    .describe('Use a mock response for testing purposes'),
+  blockAds: z
+    .boolean()
+    .optional()
+    .describe('Whether to block ads during scraping'),
+  proxy: z
+    .union([z.enum(['basic', 'stealth', 'auto']), z.string()])
+    .optional()
+    .describe('Type of proxy to use for scraping'),
+  maxAge: z
+    .number()
+    .default(172800000)
+    .describe(
+      'If a cached version of the page is newer than `maxAge` (in milliseconds), Firecrawl returns it instantly; otherwise it scrapes fresh and updates the cache. Set 0 to always fetch fresh.'
+    ),
+  storeInCache: z
+    .boolean()
+    .optional()
+    .describe('Whether to store the scraped result in cache'),
+  integration: z
+    .string()
+    .optional()
+    .describe('Integration identifier for the scrape request'),
+});
+
+// Define the base shared parameters schema for Firecrawl operations
+const FirecrawlParamsBaseSchema = z.object({
+  maxRetries: z
+    .number()
+    .optional()
+    .describe('Maximum number of retries for the scrape request'),
+  backoffFactor: z
+    .number()
+    .optional()
+    .describe('Backoff factor for retry delays'),
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .optional()
+    .describe(
+      'Object mapping credential types to values (injected at runtime)'
+    ),
+});
+
+// Define the parameters schema for Firecrawl operations
+const FirecrawlParamsSchema = z.discriminatedUnion('operation', [
+  // Scrape operation
+  FirecrawlParamsBaseSchema.merge(FirecrawlScrapeOptionsSchema).extend({
+    operation: z.literal('scrape').describe('Scrape a single URL'),
+    url: z
+      .string()
+      .url('Must be a valid URL')
+      .describe('The URL to scrape content from'),
+  }),
+
+  // Search operation
+  FirecrawlParamsBaseSchema.extend({
+    operation: z
+      .literal('search')
+      .describe('Search the web and optionally scrape each result'),
+    query: z.string().describe('The search query to execute'),
+    sources: z
+      .array(
+        z.union([
+          z.enum(['web', 'news', 'images']),
+          z.object({
+            type: z.enum(['web', 'news', 'images']),
+          }),
+        ])
+      )
+      .optional()
+      .describe(
+        'Specialized result types to include in addition to regular web results'
+      ),
+    categories: z
+      .array(
+        z.union([
+          z.enum(['github', 'research', 'pdf']),
+          z.object({
+            type: z.enum(['github', 'research', 'pdf']),
+          }),
+        ])
+      )
+      .optional()
+      .describe('Filter search results by specific categories'),
+    limit: z
+      .number()
+      .min(1)
+      .optional()
+      .describe('Maximum number of search results to return'),
+    tbs: z
+      .string()
+      .optional()
+      .describe(
+        'Filter results by time (e.g., "qdr:h" for past hour, "qdr:m" for past month)'
+      ),
+    location: z
+      .string()
+      .optional()
+      .describe('Geographical location to tailor search results'),
+    ignoreInvalidURLs: z
+      .boolean()
+      .optional()
+      .describe('Whether to ignore invalid URLs in the search results'),
+    timeout: z
+      .number()
+      .optional()
+      .describe('Timeout in milliseconds for the search operation'),
+    scrapeOptions: FirecrawlScrapeOptionsSchema.optional().describe(
+      'Scrape options to apply to each search result'
+    ),
+    integration: z
+      .string()
+      .optional()
+      .describe('Integration identifier for the search request'),
+  }),
+
+  // Map operation
+  FirecrawlParamsBaseSchema.extend({
+    operation: z.literal('map').describe('Map a site to discover URLs'),
+    url: z
+      .string()
+      .url('Must be a valid URL')
+      .describe('The base URL of the site to map'),
+    search: z
+      .string()
+      .optional()
+      .describe('Search for specific urls inside a website'),
+    sitemap: z
+      .enum(['only', 'include', 'skip'])
+      .optional()
+      .describe('Sitemap handling strategy'),
+    includeSubdomains: z
+      .boolean()
+      .optional()
+      .describe('Whether to include subdomains in the site map'),
+    limit: z.number().optional().describe('Maximum number of URLs to discover'),
+    timeout: z
+      .number()
+      .optional()
+      .describe('Timeout in milliseconds for the mapping operation'),
+    integration: z
+      .string()
+      .optional()
+      .describe('Integration identifier for the map request'),
+    location: z
+      .object({
+        country: z
+          .string()
+          .optional()
+          .describe('Country code for proxy location'),
+        languages: z
+          .array(z.string())
+          .optional()
+          .describe('Preferred languages for proxy location'),
+      })
+      .optional()
+      .describe('Location configuration for proxy location'),
+  }),
+
+  // Crawl operation
+  FirecrawlParamsBaseSchema.extend({
+    operation: z
+      .literal('crawl')
+      .describe(
+        'Recursively search through a urls subdomains, and gather the content'
+      ),
+    url: z.string().url('Must be a valid URL').describe('The URL to crawl'),
+    prompt: z
+      .string()
+      .optional()
+      .describe('Optional prompt to guide the crawl behavior'),
+    excludePaths: z
+      .array(z.string())
+      .optional()
+      .describe('List of URL paths to exclude from the crawl'),
+    includePaths: z
+      .array(z.string())
+      .optional()
+      .describe('List of URL paths to include in the crawl'),
+    maxDiscoveryDepth: z
+      .number()
+      .optional()
+      .describe('Maximum depth for link discovery during the crawl'),
+    sitemap: z
+      .enum(['skip', 'include'])
+      .optional()
+      .describe('Sitemap handling strategy during the crawl'),
+    ignoreQueryParameters: z
+      .boolean()
+      .optional()
+      .describe('Whether to ignore query parameters when crawling URLs'),
+    limit: z.number().optional().describe('Maximum number of pages to crawl'),
+    crawlEntireDomain: z
+      .boolean()
+      .optional()
+      .describe('Whether to crawl the entire domain including subdomains'),
+    allowExternalLinks: z
+      .boolean()
+      .optional()
+      .describe('Whether to allow crawling external links'),
+    allowSubdomains: z
+      .boolean()
+      .optional()
+      .describe('Whether to include subdomains in the crawl'),
+    delay: z
+      .number()
+      .optional()
+      .describe('Delay in milliseconds between requests during the crawl'),
+    maxConcurrency: z
+      .number()
+      .optional()
+      .describe('Maximum number of concurrent requests during the crawl'),
+    webhook: z
+      .union([
+        z.string().url().describe('Webhook URL to send crawl results to'),
+        z.object({
+          url: z
+            .string()
+            .url()
+            .describe('Webhook URL to send crawl results to'),
+          headers: z
+            .record(z.string())
+            .optional()
+            .describe('HTTP headers to include in the webhook request'),
+          metadata: z
+            .record(z.string())
+            .optional()
+            .describe('Additional metadata to include in the webhook payload'),
+          events: z
+            .array(z.enum(['completed', 'failed', 'page', 'started']))
+            .optional()
+            .describe('Events that trigger the webhook'),
+        }),
+      ])
+      .optional()
+      .describe('Webhook configuration for crawl events'),
+    scrapeOptions: FirecrawlScrapeOptionsSchema.optional().describe(
+      'Scrape options to apply to each crawled page'
+    ),
+    zeroDataRetention: z
+      .boolean()
+      .optional()
+      .describe('Whether to retain zero data from the crawl'),
+    integration: z
+      .string()
+      .optional()
+      .describe('Integration identifier for the crawl request'),
+    pollInterval: z
+      .number()
+      .optional()
+      .describe('Interval in milliseconds to poll for crawl status'),
+    timeout: z
+      .number()
+      .optional()
+      .describe('Timeout in milliseconds for the crawl operation'),
+  }),
+
+  // Extract operation
+  FirecrawlParamsBaseSchema.extend({
+    operation: z
+      .literal('extract')
+      .describe('Extract structured data from a URL'),
+    urls: z
+      .array(z.string().url('Must be a valid URL'))
+      .describe('Array of URLs to extract data from'),
+    prompt: z
+      .string()
+      .optional()
+      .describe('Optional prompt to guide the extraction process'),
+    schema: z
+      .union([z.record(z.unknown()), z.any()])
+      .optional()
+      .describe('Optional schema to structure the extracted data'),
+    systemPrompt: z
+      .string()
+      .optional()
+      .describe('Optional system prompt for the extraction AI agent'),
+    allowExternalLinks: z
+      .boolean()
+      .optional()
+      .describe(
+        'Whether to allow extraction from external links found on the page'
+      ),
+    enableWebSearch: z
+      .boolean()
+      .optional()
+      .describe('Whether to enable web search to supplement extraction'),
+    showSources: z
+      .boolean()
+      .optional()
+      .describe('Whether to include source URLs in the extraction results'),
+    scrapeOptions: FirecrawlScrapeOptionsSchema.optional().describe(
+      'Optional scrape options to apply to the extraction process'
+    ),
+    ignoreInvalidURLs: z
+      .boolean()
+      .optional()
+      .describe('Whether to ignore invalid URLs in the input list'),
+    integration: z
+      .string()
+      .optional()
+      .describe('Integration identifier for the extraction process'),
+    agent: z
+      .object({
+        model: z.literal('FIRE-1').describe('AI model to use for extraction'),
+      })
+      .optional()
+      .describe('Agent to use for the extraction process'),
+    pollInterval: z
+      .number()
+      .optional()
+      .describe('Interval in milliseconds to poll for extraction status'),
+    timeout: z
+      .number()
+      .optional()
+      .describe('Timeout in milliseconds for the extraction operation'),
+  }),
+]);
