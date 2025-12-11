@@ -193,6 +193,11 @@ export class CredentialValidator {
       case CredentialType.NOTION_OAUTH_TOKEN:
         baseParams.operation = 'list_users';
         break;
+      case CredentialType.FAL_AI_API_KEY:
+        baseParams.operation = 'text_to_image';
+        baseParams.model = 'fal-ai/flux/dev';
+        baseParams.prompt = 'test';
+        break;
       default:
         break;
     }

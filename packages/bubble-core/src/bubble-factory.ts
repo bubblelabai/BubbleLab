@@ -154,6 +154,7 @@ export class BubbleFactory {
       'agi-inc',
       'airtable',
       'notion',
+      'fal-ai',
     ];
   }
 
@@ -274,6 +275,7 @@ export class BubbleFactory {
     const { AirtableBubble } = await import(
       './bubbles/service-bubble/airtable.js'
     );
+    const { FalAiBubble } = await import('./bubbles/service-bubble/fal-ai.js');
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -375,6 +377,7 @@ export class BubbleFactory {
     this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
     this.register('agi-inc', AGIIncBubble as BubbleClassWithMetadata);
     this.register('airtable', AirtableBubble as BubbleClassWithMetadata);
+    this.register('fal-ai', FalAiBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -664,6 +667,7 @@ import {
   ApifyBubble, // bubble name: 'apify'
   ElevenLabsBubble, // bubble name: 'eleven-labs'
   FollowUpBossBubble, // bubble name: 'followupboss'
+  FalAiBubble, // bubble name: 'fal-ai'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

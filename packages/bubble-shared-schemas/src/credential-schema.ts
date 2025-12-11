@@ -29,6 +29,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
+  [CredentialType.FAL_AI_API_KEY]: 'FAL_AI_API_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -362,6 +363,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED],
   notion: [CredentialType.NOTION_OAUTH_TOKEN],
+  'fal-ai': [CredentialType.FAL_AI_API_KEY],
 };
 
 // POST /credentials - Create credential schema
