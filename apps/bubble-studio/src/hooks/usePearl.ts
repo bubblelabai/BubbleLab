@@ -222,6 +222,11 @@ export interface GenerateCodeParams {
  * Starts a generation stream for a flow and stores events in the persistent store.
  * This function runs independently of React component lifecycle.
  *
+ * Now supports Coffee planning phase:
+ * 1. First calls with ?phase=planning to get clarification questions/plan
+ * 2. Coffee events are stored in pearlChatStore for the flow
+ * 3. Building phase is triggered separately after user approves plan
+ *
  * @param params - Generation parameters
  * @param maxRetries - Maximum retry attempts for failed streams
  */
@@ -246,6 +251,10 @@ async function startGenerationStream(
   const abortController = new AbortController();
   store.registerStream(flowId, abortController);
 
+  // Get the pearlChatStore for Coffee state
+  const { getPearlChatStore } = await import('../stores/pearlChatStore');
+  const pearlStore = getPearlChatStore(flowId);
+
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -255,8 +264,9 @@ async function startGenerationStream(
     }
 
     try {
+      // Start with planning phase to get clarification questions
       const response = await api.postStream(
-        '/bubble-flow/generate',
+        '/bubble-flow/generate?phase=planning',
         {
           prompt: params.prompt.trim(),
           flowId: params.flowId,
@@ -264,7 +274,11 @@ async function startGenerationStream(
         { signal: abortController.signal }
       );
 
-      // Consume the stream and store events
+      // Store original prompt for later use
+      pearlStore.getState().setCoffeeOriginalPrompt(params.prompt.trim());
+      pearlStore.getState().setCoffeePhase('clarifying');
+
+      // Consume the stream and handle Coffee events
       for await (const event of sseToAsyncIterable(response)) {
         if (abortController.signal.aborted) {
           console.log(
@@ -273,7 +287,59 @@ async function startGenerationStream(
           return;
         }
 
-        // Add event to store
+        // Handle Coffee-specific events
+        if (event.type === 'coffee_clarification') {
+          // Store clarification questions in pearlChatStore
+          const data = event.data as {
+            questions: Array<{
+              id: string;
+              question: string;
+              choices: Array<{
+                id: string;
+                label: string;
+                description?: string;
+              }>;
+              context?: string;
+            }>;
+          };
+          pearlStore.getState().setCoffeeQuestions(data.questions);
+          pearlStore.getState().setCoffeePhase('clarifying');
+          // Add event to generation store for UI visibility
+          useGenerationEventsStore.getState().addEvent(flowId, event);
+          // Pause here - user needs to answer questions
+          // The stream will complete, and building will be triggered by user action
+          continue;
+        }
+
+        if (event.type === 'coffee_plan') {
+          // Store the plan in pearlChatStore
+          const data = event.data as {
+            summary: string;
+            steps: Array<{
+              title: string;
+              description: string;
+              bubblesUsed?: string[];
+            }>;
+            estimatedBubbles: string[];
+          };
+          pearlStore.getState().setCoffeePlan(data);
+          pearlStore.getState().setCoffeePhase('ready');
+          // Add event to generation store for UI visibility
+          useGenerationEventsStore.getState().addEvent(flowId, event);
+          // Pause here - user needs to approve the plan
+          continue;
+        }
+
+        if (event.type === 'coffee_complete') {
+          // Coffee phase completed - user will trigger building phase
+          console.log(
+            `[generateCodeQuery] Coffee planning completed for flow ${flowId}`
+          );
+          // Don't mark as completed yet - building phase will follow
+          continue;
+        }
+
+        // Add regular events to store
         useGenerationEventsStore.getState().addEvent(flowId, event);
 
         // Mark as completed if this is the final event
@@ -346,6 +412,172 @@ async function startGenerationStream(
     data: { error: errorMsg, recoverable: false },
   });
   useGenerationEventsStore.getState().markCompleted(flowId);
+}
+
+/**
+ * Starts the building phase after Coffee planning is complete.
+ * Called when user approves the plan or skips planning.
+ *
+ * @param flowId - The flow ID
+ * @param prompt - Original prompt
+ * @param planContext - Optional plan context from Coffee (if approved)
+ * @param clarificationAnswers - Optional answers to clarification questions
+ */
+export async function startBuildingPhase(
+  flowId: number,
+  prompt: string,
+  planContext?: string,
+  clarificationAnswers?: Record<string, string[]>
+): Promise<void> {
+  const store = useGenerationEventsStore.getState();
+
+  // Create abort controller for this stream
+  const abortController = new AbortController();
+  store.registerStream(flowId, abortController);
+
+  // Get the pearlChatStore for Coffee state
+  const { getPearlChatStore } = await import('../stores/pearlChatStore');
+  const pearlStore = getPearlChatStore(flowId);
+
+  // Clear Coffee state since we're moving to building
+  pearlStore.getState().setCoffeePhase('idle');
+
+  try {
+    const response = await api.postStream(
+      '/bubble-flow/generate?phase=building',
+      {
+        prompt: prompt.trim(),
+        flowId,
+        planContext,
+        clarificationAnswers,
+      },
+      { signal: abortController.signal }
+    );
+
+    // Consume the stream and store events
+    for await (const event of sseToAsyncIterable(response)) {
+      if (abortController.signal.aborted) {
+        console.log(
+          `[startBuildingPhase] Stream aborted during iteration for flow ${flowId}`
+        );
+        return;
+      }
+
+      // Add event to store
+      useGenerationEventsStore.getState().addEvent(flowId, event);
+
+      // Mark as completed if this is the final event
+      if (event.type === 'generation_complete' || event.type === 'error') {
+        useGenerationEventsStore.getState().markCompleted(flowId);
+      }
+    }
+
+    console.log(
+      `[startBuildingPhase] Stream completed successfully for flow ${flowId}`
+    );
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Build failed';
+    console.error(`[startBuildingPhase] Error:`, errorMsg);
+
+    useGenerationEventsStore.getState().addEvent(flowId, {
+      type: 'error',
+      data: { error: errorMsg, recoverable: false },
+    });
+    useGenerationEventsStore.getState().markCompleted(flowId);
+  }
+}
+
+/**
+ * Submits clarification answers and continues the Coffee planning phase.
+ * This will resume the Coffee agent with the user's answers to generate a plan.
+ *
+ * @param flowId - The flow ID
+ * @param prompt - Original prompt
+ * @param answers - User's answers to clarification questions
+ */
+export async function submitClarificationAndContinue(
+  flowId: number,
+  prompt: string,
+  answers: Record<string, string[]>
+): Promise<void> {
+  const store = useGenerationEventsStore.getState();
+
+  // Create abort controller for this stream
+  const abortController = new AbortController();
+  store.registerStream(flowId, abortController);
+
+  // Get the pearlChatStore for Coffee state
+  const { getPearlChatStore } = await import('../stores/pearlChatStore');
+  const pearlStore = getPearlChatStore(flowId);
+
+  // Update phase to planning
+  pearlStore.getState().setCoffeePhase('planning');
+  pearlStore.getState().setCoffeeAnswers(answers);
+  pearlStore.getState().setCoffeeQuestions(null); // Clear questions
+
+  try {
+    const response = await api.postStream(
+      '/bubble-flow/generate?phase=planning',
+      {
+        prompt: prompt.trim(),
+        flowId,
+        clarificationAnswers: answers,
+      },
+      { signal: abortController.signal }
+    );
+
+    // Consume the stream and handle Coffee events
+    for await (const event of sseToAsyncIterable(response)) {
+      if (abortController.signal.aborted) {
+        console.log(
+          `[submitClarificationAndContinue] Stream aborted for flow ${flowId}`
+        );
+        return;
+      }
+
+      // Handle Coffee-specific events
+      if (event.type === 'coffee_plan') {
+        // Store the plan in pearlChatStore
+        const data = event.data as {
+          summary: string;
+          steps: Array<{
+            title: string;
+            description: string;
+            bubblesUsed?: string[];
+          }>;
+          estimatedBubbles: string[];
+        };
+        pearlStore.getState().setCoffeePlan(data);
+        pearlStore.getState().setCoffeePhase('ready');
+        // Add event to generation store for UI visibility
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        continue;
+      }
+
+      if (event.type === 'coffee_complete') {
+        console.log(
+          `[submitClarificationAndContinue] Coffee planning completed for flow ${flowId}`
+        );
+        continue;
+      }
+
+      // Add regular events to store
+      useGenerationEventsStore.getState().addEvent(flowId, event);
+    }
+
+    console.log(
+      `[submitClarificationAndContinue] Stream completed successfully for flow ${flowId}`
+    );
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Planning failed';
+    console.error(`[submitClarificationAndContinue] Error:`, errorMsg);
+
+    useGenerationEventsStore.getState().addEvent(flowId, {
+      type: 'error',
+      data: { error: errorMsg, recoverable: false },
+    });
+    pearlStore.getState().setCoffeePhase('idle');
+  }
 }
 
 /**

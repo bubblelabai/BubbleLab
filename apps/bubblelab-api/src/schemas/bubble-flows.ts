@@ -725,10 +725,20 @@ export const validateBubbleFlowCodeRoute = createRoute({
     'Validates TypeScript BubbleFlow code for syntax, type errors, and bubble structure',
 });
 
+// Schema for phase query parameter in generate endpoint
+export const generateBubbleFlowPhaseSchema = z.object({
+  phase: z.enum(['planning', 'building']).default('building').openapi({
+    description:
+      'Generation phase: "planning" runs Coffee agent for clarification and plan generation, "building" runs Boba for code generation',
+    example: 'building',
+  }),
+});
+
 export const generateBubbleFlowCodeRoute = createRoute({
   method: 'post',
   path: '/generate',
   request: {
+    query: generateBubbleFlowPhaseSchema,
     body: {
       content: {
         'application/json': {

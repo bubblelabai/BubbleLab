@@ -16,8 +16,13 @@
  * ```
  */
 
-import { useCallback } from 'react';
-import type { StreamingEvent } from '@bubblelab/shared-schemas';
+import { useCallback, useState } from 'react';
+import type {
+  StreamingEvent,
+  StreamingLogEvent,
+  ClarificationQuestion,
+  CoffeePlanEvent,
+} from '@bubblelab/shared-schemas';
 import {
   ParsedBubbleWithInfo,
   cleanUpObjectForDisplayAndStorage,
@@ -25,14 +30,19 @@ import {
 } from '@bubblelab/shared-schemas';
 import { usePearlStream } from './usePearl';
 import { useIsMutating } from '@tanstack/react-query';
-import { getPearlChatStore, type DisplayEvent } from '../stores/pearlChatStore';
+import {
+  getPearlChatStore,
+  type DisplayEvent,
+  type CoffeePhase,
+} from '../stores/pearlChatStore';
 import type { ChatMessage } from '../components/ai/type';
 import { useEditor } from './useEditor';
 import { useBubbleDetail } from './useBubbleDetail';
 import { getExecutionStore } from '../stores/executionStore';
 import { trackAIAssistant } from '../services/analytics';
-import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { simplifyObjectForContext } from '../utils/executionLogsFormatUtils';
+import { api } from '../lib/api';
+import { sseToAsyncIterable } from '../utils/sseStream';
 
 /**
  * Build additional context from execution state, errors, outputs, credentials
@@ -322,6 +332,16 @@ export function usePearlChatStore(flowId: number | null) {
   );
   const selectedStepContext = store((s) => s.selectedStepContext);
 
+  // Coffee state subscriptions
+  const coffeePhase = store((s) => s.coffeePhase);
+  const coffeeQuestions = store((s) => s.coffeeQuestions);
+  const coffeeAnswers = store((s) => s.coffeeAnswers);
+  const coffeePlan = store((s) => s.coffeePlan);
+  const coffeeOriginalPrompt = store((s) => s.coffeeOriginalPrompt);
+
+  // Loading state for Coffee operations
+  const [isCoffeeLoading, setIsCoffeeLoading] = useState(false);
+
   // ===== Main Generation Function =====
   const startGeneration = (
     promptText: string,
@@ -501,6 +521,236 @@ export function usePearlChatStore(flowId: number | null) {
     store?.getState().clearStepContext();
   }, [store]);
 
+  // ===== Coffee Agent Functions =====
+
+  /**
+   * Start Coffee planning phase - asks clarification questions
+   */
+  const startCoffeePlanning = useCallback(
+    async (promptText: string) => {
+      if (!store || !flowId) return;
+
+      const storeState = store.getState();
+      setIsCoffeeLoading(true);
+
+      // Store the original prompt for later use
+      storeState.setCoffeeOriginalPrompt(promptText);
+      storeState.setCoffeePhase('clarifying');
+
+      try {
+        const response = await api.postStream(
+          '/bubble-flow/generate?phase=planning',
+          {
+            prompt: promptText,
+            flowId,
+          }
+        );
+
+        // Process SSE stream
+        for await (const event of sseToAsyncIterable(response)) {
+          if (event.type === 'coffee_clarification') {
+            const data = event.data as { questions: ClarificationQuestion[] };
+            storeState.setCoffeeQuestions(data.questions);
+            storeState.setCoffeePhase('clarifying');
+          } else if (event.type === 'coffee_plan') {
+            const data = event.data as CoffeePlanEvent;
+            storeState.setCoffeePlan(data);
+            storeState.setCoffeePhase('ready');
+          } else if (event.type === 'coffee_complete') {
+            // Planning complete
+          } else if (event.type === 'stream_complete') {
+            // Stream finished
+          }
+        }
+      } catch (error) {
+        console.error('[Coffee] Planning error:', error);
+        storeState.setCoffeePhase('idle');
+      } finally {
+        setIsCoffeeLoading(false);
+      }
+    },
+    [store, flowId]
+  );
+
+  /**
+   * Submit clarification answers and continue planning
+   */
+  const submitClarificationAnswers = useCallback(
+    async (answers: Record<string, string[]>) => {
+      if (!store || !flowId) return;
+
+      const storeState = store.getState();
+      setIsCoffeeLoading(true);
+
+      // Update store with answers
+      storeState.setCoffeeAnswers(answers);
+      storeState.setCoffeePhase('planning');
+      storeState.setCoffeeQuestions(null); // Clear questions
+
+      try {
+        const response = await api.postStream(
+          '/bubble-flow/generate?phase=planning',
+          {
+            prompt: storeState.coffeeOriginalPrompt || '',
+            flowId,
+            clarificationAnswers: answers,
+          }
+        );
+
+        // Process SSE stream
+        for await (const event of sseToAsyncIterable(response)) {
+          if (event.type === 'coffee_plan') {
+            const data = event.data as CoffeePlanEvent;
+            storeState.setCoffeePlan(data);
+            storeState.setCoffeePhase('ready');
+          } else if (event.type === 'coffee_complete') {
+            // Planning complete
+          }
+        }
+      } catch (error) {
+        console.error('[Coffee] Submit answers error:', error);
+        storeState.setCoffeePhase('idle');
+      } finally {
+        setIsCoffeeLoading(false);
+      }
+    },
+    [store, flowId]
+  );
+
+  /**
+   * Approve the plan and start building (code generation)
+   */
+  const approvePlanAndBuild = useCallback(async () => {
+    if (!store || !flowId) return;
+
+    const storeState = store.getState();
+    const plan = storeState.coffeePlan;
+    const originalPrompt = storeState.coffeeOriginalPrompt;
+
+    if (!plan || !originalPrompt) return;
+
+    setIsCoffeeLoading(true);
+
+    // Build plan context string for Boba
+    const planContext = [
+      `Summary: ${plan.summary}`,
+      'Steps:',
+      ...plan.steps.map(
+        (step, i) =>
+          `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
+      ),
+      `Bubbles to use: ${plan.estimatedBubbles.join(', ')}`,
+    ].join('\n');
+
+    // Clear coffee state
+    storeState.clearCoffeeState();
+
+    // Add a user message about the plan approval
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: `[Plan Approved] ${originalPrompt}`,
+      timestamp: new Date(),
+    };
+    storeState.addMessage(userMessage);
+    storeState.startNewTurn();
+
+    try {
+      // Start building phase with plan context
+      // This will use the existing generation flow
+      const response = await api.postStream(
+        '/bubble-flow/generate?phase=building',
+        {
+          prompt: originalPrompt,
+          flowId,
+          planContext,
+        }
+      );
+
+      // Process events similar to initial generation
+      for await (const event of sseToAsyncIterable(response)) {
+        handleStreamingEvent(event as StreamingEvent, store);
+      }
+    } catch (error) {
+      console.error('[Coffee] Build error:', error);
+    } finally {
+      setIsCoffeeLoading(false);
+    }
+  }, [store, flowId]);
+
+  /**
+   * Skip Coffee planning and go directly to building
+   */
+  const skipCoffeeAndBuild = useCallback(async () => {
+    if (!store || !flowId) return;
+
+    const storeState = store.getState();
+    const originalPrompt = storeState.coffeeOriginalPrompt;
+
+    if (!originalPrompt) return;
+
+    // Mark as skipped and clear coffee state
+    storeState.setCoffeePhase('skipped');
+    storeState.clearCoffeeState();
+
+    // Add a user message
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: originalPrompt,
+      timestamp: new Date(),
+    };
+    storeState.addMessage(userMessage);
+    storeState.startNewTurn();
+
+    setIsCoffeeLoading(true);
+
+    try {
+      const response = await api.postStream(
+        '/bubble-flow/generate?phase=building',
+        {
+          prompt: originalPrompt,
+          flowId,
+        }
+      );
+
+      for await (const event of sseToAsyncIterable(response)) {
+        handleStreamingEvent(event as StreamingEvent, store);
+      }
+    } catch (error) {
+      console.error('[Coffee] Skip and build error:', error);
+    } finally {
+      setIsCoffeeLoading(false);
+    }
+  }, [store, flowId]);
+
+  /**
+   * Retry Coffee planning with the same prompt
+   */
+  const retryCoffeePlanning = useCallback(async () => {
+    if (!store) return;
+
+    const storeState = store.getState();
+    const originalPrompt = storeState.coffeeOriginalPrompt;
+
+    if (!originalPrompt) return;
+
+    // Clear current state and restart
+    storeState.setCoffeeQuestions(null);
+    storeState.setCoffeePlan(null);
+    storeState.setCoffeeAnswers({});
+
+    // Restart planning
+    await startCoffeePlanning(originalPrompt);
+  }, [store, startCoffeePlanning]);
+
+  /**
+   * Clear Coffee state and return to idle
+   */
+  const clearCoffeeState = useCallback(() => {
+    store?.getState().clearCoffeeState();
+  }, [store]);
+
   return {
     // State (components can subscribe)
     messages,
@@ -510,6 +760,14 @@ export function usePearlChatStore(flowId: number | null) {
     selectedBubbleContext,
     selectedTransformationContext,
     selectedStepContext,
+
+    // Coffee state
+    coffeePhase,
+    coffeeQuestions,
+    coffeeAnswers,
+    coffeePlan,
+    coffeeOriginalPrompt,
+    isCoffeeLoading,
 
     // Actions
     startGeneration,
@@ -525,6 +783,14 @@ export function usePearlChatStore(flowId: number | null) {
     clearTransformationContext,
     addStepToContext,
     clearStepContext,
+
+    // Coffee actions
+    startCoffeePlanning,
+    submitClarificationAnswers,
+    approvePlanAndBuild,
+    skipCoffeeAndBuild,
+    retryCoffeePlanning,
+    clearCoffeeState,
 
     // Mutation state (for loading indicators)
     isPending,

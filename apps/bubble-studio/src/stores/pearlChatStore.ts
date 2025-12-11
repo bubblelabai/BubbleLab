@@ -7,6 +7,19 @@
 
 import { create } from 'zustand';
 import type { ChatMessage } from '../components/ai/type';
+import type {
+  ClarificationQuestion,
+  CoffeePlanEvent,
+} from '@bubblelab/shared-schemas';
+
+// Coffee phase types
+export type CoffeePhase =
+  | 'idle'
+  | 'clarifying'
+  | 'gathering'
+  | 'planning'
+  | 'ready'
+  | 'skipped';
 
 // Display event types for chronological rendering
 export type DisplayEvent =
@@ -37,6 +50,13 @@ interface PearlChatState {
   selectedBubbleContext: number[]; // List of bubble variable IDs for context
   selectedTransformationContext: string | null; // Transformation function name for context
   selectedStepContext: string | null; // Step function name for context
+
+  // ===== Coffee Agent State =====
+  coffeePhase: CoffeePhase;
+  coffeeQuestions: ClarificationQuestion[] | null;
+  coffeeAnswers: Record<string, string[]>;
+  coffeePlan: CoffeePlanEvent | null;
+  coffeeOriginalPrompt: string | null; // Store original prompt for retry/build
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -72,6 +92,15 @@ interface PearlChatState {
   removeToolCall: (callId: string) => void;
   clearToolCalls: () => void;
 
+  // ===== Coffee Agent Actions =====
+  setCoffeePhase: (phase: CoffeePhase) => void;
+  setCoffeeQuestions: (questions: ClarificationQuestion[] | null) => void;
+  setCoffeeAnswers: (answers: Record<string, string[]>) => void;
+  updateCoffeeAnswer: (questionId: string, choiceIds: string[]) => void;
+  setCoffeePlan: (plan: CoffeePlanEvent | null) => void;
+  setCoffeeOriginalPrompt: (prompt: string | null) => void;
+  clearCoffeeState: () => void;
+
   // Reset
   reset: () => void;
 }
@@ -89,6 +118,13 @@ function createPearlChatStore(flowId: number) {
     selectedBubbleContext: [],
     selectedTransformationContext: null,
     selectedStepContext: null,
+
+    // Coffee state initialization
+    coffeePhase: 'idle',
+    coffeeQuestions: null,
+    coffeeAnswers: {},
+    coffeePlan: null,
+    coffeeOriginalPrompt: null,
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -198,6 +234,31 @@ function createPearlChatStore(flowId: number) {
 
     clearToolCalls: () => set({ activeToolCallIds: new Set() }),
 
+    // Coffee agent actions
+    setCoffeePhase: (phase) => set({ coffeePhase: phase }),
+
+    setCoffeeQuestions: (questions) => set({ coffeeQuestions: questions }),
+
+    setCoffeeAnswers: (answers) => set({ coffeeAnswers: answers }),
+
+    updateCoffeeAnswer: (questionId, choiceIds) =>
+      set((state) => ({
+        coffeeAnswers: { ...state.coffeeAnswers, [questionId]: choiceIds },
+      })),
+
+    setCoffeePlan: (plan) => set({ coffeePlan: plan }),
+
+    setCoffeeOriginalPrompt: (prompt) => set({ coffeeOriginalPrompt: prompt }),
+
+    clearCoffeeState: () =>
+      set({
+        coffeePhase: 'idle',
+        coffeeQuestions: null,
+        coffeeAnswers: {},
+        coffeePlan: null,
+        coffeeOriginalPrompt: null,
+      }),
+
     reset: () =>
       set({
         messages: [],
@@ -207,6 +268,12 @@ function createPearlChatStore(flowId: number) {
         selectedBubbleContext: [],
         selectedTransformationContext: null,
         selectedStepContext: null,
+        // Reset coffee state
+        coffeePhase: 'idle',
+        coffeeQuestions: null,
+        coffeeAnswers: {},
+        coffeePlan: null,
+        coffeeOriginalPrompt: null,
       }),
   }));
 }

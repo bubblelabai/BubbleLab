@@ -3,7 +3,7 @@
  * Can read entire code and replace entire editor content
  *
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
@@ -51,9 +51,15 @@ import {
   BubblePromptInput,
   type BubblePromptInputRef,
 } from './BubblePromptInput';
+import { ClarificationWidget } from './ClarificationWidget';
+import { PlanApprovalWidget } from './PlanApprovalWidget';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
 import { useEditorStore } from '../../stores/editorStore';
-import { useGenerateInitialFlow } from '../../hooks/usePearl';
+import {
+  useGenerateInitialFlow,
+  startBuildingPhase,
+  submitClarificationAndContinue,
+} from '../../hooks/usePearl';
 import {
   useGenerationEventsStore,
   selectFlowEvents,
@@ -408,12 +414,67 @@ export function PearlChat() {
       return;
     }
 
-    // Call Pearl store to start generation
+    // Use regular generation for Pearl chat (Coffee is handled via useGenerateInitialFlow)
     pearl.startGeneration(pearl.prompt, uploadedFiles);
 
     // Clear UI state
     setUploadedFiles([]);
   };
+
+  // Handlers for initial generation Coffee flow (different from Pearl chat)
+  const handleInitialClarificationSubmit = useCallback(
+    async (answers: Record<string, string[]>) => {
+      if (!selectedFlowId || !flowData?.prompt) return;
+      await submitClarificationAndContinue(
+        selectedFlowId,
+        flowData.prompt,
+        answers
+      );
+    },
+    [selectedFlowId, flowData?.prompt]
+  );
+
+  const handleInitialPlanApprove = useCallback(async () => {
+    if (!selectedFlowId || !flowData?.prompt || !pearl.coffeePlan) return;
+
+    // Build plan context string for Boba
+    const planContext = [
+      `Summary: ${pearl.coffeePlan.summary}`,
+      'Steps:',
+      ...pearl.coffeePlan.steps.map(
+        (step, i) =>
+          `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
+      ),
+      `Bubbles to use: ${pearl.coffeePlan.estimatedBubbles.join(', ')}`,
+    ].join('\n');
+
+    await startBuildingPhase(
+      selectedFlowId,
+      flowData.prompt,
+      planContext,
+      pearl.coffeeAnswers
+    );
+  }, [selectedFlowId, flowData?.prompt, pearl.coffeePlan, pearl.coffeeAnswers]);
+
+  const handleInitialPlanSkip = useCallback(async () => {
+    if (!selectedFlowId || !flowData?.prompt) return;
+
+    // Skip planning and go straight to building
+    await startBuildingPhase(selectedFlowId, flowData.prompt);
+  }, [selectedFlowId, flowData?.prompt]);
+
+  const handleInitialPlanRetry = useCallback(async () => {
+    if (!selectedFlowId || !flowData?.prompt) return;
+
+    // Clear current plan and restart planning
+    const pearlStore = getPearlChatStore(selectedFlowId);
+    pearlStore.getState().setCoffeePlan(null);
+    pearlStore.getState().setCoffeeQuestions(null);
+    pearlStore.getState().setCoffeePhase('clarifying');
+
+    // Restart the planning stream (this is simplified - full implementation would need to reset the generation store)
+    await submitClarificationAndContinue(selectedFlowId, flowData.prompt, {});
+  }, [selectedFlowId, flowData?.prompt]);
 
   const handleReplace = (
     code: string,
@@ -815,6 +876,56 @@ export function PearlChat() {
                   </>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* Coffee Agent - Clarification Questions */}
+        {pearl.coffeePhase === 'clarifying' && pearl.coffeeQuestions && (
+          <div className="p-3">
+            <ClarificationWidget
+              questions={pearl.coffeeQuestions}
+              onSubmit={
+                isGenerating
+                  ? handleInitialClarificationSubmit
+                  : pearl.submitClarificationAnswers
+              }
+              isSubmitting={pearl.isCoffeeLoading}
+            />
+          </div>
+        )}
+
+        {/* Coffee Agent - Plan Approval */}
+        {pearl.coffeePhase === 'ready' && pearl.coffeePlan && (
+          <div className="p-3">
+            <PlanApprovalWidget
+              plan={pearl.coffeePlan}
+              onApprove={
+                isGenerating
+                  ? handleInitialPlanApprove
+                  : pearl.approvePlanAndBuild
+              }
+              onRetry={
+                isGenerating
+                  ? handleInitialPlanRetry
+                  : pearl.retryCoffeePlanning
+              }
+              onSkip={
+                isGenerating ? handleInitialPlanSkip : pearl.skipCoffeeAndBuild
+              }
+              isLoading={pearl.isCoffeeLoading}
+            />
+          </div>
+        )}
+
+        {/* Coffee Agent - Planning in progress */}
+        {pearl.coffeePhase === 'planning' && (
+          <div className="p-3">
+            <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+              <span className="text-sm text-gray-300">
+                Generating implementation plan...
+              </span>
             </div>
           </div>
         )}
