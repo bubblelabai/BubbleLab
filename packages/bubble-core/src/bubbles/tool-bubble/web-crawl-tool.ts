@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import FirecrawlApp from '@mendable/firecrawl-js';
+import { FirecrawlBubble } from '../service-bubble/firecrawl.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 
@@ -148,20 +148,9 @@ export class WebCrawlTool extends ToolBubble<
     const startTime = Date.now();
 
     try {
-      // Get Firecrawl API key from credentials
-      const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          'FIRECRAWL_API_KEY is required but not provided in credentials'
-        );
-      }
-
-      // Initialize Firecrawl client
-      const firecrawl = new FirecrawlApp({ apiKey });
-
       console.log(`[WebCrawlTool] Starting crawl for URL:`, url);
 
-      const crawlResult = await this.executeCrawl(firecrawl, startTime);
+      const crawlResult = await this.executeCrawl(startTime);
 
       // Process pages in batches of 5 for parallel summarization
       const batchSize = 5;
@@ -262,10 +251,7 @@ export class WebCrawlTool extends ToolBubble<
   /**
    * Execute crawl operation - multi-page site exploration
    */
-  private async executeCrawl(
-    firecrawl: FirecrawlApp,
-    startTime: number
-  ): Promise<WebCrawlToolResult> {
+  private async executeCrawl(startTime: number): Promise<WebCrawlToolResult> {
     const {
       url,
       format,
@@ -274,12 +260,18 @@ export class WebCrawlTool extends ToolBubble<
       crawlDepth,
       includePaths,
       excludePaths,
+      credentials,
     } = this.params;
 
     // Configure crawling options
-    const crawlOptions: any = {
+    const crawlOptions: {
+      limit: number;
+      maxDiscoveryDepth: number;
+      includePaths?: string[];
+      excludePaths?: string[];
+    } = {
       limit: maxPages || 10,
-      maxDepth: crawlDepth || 2,
+      maxDiscoveryDepth: crawlDepth || 2,
     };
 
     // Add URL filtering if specified
@@ -293,14 +285,21 @@ export class WebCrawlTool extends ToolBubble<
     console.log('[WebCrawlTool] Crawling with options:', crawlOptions);
 
     // Execute crawl
-    const response = await firecrawl.crawl(url, {
+    const firecrawlParams = {
+      operation: 'crawl' as const,
+      credentials,
       ...crawlOptions,
-      scrapeOptions: {
-        formats: [format],
-        onlyMainContent,
-        removeBase64Images: true,
-      },
-    });
+      url,
+      formats: [format],
+      onlyMainContent,
+      removeBase64Images: true,
+    };
+    const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
+      firecrawlParams,
+      this.context,
+      'web_crawl_tool_firecrawl'
+    );
+    const response = await firecrawl.action();
 
     // Process crawled pages
     const pages: Array<{
@@ -311,7 +310,7 @@ export class WebCrawlTool extends ToolBubble<
     }> = [];
 
     // Handle different response structures
-    const crawlData = response.completed ? response.data : [];
+    const crawlData = response.data.completed ? response.data.data : [];
 
     for (const page of crawlData) {
       let content = '';
