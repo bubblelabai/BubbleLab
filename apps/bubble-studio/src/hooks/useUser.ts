@@ -23,6 +23,9 @@ export function useUser() {
         lastName: 'User',
         fullName: 'Dev User',
         primaryEmailAddressId: 'mock-email-id',
+        publicMetadata: {
+          onboardingCompleted: true, // Mock users skip onboarding
+        },
       },
     };
   }
