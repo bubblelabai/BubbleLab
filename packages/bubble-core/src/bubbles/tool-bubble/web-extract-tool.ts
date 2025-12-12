@@ -145,7 +145,7 @@ export class WebExtractTool extends ToolBubble<
         urls: [url],
         prompt,
         schema: parsedSchema,
-        timeout: timeout ? timeout / 1000 : 30, // Convert to seconds
+        timeout: timeout || 30000, // Timeout in milliseconds (default 30s)
       };
 
       // Initialize Firecrawl bubble
