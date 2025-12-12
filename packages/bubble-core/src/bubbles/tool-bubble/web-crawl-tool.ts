@@ -293,9 +293,11 @@ export class WebCrawlTool extends ToolBubble<
       credentials,
       ...crawlOptions,
       url,
-      formats: [format],
-      onlyMainContent,
-      removeBase64Images: true,
+      scrapeOptions: {
+        formats: format ? [format] : undefined,
+        onlyMainContent,
+        removeBase64Images: true,
+      },
     };
     const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
       firecrawlParams,
