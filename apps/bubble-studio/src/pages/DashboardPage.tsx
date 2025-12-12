@@ -542,11 +542,11 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Current Supported Integrations Section */}
           <div className="mt-10 w-full max-w-3xl mx-auto space-y-4">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-col md:flex-row">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 Third Party Integrations
               </p>
-              <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex flex-wrap gap-3 items-center justify-center md:justify-start">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
@@ -566,8 +566,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-col md:flex-row">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 Scraping
               </p>
               <div className="flex flex-wrap gap-3 items-center">
@@ -590,8 +590,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 md:flex-row flex-col">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 AI Models and Agents
               </p>
               <div className="flex flex-wrap gap-3 items-center">
@@ -621,7 +621,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             className="mt-16 p-6 bg-[#0d1117] border border-[#30363d] rounded-xl animate-fade-in-up delay-300"
           >
             {/* Templates Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <h2 className="text-xl font-bold text-white">Templates</h2>
               <a
                 href="https://www.bubblelab.ai/community"

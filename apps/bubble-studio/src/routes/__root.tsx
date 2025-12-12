@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { BubbleSidePanel } from '@/components/BubbleSidePanel';
 import { ToastContainer } from 'react-toastify';
 import { useUIStore } from '@/stores/uiStore';
+import { useEffect, useRef } from 'react';
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -11,15 +12,39 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const { isSidebarOpen, toggleSidebar } = useUIStore();
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isSidebarOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+        toggleSidebar();
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    console.log('Clicked outside sidebar, closing it.');
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSidebarOpen, toggleSidebar]);
 
   return (
     <>
       {/* Global Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        ref={sidebarRef}
+      />
 
       {/* Main content with left padding for sidebar */}
       <div
-        className={`${isSidebarOpen ? 'pl-56' : 'pl-14'} transition-all duration-200`}
+        className={`${isSidebarOpen ? 'md:pl-56' : 'pl-14'} transition-all duration-200`}
       >
         <Outlet />
       </div>
