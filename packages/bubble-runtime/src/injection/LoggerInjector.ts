@@ -372,6 +372,8 @@ export class LoggerInjector {
       variableType,
       destructuringPattern,
       context = 'default',
+      containingStatementLine,
+      callText,
     } = invocation;
     const lineIndex = lineNumber - 1;
     const endLineIndex = endLineNumber - 1;
@@ -420,6 +422,73 @@ export class LoggerInjector {
           callSiteKeyLiteral,
         }
       );
+      return;
+    }
+
+    // Handle function calls inside condition expressions (if/while/for/switch)
+    // Strategy: Insert logging + call extraction BEFORE the containing statement,
+    // then replace the call text in the original line with the result variable
+    if (
+      statementType === 'condition_expression' &&
+      containingStatementLine &&
+      callText
+    ) {
+      const containingLineIndex = containingStatementLine - 1;
+      if (containingLineIndex < 0 || containingLineIndex >= lines.length) {
+        return;
+      }
+
+      const containingLine = lines[containingLineIndex];
+      const containingIndentation = containingLine.match(/^\s*/)?.[0] || '    ';
+
+      // Build the logging preamble to insert BEFORE the containing statement
+      const callLine = `${containingIndentation}const ${resultVar} = ${hasAwait ? 'await ' : ''}this.${methodName}(${args});`;
+      const completeLog = `${containingIndentation}const ${durationVar} = Date.now() - __functionCallStart_${variableId}; __bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`;
+
+      const preambleLines = [
+        `${containingIndentation}const __functionCallStart_${variableId} = Date.now();`,
+        `${containingIndentation}const ${argsVar} = ${argsArray};`,
+        `${containingIndentation}__bubbleFlowSelf.logger?.logFunctionCallStart(${variableId}, '${methodName}', ${argsVar}, ${lineNumber});`,
+        `${containingIndentation}const ${prevInvocationVar} = __bubbleFlowSelf?.__setInvocationCallSiteKey?.(${callSiteKeyLiteral});`,
+        callLine,
+        completeLog,
+        `${containingIndentation}__bubbleFlowSelf?.__restoreInvocationCallSiteKey?.(${prevInvocationVar});`,
+      ];
+
+      // Insert preamble BEFORE the containing statement
+      lines.splice(containingLineIndex, 0, ...preambleLines);
+
+      // Now replace the call text with the result variable in the original line
+      // The original line has shifted by preambleLines.length
+      const shiftedLineIndex = containingLineIndex + preambleLines.length;
+
+      // The call might span multiple lines, so we need to find and replace it
+      // For single-line calls, just replace in the shifted line
+      // For multi-line, we need to handle the range
+      if (lineNumber === endLineNumber) {
+        // Single line call - simple replacement
+        const originalLine = lines[shiftedLineIndex];
+        lines[shiftedLineIndex] = originalLine.replace(callText, resultVar);
+      } else {
+        // Multi-line call - need to handle more carefully
+        // Join the lines, replace, then split back
+        const startShiftedIndex =
+          shiftedLineIndex + (lineNumber - containingStatementLine);
+        const endShiftedIndex =
+          shiftedLineIndex + (endLineNumber - containingStatementLine);
+
+        // Get all lines that contain the call
+        const callLines = lines.slice(startShiftedIndex, endShiftedIndex + 1);
+        const joinedCall = callLines.join('\n');
+
+        // Replace the call text with result variable
+        const replaced = joinedCall.replace(callText, resultVar);
+        const replacedLines = replaced.split('\n');
+
+        // Splice out the old lines and insert the new ones
+        lines.splice(startShiftedIndex, callLines.length, ...replacedLines);
+      }
+
       return;
     }
 
