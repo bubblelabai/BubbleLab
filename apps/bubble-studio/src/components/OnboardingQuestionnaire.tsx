@@ -12,8 +12,6 @@ import {
   TrendingUp,
   BookOpen,
   Sparkles,
-  Search,
-  Music,
   UserPlus,
   Gift,
   SkipForward,
@@ -128,11 +126,9 @@ export const OnboardingQuestionnaire: React.FC<
         throw new Error(data.error || 'Failed to submit questionnaire');
       }
 
-      // Update local user state to reflect onboarding completion
-      if (user) {
-        // Clerk will handle the metadata update server-side
-        // We just need to call onComplete to proceed
-      }
+      // Store onboarding completion in localStorage (for self-hosted users)
+      // This ensures self-hosted users don't see the questionnaire again
+      localStorage.setItem('onboardingCompleted', 'true');
 
       onComplete();
     } catch (err) {
