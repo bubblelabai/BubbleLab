@@ -718,6 +718,14 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   {category}
                 </button>
               ))}
+              {/* Submit Template Button */}
+              <button
+                type="button"
+                onClick={() => setShowSubmitTemplateModal(true)}
+                className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-pink-500/15 text-pink-400 border border-pink-500/30 hover:bg-pink-500/25 hover:text-pink-300 hover:border-pink-400/50 cursor-pointer"
+              >
+                Submit Template
+              </button>
             </div>
 
             {/* Templates Grid */}
@@ -805,27 +813,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   </button>
                 );
               })}
-            </div>
-
-            {/* Submit Template CTA */}
-            <div className="mt-8 pt-6 border-t border-[#30363d]">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-center sm:text-left">
-                  <h3 className="text-base font-semibold text-white">
-                    Have a template to share?
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Submit your automation and help others in the community
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSubmitTemplateModal(true)}
-                  className="px-6 py-3 rounded-xl text-sm font-medium bg-white text-black border border-white/80 hover:bg-gray-100 hover:scale-105 hover:shadow-lg hover:shadow-white/20 transition-all duration-200"
-                >
-                  Submit your Template
-                </button>
-              </div>
             </div>
           </div>
         </div>
