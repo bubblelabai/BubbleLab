@@ -11,6 +11,7 @@ export function isAllowedType(file: File): boolean {
   if (name.endsWith('.html') || name.endsWith('.htm')) return true;
   if (name.endsWith('.csv')) return true;
   if (name.endsWith('.txt')) return true;
+  if (name.endsWith('.md')) return true;
   if (mime === 'image/png' || name.endsWith('.png')) return true;
   if (
     mime === 'image/jpeg' ||
@@ -19,6 +20,8 @@ export function isAllowedType(file: File): boolean {
     name.endsWith('.jpeg')
   )
     return true;
+  if (mime === 'image/gif' || name.endsWith('.gif')) return true;
+  if (mime === 'image/webp' || name.endsWith('.webp')) return true;
   return false;
 }
 
@@ -29,7 +32,25 @@ export function isTextLike(file: File): boolean {
   if (name.endsWith('.html') || name.endsWith('.htm')) return true;
   if (name.endsWith('.csv')) return true;
   if (name.endsWith('.txt')) return true;
+  if (name.endsWith('.md')) return true;
   return false;
+}
+
+export function isImageFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  const mime = file.type.toLowerCase();
+  return (
+    mime === 'image/png' ||
+    name.endsWith('.png') ||
+    mime === 'image/jpeg' ||
+    mime === 'image/jpg' ||
+    name.endsWith('.jpg') ||
+    name.endsWith('.jpeg') ||
+    mime === 'image/gif' ||
+    name.endsWith('.gif') ||
+    mime === 'image/webp' ||
+    name.endsWith('.webp')
+  );
 }
 
 export async function readTextFile(file: File): Promise<string> {

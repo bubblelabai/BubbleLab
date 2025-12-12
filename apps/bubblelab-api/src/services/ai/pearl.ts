@@ -193,28 +193,37 @@ function buildConversationMessages(request: PearlRequest): {
     }
   }
 
-  // Process uploaded files into images array
+  // Process uploaded files - separate images from text files
+  const textFileContents: string[] = [];
   if (request.uploadedFiles && request.uploadedFiles.length > 0) {
     for (const file of request.uploadedFiles) {
-      // Determine mime type from file name
-      const fileName = file.name.toLowerCase();
-      let mimeType = 'image/png'; // default
-      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-        mimeType = 'image/jpeg';
-      } else if (fileName.endsWith('.png')) {
-        mimeType = 'image/png';
-      } else if (fileName.endsWith('.gif')) {
-        mimeType = 'image/gif';
-      } else if (fileName.endsWith('.webp')) {
-        mimeType = 'image/webp';
-      }
+      // Check fileType field to differentiate
+      const fileType = (file as { fileType?: 'image' | 'text' }).fileType;
 
-      images.push({
-        type: 'base64',
-        data: file.content,
-        mimeType,
-        description: file.name,
-      });
+      if (fileType === 'text') {
+        // Text files: add content to message context
+        textFileContents.push(`\n\nContent of ${file.name}:\n${file.content}`);
+      } else {
+        // Images: add to images array for vision API
+        const fileName = file.name.toLowerCase();
+        let mimeType = 'image/png'; // default
+        if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+          mimeType = 'image/jpeg';
+        } else if (fileName.endsWith('.png')) {
+          mimeType = 'image/png';
+        } else if (fileName.endsWith('.gif')) {
+          mimeType = 'image/gif';
+        } else if (fileName.endsWith('.webp')) {
+          mimeType = 'image/webp';
+        }
+
+        images.push({
+          type: 'base64',
+          data: file.content,
+          mimeType,
+          description: file.name,
+        });
+      }
     }
   }
 
@@ -228,9 +237,13 @@ function buildConversationMessages(request: PearlRequest): {
     ? `\n\nAdditional Context:\n${request.additionalContext}`
     : '';
 
+  // Add text file contents to the message
+  const textFilesInfo =
+    textFileContents.length > 0 ? textFileContents.join('') : '';
+
   messages.push(
     new HumanMessage(
-      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}${additionalContextInfo}`
+      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}${additionalContextInfo}${textFilesInfo}`
     )
   );
 

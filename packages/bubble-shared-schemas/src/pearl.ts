@@ -55,12 +55,21 @@ export const PearlRequestSchema = z.object({
     .array(
       z.object({
         name: z.string().describe('File name'),
-        content: z.string().describe('Base64 encoded file content'),
+        content: z
+          .string()
+          .describe(
+            'File content: base64 for images, plain text for text files'
+          ),
+        fileType: z
+          .enum(['image', 'text'])
+          .describe('Type of file: image (base64) or text (plain text)'),
       })
     )
     .optional()
     .default([])
-    .describe('Files uploaded by the user (base64 encoded)'),
+    .describe(
+      'Files uploaded by the user: images as base64, text files as plain text'
+    ),
 });
 
 /**

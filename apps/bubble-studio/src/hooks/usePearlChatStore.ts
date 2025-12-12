@@ -325,7 +325,11 @@ export function usePearlChatStore(flowId: number | null) {
   // ===== Main Generation Function =====
   const startGeneration = (
     promptText: string,
-    uploadedFiles: Array<{ name: string; content: string }> = []
+    uploadedFiles: Array<{
+      name: string;
+      content: string;
+      fileType: 'image' | 'text';
+    }> = []
   ) => {
     if (!store || !flowId) return;
 
@@ -362,9 +366,7 @@ export function usePearlChatStore(flowId: number | null) {
     if (uploadedFiles.length > 0) {
       const fileInfo = uploadedFiles
         .map((f) => {
-          const fileType = f.name.toLowerCase().endsWith('.png')
-            ? 'image (base64)'
-            : 'text';
+          const fileType = f.fileType === 'image' ? 'image (base64)' : 'text';
           return `${f.name} (${fileType})`;
         })
         .join(', ');
