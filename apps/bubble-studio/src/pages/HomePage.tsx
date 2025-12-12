@@ -234,7 +234,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             />
           </div>
 
-          <div className="pt-4 flex items-center justify-between ">
+          {/* Filter and Select Buttons */}
+          <div className="pt-4 flex items-center justify-between">
             <div className="rounded-md p-2 w-fit border border-neutral-100/10">
               <div className="relative flex gap-2">
                 <button
@@ -284,19 +285,16 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
             <div>
               {!deleteMultiple ? (
-                <>
-                  <button
-                    className="text-sm border border-neutral-100/20 rounded-md p-2.5 cursor-pointer"
-                    onClick={() => setDeleteMultiple(!deleteMultiple)}
-                  >
-                    Select
-                  </button>
-                </>
+                <button
+                  className="text-sm border border-neutral-100/20 rounded-md p-2.5 cursor-pointer"
+                  onClick={() => setDeleteMultiple(!deleteMultiple)}
+                >
+                  Select
+                </button>
               ) : (
                 <div className="flex gap-2">
                   <button
                     className="text-sm border border-red-400/60 text-red-600 rounded-md p-2.5 cursor-pointer flex items-center gap-1"
-                    // onClick={() => setDeleteMultiple(!deleteMultiple)}
                     onClick={(e) => {
                       handleBulkDeleteClick(e);
                     }}
@@ -362,10 +360,9 @@ export const HomePage: React.FC<HomePageProps> = ({
               const isSelected = selectedFlowIds.includes(flow.id);
 
               return (
-                <div className="">
-                  <div
-                    key={flow.id}
-                    className={`group relative rounded-lg border border-white/5 bg-[#1a1a1a] transition-all duration-300 
+                <div
+                  key={flow.id}
+                  className={`group relative rounded-lg border border-white/5 bg-[#1a1a1a] transition-all duration-300 
                       ${
                         isOptimisticLoading
                           ? 'opacity-70 cursor-wait'
@@ -373,226 +370,225 @@ export const HomePage: React.FC<HomePageProps> = ({
                       }
                       ${isSelected ? 'ring-1 ring-purple-500 bg-purple-500/10' : ''}
                       `}
-                    onClick={() => {
-                      if (deleteMultiple) {
-                        toggleFlowSelection(flow.id);
-                      } else {
-                        !isOptimisticLoading && onFlowSelect(flow.id);
-                      }
-                    }}
-                  >
-                    {/* Loading overlay for optimistic flows */}
-                    {isOptimisticLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg z-20">
-                        <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin" />
+                  onClick={() => {
+                    if (deleteMultiple) {
+                      toggleFlowSelection(flow.id);
+                    } else {
+                      !isOptimisticLoading && onFlowSelect(flow.id);
+                    }
+                  }}
+                >
+                  {/* Loading overlay for optimistic flows */}
+                  {isOptimisticLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg z-20">
+                      <div className="w-6 h-6 border-2 border-purple-600/30 border-t-purple-600 rounded-full animate-spin" />
+                    </div>
+                  )}
+                  {deleteMultiple && (
+                    <div className="absolute top-1.5 left-1.5 z-20">
+                      <div
+                        className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? 'bg-purple-600 border-purple-600'
+                            : 'bg-[#1a1a1a] border-gray-500'
+                        }`}
+                      >
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        )}
                       </div>
-                    )}
-                    {deleteMultiple && (
-                      <div className="absolute bottom-2 left-2 z-20">
-                        <div
-                          className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                            isSelected
-                              ? 'bg-purple-600 border-purple-600'
-                              : 'bg-[#1a1a1a] border-gray-500'
-                          }`}
-                        >
-                          {isSelected && (
-                            <Check className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
+                  {/* Card Content */}
+                  <div className="p-5">
+                    {/* Bubble Logos */}
+                    {flow.bubbles && flow.bubbles.length > 0 && (
+                      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                        {flow.bubbles
+                          .map((bubble) => {
+                            const logo = findLogoForBubble({
+                              bubbleName: bubble.bubbleName,
+                              className: bubble.className,
+                            });
+                            return logo ? { ...bubble, logo } : null;
+                          })
+                          .filter(
+                            (item, index, self) =>
+                              item &&
+                              self.findIndex(
+                                (t) => t && t.logo.file === item.logo.file
+                              ) === index
+                          )
+                          .map((item, idx) =>
+                            item ? (
+                              <img
+                                key={idx}
+                                src={item.logo.file}
+                                alt={item.logo.name}
+                                className="h-4 w-4 opacity-70"
+                                title={item.logo.name}
+                              />
+                            ) : null
                           )}
-                        </div>
                       </div>
                     )}
-                    {/* Card Content */}
-                    <div className="p-5">
-                      {/* Bubble Logos */}
-                      {flow.bubbles && flow.bubbles.length > 0 && (
-                        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-                          {flow.bubbles
-                            .map((bubble) => {
-                              const logo = findLogoForBubble({
-                                bubbleName: bubble.bubbleName,
-                                className: bubble.className,
-                              });
-                              return logo ? { ...bubble, logo } : null;
-                            })
-                            .filter(
-                              (item, index, self) =>
-                                item &&
-                                self.findIndex(
-                                  (t) => t && t.logo.file === item.logo.file
-                                ) === index
-                            )
-                            .map((item, idx) =>
-                              item ? (
-                                <img
-                                  key={idx}
-                                  src={item.logo.file}
-                                  alt={item.logo.name}
-                                  className="h-4 w-4 opacity-70"
-                                  title={item.logo.name}
-                                />
-                              ) : null
-                            )}
-                        </div>
-                      )}
 
-                      {/* Flow Name */}
-                      {renamingFlowId === flow.id ? (
-                        <div className="flex items-center gap-2 mb-2">
-                          <input
-                            title="Rename Flow"
-                            ref={inputRef}
-                            type="text"
-                            value={newFlowName}
-                            onChange={(e) => setNewFlowName(e.target.value)}
-                            onKeyDown={async (e) => {
-                              e.stopPropagation();
-                              const success = await handleKeyDown(e);
-                              if (success || e.key === 'Escape') {
-                                setRenamingFlowId(null);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
-                          />
-                          <button
-                            type="button"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const success = await submitRename();
-                              if (success) {
-                                setRenamingFlowId(null);
-                              }
-                            }}
-                            className="p-1 rounded hover:bg-gray-700/50 text-green-400 hover:text-green-300"
-                            title="Confirm (Enter)"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              cancelRename();
+                    {/* Flow Name */}
+                    {renamingFlowId === flow.id ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          title="Rename Flow"
+                          ref={inputRef}
+                          type="text"
+                          value={newFlowName}
+                          onChange={(e) => setNewFlowName(e.target.value)}
+                          onKeyDown={async (e) => {
+                            e.stopPropagation();
+                            const success = await handleKeyDown(e);
+                            if (success || e.key === 'Escape') {
                               setRenamingFlowId(null);
-                            }}
-                            className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-300"
-                            title="Cancel (Esc)"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <h3 className="text-base font-semibold text-gray-100 mb-2 truncate">
-                          {flow.name || 'Untitled Flow'}
-                          {isRun && (
-                            <span className="ml-1 text-xs text-gray-500">
-                              (run)
-                            </span>
-                          )}
-                        </h3>
-                      )}
-
-                      {/* Execution Count */}
-                      <div className="text-xs text-gray-400 mb-2">
-                        {flow.executionCount || 0}{' '}
-                        {flow.executionCount === 1 ? 'execution' : 'executions'}
-                      </div>
-
-                      {/* Divider and Date/Toggle Row */}
-                      <div className="pt-2 mt-2 border-t border-white/5">
-                        <div
-                          className="flex items-center justify-between"
+                            }
+                          }}
                           onClick={(e) => e.stopPropagation()}
+                          className="flex-1 px-2 py-1 text-base font-semibold bg-[#0a0a0a] text-gray-100 border border-[#30363d] rounded focus:outline-none focus:border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const success = await submitRename();
+                            if (success) {
+                              setRenamingFlowId(null);
+                            }
+                          }}
+                          className="p-1 rounded hover:bg-gray-700/50 text-green-400 hover:text-green-300"
+                          title="Confirm (Enter)"
                         >
-                          {/* Cron Toggle or Webhook Toggle - mutually exclusive */}
-                          <div>
-                            {flow.cronSchedule ? (
-                              <CronToggle
-                                flowId={flow.id}
-                                compact={true}
-                                syncInputsWithFlow={false}
-                                showScheduleText={true}
-                              />
-                            ) : (
-                              <WebhookToggle
-                                flowId={flow.id}
-                                compact={true}
-                                showCopyButton={true}
-                              />
-                            )}
-                          </div>
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            cancelRename();
+                            setRenamingFlowId(null);
+                          }}
+                          className="p-1 rounded hover:bg-gray-700/50 text-gray-400 hover:text-gray-300"
+                          title="Cancel (Esc)"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <h3 className="text-base font-semibold text-gray-100 mb-2 truncate">
+                        {flow.name || 'Untitled Flow'}
+                        {isRun && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            (run)
+                          </span>
+                        )}
+                      </h3>
+                    )}
 
-                          {/* Created Date */}
-                          <div className="text-xs text-gray-500">
-                            {new Date(flow.createdAt)
-                              .toLocaleString(undefined, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                              .replace(/, (\d{4})/g, ' $1')}
-                          </div>
+                    {/* Execution Count */}
+                    <div className="text-xs text-gray-400 mb-2">
+                      {flow.executionCount || 0}{' '}
+                      {flow.executionCount === 1 ? 'execution' : 'executions'}
+                    </div>
+
+                    {/* Divider and Date/Toggle Row */}
+                    <div className="pt-2 mt-2 border-t border-white/5">
+                      <div
+                        className="flex items-center justify-between"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Cron Toggle or Webhook Toggle - mutually exclusive */}
+                        <div>
+                          {flow.cronSchedule ? (
+                            <CronToggle
+                              flowId={flow.id}
+                              compact={true}
+                              syncInputsWithFlow={false}
+                              showScheduleText={true}
+                            />
+                          ) : (
+                            <WebhookToggle
+                              flowId={flow.id}
+                              compact={true}
+                              showCopyButton={true}
+                            />
+                          )}
+                        </div>
+
+                        {/* Created Date */}
+                        <div className="text-xs text-gray-500">
+                          {new Date(flow.createdAt)
+                            .toLocaleString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                            .replace(/, (\d{4})/g, ' $1')}
                         </div>
                       </div>
                     </div>
-
-                    {/* Menu Button - always visible, disabled when loading */}
-                    {!isOptimisticLoading && (
-                      <div
-                        className="absolute top-3 right-3"
-                        ref={openMenuId === flow.id ? menuRef : null}
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => handleMenuToggle(flow.id, e)}
-                          className="p-2 rounded-md hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
-                          aria-label="Flow options"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        {openMenuId === flow.id && (
-                          <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
-                            <button
-                              type="button"
-                              onClick={(e) =>
-                                handleRenameClick(flow.id, flow.name, e)
-                              }
-                              className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-purple-600/20 hover:text-purple-400 flex items-center gap-2 transition-colors"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                              Rename Flow
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleDuplicateClick(flow.id, e)}
-                              disabled={
-                                isDuplicating && duplicatingFlowId === flow.id
-                              }
-                              className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-blue-600/20 hover:text-blue-400 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Copy className="w-4 h-4" />
-                              {isDuplicating && duplicatingFlowId === flow.id
-                                ? 'Duplicating...'
-                                : 'Duplicate Flow'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteClick(flow.id, e)}
-                              className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 flex items-center gap-2 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete Flow
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
+
+                  {/* Menu Button - always visible, disabled when loading */}
+                  {!isOptimisticLoading && (
+                    <div
+                      className="absolute top-3 right-3"
+                      ref={openMenuId === flow.id ? menuRef : null}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleMenuToggle(flow.id, e)}
+                        className="p-2 rounded-md hover:bg-gray-700/50 text-gray-400 hover:text-gray-200 transition-all duration-200"
+                        aria-label="Flow options"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {openMenuId === flow.id && (
+                        <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-[#21262d] border border-[#30363d] overflow-hidden z-10">
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              handleRenameClick(flow.id, flow.name, e)
+                            }
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-purple-600/20 hover:text-purple-400 flex items-center gap-2 transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Rename Flow
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDuplicateClick(flow.id, e)}
+                            disabled={
+                              isDuplicating && duplicatingFlowId === flow.id
+                            }
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-blue-600/20 hover:text-blue-400 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Copy className="w-4 h-4" />
+                            {isDuplicating && duplicatingFlowId === flow.id
+                              ? 'Duplicating...'
+                              : 'Duplicate Flow'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteClick(flow.id, e)}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-red-600/20 hover:text-red-400 flex items-center gap-2 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Flow
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

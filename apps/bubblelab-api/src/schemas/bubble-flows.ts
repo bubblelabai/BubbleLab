@@ -18,7 +18,6 @@ import {
   generateBubbleFlowCodeSchema,
   validateBubbleFlowCodeResponseSchema,
 } from './index.js';
-import { object } from 'zod';
 
 // POST /bubble-flow - Validate and store BubbleFlow
 export const createBubbleFlowRoute = createRoute({
@@ -603,14 +602,16 @@ export const deleteBubbleFlowRoutes = createRoute({
     body: {
       content: {
         'application/json': {
-          schema: object({
-            ids: z
-              .array(z.coerce.string().regex(/^[0-9]+$/))
-              .min(2, 'Atleast 2 ids are required'),
-          }).openapi({
-            description: 'Bubbleflow ids',
-            example: { ids: ['124', '2124', '323'] },
-          }),
+          schema: z
+            .object({
+              ids: z
+                .array(z.coerce.string().regex(/^[0-9]+$/))
+                .min(2, 'At least 2 ids are required'),
+            })
+            .openapi({
+              description: 'Bubbleflow ids',
+              example: { ids: ['124', '2124', '323'] },
+            }),
         },
       },
       description: 'BubbleFlows deleted successfully',

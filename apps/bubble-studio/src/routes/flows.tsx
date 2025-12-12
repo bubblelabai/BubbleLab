@@ -101,7 +101,7 @@ function HomeRoute() {
     const deleteCount = selectedFlowIds.length;
 
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${deleteCount} workflows?\n\nThis action cannot be undone `
+      `Are you sure you want to delete ${deleteCount} workflows?\n\nThis action cannot be undone.`
     );
 
     if (confirmed) {

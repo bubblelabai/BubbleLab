@@ -841,7 +841,7 @@ app.openapi(deleteBubbleFlowRoutes, async (c) => {
   if (flowsToDelete.length === 0) {
     return c.json(
       {
-        error: 'Bubbleflows not found',
+        error: 'BubbleFlows not found',
       },
       404
     );
@@ -849,9 +849,7 @@ app.openapi(deleteBubbleFlowRoutes, async (c) => {
 
   const verifiedIds = flowsToDelete.map((flow) => flow.id);
 
-  const result = await db
-    .delete(bubbleFlows)
-    .where(inArray(bubbleFlows.id, verifiedIds));
+  await db.delete(bubbleFlows).where(inArray(bubbleFlows.id, verifiedIds));
 
   return c.json({ message: 'BubbleFlows deleted successfully' }, 200);
 });
