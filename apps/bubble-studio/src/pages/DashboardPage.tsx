@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '../hooks/useUser';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import { useGenerationStore } from '../stores/generationStore';
 import { useOutputStore } from '../stores/outputStore';
@@ -12,6 +13,7 @@ import {
   resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
+import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
   PRESET_PROMPTS,
@@ -23,15 +25,6 @@ import {
 import { trackTemplate } from '../services/analytics';
 import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
 import { SubmitTemplateModal } from '../components/SubmitTemplateModal';
-
-// LoadingDots component using bouncing animation for code generation
-const LoadingDots: React.FC = () => {
-  return (
-    <span className="inline-block animate-bounce text-purple-200 font-bold ml-1">
-      ●●●
-    </span>
-  );
-};
 
 // INTEGRATIONS and AI_MODELS now imported from shared lib
 
@@ -66,12 +59,16 @@ export function DashboardPage({
   autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const navigate = useNavigate();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const { startStreaming, stopStreaming } = useGenerationStore();
   const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
+  const [showOnboardingQuestionnaire, setShowOnboardingQuestionnaire] =
+    useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -332,6 +329,39 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     }
   }, [pendingJsonImport, generationPrompt, onGenerateCode]);
 
+  // Check if user needs to complete onboarding questionnaire
+  useEffect(() => {
+    if (
+      isSignedIn &&
+      isUserLoaded &&
+      user &&
+      !hasCheckedOnboarding &&
+      !showSignInModal
+    ) {
+      setHasCheckedOnboarding(true);
+
+      // Check if onboarding is already completed via Clerk metadata
+      // Use optional chaining to safely access publicMetadata
+      const publicMetadata = (
+        user as { publicMetadata?: { onboardingCompleted?: boolean } }
+      ).publicMetadata;
+      const hasCompletedOnboarding =
+        publicMetadata?.onboardingCompleted === true;
+
+      if (!hasCompletedOnboarding) {
+        // Show onboarding questionnaire for new users
+        setShowOnboardingQuestionnaire(true);
+      }
+    }
+  }, [isSignedIn, isUserLoaded, user, hasCheckedOnboarding, showSignInModal]);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = () => {
+    setShowOnboardingQuestionnaire(false);
+    // Optionally reload user data to get updated metadata
+    // The user object will be updated on next render cycle
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-100 font-sans selection:bg-purple-500/30 relative overflow-hidden">
       {/* Background Effects */}
@@ -474,6 +504,10 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     // Stop the animation by resetting to a stable state
                     setDisplayedPlaceholder(fullMessage);
                     setIsDeleting(false);
+                    // Reset selected preset to clear template selection
+                    if (selectedPreset !== -1) {
+                      setSelectedPreset(-1);
+                    }
                     return;
                   }
 
@@ -531,11 +565,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                         : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
                     }`}
                   >
-                    {isStreaming ? (
-                      <LoadingDots />
-                    ) : (
-                      <ArrowUp className="w-5 h-5" />
-                    )}
+                    <ArrowUp className="w-5 h-5" />
                   </button>
                   <div
                     className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
@@ -805,6 +835,12 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       <SignInModal
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
+      />
+
+      {/* Onboarding Questionnaire - shows for new users after sign up */}
+      <OnboardingQuestionnaire
+        isVisible={showOnboardingQuestionnaire}
+        onComplete={handleOnboardingComplete}
       />
 
       {/* Submit Template Modal */}

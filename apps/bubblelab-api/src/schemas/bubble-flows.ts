@@ -3,6 +3,8 @@ import {
   errorResponseSchema,
   createBubbleFlowSchema,
   createBubbleFlowResponseSchema,
+  createEmptyBubbleFlowSchema,
+  createEmptyBubbleFlowResponseSchema,
   executeBubbleFlowSchema,
   executeBubbleFlowResponseSchema,
   bubbleFlowDetailsResponseSchema,
@@ -47,6 +49,49 @@ export const createBubbleFlowRoute = createRoute({
         },
       },
       description: 'Validation failed or invalid input',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['BubbleFlow'],
+});
+
+// POST /bubble-flow/empty - Create empty BubbleFlow (for async code generation)
+export const createEmptyBubbleFlowRoute = createRoute({
+  method: 'post',
+  path: '/empty',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createEmptyBubbleFlowSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      content: {
+        'application/json': {
+          schema: createEmptyBubbleFlowResponseSchema,
+        },
+      },
+      description:
+        'Empty BubbleFlow created successfully. Code generation in progress.',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid input',
     },
     500: {
       content: {

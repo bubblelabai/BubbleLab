@@ -242,10 +242,15 @@ class ApiClient {
   }
 
   // Streaming POST
-  async postStream(endpoint: string, data?: unknown): Promise<Response> {
+  async postStream(
+    endpoint: string,
+    data?: unknown,
+    options?: { signal?: AbortSignal }
+  ): Promise<Response> {
     return this.makeStreamingRequest(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      signal: options?.signal,
     });
   }
 }

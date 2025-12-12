@@ -332,4 +332,207 @@ Please generate the best possible YC launch post based on the above.\`;
       expect(stepsInMain.length).toBe(0);
     });
   });
+  it('should handle AI agent with tool configurations', async () => {
+    const code = `
+import {z} from 'zod';
+
+import {
+  // Base classes
+  BubbleFlow,
+
+  // Service Bubbles
+  GithubBubble,
+  AIAgentBubble,
+
+  // Event Types
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output {
+  comparisonAndValidation: string;
+  processed: boolean;
+}
+
+export interface GithubComparisonPayload extends WebhookEvent {
+  /** First GitHub repository URL or "owner/repo" string. */
+  repo1: string;
+  /** Second GitHub repository URL or "owner/repo" string. */
+  repo2: string;
+  /** Text to validate for factual correctness. */
+  validationText: string;
+}
+
+interface RepoDetails {
+  owner: string;
+  repo: string;
+}
+
+export class GithubRepoComparatorFlow extends BubbleFlow<'webhook/http'> {
+  
+  // Parses a GitHub repository string (URL or "owner/repo") into owner and repo names
+  private parseRepoString(input: string): RepoDetails {
+    const cleanInput = input.trim();
+    
+    // Handle full URLs
+    if (cleanInput.startsWith('http')) {
+      const urlParts = cleanInput.split('/');
+      // https://github.com/owner/repo
+      const repoIndex = urlParts.length - 1;
+      const ownerIndex = urlParts.length - 2;
+      return {
+        owner: urlParts[ownerIndex],
+        repo: urlParts[repoIndex].replace('.git', '')
+      };
+    }
+    
+    // Handle "owner/repo" format
+    const parts = cleanInput.split('/');
+    if (parts.length === 2) {
+      return {
+        owner: parts[0],
+        repo: parts[1]
+      };
+    }
+    
+    throw new Error(\`Invalid repository format: \${input}. Expected "owner/repo" or full GitHub URL.\`);
+  }
+
+  // Fetches repository file structure and README content to build a context summary
+  private async fetchRepoContext(details: RepoDetails): Promise<string> {
+    const { owner, repo } = details;
+    let context = \`Repository: \${owner}/\${repo}\\n\`;
+
+    // 1. Get file structure (root directory)
+    // Lists files in the root directory to understand project structure and language
+    const dirBubble = new GithubBubble({
+      operation: 'get_directory',
+      owner,
+      repo,
+      path: '' // Root
+    });
+
+    const dirResult = await dirBubble.action();
+    
+    if (dirResult.success && dirResult.data?.contents) {
+      const files = dirResult.data.contents.map((f: any) => f.name).join(', ');
+      context += \`Root Files: \${files}\\n\`;
+    } else {
+      context += \`Root Files: Unable to list (Error: \${dirResult.error || 'Unknown'})\\n\`;
+    }
+
+    // 2. Get README.md content
+    // Fetches the README file to get the project description and documentation
+    const readmeBubble = new GithubBubble({
+      operation: 'get_file',
+      owner,
+      repo,
+      path: 'README.md'
+    });
+
+    const readmeResult = await readmeBubble.action();
+
+    if (readmeResult.success && readmeResult.data?.content) {
+      // Content is base64 encoded
+      const decoded = Buffer.from(readmeResult.data.content, 'base64').toString('utf-8');
+      // Truncate if too long to avoid token limits (e.g., first 5000 chars)
+      const truncated = decoded.length > 5000 ? decoded.substring(0, 5000) + '...[truncated]' : decoded;
+      context += \`README Content:\\n\${truncated}\\n\`;
+    } else {
+      // Try lowercase readme.md just in case
+      const readmeLowerBubble = new GithubBubble({
+        operation: 'get_file',
+        owner,
+        repo,
+        path: 'readme.md'
+      });
+      const lowerResult = await readmeLowerBubble.action();
+      if (lowerResult.success && lowerResult.data?.content) {
+         const decoded = Buffer.from(lowerResult.data.content, 'base64').toString('utf-8');
+         const truncated = decoded.length > 5000 ? decoded.substring(0, 5000) + '...[truncated]' : decoded;
+         context += \`README Content:\\n\${truncated}\\n\`;
+      } else {
+         context += \`README Content: Not found or unable to fetch.\\n\`;
+      }
+    }
+
+    return context;
+  }
+
+  // Uses AI to compare the two repositories and validate the user's text
+  private async performComparisonAndValidation(
+    repo1Context: string, 
+    repo2Context: string, 
+    validationText: string
+  ): Promise<string> {
+    // Analyzes both repositories and the validation text to generate a comprehensive report
+    // Uses gemini-3-pro-preview for advanced reasoning capabilities required for code comparison
+    const agent = new AIAgentBubble({
+      model: { model: 'google/gemini-3-pro-preview' },
+      systemPrompt: \`You are an expert Senior Software Engineer and Technical Auditor. 
+Your task is to:
+1. Compare two GitHub repositories based on their file structure and README content. Highlight key differences in purpose, tech stack, and architecture.
+2. Validate a specific text provided by the user for factual correctness. If the text relates to the repos, use the repo context. If it's general knowledge, use your internal knowledge base.
+
+Structure your response clearly with headings: "Repository Comparison" and "Factual Validation".\`,
+      message: \`Here is the data for analysis:
+
+=== REPOSITORY 1 ===
+\${repo1Context}
+
+=== REPOSITORY 2 ===
+\${repo2Context}
+
+=== TEXT TO VALIDATE ===
+\${validationText}\`
+    });
+
+    const result = await agent.action();
+
+    if (!result.success) {
+      throw new Error(\`AI Analysis failed: \${result.error}\`);
+    }
+
+    return result.data.response;
+  }
+
+  async handle(payload: GithubComparisonPayload): Promise<Output> {
+    // Default values for destructuring
+    const { 
+      repo1 = 'facebook/react', 
+      repo2 = 'vuejs/core', 
+      validationText = 'React uses a virtual DOM while Vue uses a real DOM exclusively.' 
+    } = payload;
+
+    // 1. Parse Repo Strings
+    const repo1Details = this.parseRepoString(repo1);
+    const repo2Details = this.parseRepoString(repo2);
+
+    // 2. Fetch Context for both repos
+    // We run these sequentially to ensure stability, though Promise.all could be used for speed
+    const repo1Context = await this.fetchRepoContext(repo1Details);
+    const repo2Context = await this.fetchRepoContext(repo2Details);
+
+    // 3. Perform AI Analysis
+    const analysisResult = await this.performComparisonAndValidation(repo1Context, repo2Context, validationText);
+
+    return {
+      comparisonAndValidation: analysisResult,
+      processed: true
+    };
+  }
+}
+`;
+
+    const validationResult = await getValidationResponse(code);
+    const stepGraph = await validateGraph(validationResult);
+    // Assert that the workflow was correctly parsed for AI agent with tool configurations
+    expect(validationResult.workflow).toBeDefined();
+    expect(Array.isArray(validationResult.workflow?.root)).toBe(true);
+    expect(validationResult.workflow?.root.length).toBeGreaterThan(0);
+
+    const stepsInMain = stepGraph.steps.filter(
+      (step) => step.id === 'step-main'
+    );
+    expect(stepsInMain.length).toBe(0);
+  });
 });

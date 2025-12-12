@@ -50,7 +50,7 @@
   },
   "packageManager": "pnpm@10.16.1",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "lint-staged": {
     "**/*.{js,jsx,ts,tsx,json,md,yml,yaml}": [

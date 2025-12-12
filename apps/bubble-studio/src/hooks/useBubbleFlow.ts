@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type Query } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { api } from '../lib/api';
 import type {
@@ -29,7 +29,22 @@ interface UseBubbleFlowResult {
   syncWithBackend: () => Promise<void>;
 }
 
-export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
+export function useBubbleFlow(
+  flowId: number | null,
+  options?: {
+    refetchInterval?:
+      | number
+      | false
+      | ((
+          query: Query<
+            BubbleFlowDetailsResponse,
+            Error,
+            BubbleFlowDetailsResponse,
+            (string | number | null)[]
+          >
+        ) => number | false);
+  }
+): UseBubbleFlowResult {
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -47,6 +62,7 @@ export function useBubbleFlow(flowId: number | null): UseBubbleFlowResult {
     enabled: !!flowId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: options?.refetchInterval,
   });
 
   const setOptimisticData = useCallback(
