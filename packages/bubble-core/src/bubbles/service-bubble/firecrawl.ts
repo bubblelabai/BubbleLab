@@ -1128,7 +1128,7 @@ export class FirecrawlBubble<
 > {
   static readonly type = 'service' as const;
   static readonly service = 'firecrawl';
-  static readonly authType = 'apiKey' as const;
+  static readonly authType = 'apikey' as const;
   static readonly bubbleName = 'firecrawl';
   static readonly schema = FirecrawlParamsSchema;
   static readonly resultSchema = FirecrawlResultSchema;
