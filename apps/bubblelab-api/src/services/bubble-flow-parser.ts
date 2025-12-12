@@ -137,6 +137,8 @@ export async function parseBubbleFlow(
 
     // Build reverse lookup map from class names to bubble names using BubbleRegistry
     const classNameToBubbleName = await buildClassNameLookup();
+    // Build import alias map to resolve aliased imports
+    const importAliasMap = buildImportAliasMap(sourceFile);
 
     function visit(node: ts.Node) {
       // Look for variable declarations with bubble instantiations
@@ -146,7 +148,8 @@ export async function parseBubbleFlow(
           node.initializer,
           sourceFile,
           classNameToBubbleName,
-          unregisteredClasses
+          unregisteredClasses,
+          importAliasMap
         );
 
         if (bubbleInfo) {
@@ -163,7 +166,8 @@ export async function parseBubbleFlow(
           node.expression,
           sourceFile,
           classNameToBubbleName,
-          unregisteredClasses
+          unregisteredClasses,
+          importAliasMap
         );
 
         if (bubbleInfo) {
@@ -234,11 +238,64 @@ async function buildClassNameLookup(): Promise<
   return lookup;
 }
 
+/**
+ * Builds a map of import aliases to their original class names.
+ * Handles patterns like: import { ResearchAgentBubble as xxx } from '...'
+ * Maps: "xxx" -> "ResearchAgentBubble"
+ */
+function buildImportAliasMap(sourceFile: ts.SourceFile): Map<string, string> {
+  const aliasMap = new Map<string, string>();
+
+  function visit(node: ts.Node) {
+    if (ts.isImportDeclaration(node) && node.importClause) {
+      const importClause = node.importClause;
+
+      // Handle named imports: import { X as Y } from '...'
+      if (
+        importClause.namedBindings &&
+        ts.isNamedImports(importClause.namedBindings)
+      ) {
+        importClause.namedBindings.elements.forEach((element) => {
+          const identifierName = element.name.text;
+          // Check if there's an alias (propertyName exists when there's an "as" clause)
+          if (element.propertyName) {
+            // Has alias: import { OriginalName as AliasName }
+            const alias = identifierName; // What's used in code
+            const originalName = element.propertyName.text; // Original class name
+            aliasMap.set(alias, originalName);
+          } else {
+            // No alias: import { OriginalName }
+            // Map to itself for consistency
+            aliasMap.set(identifierName, identifierName);
+          }
+        });
+      }
+
+      // Handle namespace imports: import * as X from '...'
+      // Note: For namespace imports, we can't easily map to specific classes
+      // This would require more complex analysis of the namespace usage
+      if (
+        importClause.namedBindings &&
+        ts.isNamespaceImport(importClause.namedBindings)
+      ) {
+        // Namespace imports are not currently supported for bubble parsing
+        // as we can't determine which specific class from the namespace is being used
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return aliasMap;
+}
+
 function extractBubbleFromExpression(
   expression: ts.Expression,
   sourceFile: ts.SourceFile,
   classNameLookup: Map<string, { bubbleName: string; className: string }>,
-  unregisteredClasses: Set<string>
+  unregisteredClasses: Set<string>,
+  importAliasMap: Map<string, string>
 ): Omit<ParsedBubble, 'variableName'> | null {
   // Handle await expressions only if they contain instantiations
   if (ts.isAwaitExpression(expression)) {
@@ -246,7 +303,8 @@ function extractBubbleFromExpression(
       expression.expression,
       sourceFile,
       classNameLookup,
-      unregisteredClasses
+      unregisteredClasses,
+      importAliasMap
     );
     if (awaitResult) {
       awaitResult.hasAwait = true;
@@ -260,7 +318,8 @@ function extractBubbleFromExpression(
       expression,
       sourceFile,
       classNameLookup,
-      unregisteredClasses
+      unregisteredClasses,
+      importAliasMap
     );
     if (result) {
       result.hasAwait = false;
@@ -283,7 +342,8 @@ function extractBubbleFromExpression(
         propertyAccess.expression,
         sourceFile,
         classNameLookup,
-        unregisteredClasses
+        unregisteredClasses,
+        importAliasMap
       );
       if (result) {
         result.hasAwait = false;
@@ -302,24 +362,34 @@ function extractBubbleFromNewExpression(
   newExpr: ts.NewExpression,
   sourceFile: ts.SourceFile,
   classNameLookup: Map<string, { bubbleName: string; className: string }>,
-  unregisteredClasses: Set<string>
+  unregisteredClasses: Set<string>,
+  importAliasMap: Map<string, string>
 ): Omit<ParsedBubble, 'variableName'> | null {
   if (!newExpr.expression || !ts.isIdentifier(newExpr.expression)) {
     return null;
   }
 
-  const className = newExpr.expression.text;
+  let className = newExpr.expression.text;
+
+  // Resolve import alias if it exists
+  // e.g., if user wrote: import { ResearchAgentBubble as xxx } from '...'
+  // and then: new xxx(...), we need to resolve "xxx" -> "ResearchAgentBubble"
+  const resolvedClassName = importAliasMap.get(className);
+  if (resolvedClassName) {
+    className = resolvedClassName;
+  }
 
   // Check if it's a built-in JavaScript class - if so, ignore it
   if (ALLOWED_BUILTIN_CLASSES.has(className)) {
     return null; // Built-in class, not a bubble - don't parse or report as error
   }
 
-  // Look up the bubble info using the registry
+  // Look up the bubble info using the registry (with resolved class name)
   const bubbleInfo = classNameLookup.get(className);
   if (!bubbleInfo) {
     // Track unregistered classes for error reporting (excluding built-ins)
-    unregisteredClasses.add(className);
+    // Use the original identifier name for error reporting, not the resolved one
+    unregisteredClasses.add(newExpr.expression.text);
     return null; // Not a registered bubble
   }
 
@@ -452,6 +522,7 @@ export async function reconstructBubbleFlow(
       replacement: string;
     }> = [];
     const classNameLookup = await buildClassNameLookup();
+    const importAliasMap = buildImportAliasMap(sourceFile);
 
     // Track which anonymous bubble parameters have been used for matching
     const usedAnonymousBubbles = new Set<string>();
@@ -469,7 +540,8 @@ export async function reconstructBubbleFlow(
             node.initializer,
             sourceFile,
             classNameLookup,
-            new Set() // Empty set for reconstruction, we don't track errors here
+            new Set(), // Empty set for reconstruction, we don't track errors here
+            importAliasMap
           );
           if (bubbleInfo) {
             // Validate bubble name matches
@@ -502,7 +574,8 @@ export async function reconstructBubbleFlow(
           node.expression,
           sourceFile,
           classNameLookup,
-          new Set()
+          new Set(),
+          importAliasMap
         );
 
         if (bubbleInfo) {

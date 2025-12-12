@@ -416,6 +416,79 @@ This is not valid TypeScript code
       expect(result.errors).toBeDefined();
       expect(result.errors!.length).toBeGreaterThan(0);
     });
+
+    it('should parse bubbles with import aliases', async () => {
+      const code = `
+import { BubbleFlow, ResearchAgentTool as ResearchAgent } from '@bubblelab/bubble-core';
+
+export class TestFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: any) {
+    const result = await new ResearchAgent({
+      query: "What is TypeScript?",
+      maxIterations: 3
+    }).action();
+    
+    return { data: result };
+  }
+}`;
+
+      const result = await parseBubbleFlow(code);
+
+      expect(result.success).toBe(true);
+      expect(Object.keys(result.bubbles)).toHaveLength(1);
+
+      const bubble = result.bubbles['result'];
+      expect(bubble).toBeDefined();
+      expect(bubble.bubbleName).toBe('research-agent-tool');
+      expect(bubble.className).toBe('ResearchAgentTool');
+      expect(bubble.parameters).toHaveLength(2);
+
+      const queryParam = bubble.parameters.find((p) => p.name === 'query');
+      expect(queryParam).toBeDefined();
+      expect(queryParam!.value).toBe('"What is TypeScript?"');
+      expect(queryParam!.type).toBe('string');
+
+      const maxIterParam = bubble.parameters.find(
+        (p) => p.name === 'maxIterations'
+      );
+      expect(maxIterParam).toBeDefined();
+      expect(maxIterParam!.value).toBe('3');
+      expect(maxIterParam!.type).toBe('number');
+    });
+
+    it('should parse multiple bubbles with different import aliases', async () => {
+      const code = `
+import { BubbleFlow, ResearchAgentTool as ResearchAgent, AIAgentBubble as AIAgent } from '@bubblelab/bubble-core';
+
+export class TestFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: any) {
+    const research = await new ResearchAgent({
+      query: "Search query"
+    }).action();
+    
+    const ai = await new AIAgent({
+      message: "Process the results"
+    }).action();
+    
+    return { research, ai };
+  }
+}`;
+
+      const result = await parseBubbleFlow(code);
+
+      expect(result.success).toBe(true);
+      expect(Object.keys(result.bubbles)).toHaveLength(2);
+
+      const researchBubble = result.bubbles['research'];
+      expect(researchBubble).toBeDefined();
+      expect(researchBubble.bubbleName).toBe('research-agent-tool');
+      expect(researchBubble.className).toBe('ResearchAgentTool');
+
+      const aiBubble = result.bubbles['ai'];
+      expect(aiBubble).toBeDefined();
+      expect(aiBubble.bubbleName).toBe('ai-agent');
+      expect(aiBubble.className).toBe('AIAgentBubble');
+    });
   });
 
   describe('reconstructBubbleFlow', () => {
