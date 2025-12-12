@@ -36,6 +36,7 @@ export const fixtures = {
   'techweek-scrape': '',
   'para-with-variable-alias': '',
   'starter-flow': '',
+  'research-agent-step': '',
   'emails-complex': '',
   'content-creation': '',
   'linkedin-lead-finder-problematic': '',
