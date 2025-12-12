@@ -453,6 +453,21 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(parseResult.valid).toBe(true);
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
+      it.skip('should execute a flow with a batch process loop', async () => {
+        const testScript = getFixture('batch-process-loop');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+        expect(result).toBeDefined();
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          true
+        );
+        expect(parseResult.valid).toBe(true);
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      });
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {

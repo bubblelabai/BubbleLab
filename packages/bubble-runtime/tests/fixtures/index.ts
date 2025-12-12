@@ -34,6 +34,7 @@ export const fixtures = {
   yfinance: '',
   'cron-test': '',
   'techweek-scrape': '',
+  'batch-process-loop': '',
   'para-with-variable-alias': '',
   'starter-flow': '',
   'research-agent-step': '',
