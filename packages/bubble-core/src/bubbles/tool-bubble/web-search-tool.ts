@@ -148,7 +148,17 @@ export class WebSearchTool extends ToolBubble<
       let resultsArray:
         | Exclude<typeof response.data.web, undefined>[number][]
         | Exclude<typeof response.data.other, undefined>[number][] = [];
-      if (response.data.web) {
+      if (!response.success) {
+        return {
+          results: [],
+          query,
+          creditsUsed: 0,
+          totalResults: 0,
+          searchEngine: 'Firecrawl',
+          success: false,
+          error: response.error || 'Search failed',
+        };
+      } else if (response.data.web) {
         resultsArray = response.data.web;
       } else if (response.data.other) {
         resultsArray = response.data.other;

@@ -1266,7 +1266,7 @@ export class FirecrawlBubble<
       return {
         operation: 'scrape',
         success: false,
-        error: 'Firecrawl API Key is required but was not provided',
+        error: 'FIRECRAWL_API_KEY is required',
       };
     }
     const firecrawl = new Firecrawl({
@@ -1336,7 +1336,7 @@ export class FirecrawlBubble<
       return {
         operation: 'search',
         success: false,
-        error: 'Firecrawl API Key is required but was not provided',
+        error: 'FIRECRAWL_API_KEY is required',
       };
     }
     const firecrawl = new Firecrawl({
@@ -1415,7 +1415,7 @@ export class FirecrawlBubble<
       return {
         operation: 'map',
         success: false,
-        error: 'Firecrawl API Key is required but was not provided',
+        error: 'FIRECRAWL_API_KEY is required',
         links: [],
       };
     }
@@ -1483,7 +1483,7 @@ export class FirecrawlBubble<
       return {
         operation: 'crawl',
         success: false,
-        error: 'Firecrawl API Key is required but was not provided',
+        error: 'FIRECRAWL_API_KEY is required',
         status: 'failed',
         total: 0,
         completed: 0,
@@ -1563,7 +1563,7 @@ export class FirecrawlBubble<
       return {
         operation: 'extract',
         success: false,
-        error: 'Firecrawl API Key is required but was not provided',
+        error: 'FIRECRAWL_API_KEY is required',
       };
     }
     const firecrawl = new Firecrawl({

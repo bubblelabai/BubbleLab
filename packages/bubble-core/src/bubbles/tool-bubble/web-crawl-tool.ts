@@ -151,6 +151,9 @@ export class WebCrawlTool extends ToolBubble<
       console.log(`[WebCrawlTool] Starting crawl for URL:`, url);
 
       const crawlResult = await this.executeCrawl(startTime);
+      if (!crawlResult.success) {
+        return crawlResult;
+      }
 
       // Process pages in batches of 5 for parallel summarization
       const batchSize = 5;
@@ -300,6 +303,19 @@ export class WebCrawlTool extends ToolBubble<
       'web_crawl_tool_firecrawl'
     );
     const response = await firecrawl.action();
+    if (!response.success) {
+      return {
+        url,
+        success: false,
+        creditsUsed: 0,
+        error: response.error || 'Crawl failed',
+        pages: [],
+        totalPages: 0,
+        metadata: {
+          loadTime: Date.now() - startTime,
+        },
+      };
+    }
 
     // Process crawled pages
     const pages: Array<{
