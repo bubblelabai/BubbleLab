@@ -269,6 +269,36 @@ function TruncatedContent({
 }
 
 /**
+ * Sanitize HTML by removing style tags, inline styles, and script tags
+ * This prevents CSS from affecting the execution history page styling
+ */
+function sanitizeHTML(html: string): string {
+  if (!html || typeof html !== 'string') {
+    return html;
+  }
+
+  // Use DOM API for safer parsing (same approach as existing sanitizeHtml)
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+
+  // Remove <style> tags and their content (prevents CSS leakage)
+  const styleTags = tempDiv.querySelectorAll('style');
+  styleTags.forEach((style) => style.remove());
+
+  // Remove <script> tags and their content (security)
+  const scripts = tempDiv.querySelectorAll('script');
+  scripts.forEach((script) => script.remove());
+
+  // Remove inline style attributes from all elements (prevents CSS leakage)
+  const allElements = tempDiv.querySelectorAll('*');
+  allElements.forEach((el) => {
+    el.removeAttribute('style');
+  });
+
+  return tempDiv.innerHTML;
+}
+
+/**
  * Render a string value - either as JSON, markdown, HTML, or regular string
  * Includes early bailouts for large content to prevent performance issues
  */
@@ -482,9 +512,11 @@ function renderStringValue(
     }
 
     const unescaped = unescapeContent(value);
+    // Sanitize HTML to remove style tags and inline styles that could affect page styling
+    const sanitized = sanitizeHTML(unescaped);
     const previewUnescaped = isTruncated
-      ? unescapeContent(displayValue)
-      : unescaped;
+      ? sanitizeHTML(unescapeContent(displayValue))
+      : sanitized;
     const containerClass = isInline
       ? 'prose prose-invert prose-sm max-w-none inline-block [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none'
       : 'prose prose-invert prose-sm max-w-none my-2 [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded [&_img]:my-2 [&_a]:text-gray-300 [&_a]:hover:text-white [&_a]:underline [&_*]:outline-none';
@@ -492,7 +524,7 @@ function renderStringValue(
     const htmlContentFactory = () => (
       <div
         className={containerClass}
-        dangerouslySetInnerHTML={{ __html: unescaped }}
+        dangerouslySetInnerHTML={{ __html: sanitized }}
         style={{ outline: 'none' }}
       />
     );
