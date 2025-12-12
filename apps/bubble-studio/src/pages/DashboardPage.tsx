@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '../hooks/useUser';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import { useGenerationStore } from '../stores/generationStore';
 import { useOutputStore } from '../stores/outputStore';
@@ -12,6 +13,7 @@ import {
   resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
+import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
   PRESET_PROMPTS,
@@ -57,12 +59,16 @@ export function DashboardPage({
   autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const navigate = useNavigate();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const { startStreaming, stopStreaming } = useGenerationStore();
   const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
+  const [showOnboardingQuestionnaire, setShowOnboardingQuestionnaire] =
+    useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -322,6 +328,39 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       onGenerateCode();
     }
   }, [pendingJsonImport, generationPrompt, onGenerateCode]);
+
+  // Check if user needs to complete onboarding questionnaire
+  useEffect(() => {
+    if (
+      isSignedIn &&
+      isUserLoaded &&
+      user &&
+      !hasCheckedOnboarding &&
+      !showSignInModal
+    ) {
+      setHasCheckedOnboarding(true);
+
+      // Check if onboarding is already completed via Clerk metadata
+      // Use optional chaining to safely access publicMetadata
+      const publicMetadata = (
+        user as { publicMetadata?: { onboardingCompleted?: boolean } }
+      ).publicMetadata;
+      const hasCompletedOnboarding =
+        publicMetadata?.onboardingCompleted === true;
+
+      if (!hasCompletedOnboarding) {
+        // Show onboarding questionnaire for new users
+        setShowOnboardingQuestionnaire(true);
+      }
+    }
+  }, [isSignedIn, isUserLoaded, user, hasCheckedOnboarding, showSignInModal]);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = () => {
+    setShowOnboardingQuestionnaire(false);
+    // Optionally reload user data to get updated metadata
+    // The user object will be updated on next render cycle
+  };
 
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-100 font-sans selection:bg-purple-500/30 relative overflow-hidden">
@@ -796,6 +835,12 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       <SignInModal
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
+      />
+
+      {/* Onboarding Questionnaire - shows for new users after sign up */}
+      <OnboardingQuestionnaire
+        isVisible={showOnboardingQuestionnaire}
+        onComplete={handleOnboardingComplete}
       />
 
       {/* Submit Template Modal */}
