@@ -25,16 +25,28 @@ export interface MethodInvocationInfo {
   invocationIndex: number;
   hasAwait: boolean;
   arguments: string;
-  statementType: 'variable_declaration' | 'assignment' | 'return' | 'simple';
+  statementType:
+    | 'variable_declaration'
+    | 'assignment'
+    | 'return'
+    | 'simple'
+    | 'condition_expression';
   variableName?: string;
   variableType?: 'const' | 'let' | 'var';
   destructuringPattern?: string; // e.g., "{ a, b }" or "[x, y]" for destructuring assignments
   context?: 'default' | 'promise_all_element';
+  /** For condition_expression: the line where the containing statement (if/while/etc) starts */
+  containingStatementLine?: number;
+  /** For condition_expression: the exact source range of the call expression to replace */
+  callRange?: { start: number; end: number };
+  /** For condition_expression: the full text of the call expression (e.g., "this.validateEmail(email)") */
+  callText?: string;
 }
 
 export class BubbleScript {
   private ast: TSESTree.Program;
   private scopeManager: ScopeManager;
+  public parsingErrors: string[] = [];
 
   // Stores parsed bubble information with variable $id as key
   private parsedBubbles: Record<number, ParsedBubbleWithInfo>;

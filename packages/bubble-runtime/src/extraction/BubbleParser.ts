@@ -1117,11 +1117,16 @@ export class BubbleParser {
               | 'variable_declaration'
               | 'assignment'
               | 'return'
-              | 'simple' = 'simple';
+              | 'simple'
+              | 'condition_expression' = 'simple';
             let variableName: string | undefined;
             let variableType: 'const' | 'let' | 'var' | undefined;
             let destructuringPattern: string | undefined;
             let hasAwait = false;
+            // For condition_expression: track the containing statement info
+            let containingStatementLine: number | undefined;
+            let callRange: { start: number; end: number } | undefined;
+            let callText: string | undefined;
 
             // Check if parent is AwaitExpression
             if (parent?.type === 'AwaitExpression') {
@@ -1155,6 +1160,32 @@ export class BubbleParser {
                 currentParent.type === 'SpreadElement' // Spread: ...expr
               ) {
                 isInComplexExpression = true;
+                break;
+              }
+
+              // Check if we're inside a condition statement (if/while/for/switch/do-while)
+              // These need special handling - extract call before the statement and replace in-place
+              if (
+                currentParent.type === 'IfStatement' ||
+                currentParent.type === 'WhileStatement' ||
+                currentParent.type === 'DoWhileStatement' ||
+                currentParent.type === 'ForStatement' ||
+                currentParent.type === 'SwitchStatement'
+              ) {
+                statementType = 'condition_expression';
+                containingStatementLine = currentParent.loc?.start.line;
+                // Capture the call range - include await if present
+                const callNode = hasAwait ? parent : node;
+                if (callNode?.range) {
+                  callRange = {
+                    start: callNode.range[0],
+                    end: callNode.range[1],
+                  };
+                  callText = this.bubbleScript.substring(
+                    callRange.start,
+                    callRange.end
+                  );
+                }
                 break;
               }
 
@@ -1225,6 +1256,9 @@ export class BubbleParser {
               variableType,
               destructuringPattern,
               context: invocationContext,
+              containingStatementLine,
+              callRange,
+              callText,
             });
           }
         }
