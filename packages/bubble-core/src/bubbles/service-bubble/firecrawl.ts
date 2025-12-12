@@ -515,7 +515,7 @@ const FirecrawlScrapeOptionsSchema = z.object({
     .number()
     .default(0)
     .describe(
-      'Milliseconds of extra wait time before scraping (use sparingly). This waiting time is in addition to Firecrawl\’s smart wait feature.'
+      'Milliseconds of extra wait time before scraping (use sparingly). This waiting time is in addition to Firecrawl’s smart wait feature.'
     ),
   mobile: z.boolean().optional().describe('Whether to emulate a mobile device'),
   parsers: z
