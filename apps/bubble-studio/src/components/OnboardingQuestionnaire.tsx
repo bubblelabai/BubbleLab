@@ -1,5 +1,23 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Loader2,
+  Rocket,
+  Zap,
+  Code,
+  ClipboardList,
+  Settings,
+  TrendingUp,
+  BookOpen,
+  Sparkles,
+  Search,
+  Music,
+  UserPlus,
+  Gift,
+  SkipForward,
+} from 'lucide-react';
 import { useUser } from '../hooks/useUser';
 
 // Extend Window interface for Clerk
@@ -15,28 +33,29 @@ declare global {
 
 // Persona options
 const PERSONA_OPTIONS = [
-  { id: 'founder', label: 'Founder / Startup', icon: '🚀' },
-  { id: 'agency', label: 'Automation Agency', icon: '⚡' },
-  { id: 'engineer', label: 'Software Engineer', icon: '💻' },
-  { id: 'product', label: 'Product Manager', icon: '📋' },
-  { id: 'operations', label: 'Operations / Ops', icon: '⚙️' },
-  { id: 'marketer', label: 'Marketer', icon: '📈' },
-  { id: 'student', label: 'Student / Learning', icon: '📚' },
-  { id: 'other', label: 'Other', icon: '✨' },
+  { id: 'founder', label: 'Founder / Startup', icon: Rocket },
+  { id: 'agency', label: 'Automation Agency', icon: Zap },
+  { id: 'engineer', label: 'Software Engineer', icon: Code },
+  { id: 'product', label: 'Product Manager', icon: ClipboardList },
+  { id: 'operations', label: 'Operations / Ops', icon: Settings },
+  { id: 'marketer', label: 'Marketer', icon: TrendingUp },
+  { id: 'student', label: 'Student / Learning', icon: BookOpen },
+  { id: 'other', label: 'Other', icon: Sparkles },
 ];
 
 // Discovery channel options
+// Using logos from public/integrations folder where available
 const DISCOVERY_OPTIONS = [
-  { id: 'twitter', label: 'Twitter / X', icon: '𝕏' },
-  { id: 'linkedin', label: 'LinkedIn', icon: '💼' },
-  { id: 'youtube', label: 'YouTube', icon: '▶️' },
-  { id: 'google', label: 'Google Search', icon: '🔍' },
-  { id: 'producthunt', label: 'Product Hunt', icon: '🐱' },
-  { id: 'github', label: 'GitHub', icon: '🐙' },
-  { id: 'discord', label: 'Discord', icon: '💬' },
-  { id: 'reddit', label: 'Reddit', icon: '🔴' },
-  { id: 'referral', label: 'Friend / Referral', icon: '👋' },
-  { id: 'other', label: 'Other', icon: '✨' },
+  { id: 'twitter', label: 'Twitter / X', logo: '/integrations/x.svg' },
+  { id: 'linkedin', label: 'LinkedIn', logo: '/integrations/linkedin.svg' },
+  { id: 'youtube', label: 'YouTube', logo: '/integrations/youtube.svg' },
+  { id: 'google', label: 'Google Search', icon: Search }, // Logo not found
+  { id: 'instagram', label: 'Instagram', logo: '/integrations/instagram.svg' },
+  { id: 'github', label: 'GitHub', logo: '/integrations/github.svg' },
+  { id: 'tiktok', label: 'TikTok', icon: Music }, // Logo not found
+  { id: 'reddit', label: 'Reddit', logo: '/integrations/reddit.svg' },
+  { id: 'referral', label: 'Friend / Referral', icon: UserPlus },
+  { id: 'other', label: 'Other', icon: Sparkles },
 ];
 
 interface OnboardingQuestionnaireProps {
@@ -50,7 +69,9 @@ export const OnboardingQuestionnaire: React.FC<
   const { user } = useUser();
   const [currentStep, setCurrentStep] = useState(0);
   const [persona, setPersona] = useState<string>('');
+  const [personaOtherText, setPersonaOtherText] = useState<string>('');
   const [discoveryChannel, setDiscoveryChannel] = useState<string>('');
+  const [discoveryOtherText, setDiscoveryOtherText] = useState<string>('');
   const [wantsInterview, setWantsInterview] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +83,15 @@ export const OnboardingQuestionnaire: React.FC<
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return persona !== '';
+        return (
+          persona !== '' &&
+          (persona !== 'other' || personaOtherText.trim() !== '')
+        );
       case 1:
-        return discoveryChannel !== '';
+        return (
+          discoveryChannel !== '' &&
+          (discoveryChannel !== 'other' || discoveryOtherText.trim() !== '')
+        );
       case 2:
         return wantsInterview !== null;
       default:
@@ -86,8 +113,11 @@ export const OnboardingQuestionnaire: React.FC<
             Authorization: `Bearer ${await getAuthToken()}`,
           },
           body: JSON.stringify({
-            persona,
-            discoveryChannel,
+            persona: persona === 'other' ? personaOtherText.trim() : persona,
+            discoveryChannel:
+              discoveryChannel === 'other'
+                ? discoveryOtherText.trim()
+                : discoveryChannel,
             wantsInterview,
           }),
         }
@@ -148,28 +178,51 @@ export const OnboardingQuestionnaire: React.FC<
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {PERSONA_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setPersona(option.id)}
-                  className={`p-4 rounded-xl border text-left transition-all duration-200 ${
-                    persona === option.id
-                      ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{option.icon}</span>
-                    <span
-                      className={`font-medium ${persona === option.id ? 'text-white' : 'text-gray-300'}`}
-                    >
-                      {option.label}
-                    </span>
-                  </div>
-                </button>
-              ))}
+              {PERSONA_OPTIONS.map((option) => {
+                const IconComponent = option.icon;
+                const isSelected = persona === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      setPersona(option.id);
+                      if (option.id !== 'other') {
+                        setPersonaOtherText('');
+                      }
+                    }}
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${
+                      isSelected
+                        ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <IconComponent
+                        className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-400'}`}
+                      />
+                      <span
+                        className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}
+                      >
+                        {option.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+            {persona === 'other' && (
+              <div className="mt-4">
+                <input
+                  type="text"
+                  value={personaOtherText}
+                  onChange={(e) => setPersonaOtherText(e.target.value)}
+                  placeholder="Please specify..."
+                  className="w-full px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                  autoFocus
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -185,28 +238,60 @@ export const OnboardingQuestionnaire: React.FC<
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {DISCOVERY_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setDiscoveryChannel(option.id)}
-                  className={`p-4 rounded-xl border text-left transition-all duration-200 ${
-                    discoveryChannel === option.id
-                      ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                      : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{option.icon}</span>
-                    <span
-                      className={`font-medium ${discoveryChannel === option.id ? 'text-white' : 'text-gray-300'}`}
-                    >
-                      {option.label}
-                    </span>
-                  </div>
-                </button>
-              ))}
+              {DISCOVERY_OPTIONS.map((option) => {
+                const isSelected = discoveryChannel === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      setDiscoveryChannel(option.id);
+                      if (option.id !== 'other') {
+                        setDiscoveryOtherText('');
+                      }
+                    }}
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 ${
+                      isSelected
+                        ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
+                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {'logo' in option ? (
+                        <img
+                          src={option.logo}
+                          alt={option.label}
+                          className={`w-5 h-5 object-contain ${
+                            isSelected ? 'opacity-100' : 'opacity-60'
+                          }`}
+                        />
+                      ) : (
+                        <option.icon
+                          className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-400'}`}
+                        />
+                      )}
+                      <span
+                        className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}
+                      >
+                        {option.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+            {discoveryChannel === 'other' && (
+              <div className="mt-4">
+                <input
+                  type="text"
+                  value={discoveryOtherText}
+                  onChange={(e) => setDiscoveryOtherText(e.target.value)}
+                  placeholder="Please specify..."
+                  className="w-full px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                  autoFocus
+                />
+              </div>
+            )}
           </div>
         );
 
@@ -237,7 +322,9 @@ export const OnboardingQuestionnaire: React.FC<
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">🎁</span>
+                  <Gift
+                    className={`w-6 h-6 ${wantsInterview === true ? 'text-white' : 'text-gray-400'}`}
+                  />
                   <div>
                     <span
                       className={`font-medium text-lg ${wantsInterview === true ? 'text-white' : 'text-gray-300'}`}
@@ -260,7 +347,9 @@ export const OnboardingQuestionnaire: React.FC<
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">⏭️</span>
+                  <SkipForward
+                    className={`w-6 h-6 ${wantsInterview === false ? 'text-white' : 'text-gray-400'}`}
+                  />
                   <div>
                     <span
                       className={`font-medium text-lg ${wantsInterview === false ? 'text-white' : 'text-gray-300'}`}
@@ -291,7 +380,7 @@ export const OnboardingQuestionnaire: React.FC<
             <div
               key={step}
               className={`h-1.5 w-16 rounded-full transition-all duration-300 ${
-                step <= currentStep ? 'bg-purple-500' : 'bg-white/10'
+                step <= currentStep ? 'bg-white' : 'bg-white/10'
               }`}
             />
           ))}
