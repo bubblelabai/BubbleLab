@@ -49,10 +49,10 @@ const DISCOVERY_OPTIONS = [
   { id: 'twitter', label: 'Twitter / X', logo: '/integrations/x.svg' },
   { id: 'linkedin', label: 'LinkedIn', logo: '/integrations/linkedin.svg' },
   { id: 'youtube', label: 'YouTube', logo: '/integrations/youtube.svg' },
-  { id: 'google', label: 'Google Search', icon: Search }, // Logo not found
+  { id: 'google', label: 'Google Search', logo: '/integrations/google.svg' }, // Logo not found
   { id: 'instagram', label: 'Instagram', logo: '/integrations/instagram.svg' },
   { id: 'github', label: 'GitHub', logo: '/integrations/github.svg' },
-  { id: 'tiktok', label: 'TikTok', icon: Music }, // Logo not found
+  { id: 'tiktok', label: 'TikTok', logo: '/integrations/tiktok.svg' }, // Logo not found
   { id: 'reddit', label: 'Reddit', logo: '/integrations/reddit.svg' },
   { id: 'referral', label: 'Friend / Referral', icon: UserPlus },
   { id: 'other', label: 'Other', icon: Sparkles },
@@ -300,11 +300,11 @@ export const OnboardingQuestionnaire: React.FC<
           <div className="space-y-4">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-white mb-2">
-                Would you like 3 months of Pro for free?
+                Want a $20 Amazon gift card?
               </h2>
               <p className="text-gray-400 text-sm">
-                Join a quick 15-minute user interview and get 3 months of Pro
-                for free
+                Join a quick 15-minute user interview and get gift card on us!
+                🎁
               </p>
               <p className="text-gray-500 text-xs mt-2">
                 We'll reach out to {user?.emailAddresses?.[0]?.emailAddress} to
@@ -332,7 +332,7 @@ export const OnboardingQuestionnaire: React.FC<
                       Yes, I'd love to!
                     </span>
                     <p className="text-gray-500 text-sm mt-1">
-                      Get 3 months Pro free + help shape the product
+                      Get $20 Amazon gift card + help shape the product
                     </p>
                   </div>
                 </div>
