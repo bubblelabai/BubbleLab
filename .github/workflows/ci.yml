@@ -98,4 +98,4 @@ jobs:
       - name: Run tests
         run: pnpm test
         env:
-          CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
+          CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY || 'test-encryption-key-that-is-32-chars-long-for-testing' }}
