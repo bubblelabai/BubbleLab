@@ -670,6 +670,9 @@ export class BubbleInjector {
         this.bubbleScript.showScript('[BubbleInjector] After injectLogging');
       }
     } catch (error) {
+      this.bubbleScript.parsingErrors.push(
+        `Error injecting bubble logging and reinitialize bubble parameters: ${error instanceof Error ? error.message : String(error)}`
+      );
       console.error(
         'Error injecting bubble logging and reinitialize bubble parameters:',
         error
