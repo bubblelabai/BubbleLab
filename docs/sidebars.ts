@@ -65,6 +65,11 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
+    {
+      type: 'category',
+      label: 'Deployment',
+      items: ['deployment/railway'],
+    },
   ],
 };
 
