@@ -41,6 +41,9 @@ export enum CredentialType {
 
   // Database/Storage Credentials
   AIRTABLE_CRED = 'AIRTABLE_CRED',
+
+  // Media Generation Credentials
+  FAL_AI_API_KEY = 'FAL_AI_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -88,4 +91,5 @@ export type BubbleName =
   | 'agi-inc'
   | 'telegram'
   | 'airtable'
-  | 'notion';
+  | 'notion'
+  | 'fal-ai';

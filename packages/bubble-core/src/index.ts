@@ -64,6 +64,8 @@ export type { AGIIncParamsInput } from './bubbles/service-bubble/agi-inc.js';
 export { AirtableBubble } from './bubbles/service-bubble/airtable.js';
 export type { AirtableParamsInput } from './bubbles/service-bubble/airtable.js';
 export { NotionBubble } from './bubbles/service-bubble/notion/notion.js';
+export { FalAiBubble } from './bubbles/service-bubble/fal-ai.js';
+export type { FalAiParamsInput } from './bubbles/service-bubble/fal-ai.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
