@@ -7,6 +7,18 @@ export interface ApiError {
   data: unknown;
 }
 
+export class ApiHttpError extends Error implements ApiError {
+  status: number;
+  data: unknown;
+
+  constructor(status: number, data: unknown) {
+    super(`HTTP ${status}: ${JSON.stringify(data)}`);
+    this.name = 'ApiHttpError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -123,9 +135,7 @@ class ApiClient {
             toast.error('Request failed', { autoClose: 5000 });
           }
         }
-        throw new Error(
-          `HTTP ${response.status}: ${JSON.stringify(errorData)}`
-        );
+        throw new ApiHttpError(response.status, errorData);
       }
 
       // Handle successful responses
@@ -199,7 +209,7 @@ class ApiClient {
           toast.error('Request failed', { autoClose: 5000 });
         }
       }
-      throw new Error(`HTTP ${response.status}: ${JSON.stringify(errorData)}`);
+      throw new ApiHttpError(response.status, errorData);
     }
 
     return response;

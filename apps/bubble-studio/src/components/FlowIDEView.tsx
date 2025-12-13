@@ -27,6 +27,8 @@ import { filterEmptyInputs } from '@/utils/inputUtils';
 import { useRenameFlow } from '@/hooks/useRenameFlow';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
+import { ApiHttpError } from '@/lib/api';
+import { FlowNotFoundView } from '@/components/FlowNotFoundView';
 
 export interface FlowIDEViewProps {
   flowId: number;
@@ -60,12 +62,17 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   );
 
   // ============= React Query Hooks =============
-  const { data: currentFlow } = useBubbleFlow(flowId);
+  const { data: currentFlow, error, refetch } = useBubbleFlow(flowId);
   const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
     limit: 10,
   });
+
+  const isFlowNotFound =
+    error instanceof ApiHttpError
+      ? error.status === 404
+      : error instanceof Error && /^HTTP 404:/.test(error.message);
 
   // ============= Rename Flow Hook =============
   const {
@@ -125,6 +132,10 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
       }
     }
   }, [currentFlow?.id]);
+
+  if (isFlowNotFound) {
+    return <FlowNotFoundView flowId={flowId} onRetry={() => refetch()} />;
+  }
 
   const isRunnable = () => {
     if (!currentFlow) return false;
