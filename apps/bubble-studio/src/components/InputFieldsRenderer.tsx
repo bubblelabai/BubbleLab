@@ -16,6 +16,7 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -23,6 +24,7 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -30,6 +32,7 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -1001,50 +1004,52 @@ function InputFieldsRenderer({
                           : ''
                     }`}
                   />
-                  {(field.type === undefined || field.type === 'string') && (
-                    <div className="absolute right-2 top-2 flex items-center gap-1">
-                      {uploadedFileNames[field.name] ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFile(field.name)}
-                            disabled={isExecuting}
-                            className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            aria-label={`Delete uploaded file for ${field.name}`}
+                  {(field.type === undefined || field.type === 'string') &&
+                    (field.canBeFile === true ||
+                      field.canBeFile === undefined) && (
+                      <div className="absolute right-2 top-2 flex items-center gap-1">
+                        {uploadedFileNames[field.name] ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteFile(field.name)}
+                              disabled={isExecuting}
+                              className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label={`Delete uploaded file for ${field.name}`}
+                            >
+                              <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
+                            </button>
+                            <Paperclip className="w-3 h-3 text-neutral-300" />
+                          </>
+                        ) : (
+                          <label
+                            className="cursor-pointer group"
+                            title="Upload file (txt, csv, html, png, jpg)"
                           >
-                            <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
-                          </button>
-                          <Paperclip className="w-3 h-3 text-neutral-300" />
-                        </>
-                      ) : (
-                        <label
-                          className="cursor-pointer group"
-                          title="Upload file (txt, csv, html, png, jpg)"
-                        >
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
-                            disabled={isExecuting}
-                            aria-label={`Upload file for ${field.name}`}
-                            onChange={(e) => {
-                              const f = e.target.files?.[0] || null;
-                              handleFileChange(field.name, f);
-                              // reset so selecting the same file again triggers onChange
-                              e.currentTarget.value = '';
-                            }}
-                          />
-                          <Paperclip
-                            className={`w-3.5 h-3.5 transition-all ${
-                              isExecuting
-                                ? 'text-neutral-600 cursor-not-allowed'
-                                : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
-                            }`}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  )}
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
+                              disabled={isExecuting}
+                              aria-label={`Upload file for ${field.name}`}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0] || null;
+                                handleFileChange(field.name, f);
+                                // reset so selecting the same file again triggers onChange
+                                e.currentTarget.value = '';
+                              }}
+                            />
+                            <Paperclip
+                              className={`w-3.5 h-3.5 transition-all ${
+                                isExecuting
+                                  ? 'text-neutral-600 cursor-not-allowed'
+                                  : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
+                              }`}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    )}
                 </div>
 
                 {fieldErrors[field.name] && (
