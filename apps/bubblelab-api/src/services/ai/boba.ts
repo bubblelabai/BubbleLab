@@ -97,8 +97,12 @@ function mergeInputSchemas(
           const extractedItems = extractedProp.items as Record<string, unknown>;
 
           if ('canBeFile' in originalItems) {
+            const currentProp = mergedProperties[key] as Record<
+              string,
+              unknown
+            >;
             mergedProperties[key] = {
-              ...mergedProperties[key],
+              ...currentProp,
               items: {
                 ...extractedItems,
                 canBeFile: originalItems.canBeFile,
@@ -137,10 +141,18 @@ function mergeInputSchemas(
               }
             }
 
+            const currentProp = mergedProperties[key] as Record<
+              string,
+              unknown
+            >;
+            const currentItems = (currentProp.items || {}) as Record<
+              string,
+              unknown
+            >;
             mergedProperties[key] = {
-              ...mergedProperties[key],
+              ...currentProp,
               items: {
-                ...(mergedProperties[key] as Record<string, unknown>).items,
+                ...currentItems,
                 properties: mergedItemProperties,
               },
             };
