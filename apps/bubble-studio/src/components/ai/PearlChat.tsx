@@ -37,10 +37,10 @@ import { useExecutionStore } from '../../stores/executionStore';
 import {
   MAX_BYTES,
   bytesToMB,
-  isAllowedType,
+  isImageFile,
   isTextLike,
   readTextFile,
-  compressPngToBase64,
+  compressImageToBase64,
 } from '../../utils/fileUtils';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
 import { useBubbleDetail } from '../../hooks/useBubbleDetail';
@@ -64,7 +64,7 @@ import { playGenerationCompleteSound } from '../../utils/soundUtils';
 export function PearlChat() {
   // UI-only state (non-shared)
   const [uploadedFiles, setUploadedFiles] = useState<
-    Array<{ name: string; content: string }>
+    Array<{ name: string; content: string; fileType: 'image' | 'text' }>
   >([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
@@ -318,47 +318,84 @@ export function PearlChat() {
     if (!files || files.length === 0) return;
     setUploadError(null);
 
-    const newFiles: Array<{ name: string; content: string }> = [];
+    const newFiles: Array<{
+      name: string;
+      content: string;
+      fileType: 'image' | 'text';
+    }> = [];
 
+    const errors: string[] = [];
+
+    // Process all files
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      if (!isAllowedType(file)) {
-        setUploadError(
-          `Unsupported file type: ${file.name}. Allowed: html, csv, txt, png`
+      // Auto-detect file type
+      const isImage = isImageFile(file);
+      const isText = isTextLike(file);
+
+      if (!isImage && !isText) {
+        errors.push(
+          `${file.name} is not supported. Please upload images (PNG, JPG, GIF, WebP) or text files (TXT, CSV, MD, HTML).`
         );
         continue;
       }
 
       try {
-        if (isTextLike(file)) {
+        if (isText) {
           if (file.size > MAX_BYTES) {
-            setUploadError(
-              `File too large: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            errors.push(
+              `${file.name} too large. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
             );
             continue;
           }
           const text = await readTextFile(file);
-          newFiles.push({ name: file.name, content: text });
-        } else {
-          // PNG path: compress client-side, convert to base64 (no data URL prefix)
-          const base64 = await compressPngToBase64(file);
+          newFiles.push({ name: file.name, content: text, fileType: 'text' });
+        } else if (isImage) {
+          // Image path: compress and convert to base64
+          const base64 = await compressImageToBase64(file);
           const approxBytes = Math.floor((base64.length * 3) / 4);
           if (approxBytes > MAX_BYTES) {
-            setUploadError(
-              `Image too large after compression: ${file.name}. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            errors.push(
+              `${file.name} too large after compression. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
             );
             continue;
           }
-          newFiles.push({ name: file.name, content: base64 });
+          newFiles.push({
+            name: file.name,
+            content: base64,
+            fileType: 'image',
+          });
         }
-      } catch {
-        setUploadError(`Failed to read or process file: ${file.name}`);
+      } catch (error) {
+        errors.push(
+          `Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        continue;
       }
     }
 
+    // Log for debugging
+    console.log('Processed files:', {
+      totalSelected: files.length,
+      successfullyProcessed: newFiles.length,
+      errorCount: errors.length,
+      files: newFiles.map((f) => ({ name: f.name, type: f.fileType })),
+    });
+
+    // Update state only once at the end - replace instead of append
     if (newFiles.length > 0) {
-      setUploadedFiles((prev) => [...prev, ...newFiles]);
+      setUploadedFiles(newFiles);
+      console.log('Uploaded file:', newFiles[0]?.name, newFiles[0]?.fileType);
+    }
+
+    // Set error message if any errors occurred (show first error)
+    if (errors.length > 0) {
+      setUploadError(
+        errors.length === 1
+          ? errors[0]
+          : `${errors.length} files failed: ${errors[0]}`
+      );
     }
   };
 
@@ -999,7 +1036,11 @@ export function PearlChat() {
                   key={index}
                   className="flex items-center gap-1.5 px-2 py-1 bg-gray-800/50 rounded border border-gray-700"
                 >
-                  <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  {file.fileType === 'image' ? (
+                    <Image className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  ) : (
+                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  )}
                   <span className="text-xs text-gray-300 truncate max-w-[120px]">
                     {file.name}
                   </span>
@@ -1037,24 +1078,23 @@ export function PearlChat() {
 
           {/* Bottom action bar - buttons grouped on the right */}
           <div className="flex items-center justify-end gap-2 mt-2">
-            {/* Upload button */}
+            {/* Upload button - handles both images and text files */}
             <label
               className={`${
                 pearl.isPending || isGenerating
                   ? 'cursor-not-allowed'
                   : 'cursor-pointer'
               }`}
+              title="Upload file (Images: PNG, JPG, GIF, WebP | Text: TXT, CSV, MD, HTML)"
             >
               <input
                 type="file"
                 className="hidden"
-                accept=".html,.csv,.txt,image/png"
-                multiple
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,.txt,.csv,.md,.html,.htm"
                 disabled={pearl.isPending || isGenerating}
-                aria-label="Upload files"
+                aria-label="Upload file"
                 onChange={(e) => {
                   handleFileChange(e.target.files);
-                  // reset so selecting the same file again triggers onChange
                   e.currentTarget.value = '';
                 }}
               />
@@ -1062,12 +1102,10 @@ export function PearlChat() {
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                   pearl.isPending || isGenerating
                     ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
-                    : uploadedFiles.length > 0
-                      ? 'bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 hover:border-blue-500/60'
-                      : 'bg-gray-700/40 border border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
+                    : 'bg-gray-700/40 border border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
                 }`}
               >
-                <Image className="w-5 h-5" />
+                <Paperclip className="w-5 h-5" />
               </div>
             </label>
 

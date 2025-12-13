@@ -136,6 +136,7 @@ export function usePearlStream(options?: UsePearlStreamOptions) {
             : codeContext?.availableVariables,
         model: pearlRequest.model || 'google/gemini-2.5-pro',
         additionalContext: pearlRequest.additionalContext,
+        uploadedFiles: pearlRequest.uploadedFiles,
       };
 
       console.log('fullRequest', JSON.stringify(fullRequest, null, 2));
