@@ -9,6 +9,7 @@ import {
   Edit2,
   Check,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import { ExportModal } from '@/components/ExportModal';
 import FlowVisualizer from '@/components/flow_visualizer/FlowVisualizer';
@@ -27,12 +28,15 @@ import { filterEmptyInputs } from '@/utils/inputUtils';
 import { useRenameFlow } from '@/hooks/useRenameFlow';
 import { useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
+import { useNavigate } from '@tanstack/react-router';
 
 export interface FlowIDEViewProps {
   flowId: number;
 }
 
 export function FlowIDEView({ flowId }: FlowIDEViewProps) {
+  const navigate = useNavigate();
+
   // ============= Zustand Stores =============
   const {
     showLeftPanel,
@@ -60,7 +64,11 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   );
 
   // ============= React Query Hooks =============
-  const { data: currentFlow } = useBubbleFlow(flowId);
+  const {
+    data: currentFlow,
+    error: flowError,
+    loading: flowLoading,
+  } = useBubbleFlow(flowId);
   const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
@@ -156,6 +164,15 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     return '';
   };
 
+  // Check if the error is a 404 (flow not found)
+  const isFlowNotFound = () => {
+    if (!flowError) return false;
+    const errorMessage = flowError.message || '';
+    const has404Status = /HTTP\s+404|404/.test(errorMessage);
+    const hasNotFoundMessage = errorMessage.includes('BubbleFlow not found');
+    return has404Status && hasNotFoundMessage;
+  };
+
   const handleExportClick = () => {
     toggleExportModal();
   };
@@ -167,6 +184,15 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             {(() => {
+              // Show "Flow Not Found" if flow is not found
+              if (flowId && isFlowNotFound()) {
+                return (
+                  <h2 className="text-lg font-semibold text-gray-400 font-sans">
+                    Flow Not Found
+                  </h2>
+                );
+              }
+
               let name = '';
               let hasPrompt = false;
 
@@ -420,20 +446,55 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                           <div className="h-full min-h-0">
                             <div className="h-full bg-gradient-to-br from-[#1a1a1a] to-[#1a1a1a] relative">
                               {flowId ? (
-                                <FlowVisualizer
-                                  flowId={flowId}
-                                  onValidate={() =>
-                                    validateCodeMutation.mutateAsync({
-                                      code: editor.getCode(),
-                                      flowId: flowId,
-                                      syncInputsWithFlow: true,
-                                      credentials:
-                                        executionState.pendingCredentials,
-                                      defaultInputs:
-                                        executionState.executionInputs,
-                                    })
-                                  }
-                                />
+                                isFlowNotFound() ? (
+                                  <div className="h-full flex items-center justify-center p-8">
+                                    <div className="max-w-md w-full bg-[#1a1a1a] border border-[#30363d] rounded-2xl p-8 shadow-2xl text-center">
+                                      <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-700/50 rounded-full mb-4">
+                                        <AlertCircle className="h-8 w-8 text-gray-400" />
+                                      </div>
+                                      <h1 className="text-2xl font-bold text-white mb-2 font-sans">
+                                        Flow Not Found
+                                      </h1>
+                                      <p className="text-gray-400 text-base mb-6 font-sans">
+                                        The flow you're looking for doesn't
+                                        exist or has been deleted.
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          navigate({ to: '/flows' })
+                                        }
+                                        className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-600/50 text-blue-300 hover:text-blue-200 rounded-lg text-sm font-medium transition-all duration-200"
+                                      >
+                                        Go to Flows
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : flowLoading ? (
+                                  <div className="h-full flex items-center justify-center">
+                                    <div className="text-center">
+                                      <div className="w-8 h-8 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                      <p className="text-gray-400 text-sm">
+                                        Loading flow...
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <FlowVisualizer
+                                    flowId={flowId}
+                                    onValidate={() =>
+                                      validateCodeMutation.mutateAsync({
+                                        code: editor.getCode(),
+                                        flowId: flowId,
+                                        syncInputsWithFlow: true,
+                                        credentials:
+                                          executionState.pendingCredentials,
+                                        defaultInputs:
+                                          executionState.executionInputs,
+                                      })
+                                    }
+                                  />
+                                )
                               ) : (
                                 <div className="h-full flex items-center justify-center">
                                   <div className="text-center">
