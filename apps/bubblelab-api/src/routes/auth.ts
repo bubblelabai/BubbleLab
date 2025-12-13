@@ -33,14 +33,18 @@ authRoutes.post('/onboarding', async (c) => {
       return c.json({ ok: false, error: 'Missing required fields' }, 400);
     }
 
-    // Get user email from Clerk for the interview tracking
+    // Get user info from Clerk for analytics
     const clerkClient = getClerkClient(appType);
     let userEmail: string | null = null;
+    let userFirstName: string | null = null;
+    let userLastName: string | null = null;
 
     if (clerkClient) {
       try {
         const clerkUser = await clerkClient.users.getUser(clerkUserId);
         userEmail = clerkUser?.emailAddresses?.[0]?.emailAddress ?? null;
+        userFirstName = clerkUser?.firstName ?? null;
+        userLastName = clerkUser?.lastName ?? null;
 
         // Update Clerk user metadata to mark onboarding as complete
         await clerkClient.users.updateUserMetadata(clerkUserId, {
@@ -63,7 +67,9 @@ authRoutes.post('/onboarding', async (c) => {
         persona,
         discoveryChannel,
         wantsInterview,
-        userEmail, // Always include email for analytics
+        userEmail,
+        userFirstName,
+        userLastName,
         timestamp: new Date().toISOString(),
       },
       'onboarding_questionnaire_completed'
@@ -75,6 +81,8 @@ authRoutes.post('/onboarding', async (c) => {
         {
           userId: clerkUserId,
           userEmail,
+          userFirstName,
+          userLastName,
           persona,
           discoveryChannel,
           timestamp: new Date().toISOString(),
