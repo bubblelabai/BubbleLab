@@ -6,6 +6,8 @@ import {
   PearlRequest,
   PearlResponse,
   type StreamingEvent,
+  type CoffeeRequestExternalContextEvent,
+  type ClarificationQuestion,
 } from '@bubblelab/shared-schemas';
 import { sseToAsyncIterable } from '@/utils/sseStream';
 import type { GenerationStreamingEvent } from '@/types/generation';
@@ -291,16 +293,7 @@ async function startGenerationStream(
         if (event.type === 'coffee_clarification') {
           // Store clarification questions in pearlChatStore
           const data = event.data as {
-            questions: Array<{
-              id: string;
-              question: string;
-              choices: Array<{
-                id: string;
-                label: string;
-                description?: string;
-              }>;
-              context?: string;
-            }>;
+            questions: ClarificationQuestion[];
           };
           pearlStore.getState().setCoffeeQuestions(data.questions);
           pearlStore.getState().setCoffeePhase('clarifying');
@@ -308,6 +301,17 @@ async function startGenerationStream(
           useGenerationEventsStore.getState().addEvent(flowId, event);
           // Pause here - user needs to answer questions
           // The stream will complete, and building will be triggered by user action
+          continue;
+        }
+
+        if (event.type === 'coffee_request_context') {
+          // Store context request in pearlChatStore
+          const data = event.data as CoffeeRequestExternalContextEvent;
+          pearlStore.getState().setCoffeeContextRequest(data);
+          pearlStore.getState().setCoffeePhase('awaiting_context');
+          // Add event to generation store for UI visibility
+          useGenerationEventsStore.getState().addEvent(flowId, event);
+          // Pause here - user needs to provide credentials and approve context flow
           continue;
         }
 
@@ -536,6 +540,30 @@ export async function submitClarificationAndContinue(
       }
 
       // Handle Coffee-specific events
+      if (event.type === 'coffee_clarification') {
+        // Store clarification questions in pearlChatStore
+        const data = event.data as {
+          questions: ClarificationQuestion[];
+        };
+        pearlStore.getState().setCoffeeQuestions(data.questions);
+        pearlStore.getState().setCoffeePhase('clarifying');
+        // Add event to generation store for UI visibility
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        // Pause here - user needs to answer questions
+        continue;
+      }
+
+      if (event.type === 'coffee_request_context') {
+        // Store context request in pearlChatStore
+        const data = event.data as CoffeeRequestExternalContextEvent;
+        pearlStore.getState().setCoffeeContextRequest(data);
+        pearlStore.getState().setCoffeePhase('awaiting_context');
+        // Add event to generation store for UI visibility
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        // Pause here - user needs to provide credentials and approve context flow
+        continue;
+      }
+
       if (event.type === 'coffee_plan') {
         // Store the plan in pearlChatStore
         const data = event.data as {
@@ -571,6 +599,243 @@ export async function submitClarificationAndContinue(
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Planning failed';
     console.error(`[submitClarificationAndContinue] Error:`, errorMsg);
+
+    useGenerationEventsStore.getState().addEvent(flowId, {
+      type: 'error',
+      data: { error: errorMsg, recoverable: false },
+    });
+    pearlStore.getState().setCoffeePhase('idle');
+  }
+}
+
+/**
+ * Submits context flow execution and continues the Coffee planning phase.
+ * This executes the context-gathering flow with provided credentials,
+ * then resumes Coffee with the result.
+ *
+ * @param flowId - The flow ID
+ * @param prompt - Original prompt
+ * @param contextFlowCode - The flow code to execute for context gathering
+ * @param credentials - Mapping of credential types to credential IDs
+ */
+export async function submitContextAndContinue(
+  flowId: number,
+  prompt: string,
+  contextFlowCode: string,
+  credentials: Record<string, number>
+): Promise<void> {
+  const store = useGenerationEventsStore.getState();
+
+  // Get the pearlChatStore for Coffee state
+  const { getPearlChatStore } = await import('../stores/pearlChatStore');
+  const pearlStore = getPearlChatStore(flowId);
+
+  // Update phase to gathering
+  pearlStore.getState().setCoffeePhase('gathering');
+
+  try {
+    // Step 1: Execute the context-gathering flow
+    const contextResult = await api.post<{
+      success: boolean;
+      result?: unknown;
+      error?: string;
+    }>('/bubble-flow/generate/run-context-flow', {
+      flowCode: contextFlowCode,
+      credentials,
+    });
+
+    // Get the original context request before clearing it
+    const originalContextRequest = pearlStore.getState().coffeeContextRequest;
+
+    // Clear context request state
+    pearlStore.getState().clearCoffeeContextRequest();
+
+    // Step 2: Resume Coffee with context answer
+    const abortController = new AbortController();
+    store.registerStream(flowId, abortController);
+
+    // Update phase to planning
+    pearlStore.getState().setCoffeePhase('planning');
+
+    const response = await api.postStream(
+      '/bubble-flow/generate?phase=planning',
+      {
+        prompt: prompt.trim(),
+        flowId,
+        contextAnswer: {
+          flowId: originalContextRequest?.flowId || '',
+          status: contextResult.success ? 'success' : 'error',
+          result: contextResult.result,
+          error: contextResult.error,
+          originalRequest: originalContextRequest || undefined,
+        },
+      },
+      { signal: abortController.signal }
+    );
+
+    // Consume the stream and handle Coffee events
+    for await (const event of sseToAsyncIterable(response)) {
+      if (abortController.signal.aborted) {
+        console.log(
+          `[submitContextAndContinue] Stream aborted for flow ${flowId}`
+        );
+        return;
+      }
+
+      // Handle Coffee-specific events
+      if (event.type === 'coffee_clarification') {
+        // Store clarification questions in pearlChatStore
+        const data = event.data as {
+          questions: ClarificationQuestion[];
+        };
+        pearlStore.getState().setCoffeeQuestions(data.questions);
+        pearlStore.getState().setCoffeePhase('clarifying');
+        // Add event to generation store for UI visibility
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        // Pause here - user needs to answer questions
+        continue;
+      }
+
+      if (event.type === 'coffee_request_context') {
+        // Store context request in pearlChatStore
+        const data = event.data as CoffeeRequestExternalContextEvent;
+        pearlStore.getState().setCoffeeContextRequest(data);
+        pearlStore.getState().setCoffeePhase('awaiting_context');
+        // Add event to generation store for UI visibility
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        // Pause here - user needs to provide credentials and approve context flow
+        continue;
+      }
+
+      if (event.type === 'coffee_plan') {
+        const data = event.data as {
+          summary: string;
+          steps: Array<{
+            title: string;
+            description: string;
+            bubblesUsed?: string[];
+          }>;
+          estimatedBubbles: string[];
+        };
+        pearlStore.getState().setCoffeePlan(data);
+        pearlStore.getState().setCoffeePhase('ready');
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        continue;
+      }
+
+      if (event.type === 'coffee_complete') {
+        console.log(
+          `[submitContextAndContinue] Coffee planning completed for flow ${flowId}`
+        );
+        continue;
+      }
+
+      useGenerationEventsStore.getState().addEvent(flowId, event);
+    }
+
+    console.log(
+      `[submitContextAndContinue] Stream completed successfully for flow ${flowId}`
+    );
+  } catch (error) {
+    const errorMsg =
+      error instanceof Error ? error.message : 'Context gathering failed';
+    console.error(`[submitContextAndContinue] Error:`, errorMsg);
+
+    useGenerationEventsStore.getState().addEvent(flowId, {
+      type: 'error',
+      data: { error: errorMsg, recoverable: false },
+    });
+    pearlStore.getState().setCoffeePhase('idle');
+    pearlStore.getState().clearCoffeeContextRequest();
+  }
+}
+
+/**
+ * Rejects the context request and continues Coffee planning without external context.
+ * Coffee will proceed with generating a plan using the available information.
+ *
+ * @param flowId - The flow ID
+ * @param prompt - Original prompt
+ */
+export async function rejectContextAndContinue(
+  flowId: number,
+  prompt: string
+): Promise<void> {
+  const store = useGenerationEventsStore.getState();
+
+  // Get the pearlChatStore for Coffee state
+  const { getPearlChatStore } = await import('../stores/pearlChatStore');
+  const pearlStore = getPearlChatStore(flowId);
+
+  // Get the original context request before clearing it
+  const originalContextRequest = pearlStore.getState().coffeeContextRequest;
+  const contextFlowId = originalContextRequest?.flowId || '';
+
+  // Clear context request state
+  pearlStore.getState().clearCoffeeContextRequest();
+  pearlStore.getState().setCoffeePhase('planning');
+
+  try {
+    // Resume Coffee with rejection status
+    const abortController = new AbortController();
+    store.registerStream(flowId, abortController);
+
+    const response = await api.postStream(
+      '/bubble-flow/generate?phase=planning',
+      {
+        prompt: prompt.trim(),
+        flowId,
+        contextAnswer: {
+          flowId: contextFlowId,
+          status: 'rejected',
+          originalRequest: originalContextRequest || undefined,
+        },
+      },
+      { signal: abortController.signal }
+    );
+
+    // Consume the stream and handle Coffee events
+    for await (const event of sseToAsyncIterable(response)) {
+      if (abortController.signal.aborted) {
+        console.log(
+          `[rejectContextAndContinue] Stream aborted for flow ${flowId}`
+        );
+        return;
+      }
+
+      // Handle Coffee-specific events
+      if (event.type === 'coffee_plan') {
+        const data = event.data as {
+          summary: string;
+          steps: Array<{
+            title: string;
+            description: string;
+            bubblesUsed?: string[];
+          }>;
+          estimatedBubbles: string[];
+        };
+        pearlStore.getState().setCoffeePlan(data);
+        pearlStore.getState().setCoffeePhase('ready');
+        useGenerationEventsStore.getState().addEvent(flowId, event);
+        continue;
+      }
+
+      if (event.type === 'coffee_complete') {
+        console.log(
+          `[rejectContextAndContinue] Coffee planning completed for flow ${flowId}`
+        );
+        continue;
+      }
+
+      useGenerationEventsStore.getState().addEvent(flowId, event);
+    }
+
+    console.log(
+      `[rejectContextAndContinue] Stream completed successfully for flow ${flowId}`
+    );
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Planning failed';
+    console.error(`[rejectContextAndContinue] Error:`, errorMsg);
 
     useGenerationEventsStore.getState().addEvent(flowId, {
       type: 'error',

@@ -10,6 +10,8 @@ import type { ChatMessage } from '../components/ai/type';
 import type {
   ClarificationQuestion,
   CoffeePlanEvent,
+  CoffeeRequestExternalContextEvent,
+  CredentialType,
 } from '@bubblelab/shared-schemas';
 
 // Coffee phase types
@@ -17,6 +19,7 @@ export type CoffeePhase =
   | 'idle'
   | 'clarifying'
   | 'gathering'
+  | 'awaiting_context' // Waiting for user to provide credentials and approve context flow
   | 'planning'
   | 'ready'
   | 'skipped';
@@ -57,6 +60,10 @@ interface PearlChatState {
   coffeeAnswers: Record<string, string[]>;
   coffeePlan: CoffeePlanEvent | null;
   coffeeOriginalPrompt: string | null; // Store original prompt for retry/build
+  // Context request state (Phase 2 - runBubbleFlow)
+  coffeeContextRequest: CoffeeRequestExternalContextEvent | null;
+  coffeeContextCredentials: Partial<Record<CredentialType, number>>; // credentialType -> credentialId
+  isCoffeeLoading: boolean; // Loading state for Coffee operations
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -99,6 +106,16 @@ interface PearlChatState {
   updateCoffeeAnswer: (questionId: string, choiceIds: string[]) => void;
   setCoffeePlan: (plan: CoffeePlanEvent | null) => void;
   setCoffeeOriginalPrompt: (prompt: string | null) => void;
+  // Context request actions (Phase 2)
+  setCoffeeContextRequest: (
+    request: CoffeeRequestExternalContextEvent | null
+  ) => void;
+  setCoffeeContextCredential: (
+    credType: CredentialType,
+    credId: number | null
+  ) => void;
+  clearCoffeeContextRequest: () => void;
+  setIsCoffeeLoading: (loading: boolean) => void;
   clearCoffeeState: () => void;
 
   // Reset
@@ -125,6 +142,9 @@ function createPearlChatStore(flowId: number) {
     coffeeAnswers: {},
     coffeePlan: null,
     coffeeOriginalPrompt: null,
+    coffeeContextRequest: null,
+    coffeeContextCredentials: {},
+    isCoffeeLoading: false,
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -250,6 +270,34 @@ function createPearlChatStore(flowId: number) {
 
     setCoffeeOriginalPrompt: (prompt) => set({ coffeeOriginalPrompt: prompt }),
 
+    // Context request actions (Phase 2)
+    setCoffeeContextRequest: (request) =>
+      set({ coffeeContextRequest: request }),
+
+    setCoffeeContextCredential: (credType, credId) =>
+      set((state) => {
+        if (credId === null) {
+          // Remove the credential
+          const updated = { ...state.coffeeContextCredentials };
+          delete updated[credType];
+          return { coffeeContextCredentials: updated };
+        }
+        return {
+          coffeeContextCredentials: {
+            ...state.coffeeContextCredentials,
+            [credType]: credId,
+          },
+        };
+      }),
+
+    clearCoffeeContextRequest: () =>
+      set({
+        coffeeContextRequest: null,
+        coffeeContextCredentials: {},
+      }),
+
+    setIsCoffeeLoading: (loading) => set({ isCoffeeLoading: loading }),
+
     clearCoffeeState: () =>
       set({
         coffeePhase: 'idle',
@@ -257,6 +305,9 @@ function createPearlChatStore(flowId: number) {
         coffeeAnswers: {},
         coffeePlan: null,
         coffeeOriginalPrompt: null,
+        coffeeContextRequest: null,
+        coffeeContextCredentials: {},
+        isCoffeeLoading: false,
       }),
 
     reset: () =>
@@ -274,6 +325,9 @@ function createPearlChatStore(flowId: number) {
         coffeeAnswers: {},
         coffeePlan: null,
         coffeeOriginalPrompt: null,
+        coffeeContextRequest: null,
+        coffeeContextCredentials: {},
+        isCoffeeLoading: false,
       }),
   }));
 }

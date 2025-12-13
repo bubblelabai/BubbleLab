@@ -3,6 +3,7 @@ import { z } from '@hono/zod-openapi';
 import { BubbleParameterType } from './bubble-definition-schema';
 import { CredentialType } from './types';
 import { ServiceUsageSchema } from './bubbleflow-execution-schema';
+import { CoffeeContextAnswerSchema } from './coffee';
 
 // BubbleFlow generation schemas
 export const generateBubbleFlowCodeSchema = z.object({
@@ -29,6 +30,11 @@ export const generateBubbleFlowCodeSchema = z.object({
     description:
       'Plan context from Coffee agent (passed to Boba for enriched generation)',
     example: 'Plan: 1. Fetch data from API 2. Process with AI 3. Send to Slack',
+  }),
+  // Coffee context answer (when resuming after context-gathering flow execution)
+  contextAnswer: CoffeeContextAnswerSchema.optional().openapi({
+    description:
+      'Result of a context-gathering flow execution (used to resume Coffee planning)',
   }),
 });
 

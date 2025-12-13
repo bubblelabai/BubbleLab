@@ -9,6 +9,10 @@
  * - Ask clarification questions via multiple-choice
  * - Generate implementation plan with steps and bubble suggestions
  * - runBubbleFlow tool (mocked - returns NOT_AVAILABLE)
+ *
+ * Phase 2 Features:
+ * - runBubbleFlow tool validates code and requests credentials from user
+ * - Context gathering via actual BubbleFlow execution
  */
 
 import {
@@ -16,13 +20,16 @@ import {
   type CoffeeResponse,
   type CoffeePlanEvent,
   type ClarificationQuestion,
+  type CoffeeRequestExternalContextEvent,
   CoffeePlanEventSchema,
   ClarificationQuestionSchema,
+  CoffeeContextRequestInfoSchema,
   COFFEE_MAX_ITERATIONS,
   COFFEE_MAX_QUESTIONS,
   COFFEE_DEFAULT_MODEL,
   CREDENTIAL_ENV_MAP,
   CredentialType,
+  CRITICAL_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -30,15 +37,19 @@ import {
   ListBubblesTool,
   HumanMessage,
   type BaseMessage,
+  type ToolHookAfter,
+  type ToolHookContext,
 } from '@bubblelab/bubble-core';
+import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 import { env } from 'src/config/env.js';
+import { getBubbleFactory } from '../bubble-factory-instance.js';
 
 // Coffee agent output schema for JSON mode
 const CoffeeAgentOutputSchema = z.object({
   action: z
-    .enum(['askClarification', 'generatePlan'])
+    .enum(['askClarification', 'generatePlan', 'requestContext'])
     .describe('The action to take'),
   questions: z
     .array(ClarificationQuestionSchema)
@@ -46,6 +57,9 @@ const CoffeeAgentOutputSchema = z.object({
     .describe('Clarification questions (when action is askClarification)'),
   plan: CoffeePlanEventSchema.optional().describe(
     'Implementation plan (when action is generatePlan)'
+  ),
+  contextRequest: CoffeeContextRequestInfoSchema.optional().describe(
+    'Context request info (when action is requestContext) - the agent will then call runBubbleFlow tool'
   ),
 });
 
@@ -56,6 +70,9 @@ async function buildCoffeeSystemPrompt(): Promise<string> {
   const listBubblesTool = new ListBubblesTool({});
   const listBubblesResult = await listBubblesTool.action();
 
+  const boilerplate = (
+    await getBubbleFactory()
+  ).generateBubbleFlowBoilerplate();
   const bubbleList = listBubblesResult.data.bubbles
     .map(
       (bubble) =>
@@ -64,16 +81,27 @@ async function buildCoffeeSystemPrompt(): Promise<string> {
     .join('\n');
 
   return `You are Coffee, a Planning Agent for Bubble Lab workflows.
-Your role is to understand the user's workflow requirements, ask clarifying questions, and generate an implementation plan BEFORE code generation begins.
+Your role is to understand the user's workflow requirements, ask clarifying questions, gather external context when needed, and generate an implementation plan BEFORE code generation begins.
 
 ## YOUR RESPONSIBILITIES:
 1. Analyze the user's natural language request
-2. Identify any ambiguities or missing information
-3. Ask 1-${COFFEE_MAX_QUESTIONS} targeted clarification questions with multiple-choice options
-4. Generate a clear implementation plan once you have enough information
+2. Understand the bubbles implementation details and capabilities using get-bubble-detail tool
+3. If is is helpful to gather external data context (e.g., database schemas, file listings, google sheet files, etc.), use the tool runBubbleFlow to gather it, ex: spreadsheet names, table names, file names, schemas.
+4. Identify any ambiguities or missing information
+5. Ask 1-${COFFEE_MAX_QUESTIONS} targeted clarification questions with multiple-choice options
+6. Generate a clear implementation plan once you have enough information
 
-## AVAILABLE BUBBLES (integrations/tools):
+Here's the boilerplate template you should use as a starting point:
+\`\`\`typescript
+${boilerplate}
+\`\`\`
+
+Available bubbles in the system:
 ${bubbleList}
+
+${CRITICAL_INSTRUCTIONS}
+
+## 
 
 ## CLARIFICATION QUESTIONS GUIDELINES:
 - Ask questions ONLY when there's genuine ambiguity
@@ -85,6 +113,19 @@ ${bubbleList}
   - Specific integrations to use
   - Processing logic (filtering, transforming, etc.)
   - Trigger type (manual, scheduled, webhook)
+
+## CONTEXT GATHERING WITH runBubbleFlow:
+Use the runBubbleFlow tool when you need external context that would help create a better plan:
+- Database schema information (table names, columns, relationships)
+- File listings from cloud storage (Google Drive, etc.)
+- API endpoint information
+- Any other external data that would inform the workflow design
+
+IMPORTANT: When using runBubbleFlow:
+- The flow code must be valid BubbleFlow TypeScript code
+- The flow should NOT have any input parameters (inputSchema must be empty)
+- The flow will be validated and the user will be asked to provide credentials
+- Keep context-gathering flows simple - just fetch the minimal context needed
 
 ## PLAN GENERATION GUIDELINES:
 When generating a plan, include:
@@ -128,16 +169,22 @@ When you have enough information to generate a plan:
   }
 }
 
+IMPORTANT: When you need external context, DO NOT output JSON. Instead, DIRECTLY CALL the runBubbleFlow tool with proper BubbleFlow code. The tool will handle pausing for user credentials.
+
 ## DECISION PROCESS:
 1. Read the user's request carefully
-2. Check if clarification answers are provided (previous round)
-3. If this is the first interaction AND there's ambiguity → Ask clarification questions
-4. If clarification answers are provided OR request is clear → Generate the plan
-5. ALWAYS prefer generating a plan over asking more questions when possible
+2. Check if clarification answers or context answers are provided (previous round)
+3. If this is the first interaction AND there's ambiguity → get-bubble-details-tool to understand the bubbles implementation details and capabilities
+4. Run bubbleflow to get the external context if needed, ex: database schema, file listings, google sheet files, etc.
+5. Then ask clarification questions if needed based on additional context gathered.
+7. If clarification answers are provided OR request is clear → Generate the plan
+8. If additional context is needed, run bubbleflow to get it, ex: database schema, file listings, google sheet files, etc.
+9. ALWAYS prefer generating a plan over asking more questions when possible
 
 ## TOOLS AVAILABLE:
 - askClarification: Ask the user multiple-choice questions (handled via JSON output)
-- runBubbleFlow: Run a mini flow to gather context (e.g., fetch database schema, list files) - Currently NOT AVAILABLE in Phase 1
+- runBubbleFlow: Run a mini flow to gather context (e.g., fetch database schema, list files)
+- get-bubble-details-tool: Get the details of a bubble (e.g., input parameters, output structure), always run to check api for the bubble before running the bubbleFlow.
 
 Remember: Your goal is to understand the user's intent well enough to create a solid implementation plan. Don't over-question - if the request is reasonably clear, proceed with plan generation.`;
 }
@@ -165,6 +212,30 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
       '\n\nBased on these answers, please generate the implementation plan.';
   }
 
+  // Include context answer if provided
+  if (request.contextAnswer) {
+    // If we have the original request, include the AI's reasoning
+    if (request.contextAnswer.originalRequest) {
+      messageContent += `\n\n[AI Requested Context]\nI need to gather context to better understand your requirements.\n\nPurpose: ${request.contextAnswer.originalRequest.description}\n\nI'll run this flow to gather the context:\n\`\`\`typescript\n${request.contextAnswer.originalRequest.flowCode}\n\`\`\`\n`;
+    }
+
+    messageContent += '\n\n[Context Gathering Result]';
+    if (request.contextAnswer.status === 'success') {
+      messageContent += `\nThe context-gathering flow executed successfully.`;
+      messageContent += `\nResult: ${JSON.stringify(request.contextAnswer.result, null, 2)}`;
+      messageContent +=
+        '\n\nUse this context to generate a more informed implementation plan.';
+    } else if (request.contextAnswer.status === 'rejected') {
+      messageContent += `\nThe user chose to skip the context-gathering step.`;
+      messageContent +=
+        '\n\nProceed with generating the plan using the information available.';
+    } else if (request.contextAnswer.status === 'error') {
+      messageContent += `\nThe context-gathering flow failed with error: ${request.contextAnswer.error}`;
+      messageContent +=
+        '\n\nProceed with generating the plan using the information available.';
+    }
+  }
+
   messages.push(new HumanMessage(messageContent));
   return messages;
 }
@@ -186,6 +257,14 @@ export async function runCoffee(
     };
   }
 
+  // Track context request state (will be set by runBubbleFlow tool if called)
+  // Using an object wrapper because TypeScript can't track mutations inside closures
+  const coffeeState: {
+    contextRequest: CoffeeRequestExternalContextEvent | null;
+  } = {
+    contextRequest: null,
+  };
+
   try {
     // Build system prompt and conversation messages
     const systemPrompt = await buildCoffeeSystemPrompt();
@@ -198,6 +277,29 @@ export async function runCoffee(
       ...credentials,
     };
 
+    // Create afterToolCall hook to stop agent after runBubbleFlow is validated
+    const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
+      if (context.toolName === ('runBubbleFlow' as unknown)) {
+        console.log('[Coffee] Post-hook: runBubbleFlow completed');
+
+        // Check if the tool returned AWAITING_USER_INPUT status
+        const toolOutput = context.toolOutput?.data as {
+          status?: string;
+          flowId?: string;
+        };
+
+        if (toolOutput?.status === 'AWAITING_USER_INPUT') {
+          console.log(
+            '[Coffee] Post-hook: Context request validated, stopping agent execution'
+          );
+          // Stop the agent - we need user input before continuing
+          return { messages: context.messages, shouldStop: true };
+        }
+      }
+
+      return { messages: context.messages };
+    };
+
     // Create AI agent
     const agent = new AIAgentBubble({
       name: 'Coffee - Planning Agent',
@@ -207,43 +309,106 @@ export async function runCoffee(
       streamingCallback: (event) => {
         return apiStreamingCallback?.(event);
       },
+
       model: {
         model: COFFEE_DEFAULT_MODEL,
         temperature: 0.7,
         jsonMode: true,
       },
+      tools: [
+        {
+          name: 'get-bubble-details-tool',
+        },
+      ],
       customTools: [
         {
           name: 'runBubbleFlow',
           description:
-            'Run a mini bubble flow to gather context (e.g., fetch database schema, list available files). Currently NOT AVAILABLE in Phase 1.',
+            'Run a mini bubble flow to gather context (e.g., fetch database schema, list available files). The flow code must be valid BubbleFlow TypeScript and should NOT have any input parameters.',
           schema: z.object({
-            purpose: z.string().describe('What context you want to gather'),
+            purpose: z
+              .string()
+              .describe('Why you need this context (displayed to user)'),
             flowDescription: z
               .string()
-              .describe('Description of the mini flow to run'),
+              .describe(
+                'User-friendly description of what the flow does (displayed to user)'
+              ),
+            flowCode: z
+              .string()
+              .describe(
+                'The complete BubbleFlow TypeScript code to execute. Must be valid code with no input parameters.'
+              ),
           }),
           func: async (input: Record<string, unknown>) => {
-            // Mocked for Phase 1 - always returns NOT_AVAILABLE
-            console.log('[Coffee] runBubbleFlow called (mocked):', input);
+            console.log('[Coffee] runBubbleFlow called:', {
+              purpose: input.purpose,
+              flowDescription: input.flowDescription,
+            });
 
-            // Send context gathering event to frontend
+            const flowCode = input.flowCode as string;
+            const flowDescription = input.flowDescription as string;
+
+            // Validate the flow code
+            const bubbleFactory = await getBubbleFactory();
+            const validationResult = await validateAndExtract(
+              flowCode,
+              bubbleFactory,
+              false // skipValidation
+            );
+
+            if (!validationResult.valid) {
+              console.error(
+                '[Coffee] Flow validation failed:',
+                validationResult.errors
+              );
+              return {
+                data: {
+                  status: 'error',
+                  message: `Flow validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
+                },
+              };
+            }
+
+            // Extract required credentials from the validated flow
+            // The validation result already has requiredCredentials extracted
+            const requiredCredentialsMap =
+              validationResult.requiredCredentials || {};
+
+            // Flatten to unique credential types
+            const requiredCredentials: CredentialType[] = [
+              ...new Set(Object.values(requiredCredentialsMap).flat()),
+            ];
+
+            // Generate a unique flow ID for this context request
+            const contextFlowId = `coffee-ctx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+            // Build the context request event
+            const contextRequestEvent: CoffeeRequestExternalContextEvent = {
+              flowId: contextFlowId,
+              flowCode: flowCode,
+              requiredCredentials,
+              description: flowDescription,
+            };
+
+            // Emit the context request event to frontend
             if (apiStreamingCallback) {
               await apiStreamingCallback({
-                type: 'coffee_context_gathering',
-                data: {
-                  status: 'complete',
-                  miniFlowDescription: input.flowDescription as string,
-                  result: 'NOT_AVAILABLE',
-                },
+                type: 'coffee_request_context',
+                data: contextRequestEvent,
               });
             }
 
+            // Store the context request so the response handler knows we're waiting
+            coffeeState.contextRequest = contextRequestEvent;
+
+            // Return a special response to signal the agent to stop
             return {
               data: {
-                status: 'NOT_AVAILABLE',
+                status: 'AWAITING_USER_INPUT',
                 message:
-                  'Context gathering via runBubbleFlow is not yet available. Please proceed with the information you have.',
+                  'Context request sent to user. Waiting for credentials and approval.',
+                flowId: contextFlowId,
               },
             };
           },
@@ -251,10 +416,25 @@ export async function runCoffee(
       ],
       maxIterations: COFFEE_MAX_ITERATIONS,
       credentials: mergedCredentials,
+      afterToolCall,
     });
 
     // Execute the agent
     const result = await agent.action();
+
+    // Check if context request was triggered during tool execution
+    // If so, return the context request response (the event was already sent)
+    if (coffeeState.contextRequest) {
+      console.log(
+        '[Coffee] Context request triggered, awaiting user input:',
+        coffeeState.contextRequest.flowId
+      );
+      return {
+        type: 'context_request',
+        contextRequest: coffeeState.contextRequest,
+        success: true,
+      };
+    }
 
     if (!result.success || !result.data?.response) {
       console.error('[Coffee] Agent execution failed:', result.error);
@@ -320,6 +500,22 @@ export async function runCoffee(
           type: 'plan',
           plan,
           success: true,
+        };
+      } else if (
+        agentOutput.action === 'requestContext' &&
+        agentOutput.contextRequest
+      ) {
+        // The agent wants to request context but hasn't called runBubbleFlow yet
+        // This is an intermediate state - the agent should call runBubbleFlow next
+        // But if we reach here, return an error since the tool should have been called
+        console.warn(
+          '[Coffee] Agent returned requestContext action but runBubbleFlow was not called'
+        );
+        return {
+          type: 'error',
+          error:
+            'Agent requested context but did not provide flow code. Please try again.',
+          success: false,
         };
       } else {
         // Invalid action or missing data
