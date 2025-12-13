@@ -26,6 +26,145 @@ export interface BobaResponse extends GenerationResult {
 }
 
 /**
+ * Merges the extracted schema (from TypeScript) with the original schema (from summarizeAgent),
+ * preserving canBeFile flags and other metadata from the original schema.
+ */
+function mergeInputSchemas(
+  originalSchema: string | undefined,
+  extractedSchema: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  if (!extractedSchema) {
+    return {};
+  }
+
+  // If no original schema, return extracted as-is
+  if (!originalSchema) {
+    return extractedSchema;
+  }
+
+  try {
+    const original = JSON.parse(originalSchema) as {
+      type?: string;
+      properties?: Record<string, unknown>;
+      required?: string[];
+    };
+
+    // If original doesn't have properties, return extracted
+    if (!original.properties || typeof original.properties !== 'object') {
+      return extractedSchema;
+    }
+
+    const extracted = extractedSchema as {
+      type?: string;
+      properties?: Record<string, unknown>;
+      required?: string[];
+    };
+
+    // If extracted doesn't have properties, return original
+    if (!extracted.properties || typeof extracted.properties !== 'object') {
+      return original;
+    }
+
+    // Merge properties, preserving canBeFile from original
+    const mergedProperties: Record<string, unknown> = {
+      ...extracted.properties,
+    };
+
+    for (const [key, originalProp] of Object.entries(original.properties)) {
+      if (key in mergedProperties) {
+        const extractedProp = mergedProperties[key] as Record<string, unknown>;
+        const originalPropObj = originalProp as Record<string, unknown>;
+
+        // Preserve canBeFile from original if it exists
+        if ('canBeFile' in originalPropObj) {
+          mergedProperties[key] = {
+            ...extractedProp,
+            canBeFile: originalPropObj.canBeFile,
+          };
+        }
+
+        // Also preserve canBeFile in nested items for arrays
+        if (
+          originalPropObj.items &&
+          typeof originalPropObj.items === 'object' &&
+          extractedProp.items &&
+          typeof extractedProp.items === 'object'
+        ) {
+          const originalItems = originalPropObj.items as Record<
+            string,
+            unknown
+          >;
+          const extractedItems = extractedProp.items as Record<string, unknown>;
+
+          if ('canBeFile' in originalItems) {
+            mergedProperties[key] = {
+              ...mergedProperties[key],
+              items: {
+                ...extractedItems,
+                canBeFile: originalItems.canBeFile,
+              },
+            };
+          }
+
+          // Handle nested properties in array items
+          if (
+            originalItems.properties &&
+            typeof originalItems.properties === 'object' &&
+            extractedItems.properties &&
+            typeof extractedItems.properties === 'object'
+          ) {
+            const mergedItemProperties: Record<string, unknown> = {
+              ...(extractedItems.properties as Record<string, unknown>),
+            };
+
+            for (const [propKey, originalNestedProp] of Object.entries(
+              originalItems.properties
+            )) {
+              if (propKey in mergedItemProperties) {
+                const originalNestedPropObj = originalNestedProp as Record<
+                  string,
+                  unknown
+                >;
+                if ('canBeFile' in originalNestedPropObj) {
+                  mergedItemProperties[propKey] = {
+                    ...(mergedItemProperties[propKey] as Record<
+                      string,
+                      unknown
+                    >),
+                    canBeFile: originalNestedPropObj.canBeFile,
+                  };
+                }
+              }
+            }
+
+            mergedProperties[key] = {
+              ...mergedProperties[key],
+              items: {
+                ...(mergedProperties[key] as Record<string, unknown>).items,
+                properties: mergedItemProperties,
+              },
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      ...extracted,
+      properties: mergedProperties,
+      // Use required from extracted (more accurate from TypeScript)
+      required: extracted.required || original.required,
+    };
+  } catch (error) {
+    console.warn(
+      '[Boba] Failed to merge input schemas, using extracted schema:',
+      error
+    );
+    return extractedSchema;
+  }
+}
+
+/**
  * Main Boba service function - generates BubbleFlow code from natural language
  *
  * @param request - The request containing prompt and optional credentials
@@ -99,7 +238,14 @@ export async function runBoba(
 
   if (result.data.generatedCode && result.data.generatedCode.trim()) {
     try {
-      result.data.inputsSchema = JSON.stringify(validationResult.inputSchema);
+      // Merge the extracted schema with the original schema from summarizeAgent
+      // to preserve canBeFile flags and other metadata
+      const originalSchema = result.data.inputsSchema;
+      const mergedSchema = mergeInputSchemas(
+        originalSchema,
+        validationResult.inputSchema
+      );
+      result.data.inputsSchema = JSON.stringify(mergedSchema);
 
       if (validationResult.valid && validationResult) {
         actualIsValid = true;

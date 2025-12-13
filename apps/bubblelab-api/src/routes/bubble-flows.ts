@@ -1257,6 +1257,28 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 generationResult.generatedCode
               );
 
+              // Use the merged inputSchema from generationResult (includes canBeFile flags)
+              // Fall back to extracted schema if merged schema is not available
+              let finalInputSchema = validationResult.inputSchema || {};
+              if (generationResult.inputsSchema) {
+                try {
+                  const parsedMergedSchema = JSON.parse(
+                    generationResult.inputsSchema
+                  );
+                  if (
+                    parsedMergedSchema &&
+                    typeof parsedMergedSchema === 'object'
+                  ) {
+                    finalInputSchema = parsedMergedSchema;
+                  }
+                } catch (parseError) {
+                  console.warn(
+                    '[API] Failed to parse merged inputSchema, using extracted schema:',
+                    parseError
+                  );
+                }
+              }
+
               // Update the flow with generated code
               await db
                 .update(bubbleFlows)
@@ -1266,7 +1288,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                   originalCode: generationResult.generatedCode,
                   bubbleParameters: validationResult.bubbleParameters || {},
                   workflow: validationResult.workflow || null,
-                  inputSchema: validationResult.inputSchema || {},
+                  inputSchema: finalInputSchema,
                   eventType: validationResult.trigger?.type || 'webhook/http',
                   cron: validationResult.trigger?.cronSchedule || null,
                   generationError: null, // Clear any previous errors
