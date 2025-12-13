@@ -362,6 +362,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED],
   notion: [CredentialType.NOTION_OAUTH_TOKEN],
+  firecrawl: [CredentialType.FIRECRAWL_API_KEY],
 };
 
 // POST /credentials - Create credential schema
