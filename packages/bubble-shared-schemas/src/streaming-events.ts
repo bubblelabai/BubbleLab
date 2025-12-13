@@ -6,6 +6,7 @@ import type {
   CoffeeClarificationEvent,
   CoffeeContextEvent,
   CoffeePlanEvent,
+  CoffeeRequestExternalContextEvent,
 } from './coffee.js';
 
 export interface StreamingLogEvent {
@@ -112,6 +113,10 @@ export type StreamingEvent =
   | {
       type: 'coffee_context_gathering';
       data: CoffeeContextEvent;
+    }
+  | {
+      type: 'coffee_request_context';
+      data: CoffeeRequestExternalContextEvent;
     }
   | {
       type: 'coffee_plan';

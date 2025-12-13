@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CredentialType } from './types.js';
 
 // ============================================================================
 // Coffee Agent - Planning Phase for BubbleFlow Generation
@@ -7,9 +8,9 @@ import { z } from 'zod';
 // implementation plan. This helps reduce ambiguity in user requests.
 
 // Constants
-export const COFFEE_MAX_ITERATIONS = 5;
+export const COFFEE_MAX_ITERATIONS = 30;
 export const COFFEE_MAX_QUESTIONS = 3;
-export const COFFEE_DEFAULT_MODEL = 'google/gemini-2.5-pro' as const;
+export const COFFEE_DEFAULT_MODEL = 'google/gemini-3-pro-preview' as const;
 
 // ============================================================================
 // Clarification Schemas
@@ -50,10 +51,10 @@ export const CoffeeClarificationEventSchema = z.object({
 });
 
 // ============================================================================
-// Context Gathering Schemas (Mocked for Phase 1)
+// Context Gathering Schemas (Phase 2 - External Context via BubbleFlow)
 // ============================================================================
 
-/** Event for context gathering status */
+/** Event for context gathering status (legacy, kept for backwards compatibility) */
 export const CoffeeContextEventSchema = z.object({
   status: z
     .enum(['gathering', 'complete'])
@@ -62,10 +63,60 @@ export const CoffeeContextEventSchema = z.object({
     .string()
     .optional()
     .describe('Description of the mini flow that would run to gather context'),
-  result: z
+  result: z.string().optional().describe('Result of context gathering'),
+});
+
+/**
+ * Event sent when Coffee requests external context via running a BubbleFlow.
+ * This pauses the planning process until the user provides credentials and approves execution.
+ */
+export const CoffeeRequestExternalContextEventSchema = z.object({
+  flowId: z.string().describe('Unique ID for this context request'),
+  flowCode: z
     .string()
+    .describe('Validated BubbleFlow TypeScript code to execute'),
+  requiredCredentials: z
+    .array(z.nativeEnum(CredentialType))
+    .describe('List of credential types needed to run this flow'),
+  description: z
+    .string()
+    .describe('User-friendly description of what this flow will do'),
+});
+
+/**
+ * Answer sent back to Coffee after user provides credentials and flow executes.
+ * This is used to resume the planning process with enriched context.
+ */
+export const CoffeeContextAnswerSchema = z.object({
+  flowId: z.string().describe('ID of the context request being answered'),
+  status: z
+    .enum(['success', 'rejected', 'error'])
+    .describe(
+      'Status: success (got context), rejected (user skipped), error (execution failed)'
+    ),
+  result: z
+    .unknown()
     .optional()
-    .describe('Result of context gathering (NOT_AVAILABLE in Phase 1)'),
+    .describe('The result data from running the context-gathering flow'),
+  error: z.string().optional().describe('Error message if status is error'),
+  originalRequest: CoffeeRequestExternalContextEventSchema.optional().describe(
+    'The original context request that triggered this answer (includes flowCode, description, etc.)'
+  ),
+});
+
+/**
+ * Context request info that the agent generates when it wants to run a flow.
+ * This is part of the agent's output when action is 'requestContext'.
+ */
+export const CoffeeContextRequestInfoSchema = z.object({
+  purpose: z
+    .string()
+    .describe(
+      'Why this context is needed (e.g., "to understand your database schema")'
+    ),
+  flowDescription: z
+    .string()
+    .describe('User-facing description of what the flow will do'),
 });
 
 // ============================================================================
@@ -97,7 +148,7 @@ export const CoffeePlanEventSchema = z.object({
 // Request/Response Schemas
 // ============================================================================
 
-/** Request to the Coffee agent */
+/** Request to the Generate BubbleFlow */
 export const CoffeeRequestSchema = z.object({
   prompt: z.string().min(1).describe('The user prompt describing the workflow'),
   flowId: z
@@ -114,20 +165,26 @@ export const CoffeeRequestSchema = z.object({
     .string()
     .optional()
     .describe('Previously generated plan context (for building phase)'),
+  contextAnswer: CoffeeContextAnswerSchema.optional().describe(
+    'Answer from a previous context-gathering flow execution'
+  ),
 });
 
 /** Response from the Coffee agent */
 export const CoffeeResponseSchema = z.object({
   type: z
-    .enum(['clarification', 'plan', 'error'])
+    .enum(['clarification', 'plan', 'context_request', 'error'])
     .describe(
-      'Response type: clarification (needs user input), plan (ready for approval), error (failed)'
+      'Response type: clarification (needs user input), plan (ready for approval), context_request (needs external context), error (failed)'
     ),
   clarification: CoffeeClarificationEventSchema.optional().describe(
     'Clarification questions (only when type is "clarification")'
   ),
   plan: CoffeePlanEventSchema.optional().describe(
     'Implementation plan (only when type is "plan")'
+  ),
+  contextRequest: CoffeeRequestExternalContextEventSchema.optional().describe(
+    'Context request (only when type is "context_request")'
   ),
   error: z
     .string()
@@ -139,7 +196,7 @@ export const CoffeeResponseSchema = z.object({
 /** Internal output format from the Coffee AI agent */
 export const CoffeeAgentOutputSchema = z.object({
   action: z
-    .enum(['askClarification', 'generatePlan'])
+    .enum(['askClarification', 'generatePlan', 'requestContext'])
     .describe('The action the agent wants to take'),
   questions: z
     .array(ClarificationQuestionSchema)
@@ -147,6 +204,9 @@ export const CoffeeAgentOutputSchema = z.object({
     .describe('Questions to ask (when action is askClarification)'),
   plan: CoffeePlanEventSchema.optional().describe(
     'Generated plan (when action is generatePlan)'
+  ),
+  contextRequest: CoffeeContextRequestInfoSchema.optional().describe(
+    'Context request info (when action is requestContext) - the agent will then call runBubbleFlow tool'
   ),
 });
 
@@ -160,6 +220,13 @@ export type CoffeeClarificationEvent = z.infer<
   typeof CoffeeClarificationEventSchema
 >;
 export type CoffeeContextEvent = z.infer<typeof CoffeeContextEventSchema>;
+export type CoffeeRequestExternalContextEvent = z.infer<
+  typeof CoffeeRequestExternalContextEventSchema
+>;
+export type CoffeeContextAnswer = z.infer<typeof CoffeeContextAnswerSchema>;
+export type CoffeeContextRequestInfo = z.infer<
+  typeof CoffeeContextRequestInfoSchema
+>;
 export type PlanStep = z.infer<typeof PlanStepSchema>;
 export type CoffeePlanEvent = z.infer<typeof CoffeePlanEventSchema>;
 export type CoffeeRequest = z.infer<typeof CoffeeRequestSchema>;

@@ -792,3 +792,72 @@ export const generateBubbleFlowCodeRoute = createRoute({
   description:
     'Generates TypeScript BubbleFlow code from natural language prompts using AI with real-time streaming of tokens, tool calls, and progress',
 });
+
+// POST /bubble-flow/generate/run-context-flow - Execute a context-gathering flow
+// This is used by the Coffee agent to gather external context before planning
+export const runContextFlowSchema = z.object({
+  flowCode: z.string().min(1).openapi({
+    description: 'The validated BubbleFlow TypeScript code to execute',
+    example: 'class ContextGatheringFlow extends BubbleFlow { ... }',
+  }),
+  credentials: z.record(z.string(), z.number()).openapi({
+    description: 'Mapping of credential types to credential IDs for execution',
+    example: { GOOGLE_DRIVE_CRED: 123, DATABASE_CRED: 456 },
+  }),
+});
+
+export const runContextFlowResponseSchema = z.object({
+  success: z.boolean().openapi({
+    description: 'Whether the flow execution succeeded',
+  }),
+  result: z.any().optional().openapi({
+    description: 'The result data from the flow execution',
+  }),
+  error: z.string().optional().openapi({
+    description: 'Error message if execution failed',
+  }),
+});
+
+export const runContextFlowRoute = createRoute({
+  method: 'post',
+  path: '/generate/run-context-flow',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: runContextFlowSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: runContextFlowResponseSchema,
+        },
+      },
+      description: 'Context flow executed successfully',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid flow code or credentials',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Flow execution failed',
+    },
+  },
+  tags: ['BubbleFlow'],
+  summary: 'Execute Context-Gathering Flow',
+  description:
+    'Executes a validated BubbleFlow to gather external context (e.g., database schema, file listings) for the Coffee planning agent',
+});

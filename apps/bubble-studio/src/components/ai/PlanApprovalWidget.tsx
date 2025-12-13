@@ -1,12 +1,10 @@
 /**
  * PlanApprovalWidget - Displays the implementation plan from Coffee agent
- * Allows users to approve, retry, or skip the plan before code generation
+ * Allows users to approve the plan with optional additional comments before code generation
  */
 import { useState } from 'react';
 import {
   Check,
-  RefreshCw,
-  SkipForward,
   FileText,
   Loader2,
   ChevronDown,
@@ -16,20 +14,17 @@ import type { CoffeePlanEvent } from '@bubblelab/shared-schemas';
 
 interface PlanApprovalWidgetProps {
   plan: CoffeePlanEvent;
-  onApprove: () => void;
-  onRetry: () => void;
-  onSkip: () => void;
+  onApprove: (comment?: string) => void;
   isLoading: boolean;
 }
 
 export function PlanApprovalWidget({
   plan,
   onApprove,
-  onRetry,
-  onSkip,
   isLoading,
 }: PlanApprovalWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [comment, setComment] = useState('');
 
   return (
     <div className="border border-green-500/30 rounded-lg overflow-hidden bg-gray-900/50">
@@ -126,29 +121,25 @@ export function PlanApprovalWidget({
             )}
           </div>
 
-          {/* Footer with action buttons */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-800/30 border-t border-gray-700">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onRetry}
-                disabled={isLoading}
-                className="px-3 py-1.5 text-xs rounded-lg font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-700 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Retry
-              </button>
-              <button
-                onClick={onSkip}
-                disabled={isLoading}
-                className="px-3 py-1.5 text-xs rounded-lg font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-700 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <SkipForward className="w-3.5 h-3.5" />
-                Skip Planning
-              </button>
-            </div>
+          {/* Additional comments section */}
+          <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-700">
+            <label className="block text-xs font-medium text-gray-400 mb-2">
+              Additional Comments (Optional)
+            </label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add any additional requirements or modifications to the plan..."
+              disabled={isLoading}
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-600 bg-gray-900 text-gray-200 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+            />
+          </div>
 
+          {/* Footer with action button */}
+          <div className="flex items-center justify-end px-4 py-3 bg-gray-800/30 border-t border-gray-700">
             <button
-              onClick={onApprove}
+              onClick={() => onApprove(comment.trim() || undefined)}
               disabled={isLoading}
               className={`px-5 py-2 text-sm rounded-lg font-medium transition-all flex items-center gap-2 ${
                 isLoading

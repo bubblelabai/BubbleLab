@@ -19,6 +19,7 @@ import {
 } from '../services/bubble-flow-parser.js';
 import {
   CredentialType,
+  BubbleParameterType,
   type ParsedBubbleWithInfo,
   type ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
@@ -42,6 +43,7 @@ import {
   listBubbleFlowExecutionsRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
+  runContextFlowRoute,
 } from '../schemas/bubble-flows.js';
 
 import { createBubbleFlowResponseSchema } from '../schemas/index.js';
@@ -51,6 +53,7 @@ import {
 } from '../utils/error-handler.js';
 import { getCurrentWebhookUsage } from '../services/subscription-validation.js';
 import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
+import { runBubbleFlow } from '../services/execution.js';
 import {
   BubbleScript,
   validateAndExtract,
@@ -1130,7 +1133,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
   try {
-    const { prompt, flowId, clarificationAnswers, planContext } =
+    const { prompt, flowId, clarificationAnswers, planContext, contextAnswer } =
       c.req.valid('json');
     const { phase } = c.req.valid('query');
 
@@ -1210,6 +1213,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
               prompt,
               flowId,
               clarificationAnswers,
+              contextAnswer,
             },
             credentials,
             streamingCallback
@@ -1483,6 +1487,123 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
     return c.json(
       {
         error: error instanceof Error ? error.message : 'Unknown route error',
+      },
+      500
+    );
+  }
+});
+
+// POST /generate/run-context-flow - Execute a context-gathering flow for Coffee agent
+// This is a simplified execution path for context-gathering flows used during planning
+app.openapi(runContextFlowRoute, async (c) => {
+  const userId = getUserId(c);
+  try {
+    const { flowCode, credentials } = c.req.valid('json');
+
+    console.log('[API] Running context-gathering flow for user:', userId);
+
+    // Validate the flow code
+    const bubbleFactory = await getBubbleFactory();
+    const validationResult = await validateAndExtract(
+      flowCode,
+      bubbleFactory,
+      false
+    );
+
+    if (!validationResult.valid) {
+      return c.json(
+        {
+          error: `Flow validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
+        },
+        400
+      );
+    }
+
+    // Get parsed bubbles from validation result
+    const parsedBubbles = validationResult.bubbleParameters || {};
+
+    // Build bubbleParameters with credentials injected
+    // For each bubble variable, we need to add the user-provided credential IDs
+    // to the credentials parameter so runBubbleFlow can fetch and decrypt them
+    const bubbleParametersWithCreds: Record<string, ParsedBubbleWithInfo> = {};
+
+    for (const [varIdStr, bubble] of Object.entries(parsedBubbles)) {
+      const bubbleCredTypes =
+        validationResult.requiredCredentials?.[varIdStr] || [];
+
+      // Build credentials object for this bubble: { CredentialType -> credentialId }
+      const bubbleCredentials: Record<string, number> = {};
+      for (const credType of bubbleCredTypes) {
+        const credId = credentials[credType];
+        if (credId) {
+          bubbleCredentials[credType] = credId;
+        }
+      }
+
+      // Clone the bubble and add/update the credentials parameter
+      const updatedBubble: ParsedBubbleWithInfo = {
+        ...bubble,
+        parameters: [...bubble.parameters],
+      };
+
+      // Find existing credentials parameter or add new one
+      const existingCredIdx = updatedBubble.parameters.findIndex(
+        (p) => p.name === 'credentials'
+      );
+      if (existingCredIdx >= 0) {
+        updatedBubble.parameters[existingCredIdx] = {
+          ...updatedBubble.parameters[existingCredIdx],
+          value: bubbleCredentials,
+        };
+      } else if (Object.keys(bubbleCredentials).length > 0) {
+        updatedBubble.parameters.push({
+          name: 'credentials',
+          type: BubbleParameterType.OBJECT,
+          value: bubbleCredentials,
+        });
+      }
+
+      bubbleParametersWithCreds[varIdStr] = updatedBubble;
+    }
+
+    console.log(
+      '[API] Bubble parameters with credentials:',
+      JSON.stringify(bubbleParametersWithCreds, null, 2)
+    );
+
+    // Execute the flow using the standard execution path
+    const executionResult = await runBubbleFlow(
+      flowCode,
+      bubbleParametersWithCreds,
+      {
+        type: 'webhook/http',
+        timestamp: new Date().toISOString(),
+        path: '/context-gathering',
+        method: 'POST',
+        executionId: `ctx-${Date.now()}`,
+        body: {},
+      },
+      {
+        userId,
+        pricingTable: PRICING_TABLE,
+      }
+    );
+
+    console.log('[API] Context flow executed successfully');
+
+    return c.json(
+      {
+        success: executionResult.success,
+        result: executionResult.data?.result,
+        error: executionResult.error,
+      },
+      200
+    );
+  } catch (error) {
+    console.error('[API] Context flow execution error:', error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       500
     );

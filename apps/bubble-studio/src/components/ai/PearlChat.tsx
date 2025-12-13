@@ -52,8 +52,10 @@ import {
 } from './BubblePromptInput';
 import { ClarificationWidget } from './ClarificationWidget';
 import { PlanApprovalWidget } from './PlanApprovalWidget';
+import { ContextRequestWidget } from './ContextRequestWidget';
 import { hasBubbleTags } from '../../utils/bubbleTagParser';
 import { useEditorStore } from '../../stores/editorStore';
+import { API_BASE_URL } from '../../env';
 import {
   useGenerateInitialFlow,
   startBuildingPhase,
@@ -396,47 +398,31 @@ export function PearlChat() {
     [selectedFlowId, flowData?.prompt]
   );
 
-  const handleInitialPlanApprove = useCallback(async () => {
-    if (!selectedFlowId || !flowData?.prompt || !pearl.coffeePlan) return;
+  const handleInitialPlanApprove = useCallback(
+    async (comment?: string) => {
+      if (!selectedFlowId || !flowData?.prompt || !pearl.coffeePlan) return;
 
-    // Build plan context string for Boba
-    const planContext = [
-      `Summary: ${pearl.coffeePlan.summary}`,
-      'Steps:',
-      ...pearl.coffeePlan.steps.map(
-        (step, i) =>
-          `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
-      ),
-      `Bubbles to use: ${pearl.coffeePlan.estimatedBubbles.join(', ')}`,
-    ].join('\n');
+      // Build plan context string for Boba
+      const planContext = [
+        `Summary: ${pearl.coffeePlan.summary}`,
+        'Steps:',
+        ...pearl.coffeePlan.steps.map(
+          (step, i) =>
+            `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
+        ),
+        `Bubbles to use: ${pearl.coffeePlan.estimatedBubbles.join(', ')}`,
+        ...(comment ? [`\nAdditional user comments: ${comment}`] : []),
+      ].join('\n');
 
-    await startBuildingPhase(
-      selectedFlowId,
-      flowData.prompt,
-      planContext,
-      pearl.coffeeAnswers
-    );
-  }, [selectedFlowId, flowData?.prompt, pearl.coffeePlan, pearl.coffeeAnswers]);
-
-  const handleInitialPlanSkip = useCallback(async () => {
-    if (!selectedFlowId || !flowData?.prompt) return;
-
-    // Skip planning and go straight to building
-    await startBuildingPhase(selectedFlowId, flowData.prompt);
-  }, [selectedFlowId, flowData?.prompt]);
-
-  const handleInitialPlanRetry = useCallback(async () => {
-    if (!selectedFlowId || !flowData?.prompt) return;
-
-    // Clear current plan and restart planning
-    const pearlStore = getPearlChatStore(selectedFlowId);
-    pearlStore.getState().setCoffeePlan(null);
-    pearlStore.getState().setCoffeeQuestions(null);
-    pearlStore.getState().setCoffeePhase('clarifying');
-
-    // Restart the planning stream (this is simplified - full implementation would need to reset the generation store)
-    await submitClarificationAndContinue(selectedFlowId, flowData.prompt, {});
-  }, [selectedFlowId, flowData?.prompt]);
+      await startBuildingPhase(
+        selectedFlowId,
+        flowData.prompt,
+        planContext,
+        pearl.coffeeAnswers
+      );
+    },
+    [selectedFlowId, flowData?.prompt, pearl.coffeePlan, pearl.coffeeAnswers]
+  );
 
   const handleReplace = (
     code: string,
@@ -842,56 +828,6 @@ export function PearlChat() {
           </div>
         )}
 
-        {/* Coffee Agent - Clarification Questions */}
-        {pearl.coffeePhase === 'clarifying' && pearl.coffeeQuestions && (
-          <div className="p-3">
-            <ClarificationWidget
-              questions={pearl.coffeeQuestions}
-              onSubmit={
-                isGenerating
-                  ? handleInitialClarificationSubmit
-                  : pearl.submitClarificationAnswers
-              }
-              isSubmitting={pearl.isCoffeeLoading}
-            />
-          </div>
-        )}
-
-        {/* Coffee Agent - Plan Approval */}
-        {pearl.coffeePhase === 'ready' && pearl.coffeePlan && (
-          <div className="p-3">
-            <PlanApprovalWidget
-              plan={pearl.coffeePlan}
-              onApprove={
-                isGenerating
-                  ? handleInitialPlanApprove
-                  : pearl.approvePlanAndBuild
-              }
-              onRetry={
-                isGenerating
-                  ? handleInitialPlanRetry
-                  : pearl.retryCoffeePlanning
-              }
-              onSkip={
-                isGenerating ? handleInitialPlanSkip : pearl.skipCoffeeAndBuild
-              }
-              isLoading={pearl.isCoffeeLoading}
-            />
-          </div>
-        )}
-
-        {/* Coffee Agent - Planning in progress */}
-        {pearl.coffeePhase === 'planning' && (
-          <div className="p-3">
-            <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
-              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-              <span className="text-sm text-gray-300">
-                Generating implementation plan...
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Render messages: user → generation output (if generating) → events → assistant */}
         {pearl.messages.map((message, index) => {
           // Calculate assistant index (how many assistant messages we've seen so far)
@@ -1058,6 +994,76 @@ export function PearlChat() {
             </div>
           );
         })}
+
+        {/* Coffee Agent - Clarification Questions */}
+        {pearl.coffeePhase === 'clarifying' && pearl.coffeeQuestions && (
+          <div className="p-3">
+            <ClarificationWidget
+              questions={pearl.coffeeQuestions}
+              onSubmit={
+                isGenerating
+                  ? handleInitialClarificationSubmit
+                  : pearl.submitClarificationAnswers
+              }
+              isSubmitting={pearl.isCoffeeLoading}
+            />
+          </div>
+        )}
+
+        {/* Coffee Agent - Context Request (Credential Selection) */}
+        {pearl.coffeePhase === 'awaiting_context' &&
+          pearl.coffeeContextRequest && (
+            <div className="p-3">
+              <ContextRequestWidget
+                request={pearl.coffeeContextRequest}
+                credentials={pearl.coffeeContextCredentials}
+                onCredentialChange={pearl.setCoffeeContextCredential}
+                onSubmit={pearl.submitContext}
+                onReject={pearl.rejectContext}
+                isLoading={pearl.isCoffeeLoading}
+                apiBaseUrl={API_BASE_URL}
+              />
+            </div>
+          )}
+
+        {/* Coffee Agent - Gathering context in progress */}
+        {pearl.coffeePhase === 'gathering' && (
+          <div className="p-3">
+            <div className="flex items-center gap-2 px-4 py-3 bg-amber-800/20 rounded-lg border border-amber-700/30">
+              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+              <span className="text-sm text-gray-300">
+                Gathering context...
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Coffee Agent - Planning in progress */}
+        {pearl.coffeePhase === 'planning' && (
+          <div className="p-3">
+            <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+              <span className="text-sm text-gray-300">
+                Generating implementation plan...
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Coffee Agent - Plan Approval */}
+        {pearl.coffeePhase === 'ready' && pearl.coffeePlan && (
+          <div className="p-3">
+            <PlanApprovalWidget
+              plan={pearl.coffeePlan}
+              onApprove={
+                isGenerating
+                  ? handleInitialPlanApprove
+                  : pearl.approvePlanAndBuild
+              }
+              isLoading={pearl.isCoffeeLoading}
+            />
+          </div>
+        )}
 
         {/* Current streaming events (for the active turn) */}
         {pearl.isPending && pearl.eventsList.length > 0 && (
