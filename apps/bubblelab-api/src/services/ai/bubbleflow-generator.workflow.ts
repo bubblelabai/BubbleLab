@@ -209,6 +209,8 @@ CODE TO ANALYZE:
 ` + validatedCode,
         systemPrompt: `You MUST follow the exact summary pattern provided. Focus on the UI testing perspective - users will fill in a form, not make HTTP requests. For inputsSchema, extract from CustomWebhookPayload interface (exclude WebhookEvent base fields).
 
+CRITICAL - FILE UPLOAD CONTROL (canBeFile flag): For EVERY string or object field in the inputsSchema JSON, you MUST explicitly set "canBeFile": false for fields that should NOT support file uploads.
+
 Return strict JSON with keys "summary" and "inputsSchema". No markdown wrapper. The summary must include all sections: Flow Title, Description, Required Credentials, Setup Before Testing, To Test This Flow, What Happens When You Run, and Output You'll See with example JSON.`,
         tools: [],
         maxIterations: 5,
