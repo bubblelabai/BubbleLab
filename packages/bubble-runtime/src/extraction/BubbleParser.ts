@@ -806,6 +806,12 @@ export class BubbleParser {
         propSchema.description = description;
       }
 
+      // Extract canBeFile flag from JSDoc comment (e.g., @canBeFile false)
+      const canBeFile = this.extractCanBeFileFromComment(m);
+      if (canBeFile !== undefined) {
+        propSchema.canBeFile = canBeFile;
+      }
+
       properties[keyName] = propSchema;
       if (!m.optional) required.push(keyName);
     }
@@ -1981,6 +1987,33 @@ export class BubbleParser {
     }
 
     return cleaned || undefined;
+  }
+
+  /**
+   * Extract canBeFile flag from JSDoc comment on a node
+   * Looks for @canBeFile false or @canBeFile true in the comment
+   */
+  private extractCanBeFileFromNode(node: TSESTree.Node): boolean | undefined {
+    const comment = this.extractCommentForNode(node);
+    if (!comment) return undefined;
+
+    // Look for @canBeFile false or @canBeFile true
+    const canBeFileMatch = comment.match(/@canBeFile\s+(true|false)/i);
+    if (canBeFileMatch) {
+      return canBeFileMatch[1].toLowerCase() === 'true';
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Extract canBeFile flag from JSDoc comment on a property signature
+   * Also checks nested items for array types
+   */
+  private extractCanBeFileFromComment(
+    m: TSESTree.TSPropertySignature
+  ): boolean | undefined {
+    return this.extractCanBeFileFromNode(m);
   }
 
   /**

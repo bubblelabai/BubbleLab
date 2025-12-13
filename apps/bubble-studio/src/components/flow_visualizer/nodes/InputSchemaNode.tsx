@@ -14,6 +14,7 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -21,6 +22,7 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -28,6 +30,7 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];

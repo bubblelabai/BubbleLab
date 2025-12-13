@@ -6,13 +6,16 @@ interface SchemaField {
   default?: unknown;
   minItems?: number;
   maxItems?: number;
+  canBeFile?: boolean;
   items?: {
     type?: string;
+    canBeFile?: boolean;
     properties?: Record<
       string,
       {
         type?: string;
         description?: string;
+        canBeFile?: boolean;
       }
     >;
     required?: string[];
@@ -98,13 +101,16 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
         default?: unknown;
         minItems?: number;
         maxItems?: number;
+        canBeFile?: boolean;
         items?: {
           type?: string;
+          canBeFile?: boolean;
           properties?: Record<
             string,
             {
               type?: string;
               description?: string;
+              canBeFile?: boolean;
             }
           >;
           required?: string[];
@@ -126,6 +132,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
             default: value.default,
             minItems: value.minItems,
             maxItems: value.maxItems,
+            canBeFile: value.canBeFile,
             items: value.items,
           });
         }

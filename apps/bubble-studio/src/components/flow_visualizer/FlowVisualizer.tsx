@@ -776,6 +776,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       required?: boolean;
       description?: string;
       default?: unknown;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -783,6 +784,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -801,12 +803,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 type?: string;
                 description?: string;
                 default?: unknown;
+                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
                     type?: string;
                     description?: string;
                     default?: unknown;
+                    canBeFile?: boolean;
                   }
                 >;
                 required?: string[];
@@ -829,6 +833,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 description?: string;
                 default?: unknown;
                 required?: boolean;
+                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -836,6 +841,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     description?: string;
                     default?: unknown;
                     required?: boolean;
+                    canBeFile?: boolean;
                   }
                 >;
                 requiredProperties?: string[];
@@ -847,6 +853,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     type?: string;
                     description?: string;
                     default?: unknown;
+                    canBeFile?: boolean;
                     properties?: Record<string, unknown>;
                     required?: string[];
                   };
@@ -861,6 +868,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                       description: propSchema.description,
                       default: propSchema.default,
                       required: objectRequired.includes(propName),
+                      canBeFile: propSchema.canBeFile,
                       properties: processProperties(propSchema.properties),
                       requiredProperties: nestedRequired,
                     };
@@ -870,6 +878,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                       description: propSchema?.description,
                       default: propSchema?.default,
                       required: objectRequired.includes(propName),
+                      canBeFile: propSchema?.canBeFile,
                     };
                   }
                   return acc;
@@ -881,6 +890,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     description?: string;
                     default?: unknown;
                     required?: boolean;
+                    canBeFile?: boolean;
                     properties?: Record<
                       string,
                       {
@@ -888,6 +898,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                         description?: string;
                         default?: unknown;
                         required?: boolean;
+                        canBeFile?: boolean;
                       }
                     >;
                     requiredProperties?: string[];
@@ -902,6 +913,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               required: req.includes(name),
               description: valObj.description,
               default: valObj.default,
+              canBeFile: valObj.canBeFile,
               properties: processProperties(valObj.properties),
               requiredProperties: objectRequired,
             };
@@ -913,6 +925,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             required: req.includes(name),
             description: valObj?.description,
             default: (valObj as { default?: unknown } | undefined)?.default,
+            canBeFile: valObj?.canBeFile,
           };
         });
       } catch {

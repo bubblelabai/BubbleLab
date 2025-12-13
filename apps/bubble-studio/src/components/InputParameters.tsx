@@ -16,13 +16,16 @@ interface SchemaField {
   // Array-specific properties
   minItems?: number;
   maxItems?: number;
+  canBeFile?: boolean;
   items?: {
     type?: string;
+    canBeFile?: boolean;
     properties?: Record<
       string,
       {
         type?: string;
         description?: string;
+        canBeFile?: boolean;
         required?: string[];
       }
     >;
@@ -135,13 +138,16 @@ const parseJSONSchema = (schemaString: string): SchemaField[] => {
         description?: string;
         minItems?: number;
         maxItems?: number;
+        canBeFile?: boolean;
         items?: {
           type?: string;
+          canBeFile?: boolean;
           properties?: Record<
             string,
             {
               type?: string;
               description?: string;
+              canBeFile?: boolean;
             }
           >;
           required?: string[];
@@ -161,6 +167,7 @@ const parseJSONSchema = (schemaString: string): SchemaField[] => {
             description: value.description,
             minItems: value.minItems,
             maxItems: value.maxItems,
+            canBeFile: value.canBeFile,
             items: value.items,
           });
         }
@@ -672,17 +679,19 @@ export const InputParameters: React.FC<InputParametersProps> = ({
                       }
                       className="text-xs font-medium text-gray-300"
                     />
-                    <button
-                      type="button"
-                      onClick={() => toggleInputType(fullFieldName)}
-                      className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
-                        isFileInput
-                          ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                      }`}
-                    >
-                      {isFileInput ? '📁 File' : '📝 Text'}
-                    </button>
+                    {propSchema.canBeFile !== false && (
+                      <button
+                        type="button"
+                        onClick={() => toggleInputType(fullFieldName)}
+                        className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
+                          isFileInput
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        }`}
+                      >
+                        {isFileInput ? '📁 File' : '📝 Text'}
+                      </button>
+                    )}
                   </div>
 
                   {propSchema.description && (
@@ -772,17 +781,19 @@ export const InputParameters: React.FC<InputParametersProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400">Value</span>
-          <button
-            type="button"
-            onClick={() => toggleInputType(`${field.name}[${itemIndex}]`)}
-            className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
-              isFileInput
-                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-            }`}
-          >
-            {isFileInput ? '📁 File' : '📝 Text'}
-          </button>
+          {field.items?.canBeFile !== false && (
+            <button
+              type="button"
+              onClick={() => toggleInputType(`${field.name}[${itemIndex}]`)}
+              className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
+                isFileInput
+                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+              }`}
+            >
+              {isFileInput ? '📁 File' : '📝 Text'}
+            </button>
+          )}
         </div>
 
         {isFileInput ? (
@@ -849,19 +860,21 @@ export const InputParameters: React.FC<InputParametersProps> = ({
       <div key={field.name} className="space-y-3">
         <div className="flex items-center justify-between">
           <EditableFieldName fieldName={field.name} required={field.required} />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => toggleInputType(field.name)}
-              className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
-                isFileInput
-                  ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-              }`}
-            >
-              {isFileInput ? '📁 File' : '📝 Text'}
-            </button>
-          </div>
+          {field.canBeFile !== false && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => toggleInputType(field.name)}
+                className={`text-xs px-2 py-1 rounded-full transition-all duration-200 ${
+                  isFileInput
+                    ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                }`}
+              >
+                {isFileInput ? '📁 File' : '📝 Text'}
+              </button>
+            </div>
+          )}
         </div>
 
         {field.description && (

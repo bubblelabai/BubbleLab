@@ -220,6 +220,31 @@ These example values help users understand the expected format. For instance:
 - Email: email = 'user@example.com'
 - Channel ID: channelId = 'C01234567AB'
 
+FILE UPLOAD CONTROL (canBeFile flag) - MANDATORY:
+CRITICAL: For EVERY string or object field in your JSON schema, you MUST explicitly decide whether file uploads should be allowed.
+
+MANDATORY RULE: If a field name matches any of these patterns, you MUST set "canBeFile": false:
+- Identifiers: filename, fileId, documentId, id, name, title (ANY field containing "name", "id", "title")
+- Text content: prompt, message, query, searchTerm, keyword (ANY field containing "prompt", "message", "query")
+- Credentials: apiKey, token, password, secret, credential (ANY field containing "key", "token", "password", "secret")
+- Identifiers/URLs: email, url, link, path, folderPath, spreadsheetId, channelId (ANY field containing "email", "url", "link", "path")
+- Configuration: format, type, mode, status, priority (ANY field containing "format", "type", "mode", "status", "priority")
+- Metadata: description, label, tag, category (ANY field containing "description", "label", "tag", "category")
+
+CHECKLIST - Before finalizing your schema, verify:
+1. Does the field name contain "name", "id", "title", "filename"? → MUST set "canBeFile": false
+2. Does the field name contain "prompt", "message", "query", "email", "url"? → MUST set "canBeFile": false
+3. Does the field name contain "key", "token", "password", "secret"? → MUST set "canBeFile": false
+4. Does the field represent an identifier, configuration, or metadata? → MUST set "canBeFile": false
+
+Fields that should allow file uploads (omit canBeFile or set to true):
+- Content: content, document, text, data, body, payload
+- Files: file, attachment, image, photo, picture
+- Media: video, audio, media
+- Raw data: raw, source, input, sourceData
+
+REMEMBER: If you see a field like "name", "email", "prompt", "filename", "apiKey", etc., you MUST add "canBeFile": false to prevent the file upload icon from appearing in the UI.
+
 REQUIRED vs OPTIONAL FIELD DECISION:
 1. User specified a value in their request → OPTIONAL with that value as default
    (e.g., user says "research AI agents" → topic?: string with default "AI Agents")
