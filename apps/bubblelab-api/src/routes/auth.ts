@@ -63,7 +63,7 @@ authRoutes.post('/onboarding', async (c) => {
         persona,
         discoveryChannel,
         wantsInterview,
-        userEmail: wantsInterview ? userEmail : null, // Only include email if they want to be interviewed
+        userEmail, // Always include email for tracking
         timestamp: new Date().toISOString(),
       },
       'onboarding_questionnaire_completed'
