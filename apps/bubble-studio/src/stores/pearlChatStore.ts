@@ -108,6 +108,11 @@ interface PearlChatState {
   isGenerating: boolean;
   generationAbortController: AbortController | null;
   generationCompleted: boolean;
+  onGenerationComplete?: (data: {
+    generatedCode: string;
+    summary: string;
+    bubbleParameters?: Record<string, unknown>;
+  }) => void;
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -175,6 +180,13 @@ interface PearlChatState {
   setIsGenerating: (generating: boolean) => void;
   setGenerationCompleted: (completed: boolean) => void;
   hasActiveGenerationStream: () => boolean;
+  setOnGenerationComplete: (
+    callback?: (data: {
+      generatedCode: string;
+      summary: string;
+      bubbleParameters?: Record<string, unknown>;
+    }) => void
+  ) => void;
 
   // Reset
   reset: () => void;
@@ -204,6 +216,7 @@ function createPearlChatStore(_flowId: number) {
     isGenerating: false,
     generationAbortController: null,
     generationCompleted: false,
+    onGenerationComplete: undefined,
 
     // === Timeline methods (new unified approach) ===
     addToTimeline: (item) =>
@@ -469,6 +482,9 @@ function createPearlChatStore(_flowId: number) {
 
     hasActiveGenerationStream: () => get().generationAbortController !== null,
 
+    setOnGenerationComplete: (callback) =>
+      set({ onGenerationComplete: callback }),
+
     reset: () =>
       set({
         timeline: [],
@@ -484,6 +500,7 @@ function createPearlChatStore(_flowId: number) {
         isGenerating: false,
         generationAbortController: null,
         generationCompleted: false,
+        onGenerationComplete: undefined,
       }),
   }));
 }

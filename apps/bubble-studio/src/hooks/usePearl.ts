@@ -177,6 +177,11 @@ async function startGenerationStream(
     return;
   }
 
+  // Store the callback in the store so it can be used during building phase
+  if (options?.onGenerationComplete) {
+    storeState.setOnGenerationComplete(options.onGenerationComplete);
+  }
+
   const abortController = new AbortController();
   storeState.registerGenerationStream(abortController);
   storeState.setIsGenerating(true);
@@ -222,7 +227,7 @@ async function startGenerationStream(
         }
 
         // All events go through unified handleStreamingEvent
-        handleStreamingEvent(event, pearlStore, options);
+        handleStreamingEvent(event, pearlStore);
 
         // Stop coffee loading indicator when coffee phase is complete
         if (event.type === 'coffee_complete') {
@@ -265,8 +270,7 @@ async function startGenerationStream(
             type: 'error',
             data: { error: lastError.message, recoverable: false },
           },
-          pearlStore,
-          options
+          pearlStore
         );
         pearlStore.getState().setIsCoffeeLoading(false);
         return;
@@ -289,8 +293,7 @@ async function startGenerationStream(
               error: lastError.message,
             },
           },
-          pearlStore,
-          options
+          pearlStore
         );
 
         await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -302,8 +305,7 @@ async function startGenerationStream(
   const errorMsg = lastError?.message || 'Stream failed after all retries';
   handleStreamingEvent(
     { type: 'error', data: { error: errorMsg, recoverable: false } },
-    pearlStore,
-    options
+    pearlStore
   );
   pearlStore.getState().setIsCoffeeLoading(false);
 }
@@ -316,8 +318,7 @@ export async function startBuildingPhase(
   flowId: number,
   prompt: string,
   planContext?: string,
-  _clarificationAnswers?: Record<string, string[]>,
-  options?: HandleStreamingEventOptions
+  _clarificationAnswers?: Record<string, string[]>
 ): Promise<void> {
   const pearlStore = getPearlChatStore(flowId);
   const storeState = pearlStore.getState();
@@ -359,7 +360,7 @@ export async function startBuildingPhase(
       }
 
       // All events go through unified handleStreamingEvent
-      handleStreamingEvent(event, pearlStore, options);
+      handleStreamingEvent(event, pearlStore);
     }
 
     console.log(
@@ -371,8 +372,7 @@ export async function startBuildingPhase(
 
     handleStreamingEvent(
       { type: 'error', data: { error: errorMsg, recoverable: false } },
-      pearlStore,
-      options
+      pearlStore
     );
   } finally {
     pearlStore.getState().setIsCoffeeLoading(false);
@@ -386,8 +386,7 @@ export async function startBuildingPhase(
 export async function submitClarificationAndContinue(
   flowId: number,
   prompt: string,
-  answers: Record<string, string[]>,
-  options?: HandleStreamingEventOptions
+  answers: Record<string, string[]>
 ): Promise<void> {
   const { getPendingClarificationRequest } = await import(
     '../components/ai/type'
@@ -448,7 +447,7 @@ export async function submitClarificationAndContinue(
       }
 
       // All events go through unified handleStreamingEvent
-      handleStreamingEvent(event, pearlStore, options);
+      handleStreamingEvent(event, pearlStore);
 
       if (event.type === 'coffee_complete') {
         console.log(
@@ -467,8 +466,7 @@ export async function submitClarificationAndContinue(
 
     handleStreamingEvent(
       { type: 'error', data: { error: errorMsg, recoverable: false } },
-      pearlStore,
-      options
+      pearlStore
     );
   } finally {
     storeState.setIsCoffeeLoading(false);

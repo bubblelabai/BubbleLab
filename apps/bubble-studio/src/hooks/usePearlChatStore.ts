@@ -213,11 +213,12 @@ export interface HandleStreamingEventOptions {
 /**
  * Process streaming events and update store state
  * Exported for use by startGenerationStream in usePearl.ts
+ *
+ * The callback is stored in the store when generation starts, so we don't need to pass it around.
  */
 export function handleStreamingEvent(
   event: StreamingEvent | GenerationStreamingEvent,
-  store: NonNullable<ReturnType<typeof getPearlChatStore>>,
-  options?: HandleStreamingEventOptions
+  store: NonNullable<ReturnType<typeof getPearlChatStore>>
 ) {
   const state = store.getState();
 
@@ -354,8 +355,8 @@ export function handleStreamingEvent(
       // Mark generation as complete
       state.setGenerationCompleted(true);
 
-      // Call the callback if provided (for editor update, query refetch, etc.)
-      options?.onGenerationComplete?.({
+      // Call the callback from store (for editor update, query refetch, etc.)
+      state.onGenerationComplete?.({
         generatedCode,
         summary,
         bubbleParameters: data.bubbleParameters,

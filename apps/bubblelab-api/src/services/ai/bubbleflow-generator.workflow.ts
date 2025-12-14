@@ -490,6 +490,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
           ),
 
           model: {
+            reasoningEffort: 'medium',
             model: 'google/gemini-3-pro-preview',
             temperature: 0.3,
             backupModel: {
