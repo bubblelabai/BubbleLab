@@ -744,6 +744,62 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('Object mapping credential types to values'),
   }),
+
+  // Search operation
+  z.object({
+    operation: z
+      .literal('search')
+      .describe(
+        'Search all pages and data sources shared with the integration'
+      ),
+    query: z
+      .string()
+      .optional()
+      .describe(
+        'Text to compare against page and data source titles. If not provided, returns all pages and data sources shared with the integration'
+      ),
+    sort: z
+      .object({
+        direction: z
+          .enum(['ascending', 'descending'])
+          .describe('Sort direction'),
+        timestamp: z
+          .literal('last_edited_time')
+          .describe(
+            'Timestamp field to sort by (only "last_edited_time" is supported)'
+          ),
+      })
+      .optional()
+      .describe(
+        'Sort criteria. If not provided, most recently edited results are returned first'
+      ),
+    filter: z
+      .object({
+        value: z
+          .enum(['page', 'data_source'])
+          .describe('Filter results to only pages or only data sources'),
+        property: z
+          .literal('object')
+          .describe('Property to filter on (only "object" is supported)'),
+      })
+      .optional()
+      .describe('Filter to limit results to either pages or data sources'),
+    start_cursor: z
+      .string()
+      .optional()
+      .describe('Cursor for pagination (from previous response)'),
+    page_size: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(100)
+      .describe('Number of items per page (max 100)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe('Object mapping credential types to values'),
+  }),
 ]);
 
 // Define result schemas with proper response types and specific property names
@@ -896,6 +952,16 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('List of users in the workspace'),
   }),
+  z.object({
+    operation: z.literal('search').describe('Search operation result'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    error: z.string().describe('Error message if operation failed'),
+    results: ListResponseSchema(
+      z.union([PageObjectSchema, DataSourceObjectSchema])
+    )
+      .optional()
+      .describe('List of pages and/or data sources matching the search query'),
+  }),
 ]);
 
 type NotionParams = z.input<typeof NotionParamsSchema>;
@@ -923,6 +989,7 @@ export class NotionBubble<
     - Create, retrieve, and update pages
     - Manage databases and data sources
     - Query data sources with filters and sorting
+    - Search pages and data sources by title
     - Append and retrieve block children
     - Create and retrieve comments
     - List workspace users
@@ -931,6 +998,7 @@ export class NotionBubble<
     - Content management and automation
     - Database operations and queries
     - Page creation and updates
+    - Search and discovery of pages and data sources
     - Block manipulation
     - Comment management
     - Workspace user management
@@ -1089,6 +1157,10 @@ export class NotionBubble<
           case 'list_users':
             return await this.listUsers(
               this.params as Extract<NotionParams, { operation: 'list_users' }>
+            );
+          case 'search':
+            return await this.search(
+              this.params as Extract<NotionParams, { operation: 'search' }>
             );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
@@ -1603,6 +1675,44 @@ export class NotionBubble<
       success: true,
       error: '',
       users,
+    };
+  }
+
+  private async search(
+    params: Extract<NotionParams, { operation: 'search' }>
+  ): Promise<Extract<NotionResult, { operation: 'search' }>> {
+    const parsed = NotionParamsSchema.parse(params);
+    const { query, sort, filter, start_cursor, page_size } = parsed as Extract<
+      NotionParamsParsed,
+      { operation: 'search' }
+    >;
+
+    const body: Record<string, unknown> = {};
+
+    if (query) body.query = query;
+    if (sort) body.sort = sort;
+    if (filter) body.filter = filter;
+    if (start_cursor) body.start_cursor = start_cursor;
+    if (page_size !== undefined) body.page_size = page_size;
+
+    type SearchResult = z.output<
+      ReturnType<
+        typeof ListResponseSchema<
+          typeof PageObjectSchema | typeof DataSourceObjectSchema
+        >
+      >
+    >;
+    const results = await this.makeNotionApiCall<SearchResult>(
+      'search',
+      body,
+      'POST'
+    );
+
+    return {
+      operation: 'search',
+      success: true,
+      error: '',
+      results,
     };
   }
 
