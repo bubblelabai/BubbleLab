@@ -75,6 +75,17 @@ export interface SystemChatMessage extends BaseChatMessage {
   content: string;
 }
 
+/** Tool result message - persists successful tool call results */
+export interface ToolResultChatMessage extends BaseChatMessage {
+  type: 'tool_result';
+  toolName: string;
+  toolCallId: string;
+  input: unknown;
+  output: unknown;
+  duration: number;
+  success: boolean;
+}
+
 /** Union of all chat message types */
 export type ChatMessage =
   | UserChatMessage
@@ -85,7 +96,8 @@ export type ChatMessage =
   | ContextResponseMessage
   | PlanChatMessage
   | PlanApprovalMessage
-  | SystemChatMessage;
+  | SystemChatMessage
+  | ToolResultChatMessage;
 
 // ============================================================================
 // Helper Functions to Derive Pending State from Messages

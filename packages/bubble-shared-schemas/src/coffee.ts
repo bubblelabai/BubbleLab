@@ -226,6 +226,17 @@ export const SystemMessageSchema = BaseMessageSchema.extend({
   content: z.string().describe('System message content'),
 });
 
+/** Tool result message - persists successful tool call results */
+export const ToolResultMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('tool_result'),
+  toolName: z.string().describe('Name of the tool that was called'),
+  toolCallId: z.string().describe('Unique ID for this tool call'),
+  input: z.unknown().describe('Input parameters passed to the tool'),
+  output: z.unknown().describe('Output/result from the tool'),
+  duration: z.number().describe('Duration of the tool call in milliseconds'),
+  success: z.boolean().describe('Whether the tool call succeeded'),
+});
+
 /** Union of all Coffee message types */
 export const CoffeeMessageSchema = z.discriminatedUnion('type', [
   UserMessageSchema,
@@ -237,6 +248,7 @@ export const CoffeeMessageSchema = z.discriminatedUnion('type', [
   PlanMessageSchema,
   PlanApprovalMessageSchema,
   SystemMessageSchema,
+  ToolResultMessageSchema,
 ]);
 
 // ============================================================================
@@ -319,4 +331,5 @@ export type ContextResponseMessage = z.infer<
 export type PlanMessage = z.infer<typeof PlanMessageSchema>;
 export type PlanApprovalMessage = z.infer<typeof PlanApprovalMessageSchema>;
 export type SystemMessage = z.infer<typeof SystemMessageSchema>;
+export type ToolResultMessage = z.infer<typeof ToolResultMessageSchema>;
 export type CoffeeMessage = z.infer<typeof CoffeeMessageSchema>;

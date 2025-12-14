@@ -118,12 +118,31 @@ ${CRITICAL_INSTRUCTIONS}
   - Processing logic (filtering, transforming, etc.)
   - Trigger type (manual, scheduled, webhook)
 
+## CONTEXT GATHERING WITH WEB TOOLS:
+When the user mentions a website URL, wants to scrape/extract data from a site, or asks about vague topics that would benefit from web research, use the web tools to gather context:
+
+- **web-search-tool**: Use this to search the web for information when the user asks about vague topics, wants to find something, or needs current information. Examples:
+  - User asks "help me scrape job listings" → search for popular job listing sites
+  - User asks about "best APIs for weather data" → search for weather API options
+  - User mentions a topic you need more context on → search for relevant information
+
+- **web-scrape-tool**: Use this to scrape content from a specific URL when the user provides a website or you need to understand a site's structure. Examples:
+  - User provides a URL and wants to extract data → scrape to understand page structure
+  - User asks to "scrape this site: example.com" → scrape to see what content is available
+  - After web-search-tool returns results → scrape specific pages for more detail
+
+IMPORTANT: Always gather web context BEFORE asking clarification questions when:
+- The user provides a URL
+- The user mentions scraping, extracting, or crawling a website
+- The request involves external websites or APIs you're not familiar with
+- The topic is vague and would benefit from web research
+
 ## CONTEXT GATHERING WITH runBubbleFlow:
-Use the runBubbleFlow tool when you need external context that would help create a better plan:
+Use the runBubbleFlow tool when you need external context from integrated services:
 - Database schema information (table names, columns, relationships)
 - File listings from cloud storage (Google Drive, etc.)
-- API endpoint information
-- Any other external data that would inform the workflow design
+- API endpoint information from connected services
+- Any other external data from user's connected accounts
 
 IMPORTANT: When using runBubbleFlow:
 - The flow code must be valid BubbleFlow TypeScript code
@@ -179,16 +198,20 @@ IMPORTANT: When you need external context, DO NOT output JSON. Instead, DIRECTLY
 1. Read the user's request carefully
 2. Check if clarification answers or context answers are provided (previous round)
 3. If this is the first interaction AND there's ambiguity → get-bubble-details-tool to understand the bubbles implementation details and capabilities
-4. Run bubbleflow to get the external context if needed, ex: database schema, file listings, google sheet files, etc.
-5. Then ask clarification questions if needed based on additional context gathered.
-7. If clarification answers are provided OR request is clear → Generate the plan
-8. If additional context is needed, run bubbleflow to get it, ex: database schema, file listings, google sheet files, etc.
-9. ALWAYS prefer generating a plan over asking more questions when possible
+4. If the user provides a URL or mentions a website → use web-scrape-tool to understand the site structure
+5. If the request is vague or involves topics you need more context on → use web-search-tool to research
+6. Run bubbleflow to get external context from integrated services if needed (database schema, file listings, etc.)
+7. Then ask clarification questions if needed based on additional context gathered.
+8. If clarification answers are provided OR request is clear → Generate the plan
+9. If additional context is needed, gather it using appropriate tools
+10. ALWAYS prefer generating a plan over asking more questions when possible
 
 ## TOOLS AVAILABLE:
 - askClarification: Ask the user multiple-choice questions (handled via JSON output)
-- runBubbleFlow: Run a mini flow to gather context (e.g., fetch database schema, list files)
+- runBubbleFlow: Run a mini flow to gather context from integrated services (e.g., fetch database schema, list files from connected accounts)
 - get-bubble-details-tool: Get the details of a bubble (e.g., input parameters, output structure), always run to check api for the bubble before running the bubbleFlow.
+- web-search-tool: Search the web for information on topics, find relevant sites, or research vague requests. Use this when the user asks about things you need more context on.
+- web-scrape-tool: Scrape content from a specific URL to understand its structure and available data. Use this when the user provides a website URL or wants to extract data from a site.
 
 Remember: Your goal is to understand the user's intent well enough to create a solid implementation plan. Don't over-question - if the request is reasonably clear, proceed with plan generation.`;
 }
@@ -304,6 +327,31 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
         // System messages (e.g., retry context, error feedback)
         result.push(new HumanMessage(`[System]: ${msg.content}`));
         break;
+
+      case 'tool_result': {
+        // Tool call results from previous iterations - format as assistant message
+        const toolResult = msg as {
+          toolName?: string;
+          toolCallId?: string;
+          input?: unknown;
+          output?: unknown;
+          duration?: number;
+          success?: boolean;
+        };
+
+        let toolResultText = `Tool call completed: ${toolResult.toolName || 'unknown'}\n`;
+        if (toolResult.input) {
+          toolResultText += `Input: ${JSON.stringify(toolResult.input, null, 2)}\n`;
+        }
+        if (toolResult.output) {
+          toolResultText += `Output: ${JSON.stringify(toolResult.output, null, 2)}\n`;
+        }
+        toolResultText += `Status: ${toolResult.success ? 'Success' : 'Failed'} (${toolResult.duration || 0}ms)`;
+
+        // Format as assistant message so the agent can see the tool result
+        result.push(new AIMessage(toolResultText));
+        break;
+      }
     }
   }
 
@@ -344,6 +392,7 @@ export async function runCoffee(
     const mergedCredentials: Partial<Record<CredentialType, string>> = {
       [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY || '',
       [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_API_KEY || '',
+      [CredentialType.FIRECRAWL_API_KEY]: process.env.FIRE_CRAWL_API_KEY || '',
       ...credentials,
     };
 
@@ -407,6 +456,12 @@ export async function runCoffee(
         tools: [
           {
             name: 'get-bubble-details-tool',
+          },
+          {
+            name: 'web-search-tool',
+          },
+          {
+            name: 'web-scrape-tool',
           },
         ],
         customTools: [

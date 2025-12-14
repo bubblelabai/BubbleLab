@@ -213,6 +213,13 @@ async function startGenerationStream(
             ...('answer' in msg ? { answer: msg.answer } : {}),
             ...('plan' in msg ? { plan: msg.plan } : {}),
             ...('approved' in msg ? { approved: msg.approved } : {}),
+            // tool_result fields
+            ...('toolName' in msg ? { toolName: msg.toolName } : {}),
+            ...('toolCallId' in msg ? { toolCallId: msg.toolCallId } : {}),
+            ...('input' in msg ? { input: msg.input } : {}),
+            ...('output' in msg ? { output: msg.output } : {}),
+            ...('duration' in msg ? { duration: msg.duration } : {}),
+            ...('success' in msg ? { success: msg.success } : {}),
           })),
         },
         { signal: abortController.signal }
@@ -346,6 +353,13 @@ export async function startBuildingPhase(
           ...('answer' in msg ? { answer: msg.answer } : {}),
           ...('plan' in msg ? { plan: msg.plan } : {}),
           ...('approved' in msg ? { approved: msg.approved } : {}),
+          // tool_result fields
+          ...('toolName' in msg ? { toolName: msg.toolName } : {}),
+          ...('toolCallId' in msg ? { toolCallId: msg.toolCallId } : {}),
+          ...('input' in msg ? { input: msg.input } : {}),
+          ...('output' in msg ? { output: msg.output } : {}),
+          ...('duration' in msg ? { duration: msg.duration } : {}),
+          ...('success' in msg ? { success: msg.success } : {}),
         })),
       },
       { signal: abortController.signal }
@@ -433,6 +447,13 @@ export async function submitClarificationAndContinue(
           ...('answer' in msg ? { answer: msg.answer } : {}),
           ...('plan' in msg ? { plan: msg.plan } : {}),
           ...('approved' in msg ? { approved: msg.approved } : {}),
+          // tool_result fields
+          ...('toolName' in msg ? { toolName: msg.toolName } : {}),
+          ...('toolCallId' in msg ? { toolCallId: msg.toolCallId } : {}),
+          ...('input' in msg ? { input: msg.input } : {}),
+          ...('output' in msg ? { output: msg.output } : {}),
+          ...('duration' in msg ? { duration: msg.duration } : {}),
+          ...('success' in msg ? { success: msg.success } : {}),
         })),
       },
       { signal: abortController.signal }

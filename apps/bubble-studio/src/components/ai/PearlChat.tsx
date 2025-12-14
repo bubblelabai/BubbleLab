@@ -117,10 +117,6 @@ export function PearlChat() {
         // Play completion sound
         playGenerationCompleteSound();
 
-        // Update Monaco editor with generated code
-        console.log('[PearlChat] onGenerationComplete', data);
-        console.log('[PearlChat] generatedCode', data.generatedCode);
-        console.log('[PearlChat] summary', data.summary);
         if (data.generatedCode) {
           const { editorInstance, setPendingCode } = useEditorStore.getState();
           if (editorInstance) {
@@ -1212,8 +1208,6 @@ function EventDisplay({
         typeof event.output === 'object' &&
         'valid' in event.output &&
         event.output.valid == false;
-      console.log('[PearlChat] tool_complete', event.output);
-      console.log('[PearlChat] isError', isError);
       if (isError || isValid) {
         return (
           <div className="p-2 bg-red-900/20 border border-red-800/30 rounded-lg">

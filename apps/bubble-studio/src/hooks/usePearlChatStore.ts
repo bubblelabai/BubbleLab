@@ -35,6 +35,7 @@ import type {
   AssistantChatMessage,
   UserChatMessage,
   SystemChatMessage,
+  ToolResultChatMessage,
 } from '../components/ai/type';
 import {
   getPendingClarificationRequest,
@@ -108,6 +109,17 @@ function toBackendMessage(msg: ChatMessage): BackendCoffeeMessage {
       };
     case 'system':
       return { ...base, type: 'system', content: msg.content };
+    case 'tool_result':
+      return {
+        ...base,
+        type: 'tool_result',
+        toolName: msg.toolName,
+        toolCallId: msg.toolCallId,
+        input: msg.input,
+        output: msg.output,
+        duration: msg.duration,
+        success: msg.success,
+      };
   }
 }
 
@@ -253,7 +265,7 @@ export function handleStreamingEvent(
       });
       break;
 
-    case 'tool_complete':
+    case 'tool_complete': {
       state.removeToolCall(event.data.callId);
       state.updateTimelineEventByCallId(event.data.callId, (e) => ({
         type: 'tool_complete' as const,
@@ -263,7 +275,32 @@ export function handleStreamingEvent(
         callId: event.data.callId,
         timestamp: e.timestamp, // Preserve original timestamp
       }));
+
+      // Check if tool call succeeded (no error in output)
+      const isError =
+        event.data.output &&
+        typeof event.data.output === 'object' &&
+        'error' in event.data.output &&
+        (event.data.output as { error?: string }).error !== '';
+
+      // Persist tool result as a message (for backend context)
+      const toolResultMsg: ToolResultChatMessage = {
+        id: `tool-result-${event.data.callId}`,
+        type: 'tool_result',
+        toolName: event.data.tool,
+        toolCallId: event.data.callId,
+        input: event.data.input,
+        output: event.data.output,
+        duration: event.data.duration,
+        success: !isError,
+        timestamp: new Date(),
+      };
+
+      // Debug: Log the message being created
+
+      state.addMessage(toolResultMsg);
       break;
+    }
 
     case 'think': {
       let thinkingContent = event.data.content;
@@ -595,7 +632,8 @@ export function usePearlChatStore(flowId: number | null) {
 
       // Get updated state after adding the user message
       const updatedState = store.getState();
-
+      // Debug: Log all messages being sent to backend
+      const backendMessages = updatedState.messages.map(toBackendMessage);
       try {
         const response = await api.postStream(
           '/bubble-flow/generate?phase=planning',
@@ -681,7 +719,7 @@ export function usePearlChatStore(flowId: number | null) {
         credentials,
       })) as { success: boolean; result?: unknown; error?: string };
 
-      // Add response message
+      // Add response message (include originalRequest with flowCode for context)
       const responseMsg: ContextResponseMessage = {
         id: `context-response-${Date.now()}`,
         type: 'context_response',
@@ -690,6 +728,7 @@ export function usePearlChatStore(flowId: number | null) {
           status: result.success ? 'success' : 'error',
           result: result.result,
           error: result.error,
+          originalRequest: pending.request,
         },
         credentialTypes: Object.keys(credentials),
         timestamp: new Date(),
@@ -729,13 +768,14 @@ export function usePearlChatStore(flowId: number | null) {
 
     if (!pending) return;
 
-    // Add rejection response
+    // Add rejection response (include originalRequest with flowCode for context)
     const responseMsg: ContextResponseMessage = {
       id: `context-response-${Date.now()}`,
       type: 'context_response',
       answer: {
         flowId: pending.request.flowId,
         status: 'rejected',
+        originalRequest: pending.request,
       },
       timestamp: new Date(),
     };
