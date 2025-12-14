@@ -15,6 +15,7 @@ import type {
   CoffeeRequestExternalContextEvent,
   CredentialType,
 } from '@bubblelab/shared-schemas';
+import type { GenerationStreamingEvent } from '../types/generation';
 import {
   ParsedBubbleWithInfo,
   cleanUpObjectForDisplayAndStorage,
@@ -195,11 +196,25 @@ function buildAdditionalContext(
 }
 
 /**
- * Process streaming events and update store state
+ * Options for handleStreamingEvent
  */
-function handleStreamingEvent(
-  event: StreamingEvent,
-  store: NonNullable<ReturnType<typeof getPearlChatStore>>
+export interface HandleStreamingEventOptions {
+  /** Called when generation_complete event is received with the generated code and summary */
+  onGenerationComplete?: (data: {
+    generatedCode: string;
+    summary: string;
+    bubbleParameters?: Record<string, unknown>;
+  }) => void;
+}
+
+/**
+ * Process streaming events and update store state
+ * Exported for use by startGenerationStream in usePearl.ts
+ */
+export function handleStreamingEvent(
+  event: StreamingEvent | GenerationStreamingEvent,
+  store: NonNullable<ReturnType<typeof getPearlChatStore>>,
+  options?: HandleStreamingEventOptions
 ) {
   const state = store.getState();
 
@@ -328,9 +343,71 @@ function handleStreamingEvent(
       break;
     }
 
+    // Generation-specific events (unified from generationEventsStore)
+    case 'generation_complete': {
+      const data = event.data;
+      const summary = data.summary || 'Workflow generated successfully';
+      const generatedCode = data.generatedCode || '';
+
+      // Add generation_complete event to the event list
+      state.addEventToCurrentTurn({
+        type: 'generation_complete',
+        summary,
+        code: generatedCode,
+      });
+
+      // Add assistant message with the summary
+      const assistantMessage: AssistantChatMessage = {
+        id: (Date.now() + 1).toString(),
+        type: 'assistant',
+        content: `I've generated your workflow:\n\n${summary}`,
+        resultType: 'answer',
+        timestamp: new Date(),
+      };
+      state.addMessage(assistantMessage);
+
+      // Mark generation as complete
+      state.setGenerationCompleted(true);
+
+      // Call the callback if provided (for editor update, query refetch, etc.)
+      options?.onGenerationComplete?.({
+        generatedCode,
+        summary,
+        bubbleParameters: data.bubbleParameters,
+      });
+      break;
+    }
+
+    case 'retry_attempt': {
+      const data = event.data;
+      state.addEventToCurrentTurn({
+        type: 'retry_attempt',
+        attempt: data.attempt,
+        maxRetries: data.maxRetries,
+        delay: data.delay,
+      });
+      break;
+    }
+
+    case 'error': {
+      // Handle error event - add error display event
+      const errorMessage =
+        'data' in event && event.data && typeof event.data === 'object'
+          ? (event.data as { error?: string }).error || 'An error occurred'
+          : 'An error occurred';
+      state.addEventToCurrentTurn({
+        type: 'generation_error',
+        message: errorMessage,
+      });
+      state.setGenerationCompleted(true);
+      break;
+    }
+
     case 'complete':
-    case 'error':
     case 'coffee_complete':
+    case 'heartbeat':
+    case 'stream_complete':
+      // Ignore these events - they're control signals, not display events
       break;
   }
 }
@@ -420,6 +497,10 @@ export function usePearlChatStore(flowId: number | null) {
   const coffeeOriginalPrompt = store((s) => s.coffeeOriginalPrompt);
   const coffeeContextCredentials = store((s) => s.coffeeContextCredentials);
   const isCoffeeLoading = store((s) => s.isCoffeeLoading);
+
+  // Generation state (unified from generationEventsStore)
+  const isGenerating = store((s) => s.isGenerating);
+  const generationCompleted = store((s) => s.generationCompleted);
 
   // Derive pending state from messages
   const pendingClarification = getPendingClarificationRequest(messages);
@@ -905,5 +986,15 @@ export function usePearlChatStore(flowId: number | null) {
     isError: pearlMutation.isError,
     error: pearlMutation.error,
     pearlMutation,
+
+    // Generation state (unified from generationEventsStore)
+    isGenerating,
+    generationCompleted,
+    hasActiveGenerationStream: () =>
+      store.getState().hasActiveGenerationStream(),
+    cancelGenerationStream: () => store.getState().cancelGenerationStream(),
+
+    // Unified loading state - true when any generation/mutation is in progress
+    isLoading: isPending || isGenerating || isCoffeeLoading,
   };
 }

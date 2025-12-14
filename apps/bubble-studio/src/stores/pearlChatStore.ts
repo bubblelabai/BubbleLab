@@ -28,7 +28,17 @@ export type DisplayEvent =
     }
   | { type: 'token'; content: string }
   | { type: 'think'; content: string }
-  | { type: 'llm_complete_content'; content: string };
+  | { type: 'llm_complete_content'; content: string }
+  // Generation-specific events (unified from generationEventsStore)
+  | { type: 'generation_progress'; message: string }
+  | { type: 'generation_complete'; summary: string; code: string }
+  | { type: 'generation_error'; message: string }
+  | {
+      type: 'retry_attempt';
+      attempt: number;
+      maxRetries: number;
+      delay: number;
+    };
 
 interface PearlChatState {
   // ===== Core State =====
@@ -46,6 +56,11 @@ interface PearlChatState {
   coffeeOriginalPrompt: string | null;
   coffeeContextCredentials: Partial<Record<CredentialType, number>>;
   isCoffeeLoading: boolean;
+
+  // ===== Generation State (unified from generationEventsStore) =====
+  isGenerating: boolean;
+  generationAbortController: AbortController | null;
+  generationCompleted: boolean;
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -90,6 +105,13 @@ interface PearlChatState {
   clearCoffeeContextCredentials: () => void;
   setIsCoffeeLoading: (loading: boolean) => void;
 
+  // ===== Generation Actions =====
+  registerGenerationStream: (controller: AbortController) => void;
+  cancelGenerationStream: () => void;
+  setIsGenerating: (generating: boolean) => void;
+  setGenerationCompleted: (completed: boolean) => void;
+  hasActiveGenerationStream: () => boolean;
+
   // Reset
   reset: () => void;
 }
@@ -98,7 +120,7 @@ interface PearlChatState {
 const stores = new Map<number, ReturnType<typeof createPearlChatStore>>();
 
 function createPearlChatStore(flowId: number) {
-  return create<PearlChatState>((set) => ({
+  return create<PearlChatState>((set, get) => ({
     messages: [],
     eventsList: [],
     activeToolCallIds: new Set(),
@@ -111,6 +133,11 @@ function createPearlChatStore(flowId: number) {
     coffeeOriginalPrompt: null,
     coffeeContextCredentials: {},
     isCoffeeLoading: false,
+
+    // Generation state (unified from generationEventsStore)
+    isGenerating: false,
+    generationAbortController: null,
+    generationCompleted: false,
 
     addMessage: (message) =>
       set((state) => ({ messages: [...state.messages, message] })),
@@ -242,6 +269,30 @@ function createPearlChatStore(flowId: number) {
 
     setIsCoffeeLoading: (loading) => set({ isCoffeeLoading: loading }),
 
+    // Generation actions
+    registerGenerationStream: (controller) =>
+      set({
+        generationAbortController: controller,
+        generationCompleted: false,
+      }),
+
+    cancelGenerationStream: () => {
+      const controller = get().generationAbortController;
+      if (controller) controller.abort();
+      set({ generationAbortController: null, isGenerating: false });
+    },
+
+    setIsGenerating: (generating) => set({ isGenerating: generating }),
+
+    setGenerationCompleted: (completed) =>
+      set({
+        generationCompleted: completed,
+        generationAbortController: null,
+        isGenerating: false,
+      }),
+
+    hasActiveGenerationStream: () => get().generationAbortController !== null,
+
     reset: () =>
       set({
         messages: [],
@@ -254,6 +305,9 @@ function createPearlChatStore(flowId: number) {
         coffeeOriginalPrompt: null,
         coffeeContextCredentials: {},
         isCoffeeLoading: false,
+        isGenerating: false,
+        generationAbortController: null,
+        generationCompleted: false,
       }),
   }));
 }

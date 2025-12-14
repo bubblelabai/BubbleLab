@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   formatFinalResponse,
   formatGeminiImageResponse,
+  generationsToMessageContent,
 } from './agent-formatter';
 
 describe('formatFinalResponse', () => {
@@ -23,6 +24,38 @@ describe('formatFinalResponse', () => {
       const result = formatFinalResponse(response, 'test-model');
 
       expect(result.response).toBe("Here's an image of a dog for you! ");
+      expect(result.error).toBeUndefined();
+    });
+
+    it('should handle array with text and function calls', () => {
+      const response = [
+        {
+          type: 'text',
+          text: "**My Initial Workflow Plan**\n\nOkay, so I need to create a workflow to get new user sign-ups from a PostgreSQL database and put them into a Google Sheet. Sounds straightforward enough, but I have some critical unknowns that I need to address before I can even start building.\n\nFirst, I need to know the database structure. Specifically, what's the table name, and what are the column names for the sign-up date and user details? I can't query the database without that. Same goes for the Google Sheet; I need to know the spreadsheet ID and the specific sheet (tab) where the data should go.\n\nSecond, I need to figure out what triggers this workflow. Is this a one-time thing, a daily routine, or is it triggered by some other event? The mention of \"today\" makes a daily schedule the obvious choice, but I shouldn't assume. I need to confirm that with the user.\n\nMy plan to gather this information is to use the `get-bubble-details-tool` to inspect the available `postgresql` and `google-sheets` bubbles. That should give me a good understanding of what tools I have to work with. Then I'll run a flow with `runBubbleFlow` to grab the database schema and list any available spreadsheets. I'll need to use some clarification questions, I think. I'll need to ask the user some questions about the specific table and columns to use, and also clarify which spreadsheet they would like me to use. Once I have all that info, I should be able to make a concrete plan. So, first step: Get bubble details!\n\n\n",
+        },
+        {
+          type: 'functionCall',
+          functionCall: {
+            name: 'get-bubble-details-tool',
+            args: { bubbleId: 'postgresql' },
+          },
+        },
+        {
+          type: 'functionCall',
+          functionCall: {
+            name: 'get-bubble-details-tool',
+            args: { bubbleId: 'google-sheets' },
+          },
+        },
+      ];
+
+      const result = formatFinalResponse(
+        response,
+        'google/gemini-3.0-pro-preview'
+      );
+      expect(result.response).toBe(
+        "**My Initial Workflow Plan**\n\nOkay, so I need to create a workflow to get new user sign-ups from a PostgreSQL database and put them into a Google Sheet. Sounds straightforward enough, but I have some critical unknowns that I need to address before I can even start building.\n\nFirst, I need to know the database structure. Specifically, what's the table name, and what are the column names for the sign-up date and user details? I can't query the database without that. Same goes for the Google Sheet; I need to know the spreadsheet ID and the specific sheet (tab) where the data should go.\n\nSecond, I need to figure out what triggers this workflow. Is this a one-time thing, a daily routine, or is it triggered by some other event? The mention of \"today\" makes a daily schedule the obvious choice, but I shouldn't assume. I need to confirm that with the user.\n\nMy plan to gather this information is to use the `get-bubble-details-tool` to inspect the available `postgresql` and `google-sheets` bubbles. That should give me a good understanding of what tools I have to work with. Then I'll run a flow with `runBubbleFlow` to grab the database schema and list any available spreadsheets. I'll need to use some clarification questions, I think. I'll need to ask the user some questions about the specific table and columns to use, and also clarify which spreadsheet they would like me to use. Once I have all that info, I should be able to make a concrete plan. So, first step: Get bubble details!\n\n\n"
+      );
       expect(result.error).toBeUndefined();
     });
 
@@ -82,5 +115,58 @@ describe('formatFinalResponse', () => {
       console.log(result.response);
       expect(result.error).toBeUndefined();
     });
+  });
+});
+
+describe('generationsToMessageContent', () => {
+  it('should handle LLMResult.generations with message.kwargs.content text chunks', () => {
+    // Real structure from handleLLMEnd: output.generations is Generation[][]
+    // After .flat() we get Generation[] where each has message.kwargs.content
+    const generations = [
+      {
+        text: '',
+        message: {
+          lc: 1,
+          type: 'constructor',
+          id: ['langchain_core', 'messages', 'AIMessageChunk'],
+          kwargs: {
+            content: [
+              {
+                type: 'text',
+                text: '**My Thought Process: Prioritizing Context Gathering**\n\nOkay, so I need to gather context.',
+              },
+              {
+                type: 'text',
+                text: '**My Next Step: Getting Google Drive Details**\n\nI need the GoogleDriveBubble.',
+              },
+            ],
+            additional_kwargs: {},
+            response_metadata: {
+              finishReason: 'STOP',
+              index: 0,
+              finishMessage: 'Model generated function call(s).',
+            },
+            id: 'run-c7f8017c-9fb3-4e86-9dbf-073812312d6d',
+          },
+        },
+        generationInfo: {
+          finishReason: 'STOP',
+          index: 0,
+          finishMessage: 'Model generated function call(s).',
+        },
+      },
+    ];
+
+    const messageContent = generationsToMessageContent(generations);
+    const result = formatFinalResponse(
+      messageContent,
+      'google/gemini-2.5-flash'
+    );
+
+    console.log(result.response);
+
+    expect(result.response).toContain('**My Thought Process');
+    expect(result.response).toContain('**My Next Step');
+    expect(result.error).toBeUndefined();
   });
 });
