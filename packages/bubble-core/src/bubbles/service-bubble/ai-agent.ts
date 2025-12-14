@@ -27,6 +27,7 @@ import type { StreamingEvent } from '@bubblelab/shared-schemas';
 import {
   extractAndStreamThinkingTokens,
   formatFinalResponse,
+  generationsToMessageContent,
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
@@ -1007,15 +1008,15 @@ export class AIAgentBubble extends ServiceBubble<
                       },
                     });
                   }
+                  const content = formatFinalResponse(
+                    generationsToMessageContent(output.generations.flat()),
+                    this.params.model.model
+                  ).response;
                   await this.streamingCallback?.({
                     type: 'llm_complete',
                     data: {
                       messageId,
-                      content: formatFinalResponse(
-                        output.generations,
-                        this.params.model.model,
-                        this.params.model.jsonMode
-                      ).response,
+                      content: content,
                       totalTokens:
                         output.llmOutput?.usage_metadata?.total_tokens,
                     },
