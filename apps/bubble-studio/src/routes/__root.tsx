@@ -27,7 +27,7 @@ function RootLayout() {
     }
 
     document.addEventListener('mousedown', handleClickOutside);
-    console.log('Clicked outside sidebar, closing it.');
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };

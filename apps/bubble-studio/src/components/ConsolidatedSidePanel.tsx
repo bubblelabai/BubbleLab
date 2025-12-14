@@ -83,7 +83,7 @@ export function ConsolidatedSidePanel() {
               ) : (
                 <Icon className="w-4 h-4" />
               )}
-              <span>{tab.label}</span>
+              <span className="hidden md:inline">{tab.label}</span>
               {tab.badge !== null && (
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full ${
