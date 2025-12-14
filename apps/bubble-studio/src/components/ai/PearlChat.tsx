@@ -750,7 +750,11 @@ export function PearlChat() {
                               {pearl.eventsList[
                                 pearl.eventsList.length - 1
                               ]?.map((event, idx) => (
-                                <EventDisplay key={idx} event={event} />
+                                <EventDisplay
+                                  key={idx}
+                                  event={event}
+                                  onRetry={pearl.retryAfterError}
+                                />
                               ))}
                             </div>
                           )}
@@ -924,6 +928,7 @@ export function PearlChat() {
                               <EventDisplay
                                 key={`${message.id}-event-${eventIndex}`}
                                 event={event}
+                                onRetry={pearl.retryAfterError}
                               />
                             ))}
                         </div>
@@ -998,35 +1003,42 @@ export function PearlChat() {
           )}
 
         {/* Current streaming events (for the active turn) */}
-        {pearl.isPending && pearl.eventsList.length > 0 && (
-          <div className="p-3">
-            {pearl.eventsList[pearl.eventsList.length - 1].length > 0 ? (
-              <>
+        {(() => {
+          const lastTurnEvents =
+            pearl.eventsList.length > 0
+              ? pearl.eventsList[pearl.eventsList.length - 1]
+              : [];
+          const hasErrorEvent = lastTurnEvents.some(
+            (e) => e.type === 'generation_error'
+          );
+          const isLoading = pearl.isPending || pearl.isCoffeeLoading;
+          const shouldShow =
+            (isLoading || hasErrorEvent) && lastTurnEvents.length > 0;
+
+          if (!shouldShow) return null;
+
+          return (
+            <div className="p-3">
+              {isLoading && !hasErrorEvent && (
                 <div className="flex items-center gap-2 mb-2">
                   <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   <span className="text-xs font-medium text-gray-400">
                     Pearl - Processing...
                   </span>
                 </div>
-                <div className="space-y-2">
-                  {pearl.eventsList[pearl.eventsList.length - 1].map(
-                    (event, index) => (
-                      <EventDisplay
-                        key={`current-event-${index}`}
-                        event={event}
-                      />
-                    )
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                <span className="text-sm text-gray-400">Starting...</span>
+              )}
+              <div className="space-y-2">
+                {lastTurnEvents.map((event, index) => (
+                  <EventDisplay
+                    key={`current-event-${index}`}
+                    event={event}
+                    onRetry={pearl.retryAfterError}
+                  />
+                ))}
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
@@ -1156,7 +1168,13 @@ export function PearlChat() {
 }
 
 // Helper component to render individual events
-function EventDisplay({ event }: { event: DisplayEvent }) {
+function EventDisplay({
+  event,
+  onRetry,
+}: {
+  event: DisplayEvent;
+  onRetry?: () => void;
+}) {
   switch (event.type) {
     case 'llm_thinking':
       return (
@@ -1276,6 +1294,14 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
             <X className="w-3.5 h-3.5 text-red-400" />
             <span className="text-sm text-red-300">Error: {event.message}</span>
           </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="mt-2 px-3 py-1.5 text-xs bg-red-800/30 hover:bg-red-800/50 text-red-300 rounded border border-red-700/50 transition-colors"
+            >
+              Retry
+            </button>
+          )}
         </div>
       );
 

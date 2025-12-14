@@ -34,6 +34,7 @@ import type {
   PlanApprovalMessage,
   AssistantChatMessage,
   UserChatMessage,
+  SystemChatMessage,
 } from '../components/ai/type';
 import {
   getPendingClarificationRequest,
@@ -105,6 +106,8 @@ function toBackendMessage(msg: ChatMessage): BackendCoffeeMessage {
         approved: msg.approved,
         comment: msg.comment,
       };
+    case 'system':
+      return { ...base, type: 'system', content: msg.content };
   }
 }
 
@@ -855,6 +858,68 @@ export function usePearlChatStore(flowId: number | null) {
     }
   }, [store, flowId]);
 
+  // ===== Retry After Error =====
+  const retryAfterError = useCallback(async () => {
+    if (!store || !flowId) return;
+
+    const storeState = store.getState();
+    const originalPrompt = storeState.coffeeOriginalPrompt;
+
+    if (!originalPrompt) {
+      console.error('[Coffee] No original prompt to retry');
+      return;
+    }
+
+    // Get error events from the current turn to include as context
+    const lastTurnEvents =
+      storeState.eventsList.length > 0
+        ? storeState.eventsList[storeState.eventsList.length - 1]
+        : [];
+    const errorEvents = lastTurnEvents.filter(
+      (e) => e.type === 'generation_error'
+    );
+    const errorContext = errorEvents
+      .map((e) => (e.type === 'generation_error' ? e.message : ''))
+      .filter(Boolean)
+      .join('\n');
+
+    // Add a system message with the error context
+    const retryMessage: SystemChatMessage = {
+      id: `retry-${Date.now()}`,
+      type: 'system',
+      content: `[Previous attempt failed with error: ${errorContext}]\n\nPlease try generating the response again, ensuring the output is valid JSON.`,
+      timestamp: new Date(),
+    };
+    storeState.addMessage(retryMessage);
+
+    // Start a new turn for the retry
+    storeState.startNewTurn();
+    storeState.setIsCoffeeLoading(true);
+    storeState.setGenerationCompleted(false);
+
+    // Get updated state after adding the retry message
+    const updatedState = store.getState();
+
+    try {
+      const response = await api.postStream(
+        '/bubble-flow/generate?phase=planning',
+        {
+          prompt: originalPrompt,
+          flowId,
+          messages: updatedState.messages.map(toBackendMessage),
+        }
+      );
+
+      for await (const event of sseToAsyncIterable(response)) {
+        handleStreamingEvent(event as StreamingEvent, store);
+      }
+    } catch (error) {
+      console.error('[Coffee] Retry error:', error);
+    } finally {
+      storeState.setIsCoffeeLoading(false);
+    }
+  }, [store, flowId]);
+
   // ===== Other Actions =====
   const clearMessages = useCallback(() => {
     store?.getState().clearMessages();
@@ -977,6 +1042,7 @@ export function usePearlChatStore(flowId: number | null) {
     setCoffeeContextCredential,
     submitContext,
     rejectContext,
+    retryAfterError,
 
     // Mutation state
     isPending,

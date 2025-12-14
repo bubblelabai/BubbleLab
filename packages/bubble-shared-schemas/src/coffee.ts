@@ -220,6 +220,12 @@ export const PlanApprovalMessageSchema = BaseMessageSchema.extend({
   comment: z.string().optional().describe('Optional user comment on the plan'),
 });
 
+/** System message (for retries, errors, etc.) */
+export const SystemMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('system'),
+  content: z.string().describe('System message content'),
+});
+
 /** Union of all Coffee message types */
 export const CoffeeMessageSchema = z.discriminatedUnion('type', [
   UserMessageSchema,
@@ -230,6 +236,7 @@ export const CoffeeMessageSchema = z.discriminatedUnion('type', [
   ContextResponseMessageSchema,
   PlanMessageSchema,
   PlanApprovalMessageSchema,
+  SystemMessageSchema,
 ]);
 
 // ============================================================================
@@ -311,4 +318,5 @@ export type ContextResponseMessage = z.infer<
 >;
 export type PlanMessage = z.infer<typeof PlanMessageSchema>;
 export type PlanApprovalMessage = z.infer<typeof PlanApprovalMessageSchema>;
+export type SystemMessage = z.infer<typeof SystemMessageSchema>;
 export type CoffeeMessage = z.infer<typeof CoffeeMessageSchema>;
