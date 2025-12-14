@@ -79,7 +79,15 @@ function detectAppType(token: string): AppType | null {
  * Automatically detects the app type from JWT issuer and uses the appropriate Clerk configuration
  */
 export async function authMiddleware(c: Context, next: Next) {
-  const authHeader = c.req.header('Authorization');
+  let authHeader: string | undefined = c.req.header('Authorization');
+
+  // Treat empty/null/undefined tokens as no auth header (for dev mode without Clerk)
+  if (authHeader) {
+    const token = authHeader.replace('Bearer', '').trim();
+    if (!token || token === 'null' || token === 'undefined') {
+      authHeader = undefined;
+    }
+  }
 
   // If no auth header, we reject unless in dev mode
   if (!authHeader) {

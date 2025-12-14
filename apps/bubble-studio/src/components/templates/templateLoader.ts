@@ -30,6 +30,7 @@ import * as linkedinLeadGenTemplate from './template_codes/linkedinLeadGen';
 import * as githubPRCommenterTemplate from './template_codes/githubPRCommenter';
 import * as telegramBotTemplate from './template_codes/telegrambot';
 import * as notionApprovalMonitorTemplate from './template_codes/notionApprovalMonitor';
+import * as productImageTransformerTemplate from './template_codes/productImageTransformer';
 
 export interface TemplateMetadata {
   inputsSchema?: string;
@@ -87,6 +88,15 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
     code: telegramBotTemplate.templateCode,
     category: 'Personal Assistant',
+    isPopular: true,
+  },
+  {
+    id: 'product-image-transformer',
+    name: 'AI Product Photo Generator (AI Agent, Google Drive)',
+    prompt:
+      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
+    code: productImageTransformerTemplate.templateCode,
+    category: 'Marketing',
     isPopular: true,
   },
   {
