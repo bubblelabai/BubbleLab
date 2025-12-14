@@ -374,6 +374,7 @@ export async function runCoffee(
 
       model: {
         model: COFFEE_DEFAULT_MODEL,
+        reasoningEffort: 'medium',
         temperature: 0.7,
         jsonMode: true,
       },
