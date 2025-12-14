@@ -54,7 +54,7 @@ export type TimelineItem =
   | { kind: 'message'; data: ChatMessage }
   | { kind: 'event'; data: DisplayEvent };
 
-// Display event without timestamp - used for input to addEventToCurrentTurn
+// Display event without timestamp - used for input to addEvent
 // The timestamp is added automatically when the event is stored
 export type DisplayEventInput =
   | { type: 'llm_thinking' }
@@ -89,9 +89,8 @@ interface PearlChatState {
   // ===== Core State =====
   /** Unified timeline: messages and events in chronological order */
   timeline: TimelineItem[];
-  /** Legacy: kept for backward compatibility during transition */
+  /** Messages array - derived from timeline for backward compat */
   messages: ChatMessage[];
-  eventsList: DisplayEvent[][];
   activeToolCallIds: Set<string>;
   prompt: string;
 
@@ -116,11 +115,23 @@ interface PearlChatState {
 
   // Timeline management (unified)
   addToTimeline: (item: TimelineItem) => void;
-  addEventToTimeline: (event: Omit<DisplayEvent, 'timestamp'>) => void;
+  addEventToTimeline: (event: DisplayEventInput) => void;
   addMessageToTimeline: (message: ChatMessage) => void;
+  /** Update or remove the last event of a specific type */
   updateLastTimelineEvent: (
     updater: (event: DisplayEvent) => DisplayEvent | null
   ) => void;
+  /** Remove last event matching a predicate */
+  removeLastTimelineEventIf: (
+    predicate: (event: DisplayEvent) => boolean
+  ) => void;
+  /** Update a specific event by callId (for tool_start -> tool_complete) */
+  updateTimelineEventByCallId: (
+    callId: string,
+    updater: (event: DisplayEvent) => DisplayEvent
+  ) => void;
+  /** Update the last token event or add a new one */
+  appendToLastTokenOrAdd: (content: string) => void;
   clearTimeline: () => void;
 
   // Prompt management
@@ -141,12 +152,8 @@ interface PearlChatState {
   addStepToContext: (functionName: string) => void;
   clearStepContext: () => void;
 
-  // Event management
-  addEventToCurrentTurn: (event: DisplayEventInput) => void;
-  startNewTurn: () => void;
-  updateLastEvent: (
-    updater: (events: DisplayEvent[]) => DisplayEvent[]
-  ) => void;
+  // Event management (uses timeline)
+  addEvent: (event: DisplayEventInput) => void;
 
   // Tool call tracking
   addToolCall: (callId: string) => void;
@@ -180,9 +187,8 @@ function createPearlChatStore(_flowId: number) {
   return create<PearlChatState>((set, get) => ({
     // Unified timeline
     timeline: [],
-    // Legacy arrays (kept for backward compat during transition)
+    // Messages array (kept in sync with timeline for backward compat)
     messages: [],
-    eventsList: [],
     activeToolCallIds: new Set(),
     prompt: '',
     selectedBubbleContext: [],
@@ -239,11 +245,73 @@ function createPearlChatStore(_flowId: number) {
         return { timeline };
       }),
 
+    removeLastTimelineEventIf: (predicate) =>
+      set((state) => {
+        const timeline = [...state.timeline];
+        for (let i = timeline.length - 1; i >= 0; i--) {
+          const item = timeline[i];
+          if (item.kind === 'event' && predicate(item.data)) {
+            timeline.splice(i, 1);
+            break;
+          }
+        }
+        return { timeline };
+      }),
+
+    updateTimelineEventByCallId: (callId, updater) =>
+      set((state) => {
+        const timeline = [...state.timeline];
+        for (let i = timeline.length - 1; i >= 0; i--) {
+          const item = timeline[i];
+          if (
+            item.kind === 'event' &&
+            'callId' in item.data &&
+            item.data.callId === callId
+          ) {
+            timeline[i] = { kind: 'event', data: updater(item.data) };
+            break;
+          }
+        }
+        return { timeline };
+      }),
+
+    appendToLastTokenOrAdd: (content) =>
+      set((state) => {
+        const timeline = [...state.timeline];
+        // Find last token event
+        for (let i = timeline.length - 1; i >= 0; i--) {
+          const item = timeline[i];
+          if (item.kind === 'event' && item.data.type === 'token') {
+            // Append to existing token
+            timeline[i] = {
+              kind: 'event',
+              data: {
+                type: 'token',
+                content: item.data.content + content,
+                timestamp: item.data.timestamp,
+              },
+            };
+            return { timeline };
+          }
+          // Stop at first message boundary
+          if (item.kind === 'message') break;
+        }
+        // No token found, add new one
+        return {
+          timeline: [
+            ...timeline,
+            {
+              kind: 'event',
+              data: { type: 'token', content, timestamp: new Date() },
+            },
+          ],
+        };
+      }),
+
     clearTimeline: () =>
       set({
         timeline: [],
         messages: [],
-        eventsList: [],
         activeToolCallIds: new Set(),
       }),
 
@@ -257,7 +325,6 @@ function createPearlChatStore(_flowId: number) {
     clearMessages: () =>
       set({
         messages: [],
-        eventsList: [],
         timeline: [],
         activeToolCallIds: new Set(),
       }),
@@ -327,75 +394,19 @@ function createPearlChatStore(_flowId: number) {
 
     clearStepContext: () => set({ selectedStepContext: null }),
 
-    startNewTurn: () =>
-      set((state) => ({ eventsList: [...state.eventsList, []] })),
-
-    addEventToCurrentTurn: (event) =>
+    // Add event to timeline with automatic timestamp
+    addEvent: (event) =>
       set((state) => {
-        // Add timestamp if not present
         const eventWithTimestamp = {
           ...event,
-          timestamp: 'timestamp' in event ? event.timestamp : new Date(),
+          timestamp: new Date(),
         } as DisplayEvent;
-
-        // Update legacy eventsList
-        const updated = [...state.eventsList];
-        const lastIndex = updated.length - 1;
-        if (lastIndex >= 0) {
-          updated[lastIndex] = [...updated[lastIndex], eventWithTimestamp];
-        }
-
-        // Also add to unified timeline
         return {
-          eventsList: updated,
           timeline: [
             ...state.timeline,
             { kind: 'event', data: eventWithTimestamp },
           ],
         };
-      }),
-
-    updateLastEvent: (updater) =>
-      set((state) => {
-        // Update legacy eventsList
-        const updated = [...state.eventsList];
-        const lastIndex = updated.length - 1;
-        if (lastIndex >= 0) {
-          updated[lastIndex] = updater(updated[lastIndex]);
-        }
-
-        // Also update timeline - find events matching types that were updated
-        const timeline = [...state.timeline];
-        // For simplicity, we handle the common case of removing llm_thinking
-        // by filtering from the end
-        const lastEvents = updated[lastIndex] || [];
-        const lastEventTypes = new Set(lastEvents.map((e) => e.type));
-
-        // Remove events from timeline that are no longer in the last turn
-        // This handles the filter case for llm_thinking removal
-        let foundEventToUpdate = false;
-        for (let i = timeline.length - 1; i >= 0 && !foundEventToUpdate; i--) {
-          const item = timeline[i];
-          if (item.kind === 'event') {
-            // Check if this event type was filtered out
-            if (!lastEventTypes.has(item.data.type)) {
-              // Check if we're at a message boundary - if so, stop
-              let hasMessageAfter = false;
-              for (let j = i + 1; j < timeline.length; j++) {
-                if (timeline[j].kind === 'message') {
-                  hasMessageAfter = true;
-                  break;
-                }
-              }
-              if (!hasMessageAfter) {
-                timeline.splice(i, 1);
-                foundEventToUpdate = true;
-              }
-            }
-          }
-        }
-
-        return { eventsList: updated, timeline };
       }),
 
     addToolCall: (callId) =>
@@ -462,7 +473,6 @@ function createPearlChatStore(_flowId: number) {
       set({
         timeline: [],
         messages: [],
-        eventsList: [],
         activeToolCallIds: new Set(),
         prompt: '',
         selectedBubbleContext: [],
