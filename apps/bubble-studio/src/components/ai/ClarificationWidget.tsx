@@ -12,6 +12,8 @@ interface ClarificationWidgetProps {
   isSubmitting: boolean;
 }
 
+const OTHER_CHOICE_ID = 'other';
+
 export function ClarificationWidget({
   questions,
   onSubmit,
@@ -22,29 +24,77 @@ export function ClarificationWidget({
     Record<string, string[]>
   >({});
 
+  // Track custom text for "Other" option (questionId -> customText)
+  const [customTexts, setCustomTexts] = useState<Record<string, string>>({});
+
   const handleChoiceSelect = (questionId: string, choiceId: string) => {
     setSelectedAnswers((prev) => ({
       ...prev,
       [questionId]: [choiceId], // Single select - replace previous selection
     }));
+
+    // Clear custom text if "Other" is not selected
+    if (choiceId !== OTHER_CHOICE_ID) {
+      setCustomTexts((prev) => {
+        const next = { ...prev };
+        delete next[questionId];
+        return next;
+      });
+    }
+  };
+
+  const handleCustomTextChange = (questionId: string, text: string) => {
+    setCustomTexts((prev) => ({
+      ...prev,
+      [questionId]: text,
+    }));
   };
 
   const handleSubmit = () => {
     // Ensure all questions have been answered
-    const allAnswered = questions.every(
-      (q) => selectedAnswers[q.id] && selectedAnswers[q.id].length > 0
-    );
+    const allAnswered = questions.every((q) => {
+      const hasAnswer =
+        selectedAnswers[q.id] && selectedAnswers[q.id].length > 0;
+      if (!hasAnswer) return false;
+
+      // If "Other" is selected, ensure custom text is provided
+      if (selectedAnswers[q.id]?.[0] === OTHER_CHOICE_ID) {
+        return customTexts[q.id] && customTexts[q.id].trim().length > 0;
+      }
+
+      return true;
+    });
 
     if (!allAnswered) {
       return; // Don't submit if not all questions are answered
     }
 
-    onSubmit(selectedAnswers);
+    // Merge custom texts with selected answers
+    const answersWithCustomText: Record<string, string[]> = {};
+    for (const question of questions) {
+      const selectedChoiceId = selectedAnswers[question.id]?.[0];
+      if (selectedChoiceId === OTHER_CHOICE_ID) {
+        // For "Other" option, use the custom text as the answer
+        answersWithCustomText[question.id] = [customTexts[question.id] || ''];
+      } else {
+        answersWithCustomText[question.id] = selectedAnswers[question.id] || [];
+      }
+    }
+
+    onSubmit(answersWithCustomText);
   };
 
-  const allQuestionsAnswered = questions.every(
-    (q) => selectedAnswers[q.id] && selectedAnswers[q.id].length > 0
-  );
+  const allQuestionsAnswered = questions.every((q) => {
+    const hasAnswer = selectedAnswers[q.id] && selectedAnswers[q.id].length > 0;
+    if (!hasAnswer) return false;
+
+    // If "Other" is selected, ensure custom text is provided
+    if (selectedAnswers[q.id]?.[0] === OTHER_CHOICE_ID) {
+      return customTexts[q.id] && customTexts[q.id].trim().length > 0;
+    }
+
+    return true;
+  });
 
   return (
     <div className="border border-blue-500/30 rounded-lg overflow-hidden bg-gray-900/50">
@@ -122,6 +172,58 @@ export function ClarificationWidget({
                   </button>
                 );
               })}
+
+              {/* "Other" option with custom text field */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleChoiceSelect(question.id, OTHER_CHOICE_ID)
+                  }
+                  disabled={isSubmitting}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                    selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+                      ? 'border-blue-500 bg-blue-500/20 text-blue-200'
+                      : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-600 hover:bg-gray-800'
+                  } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-600'
+                      }`}
+                    >
+                      {selectedAnswers[question.id]?.includes(
+                        OTHER_CHOICE_ID
+                      ) && <Check className="w-2.5 h-2.5 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-medium">Other</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Specify your own answer
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Custom text input - shown when "Other" is selected */}
+                {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
+                  <div className="ml-7 mt-2">
+                    <input
+                      type="text"
+                      value={customTexts[question.id] || ''}
+                      onChange={(e) =>
+                        handleCustomTextChange(question.id, e.target.value)
+                      }
+                      disabled={isSubmitting}
+                      placeholder="Enter your answer..."
+                      className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
