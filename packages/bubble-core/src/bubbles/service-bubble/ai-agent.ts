@@ -72,6 +72,12 @@ const BackupModelConfigSchema = z.object({
     .describe(
       'Max tokens for backup model. If not specified, uses primary model maxTokens.'
     ),
+  reasoningEffort: z
+    .enum(['low', 'medium', 'high'])
+    .optional()
+    .describe(
+      'Reasoning effort for backup model. If not specified, uses primary model reasoningEffort.'
+    ),
   maxRetries: z
     .number()
     .int()
@@ -103,6 +109,12 @@ const ModelConfigSchema = z.object({
     .default(12800)
     .describe(
       'Maximum number of tokens to generate in response, keep at default of 40000 unless the response is expected to be certain length'
+    ),
+  reasoningEffort: z
+    .enum(['low', 'medium', 'high'])
+    .optional()
+    .describe(
+      'Reasoning effort for model. If not specified, uses primary model reasoningEffort.'
     ),
   maxRetries: z
     .number()
@@ -499,6 +511,7 @@ export class AIAgentBubble extends ServiceBubble<
     const slashIndex = model.indexOf('/');
     const provider = model.substring(0, slashIndex);
     const modelName = model.substring(slashIndex + 1);
+    const reasoningEffort = modelConfig.reasoningEffort;
 
     // Get credential based on the modelConfig's provider (not this.params.model)
     const credentials = this.params.credentials as
@@ -544,6 +557,12 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          ...(reasoningEffort && {
+            reasoning: {
+              effort: reasoningEffort,
+              summary: 'auto',
+            },
+          }),
           streaming: enableStreaming,
           maxRetries: retries,
         });
@@ -585,6 +604,15 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           streaming: enableStreaming,
           apiKey,
+          thinking: {
+            budget_tokens:
+              reasoningEffort === 'low'
+                ? 1025
+                : reasoningEffort === 'medium'
+                  ? 5000
+                  : 10000,
+            type: reasoningEffort ? 'enabled' : 'disabled',
+          },
           maxRetries: retries,
         });
       case 'openrouter':
@@ -605,7 +633,7 @@ export class AIAgentBubble extends ServiceBubble<
               order: this.params.model.provider,
             },
             reasoning: {
-              effort: 'medium',
+              effort: reasoningEffort ?? 'medium',
               exclude: false,
             },
           },
