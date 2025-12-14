@@ -313,16 +313,6 @@ const CommentObjectSchema = z.object({
   rich_text: z.array(RichTextSchema).describe('Comment content'),
 });
 
-// List response schema (generic)
-const ListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
-  z.object({
-    object: z.literal('list').describe('Object type'),
-    results: z.array(itemSchema).describe('Array of results'),
-    next_cursor: z.string().nullable().describe('Cursor for pagination'),
-    has_more: z.boolean().describe('Whether more results exist'),
-    type: z.string().optional().describe('Type of objects in results'),
-  });
-
 // Define the parameters schema for different Notion operations
 const NotionParamsSchema = z.discriminatedUnion('operation', [
   // Create page operation
@@ -865,11 +855,50 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Query data source operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    results: ListResponseSchema(
-      z.union([PageObjectSchema, DataSourceObjectSchema])
-    )
+    results: z
+      .array(
+        z
+          .object({
+            object: z
+              .enum(['page', 'data_source'])
+              .describe('Object type (page or data_source)'),
+            id: z.string().describe('Object ID'),
+            created_time: z.string().describe('ISO 8601 datetime'),
+            last_edited_time: z.string().describe('ISO 8601 datetime'),
+            url: z.string().url().optional().describe('URL of the object'),
+            properties: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe('Object properties'),
+            title: z
+              .array(
+                z.object({ plain_text: z.string().optional() }).passthrough()
+              )
+              .optional()
+              .describe('Title (for data sources)'),
+            parent: z
+              .record(z.unknown())
+              .optional()
+              .describe('Parent of the object'),
+            archived: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is archived'),
+            in_trash: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is in trash'),
+          })
+          .passthrough()
+      )
       .optional()
-      .describe('List of pages or data sources from query'),
+      .describe('Array of pages or data sources from query'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -917,9 +946,16 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Append block children operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    blocks: ListResponseSchema(BlockObjectSchema)
+    blocks: z
+      .array(BlockObjectSchema)
       .optional()
-      .describe('List of appended block objects'),
+      .describe('Array of appended block objects'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -927,9 +963,16 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Retrieve block children operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    blocks: ListResponseSchema(BlockObjectSchema)
+    blocks: z
+      .array(BlockObjectSchema)
       .optional()
-      .describe('List of block children'),
+      .describe('Array of block children'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -969,19 +1012,65 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
     operation: z.literal('list_users').describe('List users operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    users: ListResponseSchema(UserSchema)
+    users: z
+      .array(UserSchema)
       .optional()
-      .describe('List of users in the workspace'),
+      .describe('Array of users in the workspace'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z.literal('search').describe('Search operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    results: ListResponseSchema(
-      z.union([PageObjectSchema, DataSourceObjectSchema])
-    )
+    results: z
+      .array(
+        z
+          .object({
+            object: z
+              .enum(['page', 'data_source'])
+              .describe('Object type (page or data_source)'),
+            id: z.string().describe('Object ID'),
+            created_time: z.string().describe('ISO 8601 datetime'),
+            last_edited_time: z.string().describe('ISO 8601 datetime'),
+            url: z.string().url().optional().describe('URL of the object'),
+            properties: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe('Object properties'),
+            title: z
+              .array(
+                z.object({ plain_text: z.string().optional() }).passthrough()
+              )
+              .optional()
+              .describe('Title (for data sources)'),
+            parent: z
+              .record(z.unknown())
+              .optional()
+              .describe('Parent of the object'),
+            archived: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is archived'),
+            in_trash: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is in trash'),
+          })
+          .passthrough()
+      )
       .optional()
-      .describe('List of pages and/or data sources matching the search query'),
+      .describe('Array of pages and/or data sources matching the search query'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
 ]);
 
@@ -1348,14 +1437,26 @@ export class NotionBubble<
       url += `?${params.toString()}`;
     }
 
-    type QueryResult = z.output<
-      ReturnType<
-        typeof ListResponseSchema<
-          typeof PageObjectSchema | typeof DataSourceObjectSchema
-        >
-      >
-    >;
-    const results = await this.makeNotionApiCall<QueryResult>(
+    interface QueryResultItem {
+      object: 'page' | 'data_source';
+      id: string;
+      created_time: string;
+      last_edited_time: string;
+      url?: string;
+      properties?: Record<string, unknown>;
+      title?: Array<{ plain_text?: string }>;
+      parent?: Record<string, unknown>;
+      archived?: boolean;
+      in_trash?: boolean;
+      [key: string]: unknown;
+    }
+    interface QueryResultList {
+      object: 'list';
+      results: QueryResultItem[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<QueryResultList>(
       url,
       body,
       'POST'
@@ -1365,7 +1466,9 @@ export class NotionBubble<
       operation: 'query_data_source',
       success: true,
       error: '',
-      results,
+      results: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1525,10 +1628,13 @@ export class NotionBubble<
 
     if (after) body.after = after;
 
-    type BlockList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof BlockObjectSchema>>
-    >;
-    const blocks = await this.makeNotionApiCall<BlockList>(
+    interface BlockListResponse {
+      object: 'list';
+      results: z.output<typeof BlockObjectSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<BlockListResponse>(
       `blocks/${block_id}/children`,
       body,
       'PATCH'
@@ -1538,7 +1644,9 @@ export class NotionBubble<
       operation: 'append_block_children',
       success: true,
       error: '',
-      blocks,
+      blocks: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1558,16 +1666,25 @@ export class NotionBubble<
       params_obj.append('page_size', page_size.toString());
     if (params_obj.toString()) url += `?${params_obj.toString()}`;
 
-    type BlockList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof BlockObjectSchema>>
-    >;
-    const blocks = await this.makeNotionApiCall<BlockList>(url, {}, 'GET');
+    interface BlockListResponse {
+      object: 'list';
+      results: z.output<typeof BlockObjectSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<BlockListResponse>(
+      url,
+      {},
+      'GET'
+    );
 
     return {
       operation: 'retrieve_block_children',
       success: true,
       error: '',
-      blocks,
+      blocks: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1686,16 +1803,25 @@ export class NotionBubble<
       params_obj.append('page_size', page_size.toString());
     if (params_obj.toString()) url += `?${params_obj.toString()}`;
 
-    type UserList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof UserSchema>>
-    >;
-    const users = await this.makeNotionApiCall<UserList>(url, {}, 'GET');
+    interface UserListResponse {
+      object: 'list';
+      results: z.output<typeof UserSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<UserListResponse>(
+      url,
+      {},
+      'GET'
+    );
 
     return {
       operation: 'list_users',
       success: true,
       error: '',
-      users,
+      users: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1716,14 +1842,27 @@ export class NotionBubble<
     if (start_cursor) body.start_cursor = start_cursor;
     if (page_size !== undefined) body.page_size = page_size;
 
-    type SearchResult = z.output<
-      ReturnType<
-        typeof ListResponseSchema<
-          typeof PageObjectSchema | typeof DataSourceObjectSchema
-        >
-      >
-    >;
-    const results = await this.makeNotionApiCall<SearchResult>(
+    // Simplified search result type - items have common fields with passthrough for additional data
+    interface SearchResultItem {
+      object: 'page' | 'data_source';
+      id: string;
+      created_time: string;
+      last_edited_time: string;
+      url?: string;
+      properties?: Record<string, unknown>;
+      title?: Array<{ plain_text?: string }>;
+      parent?: Record<string, unknown>;
+      archived?: boolean;
+      in_trash?: boolean;
+      [key: string]: unknown;
+    }
+    interface SearchResultList {
+      object: 'list';
+      results: SearchResultItem[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<SearchResultList>(
       'search',
       body,
       'POST'
@@ -1733,7 +1872,9 @@ export class NotionBubble<
       operation: 'search',
       success: true,
       error: '',
-      results,
+      results: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 

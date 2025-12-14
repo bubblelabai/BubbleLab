@@ -70,6 +70,148 @@ const app = new OpenAPIHono({
 });
 setupErrorHandler(app);
 
+/**
+ * Build full context string from messages including clarification, context, and plan
+ * This provides Boba with all the information gathered during the planning phase
+ */
+function buildFullContextFromMessages(
+  messages?: Array<Record<string, unknown>>,
+  planContext?: string
+): string {
+  if (!messages || messages.length === 0) {
+    return planContext
+      ? `[Implementation Plan from Planning Phase]:\n${planContext}`
+      : '';
+  }
+
+  const contextParts: string[] = [];
+
+  // Extract all context requests and responses (database schema, file listings, etc.)
+  const contextRequests = messages.filter(
+    (msg) => msg.type === 'context_request'
+  );
+  const contextResponses = messages.filter(
+    (msg) => msg.type === 'context_response'
+  );
+
+  if (contextRequests.length > 0 || contextResponses.length > 0) {
+    contextParts.push('=== CONTEXT GATHERING INFORMATION ===');
+
+    // Process all context request/response pairs
+    // Match them by index order or process independently
+    const maxPairs = Math.max(contextRequests.length, contextResponses.length);
+    for (let i = 0; i < maxPairs; i++) {
+      const request = contextRequests[i];
+      const response = contextResponses[i];
+
+      if (request) {
+        const requestData = request.request as {
+          flowId?: string;
+          flowCode?: string;
+          requiredCredentials?: string[];
+          description?: string;
+        };
+        if (requestData.description) {
+          contextParts.push(`Purpose: ${requestData.description}`);
+        }
+      }
+
+      if (response) {
+        const answer = response.answer as {
+          flowId?: string;
+          status?: string;
+          result?: unknown;
+          error?: string;
+        };
+        if (answer.status === 'success' && answer.result) {
+          contextParts.push('Context Result:');
+          contextParts.push(JSON.stringify(answer.result, null, 2));
+        } else if (answer.error) {
+          contextParts.push(`Context Error: ${answer.error}`);
+        }
+      }
+
+      if (request || response) {
+        contextParts.push(''); // Empty line between pairs
+      }
+    }
+  }
+
+  // Extract all clarification requests and responses (user's answers to questions)
+  const clarificationRequests = messages.filter(
+    (msg) => msg.type === 'clarification_request'
+  );
+  const clarificationResponses = messages.filter(
+    (msg) => msg.type === 'clarification_response'
+  );
+
+  if (clarificationRequests.length > 0 || clarificationResponses.length > 0) {
+    contextParts.push('=== CLARIFICATION QUESTIONS AND ANSWERS ===');
+
+    // Collect all questions from all clarification requests
+    const allQuestions: Array<{
+      id: string;
+      question: string;
+      choices?: Array<{ id: string; label: string; description?: string }>;
+      context?: string;
+    }> = [];
+
+    clarificationRequests.forEach((req) => {
+      const questions = req.questions as Array<{
+        id: string;
+        question: string;
+        choices?: Array<{ id: string; label: string; description?: string }>;
+        context?: string;
+      }>;
+      allQuestions.push(...questions);
+    });
+
+    // Merge all answers from all clarification responses
+    const allAnswers: Record<string, string[]> = {};
+    clarificationResponses.forEach((resp) => {
+      const answers = resp.answers as Record<string, string[]>;
+      Object.entries(answers).forEach(([questionId, answerIds]) => {
+        if (!allAnswers[questionId]) {
+          allAnswers[questionId] = [];
+        }
+        allAnswers[questionId].push(...answerIds);
+      });
+    });
+
+    // Process all questions with their corresponding answers
+    allQuestions.forEach((q) => {
+      const userAnswers = allAnswers[q.id] || [];
+      const selectedChoices = q.choices
+        ?.filter((choice) => userAnswers.includes(choice.id))
+        .map(
+          (choice) =>
+            `${choice.label}${choice.description ? ` (${choice.description})` : ''}`
+        )
+        .join(', ');
+
+      contextParts.push(`Q: ${q.question}`);
+      if (q.context) {
+        contextParts.push(`   Context: ${q.context}`);
+      }
+      if (selectedChoices) {
+        contextParts.push(`A: ${selectedChoices}`);
+      } else if (userAnswers.length > 0) {
+        // Fallback if choices aren't available
+        contextParts.push(`A: ${userAnswers.join(', ')}`);
+      }
+      contextParts.push(''); // Empty line between Q&A pairs
+    });
+  }
+
+  // Add plan context if available
+  if (planContext) {
+    contextParts.push('=== IMPLEMENTATION PLAN FROM PLANNING PHASE ===');
+    contextParts.push(planContext);
+  }
+
+  return contextParts.join('\n');
+}
+
 app.openapi(listBubbleFlowsRoute, async (c) => {
   const userId = getUserId(c);
   // Fetch both bubble flows and user data in parallel
@@ -1233,9 +1375,13 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         }
 
         // BUILDING PHASE: Run Boba agent for code generation
-        // Enrich prompt with plan context if available
-        const enrichedPrompt = planContext
-          ? `${prompt}\n\n[Implementation Plan from Planning Phase]:\n${planContext}`
+        // Build full context from messages (clarification, context, and plan)
+        const additionalContext = buildFullContextFromMessages(
+          messages,
+          planContext
+        );
+        const enrichedPrompt = additionalContext
+          ? `${prompt}\n\n${additionalContext}`
           : prompt;
 
         // Use runBoba to generate the code with streaming
