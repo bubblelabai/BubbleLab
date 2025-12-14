@@ -1133,8 +1133,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
   try {
-    const { prompt, flowId, clarificationAnswers, planContext, contextAnswer } =
-      c.req.valid('json');
+    const { prompt, flowId, messages, planContext } = c.req.valid('json');
     const { phase } = c.req.valid('query');
 
     // If flowId is provided, verify the flow exists and user owns it
@@ -1212,8 +1211,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             {
               prompt,
               flowId,
-              clarificationAnswers,
-              contextAnswer,
+              messages,
             },
             credentials,
             streamingCallback

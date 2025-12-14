@@ -36,6 +36,7 @@ import {
   type StreamingCallback,
   ListBubblesTool,
   HumanMessage,
+  AIMessage,
   type BaseMessage,
   type ToolHookAfter,
   type ToolHookContext,
@@ -190,54 +191,115 @@ Remember: Your goal is to understand the user's intent well enough to create a s
 }
 
 /**
- * Build conversation messages from request
+ * Build conversation messages from request - converts unified messages to LLM conversation turns
  */
 function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
-  const messages: BaseMessage[] = [];
+  const result: BaseMessage[] = [];
 
-  let messageContent = `User's workflow request: "${request.prompt}"`;
+  // Always start with the initial user prompt
+  result.push(new HumanMessage(`User's workflow request: "${request.prompt}"`));
 
-  // Include clarification answers if provided
-  if (
-    request.clarificationAnswers &&
-    Object.keys(request.clarificationAnswers).length > 0
-  ) {
-    messageContent += "\n\nUser's answers to clarification questions:";
-    for (const [questionId, answerIds] of Object.entries(
-      request.clarificationAnswers
-    )) {
-      messageContent += `\n- Question ${questionId}: Selected option(s): ${answerIds.join(', ')}`;
-    }
-    messageContent +=
-      '\n\nBased on these answers, please generate the implementation plan.';
+  // If no messages, return just the initial prompt
+  if (!request.messages || request.messages.length === 0) {
+    return result;
   }
 
-  // Include context answer if provided
-  if (request.contextAnswer) {
-    // If we have the original request, include the AI's reasoning
-    if (request.contextAnswer.originalRequest) {
-      messageContent += `\n\n[AI Requested Context]\nI need to gather context to better understand your requirements.\n\nPurpose: ${request.contextAnswer.originalRequest.description}\n\nI'll run this flow to gather the context:\n\`\`\`typescript\n${request.contextAnswer.originalRequest.flowCode}\n\`\`\`\n`;
-    }
+  // Process each message in order to build the full conversation history
+  for (const msg of request.messages) {
+    switch (msg.type) {
+      case 'user':
+        result.push(new HumanMessage(msg.content));
+        break;
 
-    messageContent += '\n\n[Context Gathering Result]';
-    if (request.contextAnswer.status === 'success') {
-      messageContent += `\nThe context-gathering flow executed successfully.`;
-      messageContent += `\nResult: ${JSON.stringify(request.contextAnswer.result, null, 2)}`;
-      messageContent +=
-        '\n\nUse this context to generate a more informed implementation plan.';
-    } else if (request.contextAnswer.status === 'rejected') {
-      messageContent += `\nThe user chose to skip the context-gathering step.`;
-      messageContent +=
-        '\n\nProceed with generating the plan using the information available.';
-    } else if (request.contextAnswer.status === 'error') {
-      messageContent += `\nThe context-gathering flow failed with error: ${request.contextAnswer.error}`;
-      messageContent +=
-        '\n\nProceed with generating the plan using the information available.';
+      case 'assistant':
+        // Include AI responses with their content
+        result.push(new AIMessage(msg.content));
+        break;
+
+      case 'clarification_request':
+        // AI asked clarification questions - represent as AI message
+        const questionsText = msg.questions
+          .map(
+            (q) =>
+              `${q.question}\n${q.choices.map((c) => `  - ${c.label}: ${c.description || ''}`).join('\n')}`
+          )
+          .join('\n\n');
+        result.push(
+          new AIMessage(
+            `I have some clarification questions:\n\n${questionsText}`
+          )
+        );
+        break;
+
+      case 'clarification_response': {
+        // User answered clarification questions - find original questions for context
+        const clarificationRequest = request.messages?.find(
+          (m) => m.type === 'clarification_request'
+        );
+
+        let answerText = 'Here are my answers:';
+        for (const [questionId, answerIds] of Object.entries(msg.answers)) {
+          const question =
+            clarificationRequest?.type === 'clarification_request'
+              ? clarificationRequest.questions.find((q) => q.id === questionId)
+              : null;
+          const answerLabels = answerIds.map(
+            (aid) => question?.choices.find((c) => c.id === aid)?.label || aid
+          );
+          answerText += `\n- ${question?.question || questionId}: ${answerLabels.join(', ')}`;
+        }
+        result.push(new HumanMessage(answerText));
+        break;
+      }
+
+      case 'context_request':
+        // AI requested external context
+        result.push(
+          new AIMessage(
+            `I need to gather some external context: ${msg.request.description}`
+          )
+        );
+        break;
+
+      case 'context_response': {
+        // User provided context response
+        const answer = msg.answer;
+        let contextText = '';
+        if (answer.status === 'success') {
+          contextText = `Context gathered successfully:\n${JSON.stringify(answer.result, null, 2)}`;
+        } else if (answer.status === 'rejected') {
+          contextText = 'I chose to skip the context-gathering step.';
+        } else if (answer.status === 'error') {
+          contextText = `Context gathering failed: ${answer.error}`;
+        }
+        result.push(new HumanMessage(contextText));
+        break;
+      }
+
+      case 'plan':
+        // AI generated a plan
+        const planText = `Here's my implementation plan:\n\n**Summary:** ${msg.plan.summary}\n\n**Steps:**\n${msg.plan.steps.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join('\n')}\n\n**Estimated Bubbles:** ${msg.plan.estimatedBubbles.join(', ')}`;
+        result.push(new AIMessage(planText));
+        break;
+
+      case 'plan_approval': {
+        if (msg.approved) {
+          const approvalText = msg.comment
+            ? `I approve the plan. ${msg.comment}`
+            : 'I approve the plan. Please proceed.';
+          result.push(new HumanMessage(approvalText));
+        } else {
+          const rejectionText = msg.comment
+            ? `I would like to revise the plan. ${msg.comment}`
+            : 'I would like to revise the plan.';
+          result.push(new HumanMessage(rejectionText));
+        }
+        break;
+      }
     }
   }
 
-  messages.push(new HumanMessage(messageContent));
-  return messages;
+  return result;
 }
 
 /**

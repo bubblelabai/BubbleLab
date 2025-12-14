@@ -1,28 +1,13 @@
 /**
  * Pearl Chat Store - Pure state management for Pearl AI chat
  *
- * This store manages the conversation state (messages, streaming events, tool calls)
- * without handling API calls. The usePearlChatStore hook combines this with React Query.
+ * Messages are the source of truth for Coffee state.
+ * Use helper functions from type.ts to derive pending state from messages.
  */
 
 import { create } from 'zustand';
 import type { ChatMessage } from '../components/ai/type';
-import type {
-  ClarificationQuestion,
-  CoffeePlanEvent,
-  CoffeeRequestExternalContextEvent,
-  CredentialType,
-} from '@bubblelab/shared-schemas';
-
-// Coffee phase types
-export type CoffeePhase =
-  | 'idle'
-  | 'clarifying'
-  | 'gathering'
-  | 'awaiting_context' // Waiting for user to provide credentials and approve context flow
-  | 'planning'
-  | 'ready'
-  | 'skipped';
+import type { CredentialType } from '@bubblelab/shared-schemas';
 
 // Display event types for chronological rendering
 export type DisplayEvent =
@@ -45,25 +30,21 @@ export type DisplayEvent =
   | { type: 'think'; content: string };
 
 interface PearlChatState {
-  // ===== State =====
+  // ===== Core State =====
   messages: ChatMessage[];
   eventsList: DisplayEvent[][];
   activeToolCallIds: Set<string>;
   prompt: string;
-  selectedBubbleContext: number[]; // List of bubble variable IDs for context
-  selectedTransformationContext: string | null; // Transformation function name for context
-  selectedStepContext: string | null; // Step function name for context
 
-  // ===== Coffee Agent State =====
-  coffeePhase: CoffeePhase;
-  coffeeQuestions: ClarificationQuestion[] | null;
-  coffeeAnswers: Record<string, string[]>;
-  coffeePlan: CoffeePlanEvent | null;
-  coffeeOriginalPrompt: string | null; // Store original prompt for retry/build
-  // Context request state (Phase 2 - runBubbleFlow)
-  coffeeContextRequest: CoffeeRequestExternalContextEvent | null;
-  coffeeContextCredentials: Partial<Record<CredentialType, number>>; // credentialType -> credentialId
-  isCoffeeLoading: boolean; // Loading state for Coffee operations
+  // Context selection
+  selectedBubbleContext: number[];
+  selectedTransformationContext: string | null;
+  selectedStepContext: string | null;
+
+  // ===== Minimal Coffee State (transient UI state only) =====
+  coffeeOriginalPrompt: string | null;
+  coffeeContextCredentials: Partial<Record<CredentialType, number>>;
+  isCoffeeLoading: boolean;
 
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
@@ -99,24 +80,14 @@ interface PearlChatState {
   removeToolCall: (callId: string) => void;
   clearToolCalls: () => void;
 
-  // ===== Coffee Agent Actions =====
-  setCoffeePhase: (phase: CoffeePhase) => void;
-  setCoffeeQuestions: (questions: ClarificationQuestion[] | null) => void;
-  setCoffeeAnswers: (answers: Record<string, string[]>) => void;
-  updateCoffeeAnswer: (questionId: string, choiceIds: string[]) => void;
-  setCoffeePlan: (plan: CoffeePlanEvent | null) => void;
+  // ===== Coffee Actions =====
   setCoffeeOriginalPrompt: (prompt: string | null) => void;
-  // Context request actions (Phase 2)
-  setCoffeeContextRequest: (
-    request: CoffeeRequestExternalContextEvent | null
-  ) => void;
   setCoffeeContextCredential: (
     credType: CredentialType,
     credId: number | null
   ) => void;
-  clearCoffeeContextRequest: () => void;
+  clearCoffeeContextCredentials: () => void;
   setIsCoffeeLoading: (loading: boolean) => void;
-  clearCoffeeState: () => void;
 
   // Reset
   reset: () => void;
@@ -125,7 +96,6 @@ interface PearlChatState {
 // Factory pattern - per flow
 const stores = new Map<number, ReturnType<typeof createPearlChatStore>>();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createPearlChatStore(flowId: number) {
   return create<PearlChatState>((set) => ({
     messages: [],
@@ -136,13 +106,8 @@ function createPearlChatStore(flowId: number) {
     selectedTransformationContext: null,
     selectedStepContext: null,
 
-    // Coffee state initialization
-    coffeePhase: 'idle',
-    coffeeQuestions: null,
-    coffeeAnswers: {},
-    coffeePlan: null,
+    // Minimal Coffee state
     coffeeOriginalPrompt: null,
-    coffeeContextRequest: null,
     coffeeContextCredentials: {},
     isCoffeeLoading: false,
 
@@ -159,12 +124,12 @@ function createPearlChatStore(flowId: number) {
     addBubbleToContext: (variableId) =>
       set((state) => {
         if (state.selectedBubbleContext.includes(variableId)) {
-          return state; // Already in context
+          return state;
         }
         return {
           selectedBubbleContext: [...state.selectedBubbleContext, variableId],
-          selectedTransformationContext: null, // Clear transformation context (exclusive mode)
-          selectedStepContext: null, // Clear step context (exclusive mode)
+          selectedTransformationContext: null,
+          selectedStepContext: null,
         };
       }),
 
@@ -201,8 +166,8 @@ function createPearlChatStore(flowId: number) {
     addTransformationToContext: (functionName) =>
       set({
         selectedTransformationContext: functionName,
-        selectedBubbleContext: [], // Clear bubble context (exclusive mode)
-        selectedStepContext: null, // Clear step context (exclusive mode)
+        selectedBubbleContext: [],
+        selectedStepContext: null,
       }),
 
     clearTransformationContext: () =>
@@ -211,8 +176,8 @@ function createPearlChatStore(flowId: number) {
     addStepToContext: (functionName) =>
       set({
         selectedStepContext: functionName,
-        selectedBubbleContext: [], // Clear bubble context (exclusive mode)
-        selectedTransformationContext: null, // Clear transformation context (exclusive mode)
+        selectedBubbleContext: [],
+        selectedTransformationContext: null,
       }),
 
     clearStepContext: () => set({ selectedStepContext: null }),
@@ -254,30 +219,12 @@ function createPearlChatStore(flowId: number) {
 
     clearToolCalls: () => set({ activeToolCallIds: new Set() }),
 
-    // Coffee agent actions
-    setCoffeePhase: (phase) => set({ coffeePhase: phase }),
-
-    setCoffeeQuestions: (questions) => set({ coffeeQuestions: questions }),
-
-    setCoffeeAnswers: (answers) => set({ coffeeAnswers: answers }),
-
-    updateCoffeeAnswer: (questionId, choiceIds) =>
-      set((state) => ({
-        coffeeAnswers: { ...state.coffeeAnswers, [questionId]: choiceIds },
-      })),
-
-    setCoffeePlan: (plan) => set({ coffeePlan: plan }),
-
+    // Coffee actions
     setCoffeeOriginalPrompt: (prompt) => set({ coffeeOriginalPrompt: prompt }),
-
-    // Context request actions (Phase 2)
-    setCoffeeContextRequest: (request) =>
-      set({ coffeeContextRequest: request }),
 
     setCoffeeContextCredential: (credType, credId) =>
       set((state) => {
         if (credId === null) {
-          // Remove the credential
           const updated = { ...state.coffeeContextCredentials };
           delete updated[credType];
           return { coffeeContextCredentials: updated };
@@ -290,25 +237,9 @@ function createPearlChatStore(flowId: number) {
         };
       }),
 
-    clearCoffeeContextRequest: () =>
-      set({
-        coffeeContextRequest: null,
-        coffeeContextCredentials: {},
-      }),
+    clearCoffeeContextCredentials: () => set({ coffeeContextCredentials: {} }),
 
     setIsCoffeeLoading: (loading) => set({ isCoffeeLoading: loading }),
-
-    clearCoffeeState: () =>
-      set({
-        coffeePhase: 'idle',
-        coffeeQuestions: null,
-        coffeeAnswers: {},
-        coffeePlan: null,
-        coffeeOriginalPrompt: null,
-        coffeeContextRequest: null,
-        coffeeContextCredentials: {},
-        isCoffeeLoading: false,
-      }),
 
     reset: () =>
       set({
@@ -319,13 +250,7 @@ function createPearlChatStore(flowId: number) {
         selectedBubbleContext: [],
         selectedTransformationContext: null,
         selectedStepContext: null,
-        // Reset coffee state
-        coffeePhase: 'idle',
-        coffeeQuestions: null,
-        coffeeAnswers: {},
-        coffeePlan: null,
         coffeeOriginalPrompt: null,
-        coffeeContextRequest: null,
         coffeeContextCredentials: {},
         isCoffeeLoading: false,
       }),
@@ -334,7 +259,6 @@ function createPearlChatStore(flowId: number) {
 
 /**
  * Get or create store for a specific flow
- * Uses flowId -1 as fallback for null flowId to ensure consistent hook behavior
  */
 export function getPearlChatStore(flowId: number) {
   if (!stores.has(flowId)) {

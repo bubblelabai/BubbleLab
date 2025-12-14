@@ -557,7 +557,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
               <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
                 <div className="text-sm text-gray-900">{message.content}</div>
               </div>
-            ) : (
+            ) : message.type === 'assistant' ? (
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   {message.resultType === 'code' && (
@@ -590,7 +590,7 @@ function BubblePromptView({ bubbleDefinition }: BubblePromptViewProps) {
                   <div className="text-sm text-gray-200">{message.content}</div>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         ))}
 
