@@ -41,6 +41,10 @@ export interface Output {
 
 // Define your custom input interface
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Email address where the calendar report will be sent.
+   * @canBeFile false
+   */
   email: string;
 }
 

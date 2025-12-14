@@ -13,7 +13,15 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * GitHub repository URL to scrape.
+   * @canBeFile false
+   */
   githubUrl: string;
+  /**
+   * Email address where the scraper report will be sent.
+   * @canBeFile false
+   */
   email: string;
 }
 

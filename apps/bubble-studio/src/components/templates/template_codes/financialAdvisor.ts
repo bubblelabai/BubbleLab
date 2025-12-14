@@ -18,7 +18,15 @@ export interface Output {
 
 // Define your custom input interface
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Stock ticker symbol to analyze.
+   * @canBeFile false
+   */
   ticker: string;
+  /**
+   * Email address where the stock analysis report will be sent.
+   * @canBeFile false
+   */
   recipientEmail: string;
 }
 

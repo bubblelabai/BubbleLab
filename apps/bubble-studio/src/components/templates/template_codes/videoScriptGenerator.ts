@@ -51,12 +51,40 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Email address where the video script will be sent.
+   * @canBeFile false
+   */
   email: string;
+  /**
+   * Topic or subject for the video script.
+   * @canBeFile false
+   */
   topic: string;
+  /**
+   * Target audience description for the video.
+   * @canBeFile false
+   */
   targetAudience?: string;
+  /**
+   * Video length preference: 'short', 'medium', or 'long'.
+   * @canBeFile false
+   */
   videoLength?: 'short' | 'medium' | 'long';
+  /**
+   * Brand website URL for brand context.
+   * @canBeFile false
+   */
   brandWebsite?: string;
+  /**
+   * Pre-existing brand context information.
+   * @canBeFile false
+   */
   brandContext?: string;
+  /**
+   * Specific video URLs to analyze for inspiration.
+   * @canBeFile false
+   */
   specificVideoUrls?: string[];
 }
 

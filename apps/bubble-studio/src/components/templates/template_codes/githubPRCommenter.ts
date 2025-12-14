@@ -63,6 +63,10 @@ export interface GitHubPullRequestPayload {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * GitHub pull request webhook payload.
+   * @canBeFile false
+   */
   body: GitHubPullRequestPayload;
 }
 

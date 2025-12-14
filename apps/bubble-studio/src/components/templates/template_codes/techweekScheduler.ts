@@ -15,7 +15,15 @@ export const templateCode = `import {
   }
 
   export interface CustomWebhookPayload extends WebhookEvent {
+    /**
+     * User preferences for event scheduling.
+     * @canBeFile false
+     */
     preferences: string;
+    /**
+     * Email address where the calendar schedule will be sent.
+     * @canBeFile false
+     */
     email: string;
   }
 

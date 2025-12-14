@@ -20,6 +20,10 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Maximum number of emails to process.
+   * @canBeFile false
+   */
   maxResults?: number;
 }
 

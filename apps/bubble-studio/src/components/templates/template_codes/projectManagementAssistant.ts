@@ -22,9 +22,15 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
-  /** Email address to send the daily digest to */
+  /**
+   * Email address to send the daily digest to.
+   * @canBeFile false
+   */
   recipientEmail: string;
-  /** Slack channel name to pull messages from (without #) */
+  /**
+   * Slack channel name to pull messages from (without #).
+   * @canBeFile false
+   */
   channelName: string;
 }
 

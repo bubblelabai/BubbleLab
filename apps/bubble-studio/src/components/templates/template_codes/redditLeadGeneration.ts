@@ -15,8 +15,20 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Google Sheets spreadsheet ID where leads will be stored.
+   * @canBeFile false
+   */
   spreadsheetId: string;
+  /**
+   * Subreddit name to search for leads (without the r/ prefix).
+   * @canBeFile false
+   */
   subreddit: string;
+  /**
+   * Search criteria or keywords to find leads.
+   * @canBeFile false
+   */
   searchCriteria: string;
 }
 
