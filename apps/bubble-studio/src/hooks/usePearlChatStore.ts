@@ -224,18 +224,16 @@ export function handleStreamingEvent(
   switch (event.type) {
     case 'llm_start':
       if (state.activeToolCallIds.size === 0) {
-        state.addEventToCurrentTurn({ type: 'llm_thinking' });
+        state.addEvent({ type: 'llm_thinking' });
       }
       break;
 
     case 'llm_complete':
       // Remove llm_thinking indicator
-      state.updateLastEvent((events: DisplayEvent[]) =>
-        events.filter((e: DisplayEvent) => e.type !== 'llm_thinking')
-      );
+      state.removeLastTimelineEventIf((e) => e.type === 'llm_thinking');
       // If there's content, add it as an event (similar to think events)
       if (event.data.content && event.data.content.trim()) {
-        state.addEventToCurrentTurn({
+        state.addEvent({
           type: 'llm_complete_content',
           content: event.data.content,
         });
@@ -244,10 +242,8 @@ export function handleStreamingEvent(
 
     case 'tool_start':
       state.addToolCall(event.data.callId);
-      state.updateLastEvent((events: DisplayEvent[]) =>
-        events.filter((e: DisplayEvent) => e.type !== 'llm_thinking')
-      );
-      state.addEventToCurrentTurn({
+      state.removeLastTimelineEventIf((e) => e.type === 'llm_thinking');
+      state.addEvent({
         type: 'tool_start',
         tool: event.data.tool,
         input: event.data.input,
@@ -258,20 +254,14 @@ export function handleStreamingEvent(
 
     case 'tool_complete':
       state.removeToolCall(event.data.callId);
-      state.updateLastEvent((events: DisplayEvent[]) =>
-        events.map((e: DisplayEvent) =>
-          e.type === 'tool_start' && e.callId === event.data.callId
-            ? {
-                type: 'tool_complete' as const,
-                tool: event.data.tool,
-                output: event.data.output,
-                duration: event.data.duration,
-                callId: event.data.callId,
-                timestamp: e.timestamp, // Preserve original timestamp
-              }
-            : e
-        )
-      );
+      state.updateTimelineEventByCallId(event.data.callId, (e) => ({
+        type: 'tool_complete' as const,
+        tool: event.data.tool,
+        output: event.data.output,
+        duration: event.data.duration,
+        callId: event.data.callId,
+        timestamp: e.timestamp, // Preserve original timestamp
+      }));
       break;
 
     case 'think': {
@@ -290,7 +280,7 @@ export function handleStreamingEvent(
       }
 
       if (thinkingContent) {
-        state.addEventToCurrentTurn({
+        state.addEvent({
           type: 'think',
           content: thinkingContent,
         });
@@ -299,27 +289,7 @@ export function handleStreamingEvent(
     }
 
     case 'token':
-      state.updateLastEvent((events: DisplayEvent[]) => {
-        const lastEvent = events[events.length - 1];
-        if (lastEvent?.type === 'token') {
-          return [
-            ...events.slice(0, -1),
-            {
-              type: 'token' as const,
-              content: lastEvent.content + event.data.content,
-              timestamp: lastEvent.timestamp, // Preserve original timestamp
-            },
-          ];
-        }
-        return [
-          ...events,
-          {
-            type: 'token' as const,
-            content: event.data.content,
-            timestamp: new Date(),
-          },
-        ];
-      });
+      state.appendToLastTokenOrAdd(event.data.content);
       break;
 
     case 'coffee_clarification': {
@@ -364,8 +334,8 @@ export function handleStreamingEvent(
       const summary = data.summary || 'Workflow generated successfully';
       const generatedCode = data.generatedCode || '';
 
-      // Add generation_complete event to the event list
-      state.addEventToCurrentTurn({
+      // Add generation_complete event to the timeline
+      state.addEvent({
         type: 'generation_complete',
         summary,
         code: generatedCode,
@@ -395,7 +365,7 @@ export function handleStreamingEvent(
 
     case 'retry_attempt': {
       const data = event.data;
-      state.addEventToCurrentTurn({
+      state.addEvent({
         type: 'retry_attempt',
         attempt: data.attempt,
         maxRetries: data.maxRetries,
@@ -410,7 +380,7 @@ export function handleStreamingEvent(
         'data' in event && event.data && typeof event.data === 'object'
           ? (event.data as { error?: string }).error || 'An error occurred'
           : 'An error occurred';
-      state.addEventToCurrentTurn({
+      state.addEvent({
         type: 'generation_error',
         message: errorMessage,
       });
@@ -502,7 +472,6 @@ export function usePearlChatStore(flowId: number | null) {
   // Subscribe to state
   const timeline = store((s) => s.timeline);
   const messages = store((s) => s.messages);
-  const eventsList = store((s) => s.eventsList);
   const activeToolCallIds = store((s) => s.activeToolCallIds);
   const prompt = store((s) => s.prompt);
   const selectedBubbleContext = store((s) => s.selectedBubbleContext);
@@ -577,7 +546,6 @@ export function usePearlChatStore(flowId: number | null) {
     };
 
     storeState.addMessage(userMessage);
-    storeState.startNewTurn();
     storeState.clearToolCalls();
     storeState.clearPrompt();
 
@@ -623,7 +591,6 @@ export function usePearlChatStore(flowId: number | null) {
         timestamp: new Date(),
       };
       storeState.addMessage(userMessage);
-      storeState.startNewTurn();
 
       // Get updated state after adding the user message
       const updatedState = store.getState();
@@ -886,14 +853,13 @@ export function usePearlChatStore(flowId: number | null) {
       return;
     }
 
-    // Get error events from the current turn to include as context
-    const lastTurnEvents =
-      storeState.eventsList.length > 0
-        ? storeState.eventsList[storeState.eventsList.length - 1]
-        : [];
-    const errorEvents = lastTurnEvents.filter(
-      (e) => e.type === 'generation_error'
-    );
+    // Get error events from the timeline to include as context
+    const errorEvents = storeState.timeline
+      .filter(
+        (item): item is { kind: 'event'; data: DisplayEvent } =>
+          item.kind === 'event' && item.data.type === 'generation_error'
+      )
+      .map((item) => item.data);
     const errorContext = errorEvents
       .map((e) => (e.type === 'generation_error' ? e.message : ''))
       .filter(Boolean)
@@ -908,8 +874,6 @@ export function usePearlChatStore(flowId: number | null) {
     };
     storeState.addMessage(retryMessage);
 
-    // Start a new turn for the retry
-    storeState.startNewTurn();
     storeState.setIsCoffeeLoading(true);
     storeState.setGenerationCompleted(false);
 
@@ -1019,7 +983,6 @@ export function usePearlChatStore(flowId: number | null) {
     // State
     timeline,
     messages,
-    eventsList,
     activeToolCallIds,
     prompt,
     selectedBubbleContext,

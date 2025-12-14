@@ -180,7 +180,6 @@ async function startGenerationStream(
   const abortController = new AbortController();
   storeState.registerGenerationStream(abortController);
   storeState.setIsGenerating(true);
-  storeState.startNewTurn();
   storeState.setCoffeeOriginalPrompt(params.prompt.trim());
   storeState.setIsCoffeeLoading(true);
 
