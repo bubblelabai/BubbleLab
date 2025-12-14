@@ -72,8 +72,7 @@ export abstract class BaseBubble<
         normalizedContext.currentUniqueId
       ) {
         console.debug('[BaseBubble] Computing child context');
-        // Print current context
-        console.log('[BaseBubble] Current context:', normalizedContext);
+        console.debug('[BaseBubble] Current context:', normalizedContext);
         const next = this.computeChildContext(normalizedContext);
         this.context = next;
         console.debug(
