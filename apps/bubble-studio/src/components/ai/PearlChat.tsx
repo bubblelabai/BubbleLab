@@ -117,6 +117,9 @@ export function PearlChat() {
         playGenerationCompleteSound();
 
         // Update Monaco editor with generated code
+        console.log('[PearlChat] onGenerationComplete', data);
+        console.log('[PearlChat] generatedCode', data.generatedCode);
+        console.log('[PearlChat] summary', data.summary);
         if (data.generatedCode) {
           const { editorInstance, setPendingCode } = useEditorStore.getState();
           if (editorInstance) {

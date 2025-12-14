@@ -573,7 +573,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxOutputTokens: maxTokens,
           thinkingConfig: {
-            includeThoughts: true,
+            includeThoughts: reasoningEffort ? true : false,
             thinkingBudget:
               reasoningEffort === 'low'
                 ? 1025
