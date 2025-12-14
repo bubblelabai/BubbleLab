@@ -78,7 +78,14 @@ export type StreamingEvent =
   | { type: 'llm_start'; data: { model: string; temperature: number } }
   | { type: 'token'; data: { content: string; messageId: string } }
   | { type: 'think'; data: { content: string; messageId: string } }
-  | { type: 'llm_complete'; data: { messageId: string; totalTokens?: number } }
+  | {
+      type: 'llm_complete';
+      data: {
+        messageId: string;
+        totalTokens?: number;
+        content?: string;
+      };
+    }
   | {
       type: 'tool_start';
       data: { tool: string; input: unknown; callId: string };
