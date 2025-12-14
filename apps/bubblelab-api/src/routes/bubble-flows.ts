@@ -17,9 +17,9 @@ import {
   generateDisplayedBubbleParameters,
   mergeCredentialsIntoBubbleParameters,
 } from '../services/bubble-flow-parser.js';
+import { injectCredentialsIntoBubbleParameters } from '../utils/bubble-parameters.js';
 import {
   CredentialType,
-  BubbleParameterType,
   type ParsedBubbleWithInfo,
   type ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
@@ -1520,51 +1520,22 @@ app.openapi(runContextFlowRoute, async (c) => {
     }
 
     // Get parsed bubbles from validation result
-    const parsedBubbles = validationResult.bubbleParameters || {};
+    // Convert number keys to strings (validateAndExtract returns Record<number, ...>)
+    const parsedBubbles: Record<string, ParsedBubbleWithInfo> = {};
+    for (const [varId, bubble] of Object.entries(
+      validationResult.bubbleParameters || {}
+    )) {
+      parsedBubbles[String(varId)] = bubble;
+    }
 
     // Build bubbleParameters with credentials injected
     // For each bubble variable, we need to add the user-provided credential IDs
     // to the credentials parameter so runBubbleFlow can fetch and decrypt them
-    const bubbleParametersWithCreds: Record<string, ParsedBubbleWithInfo> = {};
-
-    for (const [varIdStr, bubble] of Object.entries(parsedBubbles)) {
-      const bubbleCredTypes =
-        validationResult.requiredCredentials?.[varIdStr] || [];
-
-      // Build credentials object for this bubble: { CredentialType -> credentialId }
-      const bubbleCredentials: Record<string, number> = {};
-      for (const credType of bubbleCredTypes) {
-        const credId = credentials[credType];
-        if (credId) {
-          bubbleCredentials[credType] = credId;
-        }
-      }
-
-      // Clone the bubble and add/update the credentials parameter
-      const updatedBubble: ParsedBubbleWithInfo = {
-        ...bubble,
-        parameters: [...bubble.parameters],
-      };
-
-      // Find existing credentials parameter or add new one
-      const existingCredIdx = updatedBubble.parameters.findIndex(
-        (p) => p.name === 'credentials'
-      );
-      if (existingCredIdx >= 0) {
-        updatedBubble.parameters[existingCredIdx] = {
-          ...updatedBubble.parameters[existingCredIdx],
-          value: bubbleCredentials,
-        };
-      } else if (Object.keys(bubbleCredentials).length > 0) {
-        updatedBubble.parameters.push({
-          name: 'credentials',
-          type: BubbleParameterType.OBJECT,
-          value: bubbleCredentials,
-        });
-      }
-
-      bubbleParametersWithCreds[varIdStr] = updatedBubble;
-    }
+    const bubbleParametersWithCreds = injectCredentialsIntoBubbleParameters(
+      parsedBubbles,
+      validationResult.requiredCredentials || {},
+      credentials
+    );
 
     console.log(
       '[API] Bubble parameters with credentials:',
@@ -1589,12 +1560,15 @@ app.openapi(runContextFlowRoute, async (c) => {
       }
     );
 
-    console.log('[API] Context flow executed successfully');
+    console.log(
+      '[API] Context flow executed successfully with result:',
+      executionResult.data
+    );
 
     return c.json(
       {
         success: executionResult.success,
-        result: executionResult.data?.result,
+        result: executionResult.data,
         error: executionResult.error,
       },
       200

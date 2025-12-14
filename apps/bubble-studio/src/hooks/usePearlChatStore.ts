@@ -801,7 +801,12 @@ export function usePearlChatStore(flowId: number | null) {
       storeState.setCoffeePhase('idle');
     } finally {
       storeState.setIsCoffeeLoading(false);
-      storeState.clearCoffeeContextRequest();
+      // Only clear context request if we're not awaiting a new context request
+      // (A new context request may have been set during stream processing)
+      const currentPhase = store.getState().coffeePhase;
+      if (currentPhase !== 'awaiting_context') {
+        storeState.clearCoffeeContextRequest();
+      }
     }
   }, [store, flowId]);
 
