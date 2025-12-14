@@ -47,6 +47,9 @@ import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 import { env } from 'src/config/env.js';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
 
+// Max retries for parsing agent output (separate from agent iterations)
+const COFFEE_MAX_PARSE_RETRIES = 3;
+
 // Coffee agent output schema for JSON mode
 const CoffeeAgentOutputSchema = z.object({
   action: z
@@ -296,6 +299,11 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
         }
         break;
       }
+
+      case 'system':
+        // System messages (e.g., retry context, error feedback)
+        result.push(new HumanMessage(`[System]: ${msg.content}`));
+        break;
     }
   }
 
@@ -362,242 +370,320 @@ export async function runCoffee(
       return { messages: context.messages };
     };
 
-    // Create AI agent
-    const agent = new AIAgentBubble({
-      name: 'Coffee - Planning Agent',
-      message: JSON.stringify(conversationMessages),
-      systemPrompt,
-      streaming: true,
-      streamingCallback: (event) => {
-        return apiStreamingCallback?.(event);
-      },
+    // Retry loop for agent execution and parsing
+    let parseAttempt = 0;
+    let lastParseError: string | null = null;
+    const currentMessages = [...conversationMessages];
 
-      model: {
-        model: COFFEE_DEFAULT_MODEL,
-        reasoningEffort: 'medium',
-        temperature: 0.7,
-        jsonMode: true,
-      },
-      tools: [
-        {
-          name: 'get-bubble-details-tool',
+    while (parseAttempt <= COFFEE_MAX_PARSE_RETRIES) {
+      // If this is a retry, append the parse error as feedback
+      if (parseAttempt > 0 && lastParseError) {
+        console.log(
+          `[Coffee] Parse retry attempt ${parseAttempt}/${COFFEE_MAX_PARSE_RETRIES}`
+        );
+        currentMessages.push(
+          new HumanMessage(
+            `[System]: Your previous response failed to parse. Error: ${lastParseError}\n\nPlease try again and ensure your response is valid JSON matching the expected schema.`
+          )
+        );
+      }
+
+      // Create AI agent
+      const agent = new AIAgentBubble({
+        name: 'Coffee - Planning Agent',
+        message: JSON.stringify(currentMessages),
+        systemPrompt,
+        streaming: true,
+        streamingCallback: (event) => {
+          return apiStreamingCallback?.(event);
         },
-      ],
-      customTools: [
-        {
-          name: 'runBubbleFlow',
-          description:
-            'Run a mini bubble flow to gather context (e.g., fetch database schema, list available files). The flow code must be valid BubbleFlow TypeScript and should NOT have any input parameters.',
-          schema: z.object({
-            purpose: z
-              .string()
-              .describe('Why you need this context (displayed to user)'),
-            flowDescription: z
-              .string()
-              .describe(
-                'User-friendly description of what the flow does (displayed to user)'
-              ),
-            flowCode: z
-              .string()
-              .describe(
-                'The complete BubbleFlow TypeScript code to execute. Must be valid code with no input parameters.'
-              ),
-          }),
-          func: async (input: Record<string, unknown>) => {
-            console.log('[Coffee] runBubbleFlow called:', {
-              purpose: input.purpose,
-              flowDescription: input.flowDescription,
-            });
 
-            const flowCode = input.flowCode as string;
-            const flowDescription = input.flowDescription as string;
+        model: {
+          model: COFFEE_DEFAULT_MODEL,
+          reasoningEffort: 'medium',
+          temperature: 0.7,
+          jsonMode: true,
+        },
+        tools: [
+          {
+            name: 'get-bubble-details-tool',
+          },
+        ],
+        customTools: [
+          {
+            name: 'runBubbleFlow',
+            description:
+              'Run a mini bubble flow to gather context (e.g., fetch database schema, list available files). The flow code must be valid BubbleFlow TypeScript and should NOT have any input parameters.',
+            schema: z.object({
+              purpose: z
+                .string()
+                .describe('Why you need this context (displayed to user)'),
+              flowDescription: z
+                .string()
+                .describe(
+                  'User-friendly description of what the flow does (displayed to user)'
+                ),
+              flowCode: z
+                .string()
+                .describe(
+                  'The complete BubbleFlow TypeScript code to execute. Must be valid code with no input parameters.'
+                ),
+            }),
+            func: async (input: Record<string, unknown>) => {
+              console.log('[Coffee] runBubbleFlow called:', {
+                purpose: input.purpose,
+                flowDescription: input.flowDescription,
+              });
 
-            // Validate the flow code
-            const bubbleFactory = await getBubbleFactory();
-            const validationResult = await validateAndExtract(
-              flowCode,
-              bubbleFactory,
-              false // skipValidation
-            );
+              const flowCode = input.flowCode as string;
+              const flowDescription = input.flowDescription as string;
 
-            if (!validationResult.valid) {
-              console.error(
-                '[Coffee] Flow validation failed:',
-                validationResult.errors
+              // Validate the flow code
+              const bubbleFactory = await getBubbleFactory();
+              const validationResult = await validateAndExtract(
+                flowCode,
+                bubbleFactory,
+                false // skipValidation
               );
+
+              if (!validationResult.valid) {
+                console.error(
+                  '[Coffee] Flow validation failed:',
+                  validationResult.errors
+                );
+                return {
+                  data: {
+                    status: 'error',
+                    message: `Flow validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
+                  },
+                };
+              }
+
+              // Extract required credentials from the validated flow
+              // The validation result already has requiredCredentials extracted
+              const requiredCredentialsMap =
+                validationResult.requiredCredentials || {};
+
+              // Flatten to unique credential types
+              const requiredCredentials: CredentialType[] = [
+                ...new Set(Object.values(requiredCredentialsMap).flat()),
+              ];
+
+              // Generate a unique flow ID for this context request
+              const contextFlowId = `coffee-ctx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+              // Build the context request event
+              const contextRequestEvent: CoffeeRequestExternalContextEvent = {
+                flowId: contextFlowId,
+                flowCode: flowCode,
+                requiredCredentials,
+                description: flowDescription,
+              };
+
+              // Emit the context request event to frontend
+              if (apiStreamingCallback) {
+                await apiStreamingCallback({
+                  type: 'coffee_request_context',
+                  data: contextRequestEvent,
+                });
+              }
+
+              // Store the context request so the response handler knows we're waiting
+              coffeeState.contextRequest = contextRequestEvent;
+
+              // Return a special response to signal the agent to stop
               return {
                 data: {
-                  status: 'error',
-                  message: `Flow validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
+                  status: 'AWAITING_USER_INPUT',
+                  message:
+                    'Context request sent to user. Waiting for credentials and approval.',
+                  flowId: contextFlowId,
                 },
               };
-            }
-
-            // Extract required credentials from the validated flow
-            // The validation result already has requiredCredentials extracted
-            const requiredCredentialsMap =
-              validationResult.requiredCredentials || {};
-
-            // Flatten to unique credential types
-            const requiredCredentials: CredentialType[] = [
-              ...new Set(Object.values(requiredCredentialsMap).flat()),
-            ];
-
-            // Generate a unique flow ID for this context request
-            const contextFlowId = `coffee-ctx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-            // Build the context request event
-            const contextRequestEvent: CoffeeRequestExternalContextEvent = {
-              flowId: contextFlowId,
-              flowCode: flowCode,
-              requiredCredentials,
-              description: flowDescription,
-            };
-
-            // Emit the context request event to frontend
-            if (apiStreamingCallback) {
-              await apiStreamingCallback({
-                type: 'coffee_request_context',
-                data: contextRequestEvent,
-              });
-            }
-
-            // Store the context request so the response handler knows we're waiting
-            coffeeState.contextRequest = contextRequestEvent;
-
-            // Return a special response to signal the agent to stop
-            return {
-              data: {
-                status: 'AWAITING_USER_INPUT',
-                message:
-                  'Context request sent to user. Waiting for credentials and approval.',
-                flowId: contextFlowId,
-              },
-            };
+            },
           },
+        ],
+        maxIterations: COFFEE_MAX_ITERATIONS,
+        credentials: mergedCredentials,
+        afterToolCall,
+      });
+
+      // Execute the agent
+      const result = await agent.action();
+
+      // Check if context request was triggered during tool execution
+      // If so, return the context request response (the event was already sent)
+      if (coffeeState.contextRequest) {
+        console.log(
+          '[Coffee] Context request triggered, awaiting user input:',
+          coffeeState.contextRequest.flowId
+        );
+        return {
+          type: 'context_request',
+          contextRequest: coffeeState.contextRequest,
+          success: true,
+        };
+      }
+
+      if (!result.success || !result.data?.response) {
+        console.error('[Coffee] Agent execution failed:', result.error);
+        return {
+          type: 'error',
+          error: result.error || 'Coffee agent execution failed',
+          success: false,
+        };
+      }
+
+      // Parse the agent's JSON response
+      const responseText = result.data.response;
+      console.log('[Coffee] Agent response:', responseText);
+      // Handle array responses - take the last element if it's an array
+      let finalResponseText = responseText;
+      try {
+        const parsedArray = JSON.parse(responseText);
+        if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+          const lastElement = parsedArray[parsedArray.length - 1];
+          if (
+            lastElement &&
+            typeof lastElement === 'object' &&
+            lastElement.text
+          ) {
+            finalResponseText = lastElement.text;
+            console.log(
+              '[Coffee] Extracted text from array response:',
+              finalResponseText
+            );
+          }
+        }
+      } catch (e) {
+        // Not an array, continue with original response
+      }
+
+      try {
+        const parseResult = parseJsonWithFallbacks(finalResponseText);
+        if (!parseResult.success || !parseResult.parsed) {
+          throw new Error(
+            `Failed to parse JSON response: ${parseResult.error || 'Unknown parse error'}`
+          );
+        }
+
+        const agentOutput = CoffeeAgentOutputSchema.parse(parseResult.parsed);
+
+        if (
+          agentOutput.action === 'askClarification' &&
+          agentOutput.questions
+        ) {
+          // Validate and limit questions
+          const questions: ClarificationQuestion[] =
+            agentOutput.questions.slice(0, COFFEE_MAX_QUESTIONS);
+
+          // Send clarification event to frontend
+          if (apiStreamingCallback) {
+            await apiStreamingCallback({
+              type: 'coffee_clarification',
+              data: { questions },
+            });
+          }
+
+          return {
+            type: 'clarification',
+            clarification: { questions },
+            success: true,
+          };
+        } else if (agentOutput.action === 'generatePlan' && agentOutput.plan) {
+          const plan: CoffeePlanEvent = agentOutput.plan;
+
+          // Send plan event to frontend
+          if (apiStreamingCallback) {
+            await apiStreamingCallback({
+              type: 'coffee_plan',
+              data: plan,
+            });
+          }
+
+          // Send completion event
+          if (apiStreamingCallback) {
+            await apiStreamingCallback({
+              type: 'coffee_complete',
+              data: { success: true },
+            });
+          }
+
+          return {
+            type: 'plan',
+            plan,
+            success: true,
+          };
+        } else if (
+          agentOutput.action === 'requestContext' &&
+          agentOutput.contextRequest
+        ) {
+          // The agent wants to request context but hasn't called runBubbleFlow yet
+          // This is an intermediate state - the agent should call runBubbleFlow next
+          // But if we reach here, return an error since the tool should have been called
+          console.warn(
+            '[Coffee] Agent returned requestContext action but runBubbleFlow was not called'
+          );
+          return {
+            type: 'error',
+            error:
+              'Agent requested context but did not provide flow code. Please try again.',
+            success: false,
+          };
+        } else {
+          // Invalid action or missing data - this is a parse error, retry
+          lastParseError =
+            'Invalid action or missing required data in response';
+          parseAttempt++;
+          continue;
+        }
+      } catch (parseError) {
+        // Store the error and retry
+        lastParseError =
+          parseError instanceof Error ? parseError.message : 'Unknown error';
+        console.error(
+          `[Coffee] Parse error (attempt ${parseAttempt + 1}/${COFFEE_MAX_PARSE_RETRIES + 1}):`,
+          lastParseError
+        );
+
+        // Add the AI response to messages so the agent knows what it said
+        currentMessages.push(new AIMessage(responseText));
+
+        parseAttempt++;
+        continue;
+      }
+    }
+
+    // All retries exhausted
+    console.error(
+      '[Coffee] All parse retries exhausted. Last error:',
+      lastParseError
+    );
+    if (apiStreamingCallback) {
+      await apiStreamingCallback({
+        type: 'error',
+        data: {
+          error: `Failed to parse agent response after ${COFFEE_MAX_PARSE_RETRIES + 1} attempts: ${lastParseError}`,
+          recoverable: false,
         },
-      ],
-      maxIterations: COFFEE_MAX_ITERATIONS,
-      credentials: mergedCredentials,
-      afterToolCall,
-    });
-
-    // Execute the agent
-    const result = await agent.action();
-
-    // Check if context request was triggered during tool execution
-    // If so, return the context request response (the event was already sent)
-    if (coffeeState.contextRequest) {
-      console.log(
-        '[Coffee] Context request triggered, awaiting user input:',
-        coffeeState.contextRequest.flowId
-      );
-      return {
-        type: 'context_request',
-        contextRequest: coffeeState.contextRequest,
-        success: true,
-      };
+      });
     }
-
-    if (!result.success || !result.data?.response) {
-      console.error('[Coffee] Agent execution failed:', result.error);
-      return {
-        type: 'error',
-        error: result.error || 'Coffee agent execution failed',
-        success: false,
-      };
-    }
-
-    // Parse the agent's JSON response
-    const responseText = result.data.response;
-    console.log('[Coffee] Agent response:', responseText);
-
-    try {
-      const parseResult = parseJsonWithFallbacks(responseText);
-      if (!parseResult.success || !parseResult.parsed) {
-        throw new Error('Failed to parse JSON response');
-      }
-
-      const agentOutput = CoffeeAgentOutputSchema.parse(parseResult.parsed);
-
-      if (agentOutput.action === 'askClarification' && agentOutput.questions) {
-        // Validate and limit questions
-        const questions: ClarificationQuestion[] = agentOutput.questions.slice(
-          0,
-          COFFEE_MAX_QUESTIONS
-        );
-
-        // Send clarification event to frontend
-        if (apiStreamingCallback) {
-          await apiStreamingCallback({
-            type: 'coffee_clarification',
-            data: { questions },
-          });
-        }
-
-        return {
-          type: 'clarification',
-          clarification: { questions },
-          success: true,
-        };
-      } else if (agentOutput.action === 'generatePlan' && agentOutput.plan) {
-        const plan: CoffeePlanEvent = agentOutput.plan;
-
-        // Send plan event to frontend
-        if (apiStreamingCallback) {
-          await apiStreamingCallback({
-            type: 'coffee_plan',
-            data: plan,
-          });
-        }
-
-        // Send completion event
-        if (apiStreamingCallback) {
-          await apiStreamingCallback({
-            type: 'coffee_complete',
-            data: { success: true },
-          });
-        }
-
-        return {
-          type: 'plan',
-          plan,
-          success: true,
-        };
-      } else if (
-        agentOutput.action === 'requestContext' &&
-        agentOutput.contextRequest
-      ) {
-        // The agent wants to request context but hasn't called runBubbleFlow yet
-        // This is an intermediate state - the agent should call runBubbleFlow next
-        // But if we reach here, return an error since the tool should have been called
-        console.warn(
-          '[Coffee] Agent returned requestContext action but runBubbleFlow was not called'
-        );
-        return {
-          type: 'error',
-          error:
-            'Agent requested context but did not provide flow code. Please try again.',
-          success: false,
-        };
-      } else {
-        // Invalid action or missing data
-        return {
-          type: 'error',
-          error: 'Invalid agent response: missing action or data',
-          success: false,
-        };
-      }
-    } catch (parseError) {
-      console.error('[Coffee] Error parsing agent response:', parseError);
-      return {
-        type: 'error',
-        error: `Failed to parse agent response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-        success: false,
-      };
-    }
+    return {
+      type: 'error',
+      error: `Failed to parse agent response after ${COFFEE_MAX_PARSE_RETRIES + 1} attempts: ${lastParseError}`,
+      success: false,
+    };
   } catch (error) {
     console.error('[Coffee] Error during execution:', error);
+    if (apiStreamingCallback) {
+      await apiStreamingCallback({
+        type: 'error',
+        data: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          recoverable: false,
+        },
+      });
+    }
     return {
       type: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',

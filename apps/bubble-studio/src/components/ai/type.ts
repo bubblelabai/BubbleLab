@@ -69,6 +69,12 @@ export interface PlanApprovalMessage extends BaseChatMessage {
   comment?: string;
 }
 
+/** System message (for retries, errors, etc.) */
+export interface SystemChatMessage extends BaseChatMessage {
+  type: 'system';
+  content: string;
+}
+
 /** Union of all chat message types */
 export type ChatMessage =
   | UserChatMessage
@@ -78,7 +84,8 @@ export type ChatMessage =
   | ContextRequestMessage
   | ContextResponseMessage
   | PlanChatMessage
-  | PlanApprovalMessage;
+  | PlanApprovalMessage
+  | SystemChatMessage;
 
 // ============================================================================
 // Helper Functions to Derive Pending State from Messages
