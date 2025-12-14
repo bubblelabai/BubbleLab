@@ -288,48 +288,57 @@ export function extractInputSchemaFromCode(code: string): string {
       // Parse the interface properties
       const properties: Record<
         string,
-        { type: string; description: string; items?: { type: string } }
+        {
+          type: string;
+          description: string;
+          canBeFile?: boolean;
+          items?: { type: string; canBeFile?: boolean };
+        }
       > = {};
       const required: string[] = [];
 
-      // Split by semicolon or newline and parse each property
-      const propertyLines = interfaceBody
-        .split(/[;\n]/)
-        .filter((line) => line.trim());
+      // Use regex to capture JSDoc + property pairs together
+      // Matches: (optional JSDoc) propertyName?: type;
+      const propertyRegex =
+        /(?:\/\*\*([\s\S]*?)\*\/\s*)?(\w+)(\??):\s*([^;]+);/g;
+      let match;
 
-      for (const line of propertyLines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
+      while ((match = propertyRegex.exec(interfaceBody)) !== null) {
+        const jsdocContent = match[1]?.trim() || '';
+        const propertyName = match[2];
+        const optional = match[3];
+        const propertyType = match[4].trim();
+        const isOptional = optional === '?';
 
-        // Match property: type pattern, handling optional properties
-        const propertyMatch = trimmed.match(/(\w+)(\??):\s*([^;]+)/);
-        if (propertyMatch) {
-          const [, propertyName, optional, propertyType] = propertyMatch;
-          const isOptional = optional === '?';
+        // Convert TypeScript types to JSON Schema types
+        let jsonType = 'string';
+        let description = '';
+        let canBeFile: boolean | undefined = undefined;
 
-          // Convert TypeScript types to JSON Schema types
-          let jsonType = 'string';
-          let description = '';
-
-          if (propertyType.includes('number')) {
-            jsonType = 'number';
-          } else if (propertyType.includes('boolean')) {
-            jsonType = 'boolean';
-          } else if (propertyType.includes('string[]')) {
-            jsonType = 'array';
-            properties[propertyName] = {
-              type: 'array',
-              items: { type: 'string' },
-              description: `Array of strings for ${propertyName}`,
-            };
-            if (!isOptional) required.push(propertyName);
-            continue;
-          } else if (propertyType.includes('[]')) {
-            jsonType = 'array';
+        // Extract description and @canBeFile from JSDoc
+        if (jsdocContent) {
+          // Extract description (text before any @ tags)
+          const descriptionMatch = jsdocContent.match(/^([^@]*)/);
+          if (descriptionMatch) {
+            description = descriptionMatch[1]
+              .replace(/^\s*\*\s*/gm, '') // Remove leading * markers
+              .replace(/^\s+|\s+$/g, '') // Trim whitespace
+              .replace(/\n\s*\n/g, '\n') // Collapse multiple newlines
+              .trim();
           }
 
-          // Extract comments for description
-          const commentMatch = trimmed.match(/\/\/\s*(.+)$/);
+          // Extract @canBeFile flag
+          const canBeFileMatch = jsdocContent.match(
+            /@canBeFile\s+(true|false)/i
+          );
+          if (canBeFileMatch) {
+            canBeFile = canBeFileMatch[1].toLowerCase() === 'true';
+          }
+        }
+
+        // Extract inline comments for description if no JSDoc description
+        if (!description) {
+          const commentMatch = propertyType.match(/\/\/\s*(.+)$/);
           if (commentMatch) {
             description = commentMatch[1];
           } else {
@@ -339,15 +348,54 @@ export function extractInputSchemaFromCode(code: string): string {
               .toLowerCase()
               .trim()}`;
           }
+        }
 
-          properties[propertyName] = {
-            type: jsonType,
+        // Determine JSON type
+        if (propertyType.includes('number')) {
+          jsonType = 'number';
+        } else if (propertyType.includes('boolean')) {
+          jsonType = 'boolean';
+        } else if (propertyType.includes('string[]')) {
+          jsonType = 'array';
+          const propertyObj: {
+            type: string;
+            items: { type: string; canBeFile?: boolean };
+            description: string;
+            canBeFile?: boolean;
+          } = {
+            type: 'array',
+            items: { type: 'string' },
             description: description,
           };
-
-          if (!isOptional) {
-            required.push(propertyName);
+          if (canBeFile !== undefined) {
+            propertyObj.items.canBeFile = canBeFile;
           }
+          properties[propertyName] = propertyObj;
+          if (!isOptional) required.push(propertyName);
+          continue;
+        } else if (propertyType.includes('[]')) {
+          jsonType = 'array';
+        }
+
+        // Build property object
+        const propertyObj: {
+          type: string;
+          description: string;
+          canBeFile?: boolean;
+          items?: { type: string; canBeFile?: boolean };
+        } = {
+          type: jsonType,
+          description: description,
+        };
+
+        if (canBeFile !== undefined) {
+          propertyObj.canBeFile = canBeFile;
+        }
+
+        properties[propertyName] = propertyObj;
+
+        if (!isOptional) {
+          required.push(propertyName);
         }
       }
 
