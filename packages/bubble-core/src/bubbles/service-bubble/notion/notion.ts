@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import { DataSourcePropertySchema } from './property-schemas.js';
 
 // Notion API base URL
 const NOTION_API_BASE = 'https://api.notion.com/v1';
@@ -216,31 +215,53 @@ const BlockObjectSchema = z
   .describe('Block object with type-specific properties');
 
 // Data source object response schema
-const DataSourceObjectSchema = z.object({
-  object: z.literal('data_source').describe('Object type'),
-  id: z.string().describe('Data source ID'),
-  created_time: z.string().describe('ISO 8601 datetime'),
-  last_edited_time: z.string().describe('ISO 8601 datetime'),
-  properties: z
-    .record(z.string(), DataSourcePropertySchema)
-    .describe('Data source properties'),
-  parent: z
-    .object({
-      type: z.literal('database_id'),
-      database_id: z.string(),
-    })
-    .describe('Parent database'),
-  archived: z.boolean().describe('Whether the data source is archived'),
-  in_trash: z.boolean().optional().describe('Whether data source is in trash'),
-  is_inline: z.boolean().optional().describe('Whether displayed inline'),
-  icon: IconSchema.nullable().optional().describe('Data source icon'),
-  cover: FileObjectSchema.nullable().optional().describe('Data source cover'),
-  title: z.array(RichTextSchema).describe('Data source title'),
-  description: z
-    .array(RichTextSchema)
-    .optional()
-    .describe('Data source description'),
-});
+const DataSourceObjectSchema = z
+  .object({
+    object: z.literal('data_source').describe('Object type'),
+    id: z.string().describe('Data source ID'),
+    created_time: z.string().describe('ISO 8601 datetime'),
+    last_edited_time: z.string().describe('ISO 8601 datetime'),
+    created_by: UserSchema.describe('User who created the data source'),
+    last_edited_by: UserSchema.describe('User who last edited the data source'),
+    properties: z
+      .record(z.string(), z.unknown())
+      .describe('Data source properties'),
+    parent: z
+      .object({
+        type: z.literal('database_id'),
+        database_id: z.string(),
+      })
+      .passthrough()
+      .describe('Parent database'),
+    database_parent: z
+      .record(z.unknown())
+      .optional()
+      .describe('Database parent information'),
+    archived: z.boolean().describe('Whether the data source is archived'),
+    in_trash: z
+      .boolean()
+      .optional()
+      .describe('Whether data source is in trash'),
+    is_inline: z.boolean().optional().describe('Whether displayed inline'),
+    icon: IconSchema.nullable().optional().describe('Data source icon'),
+    cover: FileObjectSchema.nullable().optional().describe('Data source cover'),
+    title: z
+      .array(RichTextSchema)
+      .default([])
+      .describe('Data source title (can be empty array)'),
+    description: z
+      .array(RichTextSchema)
+      .optional()
+      .describe('Data source description'),
+    url: z.string().url().optional().describe('URL of the data source'),
+    public_url: z
+      .string()
+      .url()
+      .nullable()
+      .optional()
+      .describe('Public shareable URL of the data source'),
+  })
+  .passthrough();
 
 // Database object response schema
 const DatabaseObjectSchema = z.object({
