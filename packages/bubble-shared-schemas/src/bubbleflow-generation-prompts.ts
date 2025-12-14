@@ -194,15 +194,30 @@ Examples of BAD comments (DO NOT USE):
 For example, for a workflow that processes user data and sends notifications:
   
 export interface UserNotificationPayload extends WebhookEvent {
-  /** Email address where notifications should be sent. */
+  /**
+   * Email address where notifications should be sent.
+   * @canBeFile false
+   */
   email: string;
-  /** Custom message content to include in the notification. */
+  /**
+   * Custom message content to include in the notification.
+   * @canBeFile false
+   */
   message?: string;
-  /** Priority level: 'low' (non-urgent), 'medium' (normal), 'high' (urgent) */
+  /**
+   * Priority level: 'low' (non-urgent), 'medium' (normal), 'high' (urgent)
+   * @canBeFile false
+   */
   priority?: 'low' | 'medium' | 'high';
-  /** Whether to send SMS in addition to email. Set to true to enable SMS notifications, false to only send email. */
+  /**
+   * Whether to send SMS in addition to email. Set to true to enable SMS notifications, false to only send email.
+   * @canBeFile false
+   */
   includeSMS?: boolean;
-  /** The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL. */
+  /**
+   * The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
+   * @canBeFile false
+   */
   spreadsheetId: string;
 }
 
@@ -220,30 +235,19 @@ These example values help users understand the expected format. For instance:
 - Email: email = 'user@example.com'
 - Channel ID: channelId = 'C01234567AB'
 
-FILE UPLOAD CONTROL (canBeFile flag) - MANDATORY:
-CRITICAL: For EVERY string or object field in your JSON schema, you MUST explicitly decide whether file uploads should be allowed.
+FILE UPLOAD CONTROL (canBeFile flag):
+For each string or object field, decide if it makes sense to upload file content:
 
-MANDATORY RULE: If a field name matches any of these patterns, you MUST set "canBeFile": false:
-- Identifiers: filename, fileId, documentId, id, name, title (ANY field containing "name", "id", "title")
-- Text content: prompt, message, query, searchTerm, keyword (ANY field containing "prompt", "message", "query")
-- Credentials: apiKey, token, password, secret, credential (ANY field containing "key", "token", "password", "secret")
-- Identifiers/URLs: email, url, link, path, folderPath, spreadsheetId, channelId (ANY field containing "email", "url", "link", "path")
-- Configuration: format, type, mode, status, priority (ANY field containing "format", "type", "mode", "status", "priority")
-- Metadata: description, label, tag, category (ANY field containing "description", "label", "tag", "category")
+Allow file uploads for: 
+- Fields that hold document/media CONTENT (body, text, document, attachment, data)
 
-CHECKLIST - Before finalizing your schema, verify:
-1. Does the field name contain "name", "id", "title", "filename"? → MUST set "canBeFile": false
-2. Does the field name contain "prompt", "message", "query", "email", "url"? → MUST set "canBeFile": false
-3. Does the field name contain "key", "token", "password", "secret"? → MUST set "canBeFile": false
-4. Does the field represent an identifier, configuration, or metadata? → MUST set "canBeFile": false
+Disable file uploads for:
+- Identifiers and references (IDs, names, paths, URLs, emails)
+- Configuration values (settings, options, formats)
+- Short user inputs (prompts, messages, queries)
 
-Fields that should allow file uploads (omit canBeFile or set to true):
-- Content: content, document, text, data, body, payload
-- Files: file, attachment, image, photo, picture
-- Media: video, audio, media
-- Raw data: raw, source, input, sourceData
+Use your judgment based on what the field semantically represents, not just its name. Every property in the webhook payload interface should include a @canBeFile tag in its JSDoc comment.
 
-REMEMBER: If you see a field like "name", "email", "prompt", "filename", "apiKey", etc., you MUST add "canBeFile": false to prevent the file upload icon from appearing in the UI.
 
 REQUIRED vs OPTIONAL FIELD DECISION:
 1. User specified a value in their request → OPTIONAL with that value as default
