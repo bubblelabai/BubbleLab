@@ -71,6 +71,17 @@ function InputFieldsRenderer({
     setFieldErrors((prev) => ({ ...prev, [fieldName]: msg }));
   };
 
+  // Helper function to clean @canBeFile tags from descriptions
+  const cleanDescription = (
+    description: string | undefined
+  ): string | undefined => {
+    if (!description) return description;
+    return description
+      .replace(/@canBeFile\s+(true|false)/gi, '')
+      .replace(/\n\s*\n/g, '\n')
+      .trim();
+  };
+
   const handleFileChange = async (fieldName: string, file: File | null) => {
     if (!file) return;
     setError(fieldName, null);
@@ -330,7 +341,7 @@ function InputFieldsRenderer({
             </label>
             {field.description && (
               <div className="text-[10px] text-neutral-400 mb-1.5">
-                {field.description}
+                {cleanDescription(field.description)}
               </div>
             )}
             {isArray ? (
@@ -558,7 +569,7 @@ function InputFieldsRenderer({
                             </label>
                             {propSchema.description && (
                               <div className="text-[10px] text-neutral-500 mb-1.5">
-                                {propSchema.description}
+                                {cleanDescription(propSchema.description)}
                               </div>
                             )}
                             {isNestedObject ? (
@@ -639,7 +650,9 @@ function InputFieldsRenderer({
                                           </label>
                                           {nestedPropSchema.description && (
                                             <div className="text-[9px] text-neutral-600 mb-1.5">
-                                              {nestedPropSchema.description}
+                                              {cleanDescription(
+                                                nestedPropSchema.description
+                                              )}
                                             </div>
                                           )}
                                           {nestedPropSchema.type ===
@@ -700,7 +713,9 @@ function InputFieldsRenderer({
                                                     ? String(
                                                         nestedPropSchema.default
                                                       )
-                                                    : nestedPropSchema.description ||
+                                                    : cleanDescription(
+                                                        nestedPropSchema.description
+                                                      ) ||
                                                       `Enter ${nestedPropName}...`
                                                 }
                                                 disabled={isExecuting}
@@ -758,7 +773,9 @@ function InputFieldsRenderer({
                                                   ? String(
                                                       nestedPropSchema.default
                                                     )
-                                                  : nestedPropSchema.description ||
+                                                  : cleanDescription(
+                                                      nestedPropSchema.description
+                                                    ) ||
                                                     `Enter ${nestedPropName}...`
                                               }
                                               disabled={isExecuting}
@@ -823,8 +840,9 @@ function InputFieldsRenderer({
                                   placeholder={
                                     propSchema.default !== undefined
                                       ? String(propSchema.default)
-                                      : propSchema.description ||
-                                        `Enter ${propName}...`
+                                      : cleanDescription(
+                                          propSchema.description
+                                        ) || `Enter ${propName}...`
                                   }
                                   disabled={isExecuting}
                                   className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
@@ -875,8 +893,9 @@ function InputFieldsRenderer({
                                 placeholder={
                                   propSchema.default !== undefined
                                     ? String(propSchema.default)
-                                    : propSchema.description ||
-                                      `Enter ${propName}...`
+                                    : cleanDescription(
+                                        propSchema.description
+                                      ) || `Enter ${propName}...`
                                 }
                                 disabled={isExecuting}
                                 className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
@@ -933,7 +952,8 @@ function InputFieldsRenderer({
                   placeholder={
                     field.default !== undefined
                       ? String(field.default)
-                      : field.description || `Enter ${field.name}...`
+                      : cleanDescription(field.description) ||
+                        `Enter ${field.name}...`
                   }
                   disabled={isExecuting}
                   className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
@@ -979,7 +999,8 @@ function InputFieldsRenderer({
                     placeholder={
                       field.default !== undefined
                         ? String(field.default)
-                        : field.description || `Enter ${field.name}...`
+                        : cleanDescription(field.description) ||
+                          `Enter ${field.name}...`
                     }
                     disabled={
                       isExecuting ||
