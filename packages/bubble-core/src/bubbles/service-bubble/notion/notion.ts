@@ -266,7 +266,11 @@ const DataSourceObjectSchema = z
 // Database object response schema
 const DatabaseObjectSchema = z.object({
   object: z.literal('database').describe('Object type'),
-  id: z.string().describe('Database ID'),
+  id: z
+    .string()
+    .describe(
+      'Database ID, To find a database ID, navigate to the database URL in your Notion workspace. The ID is the string of characters in the URL that is between the slash following the workspace name (if applicable) and the question mark. The ID is a 32 characters alphanumeric string.'
+    ),
   created_time: z.string().describe('ISO 8601 datetime'),
   last_edited_time: z.string().describe('ISO 8601 datetime'),
   title: z.array(RichTextSchema).describe('Database title'),
