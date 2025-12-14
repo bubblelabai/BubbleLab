@@ -262,11 +262,12 @@ export function handleStreamingEvent(
         events.map((e: DisplayEvent) =>
           e.type === 'tool_start' && e.callId === event.data.callId
             ? {
-                type: 'tool_complete',
+                type: 'tool_complete' as const,
                 tool: event.data.tool,
                 output: event.data.output,
                 duration: event.data.duration,
                 callId: event.data.callId,
+                timestamp: e.timestamp, // Preserve original timestamp
               }
             : e
         )
@@ -303,10 +304,21 @@ export function handleStreamingEvent(
         if (lastEvent?.type === 'token') {
           return [
             ...events.slice(0, -1),
-            { type: 'token', content: lastEvent.content + event.data.content },
+            {
+              type: 'token' as const,
+              content: lastEvent.content + event.data.content,
+              timestamp: lastEvent.timestamp, // Preserve original timestamp
+            },
           ];
         }
-        return [...events, { type: 'token', content: event.data.content }];
+        return [
+          ...events,
+          {
+            type: 'token' as const,
+            content: event.data.content,
+            timestamp: new Date(),
+          },
+        ];
       });
       break;
 
@@ -488,6 +500,7 @@ export function usePearlChatStore(flowId: number | null) {
   });
 
   // Subscribe to state
+  const timeline = store((s) => s.timeline);
   const messages = store((s) => s.messages);
   const eventsList = store((s) => s.eventsList);
   const activeToolCallIds = store((s) => s.activeToolCallIds);
@@ -1004,6 +1017,7 @@ export function usePearlChatStore(flowId: number | null) {
 
   return {
     // State
+    timeline,
     messages,
     eventsList,
     activeToolCallIds,

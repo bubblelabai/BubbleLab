@@ -198,7 +198,7 @@ export function PearlChat() {
   // Auto-scroll to bottom when conversation changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pearl.messages, pearl.eventsList, pearl.isPending, pearl.isGenerating]);
+  }, [pearl.timeline, pearl.isPending, pearl.isGenerating]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -588,7 +588,7 @@ export function PearlChat() {
     <div className="h-full flex flex-col">
       {/* Scrollable content area for messages/results */}
       <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3 min-h-0">
-        {pearl.messages.length === 0 && !pearl.isPending && !isGenerating && (
+        {pearl.timeline.length === 0 && !pearl.isPending && !isGenerating && (
           <div className="flex flex-col items-center px-4 py-8">
             {/* Header */}
             <div className="mb-6 text-center">
@@ -745,61 +745,52 @@ export function PearlChat() {
           </div>
         )}
 
-        {/* Render messages: user → generation output (if generating) → events → assistant */}
-        {pearl.messages.map((message, index) => {
-          // Calculate assistant index (how many assistant messages we've seen so far)
-          const assistantIndex =
-            pearl.messages
-              .slice(0, index + 1)
-              .filter((m) => m.type === 'assistant').length - 1;
+        {/* Render unified timeline: messages and events in chronological order */}
+        {pearl.timeline.map((item, index) => {
+          const key =
+            item.kind === 'message'
+              ? item.data.id
+              : `event-${index}-${item.data.type}`;
+
+          // For events, check if we should filter transient ones
+          // Only show transient events (llm_thinking, tool_start, token) if they're recent (loading state)
+          if (item.kind === 'event') {
+            const event = item.data;
+            const isTransient =
+              event.type === 'llm_thinking' ||
+              event.type === 'tool_start' ||
+              event.type === 'token';
+
+            // For transient events, only show if we're in loading state
+            if (isTransient && !pearl.isPending && !pearl.isCoffeeLoading) {
+              return null;
+            }
+
+            return (
+              <div key={key} className="p-3">
+                <EventDisplay event={event} onRetry={pearl.retryAfterError} />
+              </div>
+            );
+          }
+
+          // It's a message
+          const message = item.data;
 
           return (
-            <div key={message.id}>
+            <div key={key}>
               {/* User Message */}
               {message.type === 'user' && (
-                <>
-                  <div className="p-3 flex justify-end">
-                    <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
-                      <div className="text-[13px] text-gray-900">
-                        {hasBubbleTags(message.content) ? (
-                          <BubbleText text={message.content} />
-                        ) : (
-                          message.content
-                        )}
-                      </div>
+                <div className="p-3 flex justify-end">
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                    <div className="text-[13px] text-gray-900">
+                      {hasBubbleTags(message.content) ? (
+                        <BubbleText text={message.content} />
+                      ) : (
+                        message.content
+                      )}
                     </div>
                   </div>
-
-                  {/* Show generation output immediately after user message if this is the first message and we're generating */}
-                  {index === 0 && pearl.isGenerating && (
-                    <div className="p-3">
-                      <div className="text-sm text-gray-300 p-3 bg-gray-800/30 rounded border-l-2 border-purple-500">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
-                          <span className="text-xs font-medium text-gray-400">
-                            Pearl is generating your workflow...
-                          </span>
-                        </div>
-                        {/* Show events from the current turn */}
-                        {pearl.eventsList.length > 0 &&
-                          pearl.eventsList[pearl.eventsList.length - 1]
-                            ?.length > 0 && (
-                            <div className="space-y-1.5 mt-3">
-                              {pearl.eventsList[
-                                pearl.eventsList.length - 1
-                              ]?.map((event, idx) => (
-                                <EventDisplay
-                                  key={idx}
-                                  event={event}
-                                  onRetry={pearl.retryAfterError}
-                                />
-                              ))}
-                            </div>
-                          )}
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
               {/* Clarification Request - render as widget if pending, as history if answered */}
@@ -946,92 +937,74 @@ export function PearlChat() {
 
               {/* Assistant Message */}
               {message.type === 'assistant' && (
-                <>
-                  {/* Events (if any) - filter out transient events for completed messages */}
-                  {pearl.eventsList[assistantIndex] &&
-                    pearl.eventsList[assistantIndex].length > 0 && (
-                      <div className="p-3">
-                        <div className="space-y-2">
-                          {pearl.eventsList[assistantIndex]
-                            .filter((event) => {
-                              // Only show persistent events for completed messages
-                              // Filter out transient events like llm_thinking and tool_start
-                              return (
-                                event.type !== 'llm_thinking' &&
-                                event.type !== 'tool_start' &&
-                                event.type !== 'token'
-                              );
-                            })
-                            .map((event, eventIndex) => (
-                              <EventDisplay
-                                key={`${message.id}-event-${eventIndex}`}
-                                event={event}
-                                onRetry={pearl.retryAfterError}
-                              />
-                            ))}
-                        </div>
-                      </div>
+                <div className="p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    {message.resultType === 'code' && (
+                      <Check className="w-4 h-4 text-green-400" />
                     )}
-
-                  {/* Assistant Message Content */}
-                  <div className="p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      {message.resultType === 'code' && (
-                        <Check className="w-4 h-4 text-green-400" />
-                      )}
-                      {message.resultType === 'answer' && (
-                        <MessageSquare className="w-4 h-4 text-white" />
-                      )}
-                      {message.resultType === 'reject' && (
-                        <AlertCircle className="w-4 h-4 text-red-400" />
-                      )}
-                      <span className="text-xs font-medium text-gray-400">
-                        Pearl
-                        {message.resultType === 'code' && ' - Code Generated'}
-                        {message.resultType === 'question' && ' - Question'}
-                        {message.resultType === 'answer' && ' - Answer'}
-                        {message.resultType === 'reject' && ' - Error'}
-                      </span>
-                    </div>
-                    {message.resultType === 'code' ? (
-                      <>
-                        {message.content && (
-                          <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
-                            <MarkdownWithBubbles content={message.content} />
-                          </div>
-                        )}
-                        {message.code && (
-                          <CodeDiffView
-                            originalCode={editor.getCode() || ''}
-                            modifiedCode={message.code}
-                            isAccepted={updatedMessageIds.has(message.id)}
-                            onAccept={() =>
-                              handleReplace(
-                                message.code!,
-                                message.id,
-                                message.bubbleParameters
-                              )
-                            }
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
-                        <MarkdownWithBubbles content={message.content} />
-                      </div>
+                    {message.resultType === 'answer' && (
+                      <MessageSquare className="w-4 h-4 text-white" />
                     )}
+                    {message.resultType === 'reject' && (
+                      <AlertCircle className="w-4 h-4 text-red-400" />
+                    )}
+                    <span className="text-xs font-medium text-gray-400">
+                      Pearl
+                      {message.resultType === 'code' && ' - Code Generated'}
+                      {message.resultType === 'question' && ' - Question'}
+                      {message.resultType === 'answer' && ' - Answer'}
+                      {message.resultType === 'reject' && ' - Error'}
+                    </span>
                   </div>
-                </>
+                  {message.resultType === 'code' ? (
+                    <>
+                      {message.content && (
+                        <div className="prose prose-invert prose-sm max-w-none mb-3 [&_*]:text-[13px]">
+                          <MarkdownWithBubbles content={message.content} />
+                        </div>
+                      )}
+                      {message.code && (
+                        <CodeDiffView
+                          originalCode={editor.getCode() || ''}
+                          modifiedCode={message.code}
+                          isAccepted={updatedMessageIds.has(message.id)}
+                          onAccept={() =>
+                            handleReplace(
+                              message.code!,
+                              message.id,
+                              message.bubbleParameters
+                            )
+                          }
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
+                      <MarkdownWithBubbles content={message.content} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* System Message */}
+              {message.type === 'system' && (
+                <div className="p-3">
+                  <div className="text-xs text-gray-500 italic">
+                    {message.content}
+                  </div>
+                </div>
               )}
             </div>
           );
         })}
 
-        {/* Loading indicator when Coffee is loading */}
-        {pearl.isCoffeeLoading &&
+        {/* Loading indicator when actively processing but no events yet */}
+        {(pearl.isPending || pearl.isCoffeeLoading || pearl.isGenerating) &&
           !pearl.pendingClarification &&
           !pearl.pendingContextRequest &&
-          !pearl.pendingPlan && (
+          !pearl.pendingPlan &&
+          pearl.timeline.filter((item) => item.kind === 'event').length ===
+            0 && (
             <div className="p-3">
               <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
@@ -1039,44 +1012,6 @@ export function PearlChat() {
               </div>
             </div>
           )}
-
-        {/* Current streaming events (for the active turn) */}
-        {(() => {
-          const lastTurnEvents =
-            pearl.eventsList.length > 0
-              ? pearl.eventsList[pearl.eventsList.length - 1]
-              : [];
-          const hasErrorEvent = lastTurnEvents.some(
-            (e) => e.type === 'generation_error'
-          );
-          const isLoading = pearl.isPending || pearl.isCoffeeLoading;
-          const shouldShow =
-            (isLoading || hasErrorEvent) && lastTurnEvents.length > 0;
-
-          if (!shouldShow) return null;
-
-          return (
-            <div className="p-3">
-              {isLoading && !hasErrorEvent && (
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                  <span className="text-xs font-medium text-gray-400">
-                    Pearl - Processing...
-                  </span>
-                </div>
-              )}
-              <div className="space-y-2">
-                {lastTurnEvents.map((event, index) => (
-                  <EventDisplay
-                    key={`current-event-${index}`}
-                    event={event}
-                    onRetry={pearl.retryAfterError}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Scroll anchor */}
         <div ref={messagesEndRef} />
