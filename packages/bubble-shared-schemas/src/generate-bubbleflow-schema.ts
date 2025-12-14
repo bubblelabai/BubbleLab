@@ -3,7 +3,7 @@ import { z } from '@hono/zod-openapi';
 import { BubbleParameterType } from './bubble-definition-schema';
 import { CredentialType } from './types';
 import { ServiceUsageSchema } from './bubbleflow-execution-schema';
-import { CoffeeContextAnswerSchema } from './coffee';
+import { CoffeeMessageSchema } from './coffee';
 
 // BubbleFlow generation schemas
 export const generateBubbleFlowCodeSchema = z.object({
@@ -17,24 +17,16 @@ export const generateBubbleFlowCodeSchema = z.object({
       'Optional flow ID to update with generated code (for async generation)',
     example: 123,
   }),
-  // Coffee agent fields (for planning phase)
-  clarificationAnswers: z
-    .record(z.string(), z.array(z.string()))
-    .optional()
-    .openapi({
-      description:
-        'User answers to Coffee clarification questions (questionId -> choiceIds)',
-      example: { question_1: ['choice_a'] },
-    }),
+  // Coffee agent unified messages (for planning phase)
+  messages: z.array(CoffeeMessageSchema).optional().openapi({
+    description:
+      'Full conversation history including clarification Q&A, context results, plan approvals',
+  }),
+  // Plan context (passed to Boba for enriched code generation)
   planContext: z.string().optional().openapi({
     description:
       'Plan context from Coffee agent (passed to Boba for enriched generation)',
     example: 'Plan: 1. Fetch data from API 2. Process with AI 3. Send to Slack',
-  }),
-  // Coffee context answer (when resuming after context-gathering flow execution)
-  contextAnswer: CoffeeContextAnswerSchema.optional().openapi({
-    description:
-      'Result of a context-gathering flow execution (used to resume Coffee planning)',
   }),
 });
 

@@ -438,17 +438,18 @@ export function PearlChat() {
 
   const handleInitialPlanApprove = useCallback(
     async (comment?: string) => {
-      if (!selectedFlowId || !flowData?.prompt || !pearl.coffeePlan) return;
+      if (!selectedFlowId || !flowData?.prompt || !pearl.pendingPlan) return;
 
+      const plan = pearl.pendingPlan.plan;
       // Build plan context string for Boba
       const planContext = [
-        `Summary: ${pearl.coffeePlan.summary}`,
+        `Summary: ${plan.summary}`,
         'Steps:',
-        ...pearl.coffeePlan.steps.map(
+        ...plan.steps.map(
           (step, i) =>
             `${i + 1}. ${step.title}: ${step.description}${step.bubblesUsed ? ` (Using: ${step.bubblesUsed.join(', ')})` : ''}`
         ),
-        `Bubbles to use: ${pearl.coffeePlan.estimatedBubbles.join(', ')}`,
+        `Bubbles to use: ${plan.estimatedBubbles.join(', ')}`,
         ...(comment ? [`\nAdditional user comments: ${comment}`] : []),
       ].join('\n');
 
@@ -456,10 +457,10 @@ export function PearlChat() {
         selectedFlowId,
         flowData.prompt,
         planContext,
-        pearl.coffeeAnswers
+        {} // No separate answers - they're in the messages
       );
     },
-    [selectedFlowId, flowData?.prompt, pearl.coffeePlan, pearl.coffeeAnswers]
+    [selectedFlowId, flowData?.prompt, pearl.pendingPlan]
   );
 
   const handleReplace = (
@@ -876,9 +877,9 @@ export function PearlChat() {
 
           return (
             <div key={message.id}>
-              {message.type === 'user' ? (
+              {/* User Message */}
+              {message.type === 'user' && (
                 <>
-                  {/* User Message */}
                   <div className="p-3 flex justify-end">
                     <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
                       <div className="text-[13px] text-gray-900">
@@ -951,8 +952,152 @@ export function PearlChat() {
                     </div>
                   )}
                 </>
-              ) : (
-                /* Assistant Response: Events then Message */
+              )}
+
+              {/* Clarification Request - render as widget if pending, as history if answered */}
+              {message.type === 'clarification_request' && (
+                <div className="p-3">
+                  {pearl.pendingClarification?.id === message.id ? (
+                    <ClarificationWidget
+                      questions={message.questions}
+                      onSubmit={
+                        isGenerating
+                          ? handleInitialClarificationSubmit
+                          : pearl.submitClarificationAnswers
+                      }
+                      isSubmitting={pearl.isCoffeeLoading}
+                    />
+                  ) : (
+                    <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                      <div className="text-xs text-blue-400 mb-2">
+                        Questions asked:
+                      </div>
+                      {message.questions.map((q, i) => (
+                        <div key={q.id} className="text-sm text-gray-300 mb-1">
+                          {i + 1}. {q.question}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Clarification Response - display user's answers */}
+              {message.type === 'clarification_response' && (
+                <div className="p-3 flex justify-end">
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                    <div className="text-xs text-gray-500 mb-1">
+                      Your answers:
+                    </div>
+                    {Object.entries(message.answers).map(([qId, choiceIds]) => {
+                      const question = message.originalQuestions?.find(
+                        (q) => q.id === qId
+                      );
+                      const choiceLabels = choiceIds.map(
+                        (cid) =>
+                          question?.choices.find((c) => c.id === cid)?.label ||
+                          cid
+                      );
+                      return (
+                        <div key={qId} className="text-sm text-gray-900">
+                          {question?.question || qId}: {choiceLabels.join(', ')}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Context Request - render as widget if pending, as history if answered */}
+              {message.type === 'context_request' && (
+                <div className="p-3">
+                  {pearl.pendingContextRequest?.id === message.id ? (
+                    <ContextRequestWidget
+                      request={message.request}
+                      credentials={pearl.coffeeContextCredentials}
+                      onCredentialChange={pearl.setCoffeeContextCredential}
+                      onSubmit={pearl.submitContext}
+                      onReject={pearl.rejectContext}
+                      isLoading={pearl.isCoffeeLoading}
+                      apiBaseUrl={API_BASE_URL}
+                    />
+                  ) : (
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                      <div className="text-xs text-amber-400 mb-2">
+                        Context request:
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        {message.request.description}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Context Response - display result status */}
+              {message.type === 'context_response' && (
+                <div className="p-3 flex justify-end">
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                    <div className="text-sm text-gray-900">
+                      {message.answer.status === 'success' &&
+                        'Context gathered successfully'}
+                      {message.answer.status === 'rejected' &&
+                        'Skipped context gathering'}
+                      {message.answer.status === 'error' &&
+                        `Error: ${message.answer.error}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Plan Message - render as widget if pending, as history if approved */}
+              {message.type === 'plan' && (
+                <div className="p-3">
+                  {pearl.pendingPlan?.id === message.id ? (
+                    <PlanApprovalWidget
+                      plan={message.plan}
+                      onApprove={
+                        isGenerating
+                          ? handleInitialPlanApprove
+                          : pearl.approvePlanAndBuild
+                      }
+                      isLoading={pearl.isCoffeeLoading}
+                    />
+                  ) : (
+                    <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                      <div className="text-xs text-green-400 mb-2">
+                        Approved plan:
+                      </div>
+                      <div className="text-sm text-gray-300 font-medium mb-1">
+                        {message.plan.summary}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {message.plan.steps.length} steps •{' '}
+                        {message.plan.estimatedBubbles.join(', ')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Plan Approval - display approval */}
+              {message.type === 'plan_approval' && (
+                <div className="p-3 flex justify-end">
+                  <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
+                    <div className="text-sm text-gray-900">
+                      {message.approved ? 'Plan approved' : 'Plan rejected'}
+                      {message.comment && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {message.comment}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Assistant Message */}
+              {message.type === 'assistant' && (
                 <>
                   {/* Events (if any) - filter out transient events for completed messages */}
                   {pearl.eventsList[assistantIndex] &&
@@ -979,7 +1124,7 @@ export function PearlChat() {
                       </div>
                     )}
 
-                  {/* Assistant Message */}
+                  {/* Assistant Message Content */}
                   <div className="p-3">
                     <div className="flex items-center gap-2 mb-2">
                       {message.resultType === 'code' && (
@@ -1033,75 +1178,18 @@ export function PearlChat() {
           );
         })}
 
-        {/* Coffee Agent - Clarification Questions */}
-        {pearl.coffeePhase === 'clarifying' && pearl.coffeeQuestions && (
-          <div className="p-3">
-            <ClarificationWidget
-              questions={pearl.coffeeQuestions}
-              onSubmit={
-                isGenerating
-                  ? handleInitialClarificationSubmit
-                  : pearl.submitClarificationAnswers
-              }
-              isSubmitting={pearl.isCoffeeLoading}
-            />
-          </div>
-        )}
-
-        {/* Coffee Agent - Context Request (Credential Selection) */}
-        {pearl.coffeePhase === 'awaiting_context' &&
-          pearl.coffeeContextRequest && (
+        {/* Loading indicator when Coffee is loading */}
+        {pearl.isCoffeeLoading &&
+          !pearl.pendingClarification &&
+          !pearl.pendingContextRequest &&
+          !pearl.pendingPlan && (
             <div className="p-3">
-              <ContextRequestWidget
-                request={pearl.coffeeContextRequest}
-                credentials={pearl.coffeeContextCredentials}
-                onCredentialChange={pearl.setCoffeeContextCredential}
-                onSubmit={pearl.submitContext}
-                onReject={pearl.rejectContext}
-                isLoading={pearl.isCoffeeLoading}
-                apiBaseUrl={API_BASE_URL}
-              />
+              <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                <span className="text-sm text-gray-300">Processing...</span>
+              </div>
             </div>
           )}
-
-        {/* Coffee Agent - Gathering context in progress */}
-        {pearl.coffeePhase === 'gathering' && (
-          <div className="p-3">
-            <div className="flex items-center gap-2 px-4 py-3 bg-amber-800/20 rounded-lg border border-amber-700/30">
-              <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-              <span className="text-sm text-gray-300">
-                Gathering context...
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Coffee Agent - Planning in progress */}
-        {pearl.coffeePhase === 'planning' && (
-          <div className="p-3">
-            <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
-              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-              <span className="text-sm text-gray-300">
-                Generating implementation plan...
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Coffee Agent - Plan Approval */}
-        {pearl.coffeePhase === 'ready' && pearl.coffeePlan && (
-          <div className="p-3">
-            <PlanApprovalWidget
-              plan={pearl.coffeePlan}
-              onApprove={
-                isGenerating
-                  ? handleInitialPlanApprove
-                  : pearl.approvePlanAndBuild
-              }
-              isLoading={pearl.isCoffeeLoading}
-            />
-          </div>
-        )}
 
         {/* Current streaming events (for the active turn) */}
         {pearl.isPending && pearl.eventsList.length > 0 && (

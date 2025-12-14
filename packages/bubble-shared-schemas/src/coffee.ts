@@ -51,20 +51,8 @@ export const CoffeeClarificationEventSchema = z.object({
 });
 
 // ============================================================================
-// Context Gathering Schemas (Phase 2 - External Context via BubbleFlow)
+// Context Gathering Schemas
 // ============================================================================
-
-/** Event for context gathering status (legacy, kept for backwards compatibility) */
-export const CoffeeContextEventSchema = z.object({
-  status: z
-    .enum(['gathering', 'complete'])
-    .describe('Current status of context gathering'),
-  miniFlowDescription: z
-    .string()
-    .optional()
-    .describe('Description of the mini flow that would run to gather context'),
-  result: z.string().optional().describe('Result of context gathering'),
-});
 
 /**
  * Event sent when Coffee requests external context via running a BubbleFlow.
@@ -100,23 +88,25 @@ export const CoffeeContextAnswerSchema = z.object({
     .describe('The result data from running the context-gathering flow'),
   error: z.string().optional().describe('Error message if status is error'),
   originalRequest: CoffeeRequestExternalContextEventSchema.optional().describe(
-    'The original context request that triggered this answer (includes flowCode, description, etc.)'
+    'The original context request that triggered this answer'
   ),
 });
 
 /**
  * Context request info that the agent generates when it wants to run a flow.
- * This is part of the agent's output when action is 'requestContext'.
  */
 export const CoffeeContextRequestInfoSchema = z.object({
-  purpose: z
-    .string()
-    .describe(
-      'Why this context is needed (e.g., "to understand your database schema")'
-    ),
+  purpose: z.string().describe('Why this context is needed'),
   flowDescription: z
     .string()
     .describe('User-facing description of what the flow will do'),
+});
+
+/** Legacy context gathering status (used in streaming events) */
+export const CoffeeContextEventSchema = z.object({
+  status: z.enum(['gathering', 'complete']),
+  miniFlowDescription: z.string().optional(),
+  result: z.string().optional(),
 });
 
 // ============================================================================
@@ -145,6 +135,104 @@ export const CoffeePlanEventSchema = z.object({
 });
 
 // ============================================================================
+// Unified Message Types for Coffee Chat
+// ============================================================================
+// These message types allow Coffee interactions to be stored as persistent
+// messages in the chat history, rather than ephemeral state.
+
+/** Base message structure shared by all message types */
+const BaseMessageSchema = z.object({
+  id: z.string().describe('Unique message identifier'),
+  timestamp: z.string().describe('ISO timestamp of message creation'),
+});
+
+/** Regular user text message */
+export const UserMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('user'),
+  content: z.string().describe('User message text'),
+});
+
+/** Regular assistant text message */
+export const AssistantMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('assistant'),
+  content: z.string().describe('Assistant response text'),
+  code: z.string().optional().describe('Generated code if applicable'),
+  resultType: z
+    .enum(['code', 'question', 'answer', 'reject'])
+    .optional()
+    .describe('Type of assistant response'),
+  bubbleParameters: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe('Bubble parameters for code responses'),
+});
+
+/** Coffee asking clarification questions */
+export const ClarificationRequestMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('clarification_request'),
+  questions: z
+    .array(ClarificationQuestionSchema)
+    .describe('Questions being asked'),
+});
+
+/** User's answers to clarification questions */
+export const ClarificationResponseMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('clarification_response'),
+  answers: z
+    .record(z.string(), z.array(z.string()))
+    .describe('questionId -> choiceIds'),
+  originalQuestions: z
+    .array(ClarificationQuestionSchema)
+    .optional()
+    .describe('The questions that were answered (for display purposes)'),
+});
+
+/** Coffee requesting external context */
+export const ContextRequestMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('context_request'),
+  request: CoffeeRequestExternalContextEventSchema.describe(
+    'Context gathering request details'
+  ),
+});
+
+/** User's response to context request */
+export const ContextResponseMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('context_response'),
+  answer: CoffeeContextAnswerSchema.describe(
+    'User response to context request'
+  ),
+  credentialTypes: z
+    .array(z.string())
+    .optional()
+    .describe('Credential types used (for display, not actual secrets)'),
+});
+
+/** Coffee's generated plan */
+export const PlanMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('plan'),
+  plan: CoffeePlanEventSchema.describe('Generated implementation plan'),
+});
+
+/** User's plan approval with optional comment */
+export const PlanApprovalMessageSchema = BaseMessageSchema.extend({
+  type: z.literal('plan_approval'),
+  approved: z.boolean().describe('Whether the plan was approved'),
+  comment: z.string().optional().describe('Optional user comment on the plan'),
+});
+
+/** Union of all Coffee message types */
+export const CoffeeMessageSchema = z.discriminatedUnion('type', [
+  UserMessageSchema,
+  AssistantMessageSchema,
+  ClarificationRequestMessageSchema,
+  ClarificationResponseMessageSchema,
+  ContextRequestMessageSchema,
+  ContextResponseMessageSchema,
+  PlanMessageSchema,
+  PlanApprovalMessageSchema,
+]);
+
+// ============================================================================
 // Request/Response Schemas
 // ============================================================================
 
@@ -155,41 +243,23 @@ export const CoffeeRequestSchema = z.object({
     .number()
     .optional()
     .describe('Optional flow ID if updating existing flow'),
-  clarificationAnswers: z
-    .record(z.string(), z.array(z.string()))
+  messages: z
+    .array(CoffeeMessageSchema)
     .optional()
     .describe(
-      'User answers to previous clarification questions (questionId -> choiceIds)'
+      'Full conversation history including clarification Q&A, context results, plan approvals'
     ),
-  planContext: z
-    .string()
-    .optional()
-    .describe('Previously generated plan context (for building phase)'),
-  contextAnswer: CoffeeContextAnswerSchema.optional().describe(
-    'Answer from a previous context-gathering flow execution'
-  ),
 });
 
 /** Response from the Coffee agent */
 export const CoffeeResponseSchema = z.object({
   type: z
     .enum(['clarification', 'plan', 'context_request', 'error'])
-    .describe(
-      'Response type: clarification (needs user input), plan (ready for approval), context_request (needs external context), error (failed)'
-    ),
-  clarification: CoffeeClarificationEventSchema.optional().describe(
-    'Clarification questions (only when type is "clarification")'
-  ),
-  plan: CoffeePlanEventSchema.optional().describe(
-    'Implementation plan (only when type is "plan")'
-  ),
-  contextRequest: CoffeeRequestExternalContextEventSchema.optional().describe(
-    'Context request (only when type is "context_request")'
-  ),
-  error: z
-    .string()
-    .optional()
-    .describe('Error message (only when type is "error")'),
+    .describe('Response type'),
+  clarification: CoffeeClarificationEventSchema.optional(),
+  plan: CoffeePlanEventSchema.optional(),
+  contextRequest: CoffeeRequestExternalContextEventSchema.optional(),
+  error: z.string().optional(),
   success: z.boolean().describe('Whether the operation completed successfully'),
 });
 
@@ -198,16 +268,9 @@ export const CoffeeAgentOutputSchema = z.object({
   action: z
     .enum(['askClarification', 'generatePlan', 'requestContext'])
     .describe('The action the agent wants to take'),
-  questions: z
-    .array(ClarificationQuestionSchema)
-    .optional()
-    .describe('Questions to ask (when action is askClarification)'),
-  plan: CoffeePlanEventSchema.optional().describe(
-    'Generated plan (when action is generatePlan)'
-  ),
-  contextRequest: CoffeeContextRequestInfoSchema.optional().describe(
-    'Context request info (when action is requestContext) - the agent will then call runBubbleFlow tool'
-  ),
+  questions: z.array(ClarificationQuestionSchema).optional(),
+  plan: CoffeePlanEventSchema.optional(),
+  contextRequest: CoffeeContextRequestInfoSchema.optional(),
 });
 
 // ============================================================================
@@ -219,11 +282,11 @@ export type ClarificationQuestion = z.infer<typeof ClarificationQuestionSchema>;
 export type CoffeeClarificationEvent = z.infer<
   typeof CoffeeClarificationEventSchema
 >;
-export type CoffeeContextEvent = z.infer<typeof CoffeeContextEventSchema>;
 export type CoffeeRequestExternalContextEvent = z.infer<
   typeof CoffeeRequestExternalContextEventSchema
 >;
 export type CoffeeContextAnswer = z.infer<typeof CoffeeContextAnswerSchema>;
+export type CoffeeContextEvent = z.infer<typeof CoffeeContextEventSchema>;
 export type CoffeeContextRequestInfo = z.infer<
   typeof CoffeeContextRequestInfoSchema
 >;
@@ -232,3 +295,20 @@ export type CoffeePlanEvent = z.infer<typeof CoffeePlanEventSchema>;
 export type CoffeeRequest = z.infer<typeof CoffeeRequestSchema>;
 export type CoffeeResponse = z.infer<typeof CoffeeResponseSchema>;
 export type CoffeeAgentOutput = z.infer<typeof CoffeeAgentOutputSchema>;
+
+// Unified message types
+export type UserMessage = z.infer<typeof UserMessageSchema>;
+export type AssistantMessage = z.infer<typeof AssistantMessageSchema>;
+export type ClarificationRequestMessage = z.infer<
+  typeof ClarificationRequestMessageSchema
+>;
+export type ClarificationResponseMessage = z.infer<
+  typeof ClarificationResponseMessageSchema
+>;
+export type ContextRequestMessage = z.infer<typeof ContextRequestMessageSchema>;
+export type ContextResponseMessage = z.infer<
+  typeof ContextResponseMessageSchema
+>;
+export type PlanMessage = z.infer<typeof PlanMessageSchema>;
+export type PlanApprovalMessage = z.infer<typeof PlanApprovalMessageSchema>;
+export type CoffeeMessage = z.infer<typeof CoffeeMessageSchema>;
