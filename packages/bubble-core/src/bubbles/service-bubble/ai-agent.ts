@@ -799,15 +799,41 @@ export class AIAgentBubble extends ServiceBubble<
       const tool = tools.find((t) => t.name === toolCall.name);
       if (!tool) {
         console.warn(`Tool ${toolCall.name} not found`);
+        const errorContent = `Error: Tool ${toolCall.name} not found`;
+        const startTime = Date.now();
+
+        // Send tool_start event
+        this.streamingCallback?.({
+          type: 'tool_start',
+          data: {
+            tool: toolCall.name,
+            input: toolCall.args,
+            callId: toolCall.id!,
+          },
+        });
+
+        // Send tool_complete event with error
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            input: toolCall.args as { input: string },
+            tool: toolCall.name,
+            output: { error: errorContent },
+            duration: Date.now() - startTime,
+          },
+        });
+
         toolMessages.push(
           new ToolMessage({
-            content: `Error: Tool ${toolCall.name} not found`,
+            content: errorContent,
             tool_call_id: toolCall.id!,
           })
         );
         continue;
       }
 
+      const startTime = Date.now();
       try {
         // Call beforeToolCall hook if provided
         const hookResult_before = await this.beforeToolCallHook?.({
@@ -815,8 +841,6 @@ export class AIAgentBubble extends ServiceBubble<
           toolInput: toolCall.args,
           messages: currentMessages,
         });
-
-        const startTime = Date.now();
 
         this.streamingCallback?.({
           type: 'tool_start',
@@ -880,12 +904,25 @@ export class AIAgentBubble extends ServiceBubble<
         });
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
+        const errorContent = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
         const errorMessage = new ToolMessage({
-          content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          content: errorContent,
           tool_call_id: toolCall.id!,
         });
         toolMessages.push(errorMessage);
         currentMessages = [...currentMessages, errorMessage];
+
+        // Send tool_complete event even on failure so frontend can track it properly
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            input: toolCall.args as { input: string },
+            tool: toolCall.name,
+            output: { error: errorContent },
+            duration: Date.now() - startTime,
+          },
+        });
       }
     }
 

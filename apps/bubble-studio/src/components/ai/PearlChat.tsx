@@ -1199,7 +1199,49 @@ function EventDisplay({
         </div>
       );
 
-    case 'tool_complete':
+    case 'tool_complete': {
+      // Check if tool call failed (output has error property)
+      const isError =
+        event.output &&
+        typeof event.output === 'object' &&
+        'error' in event.output &&
+        event.output.error != '';
+      // Some tools return a valid property to indicate success
+      const isValid =
+        event.output &&
+        typeof event.output === 'object' &&
+        'valid' in event.output &&
+        event.output.valid == false;
+      console.log('[PearlChat] tool_complete', event.output);
+      console.log('[PearlChat] isError', isError);
+      if (isError || isValid) {
+        return (
+          <div className="p-2 bg-red-900/20 border border-red-800/30 rounded-lg">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertCircle className="w-3 h-3 text-red-400" />
+              <span className="text-xs text-red-300">{event.tool} failed</span>
+            </div>
+            <div className="text-xs text-gray-400">
+              Duration: {Math.round(event.duration / 1000)}s
+            </div>
+            <details className="mt-1">
+              <summary className="text-xs text-gray-500 cursor-pointer">
+                Show error details
+              </summary>
+              <div className="mt-1 text-xs text-red-300 max-h-40 overflow-y-auto">
+                <div className="mb-1">
+                  {event.output != null &&
+                  typeof event.output === 'object' &&
+                  'error' in event.output
+                    ? String(event.output.error)
+                    : JSON.stringify(event.output, null, 2)}
+                </div>
+              </div>
+            </details>
+          </div>
+        );
+      }
+
       return (
         <div className="p-2 bg-green-900/20 border border-green-800/30 rounded-lg">
           <div className="flex items-center gap-2 mb-1">
@@ -1223,6 +1265,7 @@ function EventDisplay({
           </details>
         </div>
       );
+    }
 
     case 'token':
       return (
