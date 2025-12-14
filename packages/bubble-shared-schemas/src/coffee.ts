@@ -10,8 +10,7 @@ import { CredentialType } from './types.js';
 // Constants
 export const COFFEE_MAX_ITERATIONS = 30;
 export const COFFEE_MAX_QUESTIONS = 3;
-export const COFFEE_DEFAULT_MODEL =
-  'openrouter/anthropic/claude-sonnet-4.5' as const;
+export const COFFEE_DEFAULT_MODEL = 'google/gemini-3-pro-preview' as const;
 
 // ============================================================================
 // Clarification Schemas

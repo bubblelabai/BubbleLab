@@ -211,9 +211,17 @@ function handleStreamingEvent(
       break;
 
     case 'llm_complete':
+      // Remove llm_thinking indicator
       state.updateLastEvent((events: DisplayEvent[]) =>
         events.filter((e: DisplayEvent) => e.type !== 'llm_thinking')
       );
+      // If there's content, add it as an event (similar to think events)
+      if (event.data.content && event.data.content.trim()) {
+        state.addEventToCurrentTurn({
+          type: 'llm_complete_content',
+          content: event.data.content,
+        });
+      }
       break;
 
     case 'tool_start':

@@ -571,6 +571,15 @@ export class AIAgentBubble extends ServiceBubble<
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
+          thinkingConfig: {
+            includeThoughts: true,
+            thinkingBudget:
+              reasoningEffort === 'low'
+                ? 1025
+                : reasoningEffort === 'medium'
+                  ? 5000
+                  : 10000,
+          },
           apiKey,
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
@@ -1002,6 +1011,11 @@ export class AIAgentBubble extends ServiceBubble<
                     type: 'llm_complete',
                     data: {
                       messageId,
+                      content: formatFinalResponse(
+                        output.generations,
+                        this.params.model.model,
+                        this.params.model.jsonMode
+                      ).response,
                       totalTokens:
                         output.llmOutput?.usage_metadata?.total_tokens,
                     },

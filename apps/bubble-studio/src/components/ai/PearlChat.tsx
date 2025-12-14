@@ -1371,6 +1371,19 @@ function EventDisplay({ event }: { event: DisplayEvent }) {
         </div>
       );
 
+    case 'llm_complete_content':
+      // Don't render if content is empty or whitespace only
+      if (!event.content.trim()) {
+        return null;
+      }
+      return (
+        <div className="text-sm text-gray-300 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
+          <div className="prose prose-invert prose-sm max-w-none [&_*]:text-[13px]">
+            <MarkdownWithBubbles content={event.content} />
+          </div>
+        </div>
+      );
+
     case 'tool_start':
       return (
         <div className="p-2 bg-blue-900/20 border border-blue-800/30 rounded-lg">

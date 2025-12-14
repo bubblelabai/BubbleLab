@@ -27,7 +27,8 @@ export type DisplayEvent =
       callId: string;
     }
   | { type: 'token'; content: string }
-  | { type: 'think'; content: string };
+  | { type: 'think'; content: string }
+  | { type: 'llm_complete_content'; content: string };
 
 interface PearlChatState {
   // ===== Core State =====
