@@ -1,13 +1,9 @@
 import { z } from 'zod';
 import { AvailableModels } from './ai-models.js';
-
+import { ConversationMessageSchema } from './agent-memory.js';
 /**
  * Conversation message schema for milk tea multi-turn conversations
  */
-const ConversationMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
 
 /**
  * Request schema for Milk Tea agent
@@ -104,4 +100,3 @@ export const MilkTeaAgentOutputSchema = z.object({
 export type MilkTeaRequest = z.infer<typeof MilkTeaRequestSchema>;
 export type MilkTeaResponse = z.infer<typeof MilkTeaResponseSchema>;
 export type MilkTeaAgentOutput = z.infer<typeof MilkTeaAgentOutputSchema>;
-export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;

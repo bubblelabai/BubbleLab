@@ -30,14 +30,13 @@ import {
   CREDENTIAL_ENV_MAP,
   CredentialType,
   CRITICAL_INSTRUCTIONS,
+  TOOL_CALL_TO_DISCARD,
+  BubbleName,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
   type StreamingCallback,
   ListBubblesTool,
-  HumanMessage,
-  AIMessage,
-  type BaseMessage,
   type ToolHookAfter,
   type ToolHookContext,
 } from '@bubblelab/bubble-core';
@@ -46,6 +45,7 @@ import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 import { env } from 'src/config/env.js';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
+import { ConversationMessage } from '@bubblelab/shared-schemas';
 
 // Max retries for parsing agent output (separate from agent iterations)
 const COFFEE_MAX_PARSE_RETRIES = 3;
@@ -208,7 +208,7 @@ IMPORTANT: When you need external context, DO NOT output JSON. Instead, DIRECTLY
 
 ## TOOLS AVAILABLE:
 - askClarification: Ask the user multiple-choice questions (handled via JSON output)
-- runBubbleFlow: Run a mini flow to gather context from integrated services (e.g., fetch database schema, list files from connected accounts)
+- runBubbleFlow: Run a mini flow to gather context from integrated services (e.g., fetch database schema, list files from connected accounts, find the right apify actor to use)
 - get-bubble-details-tool: Get the details of a bubble (e.g., input parameters, output structure), always run to check api for the bubble before running the bubbleFlow.
 - web-search-tool: Search the web for information on topics, find relevant sites, or research vague requests. Use this when the user asks about things you need more context on.
 - web-scrape-tool: Scrape content from a specific URL to understand its structure and available data. Use this when the user provides a website URL or wants to extract data from a site.
@@ -217,45 +217,46 @@ Remember: Your goal is to understand the user's intent well enough to create a s
 }
 
 /**
- * Build conversation messages from request - converts unified messages to LLM conversation turns
+ * Build conversation history from request - converts unified messages to ConversationMessage format.
+ * This format enables KV cache optimization by sending messages as separate user/assistant turns
+ * instead of serializing everything into a single message.
  */
-function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
-  const result: BaseMessage[] = [];
+function buildConversationHistory(
+  request: CoffeeRequest
+): ConversationMessage[] {
+  const result: ConversationMessage[] = [];
 
-  // Always start with the initial user prompt
-  result.push(new HumanMessage(`User's workflow request: "${request.prompt}"`));
-
-  // If no messages, return just the initial prompt
+  // If no messages, return empty - the initial prompt will be passed separately via `message` param
   if (!request.messages || request.messages.length === 0) {
     return result;
   }
 
-  // Process each message in order to build the full conversation history
+  // Process each message in order to build the conversation history
   for (const msg of request.messages) {
     switch (msg.type) {
       case 'user':
-        result.push(new HumanMessage(msg.content));
+        result.push({ role: 'user', content: msg.content });
         break;
 
       case 'assistant':
         // Include AI responses with their content
-        result.push(new AIMessage(msg.content));
+        result.push({ role: 'assistant', content: msg.content });
         break;
 
-      case 'clarification_request':
-        // AI asked clarification questions - represent as AI message
+      case 'clarification_request': {
+        // AI asked clarification questions - represent as assistant message
         const questionsText = msg.questions
           .map(
             (q) =>
               `${q.question}\n${q.choices.map((c) => `  - ${c.label}: ${c.description || ''}`).join('\n')}`
           )
           .join('\n\n');
-        result.push(
-          new AIMessage(
-            `I have some clarification questions:\n\n${questionsText}`
-          )
-        );
+        result.push({
+          role: 'assistant',
+          content: `I have some clarification questions:\n\n${questionsText}`,
+        });
         break;
+      }
 
       case 'clarification_response': {
         // User answered clarification questions - find original questions for context
@@ -274,17 +275,16 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
           );
           answerText += `\n- ${question?.question || questionId}: ${answerLabels.join(', ')}`;
         }
-        result.push(new HumanMessage(answerText));
+        result.push({ role: 'user', content: answerText });
         break;
       }
 
       case 'context_request':
         // AI requested external context
-        result.push(
-          new AIMessage(
-            `I need to gather some external context: ${msg.request.description}`
-          )
-        );
+        result.push({
+          role: 'assistant',
+          content: `I need to gather some external context: ${msg.request.description}`,
+        });
         break;
 
       case 'context_response': {
@@ -298,34 +298,35 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
         } else if (answer.status === 'error') {
           contextText = `Context gathering failed: ${answer.error}`;
         }
-        result.push(new HumanMessage(contextText));
+        result.push({ role: 'user', content: contextText });
         break;
       }
 
-      case 'plan':
+      case 'plan': {
         // AI generated a plan
         const planText = `Here's my implementation plan:\n\n**Summary:** ${msg.plan.summary}\n\n**Steps:**\n${msg.plan.steps.map((s, i) => `${i + 1}. ${s.title}: ${s.description}`).join('\n')}\n\n**Estimated Bubbles:** ${msg.plan.estimatedBubbles.join(', ')}`;
-        result.push(new AIMessage(planText));
+        result.push({ role: 'assistant', content: planText });
         break;
+      }
 
       case 'plan_approval': {
         if (msg.approved) {
           const approvalText = msg.comment
             ? `I approve the plan. ${msg.comment}`
             : 'I approve the plan. Please proceed.';
-          result.push(new HumanMessage(approvalText));
+          result.push({ role: 'user', content: approvalText });
         } else {
           const rejectionText = msg.comment
             ? `I would like to revise the plan. ${msg.comment}`
             : 'I would like to revise the plan.';
-          result.push(new HumanMessage(rejectionText));
+          result.push({ role: 'user', content: rejectionText });
         }
         break;
       }
 
       case 'system':
         // System messages (e.g., retry context, error feedback)
-        result.push(new HumanMessage(`[System]: ${msg.content}`));
+        result.push({ role: 'user', content: `[System]: ${msg.content}` });
         break;
 
       case 'tool_result': {
@@ -348,8 +349,10 @@ function buildConversationMessages(request: CoffeeRequest): BaseMessage[] {
         }
         toolResultText += `Status: ${toolResult.success ? 'Success' : 'Failed'} (${toolResult.duration || 0}ms)`;
 
-        // Format as assistant message so the agent can see the tool result
-        result.push(new AIMessage(toolResultText));
+        if (TOOL_CALL_TO_DISCARD.includes(toolResult.toolName as BubbleName)) {
+          continue;
+        }
+        result.push({ role: 'tool', content: toolResultText });
         break;
       }
     }
@@ -384,9 +387,11 @@ export async function runCoffee(
   };
 
   try {
-    // Build system prompt and conversation messages
+    // Build system prompt and conversation history
     const systemPrompt = await buildCoffeeSystemPrompt();
-    const conversationMessages = buildConversationMessages(request);
+    // Build conversation history for KV cache optimization
+    // The history is passed as separate messages instead of a single serialized string
+    const conversationHistory = buildConversationHistory(request);
 
     // Merge credentials
     const mergedCredentials: Partial<Record<CredentialType, string>> = {
@@ -422,7 +427,8 @@ export async function runCoffee(
     // Retry loop for agent execution and parsing
     let parseAttempt = 0;
     let lastParseError: string | null = null;
-    const currentMessages = [...conversationMessages];
+    // Track additional messages added during retries (for error feedback)
+    const retryMessages: ConversationMessage[] = [];
 
     while (parseAttempt <= COFFEE_MAX_PARSE_RETRIES) {
       // If this is a retry, append the parse error as feedback
@@ -430,17 +436,23 @@ export async function runCoffee(
         console.log(
           `[Coffee] Parse retry attempt ${parseAttempt}/${COFFEE_MAX_PARSE_RETRIES}`
         );
-        currentMessages.push(
-          new HumanMessage(
-            `[System]: Your previous response failed to parse. Error: ${lastParseError}\n\nPlease try again and ensure your response is valid JSON matching the expected schema.`
-          )
-        );
+        retryMessages.push({
+          role: 'user',
+          content: `[System]: Your previous response failed to parse. Error: ${lastParseError}\n\nPlease try again and ensure your response is valid JSON matching the expected schema.`,
+        });
       }
 
-      // Create AI agent
+      // Combine base conversation history with any retry messages
+      const currentHistory = [...conversationHistory, ...retryMessages];
+
+      // Create AI agent with separate conversation history for KV cache optimization
+      // The 'message' param contains the current user request
+      // The 'conversationHistory' param contains previous turns as separate messages
       const agent = new AIAgentBubble({
         name: 'Coffee - Planning Agent',
-        message: JSON.stringify(currentMessages),
+        message: `User's workflow request: "${request.prompt}"`,
+        conversationHistory:
+          currentHistory.length > 0 ? currentHistory : undefined,
         systemPrompt,
         streaming: true,
         streamingCallback: (event) => {
@@ -701,8 +713,8 @@ export async function runCoffee(
           lastParseError
         );
 
-        // Add the AI response to messages so the agent knows what it said
-        currentMessages.push(new AIMessage(responseText));
+        // Add the AI response to retry messages so the agent knows what it said
+        retryMessages.push({ role: 'assistant', content: responseText });
 
         parseAttempt++;
         continue;

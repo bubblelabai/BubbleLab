@@ -24,6 +24,7 @@ import {
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
 import type { StreamingEvent } from '@bubblelab/shared-schemas';
+import { ConversationMessageSchema } from '@bubblelab/shared-schemas';
 import {
   extractAndStreamThinkingTokens,
   formatFinalResponse,
@@ -220,6 +221,9 @@ const ImageInputSchema = z.discriminatedUnion('type', [
   UrlImageSchema,
 ]);
 
+/** Type for conversation history messages - enables KV cache optimization */
+export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
+
 // Define the parameters schema for the AI Agent bubble
 const AIAgentParamsSchema = z.object({
   message: z
@@ -231,6 +235,12 @@ const AIAgentParamsSchema = z.object({
     .default([])
     .describe(
       'Array of base64 encoded images to include with the message (for multimodal AI models). Example: [{type: "base64", data: "base64...", mimeType: "image/png", description: "A beautiful image of a cat"}] or [{type: "url", url: "https://example.com/image.png", description: "A beautiful image of a cat"}]'
+    ),
+  conversationHistory: z
+    .array(ConversationMessageSchema)
+    .optional()
+    .describe(
+      'Previous conversation messages for multi-turn conversations. When provided, messages are sent as separate turns to enable KV cache optimization. Format: [{role: "user", content: "..."}, {role: "assistant", content: "..."}, ...]'
     ),
   systemPrompt: z
     .string()
@@ -410,8 +420,15 @@ export class AIAgentBubble extends ServiceBubble<
   private async executeWithModel(
     modelConfig: AIAgentParamsParsed['model']
   ): Promise<AIAgentResult> {
-    const { message, images, systemPrompt, tools, customTools, maxIterations } =
-      this.params;
+    const {
+      message,
+      images,
+      systemPrompt,
+      tools,
+      customTools,
+      maxIterations,
+      conversationHistory,
+    } = this.params;
 
     // Initialize the language model
     const llm = this.initializeModel(modelConfig);
@@ -428,7 +445,8 @@ export class AIAgentBubble extends ServiceBubble<
       message,
       images,
       maxIterations,
-      modelConfig
+      modelConfig,
+      conversationHistory
     );
   }
 
@@ -1155,7 +1173,8 @@ export class AIAgentBubble extends ServiceBubble<
     message: string,
     images: AIAgentParamsParsed['images'],
     maxIterations: number,
-    modelConfig: AIAgentParamsParsed['model']
+    modelConfig: AIAgentParamsParsed['model'],
+    conversationHistory?: AIAgentParamsParsed['conversationHistory']
   ): Promise<AIAgentResult> {
     const jsonMode = modelConfig.jsonMode;
     const toolCalls: AIAgentResult['toolCalls'] = [];
@@ -1170,7 +1189,37 @@ export class AIAgentBubble extends ServiceBubble<
     try {
       console.log('[AIAgent] Invoking graph...');
 
-      // Create human message with text and optional images
+      // Build messages array starting with conversation history (for KV cache optimization)
+      const initialMessages: BaseMessage[] = [];
+
+      // Convert conversation history to LangChain messages if provided
+      // This enables KV cache optimization by keeping previous turns as separate messages
+      if (conversationHistory && conversationHistory.length > 0) {
+        for (const historyMsg of conversationHistory) {
+          switch (historyMsg.role) {
+            case 'user':
+              initialMessages.push(new HumanMessage(historyMsg.content));
+              break;
+            case 'assistant':
+              initialMessages.push(new AIMessage(historyMsg.content));
+              break;
+            case 'tool':
+              // Tool messages require a tool_call_id
+              if (historyMsg.toolCallId) {
+                initialMessages.push(
+                  new ToolMessage({
+                    content: historyMsg.content,
+                    tool_call_id: historyMsg.toolCallId,
+                    name: historyMsg.name,
+                  })
+                );
+              }
+              break;
+          }
+        }
+      }
+
+      // Create the current human message with text and optional images
       let humanMessage: HumanMessage;
 
       if (images && images.length > 0) {
@@ -1244,8 +1293,11 @@ export class AIAgentBubble extends ServiceBubble<
         humanMessage = new HumanMessage(message);
       }
 
+      // Add the current message to the conversation
+      initialMessages.push(humanMessage);
+
       const result = await graph.invoke(
-        { messages: [humanMessage] },
+        { messages: initialMessages },
         { recursionLimit: maxIterations }
       );
 

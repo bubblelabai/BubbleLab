@@ -85,7 +85,7 @@ export class WebScrapeTool extends ToolBubble<
   static readonly schema = WebScrapeToolParamsSchema;
   static readonly resultSchema = WebScrapeToolResultSchema;
   static readonly shortDescription =
-    'Scrapes content from a single web page using Firecrawl, good to use after web-search-tool to get the full content of a page';
+    "Scrapes content from a single web page. Useful after web-search-tool to get the full content of a page. Also useful if you need to understand a site's structure or content.";
   static readonly longDescription = `
     A simple and powerful web scraping tool that extracts content from any web page.
     
