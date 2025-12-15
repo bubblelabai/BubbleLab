@@ -376,7 +376,7 @@ export function CreateCredentialModal({
       return '';
     }
     const parts = domain.split('.');
-    let mainDomain = domain;
+    const mainDomain = domain;
     const domainName = mainDomain.split('.').slice(0, -1).join('.');
     if (domainName) {
       return `${domainName}.atlassian.net`;
