@@ -56,7 +56,7 @@ export function GeneratingOverlay() {
           </div>
 
           <p className="text-gray-300 text-base font-medium">
-            Bubble flow in generation...
+            Please be patient, Pearl is generating your workflow...
           </p>
         </div>
       </div>

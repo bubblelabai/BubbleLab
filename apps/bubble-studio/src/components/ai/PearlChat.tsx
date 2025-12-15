@@ -1294,15 +1294,12 @@ function EventDisplay({
     case 'generation_complete':
       return (
         <div className="p-2 bg-green-900/20 border border-green-800/30 rounded-lg mt-2">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <Check className="w-3.5 h-3.5 text-green-400" />
             <span className="text-sm text-green-300 font-medium">
               Code generation complete!
             </span>
           </div>
-          {event.summary && (
-            <div className="text-sm text-gray-300 mt-2">{event.summary}</div>
-          )}
         </div>
       );
 
