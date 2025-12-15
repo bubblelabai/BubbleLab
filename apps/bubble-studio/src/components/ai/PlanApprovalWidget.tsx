@@ -27,18 +27,18 @@ export function PlanApprovalWidget({
   const [comment, setComment] = useState('');
 
   return (
-    <div className="border border-green-500/30 rounded-lg overflow-hidden bg-gray-900/50">
+    <div className="border border-neutral-700 rounded-lg overflow-hidden bg-neutral-900/50">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-green-500/10 border-b border-green-500/20">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-green-400" />
-          <span className="text-sm font-medium text-green-300">
+          <FileText className="w-4 h-4 text-neutral-400" />
+          <span className="text-sm font-medium text-neutral-200">
             Implementation Plan
           </span>
         </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-gray-400 hover:text-gray-300 transition-colors"
+          className="text-neutral-400 hover:text-neutral-300 transition-colors"
         >
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />
@@ -50,101 +50,87 @@ export function PlanApprovalWidget({
 
       {isExpanded && (
         <>
-          {/* Plan content */}
-          <div className="p-4 space-y-4">
-            {/* Summary */}
-            <div className="bg-gray-800/50 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                Summary
-              </h4>
-              <p className="text-sm text-gray-200 leading-relaxed">
-                {plan.summary}
-              </p>
-            </div>
+          {/* Summary */}
+          <div className="px-4 pt-4 pb-3 border-b border-neutral-700/50">
+            <p className="text-sm text-neutral-300 leading-relaxed">
+              {plan.summary}
+            </p>
+          </div>
 
-            {/* Steps */}
-            <div>
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                Steps
+          {/* Steps */}
+          <div className="px-4 py-3 space-y-2 border-b border-neutral-700/50">
+            {plan.steps.map((step, index) => (
+              <div key={index} className="flex gap-3">
+                <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0 pb-2">
+                  <h5 className="text-sm font-medium text-neutral-200">
+                    {step.title}
+                  </h5>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {step.description}
+                  </p>
+                  {step.bubblesUsed && step.bubblesUsed.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {step.bubblesUsed.map((bubble, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded text-xs bg-neutral-800 text-neutral-400 border border-neutral-700"
+                        >
+                          {bubble}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Estimated bubbles */}
+          {plan.estimatedBubbles && plan.estimatedBubbles.length > 0 && (
+            <div className="px-4 py-3 border-b border-neutral-700/50">
+              <h4 className="text-xs font-medium text-neutral-400 mb-2">
+                Integrations
               </h4>
-              <div className="space-y-3">
-                {plan.steps.map((step, index) => (
-                  <div
-                    key={index}
-                    className="flex gap-3 bg-gray-800/30 rounded-lg p-3"
+              <div className="flex flex-wrap gap-1.5">
+                {plan.estimatedBubbles.map((bubble, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 rounded text-xs bg-neutral-800 text-neutral-400 border border-neutral-700"
                   >
-                    <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-sm font-medium text-gray-200">
-                        {step.title}
-                      </h5>
-                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                        {step.description}
-                      </p>
-                      {step.bubblesUsed && step.bubblesUsed.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {step.bubblesUsed.map((bubble, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                            >
-                              {bubble}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    {bubble}
+                  </span>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Estimated bubbles */}
-            {plan.estimatedBubbles && plan.estimatedBubbles.length > 0 && (
-              <div className="bg-gray-800/30 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Integrations to be used
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {plan.estimatedBubbles.map((bubble, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                    >
-                      {bubble}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Additional comments section */}
-          <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-700">
-            <label className="block text-xs font-medium text-gray-400 mb-2">
+          {/* Additional comments */}
+          <div className="px-4 py-3 border-b border-neutral-700/50">
+            <label className="text-xs font-medium text-neutral-400 mb-2 block">
               Additional Comments (Optional)
             </label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Add any additional requirements or modifications to the plan..."
+              placeholder="Any modifications or additional requirements..."
               disabled={isLoading}
-              rows={3}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-600 bg-gray-900 text-gray-200 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+              rows={2}
+              className="w-full px-3 py-2 text-sm rounded border border-neutral-700 bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none disabled:opacity-50 resize-none"
             />
           </div>
 
-          {/* Footer with action button */}
-          <div className="flex items-center justify-end px-4 py-3 bg-gray-800/30 border-t border-gray-700">
+          {/* Footer */}
+          <div className="px-4 py-3 flex justify-end">
             <button
               onClick={() => onApprove(comment.trim() || undefined)}
               disabled={isLoading}
-              className={`px-5 py-2 text-sm rounded-lg font-medium transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 text-sm rounded font-medium transition-colors flex items-center gap-2 ${
                 isLoading
-                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20'
+                  ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
               }`}
             >
               {isLoading ? (
