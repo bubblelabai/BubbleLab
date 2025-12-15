@@ -169,6 +169,7 @@ export class WebScrapeTool extends ToolBubble<
               message: `Summarize the scraped content to condense all information and remove any non-essential information, include all links, contact information, companies, don't omit any information. Content: ${content}`,
               model: {
                 model: 'google/gemini-2.5-flash-lite',
+                maxTokens: 80000,
               },
               name: 'Scrape Content Summarizer Agent',
               credentials: this.params.credentials,

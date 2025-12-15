@@ -155,75 +155,50 @@ export class WebCrawlTool extends ToolBubble<
         return crawlResult;
       }
 
-      // Process pages for summarization in batches if content is large (>5MB like web-scrape-tool)
-      const pagesToSummarize = crawlResult.pages.filter(
-        (page) => page.content && page.content.length > 50000
-      );
+      // Summarize individual pages that are too long (>50KB)
+      const summarizationPromises = crawlResult.pages.map(
+        async (page, index) => {
+          if (!page.content || page.content.length <= 50000) {
+            return; // Skip short pages
+          }
 
-      if (pagesToSummarize.length > 0) {
-        console.log(
-          `[WebCrawlTool] Summarizing ${pagesToSummarize.length} large pages in batch`
-        );
-
-        try {
-          // Create batch content for summarization
-          const batchContent = pagesToSummarize
-            .map(
-              (page, index) =>
-                `PAGE ${index + 1} (${page.url}):\n${page.content}\n\n---\n\n`
-            )
-            .join('');
-
-          const summarizeAgent = new AIAgentBubble(
-            {
-              message: `Clean up the crawled pages and condense the content to remove any non-essential information, include all links, contact information, companies, don't omit any information. Ex: if working on documentation, remove the navigation, footer, and any other non-essential information but preserve all examples and code blocks and api usage. 
-
-Please process each page separately and return the results in the same order, clearly marking each page with "PAGE X:" where X is the page number.
-
-Content: ${batchContent}`,
-              model: {
-                model: 'google/gemini-2.5-flash-lite',
-              },
-              name: 'Crawl Pages Batch Summarizer Agent',
-              credentials: this.params.credentials,
-            },
-            this.context
+          console.debug(
+            `[WebCrawlTool] Summarizing large page (${page.content.length} chars): ${page.url}`
           );
 
-          const result = await summarizeAgent.action();
-          if (result.data?.response) {
-            console.log('[WebCrawlTool] Batch summarization completed');
+          try {
+            const summarizeAgent = new AIAgentBubble(
+              {
+                message: `Clean up this crawled page and condense the content to remove any non-essential information. Include all links, contact information, and important details. Remove navigation, footer, and other non-essential elements but preserve all examples, code blocks, and API usage.
 
-            // Parse the batch response and update pages
-            const batchResponse = result.data.response;
-            const pageResponses = batchResponse.split(/PAGE \d+:/);
+Content from ${page.url}:
+${page.content}`,
+                model: {
+                  model: 'google/gemini-2.5-flash-lite',
+                  maxTokens: 50000,
+                },
+                name: 'Crawl Page Summarizer Agent',
+                credentials: this.params.credentials,
+              },
+              this.context
+            );
 
-            // Skip the first empty element and process the rest
-            for (
-              let i = 1;
-              i < pageResponses.length && i <= pagesToSummarize.length;
-              i++
-            ) {
-              const summarizedContent = pageResponses[i].trim();
-              if (summarizedContent) {
-                const originalPageIndex = crawlResult.pages.findIndex(
-                  (page) => page.url === pagesToSummarize[i - 1].url
-                );
-                if (originalPageIndex !== -1) {
-                  crawlResult.pages[originalPageIndex].content =
-                    summarizedContent;
-                  console.log(
-                    `[WebCrawlTool] Updated summarized content for: ${pagesToSummarize[i - 1].url}`
-                  );
-                }
-              }
+            const result = await summarizeAgent.action();
+            if (result.data?.response) {
+              crawlResult.pages[index].content = result.data.response;
+              console.log(`[WebCrawlTool] Summarized page: ${page.url}`);
             }
+          } catch (error) {
+            console.error(
+              `[WebCrawlTool] Error summarizing ${page.url}:`,
+              error
+            );
+            // Keep original content if summarization fails
           }
-        } catch (error) {
-          console.error('[WebCrawlTool] Error in batch summarization:', error);
-          // Continue with original content if summarization fails
         }
-      }
+      );
+
+      await Promise.all(summarizationPromises);
 
       return crawlResult;
     } catch (error) {
