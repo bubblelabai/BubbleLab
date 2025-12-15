@@ -20,13 +20,29 @@ import type { ActorId, ActorOutput, ActorInput } from './types.js';
 const ApifyParamsSchema = z.object({
   actorId: z
     .string()
+    .optional()
     .describe(
-      'The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc.'
+      'The Apify actor to run. Examples: "apify/instagram-scraper", "apify/reddit-scraper", etc. Required when running an actor, not needed for discovery mode.'
+    ),
+  search: z
+    .string()
+    .optional()
+    .describe(
+      'Search query to discover available Apify actors. When provided, this triggers discovery mode to search for actors matching the query and return their schemas and information.'
+    ),
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe(
+      'Maximum number of actors to return in discovery mode (default: 20, max: 100)'
     ),
   input: z
     .record(z.unknown())
     .describe(
-      'Input parameters for the actor. Structure depends on the specific actor being used.'
+      'Input parameters for the actor. Structure depends on the specific actor being used. Not used in discovery mode.'
     ),
   waitForFinish: z
     .boolean()
@@ -64,12 +80,55 @@ const ApifyResultSchema = z.object({
     .array(z.unknown())
     .optional()
     .describe(
-      'Array of scraped items (if waitForFinish is true). Structure depends on the actor.'
+      'Array of scraped items (if waitForFinish is true). Structure depends on the actor. For discovery mode, contains actor information with schemas.'
     ),
   itemsCount: z.number().optional().describe('Total number of items scraped'),
   consoleUrl: z.string().describe('URL to view the actor run in Apify console'),
   success: z.boolean().describe('Whether the operation was successful'),
   error: z.string().describe('Error message if operation failed'),
+  // Discovery-specific fields
+  discoveredActors: z
+    .array(
+      z.object({
+        id: z.string().describe('Actor ID (e.g., "apify/instagram-scraper")'),
+        name: z
+          .string()
+          .describe('Full actor path (e.g., "beauty/linkedin-jobs-scraper")'),
+        description: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('Actor description'),
+        inputSchemaUrl: z
+          .string()
+          .describe(
+            'URL to the actor input schema page. Use the web scrape tool to scrape from this URL (e.g., https://apify.com/apify/google-search-scraper/input-schema) to get the input/output schema details.'
+          ),
+        stars: z
+          .number()
+          .nullable()
+          .optional()
+          .describe('Actor rating (if available)'),
+        usage: z
+          .object({
+            totalRuns: z.number().optional(),
+            usersCount: z.number().optional(),
+          })
+          .nullable()
+          .optional()
+          .describe('Basic usage stats'),
+        requiresRental: z
+          .boolean()
+          .optional()
+          .describe(
+            'Whether this actor requires rental/private access (filtered out when true)'
+          ),
+      })
+    )
+    .optional()
+    .describe(
+      'Discovered actors with description and input schema URL (only present in discovery mode)'
+    ),
 });
 
 // Export types
@@ -137,12 +196,20 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - apify/google-search-scraper - Google search results
     - And any other Apify actor available in the marketplace
 
+    Discovery Mode:
+    - Provide a "search" parameter to discover available actors
+    - Optionally set "limit" to control the number of results (default: 20, max: 100)
+    - Returns actor information including input schemas, descriptions, and metadata
+    - This mode is specifically designed for discovering available actors and their capabilities
+    - Example: { search: "instagram", limit: 10 } to find Instagram-related actors
+
     Features:
     - Asynchronous actor execution with optional wait for completion
     - Automatic result fetching from datasets
     - Generic result handling (works with any actor output)
     - Configurable limits and timeouts
     - Direct access to Apify console for monitoring
+    - Actor discovery and schema inspection
 
     Use cases:
     - Social media scraping (Instagram, Reddit, LinkedIn, etc.)
@@ -150,6 +217,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - Search engine result scraping
     - E-commerce data collection
     - Market research and competitor analysis
+    - Discovering available actors and their schemas
 
     Architecture:
     - Service Bubble (this): Generic Apify API integration
@@ -214,7 +282,28 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     }
 
     try {
-      const { actorId, input, waitForFinish, timeout } = this.params;
+      const { actorId, search, limit, input, waitForFinish, timeout } =
+        this.params;
+
+      // Discovery mode: search for actors when search parameter is provided
+      if (search) {
+        return (await this.discoverActors(
+          apiToken,
+          search,
+          limit || 20
+        )) as TypedApifyResult<T>;
+      }
+
+      // Normal mode: require actorId
+      if (!actorId) {
+        return {
+          runId: '',
+          status: 'FAILED',
+          consoleUrl: '',
+          success: false,
+          error: 'Either actorId or search parameter is required',
+        } as TypedApifyResult<T>;
+      }
 
       // Start the actor run
       const runResponse = await this.startActorRun(apiToken, actorId, input);
@@ -412,5 +501,150 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     // Apify returns items directly as an array, not wrapped in a data object
     const items = (await response.json()) as unknown[];
     return items;
+  }
+
+  /**
+   * Discovery mode: Search for available Apify actors and return their information
+   * This is a special mode activated when the "search" parameter is provided
+   */
+  private async discoverActors(
+    apiToken: string,
+    query: string,
+    limit: number
+  ): Promise<ApifyResult> {
+    try {
+      // Search for actors in the Apify store
+      const searchUrl = new URL('https://api.apify.com/v2/store');
+      if (query) {
+        searchUrl.searchParams.set('search', query);
+      }
+      searchUrl.searchParams.set('limit', String(Math.min(limit, 100))); // Cap at 100
+
+      const searchResponse = await fetch(searchUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+        },
+      });
+
+      if (!searchResponse.ok) {
+        throw new Error(
+          `Failed to search actors: ${searchResponse.status} - ${await searchResponse.text()}`
+        );
+      }
+
+      const searchData = (await searchResponse.json()) as {
+        data: {
+          items: Array<{
+            id: string;
+            username: string;
+            name: string;
+            description?: string;
+            stats?: {
+              totalRuns?: number;
+              usersCount?: number;
+            };
+            defaultRunOptions?: Record<string, unknown>;
+            readme?: string;
+            storeUrl?: string;
+          }>;
+        };
+      };
+
+      const actors = searchData.data?.items || [];
+
+      // Build actor information with input schema URL, skipping rental/private actors
+      const discoveredActors = (
+        await Promise.all(
+          actors.map(async (actor) => {
+            try {
+              // Prefer the actor id (username~actor-slug); build a display path with '/'
+              // If the id is not in that format, fall back to username/name
+              const displayPath = actor.id.includes('~')
+                ? actor.id.replace('~', '/')
+                : actor.username && actor.name
+                  ? `${actor.username}/${actor.name}`
+                  : actor.id;
+
+              // Build the input schema URL using the display path
+              const inputSchemaUrl = `https://apify.com/${displayPath}/input-schema`;
+
+              // Fetch actor detail to determine if it is public or requires rental
+              let requiresRental = false;
+              try {
+                const actorUrl = `https://api.apify.com/v2/acts/${actor.id}`;
+                const detailResp = await fetch(actorUrl, {
+                  headers: { Authorization: `Bearer ${apiToken}` },
+                });
+                if (detailResp.ok) {
+                  const detailData = (await detailResp.json()) as {
+                    data?: {
+                      isPublic?: boolean;
+                      pricingInfos?: Array<{ pricingModel?: string }>;
+                    };
+                  };
+                  if (detailData.data?.isPublic === false) {
+                    requiresRental = true;
+                  }
+                  if (
+                    detailData.data?.pricingInfos?.some(
+                      (p) => p.pricingModel === 'FLAT_PRICE_PER_MONTH'
+                    )
+                  ) {
+                    requiresRental = true;
+                  }
+                }
+              } catch {
+                // ignore detail fetch errors; default to not filtering out
+              }
+
+              // Skip rental/private actors
+              if (requiresRental) {
+                return null;
+              }
+
+              return {
+                id: actor.id, // raw actor id
+                name: displayPath, // Full path (e.g., "beauty/linkedin-jobs-scraper")
+                description: actor.description || null,
+                inputSchemaUrl,
+                stars: null,
+                usage: actor.stats
+                  ? {
+                      totalRuns: actor.stats.totalRuns,
+                      usersCount: actor.stats.usersCount,
+                    }
+                  : null,
+                requiresRental,
+              };
+            } catch {
+              return null;
+            }
+          })
+        )
+      ).filter((a): a is NonNullable<typeof a> => Boolean(a));
+
+      return {
+        runId: '',
+        status: 'SUCCEEDED',
+        consoleUrl: 'https://apify.com/store',
+        success: true,
+        error: '',
+        items: discoveredActors,
+        itemsCount: discoveredActors.length,
+        discoveredActors,
+      };
+    } catch (error) {
+      return {
+        runId: '',
+        status: 'FAILED',
+        consoleUrl: '',
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error during actor discovery',
+        discoveredActors: [],
+      };
+    }
   }
 }

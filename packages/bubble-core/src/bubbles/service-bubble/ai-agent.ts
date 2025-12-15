@@ -24,9 +24,11 @@ import {
 import { BubbleFactory } from '../../bubble-factory.js';
 import type { BubbleName, BubbleResult } from '@bubblelab/shared-schemas';
 import type { StreamingEvent } from '@bubblelab/shared-schemas';
+import { ConversationMessageSchema } from '@bubblelab/shared-schemas';
 import {
   extractAndStreamThinkingTokens,
   formatFinalResponse,
+  generationsToMessageContent,
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
@@ -72,6 +74,12 @@ const BackupModelConfigSchema = z.object({
     .describe(
       'Max tokens for backup model. If not specified, uses primary model maxTokens.'
     ),
+  reasoningEffort: z
+    .enum(['low', 'medium', 'high'])
+    .optional()
+    .describe(
+      'Reasoning effort for backup model. If not specified, uses primary model reasoningEffort.'
+    ),
   maxRetries: z
     .number()
     .int()
@@ -103,6 +111,12 @@ const ModelConfigSchema = z.object({
     .default(12800)
     .describe(
       'Maximum number of tokens to generate in response, keep at default of 40000 unless the response is expected to be certain length'
+    ),
+  reasoningEffort: z
+    .enum(['low', 'medium', 'high'])
+    .optional()
+    .describe(
+      'Reasoning effort for model. If not specified, uses primary model reasoningEffort.'
     ),
   maxRetries: z
     .number()
@@ -207,6 +221,9 @@ const ImageInputSchema = z.discriminatedUnion('type', [
   UrlImageSchema,
 ]);
 
+/** Type for conversation history messages - enables KV cache optimization */
+export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
+
 // Define the parameters schema for the AI Agent bubble
 const AIAgentParamsSchema = z.object({
   message: z
@@ -218,6 +235,12 @@ const AIAgentParamsSchema = z.object({
     .default([])
     .describe(
       'Array of base64 encoded images to include with the message (for multimodal AI models). Example: [{type: "base64", data: "base64...", mimeType: "image/png", description: "A beautiful image of a cat"}] or [{type: "url", url: "https://example.com/image.png", description: "A beautiful image of a cat"}]'
+    ),
+  conversationHistory: z
+    .array(ConversationMessageSchema)
+    .optional()
+    .describe(
+      'Previous conversation messages for multi-turn conversations. When provided, messages are sent as separate turns to enable KV cache optimization. Format: [{role: "user", content: "..."}, {role: "assistant", content: "..."}, ...]'
     ),
   systemPrompt: z
     .string()
@@ -397,8 +420,15 @@ export class AIAgentBubble extends ServiceBubble<
   private async executeWithModel(
     modelConfig: AIAgentParamsParsed['model']
   ): Promise<AIAgentResult> {
-    const { message, images, systemPrompt, tools, customTools, maxIterations } =
-      this.params;
+    const {
+      message,
+      images,
+      systemPrompt,
+      tools,
+      customTools,
+      maxIterations,
+      conversationHistory,
+    } = this.params;
 
     // Initialize the language model
     const llm = this.initializeModel(modelConfig);
@@ -415,7 +445,8 @@ export class AIAgentBubble extends ServiceBubble<
       message,
       images,
       maxIterations,
-      modelConfig
+      modelConfig,
+      conversationHistory
     );
   }
 
@@ -499,6 +530,7 @@ export class AIAgentBubble extends ServiceBubble<
     const slashIndex = model.indexOf('/');
     const provider = model.substring(0, slashIndex);
     const modelName = model.substring(slashIndex + 1);
+    const reasoningEffort = modelConfig.reasoningEffort;
 
     // Get credential based on the modelConfig's provider (not this.params.model)
     const credentials = this.params.credentials as
@@ -544,6 +576,12 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           maxTokens,
           apiKey,
+          ...(reasoningEffort && {
+            reasoning: {
+              effort: reasoningEffort,
+              summary: 'auto',
+            },
+          }),
           streaming: enableStreaming,
           maxRetries: retries,
         });
@@ -552,6 +590,15 @@ export class AIAgentBubble extends ServiceBubble<
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
+          thinkingConfig: {
+            includeThoughts: reasoningEffort ? true : false,
+            thinkingBudget:
+              reasoningEffort === 'low'
+                ? 1025
+                : reasoningEffort === 'medium'
+                  ? 5000
+                  : 10000,
+          },
           apiKey,
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
@@ -585,6 +632,15 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           streaming: enableStreaming,
           apiKey,
+          thinking: {
+            budget_tokens:
+              reasoningEffort === 'low'
+                ? 1025
+                : reasoningEffort === 'medium'
+                  ? 5000
+                  : 10000,
+            type: reasoningEffort ? 'enabled' : 'disabled',
+          },
           maxRetries: retries,
         });
       case 'openrouter':
@@ -605,7 +661,7 @@ export class AIAgentBubble extends ServiceBubble<
               order: this.params.model.provider,
             },
             reasoning: {
-              effort: 'medium',
+              effort: reasoningEffort ?? 'medium',
               exclude: false,
             },
           },
@@ -761,15 +817,41 @@ export class AIAgentBubble extends ServiceBubble<
       const tool = tools.find((t) => t.name === toolCall.name);
       if (!tool) {
         console.warn(`Tool ${toolCall.name} not found`);
+        const errorContent = `Error: Tool ${toolCall.name} not found`;
+        const startTime = Date.now();
+
+        // Send tool_start event
+        this.streamingCallback?.({
+          type: 'tool_start',
+          data: {
+            tool: toolCall.name,
+            input: toolCall.args,
+            callId: toolCall.id!,
+          },
+        });
+
+        // Send tool_complete event with error
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            input: toolCall.args as { input: string },
+            tool: toolCall.name,
+            output: { error: errorContent },
+            duration: Date.now() - startTime,
+          },
+        });
+
         toolMessages.push(
           new ToolMessage({
-            content: `Error: Tool ${toolCall.name} not found`,
+            content: errorContent,
             tool_call_id: toolCall.id!,
           })
         );
         continue;
       }
 
+      const startTime = Date.now();
       try {
         // Call beforeToolCall hook if provided
         const hookResult_before = await this.beforeToolCallHook?.({
@@ -777,8 +859,6 @@ export class AIAgentBubble extends ServiceBubble<
           toolInput: toolCall.args,
           messages: currentMessages,
         });
-
-        const startTime = Date.now();
 
         this.streamingCallback?.({
           type: 'tool_start',
@@ -842,12 +922,25 @@ export class AIAgentBubble extends ServiceBubble<
         });
       } catch (error) {
         console.error(`Error executing tool ${toolCall.name}:`, error);
+        const errorContent = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
         const errorMessage = new ToolMessage({
-          content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          content: errorContent,
           tool_call_id: toolCall.id!,
         });
         toolMessages.push(errorMessage);
         currentMessages = [...currentMessages, errorMessage];
+
+        // Send tool_complete event even on failure so frontend can track it properly
+        this.streamingCallback?.({
+          type: 'tool_complete',
+          data: {
+            callId: toolCall.id!,
+            input: toolCall.args as { input: string },
+            tool: toolCall.name,
+            output: { error: errorContent },
+            duration: Date.now() - startTime,
+          },
+        });
       }
     }
 
@@ -970,10 +1063,15 @@ export class AIAgentBubble extends ServiceBubble<
                       },
                     });
                   }
+                  const content = formatFinalResponse(
+                    generationsToMessageContent(output.generations.flat()),
+                    this.params.model.model
+                  ).response;
                   await this.streamingCallback?.({
                     type: 'llm_complete',
                     data: {
                       messageId,
+                      content: content,
                       totalTokens:
                         output.llmOutput?.usage_metadata?.total_tokens,
                     },
@@ -1075,7 +1173,8 @@ export class AIAgentBubble extends ServiceBubble<
     message: string,
     images: AIAgentParamsParsed['images'],
     maxIterations: number,
-    modelConfig: AIAgentParamsParsed['model']
+    modelConfig: AIAgentParamsParsed['model'],
+    conversationHistory?: AIAgentParamsParsed['conversationHistory']
   ): Promise<AIAgentResult> {
     const jsonMode = modelConfig.jsonMode;
     const toolCalls: AIAgentResult['toolCalls'] = [];
@@ -1090,7 +1189,37 @@ export class AIAgentBubble extends ServiceBubble<
     try {
       console.log('[AIAgent] Invoking graph...');
 
-      // Create human message with text and optional images
+      // Build messages array starting with conversation history (for KV cache optimization)
+      const initialMessages: BaseMessage[] = [];
+
+      // Convert conversation history to LangChain messages if provided
+      // This enables KV cache optimization by keeping previous turns as separate messages
+      if (conversationHistory && conversationHistory.length > 0) {
+        for (const historyMsg of conversationHistory) {
+          switch (historyMsg.role) {
+            case 'user':
+              initialMessages.push(new HumanMessage(historyMsg.content));
+              break;
+            case 'assistant':
+              initialMessages.push(new AIMessage(historyMsg.content));
+              break;
+            case 'tool':
+              // Tool messages require a tool_call_id
+              if (historyMsg.toolCallId) {
+                initialMessages.push(
+                  new ToolMessage({
+                    content: historyMsg.content,
+                    tool_call_id: historyMsg.toolCallId,
+                    name: historyMsg.name,
+                  })
+                );
+              }
+              break;
+          }
+        }
+      }
+
+      // Create the current human message with text and optional images
       let humanMessage: HumanMessage;
 
       if (images && images.length > 0) {
@@ -1164,8 +1293,11 @@ export class AIAgentBubble extends ServiceBubble<
         humanMessage = new HumanMessage(message);
       }
 
+      // Add the current message to the conversation
+      initialMessages.push(humanMessage);
+
       const result = await graph.invoke(
-        { messages: [humanMessage] },
+        { messages: initialMessages },
         { recursionLimit: maxIterations }
       );
 

@@ -27,6 +27,7 @@ export {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
+  type ConversationMessage,
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
 export { SlackBubble } from './bubbles/service-bubble/slack.js';
@@ -126,6 +127,6 @@ export { WebhookStreamLogger } from './logging/WebhookStreamLogger.js';
 export { MockDataGenerator } from '@bubblelab/shared-schemas';
 
 // Re-export langchain message types for use in API and other packages
-export { HumanMessage, AIMessage } from '@langchain/core/messages';
+export { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 export type { BaseMessage } from '@langchain/core/messages';
 export { parseJsonWithFallbacks } from './utils/json-parsing.js';

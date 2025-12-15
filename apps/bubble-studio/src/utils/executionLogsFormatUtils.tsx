@@ -416,7 +416,7 @@ export function formatEventMessage(event: StreamingLogEvent): string {
  */
 export function simplifyObjectForContext(value: unknown): string {
   const MAX_STRING_LENGTH = 1000; // More aggressive truncation for context
-  const MAX_DEPTH = 5; // Reduced depth for context
+  const MAX_DEPTH = 10; // Reduced depth for context
   const MAX_ARRAY_ITEMS = 5; // Fewer array items for context
   const MAX_OBJECT_KEYS = 10; // Fewer object keys for context
 

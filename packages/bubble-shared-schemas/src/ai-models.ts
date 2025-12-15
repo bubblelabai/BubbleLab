@@ -6,6 +6,7 @@ export const AvailableModels = z.enum([
   'openai/gpt-5',
   'openai/gpt-5-mini',
   'openai/gpt-5.1',
+  'openai/gpt-5.2',
   // Google Gemini models
   'google/gemini-2.5-pro',
   'google/gemini-2.5-flash',
@@ -15,6 +16,7 @@ export const AvailableModels = z.enum([
 
   // Anthropic models
   'anthropic/claude-sonnet-4-5',
+  'anthropic/claude-opus-4.5',
   'anthropic/claude-haiku-4-5',
 
   // OpenRouter models

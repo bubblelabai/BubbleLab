@@ -2,17 +2,10 @@ import { z } from 'zod';
 import { AvailableModels, type AvailableModel } from './ai-models.js';
 import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
-
+import { ConversationMessageSchema } from './agent-memory.js';
 // Default model for Pearl AI agent
 export const PEARL_DEFAULT_MODEL: AvailableModel =
   'openrouter/anthropic/claude-sonnet-4.5';
-
-// Reuse the ConversationMessageSchema from milk-tea to avoid duplication
-const ConversationMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
-
 /**
  * Request schema for Pearl agent
  * Pearl helps users build complete workflows without requiring specific bubbles

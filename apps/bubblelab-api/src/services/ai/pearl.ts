@@ -23,6 +23,8 @@ import {
   CREDENTIAL_ENV_MAP,
   DEBUGGING_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
+  BubbleName,
+  TOOL_CALL_TO_DISCARD,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -37,6 +39,7 @@ import {
   AvailableTool,
   EditBubbleFlowTool,
   ListBubblesTool,
+  ToolMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -61,6 +64,7 @@ YOUR ROLE:
 - Understand user's high-level goals and translate them into complete workflow code
 - Ask clarifying questions when requirements are unclear
 - Help users build workflows that can include multiple bubbles and complex logic
+- Use the web-scrape-tool to scrape the web for information when the user provides a URL or mentions a website, or useful if you need to understand a site's structure or content.
 
 Available Bubbles:
 ${listBubblesResult.data.bubbles.map((bubble) => bubble.name).join(', ')}
@@ -187,7 +191,18 @@ function buildConversationMessages(request: PearlRequest): {
     for (const msg of request.conversationHistory) {
       if (msg.role === 'user') {
         messages.push(new HumanMessage(msg.content));
-      } else {
+      } else if (msg.role === 'tool') {
+        if (TOOL_CALL_TO_DISCARD.includes(msg.name as BubbleName)) {
+          continue;
+        }
+        messages.push(
+          new ToolMessage({
+            content: msg.content,
+            tool_call_id: msg.toolCallId || '',
+            name: msg.name || '',
+          })
+        );
+      } else if (msg.role === 'assistant') {
         messages.push(new AIMessage(msg.content));
       }
     }
@@ -463,6 +478,10 @@ export async function runPearl(
           },
           {
             name: 'get-bubble-details-tool',
+            credentials: credentials || {},
+          },
+          {
+            name: 'web-scrape-tool',
             credentials: credentials || {},
           },
         ],
