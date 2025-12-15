@@ -26,7 +26,6 @@ import {
   BubbleName,
   TOOL_CALL_TO_DISCARD,
 } from '@bubblelab/shared-schemas';
-import { ToolMessage } from '@langchain/core/messages';
 import {
   AIAgentBubble,
   type ToolHookContext,
@@ -40,6 +39,7 @@ import {
   AvailableTool,
   EditBubbleFlowTool,
   ListBubblesTool,
+  ToolMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
