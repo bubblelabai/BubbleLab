@@ -249,6 +249,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My InsForge API Key',
     credentialConfigurations: {},
   },
+  [CredentialType.JIRA_CRED]: {
+    label: 'Jira',
+    description:
+      'Jira API integration for issue management. Enter your email, domain, and API token.',
+    placeholder: '',
+    namePlaceholder: 'My Jira Credentials',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -299,6 +307,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
+    [CredentialType.JIRA_CRED]: 'Jira',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
@@ -341,10 +350,58 @@ export function CreateCredentialModal({
   const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
   const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set());
 
+  // Jira-specific fields
+  const [jiraEmail, setJiraEmail] = useState('');
+  const [jiraDomain, setJiraDomain] = useState('');
+  const [jiraApiKey, setJiraApiKey] = useState('');
+  const [showJiraApiKey, setShowJiraApiKey] = useState(false);
+
   // Check if the current credential type is OAuth
   const isOAuthCredentialType = isOAuthCredential(
     formData.credentialType as CredentialType
   );
+
+  // Check if the current credential type is Jira
+  const isJiraCredentialType =
+    formData.credentialType === CredentialType.JIRA_CRED;
+
+  // Auto-suggest domain from email for Jira
+  const suggestDomainFromEmail = (email: string): string => {
+    if (!email || !email.includes('@')) {
+      return '';
+    }
+
+    const domain = email.split('@')[1]?.trim();
+    if (!domain) {
+      return '';
+    }
+    const parts = domain.split('.');
+    let mainDomain = domain;
+    const domainName = mainDomain.split('.').slice(0, -1).join('.');
+    if (domainName) {
+      return `${domainName}.atlassian.net`;
+    }
+
+    // Fallback: use the first part before any dots
+    const firstPart = parts[0];
+    if (firstPart) {
+      return `${firstPart}.atlassian.net`;
+    }
+
+    return '';
+  };
+
+  // Handle email change and auto-suggest domain
+  const handleJiraEmailChange = (email: string) => {
+    setJiraEmail(email);
+    // Only auto-suggest if domain is empty or was previously auto-suggested
+    if (!jiraDomain || jiraDomain.endsWith('.atlassian.net')) {
+      const suggested = suggestDomainFromEmail(email);
+      if (suggested) {
+        setJiraDomain(suggested);
+      }
+    }
+  };
 
   // Initialize selected scopes based on defaultEnabled when credential type changes
   useEffect(() => {
@@ -374,8 +431,22 @@ export function CreateCredentialModal({
       setError(null);
       setIsOAuthConnecting(false);
       setSelectedScopes(new Set());
+      setJiraEmail('');
+      setJiraDomain('');
+      setJiraApiKey('');
+      setShowJiraApiKey(false);
     }
   }, [isOpen]);
+
+  // Reset Jira fields when credential type changes away from Jira
+  useEffect(() => {
+    if (!isJiraCredentialType) {
+      setJiraEmail('');
+      setJiraDomain('');
+      setJiraApiKey('');
+      setShowJiraApiKey(false);
+    }
+  }, [isJiraCredentialType]);
 
   // If a locked type is provided, set it when opening the modal
   useEffect(() => {
@@ -504,6 +575,36 @@ export function CreateCredentialModal({
       return;
     }
 
+    // For Jira credentials, store as comma-separated email,domain,apiKey
+    if (isJiraCredentialType) {
+      if (!formData.name || !jiraEmail || !jiraDomain || !jiraApiKey) {
+        setError('Name, email, domain, and API key are required');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(jiraEmail)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+
+      // Validate domain format (should be a valid domain)
+      const domainRegex =
+        /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+      if (!domainRegex.test(jiraDomain)) {
+        setError('Please enter a valid domain');
+        return;
+      }
+
+      const normalizedDomain = jiraDomain
+        .trim()
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
+
+      // value = "email,domain,apiKey"
+      formData.value = `${jiraEmail.trim()},${normalizedDomain},${jiraApiKey.trim()}`;
+    }
+
     // Regular credential flow
     if (!formData.name || !formData.credentialType || !formData.value) {
       setError('Name, type, and value are required');
@@ -630,7 +731,7 @@ export function CreateCredentialModal({
               </p>
             </div>
 
-            {!isOAuthCredentialType && (
+            {!isOAuthCredentialType && !isJiraCredentialType && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Value *
@@ -664,6 +765,87 @@ export function CreateCredentialModal({
                       <EyeIcon className="h-5 w-5" />
                     )}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Jira-specific credential fields */}
+            {isJiraCredentialType && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={jiraEmail}
+                    onChange={(e) => handleJiraEmailChange(e.target.value)}
+                    placeholder="user@company.com"
+                    className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your Jira account email address
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Domain *
+                  </label>
+                  <input
+                    type="text"
+                    value={jiraDomain}
+                    onChange={(e) => setJiraDomain(e.target.value)}
+                    placeholder="company.atlassian.net"
+                    className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your Jira instance domain (e.g., company.atlassian.net or
+                    jira.company.com)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    API Token *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showJiraApiKey ? 'text' : 'password'}
+                      value={jiraApiKey}
+                      onChange={(e) => setJiraApiKey(e.target.value)}
+                      placeholder="ATATT3xFfGF0..."
+                      className="w-full bg-[#1a1a1a] text-gray-100 px-3 py-2 pr-10 rounded-lg border border-[#30363d] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowJiraApiKey(!showJiraApiKey)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300 transition-colors"
+                      title={
+                        showJiraApiKey ? 'Hide API token' : 'Show API token'
+                      }
+                    >
+                      {showJiraApiKey ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Generate an API token from{' '}
+                    <a
+                      href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Atlassian Account Settings
+                    </a>
+                  </p>
                 </div>
               </div>
             )}

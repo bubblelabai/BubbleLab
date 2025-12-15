@@ -45,6 +45,9 @@ export enum CredentialType {
   // InsForge Credentials
   INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
   INSFORGE_API_KEY = 'INSFORGE_API_KEY',
+
+  // Project Management Credentials
+  JIRA_CRED = 'JIRA_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -94,4 +97,5 @@ export type BubbleName =
   | 'airtable'
   | 'notion'
   | 'firecrawl'
-  | 'insforge-db';
+  | 'insforge-db'
+  | 'jira';

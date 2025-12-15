@@ -31,6 +31,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Airtable: '/integrations/airtable.png',
   Notion: '/integrations/notion.svg',
   InsForge: '/integrations/insforge.svg',
+  Jira: '/integrations/jira.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -73,6 +74,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Airtable', file: SERVICE_LOGOS['Airtable'] },
   { name: 'Notion', file: SERVICE_LOGOS['Notion'] },
   { name: 'InsForge', file: SERVICE_LOGOS['InsForge'] },
+  { name: 'Jira', file: SERVICE_LOGOS['Jira'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -135,6 +137,7 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   notion: 'Notion',
   insforge: 'InsForge',
   'insforge-db': 'InsForge',
+  jira: 'Jira',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -231,6 +234,7 @@ export function findLogoForBubble(
     [/\btelegram\b/, 'Telegram'],
     [/\bairtable\b/, 'Airtable'],
     [/\bnotion\b/, 'Notion'],
+    [/\bjira\b/, 'Jira'],
     [/\bopenai\b|\bgpt\b/, 'GPT'],
     [/\banthropic\b|\bclaude\b/, 'Claude'],
     [/\bgemini\b/, 'Gemini'],

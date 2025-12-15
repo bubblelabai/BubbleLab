@@ -69,6 +69,8 @@ export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';
 export type { InsForgeDbParamsInput } from './bubbles/service-bubble/insforge-db.js';
+export { JiraBubble } from './bubbles/service-bubble/jira.js';
+export type { JiraParamsInput } from './bubbles/service-bubble/jira.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';

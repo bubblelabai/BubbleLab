@@ -156,6 +156,7 @@ export class BubbleFactory {
       'notion',
       'firecrawl',
       'insforge-db',
+      'jira',
     ];
   }
 
@@ -282,6 +283,7 @@ export class BubbleFactory {
     const { InsForgeDbBubble } = await import(
       './bubbles/service-bubble/insforge-db.js'
     );
+    const { JiraBubble } = await import('./bubbles/service-bubble/jira.js');
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -385,6 +387,7 @@ export class BubbleFactory {
     this.register('airtable', AirtableBubble as BubbleClassWithMetadata);
     this.register('firecrawl', FirecrawlBubble as BubbleClassWithMetadata);
     this.register('insforge-db', InsForgeDbBubble as BubbleClassWithMetadata);
+    this.register('jira', JiraBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
