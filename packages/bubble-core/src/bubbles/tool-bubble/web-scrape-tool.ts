@@ -203,23 +203,7 @@ export class WebScrapeTool extends ToolBubble<
 
       const loadTime = Date.now() - startTime;
 
-      // Log service usage for Firecrawl web scrape
-      if (this.context?.logger) {
-        this.context.logger.logTokenUsage(
-          {
-            usage: 1,
-            service: CredentialType.FIRECRAWL_API_KEY,
-            unit: 'per_result',
-            subService: 'web-scrape',
-          },
-          `Firecrawl web scrape: 1 credit used for ${url}`,
-          {
-            bubbleName: 'web-scrape-tool',
-            variableId: this.context?.variableId,
-            operationType: 'bubble_execution',
-          }
-        );
-      }
+      // Token usage tracking is now centralized in FirecrawlBubble
 
       return {
         content: content.trim(),

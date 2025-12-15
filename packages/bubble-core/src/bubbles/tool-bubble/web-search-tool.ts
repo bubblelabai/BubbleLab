@@ -181,26 +181,9 @@ export class WebSearchTool extends ToolBubble<
       }));
 
       // Calculate credits: Firecrawl charges 2 credits per 10 results (rounded up)
+      // Token usage tracking is now centralized in FirecrawlBubble
       const creditsUsed =
         Math.ceil(results.length / 10) * CREDITS_PER_10_RESULTS;
-
-      // Log service usage for Firecrawl web search
-      if (creditsUsed > 0 && this.context?.logger) {
-        this.context.logger.logTokenUsage(
-          {
-            usage: creditsUsed,
-            service: CredentialType.FIRECRAWL_API_KEY,
-            unit: 'per_10_results',
-            subService: 'web-search',
-          },
-          `Firecrawl web search: ${creditsUsed} credits used`,
-          {
-            bubbleName: 'web-search-tool',
-            variableId: this.context?.variableId,
-            operationType: 'bubble_execution',
-          }
-        );
-      }
 
       return {
         results,

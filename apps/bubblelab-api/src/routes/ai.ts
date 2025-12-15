@@ -83,6 +83,7 @@ app.openapi(pearlRoute, async (c) => {
           [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY!,
           [CredentialType.OPENAI_CRED]: env.OPENAI_API_KEY!,
           [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY!,
+          [CredentialType.FIRECRAWL_API_KEY]: env.FIRE_CRAWL_API_KEY,
         },
         streamingCallback
       );

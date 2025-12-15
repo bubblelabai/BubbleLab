@@ -1209,33 +1209,139 @@ export class FirecrawlBubble<
   ): Promise<Extract<FirecrawlResult, { operation: T['operation'] }>> {
     void context;
     const { operation } = this.params;
+    let result: Extract<FirecrawlResult, { operation: T['operation'] }>;
+
     switch (operation) {
       case 'scrape':
-        return this.handleScrape(
+        result = (await this.handleScrape(
           this.params as Extract<FirecrawlParams, { operation: 'scrape' }>
-        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+        )) as Extract<FirecrawlResult, { operation: T['operation'] }>;
+        break;
       case 'search':
-        return this.handleSearch(
+        result = (await this.handleSearch(
           this.params as Extract<FirecrawlParams, { operation: 'search' }>
-        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+        )) as Extract<FirecrawlResult, { operation: T['operation'] }>;
+        break;
       case 'map':
-        return this.handleMap(
+        result = (await this.handleMap(
           this.params as Extract<FirecrawlParams, { operation: 'map' }>
-        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+        )) as Extract<FirecrawlResult, { operation: T['operation'] }>;
+        break;
       case 'crawl':
-        return this.handleCrawl(
+        result = (await this.handleCrawl(
           this.params as Extract<FirecrawlParams, { operation: 'crawl' }>
-        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+        )) as Extract<FirecrawlResult, { operation: T['operation'] }>;
+        break;
       case 'extract':
-        return this.handleExtract(
+        result = (await this.handleExtract(
           this.params as Extract<FirecrawlParams, { operation: 'extract' }>
-        ) as Promise<Extract<FirecrawlResult, { operation: T['operation'] }>>;
+        )) as Extract<FirecrawlResult, { operation: T['operation'] }>;
+        break;
       default:
         return {
           operation: operation as T['operation'],
           success: false,
           error: `Unsupported operation: ${operation}`,
         } as Extract<FirecrawlResult, { operation: T['operation'] }>;
+    }
+
+    // Log token usage if operation was successful
+    if (result.success && this.context?.logger) {
+      const creditsUsed = this.calculateCreditsUsed(operation, result);
+      if (creditsUsed > 0) {
+        this.context?.logger.logTokenUsage(
+          {
+            usage: creditsUsed,
+            service: CredentialType.FIRECRAWL_API_KEY,
+            unit: this.getUsageUnit(operation),
+            subService: operation,
+          },
+          `Firecrawl ${operation}: ${creditsUsed} credits used`,
+          {
+            bubbleName: 'firecrawl',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate credits used based on operation type and result
+   */
+  private calculateCreditsUsed(
+    operation: string,
+    result: FirecrawlResult
+  ): number {
+    switch (operation) {
+      case 'scrape':
+        // Scrape uses 1 credit per page
+        return 1;
+      case 'search': {
+        // Search uses 2 credits per 10 results
+        const searchResult = result as Extract<
+          FirecrawlResult,
+          { operation: 'search' }
+        >;
+        const webResults = searchResult.web?.length ?? 0;
+        const newsResults = searchResult.news?.length ?? 0;
+        const imageResults = searchResult.images?.length ?? 0;
+        const otherResults = searchResult.other?.length ?? 0;
+        const totalResults =
+          webResults + newsResults + imageResults + otherResults;
+        return Math.ceil(totalResults / 10) * 2;
+      }
+      case 'map': {
+        // Map uses 1 credit per operation
+        return 1;
+      }
+      case 'crawl': {
+        // Crawl uses 1 credit per page crawled
+        const crawlResult = result as Extract<
+          FirecrawlResult,
+          { operation: 'crawl' }
+        >;
+        return crawlResult.creditsUsed ?? crawlResult.data?.length ?? 0;
+      }
+      case 'extract': {
+        // Extract uses credits based on URLs processed
+        const extractResult = result as Extract<
+          FirecrawlResult,
+          { operation: 'extract' }
+        >;
+        // Extract typically charges per URL, estimate 1 credit per URL if not provided
+        const urlCount =
+          (this.params as Extract<FirecrawlParams, { operation: 'extract' }>)
+            ?.urls?.length ?? 1;
+        return extractResult.success ? urlCount : 0;
+      }
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Get the usage unit string for the operation
+   */
+  private getUsageUnit(
+    operation: string
+  ): 'per_result' | 'per_10_results' | 'per_url' | 'per_page' {
+    switch (operation) {
+      case 'scrape':
+        return 'per_page';
+      case 'search':
+        return 'per_10_results';
+      case 'map':
+        return 'per_result';
+      case 'crawl':
+        return 'per_page';
+      case 'extract':
+        return 'per_url';
+      default:
+        return 'per_result';
     }
   }
 
