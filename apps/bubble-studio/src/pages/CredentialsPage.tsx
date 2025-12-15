@@ -234,6 +234,21 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Airtable Token',
     credentialConfigurations: {},
   },
+  [CredentialType.INSFORGE_BASE_URL]: {
+    label: 'InsForge Base URL',
+    description:
+      'Base URL for your InsForge backend (e.g., https://your-app.region.insforge.app)',
+    placeholder: 'https://your-app.region.insforge.app',
+    namePlaceholder: 'My InsForge Backend URL',
+    credentialConfigurations: {},
+  },
+  [CredentialType.INSFORGE_API_KEY]: {
+    label: 'InsForge API Key',
+    description: 'API key for your InsForge backend',
+    placeholder: 'ik_...',
+    namePlaceholder: 'My InsForge API Key',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -282,6 +297,8 @@ const getServiceNameForCredentialType = (
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
+    [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
+    [CredentialType.INSFORGE_API_KEY]: 'InsForge',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

@@ -41,6 +41,10 @@ export enum CredentialType {
 
   // Database/Storage Credentials
   AIRTABLE_CRED = 'AIRTABLE_CRED',
+
+  // InsForge Credentials
+  INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
+  INSFORGE_API_KEY = 'INSFORGE_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -89,4 +93,5 @@ export type BubbleName =
   | 'telegram'
   | 'airtable'
   | 'notion'
-  | 'firecrawl';
+  | 'firecrawl'
+  | 'insforge-db';

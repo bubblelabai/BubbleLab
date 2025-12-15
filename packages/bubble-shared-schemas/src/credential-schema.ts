@@ -29,6 +29,8 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
+  [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
+  [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -363,6 +365,10 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   airtable: [CredentialType.AIRTABLE_CRED],
   notion: [CredentialType.NOTION_OAUTH_TOKEN],
   firecrawl: [CredentialType.FIRECRAWL_API_KEY],
+  'insforge-db': [
+    CredentialType.INSFORGE_BASE_URL,
+    CredentialType.INSFORGE_API_KEY,
+  ],
 };
 
 // POST /credentials - Create credential schema

@@ -66,6 +66,8 @@ export type { AirtableParamsInput } from './bubbles/service-bubble/airtable.js';
 export { NotionBubble } from './bubbles/service-bubble/notion/notion.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
+export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';
+export type { InsForgeDbParamsInput } from './bubbles/service-bubble/insforge-db.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
