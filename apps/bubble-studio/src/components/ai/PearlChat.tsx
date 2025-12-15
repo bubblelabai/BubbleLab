@@ -767,7 +767,7 @@ export function PearlChat() {
             }
 
             return (
-              <div key={key} className="p-3">
+              <div key={key} className="p-1">
                 <EventDisplay event={event} onRetry={pearl.retryAfterError} />
               </div>
             );
