@@ -49,6 +49,7 @@ import { trackAIAssistant } from '../services/analytics';
 import { simplifyObjectForContext } from '../utils/executionLogsFormatUtils';
 import { api } from '../lib/api';
 import { sseToAsyncIterable } from '../utils/sseStream';
+import { messagesToConversationHistory } from '../utils/pearlConversation';
 
 /** Backend message format */
 type BackendCoffeeMessage = {
@@ -587,14 +588,9 @@ export function usePearlChatStore(flowId: number | null) {
     storeState.clearToolCalls();
     storeState.clearPrompt();
 
-    console.log(
-      '[usePearlChatStore][startGeneration()]  Current messages',
-      JSON.stringify(storeState.messages, null, 2)
+    const conversationMessages = messagesToConversationHistory(
+      storeState.messages
     );
-    const conversationMessages = storeState.messages.map((msg) => ({
-      role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
-      content: 'content' in msg ? msg.content : '',
-    }));
 
     const context = buildAdditionalContext(flowId, bubbleDetail);
     const fullCode = editor?.getCode() || '';
