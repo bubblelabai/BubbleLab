@@ -261,7 +261,7 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
         {/* Usage cards - outside Monthly Usage container */}
         {isOpen && (
           <div className="mt-2">
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-col md:flex-row">
               {/* Execution count card */}
               <div className="flex-1">
                 <div

@@ -22,14 +22,16 @@ import { DISABLE_AUTH } from '../env';
 export interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+  ref: React.RefObject<HTMLDivElement | null>;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, ref }) => {
   const { user } = useUser();
   const { data: githubStars } = useGitHubStars();
 
   return (
     <div
+      ref={ref}
       className={`fixed inset-y-0 left-0 z-40 bg-[#0f1115] border-r border-[#30363d] transition-all duration-200 ${
         isOpen ? 'w-56' : 'w-16'
       }`}
