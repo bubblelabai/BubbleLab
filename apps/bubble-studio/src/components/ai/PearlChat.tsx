@@ -3,7 +3,7 @@
  * Can read entire code and replace entire editor content
  *
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEditor } from '../../hooks/useEditor';
 import { useUIStore } from '../../stores/uiStore';
@@ -65,6 +65,46 @@ import {
 import type { ChatMessage, PlanApprovalMessage } from './type';
 import { playGenerationCompleteSound } from '../../utils/soundUtils';
 import { renderJson } from '../../utils/executionLogsFormatUtils';
+
+/**
+ * LazyDetails component - only renders children when the details element is open.
+ * This prevents expensive JSON rendering from happening when the details are collapsed,
+ * improving performance when there are many tool_complete events.
+ */
+const LazyDetails = memo(function LazyDetails({
+  summary,
+  summaryClassName,
+  children,
+}: {
+  summary: string;
+  summaryClassName?: string;
+  children: () => React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <details
+      className="mt-1"
+      onToggle={(e) => setIsOpen((e.target as HTMLDetailsElement).open)}
+    >
+      <summary
+        className={
+          summaryClassName ||
+          'text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors'
+        }
+      >
+        {summary}
+      </summary>
+      {isOpen && (
+        <div className="mt-2 max-h-40 overflow-y-auto">
+          <pre className="text-xs bg-[#0d1117] border border-[#21262d] rounded p-2 overflow-x-auto">
+            {children()}
+          </pre>
+        </div>
+      )}
+    </details>
+  );
+});
 
 export function PearlChat() {
   // UI-only state (non-shared)
@@ -1215,24 +1255,19 @@ function EventDisplay({
                 Duration: {Math.round(event.duration / 1000)}s
               </div>
             </div>
-            <details className="mt-1">
-              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors">
-                Show error details
-              </summary>
-              <div className="mt-2 max-h-40 overflow-y-auto">
-                <pre className="text-xs bg-[#0d1117] border border-[#21262d] rounded p-2 overflow-x-auto">
-                  {event.output != null &&
-                  typeof event.output === 'object' &&
-                  'error' in event.output ? (
-                    <span className="text-red-300">
-                      {String(event.output.error)}
-                    </span>
-                  ) : (
-                    renderJson(event.output)
-                  )}
-                </pre>
-              </div>
-            </details>
+            <LazyDetails summary="Show error details">
+              {() =>
+                event.output != null &&
+                typeof event.output === 'object' &&
+                'error' in event.output ? (
+                  <span className="text-red-300">
+                    {String(event.output.error)}
+                  </span>
+                ) : (
+                  renderJson(event.output)
+                )
+              }
+            </LazyDetails>
           </div>
         );
       }
@@ -1250,16 +1285,9 @@ function EventDisplay({
               Duration: {Math.round(event.duration / 1000)}s
             </div>
           </div>
-          <details className="mt-1">
-            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors">
-              Show details
-            </summary>
-            <div className="mt-2 max-h-40 overflow-y-auto">
-              <pre className="text-xs bg-[#0d1117] border border-[#21262d] rounded p-2 overflow-x-auto">
-                {renderJson(event.output)}
-              </pre>
-            </div>
-          </details>
+          <LazyDetails summary="Show details">
+            {() => renderJson(event.output)}
+          </LazyDetails>
         </div>
       );
     }
