@@ -16,8 +16,6 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
-  /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
-  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -25,7 +23,6 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
-      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -33,7 +30,6 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
-          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -274,12 +270,12 @@ function InputFieldsRenderer({
   if (schemaFields.length === 0) {
     return (
       <div
-        className={`text-center py-6 px-4 bg-neutral-800/30 rounded-lg border border-dashed border-neutral-600 ${className}`}
+        className={`text-center py-6 px-4 bg-muted/30 rounded-lg border border-dashed border-border ${className}`}
       >
-        <div className="text-xs text-neutral-400">
+        <div className="text-xs text-muted-foreground">
           No input parameters defined
         </div>
-        <div className="text-[10px] text-neutral-500 mt-1">
+        <div className="text-[10px] text-muted-foreground mt-1">
           This flow doesn't require any inputs
         </div>
       </div>
@@ -308,9 +304,9 @@ function InputFieldsRenderer({
         return (
           <div
             key={field.name}
-            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
+            className="pb-2 border-b border-border/30 last:border-b-0 last:pb-0"
           >
-            <label className="block text-xs font-semibold text-neutral-200 mb-1">
+            <label className="block text-xs font-semibold text-foreground mb-1">
               {field.name}
               {field.required && (
                 <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
@@ -318,7 +314,7 @@ function InputFieldsRenderer({
                 </span>
               )}
               {field.type && (
-                <span className="ml-2 text-[10px] font-normal text-neutral-400">
+                <span className="ml-2 text-[10px] font-normal text-muted-foreground">
                   {field.type === 'string'
                     ? '• text'
                     : field.type === 'array'
@@ -330,7 +326,7 @@ function InputFieldsRenderer({
               )}
             </label>
             {field.description && (
-              <div className="text-[10px] text-neutral-400 mb-1.5">
+              <div className="text-[10px] text-muted-foreground mb-1.5">
                 {field.description}
               </div>
             )}
@@ -345,7 +341,7 @@ function InputFieldsRenderer({
                       return (
                         <div key={index} className="space-y-0.5">
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-neutral-500 w-6 flex-shrink-0">
+                            <span className="text-[10px] text-muted-foreground w-6 flex-shrink-0">
                               {index + 1}.
                             </span>
                             <div className="relative flex-1">
@@ -364,75 +360,63 @@ function InputFieldsRenderer({
                                 data-index={index}
                                 placeholder={`Enter entry ${index + 1}...`}
                                 disabled={isExecuting || !!entryFileName}
-                                className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                                className={`w-full px-2 py-1.5 text-xs bg-muted border ${
                                   entryError
                                     ? 'border-amber-500 focus:border-amber-400'
-                                    : 'border-neutral-600 focus:border-blue-500'
-                                } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                                    : 'border-border focus:border-blue-500'
+                                } rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 ${
                                   entryError
                                     ? 'focus:ring-amber-500/50'
                                     : 'focus:ring-blue-500/50'
                                 } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
-                                  field.canBeFile !== false
-                                    ? entryFileName
-                                      ? 'pr-20'
-                                      : 'pr-10'
-                                    : 'pr-8'
+                                  entryFileName ? 'pr-20' : 'pr-10'
                                 }`}
                               />
                               <div className="absolute right-2 top-2 flex items-center gap-1">
-                                {field.canBeFile !== false && (
+                                {entryFileName ? (
                                   <>
-                                    {entryFileName ? (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handleDeleteArrayFile(
-                                              field.name,
-                                              index
-                                            )
-                                          }
-                                          disabled={isExecuting}
-                                          className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                          aria-label={`Delete uploaded file for entry ${index + 1}`}
-                                        >
-                                          <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
-                                        </button>
-                                        <Paperclip className="w-3 h-3 text-neutral-300" />
-                                      </>
-                                    ) : (
-                                      <label
-                                        className="cursor-pointer group"
-                                        title="Upload file"
-                                      >
-                                        <input
-                                          type="file"
-                                          className="hidden"
-                                          accept=".html,.csv,.txt"
-                                          disabled={isExecuting}
-                                          aria-label={`Upload file for entry ${index + 1}`}
-                                          onChange={(e) => {
-                                            const f =
-                                              e.target.files?.[0] || null;
-                                            handleArrayFileChange(
-                                              field.name,
-                                              index,
-                                              f
-                                            );
-                                            e.currentTarget.value = '';
-                                          }}
-                                        />
-                                        <Paperclip
-                                          className={`w-3.5 h-3.5 transition-all ${
-                                            isExecuting
-                                              ? 'text-neutral-600 cursor-not-allowed'
-                                              : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
-                                          }`}
-                                        />
-                                      </label>
-                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleDeleteArrayFile(field.name, index)
+                                      }
+                                      disabled={isExecuting}
+                                      className="p-0.5 hover:hover:bg-muted/80/80 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      aria-label={`Delete uploaded file for entry ${index + 1}`}
+                                    >
+                                      <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                                    </button>
+                                    <Paperclip className="w-3 h-3 text-muted-foreground" />
                                   </>
+                                ) : (
+                                  <label
+                                    className="cursor-pointer group"
+                                    title="Upload file"
+                                  >
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      accept=".html,.csv,.txt"
+                                      disabled={isExecuting}
+                                      aria-label={`Upload file for entry ${index + 1}`}
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0] || null;
+                                        handleArrayFileChange(
+                                          field.name,
+                                          index,
+                                          f
+                                        );
+                                        e.currentTarget.value = '';
+                                      }}
+                                    />
+                                    <Paperclip
+                                      className={`w-3.5 h-3.5 transition-all ${
+                                        isExecuting
+                                          ? 'text-muted-foreground cursor-not-allowed'
+                                          : 'text-muted-foreground group-hover:text-blue-400 group-hover:scale-110'
+                                      }`}
+                                    />
+                                  </label>
                                 )}
                                 <button
                                   type="button"
@@ -440,16 +424,16 @@ function InputFieldsRenderer({
                                     handleRemoveArrayEntry(field.name, index)
                                   }
                                   disabled={isExecuting}
-                                  className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="p-0.5 hover:hover:bg-muted/80/80 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   aria-label={`Remove entry ${index + 1}`}
                                 >
-                                  <Minus className="w-3 h-3 text-neutral-400 hover:text-red-400" />
+                                  <Minus className="w-3 h-3 text-muted-foreground hover:text-red-400" />
                                 </button>
                               </div>
                             </div>
                           </div>
                           {entryFileName && (
-                            <div className="ml-7 text-[10px] text-neutral-400">
+                            <div className="ml-7 text-[10px] text-muted-foreground">
                               📎 {entryFileName}
                             </div>
                           )}
@@ -465,7 +449,7 @@ function InputFieldsRenderer({
                 ) : null}
                 {!Array.isArray(currentValue) || currentValue.length === 0 ? (
                   <div className="flex items-center justify-between gap-2 mt-1.5">
-                    <div className="text-[10px] text-neutral-400">
+                    <div className="text-[10px] text-muted-foreground">
                       {field.default !== undefined ? (
                         <>
                           {Array.isArray(field.default)
@@ -480,7 +464,7 @@ function InputFieldsRenderer({
                       type="button"
                       onClick={() => handleAddArrayEntry(field.name, field)}
                       disabled={isExecuting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded border border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-muted/80 hover:hover:bg-muted/80 text-muted-foreground rounded border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Add Entry</span>
@@ -491,7 +475,7 @@ function InputFieldsRenderer({
                     type="button"
                     onClick={() => handleAddArrayEntry(field.name, field)}
                     disabled={isExecuting}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-neutral-700 hover:bg-neutral-600 text-neutral-300 rounded border border-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1.5"
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-muted/80 hover:hover:bg-muted/80 text-muted-foreground rounded border border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1.5"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Entry</span>
@@ -505,7 +489,7 @@ function InputFieldsRenderer({
               </div>
             ) : isObject ? (
               <div className="space-y-2">
-                <div className="bg-neutral-900/50 rounded border border-neutral-700 p-3 space-y-3">
+                <div className="bg-muted/50 rounded border border-border p-3 space-y-3">
                   {field.properties &&
                     Object.entries(field.properties).map(
                       ([propName, propSchema]) => {
@@ -546,9 +530,9 @@ function InputFieldsRenderer({
                         return (
                           <div
                             key={propName}
-                            className="pb-2 border-b border-neutral-700/30 last:border-b-0 last:pb-0"
+                            className="pb-2 border-b border-border/30 last:border-b-0 last:pb-0"
                           >
-                            <label className="block text-xs font-semibold text-neutral-300 mb-1">
+                            <label className="block text-xs font-semibold text-muted-foreground mb-1">
                               {propName}
                               {propRequired && (
                                 <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
@@ -556,7 +540,7 @@ function InputFieldsRenderer({
                                 </span>
                               )}
                               {propSchema.type && (
-                                <span className="ml-2 text-[10px] font-normal text-neutral-500">
+                                <span className="ml-2 text-[10px] font-normal text-muted-foreground">
                                   {propSchema.type === 'string'
                                     ? '• text'
                                     : propSchema.type === 'array'
@@ -570,13 +554,13 @@ function InputFieldsRenderer({
                               )}
                             </label>
                             {propSchema.description && (
-                              <div className="text-[10px] text-neutral-500 mb-1.5">
+                              <div className="text-[10px] text-muted-foreground mb-1.5">
                                 {propSchema.description}
                               </div>
                             )}
                             {isNestedObject ? (
                               // Recursively render nested object
-                              <div className="mt-2 bg-neutral-800/50 rounded border border-neutral-600 p-2.5 space-y-2.5">
+                              <div className="mt-2 bg-muted/50 rounded border border-border p-2.5 space-y-2.5">
                                 {propSchema.properties &&
                                   Object.entries(propSchema.properties).map(
                                     ([nestedPropName, nestedPropSchema]) => {
@@ -626,9 +610,9 @@ function InputFieldsRenderer({
                                       return (
                                         <div
                                           key={nestedPropName}
-                                          className="pb-2 border-b border-neutral-600/30 last:border-b-0 last:pb-0"
+                                          className="pb-2 border-b border-border/30 last:border-b-0 last:pb-0"
                                         >
-                                          <label className="block text-[11px] font-semibold text-neutral-400 mb-1">
+                                          <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
                                             {nestedPropName}
                                             {nestedPropRequired && (
                                               <span className="inline-flex items-center ml-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-red-500/20 text-red-400 rounded border border-red-500/30">
@@ -636,7 +620,7 @@ function InputFieldsRenderer({
                                               </span>
                                             )}
                                             {nestedPropSchema.type && (
-                                              <span className="ml-2 text-[9px] font-normal text-neutral-600">
+                                              <span className="ml-2 text-[9px] font-normal text-muted-foreground">
                                                 {nestedPropSchema.type ===
                                                 'string'
                                                   ? '• text'
@@ -651,7 +635,7 @@ function InputFieldsRenderer({
                                             )}
                                           </label>
                                           {nestedPropSchema.description && (
-                                            <div className="text-[9px] text-neutral-600 mb-1.5">
+                                            <div className="text-[9px] text-muted-foreground mb-1.5">
                                               {nestedPropSchema.description}
                                             </div>
                                           )}
@@ -673,7 +657,7 @@ function InputFieldsRenderer({
                                                 }}
                                                 disabled={isExecuting}
                                                 aria-label={`Decrease ${nestedPropName}`}
-                                                className="p-1 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-500 transition-colors"
+                                                className="p-1 hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-l border border-border transition-colors"
                                               >
                                                 <Minus className="w-2.5 h-2.5" />
                                               </button>
@@ -717,11 +701,11 @@ function InputFieldsRenderer({
                                                       `Enter ${nestedPropName}...`
                                                 }
                                                 disabled={isExecuting}
-                                                className={`nodrag flex-1 px-2 py-1 text-[11px] bg-neutral-900 border-t border-b ${
+                                                className={`nodrag flex-1 px-2 py-1 text-[11px] bg-muted border-t border-b ${
                                                   nestedPropIsMissing
                                                     ? 'border-amber-500 focus:border-amber-400'
-                                                    : 'border-neutral-500 focus:border-blue-500'
-                                                } text-neutral-100 placeholder-neutral-500 text-center focus:outline-none focus:ring-1 ${
+                                                    : 'border-border focus:border-blue-500'
+                                                } text-foreground placeholder-muted-foreground text-center focus:outline-none focus:ring-1 ${
                                                   nestedPropIsMissing
                                                     ? 'focus:ring-amber-500/50'
                                                     : 'focus:ring-blue-500/50'
@@ -742,7 +726,7 @@ function InputFieldsRenderer({
                                                 }}
                                                 disabled={isExecuting}
                                                 aria-label={`Increase ${nestedPropName}`}
-                                                className="p-1 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-500 transition-colors"
+                                                className="p-1 hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-r border border-border transition-colors"
                                               >
                                                 <Plus className="w-2.5 h-2.5" />
                                               </button>
@@ -775,11 +759,11 @@ function InputFieldsRenderer({
                                                     `Enter ${nestedPropName}...`
                                               }
                                               disabled={isExecuting}
-                                              className={`w-full px-2 py-1 text-[11px] bg-neutral-900 border ${
+                                              className={`w-full px-2 py-1 text-[11px] bg-muted border ${
                                                 nestedPropIsMissing
                                                   ? 'border-amber-500 focus:border-amber-400'
-                                                  : 'border-neutral-500 focus:border-blue-500'
-                                              } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                                                  : 'border-border focus:border-blue-500'
+                                              } rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 ${
                                                 nestedPropIsMissing
                                                   ? 'focus:ring-amber-500/50'
                                                   : 'focus:ring-blue-500/50'
@@ -807,7 +791,7 @@ function InputFieldsRenderer({
                                   }}
                                   disabled={isExecuting}
                                   aria-label={`Decrease ${propName}`}
-                                  className="p-1.5 bg-neutral-800 hover:bg-neutral-700 disabled:bg-neutral-900 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                                  className="p-1.5 bg-muted hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-l border border-border transition-colors"
                                 >
                                   <Minus className="w-3 h-3" />
                                 </button>
@@ -840,11 +824,11 @@ function InputFieldsRenderer({
                                         `Enter ${propName}...`
                                   }
                                   disabled={isExecuting}
-                                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
+                                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-muted border-t border-b ${
                                     propIsMissing
                                       ? 'border-amber-500 focus:border-amber-400'
-                                      : 'border-neutral-600 focus:border-blue-500'
-                                  } text-neutral-100 placeholder-neutral-500 text-center focus:outline-none focus:ring-1 ${
+                                      : 'border-border focus:border-blue-500'
+                                  } text-foreground placeholder-muted-foreground text-center focus:outline-none focus:ring-1 ${
                                     propIsMissing
                                       ? 'focus:ring-amber-500/50'
                                       : 'focus:ring-blue-500/50'
@@ -864,7 +848,7 @@ function InputFieldsRenderer({
                                   }}
                                   disabled={isExecuting}
                                   aria-label={`Increase ${propName}`}
-                                  className="p-1.5 bg-neutral-800 hover:bg-neutral-700 disabled:bg-neutral-900 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                                  className="p-1.5 bg-muted hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-r border border-border transition-colors"
                                 >
                                   <Plus className="w-3 h-3" />
                                 </button>
@@ -892,11 +876,11 @@ function InputFieldsRenderer({
                                       `Enter ${propName}...`
                                 }
                                 disabled={isExecuting}
-                                className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                                className={`w-full px-2 py-1.5 text-xs bg-muted border ${
                                   propIsMissing
                                     ? 'border-amber-500 focus:border-amber-400'
-                                    : 'border-neutral-600 focus:border-blue-500'
-                                } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                                    : 'border-border focus:border-blue-500'
+                                } rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 ${
                                   propIsMissing
                                     ? 'focus:ring-amber-500/50'
                                     : 'focus:ring-blue-500/50'
@@ -920,7 +904,7 @@ function InputFieldsRenderer({
                   }}
                   disabled={isExecuting}
                   aria-label={`Decrease ${field.name}`}
-                  className="p-1.5 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                  className="p-1.5 hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-l border border-border transition-colors"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -949,11 +933,11 @@ function InputFieldsRenderer({
                       : field.description || `Enter ${field.name}...`
                   }
                   disabled={isExecuting}
-                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-neutral-900 border-t border-b ${
+                  className={`nodrag flex-1 px-2 py-1.5 text-xs bg-muted border-t border-b ${
                     isMissing
                       ? 'border-amber-500 focus:border-amber-400'
-                      : 'border-neutral-600 focus:border-blue-500'
-                  } text-neutral-100 placeholder-neutral-500 text-center focus:outline-none focus:ring-1 ${
+                      : 'border-border focus:border-blue-500'
+                  } text-foreground placeholder-muted-foreground text-center focus:outline-none focus:ring-1 ${
                     isMissing
                       ? 'focus:ring-amber-500/50'
                       : 'focus:ring-blue-500/50'
@@ -968,7 +952,7 @@ function InputFieldsRenderer({
                   }}
                   disabled={isExecuting}
                   aria-label={`Increase ${field.name}`}
-                  className="p-1.5 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                  className="p-1.5 hover:bg-muted/80 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed rounded-r border border-border transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -979,8 +963,7 @@ function InputFieldsRenderer({
                   <AutoResizeTextarea
                     value={
                       uploadedFileNames[field.name] &&
-                      (field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false
+                      (field.type === undefined || field.type === 'string')
                         ? uploadedFileNames[field.name]
                         : typeof currentValue === 'string' ||
                             typeof currentValue === 'number'
@@ -997,76 +980,71 @@ function InputFieldsRenderer({
                     }
                     disabled={
                       isExecuting ||
-                      ((field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false
+                      (field.type === undefined || field.type === 'string'
                         ? !!uploadedFileNames[field.name]
                         : false)
                     }
-                    className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                    className={`w-full px-2 py-1.5 text-xs bg-muted border ${
                       isMissing
                         ? 'border-amber-500 focus:border-amber-400'
-                        : 'border-neutral-600 focus:border-blue-500'
-                    } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                        : 'border-border focus:border-blue-500'
+                    } rounded text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 ${
                       isMissing
                         ? 'focus:ring-amber-500/50'
                         : 'focus:ring-blue-500/50'
                     } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
                       (field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false &&
                       uploadedFileNames[field.name]
                         ? 'pr-14'
-                        : (field.type === undefined ||
-                              field.type === 'string') &&
-                            field.canBeFile !== false
+                        : field.type === undefined || field.type === 'string'
                           ? 'pr-7'
                           : ''
                     }`}
                   />
-                  {(field.type === undefined || field.type === 'string') &&
-                    field.canBeFile !== false && (
-                      <div className="absolute right-2 top-2 flex items-center gap-1">
-                        {uploadedFileNames[field.name] ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteFile(field.name)}
-                              disabled={isExecuting}
-                              className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label={`Delete uploaded file for ${field.name}`}
-                            >
-                              <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
-                            </button>
-                            <Paperclip className="w-3 h-3 text-neutral-300" />
-                          </>
-                        ) : (
-                          <label
-                            className="cursor-pointer group"
-                            title="Upload file (txt, csv, html, png, jpg)"
+                  {(field.type === undefined || field.type === 'string') && (
+                    <div className="absolute right-2 top-2 flex items-center gap-1">
+                      {uploadedFileNames[field.name] ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFile(field.name)}
+                            disabled={isExecuting}
+                            className="p-0.5 hover:hover:bg-muted/80/80 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={`Delete uploaded file for ${field.name}`}
                           >
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
-                              disabled={isExecuting}
-                              aria-label={`Upload file for ${field.name}`}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0] || null;
-                                handleFileChange(field.name, f);
-                                // reset so selecting the same file again triggers onChange
-                                e.currentTarget.value = '';
-                              }}
-                            />
-                            <Paperclip
-                              className={`w-3.5 h-3.5 transition-all ${
-                                isExecuting
-                                  ? 'text-neutral-600 cursor-not-allowed'
-                                  : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
-                              }`}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )}
+                            <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                          </button>
+                          <Paperclip className="w-3 h-3 text-muted-foreground" />
+                        </>
+                      ) : (
+                        <label
+                          className="cursor-pointer group"
+                          title="Upload file (txt, csv, html, png, jpg)"
+                        >
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
+                            disabled={isExecuting}
+                            aria-label={`Upload file for ${field.name}`}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0] || null;
+                              handleFileChange(field.name, f);
+                              // reset so selecting the same file again triggers onChange
+                              e.currentTarget.value = '';
+                            }}
+                          />
+                          <Paperclip
+                            className={`w-3.5 h-3.5 transition-all ${
+                              isExecuting
+                                ? 'text-muted-foreground cursor-not-allowed'
+                                : 'text-muted-foreground group-hover:text-blue-400 group-hover:scale-110'
+                            }`}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {fieldErrors[field.name] && (

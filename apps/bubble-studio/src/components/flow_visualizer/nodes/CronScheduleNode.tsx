@@ -149,9 +149,6 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             description: (schema as Record<string, unknown>)
               ?.description as string,
             default: (schema as Record<string, unknown>)?.default,
-            canBeFile: (schema as Record<string, unknown>)?.canBeFile as
-              | boolean
-              | undefined,
           }))
         : [];
 
@@ -358,17 +355,17 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-[400px] ${
+      className={`bg-node-bg border-node-border rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
         isExecuting
           ? `border-purple-400 shadow-lg shadow-purple-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : !isActive
-            ? `border-neutral-700 opacity-75 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
+            ? `border-node-border opacity-75 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
             : hasMissingRequired
               ? `border-amber-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
               : validation.valid
                 ? isHighlighted
                   ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-                  : 'border-neutral-600'
+                  : 'border-node-border'
                 : `border-red-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
       }`}
     >
@@ -385,25 +382,30 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               ? BUBBLE_COLORS.SELECTED.handle
               : isActive
                 ? 'bg-purple-400'
-                : 'bg-neutral-500'
+                : 'bg-muted-foreground'
         }`}
         style={{ right: -6 }}
       />
 
       {/* Header */}
-      <div className="p-4 border-b border-neutral-600">
+      <div className="p-4 border-b border-node-border">
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div
-              className={`h-8 w-8 flex-shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-purple-600' : 'bg-neutral-600'}`}
+              className={`h-8 w-8 flex-shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-purple-600' : 'bg-muted'}`}
             >
-              <Clock className="h-4 w-4 text-white" />
+              <Clock
+                className={`h-4 w-4 ${isActive ? 'text-white' : 'text-muted-foreground'}`}
+              />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold text-neutral-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 Cron Schedule
               </h3>
-              <p className="text-xs text-neutral-400 truncate" title={flowName}>
+              <p
+                className="text-xs text-muted-foreground truncate"
+                title={flowName}
+              >
                 {flowName}
               </p>
             </div>
@@ -421,7 +423,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs text-neutral-300 hover:text-neutral-100 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {isExpanded ? (
                 <ChevronUp className="w-4 h-4" />
@@ -482,7 +484,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
         <div className="p-4 space-y-4">
           {/* Frequency selector */}
           <div>
-            <label className="block text-xs font-medium text-neutral-300 mb-2">
+            <label className="block text-xs font-medium text-muted-foreground mb-2">
               Runs
             </label>
             <select
@@ -492,7 +494,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
               }
               disabled={isExecuting}
               aria-label="Schedule frequency"
-              className="nodrag w-full px-3 py-2 text-sm bg-neutral-900 border border-neutral-600 rounded text-neutral-100 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="nodrag w-full px-3 py-2 text-sm bg-muted border border-node-border rounded text-foreground focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="minute">Every Minute</option>
               <option value="hour">Hourly</option>
@@ -505,7 +507,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           {/* Interval (for minute and hour) */}
           {(frequency === 'minute' || frequency === 'hour') && (
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-2">
                 Every
               </label>
               <div className="flex items-center gap-2">
@@ -518,7 +520,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting || interval <= 1}
                     aria-label="Decrease interval"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-l border border-node-border transition-colors text-foreground"
                   >
                     <Minus className="w-3 h-3" />
                   </button>
@@ -531,7 +533,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting}
                     aria-label="Interval value"
-                    className="nodrag w-16 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-16 px-2 py-2 text-sm bg-muted border-t border-b border-node-border text-foreground text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                   />
                   <button
                     type="button"
@@ -545,12 +547,12 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       interval >= (frequency === 'minute' ? 59 : 23)
                     }
                     aria-label="Increase interval"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-r border border-node-border transition-colors text-foreground"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                 </div>
-                <span className="text-sm text-neutral-400">
+                <span className="text-sm text-muted-foreground">
                   {frequency === 'minute' ? 'minute(s)' : 'hour(s)'}
                 </span>
               </div>
@@ -562,7 +564,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             frequency === 'week' ||
             frequency === 'month') && (
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-2">
                 Time
               </label>
               <div className="flex items-center gap-2">
@@ -575,7 +577,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting || hour <= 0}
                     aria-label="Decrease hour"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-l border border-node-border transition-colors text-foreground"
                   >
                     <Minus className="w-3 h-3" />
                   </button>
@@ -590,7 +592,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       handleHourChange(val);
                     }}
                     disabled={isExecuting}
-                    className="nodrag w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-14 px-2 py-2 text-sm bg-muted border-t border-b border-node-border text-foreground text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="HH"
                   />
                   <button
@@ -601,12 +603,12 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting || hour >= 23}
                     aria-label="Increase hour"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-r border border-node-border transition-colors text-foreground"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                 </div>
-                <span className="text-neutral-400">:</span>
+                <span className="text-muted-foreground">:</span>
                 <div className="flex items-center">
                   <button
                     type="button"
@@ -616,7 +618,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting || minute <= 0}
                     aria-label="Decrease minute"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-l border border-node-border transition-colors text-foreground"
                   >
                     <Minus className="w-3 h-3" />
                   </button>
@@ -631,7 +633,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                       handleMinuteChange(val);
                     }}
                     disabled={isExecuting}
-                    className="nodrag w-14 px-2 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                    className="nodrag w-14 px-2 py-2 text-sm bg-muted border-t border-b border-node-border text-foreground text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                     placeholder="MM"
                   />
                   <button
@@ -642,12 +644,12 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     }}
                     disabled={isExecuting || minute >= 59}
                     aria-label="Increase minute"
-                    className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                    className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-r border border-node-border transition-colors text-foreground"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
                 </div>
-                <span className="text-sm text-neutral-400">
+                <span className="text-sm text-muted-foreground">
                   {hour < 12 ? 'AM' : 'PM'}
                 </span>
               </div>
@@ -657,7 +659,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           {/* Minute picker (for hour frequency) */}
           {frequency === 'hour' && (
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-2">
                 At Minute
               </label>
               <div className="flex items-center">
@@ -669,7 +671,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting || minute <= 0}
                   aria-label="Decrease minute"
-                  className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                  className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-l border border-node-border transition-colors text-foreground"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -685,7 +687,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting}
                   aria-label="Minute at which to run"
-                  className="nodrag w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                  className="nodrag w-20 px-3 py-2 text-sm bg-muted border-t border-b border-node-border text-foreground text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -695,7 +697,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting || minute >= 59}
                   aria-label="Increase minute"
-                  className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                  className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-r border border-node-border transition-colors text-foreground"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -706,7 +708,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           {/* Days of week selector (for weekly) */}
           {frequency === 'week' && (
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-2">
                 Days of Week
               </label>
               <div className="flex gap-1.5">
@@ -719,7 +721,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                     className={`flex-1 px-2 py-2 rounded text-xs font-medium transition-all ${
                       daysOfWeek.includes(day.value)
                         ? 'bg-purple-600 text-white'
-                        : 'bg-neutral-700 text-neutral-400 hover:bg-neutral-600'
+                        : 'bg-muted border border-node-border text-muted-foreground hover:bg-muted/80'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
                     {day.label}
@@ -737,7 +739,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           {/* Day of month selector (for monthly) */}
           {frequency === 'month' && (
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-2">
                 Day of Month
               </label>
               <div className="flex items-center">
@@ -749,7 +751,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting || dayOfMonth <= 1}
                   aria-label="Decrease day"
-                  className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-l border border-neutral-600 transition-colors"
+                  className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-l border border-node-border transition-colors text-foreground"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -765,7 +767,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting}
                   aria-label="Day of month"
-                  className="nodrag w-20 px-3 py-2 text-sm bg-neutral-900 border-t border-b border-neutral-600 text-neutral-100 text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
+                  className="nodrag w-20 px-3 py-2 text-sm bg-muted border-t border-b border-node-border text-foreground text-center focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 disabled:opacity-50"
                 />
                 <button
                   type="button"
@@ -775,7 +777,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
                   }}
                   disabled={isExecuting || dayOfMonth >= 31}
                   aria-label="Increase day"
-                  className="p-2 bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 disabled:text-neutral-600 disabled:cursor-not-allowed rounded-r border border-neutral-600 transition-colors"
+                  className="p-2 bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-r border border-node-border transition-colors text-foreground"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -787,9 +789,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
       {/* Input fields section */}
       {isExpanded && schemaFields.length > 0 && (
-        <div className="p-4 border-t border-neutral-600">
+        <div className="p-4 border-t border-node-border">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-medium text-neutral-300">
+            <div className="text-xs font-medium text-muted-foreground">
               Default Input Values
             </div>
             {hasUnsavedInputChanges && flowId && (
@@ -816,7 +818,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
       )}
 
       {/* Execute button */}
-      <div className="p-4 border-t border-neutral-600">
+      <div className="p-4 border-t border-node-border">
         <button
           type="button"
           onClick={handleExecuteFlow}
@@ -824,7 +826,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
           className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             validation.valid && !isExecuting
               ? 'bg-purple-600 hover:bg-purple-500 text-white'
-              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+              : 'bg-muted border border-node-border text-muted-foreground cursor-not-allowed'
           }`}
         >
           {isExecuting ? (

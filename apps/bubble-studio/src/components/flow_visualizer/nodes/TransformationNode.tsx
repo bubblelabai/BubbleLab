@@ -96,7 +96,7 @@ function TransformationNode({ data }: TransformationNodeProps) {
 
   return (
     <div
-      className={`relative rounded-lg border bg-neutral-800/90 transition-all duration-300 shadow-xl ${
+      className={`relative rounded-lg border bg-node-bg transition-all duration-300 shadow-xl ${
         isExecuting
           ? BUBBLE_COLORS.RUNNING.border
           : hasError
@@ -105,10 +105,13 @@ function TransformationNode({ data }: TransformationNodeProps) {
               ? BUBBLE_COLORS.COMPLETED.border
               : isHighlighted
                 ? BUBBLE_COLORS.SELECTED.border
-                : 'border-neutral-600/60'
+                : 'border-node-border'
       }`}
       style={{
         width: '400px',
+      }}
+      onClick={() => {
+        /* No-op, highlight handled by parent via selection */
       }}
     >
       {/* Connection handles - only show if used */}
@@ -157,11 +160,11 @@ function TransformationNode({ data }: TransformationNodeProps) {
               <Code className="h-4 w-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-neutral-100 truncate">
+              <h3 className="text-sm font-semibold text-foreground truncate">
                 {functionName}
               </h3>
               {location && location.startLine > 0 && (
-                <p className="text-xs text-neutral-500 truncate mt-0.5">
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
                   Line {location.startLine}
                   {location.startLine !== location.endLine &&
                     ` - ${location.endLine}`}
@@ -186,12 +189,12 @@ function TransformationNode({ data }: TransformationNodeProps) {
                 onClick={handleViewCode}
                 onMouseEnter={() => setShowCodeTooltip(true)}
                 onMouseLeave={() => setShowCodeTooltip(false)}
-                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                className="inline-flex items-center justify-center p-1.5 rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <Code className="w-3.5 h-3.5" />
               </button>
               {showCodeTooltip && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-popover-foreground bg-popover rounded shadow-lg whitespace-nowrap border border-border z-50">
                   {showEditor ? 'Hide Code' : 'View Code'}
                 </div>
               )}
@@ -199,7 +202,7 @@ function TransformationNode({ data }: TransformationNodeProps) {
           </div>
         </div>
         {description && (
-          <p className="text-xs text-neutral-400 mt-1.5 break-words">
+          <p className="text-xs text-muted-foreground mt-1.5 break-words">
             {description}
           </p>
         )}

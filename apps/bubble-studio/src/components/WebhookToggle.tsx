@@ -55,10 +55,10 @@ export function WebhookToggle({
           disabled={isPending}
           className={`relative inline-flex items-center h-5 w-9 rounded-full transition-all duration-200 ${
             isPending
-              ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+              ? 'cursor-not-allowed opacity-50 bg-muted-foreground'
               : isActive
-                ? 'bg-green-600 hover:bg-green-500'
-                : 'bg-neutral-600 hover:bg-neutral-500'
+                ? 'bg-success hover:bg-success/90'
+                : 'bg-muted hover:bg-muted/80'
           }`}
           title={
             isPending
@@ -86,12 +86,12 @@ export function WebhookToggle({
         <div className="flex items-center gap-2">
           <span
             className={`text-xs font-medium ${
-              isActive ? 'text-green-400' : 'text-neutral-500'
+              isActive ? 'text-success' : 'text-muted-foreground'
             }`}
           >
             {isPending ? 'Updating...' : isActive ? 'Active' : 'Inactive'}
           </span>
-          <div className="flex items-center gap-1 text-xs text-neutral-400">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
             <Webhook className="w-3 h-3" />
             <span>Webhook</span>
           </div>
@@ -121,13 +121,13 @@ export function WebhookToggle({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
-            className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-green-600' : 'bg-neutral-600'}`}
+            className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${isActive ? 'bg-success' : 'bg-muted'}`}
           >
-            <Webhook className="h-4 w-4 text-white" />
+            <Webhook className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-neutral-100">Webhook</h3>
-            <p className="text-xs text-neutral-400">
+            <h3 className="text-sm font-semibold text-foreground">Webhook</h3>
+            <p className="text-xs text-muted-foreground">
               {isActive ? 'Receiving events' : 'Inactive'}
             </p>
           </div>
@@ -137,7 +137,7 @@ export function WebhookToggle({
         <div className="flex items-center gap-3">
           <span
             className={`text-sm font-medium ${
-              isActive ? 'text-green-400' : 'text-neutral-500'
+              isActive ? 'text-success' : 'text-muted-foreground'
             }`}
           >
             {isPending ? 'Updating...' : isActive ? 'Active' : 'Inactive'}
@@ -148,10 +148,10 @@ export function WebhookToggle({
             disabled={isPending}
             className={`relative inline-flex items-center h-6 w-11 rounded-full transition-all duration-200 ${
               isPending
-                ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+                ? 'cursor-not-allowed opacity-50 bg-muted-foreground'
                 : isActive
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-neutral-600 hover:bg-neutral-500'
+                  ? 'bg-success hover:bg-success/90'
+                  : 'bg-muted hover:bg-muted/80'
             }`}
             title={
               isPending
@@ -180,19 +180,19 @@ export function WebhookToggle({
       {webhookUrl && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="flex-1 text-xs text-neutral-400 font-mono truncate">
+            <div className="flex-1 text-xs text-muted-foreground font-mono truncate">
               {webhookUrl}
             </div>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex-shrink-0 p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 transition-colors"
+              className="flex-shrink-0 p-1.5 rounded bg-muted hover:bg-muted/80 border border-border transition-colors"
               title="Copy webhook URL"
             >
               {copied ? (
-                <Check className="w-3.5 h-3.5 text-green-400" />
+                <Check className="w-3.5 h-3.5 text-success" />
               ) : (
-                <Copy className="w-3.5 h-3.5 text-neutral-300" />
+                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
               )}
             </button>
           </div>

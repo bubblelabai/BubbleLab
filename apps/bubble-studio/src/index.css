@@ -87,6 +87,8 @@
   --theme-edge-schedule: oklch(68.5% 0.165 252.3); /* #60a5fa - blue-400 */
 
   /* Node button colors (Input/Output badges) - matching original rgba values */
+  --theme-node-bg: oklch(100% 0 0);
+  --theme-node-border: oklch(91.4% 0.007 264.5); /* matches --theme-border */
   --theme-node-badge-bg: oklch(
     96.5% 0.003 90 / 95%
   ); /* rgba(245, 245, 244, 0.95) */
@@ -263,6 +265,10 @@ html.dark {
   --theme-edge-muted: #6b7280; /* gray-500 */
   --theme-edge-schedule: #60a5fa; /* blue-400 */
 
+  /* Node colors */
+  --theme-node-bg: #1f2937; /* neutral-800 */
+  --theme-node-border: #4b5563; /* neutral-600 */
+
   /* Node button colors */
   --theme-node-badge-bg: rgba(245, 245, 244, 0.95);
   --theme-node-badge-text: rgba(23, 23, 23, 0.95);
@@ -427,6 +433,9 @@ html.dark {
   --color-edge-success: var(--theme-edge-success);
   --color-edge-muted: var(--theme-edge-muted);
   --color-edge-schedule: var(--theme-edge-schedule);
+
+  --color-node-bg: var(--theme-node-bg);
+  --color-node-border: var(--theme-node-border);
 
   --color-node-badge-bg: var(--theme-node-badge-bg);
   --color-node-badge-text: var(--theme-node-badge-text);

@@ -77,10 +77,10 @@ export function CronToggle({
           disabled={isPending}
           className={`relative inline-flex items-center h-5 w-9 rounded-full transition-all duration-200 ${
             isPending
-              ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+              ? 'cursor-not-allowed opacity-50 bg-muted-foreground'
               : cronActive
-                ? 'bg-green-600 hover:bg-green-500'
-                : 'bg-neutral-600 hover:bg-neutral-500'
+                ? 'bg-success hover:bg-success/90'
+                : 'bg-muted hover:bg-muted/80'
           }`}
           title={
             isPending
@@ -108,13 +108,13 @@ export function CronToggle({
         <div className="flex items-center gap-2">
           <span
             className={`text-xs font-medium ${
-              cronActive ? 'text-green-400' : 'text-neutral-500'
+              cronActive ? 'text-success' : 'text-muted-foreground'
             }`}
           >
             {isPending ? 'Updating...' : cronActive ? 'Active' : 'Inactive'}
           </span>
           {showScheduleText && scheduleDescription && (
-            <div className="flex items-center gap-1 text-xs text-neutral-400">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground/80">
               <Clock className="w-3 h-3" />
               <span>{scheduleDescription.description}</span>
             </div>
@@ -129,16 +129,16 @@ export function CronToggle({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
-            className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${cronActive ? 'bg-green-600' : 'bg-neutral-600'}`}
+            className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${cronActive ? 'bg-success' : 'bg-muted'}`}
           >
-            <Clock className="h-4 w-4 text-white" />
+            <Clock className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-neutral-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Cron Schedule
             </h3>
             {scheduleDescription && (
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-muted-foreground">
                 {scheduleDescription.description}
               </p>
             )}
@@ -149,7 +149,7 @@ export function CronToggle({
         <div className="flex items-center gap-3">
           <span
             className={`text-sm font-medium ${
-              cronActive ? 'text-green-400' : 'text-neutral-500'
+              cronActive ? 'text-success' : 'text-muted-foreground'
             }`}
           >
             {isPending ? 'Updating...' : cronActive ? 'Active' : 'Inactive'}
@@ -160,10 +160,10 @@ export function CronToggle({
             disabled={isPending}
             className={`relative inline-flex items-center h-6 w-11 rounded-full transition-all duration-200 ${
               isPending
-                ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+                ? 'cursor-not-allowed opacity-50 bg-muted-foreground'
                 : cronActive
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-neutral-600 hover:bg-neutral-500'
+                  ? 'bg-success hover:bg-success/90'
+                  : 'bg-muted hover:bg-muted/80'
             }`}
             title={
               isPending
@@ -191,12 +191,14 @@ export function CronToggle({
 
       {scheduleDescription && (
         <div className="space-y-2">
-          <div className="text-sm text-neutral-300">
+          <div className="text-sm text-foreground/80">
             {scheduleDescription.description}
           </div>
-          <div className="text-xs text-neutral-500">
+          <div className="text-xs text-muted-foreground">
             UTC cron:{' '}
-            <span className="font-mono text-neutral-400">{cronSchedule}</span>
+            <span className="font-mono text-muted-foreground/80">
+              {cronSchedule}
+            </span>
           </div>
         </div>
       )}

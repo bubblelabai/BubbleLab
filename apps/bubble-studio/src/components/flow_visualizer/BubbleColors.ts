@@ -35,9 +35,9 @@ export const BUBBLE_COLORS = {
 
   // Default state - gray
   DEFAULT: {
-    border: 'border-neutral-600',
+    border: 'border-node-border',
     background: '',
-    handle: 'bg-blue-400',
+    handle: 'bg-primary',
   },
 
   // Missing credentials - amber
