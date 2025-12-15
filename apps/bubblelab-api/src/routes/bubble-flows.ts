@@ -1219,6 +1219,50 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
             streamingCallback
           );
 
+          // Save conversation messages to flow metadata for persistence
+          if (flowId && messages && messages.length > 0) {
+            try {
+              // Fetch current metadata to merge with existing data
+              const currentFlow = await db.query.bubbleFlows.findFirst({
+                where: and(
+                  eq(bubbleFlows.id, flowId),
+                  eq(bubbleFlows.userId, userId)
+                ),
+                columns: { metadata: true },
+              });
+
+              const existingMetadata =
+                (currentFlow?.metadata as Record<string, unknown>) || {};
+
+              await db
+                .update(bubbleFlows)
+                .set({
+                  metadata: {
+                    ...existingMetadata,
+                    conversationMessages: messages,
+                    lastUpdatedPhase: 'planning',
+                  },
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(bubbleFlows.id, flowId),
+                    eq(bubbleFlows.userId, userId)
+                  )
+                );
+
+              console.log(
+                `[API] Saved ${messages.length} conversation messages to flow ${flowId} metadata (planning phase)`
+              );
+            } catch (saveError) {
+              console.error(
+                `[API] Error saving conversation messages to flow ${flowId}:`,
+                saveError
+              );
+              // Non-blocking: continue even if save fails
+            }
+          }
+
           // Clear heartbeat and send stream completion
           clearInterval(heartbeatInterval);
 
@@ -1307,6 +1351,29 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 generationResult.generatedCode
               );
 
+              // Fetch current metadata to merge with existing data (including conversation messages)
+              const currentFlow = await db.query.bubbleFlows.findFirst({
+                where: and(
+                  eq(bubbleFlows.id, flowId),
+                  eq(bubbleFlows.userId, userId)
+                ),
+                columns: { metadata: true },
+              });
+
+              const existingMetadata =
+                (currentFlow?.metadata as Record<string, unknown>) || {};
+
+              // Build updated metadata with conversation messages
+              const updatedMetadata = {
+                ...existingMetadata,
+                ...(messages && messages.length > 0
+                  ? {
+                      conversationMessages: messages,
+                      lastUpdatedPhase: 'building',
+                    }
+                  : {}),
+              };
+
               // Update the flow with generated code
               await db
                 .update(bubbleFlows)
@@ -1320,6 +1387,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                   eventType: validationResult.trigger?.type || 'webhook/http',
                   cron: validationResult.trigger?.cronSchedule || null,
                   generationError: null, // Clear any previous errors
+                  metadata: updatedMetadata,
                   updatedAt: new Date(),
                 })
                 .where(
@@ -1329,8 +1397,8 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                   )
                 );
 
-              console.log(
-                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}`
+              console.debug(
+                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}${messages?.length ? ` (${messages.length} conversation messages saved)` : ''}`
               );
             } else {
               // Validation failed - update with error

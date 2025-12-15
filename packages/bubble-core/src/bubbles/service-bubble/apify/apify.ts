@@ -194,7 +194,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - apify/linkedin-scraper - LinkedIn profiles, companies, jobs
     - apify/web-scraper - Generic web scraping
     - apify/google-search-scraper - Google search results
-    - And any other Apify actor available in the marketplace
+    - IMPORTANT: For other actors, use discovery mode to find the actor and its page, then use the web scrape tool to scrape the input schema page to get the input/output schema details.
 
     Discovery Mode:
     - Provide a "search" parameter to discover available actors
@@ -202,14 +202,6 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - Returns actor information including input schemas, descriptions, and metadata
     - This mode is specifically designed for discovering available actors and their capabilities
     - Example: { search: "instagram", limit: 10 } to find Instagram-related actors
-
-    Features:
-    - Asynchronous actor execution with optional wait for completion
-    - Automatic result fetching from datasets
-    - Generic result handling (works with any actor output)
-    - Configurable limits and timeouts
-    - Direct access to Apify console for monitoring
-    - Actor discovery and schema inspection
 
     Use cases:
     - Social media scraping (Instagram, Reddit, LinkedIn, etc.)
@@ -219,13 +211,6 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - Market research and competitor analysis
     - Discovering available actors and their schemas
 
-    Architecture:
-    - Service Bubble (this): Generic Apify API integration
-    - Tool Bubbles (e.g. InstagramTool): Domain-specific data transformation
-
-    Security:
-    - API key authentication (APIFY_CRED)
-    - Secure credential injection at runtime
   `;
   static readonly alias = 'scrape';
 

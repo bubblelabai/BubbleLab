@@ -290,6 +290,10 @@ export const bubbleFlowDetailsResponseSchema = z
     workflow: ParsedWorkflowSchema.optional().openapi({
       description: 'Hierarchical workflow structure with control flow',
     }),
+    metadata: z.record(z.string(), z.unknown()).optional().openapi({
+      description:
+        'Flow metadata including conversation messages from generation',
+    }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
     updatedAt: z.string().openapi({ description: 'Update timestamp' }),
     webhook_url: z
