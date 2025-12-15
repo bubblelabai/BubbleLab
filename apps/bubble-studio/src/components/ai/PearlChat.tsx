@@ -61,7 +61,7 @@ import {
   startBuildingPhase,
   submitClarificationAndContinue,
 } from '../../hooks/usePearl';
-import type { ChatMessage } from './type';
+import type { ChatMessage, PlanApprovalMessage } from './type';
 import { playGenerationCompleteSound } from '../../utils/soundUtils';
 import { renderJson } from '../../utils/executionLogsFormatUtils';
 
@@ -283,6 +283,18 @@ export function PearlChat() {
   const handleInitialPlanApprove = useCallback(
     async (comment?: string) => {
       if (!selectedFlowId || !flowData?.prompt || !pearl.pendingPlan) return;
+
+      // Add approval message to mark the plan as approved
+      const pearlStore = getPearlChatStore(selectedFlowId);
+      const storeState = pearlStore.getState();
+      const approvalMsg: PlanApprovalMessage = {
+        id: `plan-approval-${Date.now()}`,
+        type: 'plan_approval',
+        approved: true,
+        comment,
+        timestamp: new Date(),
+      };
+      storeState.addMessage(approvalMsg);
 
       const plan = pearl.pendingPlan.plan;
       // Build plan context string for Boba
@@ -855,33 +867,18 @@ export function PearlChat() {
                 </div>
               )}
 
-              {/* Plan Message - render as widget if pending, as history if approved */}
+              {/* Plan Message - always show full widget, hide button when approved */}
               {message.type === 'plan' && (
                 <div className="p-3">
-                  {pearl.pendingPlan?.id === message.id ? (
-                    <PlanApprovalWidget
-                      plan={message.plan}
-                      onApprove={
-                        isGenerating
-                          ? handleInitialPlanApprove
-                          : pearl.approvePlanAndBuild
-                      }
-                      isLoading={pearl.isCoffeeLoading}
-                    />
-                  ) : (
-                    <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
-                      <div className="text-xs text-green-400 mb-2">
-                        Approved plan:
-                      </div>
-                      <div className="text-sm text-gray-300 font-medium mb-1">
-                        {message.plan.summary}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {message.plan.steps.length} steps •{' '}
-                        {message.plan.estimatedBubbles.join(', ')}
-                      </div>
-                    </div>
-                  )}
+                  <PlanApprovalWidget
+                    plan={message.plan}
+                    onApprove={
+                      isGenerating
+                        ? handleInitialPlanApprove
+                        : pearl.approvePlanAndBuild
+                    }
+                    isApproved={pearl.pendingPlan?.id !== message.id}
+                  />
                 </div>
               )}
 

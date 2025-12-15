@@ -125,7 +125,7 @@ export function ClarificationWidget({
                   {question.question}
                 </p>
                 {question.context && (
-                  <p className="text-xs text-neutral-400 mt-0.5">
+                  <p className="text-xs text-neutral-300 mt-0.5">
                     {question.context}
                   </p>
                 )}
@@ -165,7 +165,7 @@ export function ClarificationWidget({
                         <span className="text-sm">{choice.label}</span>
                         {choice.description && (
                           <p
-                            className={`text-xs mt-0.5 ${isSelected ? 'text-blue-200/70' : 'text-neutral-500'}`}
+                            className={`text-xs mt-0.5 ${isSelected ? 'text-blue-200/70' : 'text-neutral-400'}`}
                           >
                             {choice.description}
                           </p>
@@ -202,7 +202,7 @@ export function ClarificationWidget({
                   <div className="flex-1 min-w-0">
                     <span className="text-sm">Other</span>
                     <p
-                      className={`text-xs mt-0.5 ${selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) ? 'text-blue-200/70' : 'text-neutral-500'}`}
+                      className={`text-xs mt-0.5 ${selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) ? 'text-blue-200/70' : 'text-neutral-400'}`}
                     >
                       Specify your own answer
                     </p>
