@@ -699,9 +699,13 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                       )}
                     </PanelGroup>
 
-                    {/* Mobile view - full-screen overlay */}
-                    {isConsolidatedPanelOpen && !isDesktop && (
-                      <div className="absolute inset-0 md:hidden bg-[#1a1a1a] z-10">
+                    {/* Mobile view - full-screen overlay (always mounted to preserve editor state) */}
+                    {!isDesktop && (
+                      <div
+                        className={`absolute inset-0 md:hidden bg-[#1a1a1a] z-10 ${
+                          isConsolidatedPanelOpen ? 'block' : 'hidden'
+                        }`}
+                      >
                         <ConsolidatedSidePanel />
                       </div>
                     )}
