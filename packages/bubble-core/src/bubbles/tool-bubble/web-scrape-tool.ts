@@ -125,20 +125,25 @@ export class WebScrapeTool extends ToolBubble<
     const startTime = Date.now();
 
     try {
-      console.log('[WebScrapeTool] Scraping URL:', url, 'with format:', format);
-
-      // Initialize Firecrawl bubble
-      const firecrawlParams = {
-        operation: 'scrape' as const,
-        credentials,
+      console.debug(
+        '[WebScrapeTool] Scraping URL:',
         url,
-        formats: [format],
-        // Sensible defaults for most use cases
-        maxAge: 172800000,
-        parsers: ['pdf'],
-      };
-      const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
-        firecrawlParams,
+        'with format:',
+        format
+      );
+
+      const firecrawl = new FirecrawlBubble(
+        {
+          operation: 'scrape' as const,
+          credentials,
+          url,
+          formats: [format],
+          // Wait for 2 seconds to ensure the page is loaded
+          waitFor: 2000,
+          // Sensible defaults for most use cases
+          maxAge: 172800000,
+          parsers: ['pdf'],
+        },
         this.context,
         'web_scrape_tool_firecrawl'
       );

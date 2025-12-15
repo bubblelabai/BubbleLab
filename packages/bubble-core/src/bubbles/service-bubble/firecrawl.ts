@@ -10,12 +10,18 @@ const FirecrawlDocumentMetadataSchema = z
     title: z.string().optional().describe('Title of the document'),
     description: z.string().optional().describe('Description of the document'),
     url: z.string().url().optional().describe('URL of the document'),
-    language: z.string().optional().describe('Language of the document'),
+    language: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('Language of the document'),
     keywords: z
       .union([z.string(), z.array(z.string())])
       .optional()
       .describe('Keywords associated with the document'),
-    robots: z.string().optional().describe('Robots meta tag content'),
+    robots: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .describe('Robots meta tag content'),
     ogTitle: z.string().optional().describe('Open Graph title'),
     ogDescription: z.string().optional().describe('Open Graph description'),
     ogUrl: z.string().url().optional().describe('Open Graph URL'),
