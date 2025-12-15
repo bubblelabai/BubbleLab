@@ -633,7 +633,6 @@ export function usePearlChatStore(flowId: number | null) {
       // Get updated state after adding the user message
       const updatedState = store.getState();
       // Debug: Log all messages being sent to backend
-      const backendMessages = updatedState.messages.map(toBackendMessage);
       try {
         const response = await api.postStream(
           '/bubble-flow/generate?phase=planning',

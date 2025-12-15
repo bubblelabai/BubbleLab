@@ -324,8 +324,7 @@ async function startGenerationStream(
 export async function startBuildingPhase(
   flowId: number,
   prompt: string,
-  planContext?: string,
-  _clarificationAnswers?: Record<string, string[]>
+  planContext?: string
 ): Promise<void> {
   const pearlStore = getPearlChatStore(flowId);
   const storeState = pearlStore.getState();

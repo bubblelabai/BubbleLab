@@ -7,8 +7,10 @@
 
 import {
   type GenerationResult,
+  BubbleName,
   CREDENTIAL_ENV_MAP,
   CredentialType,
+  TOOL_CALL_TO_DISCARD,
 } from '@bubblelab/shared-schemas';
 import { BubbleLogger, type StreamingCallback } from '@bubblelab/bubble-core';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
@@ -185,6 +187,9 @@ export function buildFullContextFromMessages(
     contextParts.push('=== TOOL CALL RESULTS FROM PLANNING PHASE ===');
 
     toolResults.forEach((toolResult) => {
+      if (TOOL_CALL_TO_DISCARD.includes(toolResult.toolName as BubbleName)) {
+        return;
+      }
       const result = toolResult as {
         toolName?: string;
         toolCallId?: string;
