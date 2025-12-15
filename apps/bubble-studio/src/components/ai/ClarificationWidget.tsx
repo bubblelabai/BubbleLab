@@ -97,30 +97,35 @@ export function ClarificationWidget({
   });
 
   return (
-    <div className="border border-blue-500/30 rounded-lg overflow-hidden bg-gray-900/50">
+    <div className="border border-neutral-600/80 rounded-lg overflow-hidden bg-neutral-800/70">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/10 border-b border-blue-500/20">
-        <MessageCircleQuestion className="w-4 h-4 text-blue-400" />
-        <span className="text-sm font-medium text-blue-300">
-          Help me understand your requirements
-        </span>
+      <div className="flex items-center px-4 py-3 border-b border-neutral-600/80 bg-neutral-700/20">
+        <div className="flex items-center gap-2">
+          <MessageCircleQuestion className="w-4 h-4 text-neutral-400" />
+          <span className="text-sm font-medium text-neutral-200">
+            Help me understand your requirements
+          </span>
+        </div>
       </div>
 
       {/* Questions */}
-      <div className="p-4 space-y-5">
+      <div className="px-4 py-3 space-y-4">
         {questions.map((question, index) => (
-          <div key={question.id} className="space-y-2.5">
+          <div
+            key={question.id}
+            className={`space-y-3 ${index !== questions.length - 1 ? 'pb-4 border-b border-neutral-700/50' : ''}`}
+          >
             {/* Question text */}
-            <div className="flex items-start gap-2">
-              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-xs font-medium">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
                 {index + 1}
-              </span>
-              <div>
-                <p className="text-sm text-gray-200 font-medium">
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-neutral-200">
                   {question.question}
                 </p>
                 {question.context && (
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-neutral-400 mt-0.5">
                     {question.context}
                   </p>
                 )}
@@ -128,7 +133,7 @@ export function ClarificationWidget({
             </div>
 
             {/* Choices */}
-            <div className="ml-7 space-y-2">
+            <div className="ml-8 space-y-1.5">
               {question.choices.map((choice) => {
                 const isSelected = selectedAnswers[question.id]?.includes(
                   choice.id
@@ -140,30 +145,28 @@ export function ClarificationWidget({
                     key={choice.id}
                     onClick={() => handleChoiceSelect(question.id, choice.id)}
                     disabled={isSubmitting}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                    className={`w-full text-left px-3 py-2 rounded border transition-colors ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-500/20 text-blue-200'
-                        : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-600 hover:bg-gray-800'
-                    } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                        ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
+                        : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
+                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                           isSelected
                             ? 'border-blue-500 bg-blue-500'
-                            : 'border-gray-600'
+                            : 'border-neutral-600'
                         }`}
                       >
-                        {isSelected && (
-                          <Check className="w-2.5 h-2.5 text-white" />
-                        )}
+                        {isSelected && <Check className="w-2 h-2 text-white" />}
                       </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium">
-                          {choice.label}
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm">{choice.label}</span>
                         {choice.description && (
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p
+                            className={`text-xs mt-0.5 ${isSelected ? 'text-blue-200/70' : 'text-neutral-500'}`}
+                          >
                             {choice.description}
                           </p>
                         )}
@@ -174,71 +177,67 @@ export function ClarificationWidget({
               })}
 
               {/* "Other" option with custom text field */}
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleChoiceSelect(question.id, OTHER_CHOICE_ID)
+              <button
+                type="button"
+                onClick={() => handleChoiceSelect(question.id, OTHER_CHOICE_ID)}
+                disabled={isSubmitting}
+                className={`w-full text-left px-3 py-2 rounded border transition-colors ${
+                  selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+                    ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
+                    : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
+                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+                        ? 'border-blue-500 bg-blue-500'
+                        : 'border-neutral-600'
+                    }`}
+                  >
+                    {selectedAnswers[question.id]?.includes(
+                      OTHER_CHOICE_ID
+                    ) && <Check className="w-2 h-2 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm">Other</span>
+                    <p
+                      className={`text-xs mt-0.5 ${selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) ? 'text-blue-200/70' : 'text-neutral-500'}`}
+                    >
+                      Specify your own answer
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Custom text input - shown when "Other" is selected */}
+              {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
+                <input
+                  type="text"
+                  value={customTexts[question.id] || ''}
+                  onChange={(e) =>
+                    handleCustomTextChange(question.id, e.target.value)
                   }
                   disabled={isSubmitting}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
-                    selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
-                      ? 'border-blue-500 bg-blue-500/20 text-blue-200'
-                      : 'border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-600 hover:bg-gray-800'
-                  } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
-                          ? 'border-blue-500 bg-blue-500'
-                          : 'border-gray-600'
-                      }`}
-                    >
-                      {selectedAnswers[question.id]?.includes(
-                        OTHER_CHOICE_ID
-                      ) && <Check className="w-2.5 h-2.5 text-white" />}
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">Other</span>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Specify your own answer
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Custom text input - shown when "Other" is selected */}
-                {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
-                  <div className="ml-7 mt-2">
-                    <input
-                      type="text"
-                      value={customTexts[question.id] || ''}
-                      onChange={(e) =>
-                        handleCustomTextChange(question.id, e.target.value)
-                      }
-                      disabled={isSubmitting}
-                      placeholder="Enter your answer..."
-                      className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                )}
-              </div>
+                  placeholder="Enter your answer..."
+                  className="w-full px-3 py-2 text-sm rounded border border-neutral-600 bg-neutral-900/60 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none disabled:opacity-50"
+                />
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Footer with submit button */}
-      <div className="flex items-center justify-end gap-3 px-4 py-3 bg-gray-800/30 border-t border-gray-700">
+      {/* Footer */}
+      <div className="px-4 py-3 flex justify-end border-t border-neutral-700/50">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!allQuestionsAnswered || isSubmitting}
-          className={`px-5 py-2 text-sm rounded-lg font-medium transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 text-sm rounded font-medium transition-colors flex items-center gap-2 ${
             allQuestionsAnswered && !isSubmitting
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
-              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
           }`}
         >
           {isSubmitting ? (
@@ -247,7 +246,10 @@ export function ClarificationWidget({
               Processing...
             </>
           ) : (
-            'Continue'
+            <>
+              <Check className="w-4 h-4" />
+              Continue
+            </>
           )}
         </button>
       </div>
