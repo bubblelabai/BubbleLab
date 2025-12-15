@@ -3,19 +3,19 @@
  * Allows users to approve the plan with optional additional comments before code generation
  */
 import { useState } from 'react';
-import { Check, FileText, Loader2 } from 'lucide-react';
+import { Check, FileText } from 'lucide-react';
 import type { CoffeePlanEvent } from '@bubblelab/shared-schemas';
 
 interface PlanApprovalWidgetProps {
   plan: CoffeePlanEvent;
   onApprove: (comment?: string) => void;
-  isLoading: boolean;
+  isApproved?: boolean;
 }
 
 export function PlanApprovalWidget({
   plan,
   onApprove,
-  isLoading,
+  isApproved = false,
 }: PlanApprovalWidgetProps) {
   const [comment, setComment] = useState('');
 
@@ -39,7 +39,9 @@ export function PlanApprovalWidget({
       </div>
 
       {/* Steps */}
-      <div className="px-4 py-3 space-y-2 border-b border-white/20">
+      <div
+        className={`px-4 py-3 space-y-2 ${isApproved ? '' : 'border-b border-white/20'}`}
+      >
         {plan.steps.map((step, index) => (
           <div key={index} className="flex gap-3">
             <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 text-blue-400 text-xs font-medium border border-blue-500/20">
@@ -69,45 +71,34 @@ export function PlanApprovalWidget({
         ))}
       </div>
 
-      {/* Additional comments */}
-      <div className="px-4 py-3 border-b border-white/20">
-        <label className="text-xs font-medium text-neutral-400 mb-2 block">
-          Additional Comments (Optional)
-        </label>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Any modifications or additional requirements..."
-          disabled={isLoading}
-          rows={2}
-          className="w-full px-3 py-2 text-sm rounded border border-white/30 bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none disabled:opacity-50 resize-none"
-        />
-      </div>
+      {/* Additional comments - hide when approved */}
+      {!isApproved && (
+        <div className="px-4 py-3 border-b border-white/20">
+          <label className="text-xs font-medium text-neutral-400 mb-2 block">
+            Additional Comments (Optional)
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Any modifications or additional requirements..."
+            rows={2}
+            className="w-full px-3 py-2 text-sm rounded border border-white/30 bg-neutral-900 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none resize-none"
+          />
+        </div>
+      )}
 
-      {/* Footer */}
-      <div className="px-4 py-3 flex justify-end">
-        <button
-          onClick={() => onApprove(comment.trim() || undefined)}
-          disabled={isLoading}
-          className={`px-4 py-2 text-sm rounded font-medium transition-colors flex items-center gap-2 ${
-            isLoading
-              ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 text-white'
-          }`}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Building...
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4" />
-              Approve & Build
-            </>
-          )}
-        </button>
-      </div>
+      {/* Footer - hide when approved */}
+      {!isApproved && (
+        <div className="px-4 py-3 flex justify-end">
+          <button
+            onClick={() => onApprove(comment.trim() || undefined)}
+            className="px-4 py-2 text-sm rounded font-medium transition-colors flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Check className="w-4 h-4" />
+            Approve & Build
+          </button>
+        </div>
+      )}
     </div>
   );
 }
