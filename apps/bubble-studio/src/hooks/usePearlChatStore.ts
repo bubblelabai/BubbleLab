@@ -21,7 +21,7 @@ import {
   cleanUpObjectForDisplayAndStorage,
   PEARL_DEFAULT_MODEL,
 } from '@bubblelab/shared-schemas';
-import { usePearlStream } from './usePearl';
+import { usePearlStream } from './usePearlStream';
 import { useIsMutating } from '@tanstack/react-query';
 import { getPearlChatStore, type DisplayEvent } from '../stores/pearlChatStore';
 import type {
@@ -587,6 +587,10 @@ export function usePearlChatStore(flowId: number | null) {
     storeState.clearToolCalls();
     storeState.clearPrompt();
 
+    console.log(
+      '[usePearlChatStore][startGeneration()]  Current messages',
+      JSON.stringify(storeState.messages, null, 2)
+    );
     const conversationMessages = storeState.messages.map((msg) => ({
       role: msg.type === 'user' ? ('user' as const) : ('assistant' as const),
       content: 'content' in msg ? msg.content : '',

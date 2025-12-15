@@ -61,7 +61,7 @@ import {
   useGenerateInitialFlow,
   startBuildingPhase,
   submitClarificationAndContinue,
-} from '../../hooks/usePearl';
+} from '../../hooks/usePearlStream';
 import type { ChatMessage, PlanApprovalMessage } from './type';
 import { playGenerationCompleteSound } from '../../utils/soundUtils';
 import { renderJson } from '../../utils/executionLogsFormatUtils';
@@ -343,12 +343,7 @@ export function PearlChat() {
         ...(comment ? [`\nAdditional user comments: ${comment}`] : []),
       ].join('\n');
 
-      await startBuildingPhase(
-        selectedFlowId,
-        flowData.prompt,
-        planContext,
-        {} // No separate answers - they're in the messages
-      );
+      await startBuildingPhase(selectedFlowId, flowData.prompt, planContext);
     },
     [selectedFlowId, flowData?.prompt, pearl.pendingPlan]
   );

@@ -14,37 +14,6 @@ import {
   type HandleStreamingEventOptions,
 } from './usePearlChatStore';
 
-/**
- * React Query mutation hook for Pearl AI chat
- * This is for general workflow assistance without a specific bubble
- */
-export function usePearl() {
-  return useMutation({
-    mutationFn: async (request: PearlRequest): Promise<PearlResponse> => {
-      const state = useEditorStore.getState();
-      const fullCode = state.editorInstance?.getModel()?.getValue() || '';
-      const codeContext = await getCodeContextForPearl();
-
-      const fullRequest = {
-        userRequest: request.userRequest,
-        currentCode: fullCode,
-        userName: request.userName,
-        conversationHistory: request.conversationHistory,
-        availableVariables:
-          request.availableVariables.length > 0
-            ? request.availableVariables
-            : codeContext?.availableVariables,
-        model: request.model || 'google/gemini-2.5-pro',
-        additionalContext: request.additionalContext,
-      };
-
-      console.log('fullRequest', JSON.stringify(fullRequest, null, 2));
-      const result = await api.post<PearlResponse>('/ai/pearl', fullRequest);
-      return result;
-    },
-  });
-}
-
 export interface UsePearlStreamOptions {
   flowId?: number | null;
   onSuccess?: (result: PearlResponse) => void;
