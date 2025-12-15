@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 interface IndexRouteSearch {
   prompt?: string;
+  ref?: string;
 }
 
 export const Route = createFileRoute('/')({
@@ -10,21 +11,22 @@ export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>): IndexRouteSearch => {
     return {
       prompt: typeof search.prompt === 'string' ? search.prompt : undefined,
+      ref: typeof search.ref === 'string' ? search.ref : undefined,
     };
   },
 });
 
 function IndexRoute() {
   const navigate = useNavigate();
-  const { prompt } = Route.useSearch();
+  const { prompt, ref } = Route.useSearch();
 
   useEffect(() => {
     navigate({
       to: '/home',
-      search: { prompt },
+      search: { prompt, ref },
       replace: true,
     });
-  }, [navigate, prompt]);
+  }, [navigate, prompt, ref]);
 
   return null;
 }

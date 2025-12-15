@@ -4,10 +4,12 @@ import { useGenerationStore } from '@/stores/generationStore';
 import { useFlowGeneration } from '@/hooks/useFlowGeneration';
 import { useUIStore } from '@/stores/uiStore';
 import { usePromptFromURL } from '@/hooks/usePromptFromURL';
+import { useAffiliateTracking } from '@/hooks/useAffiliateTracking';
 
 interface HomeRouteSearch {
   showSignIn?: boolean;
   prompt?: string;
+  ref?: string;
 }
 
 export const Route = createFileRoute('/home')({
@@ -16,12 +18,13 @@ export const Route = createFileRoute('/home')({
     return {
       showSignIn: search.showSignIn === true || search.showSignIn === 'true',
       prompt: typeof search.prompt === 'string' ? search.prompt : undefined,
+      ref: typeof search.ref === 'string' ? search.ref : undefined,
     };
   },
 });
 
 function NewFlowPage() {
-  const { showSignIn, prompt } = Route.useSearch();
+  const { showSignIn, prompt, ref } = Route.useSearch();
   const {
     generationPrompt,
     selectedPreset,
@@ -35,6 +38,9 @@ function NewFlowPage() {
 
   // Handle prompt from URL with authentication check
   const { showSignInModal } = usePromptFromURL({ prompt });
+
+  // Handle affiliate referral tracking
+  useAffiliateTracking({ ref });
 
   // Wrapper function that calls the hook's generateCode with proper parameters
   const generateCode = async () => {
