@@ -571,6 +571,22 @@ function extractBubbleIdsFromChildren(children: WorkflowNode[]): number[] {
       // Recursively search in nested children (e.g., inside if/for blocks)
       bubbleIds.push(...extractBubbleIdsFromChildren(child.children));
     }
+    // Handle if/else branches - elseBranch contains else block bubbles
+    if (
+      child.type === 'if' &&
+      'elseBranch' in child &&
+      Array.isArray(child.elseBranch)
+    ) {
+      bubbleIds.push(...extractBubbleIdsFromChildren(child.elseBranch));
+    }
+    // Handle try/catch - catchBlock contains catch block bubbles
+    if (
+      child.type === 'try_catch' &&
+      'catchBlock' in child &&
+      Array.isArray(child.catchBlock)
+    ) {
+      bubbleIds.push(...extractBubbleIdsFromChildren(child.catchBlock));
+    }
   }
 
   return bubbleIds;

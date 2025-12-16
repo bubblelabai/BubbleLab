@@ -1167,8 +1167,10 @@ export class BubbleParser {
                 break;
               }
 
-              // Check if we're inside a condition statement (if/while/for/switch/do-while)
+              // Check if we're inside the condition/test part of a control flow statement
               // These need special handling - extract call before the statement and replace in-place
+              // IMPORTANT: Only treat as condition_expression if the call is in the test/condition,
+              // not in the body (consequent/alternate/etc)
               if (
                 currentParent.type === 'IfStatement' ||
                 currentParent.type === 'WhileStatement' ||
@@ -1176,21 +1178,31 @@ export class BubbleParser {
                 currentParent.type === 'ForStatement' ||
                 currentParent.type === 'SwitchStatement'
               ) {
-                statementType = 'condition_expression';
-                containingStatementLine = currentParent.loc?.start.line;
-                // Capture the call range - include await if present
-                const callNode = hasAwait ? parent : node;
-                if (callNode?.range) {
-                  callRange = {
-                    start: callNode.range[0],
-                    end: callNode.range[1],
-                  };
-                  callText = this.bubbleScript.substring(
-                    callRange.start,
-                    callRange.end
-                  );
+                // Check if currentChild is actually in the test/condition part
+                const isInCondition = this.isNodeInConditionPart(
+                  currentParent,
+                  currentChild
+                );
+
+                if (isInCondition) {
+                  statementType = 'condition_expression';
+                  containingStatementLine = currentParent.loc?.start.line;
+                  // Capture the call range - include await if present
+                  const callNode = hasAwait ? parent : node;
+                  if (callNode?.range) {
+                    callRange = {
+                      start: callNode.range[0],
+                      end: callNode.range[1],
+                    };
+                    callText = this.bubbleScript.substring(
+                      callRange.start,
+                      callRange.end
+                    );
+                  }
+                  break;
                 }
-                break;
+                // If not in condition part, continue walking up - the call is in the body
+                // and should be treated as a normal statement
               }
 
               if (parentIsPromiseAllElement) {
@@ -1282,6 +1294,47 @@ export class BubbleParser {
     visitNode(ast);
 
     return invocations;
+  }
+
+  /**
+   * Check if a child node is in the condition/test part of a control flow statement
+   * Returns true if the child is the test/discriminant expression, false if it's in the body
+   */
+  private isNodeInConditionPart(
+    controlFlowNode: TSESTree.Node,
+    childNode: TSESTree.Node | undefined
+  ): boolean {
+    if (!childNode) return false;
+
+    switch (controlFlowNode.type) {
+      case 'IfStatement': {
+        const ifStmt = controlFlowNode as TSESTree.IfStatement;
+        return childNode === ifStmt.test;
+      }
+      case 'WhileStatement': {
+        const whileStmt = controlFlowNode as TSESTree.WhileStatement;
+        return childNode === whileStmt.test;
+      }
+      case 'DoWhileStatement': {
+        const doWhileStmt = controlFlowNode as TSESTree.DoWhileStatement;
+        return childNode === doWhileStmt.test;
+      }
+      case 'ForStatement': {
+        const forStmt = controlFlowNode as TSESTree.ForStatement;
+        // ForStatement has init, test, and update - all are condition-like
+        return (
+          childNode === forStmt.init ||
+          childNode === forStmt.test ||
+          childNode === forStmt.update
+        );
+      }
+      case 'SwitchStatement': {
+        const switchStmt = controlFlowNode as TSESTree.SwitchStatement;
+        return childNode === switchStmt.discriminant;
+      }
+      default:
+        return false;
+    }
   }
 
   /**
@@ -2420,10 +2473,16 @@ export class BubbleParser {
 
           // Handle Identifier declarations (const foo = ...)
           if (decl.id.type === 'Identifier') {
-            // Try to find bubble by variable name first (more reliable)
+            // Try to find bubble by variable name and location
+            // This handles same-named variables in different scopes by matching location
             const variableName = decl.id.name;
+            const stmtStartLine = stmt.loc?.start.line ?? 0;
+            const stmtEndLine = stmt.loc?.end.line ?? 0;
             const bubble = Array.from(bubbleMap.values()).find(
-              (b) => b.variableName === variableName
+              (b) =>
+                b.variableName === variableName &&
+                b.location.startLine >= stmtStartLine &&
+                b.location.endLine <= stmtEndLine
             );
             if (bubble) {
               return {

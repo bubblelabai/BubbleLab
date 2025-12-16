@@ -30,6 +30,7 @@ export const fixtures = {
   'hello-world-no-payload': '',
   'hello-world-multi-line-para': '',
   'para-with-comment': '',
+  'weather-deep-research': '',
   'google-drive-complex': '',
   yfinance: '',
   'cron-test': '',

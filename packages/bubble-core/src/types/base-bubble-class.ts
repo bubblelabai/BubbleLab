@@ -71,8 +71,6 @@ export abstract class BaseBubble<
         normalizedContext.dependencyGraph &&
         normalizedContext.currentUniqueId
       ) {
-        console.debug('[BaseBubble] Computing child context');
-        console.debug('[BaseBubble] Current context:', normalizedContext);
         const next = this.computeChildContext(normalizedContext);
         this.context = next;
         console.debug(

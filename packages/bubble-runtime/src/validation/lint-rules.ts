@@ -806,6 +806,43 @@ function isPromiseAllArrayElement(
 }
 
 /**
+ * Lint rule that prevents try-catch statements in the handle method
+ * Try-catch blocks interfere with runtime instrumentation and error handling
+ */
+export const noTryCatchInHandleRule: LintRule = {
+  name: 'no-try-catch-in-handle',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    if (!context.handleMethodBody) {
+      return errors; // No handle method body found, skip this rule
+    }
+
+    // Recursively find all try statements in the handle method body
+    const findTryStatements = (node: ts.Node): void => {
+      if (ts.isTryStatement(node)) {
+        const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+          node.getStart(context.sourceFile)
+        );
+        errors.push({
+          line: line + 1,
+          message:
+            'try-catch statements are not allowed in handle method. Error handling should be done in function steps.',
+        });
+        // Don't return early - continue checking nested content for multiple violations
+      }
+
+      ts.forEachChild(node, findTryStatements);
+    };
+
+    // Start recursive search from the handle method body
+    findTryStatements(context.handleMethodBody);
+
+    return errors;
+  },
+};
+
+/**
  * Lint rule that prevents methods from calling other methods
  * Methods should only be called from the handle method, not from other methods
  */
@@ -896,3 +933,4 @@ defaultLintRuleRegistry.register(noCredentialsParameterRule);
 defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);
 defaultLintRuleRegistry.register(noProcessEnvRule);
 defaultLintRuleRegistry.register(noMethodCallingMethodRule);
+defaultLintRuleRegistry.register(noTryCatchInHandleRule);

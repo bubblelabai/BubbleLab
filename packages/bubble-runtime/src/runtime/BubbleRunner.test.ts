@@ -453,6 +453,21 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(parseResult.valid).toBe(true);
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
+      it('should correctly inject logging for method calls inside if-body (not condition)', async () => {
+        const testScript = getFixture('weather-deep-research');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+        expect(result).toBeDefined();
+        // validate script
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          true
+        );
+        expect(parseResult.valid).toBe(true);
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      });
       it.skip('should execute a flow with a batch process loop', async () => {
         const testScript = getFixture('batch-process-loop');
         const runner = new BubbleRunner(testScript, bubbleFactory, {
