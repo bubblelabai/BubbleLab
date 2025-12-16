@@ -624,7 +624,22 @@ export class AIAgentBubble extends ServiceBubble<
             },
           ],
         });
-      case 'anthropic':
+      case 'anthropic': {
+        // Configure Anthropic "thinking" only when reasoning is enabled.
+        // Anthropic's API does not allow `budget_tokens` when thinking is disabled.
+        const thinkingConfig =
+          reasoningEffort != null
+            ? {
+                type: 'enabled' as const,
+                budget_tokens:
+                  reasoningEffort === 'low'
+                    ? 1025
+                    : reasoningEffort === 'medium'
+                      ? 5000
+                      : 10000,
+              }
+            : undefined;
+
         return new ChatAnthropic({
           model: modelName,
           temperature,
@@ -632,17 +647,10 @@ export class AIAgentBubble extends ServiceBubble<
           maxTokens,
           streaming: enableStreaming,
           apiKey,
-          thinking: {
-            budget_tokens:
-              reasoningEffort === 'low'
-                ? 1025
-                : reasoningEffort === 'medium'
-                  ? 5000
-                  : 10000,
-            type: reasoningEffort ? 'enabled' : 'disabled',
-          },
+          ...(thinkingConfig && { thinking: thinkingConfig }),
           maxRetries: retries,
         });
+      }
       case 'openrouter':
         console.log('openrouter', modelName);
         return new ChatOpenAI({

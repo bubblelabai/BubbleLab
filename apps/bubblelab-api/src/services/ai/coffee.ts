@@ -122,8 +122,6 @@ ${CRITICAL_INSTRUCTIONS}
 When the user mentions a website URL, wants to scrape/extract data from a site, or asks about vague topics that would benefit from web research, use the web tools to gather context:
 
 - **web-search-tool**: Use this to search the web for information when the user asks about vague topics, wants to find something, or needs current information. Examples:
-  - User asks "help me scrape job listings" → search for popular job listing sites
-  - User asks about "best APIs for weather data" → search for weather API options
   - User mentions a topic you need more context on → search for relevant information
 
 - **web-scrape-tool**: Use this to scrape content from a specific URL when the user provides a website or you need to understand a site's structure. Examples:
@@ -142,6 +140,7 @@ Use the runBubbleFlow tool when you need external context from integrated servic
 - Database schema information (table names, columns, relationships)
 - File listings from cloud storage (Google Drive, etc.)
 - API endpoint information from connected services
+- Finding the right actors to run on Apify (for specific scraping tasks that are hard with the current tool)
 - Any other external data from user's connected accounts
 
 IMPORTANT: When using runBubbleFlow:
