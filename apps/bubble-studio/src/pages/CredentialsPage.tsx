@@ -240,6 +240,8 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       'API key for Fal AI media generation services (text-to-image, image-to-image)',
     placeholder: 'your-fal-ai-api-key',
     namePlaceholder: 'My Fal AI Key',
+    credentialConfigurations: {},
+  },
   [CredentialType.INSFORGE_BASE_URL]: {
     label: 'InsForge Base URL',
     description:
