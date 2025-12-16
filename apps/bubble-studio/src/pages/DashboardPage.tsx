@@ -465,6 +465,10 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     // Stop the animation by resetting to a stable state
                     setDisplayedPlaceholder(fullMessage);
                     setIsDeleting(false);
+                    // Reset selected preset to clear template selection
+                    if (selectedPreset !== -1) {
+                      setSelectedPreset(-1);
+                    }
                     return;
                   }
 
