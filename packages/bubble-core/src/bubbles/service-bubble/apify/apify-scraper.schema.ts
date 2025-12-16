@@ -87,11 +87,11 @@ export const APIFY_ACTOR_SCHEMAS = {
     documentation: 'https://apify.com/pintostudio/youtube-transcript-scraper',
     category: 'social-media',
   },
-  'beauty/linkedin-jobs-scraper': {
+  'curious_coder/linkedin-jobs-scraper': {
     input: LinkedInJobsScraperInputSchema,
     output: LinkedInJobSchema,
     description: 'Scrape LinkedIn job postings with detailed information',
-    documentation: 'https://apify.com/beauty/linkedin-jobs-scraper',
+    documentation: 'https://apify.com/curious_coder/linkedin-jobs-scraper',
     category: 'jobs',
   },
   'clockworks/tiktok-scraper': {

@@ -193,7 +193,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - apify/instagram-hashtag-scraper - Instagram hashtag posts
     - apimaestro/linkedin-profile-posts - LinkedIn profile posts and activity
     - apimaestro/linkedin-posts-search-scraper-no-cookies - Search LinkedIn posts by keyword
-    - beauty/linkedin-jobs-scraper - LinkedIn job postings
+    - curious_coder/linkedin-jobs-scraper - LinkedIn job postings
     - streamers/youtube-scraper - YouTube videos and channels
     - pintostudio/youtube-transcript-scraper - YouTube video transcripts
     - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags

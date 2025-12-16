@@ -825,9 +825,9 @@ export class LinkedInTool extends ToolBubble<
       return this.createErrorResult('Keyword is required for scrapeJobs');
     }
 
-    const jobScraper = new ApifyBubble<'beauty/linkedin-jobs-scraper'>(
+    const jobScraper = new ApifyBubble<'curious_coder/linkedin-jobs-scraper'>(
       {
-        actorId: 'beauty/linkedin-jobs-scraper',
+        actorId: 'curious_coder/linkedin-jobs-scraper',
         input: {
           search: params.keyword,
           location: params.location,
@@ -872,7 +872,7 @@ export class LinkedInTool extends ToolBubble<
   }
 
   private transformJobs(
-    items: ActorOutput<'beauty/linkedin-jobs-scraper'>[]
+    items: ActorOutput<'curious_coder/linkedin-jobs-scraper'>[]
   ): LinkedInJob[] {
     return items.map((item) => ({
       id: item.jobId || null,
