@@ -2,17 +2,10 @@ import { z } from 'zod';
 import { AvailableModels, type AvailableModel } from './ai-models.js';
 import { ParsedBubbleWithInfoSchema } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
-
+import { ConversationMessageSchema } from './agent-memory.js';
 // Default model for Pearl AI agent
 export const PEARL_DEFAULT_MODEL: AvailableModel =
   'openrouter/anthropic/claude-sonnet-4.5';
-
-// Reuse the ConversationMessageSchema from milk-tea to avoid duplication
-const ConversationMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
-
 /**
  * Request schema for Pearl agent
  * Pearl helps users build complete workflows without requiring specific bubbles
@@ -49,6 +42,26 @@ export const PearlRequestSchema = z.object({
     .optional()
     .describe(
       'Additional context information like timezone, user preferences, etc.'
+    ),
+
+  uploadedFiles: z
+    .array(
+      z.object({
+        name: z.string().describe('File name'),
+        content: z
+          .string()
+          .describe(
+            'File content: base64 for images, plain text for text files'
+          ),
+        fileType: z
+          .enum(['image', 'text'])
+          .describe('Type of file: image (base64) or text (plain text)'),
+      })
+    )
+    .optional()
+    .default([])
+    .describe(
+      'Files uploaded by the user: images as base64, text files as plain text'
     ),
 });
 

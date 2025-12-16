@@ -2259,6 +2259,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           onNodeClick={(_event, node) => {
             const executionStore = getExecutionStore(currentFlow?.id || flowId);
             const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
+            const isDesktopView =
+              window.matchMedia('(min-width: 768px)').matches;
 
             if (node.type === 'stepContainerNode') {
               const stepData = node.data as unknown as {
@@ -2280,8 +2282,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               // Add step to context (automatically clears bubble and transformation context)
               pearlChatStore.getState().addStepToContext(functionName);
 
-              // Open Pearl panel
-              useUIStore.getState().openConsolidatedPanelWith('pearl');
+              // Open Pearl panel (only on desktop - on mobile, user can use the Flow/Panel toggle)
+              if (isDesktopView) {
+                useUIStore.getState().openConsolidatedPanelWith('pearl');
+              }
             } else if (node.type === 'transformationNode') {
               const transformationInfo = (
                 node.data as unknown as TransformationNodeData
@@ -2298,8 +2302,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 .getState()
                 .addTransformationToContext(functionName);
 
-              // Open Pearl panel
-              useUIStore.getState().openConsolidatedPanelWith('pearl');
+              // Open Pearl panel (only on desktop)
+              if (isDesktopView) {
+                useUIStore.getState().openConsolidatedPanelWith('pearl');
+              }
             } else if (node.type === 'bubbleNode') {
               // For bubble nodes, use variableId
               const bubbleData = (node.data as unknown as BubbleNodeData)
@@ -2329,7 +2335,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 : Number(node.id);
 
               pearlChatStore.getState().addBubbleToContext(contextKey);
-              useUIStore.getState().openConsolidatedPanelWith('pearl');
+              // Open Pearl panel (only on desktop)
+              if (isDesktopView) {
+                useUIStore.getState().openConsolidatedPanelWith('pearl');
+              }
             } else if (
               node.type === 'inputSchemaNode' ||
               node.type === 'cronScheduleNode'
@@ -2338,7 +2347,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               executionStore.highlightBubble(node.id);
               // Clear the bubble context (entry nodes don't have bubble context)
               pearlChatStore.getState().clearBubbleContext();
-              useUIStore.getState().openConsolidatedPanelWith('pearl');
+              // Open Pearl panel (only on desktop)
+              if (isDesktopView) {
+                useUIStore.getState().openConsolidatedPanelWith('pearl');
+              }
             }
           }}
           onPaneClick={() => {
@@ -2347,7 +2359,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             useEditorStore.getState().clearExecutionHighlight();
 
             // Clear the bubble context
-            useUIStore.getState().openConsolidatedPanelWith('pearl');
+            // Only open panel on desktop - on mobile, user can use the Flow/Panel toggle
+            if (window.matchMedia('(min-width: 768px)').matches) {
+              useUIStore.getState().openConsolidatedPanelWith('pearl');
+            }
             getPearlChatStore(currentFlow?.id || flowId)
               .getState()
               .clearBubbleContext();

@@ -265,6 +265,19 @@ We welcome all types of contributions:
 6. Push to your fork and submit a pull request
 7. Wait for review and address any feedback
 
+### Definition of Done
+
+For a PR to be merged, it must:
+
+- Align with Bubble Lab’s existing architecture and patterns
+- Avoid introducing new abstractions unless clearly justified
+- Pass all tests, lint, and type checks
+- Include tests for new behavior (when applicable)
+- Update documentation if user-facing behavior changes
+- Keep changes scoped and easy to review
+
+If a PR requires large structural changes, please open an issue or discussion first.
+
 ### Coding Standards
 
 - Use TypeScript with proper types (no `any`)
@@ -272,6 +285,23 @@ We welcome all types of contributions:
 - Write tests for new features
 - Update documentation as needed
 - Keep commits atomic and well-described
+
+## Project Direction & Review Philosophy
+
+Bubble Lab prioritizes:
+- Simplicity over clever abstractions
+- Consistency with existing patterns
+- Long-term maintainability over short-term feature velocity
+
+Not all contributions will be merged. A pull request may be closed if:
+- The feature does not align with the current roadmap or architecture
+- The implementation adds unnecessary complexity
+- The change would require significant maintainer refactoring
+- The PR is too large to review safely without prior discussion
+
+Closed PRs are not a reflection of contributor quality — they help us keep the codebase healthy and move fast.
+
+
 
 ### Need Help?
 

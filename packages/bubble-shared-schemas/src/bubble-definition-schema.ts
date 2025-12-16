@@ -45,6 +45,8 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.AIRTABLE_CRED]: {},
   [CredentialType.NOTION_OAUTH_TOKEN]: {},
   [CredentialType.FAL_AI_API_KEY]: {},
+  [CredentialType.INSFORGE_BASE_URL]: {},
+  [CredentialType.INSFORGE_API_KEY]: {},
 };
 
 // Fixed list of bubble names that need context injection

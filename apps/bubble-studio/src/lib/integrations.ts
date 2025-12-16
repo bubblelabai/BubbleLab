@@ -32,6 +32,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Telegram: '/integrations/telegram.svg',
   Airtable: '/integrations/airtable.png',
   Notion: '/integrations/notion.svg',
+  InsForge: '/integrations/insforge.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -74,6 +75,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Telegram', file: SERVICE_LOGOS['Telegram'] },
   { name: 'Airtable', file: SERVICE_LOGOS['Airtable'] },
   { name: 'Notion', file: SERVICE_LOGOS['Notion'] },
+  { name: 'InsForge', file: SERVICE_LOGOS['InsForge'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -137,6 +139,8 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   telegram: 'Telegram',
   airtable: 'Airtable',
   notion: 'Notion',
+  insforge: 'InsForge',
+  'insforge-db': 'InsForge',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',

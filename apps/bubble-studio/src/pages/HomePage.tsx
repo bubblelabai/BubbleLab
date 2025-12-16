@@ -166,7 +166,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         {/* Flows Section */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
               <h2 className="text-xl font-semibold text-white font-sans">
                 My Bubble Flows
@@ -257,6 +257,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </div>
                   )}
                   {/* Card Content */}
+
                   <div className="p-5">
                     {/* Bubble Logos */}
                     {flow.bubbles && flow.bubbles.length > 0 && (
@@ -356,7 +357,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     {/* Divider and Date/Toggle Row */}
                     <div className="pt-2 mt-2 border-t border-white/5">
                       <div
-                        className="flex items-center justify-between"
+                        className="flex items-center justify-between flex-wrap gap-4 mt-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {/* Cron Toggle or Webhook Toggle - mutually exclusive */}

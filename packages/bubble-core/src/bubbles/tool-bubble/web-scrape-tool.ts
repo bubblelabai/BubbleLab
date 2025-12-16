@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import FirecrawlApp from '@mendable/firecrawl-js';
+import { FirecrawlBubble } from '../service-bubble/firecrawl.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 
@@ -85,7 +85,7 @@ export class WebScrapeTool extends ToolBubble<
   static readonly schema = WebScrapeToolParamsSchema;
   static readonly resultSchema = WebScrapeToolResultSchema;
   static readonly shortDescription =
-    'Scrapes content from a single web page using Firecrawl, good to use after web-search-tool to get the full content of a page';
+    "Scrapes content from a single web page. Useful after web-search-tool to get the full content of a page. Also useful if you need to understand a site's structure or content.";
   static readonly longDescription = `
     A simple and powerful web scraping tool that extracts content from any web page.
     
@@ -121,37 +121,42 @@ export class WebScrapeTool extends ToolBubble<
   }
 
   async performAction(): Promise<WebScrapeToolResult> {
-    const { url, format } = this.params;
+    const { url, format, credentials } = this.params;
     const startTime = Date.now();
 
     try {
-      // Get Firecrawl API key from credentials
-      const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          'FIRECRAWL_API_KEY is required but not provided in credentials'
-        );
-      }
+      console.debug(
+        '[WebScrapeTool] Scraping URL:',
+        url,
+        'with format:',
+        format
+      );
 
-      // Initialize Firecrawl client
-      const firecrawl = new FirecrawlApp({ apiKey });
-
-      console.log('[WebScrapeTool] Scraping URL:', url, 'with format:', format);
+      const firecrawl = new FirecrawlBubble(
+        {
+          operation: 'scrape' as const,
+          credentials,
+          url,
+          formats: [format],
+          // Wait for 2 seconds to ensure the page is loaded
+          waitFor: 2000,
+          // Sensible defaults for most use cases
+          maxAge: 172800000,
+          parsers: ['pdf'],
+        },
+        this.context,
+        'web_scrape_tool_firecrawl'
+      );
 
       // Execute scrape
-      const response = await firecrawl.scrape(url, {
-        formats: [format],
-        // Sensible defaults for most use cases
-        maxAge: 172800000,
-        parsers: ['pdf'],
-      });
+      const response = await firecrawl.action();
 
       // Extract content based on format
       let content: string;
       let title = '';
 
-      if (format === 'markdown' && response.markdown) {
-        content = response.markdown;
+      if (format === 'markdown' && response.data.markdown) {
+        content = response.data.markdown;
       } else {
         throw new Error(`No content available in ${format} format`);
       }
@@ -164,6 +169,7 @@ export class WebScrapeTool extends ToolBubble<
               message: `Summarize the scraped content to condense all information and remove any non-essential information, include all links, contact information, companies, don't omit any information. Content: ${content}`,
               model: {
                 model: 'google/gemini-2.5-flash-lite',
+                maxTokens: 80000,
               },
               name: 'Scrape Content Summarizer Agent',
               credentials: this.params.credentials,
@@ -191,29 +197,13 @@ export class WebScrapeTool extends ToolBubble<
       }
 
       // Extract title from metadata
-      if (response.metadata?.title) {
-        title = response.metadata.title;
+      if (response.data.metadata?.title) {
+        title = response.data.metadata.title;
       }
 
       const loadTime = Date.now() - startTime;
 
-      // Log service usage for Firecrawl web scrape
-      if (this.context?.logger) {
-        this.context.logger.logTokenUsage(
-          {
-            usage: 1,
-            service: CredentialType.FIRECRAWL_API_KEY,
-            unit: 'per_result',
-            subService: 'web-scrape',
-          },
-          `Firecrawl web scrape: 1 credit used for ${url}`,
-          {
-            bubbleName: 'web-scrape-tool',
-            variableId: this.context?.variableId,
-            operationType: 'bubble_execution',
-          }
-        );
-      }
+      // Token usage tracking is now centralized in FirecrawlBubble
 
       return {
         content: content.trim(),
@@ -225,7 +215,7 @@ export class WebScrapeTool extends ToolBubble<
         success: true,
         error: '',
         metadata: {
-          statusCode: response.metadata?.statusCode,
+          statusCode: response.data.metadata?.statusCode,
           loadTime,
         },
       };

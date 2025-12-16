@@ -23,6 +23,8 @@ import {
   CREDENTIAL_ENV_MAP,
   DEBUGGING_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
+  BubbleName,
+  TOOL_CALL_TO_DISCARD,
 } from '@bubblelab/shared-schemas';
 import {
   AIAgentBubble,
@@ -37,6 +39,7 @@ import {
   AvailableTool,
   EditBubbleFlowTool,
   ListBubblesTool,
+  ToolMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
 import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
@@ -61,6 +64,7 @@ YOUR ROLE:
 - Understand user's high-level goals and translate them into complete workflow code
 - Ask clarifying questions when requirements are unclear
 - Help users build workflows that can include multiple bubbles and complex logic
+- Use the web-scrape-tool to scrape the web for information when the user provides a URL or mentions a website, or useful if you need to understand a site's structure or content.
 
 Available Bubbles:
 ${listBubblesResult.data.bubbles.map((bubble) => bubble.name).join(', ')}
@@ -163,20 +167,81 @@ ${bubbleFactory.generateBubbleFlowBoilerplate()}
 
 /**
  * Build the conversation messages from request and history
+ * Returns both messages and images for multimodal support
  */
-function buildConversationMessages(request: PearlRequest): BaseMessage[] {
+function buildConversationMessages(request: PearlRequest): {
+  messages: BaseMessage[];
+  images: Array<{
+    type: 'base64';
+    data: string;
+    mimeType: string;
+    description?: string;
+  }>;
+} {
   const messages: BaseMessage[] = [];
+  const images: Array<{
+    type: 'base64';
+    data: string;
+    mimeType: string;
+    description?: string;
+  }> = [];
 
   // Add conversation history if available
   if (request.conversationHistory && request.conversationHistory.length > 0) {
     for (const msg of request.conversationHistory) {
       if (msg.role === 'user') {
         messages.push(new HumanMessage(msg.content));
-      } else {
+      } else if (msg.role === 'tool') {
+        if (TOOL_CALL_TO_DISCARD.includes(msg.name as BubbleName)) {
+          continue;
+        }
+        messages.push(
+          new ToolMessage({
+            content: msg.content,
+            tool_call_id: msg.toolCallId || '',
+            name: msg.name || '',
+          })
+        );
+      } else if (msg.role === 'assistant') {
         messages.push(new AIMessage(msg.content));
       }
     }
   }
+
+  // Process uploaded files - separate images from text files
+  const textFileContents: string[] = [];
+  if (request.uploadedFiles && request.uploadedFiles.length > 0) {
+    for (const file of request.uploadedFiles) {
+      // Check fileType field to differentiate
+      const fileType = (file as { fileType?: 'image' | 'text' }).fileType;
+
+      if (fileType === 'text') {
+        // Text files: add content to message context
+        textFileContents.push(`\n\nContent of ${file.name}:\n${file.content}`);
+      } else {
+        // Images: add to images array for vision API
+        const fileName = file.name.toLowerCase();
+        let mimeType = 'image/png'; // default
+        if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+          mimeType = 'image/jpeg';
+        } else if (fileName.endsWith('.png')) {
+          mimeType = 'image/png';
+        } else if (fileName.endsWith('.gif')) {
+          mimeType = 'image/gif';
+        } else if (fileName.endsWith('.webp')) {
+          mimeType = 'image/webp';
+        }
+
+        images.push({
+          type: 'base64',
+          data: file.content,
+          mimeType,
+          description: file.name,
+        });
+      }
+    }
+  }
+
   // Add current request with code context if available
   const contextInfo = request.currentCode
     ? `\n\nCurrent workflow code:\n\`\`\`typescript\n${request.currentCode}\n\`\`\` Available Variables:${JSON.stringify(request.availableVariables)}`
@@ -187,13 +252,17 @@ function buildConversationMessages(request: PearlRequest): BaseMessage[] {
     ? `\n\nAdditional Context:\n${request.additionalContext}`
     : '';
 
+  // Add text file contents to the message
+  const textFilesInfo =
+    textFileContents.length > 0 ? textFileContents.join('') : '';
+
   messages.push(
     new HumanMessage(
-      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}${additionalContextInfo}`
+      `REQUEST FROM USER:${request.userRequest} Context:${contextInfo}${additionalContextInfo}${textFilesInfo}`
     )
   );
 
-  return messages;
+  return { messages, images };
 }
 
 /**
@@ -224,7 +293,8 @@ export async function runPearl(
 
       // Build system prompt and conversation messages
       const systemPrompt = await buildSystemPrompt(request.userName);
-      const conversationMessages = buildConversationMessages(request);
+      const { messages: conversationMessages, images } =
+        buildConversationMessages(request);
 
       // State to preserve current code and validation results across hook calls
       let currentCode: string | undefined = request.currentCode;
@@ -400,6 +470,7 @@ export async function runPearl(
           jsonMode: true,
           provider: ['fireworks', 'cerebras'],
         },
+        images: images.length > 0 ? images : undefined,
         tools: [
           {
             name: 'list-bubbles-tool',
@@ -407,6 +478,10 @@ export async function runPearl(
           },
           {
             name: 'get-bubble-details-tool',
+            credentials: credentials || {},
+          },
+          {
+            name: 'web-scrape-tool',
             credentials: credentials || {},
           },
         ],

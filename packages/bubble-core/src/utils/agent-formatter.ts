@@ -1,6 +1,120 @@
-import { MessageContent } from '@langchain/core/messages';
+import type { MessageContent } from '@langchain/core/messages';
 import { parseJsonWithFallbacks } from './json-parsing';
-import type { LLMResult } from '@langchain/core/outputs';
+import type { LLMResult, Generation } from '@langchain/core/outputs';
+
+/**
+ * Extract content from a generation's message.
+ * Handles both:
+ * - Class instances (BaseMessage with .content property)
+ * - Serialized form (object with .kwargs.content from LLMResult callbacks)
+ */
+function extractMessageContent(message: unknown): MessageContent | undefined {
+  if (!message || typeof message !== 'object') {
+    return undefined;
+  }
+
+  const msg = message as Record<string, unknown>;
+
+  // Check for direct .content property (BaseMessage class instance)
+  if ('content' in msg && msg.content !== undefined) {
+    return msg.content as MessageContent;
+  }
+
+  // Check for serialized form: message.kwargs.content
+  if (
+    'kwargs' in msg &&
+    msg.kwargs &&
+    typeof msg.kwargs === 'object' &&
+    'content' in (msg.kwargs as Record<string, unknown>)
+  ) {
+    return (msg.kwargs as Record<string, unknown>).content as MessageContent;
+  }
+
+  return undefined;
+}
+
+/**
+ * Type guard to check if a Generation has a message property
+ */
+function hasMessage(gen: Generation): gen is Generation & { message: unknown } {
+  return 'message' in gen && gen.message !== undefined;
+}
+
+/**
+ * Convert LangChain Generation[] to MessageContent for use with formatFinalResponse.
+ * Handles both simple Generation (with text) and ChatGeneration (with message).
+ *
+ * This is useful when processing LLMResult from callbacks like handleLLMEnd,
+ * where you have generations but want to use the unified formatFinalResponse.
+ *
+ * @param generations - Array of Generation objects (typically from LLMResult.generations.flat())
+ * @returns MessageContent that can be passed to formatFinalResponse
+ */
+export function generationsToMessageContent(
+  generations: Generation[]
+): MessageContent {
+  if (generations.length === 0) {
+    return '';
+  }
+
+  // If there's only one generation, try to extract content directly
+  if (generations.length === 1) {
+    const gen = generations[0];
+
+    // Try to extract message content (handles both class and serialized form)
+    if (hasMessage(gen)) {
+      const content = extractMessageContent(gen.message);
+      if (content !== undefined) {
+        return content;
+      }
+    }
+
+    // Otherwise use the text property
+    return gen.text;
+  }
+
+  // Multiple generations - collect all content
+  const contentParts: Array<{ type: 'text'; text: string }> = [];
+
+  for (const gen of generations) {
+    if (hasMessage(gen)) {
+      const msgContent = extractMessageContent(gen.message);
+
+      if (typeof msgContent === 'string') {
+        if (msgContent.trim()) {
+          contentParts.push({ type: 'text', text: msgContent });
+        }
+      } else if (Array.isArray(msgContent)) {
+        // Message content is already an array of content blocks
+        for (const block of msgContent) {
+          if (
+            typeof block === 'object' &&
+            block !== null &&
+            'type' in block &&
+            block.type === 'text' &&
+            'text' in block &&
+            typeof block.text === 'string' &&
+            block.text.trim()
+          ) {
+            contentParts.push({ type: 'text', text: block.text });
+          }
+        }
+      }
+    } else if (gen.text && gen.text.trim()) {
+      // Simple Generation - use text property
+      contentParts.push({ type: 'text', text: gen.text });
+    }
+  }
+
+  // If we only have one part, return just the string
+  if (contentParts.length === 1) {
+    return contentParts[0].text;
+  }
+
+  // Return as array of content blocks
+  return contentParts;
+}
+
 /**
  * Extract and stream thinking tokens from different model providers
  */

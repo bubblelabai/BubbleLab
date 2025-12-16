@@ -240,6 +240,19 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
       'API key for Fal AI media generation services (text-to-image, image-to-image)',
     placeholder: 'your-fal-ai-api-key',
     namePlaceholder: 'My Fal AI Key',
+  [CredentialType.INSFORGE_BASE_URL]: {
+    label: 'InsForge Base URL',
+    description:
+      'Base URL for your InsForge backend (e.g., https://your-app.region.insforge.app)',
+    placeholder: 'https://your-app.region.insforge.app',
+    namePlaceholder: 'My InsForge Backend URL',
+    credentialConfigurations: {},
+  },
+  [CredentialType.INSFORGE_API_KEY]: {
+    label: 'InsForge API Key',
+    description: 'API key for your InsForge backend',
+    placeholder: 'ik_...',
+    namePlaceholder: 'My InsForge API Key',
     credentialConfigurations: {},
   },
 } as const satisfies Record<CredentialType, CredentialConfig>;
@@ -291,6 +304,8 @@ const getServiceNameForCredentialType = (
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.FAL_AI_API_KEY]: 'Fal AI',
+    [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
+    [CredentialType.INSFORGE_API_KEY]: 'InsForge',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

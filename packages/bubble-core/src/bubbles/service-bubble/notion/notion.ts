@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
-import { DataSourcePropertySchema } from './property-schemas.js';
 
 // Notion API base URL
 const NOTION_API_BASE = 'https://api.notion.com/v1';
@@ -216,36 +215,62 @@ const BlockObjectSchema = z
   .describe('Block object with type-specific properties');
 
 // Data source object response schema
-const DataSourceObjectSchema = z.object({
-  object: z.literal('data_source').describe('Object type'),
-  id: z.string().describe('Data source ID'),
-  created_time: z.string().describe('ISO 8601 datetime'),
-  last_edited_time: z.string().describe('ISO 8601 datetime'),
-  properties: z
-    .record(z.string(), DataSourcePropertySchema)
-    .describe('Data source properties'),
-  parent: z
-    .object({
-      type: z.literal('database_id'),
-      database_id: z.string(),
-    })
-    .describe('Parent database'),
-  archived: z.boolean().describe('Whether the data source is archived'),
-  in_trash: z.boolean().optional().describe('Whether data source is in trash'),
-  is_inline: z.boolean().optional().describe('Whether displayed inline'),
-  icon: IconSchema.nullable().optional().describe('Data source icon'),
-  cover: FileObjectSchema.nullable().optional().describe('Data source cover'),
-  title: z.array(RichTextSchema).describe('Data source title'),
-  description: z
-    .array(RichTextSchema)
-    .optional()
-    .describe('Data source description'),
-});
+const DataSourceObjectSchema = z
+  .object({
+    object: z.literal('data_source').describe('Object type'),
+    id: z.string().describe('Data source ID'),
+    created_time: z.string().describe('ISO 8601 datetime'),
+    last_edited_time: z.string().describe('ISO 8601 datetime'),
+    created_by: UserSchema.describe('User who created the data source'),
+    last_edited_by: UserSchema.describe('User who last edited the data source'),
+    properties: z
+      .record(z.string(), z.unknown())
+      .describe('Data source properties'),
+    parent: z
+      .object({
+        type: z.literal('database_id'),
+        database_id: z.string(),
+      })
+      .passthrough()
+      .describe('Parent database'),
+    database_parent: z
+      .record(z.unknown())
+      .optional()
+      .describe('Database parent information'),
+    archived: z.boolean().describe('Whether the data source is archived'),
+    in_trash: z
+      .boolean()
+      .optional()
+      .describe('Whether data source is in trash'),
+    is_inline: z.boolean().optional().describe('Whether displayed inline'),
+    icon: IconSchema.nullable().optional().describe('Data source icon'),
+    cover: FileObjectSchema.nullable().optional().describe('Data source cover'),
+    title: z
+      .array(RichTextSchema)
+      .default([])
+      .describe('Data source title (can be empty array)'),
+    description: z
+      .array(RichTextSchema)
+      .optional()
+      .describe('Data source description'),
+    url: z.string().url().optional().describe('URL of the data source'),
+    public_url: z
+      .string()
+      .url()
+      .nullable()
+      .optional()
+      .describe('Public shareable URL of the data source'),
+  })
+  .passthrough();
 
 // Database object response schema
 const DatabaseObjectSchema = z.object({
   object: z.literal('database').describe('Object type'),
-  id: z.string().describe('Database ID'),
+  id: z
+    .string()
+    .describe(
+      'Database ID, To find a database ID, navigate to the database URL in your Notion workspace. The ID is the string of characters in the URL that is between the slash following the workspace name (if applicable) and the question mark. The ID is a 32 characters alphanumeric string.'
+    ),
   created_time: z.string().describe('ISO 8601 datetime'),
   last_edited_time: z.string().describe('ISO 8601 datetime'),
   title: z.array(RichTextSchema).describe('Database title'),
@@ -291,16 +316,6 @@ const CommentObjectSchema = z.object({
   created_by: UserSchema.describe('User who created the comment'),
   rich_text: z.array(RichTextSchema).describe('Comment content'),
 });
-
-// List response schema (generic)
-const ListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
-  z.object({
-    object: z.literal('list').describe('Object type'),
-    results: z.array(itemSchema).describe('Array of results'),
-    next_cursor: z.string().nullable().describe('Cursor for pagination'),
-    has_more: z.boolean().describe('Whether more results exist'),
-    type: z.string().optional().describe('Type of objects in results'),
-  });
 
 // Define the parameters schema for different Notion operations
 const NotionParamsSchema = z.discriminatedUnion('operation', [
@@ -744,6 +759,62 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('Object mapping credential types to values'),
   }),
+
+  // Search operation
+  z.object({
+    operation: z
+      .literal('search')
+      .describe(
+        'Search all pages and data sources shared with the integration'
+      ),
+    query: z
+      .string()
+      .optional()
+      .describe(
+        'Text to compare against page and data source titles. If not provided, returns all pages and data sources shared with the integration'
+      ),
+    sort: z
+      .object({
+        direction: z
+          .enum(['ascending', 'descending'])
+          .describe('Sort direction'),
+        timestamp: z
+          .literal('last_edited_time')
+          .describe(
+            'Timestamp field to sort by (only "last_edited_time" is supported)'
+          ),
+      })
+      .optional()
+      .describe(
+        'Sort criteria. If not provided, most recently edited results are returned first'
+      ),
+    filter: z
+      .object({
+        value: z
+          .enum(['page', 'data_source'])
+          .describe('Filter results to only pages or only data sources'),
+        property: z
+          .literal('object')
+          .describe('Property to filter on (only "object" is supported)'),
+      })
+      .optional()
+      .describe('Filter to limit results to either pages or data sources'),
+    start_cursor: z
+      .string()
+      .optional()
+      .describe('Cursor for pagination (from previous response)'),
+    page_size: z
+      .number()
+      .min(1)
+      .max(100)
+      .optional()
+      .default(100)
+      .describe('Number of items per page (max 100)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe('Object mapping credential types to values'),
+  }),
 ]);
 
 // Define result schemas with proper response types and specific property names
@@ -788,11 +859,50 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Query data source operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    results: ListResponseSchema(
-      z.union([PageObjectSchema, DataSourceObjectSchema])
-    )
+    results: z
+      .array(
+        z
+          .object({
+            object: z
+              .enum(['page', 'data_source'])
+              .describe('Object type (page or data_source)'),
+            id: z.string().describe('Object ID'),
+            created_time: z.string().describe('ISO 8601 datetime'),
+            last_edited_time: z.string().describe('ISO 8601 datetime'),
+            url: z.string().url().optional().describe('URL of the object'),
+            properties: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe('Object properties'),
+            title: z
+              .array(
+                z.object({ plain_text: z.string().optional() }).passthrough()
+              )
+              .optional()
+              .describe('Title (for data sources)'),
+            parent: z
+              .record(z.unknown())
+              .optional()
+              .describe('Parent of the object'),
+            archived: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is archived'),
+            in_trash: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is in trash'),
+          })
+          .passthrough()
+      )
       .optional()
-      .describe('List of pages or data sources from query'),
+      .describe('Array of pages or data sources from query'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -840,9 +950,16 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Append block children operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    blocks: ListResponseSchema(BlockObjectSchema)
+    blocks: z
+      .array(BlockObjectSchema)
       .optional()
-      .describe('List of appended block objects'),
+      .describe('Array of appended block objects'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -850,9 +967,16 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
       .describe('Retrieve block children operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    blocks: ListResponseSchema(BlockObjectSchema)
+    blocks: z
+      .array(BlockObjectSchema)
       .optional()
-      .describe('List of block children'),
+      .describe('Array of block children'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
   z.object({
     operation: z
@@ -892,9 +1016,65 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
     operation: z.literal('list_users').describe('List users operation result'),
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
-    users: ListResponseSchema(UserSchema)
+    users: z
+      .array(UserSchema)
       .optional()
-      .describe('List of users in the workspace'),
+      .describe('Array of users in the workspace'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
+  }),
+  z.object({
+    operation: z.literal('search').describe('Search operation result'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    error: z.string().describe('Error message if operation failed'),
+    results: z
+      .array(
+        z
+          .object({
+            object: z
+              .enum(['page', 'data_source'])
+              .describe('Object type (page or data_source)'),
+            id: z.string().describe('Object ID'),
+            created_time: z.string().describe('ISO 8601 datetime'),
+            last_edited_time: z.string().describe('ISO 8601 datetime'),
+            url: z.string().url().optional().describe('URL of the object'),
+            properties: z
+              .record(z.string(), z.unknown())
+              .optional()
+              .describe('Object properties'),
+            title: z
+              .array(
+                z.object({ plain_text: z.string().optional() }).passthrough()
+              )
+              .optional()
+              .describe('Title (for data sources)'),
+            parent: z
+              .record(z.unknown())
+              .optional()
+              .describe('Parent of the object'),
+            archived: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is archived'),
+            in_trash: z
+              .boolean()
+              .optional()
+              .describe('Whether the object is in trash'),
+          })
+          .passthrough()
+      )
+      .optional()
+      .describe('Array of pages and/or data sources matching the search query'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Cursor for pagination'),
+    has_more: z.boolean().optional().describe('Whether more results exist'),
   }),
 ]);
 
@@ -923,6 +1103,7 @@ export class NotionBubble<
     - Create, retrieve, and update pages
     - Manage databases and data sources
     - Query data sources with filters and sorting
+    - Search pages and data sources by title
     - Append and retrieve block children
     - Create and retrieve comments
     - List workspace users
@@ -931,6 +1112,7 @@ export class NotionBubble<
     - Content management and automation
     - Database operations and queries
     - Page creation and updates
+    - Search and discovery of pages and data sources
     - Block manipulation
     - Comment management
     - Workspace user management
@@ -1089,6 +1271,10 @@ export class NotionBubble<
           case 'list_users':
             return await this.listUsers(
               this.params as Extract<NotionParams, { operation: 'list_users' }>
+            );
+          case 'search':
+            return await this.search(
+              this.params as Extract<NotionParams, { operation: 'search' }>
             );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
@@ -1255,14 +1441,26 @@ export class NotionBubble<
       url += `?${params.toString()}`;
     }
 
-    type QueryResult = z.output<
-      ReturnType<
-        typeof ListResponseSchema<
-          typeof PageObjectSchema | typeof DataSourceObjectSchema
-        >
-      >
-    >;
-    const results = await this.makeNotionApiCall<QueryResult>(
+    interface QueryResultItem {
+      object: 'page' | 'data_source';
+      id: string;
+      created_time: string;
+      last_edited_time: string;
+      url?: string;
+      properties?: Record<string, unknown>;
+      title?: Array<{ plain_text?: string }>;
+      parent?: Record<string, unknown>;
+      archived?: boolean;
+      in_trash?: boolean;
+      [key: string]: unknown;
+    }
+    interface QueryResultList {
+      object: 'list';
+      results: QueryResultItem[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<QueryResultList>(
       url,
       body,
       'POST'
@@ -1272,7 +1470,9 @@ export class NotionBubble<
       operation: 'query_data_source',
       success: true,
       error: '',
-      results,
+      results: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1432,10 +1632,13 @@ export class NotionBubble<
 
     if (after) body.after = after;
 
-    type BlockList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof BlockObjectSchema>>
-    >;
-    const blocks = await this.makeNotionApiCall<BlockList>(
+    interface BlockListResponse {
+      object: 'list';
+      results: z.output<typeof BlockObjectSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<BlockListResponse>(
       `blocks/${block_id}/children`,
       body,
       'PATCH'
@@ -1445,7 +1648,9 @@ export class NotionBubble<
       operation: 'append_block_children',
       success: true,
       error: '',
-      blocks,
+      blocks: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1465,16 +1670,25 @@ export class NotionBubble<
       params_obj.append('page_size', page_size.toString());
     if (params_obj.toString()) url += `?${params_obj.toString()}`;
 
-    type BlockList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof BlockObjectSchema>>
-    >;
-    const blocks = await this.makeNotionApiCall<BlockList>(url, {}, 'GET');
+    interface BlockListResponse {
+      object: 'list';
+      results: z.output<typeof BlockObjectSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<BlockListResponse>(
+      url,
+      {},
+      'GET'
+    );
 
     return {
       operation: 'retrieve_block_children',
       success: true,
       error: '',
-      blocks,
+      blocks: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 
@@ -1593,16 +1807,78 @@ export class NotionBubble<
       params_obj.append('page_size', page_size.toString());
     if (params_obj.toString()) url += `?${params_obj.toString()}`;
 
-    type UserList = z.output<
-      ReturnType<typeof ListResponseSchema<typeof UserSchema>>
-    >;
-    const users = await this.makeNotionApiCall<UserList>(url, {}, 'GET');
+    interface UserListResponse {
+      object: 'list';
+      results: z.output<typeof UserSchema>[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<UserListResponse>(
+      url,
+      {},
+      'GET'
+    );
 
     return {
       operation: 'list_users',
       success: true,
       error: '',
-      users,
+      users: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
+    };
+  }
+
+  private async search(
+    params: Extract<NotionParams, { operation: 'search' }>
+  ): Promise<Extract<NotionResult, { operation: 'search' }>> {
+    const parsed = NotionParamsSchema.parse(params);
+    const { query, sort, filter, start_cursor, page_size } = parsed as Extract<
+      NotionParamsParsed,
+      { operation: 'search' }
+    >;
+
+    const body: Record<string, unknown> = {};
+
+    if (query) body.query = query;
+    if (sort) body.sort = sort;
+    if (filter) body.filter = filter;
+    if (start_cursor) body.start_cursor = start_cursor;
+    if (page_size !== undefined) body.page_size = page_size;
+
+    // Simplified search result type - items have common fields with passthrough for additional data
+    interface SearchResultItem {
+      object: 'page' | 'data_source';
+      id: string;
+      created_time: string;
+      last_edited_time: string;
+      url?: string;
+      properties?: Record<string, unknown>;
+      title?: Array<{ plain_text?: string }>;
+      parent?: Record<string, unknown>;
+      archived?: boolean;
+      in_trash?: boolean;
+      [key: string]: unknown;
+    }
+    interface SearchResultList {
+      object: 'list';
+      results: SearchResultItem[];
+      next_cursor: string | null;
+      has_more: boolean;
+    }
+    const response = await this.makeNotionApiCall<SearchResultList>(
+      'search',
+      body,
+      'POST'
+    );
+
+    return {
+      operation: 'search',
+      success: true,
+      error: '',
+      results: response.results,
+      next_cursor: response.next_cursor,
+      has_more: response.has_more,
     };
   }
 

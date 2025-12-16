@@ -27,6 +27,7 @@ export {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
+  type ConversationMessage,
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
 export { SlackBubble } from './bubbles/service-bubble/slack.js';
@@ -66,6 +67,10 @@ export type { AirtableParamsInput } from './bubbles/service-bubble/airtable.js';
 export { NotionBubble } from './bubbles/service-bubble/notion/notion.js';
 export { FalAiBubble } from './bubbles/service-bubble/fal-ai.js';
 export type { FalAiParamsInput } from './bubbles/service-bubble/fal-ai.js';
+export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
+export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
+export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';
+export type { InsForgeDbParamsInput } from './bubbles/service-bubble/insforge-db.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
@@ -126,6 +131,6 @@ export { WebhookStreamLogger } from './logging/WebhookStreamLogger.js';
 export { MockDataGenerator } from '@bubblelab/shared-schemas';
 
 // Re-export langchain message types for use in API and other packages
-export { HumanMessage, AIMessage } from '@langchain/core/messages';
+export { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 export type { BaseMessage } from '@langchain/core/messages';
 export { parseJsonWithFallbacks } from './utils/json-parsing.js';

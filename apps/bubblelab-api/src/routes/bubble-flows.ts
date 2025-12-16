@@ -17,6 +17,7 @@ import {
   generateDisplayedBubbleParameters,
   mergeCredentialsIntoBubbleParameters,
 } from '../services/bubble-flow-parser.js';
+import { injectCredentialsIntoBubbleParameters } from '../utils/bubble-parameters.js';
 import {
   CredentialType,
   type ParsedBubbleWithInfo,
@@ -26,6 +27,7 @@ import { getUserId, getAppType } from '../middleware/auth.js';
 import { eq, and, count } from 'drizzle-orm';
 import { isValidBubbleTriggerEvent } from '@bubblelab/shared-schemas';
 import { runBoba } from '../services/ai/boba.js';
+import { runCoffee } from '../services/ai/coffee.js';
 import {
   createBubbleFlowRoute,
   createEmptyBubbleFlowRoute,
@@ -41,6 +43,7 @@ import {
   listBubbleFlowExecutionsRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
+  runContextFlowRoute,
 } from '../schemas/bubble-flows.js';
 
 import { createBubbleFlowResponseSchema } from '../schemas/index.js';
@@ -50,6 +53,7 @@ import {
 } from '../utils/error-handler.js';
 import { getCurrentWebhookUsage } from '../services/subscription-validation.js';
 import { executeBubbleFlowWithTracking } from '../services/bubble-flow-execution.js';
+import { runBubbleFlow } from '../services/execution.js';
 import {
   BubbleScript,
   validateAndExtract,
@@ -1125,10 +1129,12 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
 });
 
 // Generate BubbleFlow code with streaming from natural language
+// Supports two phases: 'planning' (Coffee agent) and 'building' (Boba agent)
 app.openapi(generateBubbleFlowCodeRoute, async (c) => {
   const userId = getUserId(c);
   try {
-    const { prompt, flowId } = c.req.valid('json');
+    const { prompt, flowId, messages, planContext } = c.req.valid('json');
+    const { phase } = c.req.valid('query');
 
     // If flowId is provided, verify the flow exists and user owns it
     if (flowId) {
@@ -1178,20 +1184,108 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
         }
       }, HEARTBEAT_INTERVAL);
 
+      // Credentials for both Coffee and Boba
+      const credentials = {
+        [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_API_KEY || '',
+        [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY || '',
+        [CredentialType.ANTHROPIC_CRED]: process.env.ANTHROPIC_API_KEY || '',
+        [CredentialType.FIRECRAWL_API_KEY]:
+          process.env.FIRE_CRAWL_API_KEY || '',
+        [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY || '',
+      };
+
+      // Streaming callback for SSE events
+      const streamingCallback = async (event: StreamingEvent) => {
+        lastEventTime = Date.now();
+        await stream.writeSSE({
+          data: JSON.stringify(event),
+          event: event.type,
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        });
+      };
+
       try {
-        // Use runBoba to generate the code with streaming
+        // PLANNING PHASE: Run Coffee agent for clarification and plan generation
+        if (phase === 'planning') {
+          console.log('[API] Running Coffee agent (planning phase)');
+
+          const coffeeResult = await runCoffee(
+            {
+              prompt,
+              flowId,
+              messages,
+            },
+            credentials,
+            streamingCallback
+          );
+
+          // Save conversation messages to flow metadata for persistence
+          if (flowId && messages && messages.length > 0) {
+            try {
+              // Fetch current metadata to merge with existing data
+              const currentFlow = await db.query.bubbleFlows.findFirst({
+                where: and(
+                  eq(bubbleFlows.id, flowId),
+                  eq(bubbleFlows.userId, userId)
+                ),
+                columns: { metadata: true },
+              });
+
+              const existingMetadata =
+                (currentFlow?.metadata as Record<string, unknown>) || {};
+
+              await db
+                .update(bubbleFlows)
+                .set({
+                  metadata: {
+                    ...existingMetadata,
+                    conversationMessages: messages,
+                    lastUpdatedPhase: 'planning',
+                  },
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(bubbleFlows.id, flowId),
+                    eq(bubbleFlows.userId, userId)
+                  )
+                );
+
+              console.log(
+                `[API] Saved ${messages.length} conversation messages to flow ${flowId} metadata (planning phase)`
+              );
+            } catch (saveError) {
+              console.error(
+                `[API] Error saving conversation messages to flow ${flowId}:`,
+                saveError
+              );
+              // Non-blocking: continue even if save fails
+            }
+          }
+
+          // Clear heartbeat and send stream completion
+          clearInterval(heartbeatInterval);
+
+          await stream.writeSSE({
+            data: JSON.stringify({
+              type: 'stream_complete',
+              timestamp: new Date().toISOString(),
+              coffeeResult,
+            }),
+            event: 'stream_complete',
+          });
+
+          return;
+        }
+
+        // BUILDING PHASE: Run Boba agent for code generation
+        // Pass messages and planContext to runBoba - it will build the full context internally
         const generationResult = await runBoba(
           {
             prompt,
-            credentials: {
-              [CredentialType.OPENROUTER_CRED]:
-                process.env.OPENROUTER_API_KEY || '',
-              [CredentialType.OPENAI_CRED]: process.env.OPENAI_API_KEY || '',
-              [CredentialType.ANTHROPIC_CRED]:
-                process.env.ANTHROPIC_API_KEY || '',
-              [CredentialType.GOOGLE_GEMINI_CRED]:
-                process.env.GOOGLE_API_KEY || '',
-            },
+            credentials,
+            messages,
+            planContext,
           },
           async (event: StreamingEvent) => {
             // Update last event time to track activity
@@ -1257,6 +1351,29 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                 generationResult.generatedCode
               );
 
+              // Fetch current metadata to merge with existing data (including conversation messages)
+              const currentFlow = await db.query.bubbleFlows.findFirst({
+                where: and(
+                  eq(bubbleFlows.id, flowId),
+                  eq(bubbleFlows.userId, userId)
+                ),
+                columns: { metadata: true },
+              });
+
+              const existingMetadata =
+                (currentFlow?.metadata as Record<string, unknown>) || {};
+
+              // Build updated metadata with conversation messages
+              const updatedMetadata = {
+                ...existingMetadata,
+                ...(messages && messages.length > 0
+                  ? {
+                      conversationMessages: messages,
+                      lastUpdatedPhase: 'building',
+                    }
+                  : {}),
+              };
+
               // Update the flow with generated code
               await db
                 .update(bubbleFlows)
@@ -1270,6 +1387,7 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                   eventType: validationResult.trigger?.type || 'webhook/http',
                   cron: validationResult.trigger?.cronSchedule || null,
                   generationError: null, // Clear any previous errors
+                  metadata: updatedMetadata,
                   updatedAt: new Date(),
                 })
                 .where(
@@ -1279,8 +1397,8 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                   )
                 );
 
-              console.log(
-                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}`
+              console.debug(
+                `[API] Successfully updated flow ${flowId} with generated code and name: ${flowName}${messages?.length ? ` (${messages.length} conversation messages saved)` : ''}`
               );
             } else {
               // Validation failed - update with error
@@ -1434,6 +1552,97 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
     return c.json(
       {
         error: error instanceof Error ? error.message : 'Unknown route error',
+      },
+      500
+    );
+  }
+});
+
+// POST /generate/run-context-flow - Execute a context-gathering flow for Coffee agent
+// This is a simplified execution path for context-gathering flows used during planning
+app.openapi(runContextFlowRoute, async (c) => {
+  const userId = getUserId(c);
+  try {
+    const { flowCode, credentials } = c.req.valid('json');
+
+    console.log('[API] Running context-gathering flow for user:', userId);
+
+    // Validate the flow code
+    const bubbleFactory = await getBubbleFactory();
+    const validationResult = await validateAndExtract(
+      flowCode,
+      bubbleFactory,
+      false
+    );
+
+    if (!validationResult.valid) {
+      return c.json(
+        {
+          error: `Flow validation failed: ${validationResult.errors?.join(', ') || 'Unknown error'}`,
+        },
+        400
+      );
+    }
+
+    // Get parsed bubbles from validation result
+    // Convert number keys to strings (validateAndExtract returns Record<number, ...>)
+    const parsedBubbles: Record<string, ParsedBubbleWithInfo> = {};
+    for (const [varId, bubble] of Object.entries(
+      validationResult.bubbleParameters || {}
+    )) {
+      parsedBubbles[String(varId)] = bubble;
+    }
+
+    // Build bubbleParameters with credentials injected
+    // For each bubble variable, we need to add the user-provided credential IDs
+    // to the credentials parameter so runBubbleFlow can fetch and decrypt them
+    const bubbleParametersWithCreds = injectCredentialsIntoBubbleParameters(
+      parsedBubbles,
+      validationResult.requiredCredentials || {},
+      credentials
+    );
+
+    console.log(
+      '[API] Bubble parameters with credentials:',
+      JSON.stringify(bubbleParametersWithCreds, null, 2)
+    );
+
+    // Execute the flow using the standard execution path
+    const executionResult = await runBubbleFlow(
+      flowCode,
+      bubbleParametersWithCreds,
+      {
+        type: 'webhook/http',
+        timestamp: new Date().toISOString(),
+        path: '/context-gathering',
+        method: 'POST',
+        executionId: `ctx-${Date.now()}`,
+        body: {},
+      },
+      {
+        userId,
+        pricingTable: PRICING_TABLE,
+      }
+    );
+
+    console.log(
+      '[API] Context flow executed successfully with result:',
+      executionResult.data
+    );
+
+    return c.json(
+      {
+        success: executionResult.success,
+        result: executionResult.data,
+        error: executionResult.error,
+      },
+      200
+    );
+  } catch (error) {
+    console.error('[API] Context flow execution error:', error);
+    return c.json(
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
       },
       500
     );

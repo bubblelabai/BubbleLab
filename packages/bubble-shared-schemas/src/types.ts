@@ -44,6 +44,9 @@ export enum CredentialType {
 
   // Media Generation Credentials
   FAL_AI_API_KEY = 'FAL_AI_API_KEY',
+  // InsForge Credentials
+  INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
+  INSFORGE_API_KEY = 'INSFORGE_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -93,3 +96,5 @@ export type BubbleName =
   | 'airtable'
   | 'notion'
   | 'fal-ai';
+  | 'firecrawl'
+  | 'insforge-db';

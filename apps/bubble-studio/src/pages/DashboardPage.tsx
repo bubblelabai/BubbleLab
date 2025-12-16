@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '../hooks/useUser';
 import { useCreateBubbleFlow } from '../hooks/useCreateBubbleFlow';
 import { useGenerationStore } from '../stores/generationStore';
 import { useOutputStore } from '../stores/outputStore';
@@ -12,6 +13,7 @@ import {
   resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
+import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
   PRESET_PROMPTS,
@@ -57,12 +59,16 @@ export function DashboardPage({
   autoShowSignIn = false,
 }: DashboardPageProps) {
   const { isSignedIn } = useAuth();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const navigate = useNavigate();
   const createBubbleFlowMutation = useCreateBubbleFlow();
   const { startStreaming, stopStreaming } = useGenerationStore();
   const { setOutput, clearOutput } = useOutputStore();
   const [showSignInModal, setShowSignInModal] = useState(autoShowSignIn);
+  const [showOnboardingQuestionnaire, setShowOnboardingQuestionnaire] =
+    useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
@@ -323,6 +329,40 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     }
   }, [pendingJsonImport, generationPrompt, onGenerateCode]);
 
+  // Check if user needs to complete onboarding questionnaire
+  useEffect(() => {
+    if (
+      isSignedIn &&
+      isUserLoaded &&
+      user &&
+      !hasCheckedOnboarding &&
+      !showSignInModal
+    ) {
+      setHasCheckedOnboarding(true);
+
+      // Check if onboarding is already completed via Clerk metadata OR localStorage
+      // localStorage serves as a fallback since Clerk's cached user object may be stale
+      const publicMetadata = (
+        user as { publicMetadata?: { onboardingCompleted?: boolean } }
+      ).publicMetadata;
+      const hasCompletedOnboarding =
+        publicMetadata?.onboardingCompleted === true ||
+        localStorage.getItem('onboardingCompleted') === 'true';
+
+      if (!hasCompletedOnboarding) {
+        // Show onboarding questionnaire for new users
+        setShowOnboardingQuestionnaire(true);
+      }
+    }
+  }, [isSignedIn, isUserLoaded, user, hasCheckedOnboarding, showSignInModal]);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = () => {
+    setShowOnboardingQuestionnaire(false);
+    // Optionally reload user data to get updated metadata
+    // The user object will be updated on next render cycle
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#0a0a0a] text-gray-100 font-sans selection:bg-purple-500/30 relative overflow-hidden">
       {/* Background Effects */}
@@ -542,11 +582,11 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Current Supported Integrations Section */}
           <div className="mt-10 w-full max-w-3xl mx-auto space-y-4">
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-col md:flex-row">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 Third Party Integrations
               </p>
-              <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex flex-wrap gap-3 items-center justify-center md:justify-start">
                 {INTEGRATIONS.map((integration) => (
                   <div key={integration.name} className="relative group">
                     <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200">
@@ -566,8 +606,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-col md:flex-row">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 Scraping
               </p>
               <div className="flex flex-wrap gap-3 items-center">
@@ -590,8 +630,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0">
+            <div className="flex items-center gap-2 md:flex-row flex-col">
+              <p className="text-xs font-semibold tracking-wide text-gray-500 whitespace-nowrap w-48 flex-shrink-0 text-center md:text-left">
                 AI Models and Agents
               </p>
               <div className="flex flex-wrap gap-3 items-center">
@@ -621,7 +661,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             className="mt-16 p-6 bg-[#0d1117] border border-[#30363d] rounded-xl animate-fade-in-up delay-300"
           >
             {/* Templates Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <h2 className="text-xl font-bold text-white">Templates</h2>
               <a
                 href="https://www.bubblelab.ai/community"
@@ -679,6 +719,14 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   {category}
                 </button>
               ))}
+              {/* Submit Template Button */}
+              <button
+                type="button"
+                onClick={() => setShowSubmitTemplateModal(true)}
+                className="px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 bg-pink-500/15 text-pink-400 border border-pink-500/30 hover:bg-pink-500/25 hover:text-pink-300 hover:border-pink-400/50 cursor-pointer"
+              >
+                Submit Template
+              </button>
             </div>
 
             {/* Templates Grid */}
@@ -767,27 +815,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 );
               })}
             </div>
-
-            {/* Submit Template CTA */}
-            <div className="mt-8 pt-6 border-t border-[#30363d]">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-center sm:text-left">
-                  <h3 className="text-base font-semibold text-white">
-                    Have a template to share?
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Submit your automation and help others in the community
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSubmitTemplateModal(true)}
-                  className="px-6 py-3 rounded-xl text-sm font-medium bg-white text-black border border-white/80 hover:bg-gray-100 hover:scale-105 hover:shadow-lg hover:shadow-white/20 transition-all duration-200"
-                >
-                  Submit your Template
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -796,6 +823,12 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       <SignInModal
         isVisible={showSignInModal}
         onClose={() => setShowSignInModal(false)}
+      />
+
+      {/* Onboarding Questionnaire - shows for new users after sign up */}
+      <OnboardingQuestionnaire
+        isVisible={showOnboardingQuestionnaire}
+        onComplete={handleOnboardingComplete}
       />
 
       {/* Submit Template Modal */}

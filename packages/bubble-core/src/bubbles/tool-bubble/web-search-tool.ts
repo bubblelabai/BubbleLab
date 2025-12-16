@@ -1,25 +1,9 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import FirecrawlApp, { type SearchRequest } from '@mendable/firecrawl-js';
+import { FirecrawlBubble } from '../service-bubble/firecrawl.js';
+import { type SearchRequest } from '@mendable/firecrawl-js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
-
-// Type definitions for Firecrawl search response
-interface FirecrawlSearchResult {
-  title?: string;
-  name?: string;
-  url?: string;
-  link?: string;
-  content?: string;
-  description?: string;
-  text?: string;
-  markdown?: string;
-}
-
-interface FirecrawlSearchResponse {
-  data?: FirecrawlSearchResult[];
-  web?: FirecrawlSearchResult[];
-}
 
 // Firecrawl charges 2 credits per 10 search results
 const CREDITS_PER_10_RESULTS = 2;
@@ -119,22 +103,11 @@ export class WebSearchTool extends ToolBubble<
   async performAction(context?: BubbleContext): Promise<WebSearchToolResult> {
     void context; // Context available but not currently used
 
-    const { query, limit, location } = this.params;
+    const { query, limit, location, credentials } = this.params;
 
     try {
       // Limit should be multiple of 10
       const limitedResults = Math.ceil(limit / 10) * 10;
-
-      // Get Firecrawl API key from credentials
-      const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          'FIRECRAWL_API_KEY is required but not provided in credentials'
-        );
-      }
-
-      // Initialize Firecrawl client
-      const firecrawl = new FirecrawlApp({ apiKey });
 
       // Build search parameters according to Firecrawl API with defaults
       const searchOptions: Omit<SearchRequest, 'query'> = {
@@ -154,30 +127,49 @@ export class WebSearchTool extends ToolBubble<
         ...searchOptions,
       });
 
+      // Initialize Firecrawl bubble
+      const firecrawlParams = {
+        operation: 'search' as const,
+        credentials,
+        query,
+        ...searchOptions,
+      };
+      const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
+        firecrawlParams,
+        this.context,
+        'web_search_tool_firecrawl'
+      );
+
       // Execute search using Firecrawl
-      const searchResult = await firecrawl.search(query, searchOptions);
+      const response = await firecrawl.action();
 
       // Handle the response based on Firecrawl's actual API structure
       // The search API might return different structures, so handle both cases
-      let resultsArray: FirecrawlSearchResult[] = [];
-
-      if (Array.isArray(searchResult)) {
-        resultsArray = searchResult as FirecrawlSearchResult[];
+      let resultsArray:
+        | Exclude<typeof response.data.web, undefined>[number][]
+        | Exclude<typeof response.data.other, undefined>[number][] = [];
+      if (!response.success) {
+        return {
+          results: [],
+          query,
+          creditsUsed: 0,
+          totalResults: 0,
+          searchEngine: 'Firecrawl',
+          success: false,
+          error: response.error || 'Search failed',
+        };
+      } else if (response.data.web) {
+        resultsArray = response.data.web;
+      } else if (response.data.other) {
+        resultsArray = response.data.other;
       } else {
-        const response = searchResult as FirecrawlSearchResponse;
-        if (response?.data && Array.isArray(response.data)) {
-          resultsArray = response.data;
-        } else if (response?.web && Array.isArray(response.web)) {
-          resultsArray = response.web;
-        } else {
-          throw new Error(
-            'No search results returned or unexpected response format'
-          );
-        }
+        throw new Error(
+          'No search results returned or unexpected response format'
+        );
       }
 
       // Transform Firecrawl results to our format
-      const results = resultsArray.map((item: FirecrawlSearchResult) => ({
+      const results = resultsArray.map((item) => ({
         title: item.title || item.name || 'No title',
         url: item.url || item.link || '',
         content:
@@ -189,26 +181,9 @@ export class WebSearchTool extends ToolBubble<
       }));
 
       // Calculate credits: Firecrawl charges 2 credits per 10 results (rounded up)
+      // Token usage tracking is now centralized in FirecrawlBubble
       const creditsUsed =
         Math.ceil(results.length / 10) * CREDITS_PER_10_RESULTS;
-
-      // Log service usage for Firecrawl web search
-      if (creditsUsed > 0 && this.context?.logger) {
-        this.context.logger.logTokenUsage(
-          {
-            usage: creditsUsed,
-            service: CredentialType.FIRECRAWL_API_KEY,
-            unit: 'per_10_results',
-            subService: 'web-search',
-          },
-          `Firecrawl web search: ${creditsUsed} credits used`,
-          {
-            bubbleName: 'web-search-tool',
-            variableId: this.context?.variableId,
-            operationType: 'bubble_execution',
-          }
-        );
-      }
 
       return {
         results,

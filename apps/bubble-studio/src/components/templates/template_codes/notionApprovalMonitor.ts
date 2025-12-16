@@ -318,8 +318,8 @@ export class NotionApprovalMonitor extends BubbleFlow<'schedule/cron'> {
       throw new Error(\`Failed to query Notion data source: \${result.error}\`);
     }
 
-    // The result.data.results contains the list of pages
-    return (result.data).results?.results || [];
+    // The result.data.results contains the list of pages (flattened schema)
+    return (result.data).results || [];
   }
 
   /**

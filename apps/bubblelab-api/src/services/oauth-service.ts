@@ -141,6 +141,13 @@ export class OAuthService {
     const defaultScopes = this.getDefaultScopes(provider, credentialType);
     const requestedScopes = scopes || defaultScopes;
 
+    console.log(
+      '[OAuthService] Requested redirect URI, default scopes, and requested scopes:',
+      redirectUri,
+      defaultScopes,
+      requestedScopes
+    );
+
     // Store state for CSRF protection with requested scopes (expires in 10 minutes)
     this.stateStore.set(state, {
       userId,

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import FirecrawlApp from '@mendable/firecrawl-js';
+import { FirecrawlBubble } from '../service-bubble/firecrawl.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 
@@ -148,95 +148,57 @@ export class WebCrawlTool extends ToolBubble<
     const startTime = Date.now();
 
     try {
-      // Get Firecrawl API key from credentials
-      const apiKey = this.params.credentials?.FIRECRAWL_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          'FIRECRAWL_API_KEY is required but not provided in credentials'
-        );
-      }
-
-      // Initialize Firecrawl client
-      const firecrawl = new FirecrawlApp({ apiKey });
-
       console.log(`[WebCrawlTool] Starting crawl for URL:`, url);
 
-      const crawlResult = await this.executeCrawl(firecrawl, startTime);
+      const crawlResult = await this.executeCrawl(startTime);
+      if (!crawlResult.success) {
+        return crawlResult;
+      }
 
-      // Process pages in batches of 5 for parallel summarization
-      const batchSize = 5;
-      const pageCount = crawlResult.pages.length;
+      // Summarize individual pages that are too long (>50KB)
+      const summarizationPromises = crawlResult.pages.map(
+        async (page, index) => {
+          if (!page.content || page.content.length <= 50000) {
+            return; // Skip short pages
+          }
 
-      for (
-        let batchStart = 0;
-        batchStart < pageCount;
-        batchStart += batchSize
-      ) {
-        const batchEnd = Math.min(batchStart + batchSize, pageCount);
-        const batch = crawlResult.pages.slice(batchStart, batchEnd);
-
-        // Create promises for parallel processing
-        const summarizePromises = batch.map(async (page, batchIndex) => {
-          const summarizeAgent = new AIAgentBubble(
-            {
-              message: `Clean up the crawed page and condense the content to remove any non-essential information, include all links, contact information, companies, don't omit any information. Ex: if working on documentation, remove the navigation, footer, and any other non-essential information but preserve all examples and code blocks and api usage. Content: ${page.content}`,
-              model: {
-                model: 'google/gemini-2.5-flash-lite',
-              },
-              name: 'Crawl Page Summarizer Agent',
-              credentials: this.params.credentials,
-            },
-            this.context
+          console.debug(
+            `[WebCrawlTool] Summarizing large page (${page.content.length} chars): ${page.url}`
           );
 
           try {
-            const result = await summarizeAgent.action();
-            console.log(
-              '[WebCrawlTool] Summarized page content for:',
-              page.url,
-              result.data?.response
+            const summarizeAgent = new AIAgentBubble(
+              {
+                message: `Clean up this crawled page and condense the content to remove any non-essential information. Include all links, contact information, and important details. Remove navigation, footer, and other non-essential elements but preserve all examples, code blocks, and API usage.
+
+Content from ${page.url}:
+${page.content}`,
+                model: {
+                  model: 'google/gemini-2.5-flash-lite',
+                  maxTokens: 50000,
+                },
+                name: 'Crawl Page Summarizer Agent',
+                credentials: this.params.credentials,
+              },
+              this.context
             );
 
-            return {
-              index: batchStart + batchIndex,
-              url: page.url,
-              title: page.title,
-              content: result.data?.response,
-              depth: page.depth,
-            };
+            const result = await summarizeAgent.action();
+            if (result.data?.response) {
+              crawlResult.pages[index].content = result.data.response;
+              console.log(`[WebCrawlTool] Summarized page: ${page.url}`);
+            }
           } catch (error) {
             console.error(
-              '[WebCrawlTool] Error summarizing page:',
-              page.url,
+              `[WebCrawlTool] Error summarizing ${page.url}:`,
               error
             );
-            return {
-              index: batchStart + batchIndex,
-              url: page.url,
-              title: page.title,
-              content: page.content, // Keep original content if summarization fails
-              depth: page.depth,
-            };
+            // Keep original content if summarization fails
           }
-        });
+        }
+      );
 
-        // Wait for all promises in this batch to complete
-        const batchResults = await Promise.all(summarizePromises);
-
-        // Update the original pages array with summarized content
-        batchResults.forEach((result) => {
-          crawlResult.pages[result.index] = {
-            url: result.url,
-            title: result.title,
-            content: result.content,
-            depth: result.depth,
-          };
-        });
-
-        console.log(
-          `[WebCrawlTool] Completed batch ${Math.floor(batchStart / batchSize) + 1} of ${Math.ceil(pageCount / batchSize)}`
-        );
-      }
+      await Promise.all(summarizationPromises);
 
       return crawlResult;
     } catch (error) {
@@ -262,10 +224,7 @@ export class WebCrawlTool extends ToolBubble<
   /**
    * Execute crawl operation - multi-page site exploration
    */
-  private async executeCrawl(
-    firecrawl: FirecrawlApp,
-    startTime: number
-  ): Promise<WebCrawlToolResult> {
+  private async executeCrawl(startTime: number): Promise<WebCrawlToolResult> {
     const {
       url,
       format,
@@ -274,12 +233,18 @@ export class WebCrawlTool extends ToolBubble<
       crawlDepth,
       includePaths,
       excludePaths,
+      credentials,
     } = this.params;
 
     // Configure crawling options
-    const crawlOptions: any = {
+    const crawlOptions: {
+      limit: number;
+      maxDiscoveryDepth: number;
+      includePaths?: string[];
+      excludePaths?: string[];
+    } = {
       limit: maxPages || 10,
-      maxDepth: crawlDepth || 2,
+      maxDiscoveryDepth: crawlDepth || 2,
     };
 
     // Add URL filtering if specified
@@ -293,14 +258,36 @@ export class WebCrawlTool extends ToolBubble<
     console.log('[WebCrawlTool] Crawling with options:', crawlOptions);
 
     // Execute crawl
-    const response = await firecrawl.crawl(url, {
+    const firecrawlParams = {
+      operation: 'crawl' as const,
+      credentials,
       ...crawlOptions,
+      url,
       scrapeOptions: {
-        formats: [format],
+        formats: format ? [format] : undefined,
         onlyMainContent,
         removeBase64Images: true,
       },
-    });
+    };
+    const firecrawl = new FirecrawlBubble<typeof firecrawlParams>(
+      firecrawlParams,
+      this.context,
+      'web_crawl_tool_firecrawl'
+    );
+    const response = await firecrawl.action();
+    if (!response.success) {
+      return {
+        url,
+        success: false,
+        creditsUsed: 0,
+        error: response.error || 'Crawl failed',
+        pages: [],
+        totalPages: 0,
+        metadata: {
+          loadTime: Date.now() - startTime,
+        },
+      };
+    }
 
     // Process crawled pages
     const pages: Array<{
@@ -311,7 +298,7 @@ export class WebCrawlTool extends ToolBubble<
     }> = [];
 
     // Handle different response structures
-    const crawlData = response.completed ? response.data : [];
+    const crawlData = response.data.completed ? response.data.data : [];
 
     for (const page of crawlData) {
       let content = '';
@@ -329,25 +316,8 @@ export class WebCrawlTool extends ToolBubble<
       });
     }
 
+    // Token usage tracking is now centralized in FirecrawlBubble
     const creditsUsed = pages.length;
-
-    // Log service usage for Firecrawl web crawl
-    if (creditsUsed > 0 && this.context?.logger) {
-      this.context.logger.logTokenUsage(
-        {
-          usage: creditsUsed,
-          service: CredentialType.FIRECRAWL_API_KEY,
-          unit: 'per_result',
-          subService: 'web-crawl',
-        },
-        `Firecrawl web crawl: ${creditsUsed} credits used for ${url}`,
-        {
-          bubbleName: 'web-crawl-tool',
-          variableId: this.context?.variableId,
-          operationType: 'bubble_execution',
-        }
-      );
-    }
 
     return {
       url,

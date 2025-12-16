@@ -70,10 +70,12 @@ export const BubblePromptInput = forwardRef<
     },
   }));
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && e.ctrlKey && !disabled && onSubmit) {
+    // Only plain Enter sends message, Shift+Enter adds new line
+    if (e.key === 'Enter' && !e.shiftKey && !disabled && onSubmit) {
       e.preventDefault();
       onSubmit();
     }
+    // Shift+Enter allows default behavior (new line)
   };
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {

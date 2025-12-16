@@ -8,6 +8,11 @@ import { DISABLE_AUTH } from '../env';
 export function useUser() {
   // When auth is disabled, return mock user data
   if (DISABLE_AUTH) {
+    // Check localStorage for onboarding completion (for self-hosted users)
+    const onboardingCompleted =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('onboardingCompleted') === 'true';
+
     return {
       isLoaded: true,
       isSignedIn: true,
@@ -23,6 +28,9 @@ export function useUser() {
         lastName: 'User',
         fullName: 'Dev User',
         primaryEmailAddressId: 'mock-email-id',
+        publicMetadata: {
+          onboardingCompleted, // Check localStorage for self-hosted users
+        },
       },
     };
   }
