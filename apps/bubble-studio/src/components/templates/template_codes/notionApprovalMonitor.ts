@@ -26,7 +26,6 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    * - Should be skipped (not approved, already sent, or invalid status)
    *
    * This is perfect for testing the workflow without setting up a real approval process.
-   * Default: false
    * @canBeFile false
    */
   createMockDb?: boolean;

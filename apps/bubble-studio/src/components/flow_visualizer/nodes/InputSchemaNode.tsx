@@ -165,7 +165,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
+      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-[400px] ${
         isExecuting
           ? `border-blue-400 shadow-lg shadow-blue-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : hasMissingRequired
