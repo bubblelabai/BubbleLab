@@ -4,6 +4,7 @@ import type {
   ParsedBubbleWithInfo,
   ValidateBubbleFlowResponse,
 } from '@bubblelab/shared-schemas';
+import { displayBubbles } from '../../utils/workflowUtils';
 
 // Get API base URL from environment (defaults to localhost for testing)
 const API_BASE_URL =
@@ -37,8 +38,9 @@ async function getValidationResponse(
   expect(response.ok).toBe(true);
 
   const validationResult: ValidateBubbleFlowResponse = await response.json();
-  console.log(JSON.stringify(validationResult.workflow, null, 2));
-
+  if (!validationResult.valid) {
+    console.error(JSON.stringify(validationResult, null, 2));
+  }
   expect(validationResult.valid).toBe(true);
   expect(validationResult.workflow).toBeDefined();
   expect(validationResult.bubbles).toBeDefined();
@@ -96,116 +98,153 @@ async function validateGraph(
   return stepGraph;
 }
 
+async function validateEachBubbleHasAtLeastOneClone(
+  validationResult: ValidateBubbleFlowResponse
+) {
+  const bubbles = displayBubbles(validationResult.workflow!);
+  console.log(JSON.stringify(bubbles, null, 2));
+  bubbles.bubbles.forEach((bubble) => {
+    expect(
+      bubbles.clonedBubbles.some(
+        (clonedBubble) => clonedBubble.variableId === bubble.variableId
+      )
+    ).toBe(true);
+  });
+}
+
+async function validateAllNodesAreUsed(
+  validationResult: ValidateBubbleFlowResponse
+) {
+  const stepGraph = await validateGraph(validationResult);
+  expect(validationResult.workflow).toBeDefined();
+  expect(Array.isArray(validationResult.workflow?.root)).toBe(true);
+  expect(validationResult.workflow?.root.length).toBeGreaterThan(0);
+  const stepsInMain = stepGraph.steps.filter((step) => step.id === 'step-main');
+  // print workflow bubbles
+  // console.log(JSON.stringify(validationResult.workflow?.bubbles, null, 2));
+  if (stepsInMain.length > 0) {
+    // Print the bubble names, variableId, clonedFromVariableId
+    stepsInMain.forEach((step) => {
+      step.bubbleIds.forEach((bubbleId) => {
+        const bubble = validationResult.workflow?.bubbles[bubbleId];
+        console.warn(
+          `Bubble ${bubble?.variableName} at ${bubble?.location.startLine}:${bubble?.location.startCol} variableId: ${bubble?.variableId} clonedFromVariableId: ${bubble?.clonedFromVariableId}`
+        );
+      });
+    });
+  }
+  expect(stepsInMain.length).toBe(0);
+}
+
 describe('workflowToSteps', () => {
-  describe('extractStepGraph', () => {
-    it('should create proper edge connections between steps', async () => {
-      const code = `
+  it('should create proper edge connections between steps', async () => {
+    const code = `
 import {z} from 'zod';
 
 import {
-  BubbleFlow,
-  AIAgentBubble,
-  WebScrapeTool,
-  GoogleDriveBubble,
-  type WebhookEvent,
+BubbleFlow,
+AIAgentBubble,
+WebScrapeTool,
+GoogleDriveBubble,
+type WebhookEvent,
 } from '@bubblelab/bubble-core';
 
 export interface Output {
-  generatedLaunchPost: string;
-  docUrl: string;
-  processed: boolean;
+generatedLaunchPost: string;
+docUrl: string;
+processed: boolean;
 }
 
 export interface YCLaunchGeneratorPayload extends WebhookEvent {
-  /** Array of URLs to YC launch posts to use as style references. */
-  exampleUrls?: string[];
-  /** URL to the company's GitHub repository (public). */
-  githubRepoUrl: string;
-  /** URL to the company's website. */
-  companyWebsiteUrl: string;
-  /** The current draft of the launch post. */
-  currentDraft: string;
-  /** Name for the Google Doc that will be created. */
-  docName?: string;
+/** Array of URLs to YC launch posts to use as style references. */
+exampleUrls?: string[];
+/** URL to the company's GitHub repository (public). */
+githubRepoUrl: string;
+/** URL to the company's website. */
+companyWebsiteUrl: string;
+/** The current draft of the launch post. */
+currentDraft: string;
+/** Name for the Google Doc that will be created. */
+docName?: string;
 }
 
 export class YCLaunchGeneratorFlow extends BubbleFlow<'webhook/http'> {
-  
-  // Validates that required URLs are present
-  private validateInput(payload: YCLaunchGeneratorPayload): void {
-    if (!payload.githubRepoUrl || !payload.companyWebsiteUrl || !payload.currentDraft) {
-      throw new Error("Missing required inputs: githubRepoUrl, companyWebsiteUrl, or currentDraft.");
-    }
+
+// Validates that required URLs are present
+private validateInput(payload: YCLaunchGeneratorPayload): void {
+  if (!payload.githubRepoUrl || !payload.companyWebsiteUrl || !payload.currentDraft) {
+    throw new Error("Missing required inputs: githubRepoUrl, companyWebsiteUrl, or currentDraft.");
+  }
+}
+
+// Scrapes the company website to extract product details and marketing content
+private async scrapeWebsite(url: string): Promise<string> {
+  // Using 'markdown' format to preserve structure which helps the AI understand headers and lists.
+  // onlyMainContent is true to avoid clutter from navigation menus and footers.
+  const websiteScraper = new WebScrapeTool({
+    url: url,
+    format: 'markdown',
+    onlyMainContent: true
+  });
+
+  const websiteResult = await websiteScraper.action();
+
+  return websiteResult.success 
+    ? (websiteResult.data.content || '[No content found for Company Website]')
+    : \`[Failed to retrieve content for Company Website]\`;
+}
+
+// Scrapes the GitHub repository to extract technical details and implementation information
+private async scrapeRepo(url: string): Promise<string> {
+  // Using 'markdown' format to preserve code blocks and documentation structure.
+  // onlyMainContent is true to focus on README and key files rather than GitHub UI elements.
+  const repoScraper = new WebScrapeTool({
+    url: url,
+    format: 'markdown',
+    onlyMainContent: true
+  });
+
+  const repoResult = await repoScraper.action();
+
+  return repoResult.success
+    ? (repoResult.data.content || '[No content found for GitHub Repository]')
+    : \`[Failed to retrieve content for GitHub Repository]\`;
+}
+
+// Scrapes a single example YC launch post to learn writing style and structure
+private async scrapeExample(url: string, index: number): Promise<string> {
+  // Using 'markdown' format to capture formatting like bold headers, bullet points, and code blocks.
+  // onlyMainContent is true to exclude comments and sidebar content, focusing on the post itself.
+  const scraper = new WebScrapeTool({
+    url: url,
+    format: 'markdown',
+    onlyMainContent: true
+  });
+
+  const result = await scraper.action();
+
+  if (!result.success) {
+    console.warn(\`Failed to scrape Example \${index + 1} (\${url}): \${result.error}\`);
+    return \`[Failed to retrieve content for Example \${index + 1}]\`;
   }
 
-  // Scrapes the company website to extract product details and marketing content
-  private async scrapeWebsite(url: string): Promise<string> {
-    // Using 'markdown' format to preserve structure which helps the AI understand headers and lists.
-    // onlyMainContent is true to avoid clutter from navigation menus and footers.
-    const websiteScraper = new WebScrapeTool({
-      url: url,
-      format: 'markdown',
-      onlyMainContent: true
-    });
+  return result.data.content || \`[No content found for Example \${index + 1}]\`;
+}
 
-    const websiteResult = await websiteScraper.action();
-
-    return websiteResult.success 
-      ? (websiteResult.data.content || '[No content found for Company Website]')
-      : \`[Failed to retrieve content for Company Website]\`;
-  }
-
-  // Scrapes the GitHub repository to extract technical details and implementation information
-  private async scrapeRepo(url: string): Promise<string> {
-    // Using 'markdown' format to preserve code blocks and documentation structure.
-    // onlyMainContent is true to focus on README and key files rather than GitHub UI elements.
-    const repoScraper = new WebScrapeTool({
-      url: url,
-      format: 'markdown',
-      onlyMainContent: true
-    });
-
-    const repoResult = await repoScraper.action();
-
-    return repoResult.success
-      ? (repoResult.data.content || '[No content found for GitHub Repository]')
-      : \`[Failed to retrieve content for GitHub Repository]\`;
-  }
-
-  // Scrapes a single example YC launch post to learn writing style and structure
-  private async scrapeExample(url: string, index: number): Promise<string> {
-    // Using 'markdown' format to capture formatting like bold headers, bullet points, and code blocks.
-    // onlyMainContent is true to exclude comments and sidebar content, focusing on the post itself.
-    const scraper = new WebScrapeTool({
-      url: url,
-      format: 'markdown',
-      onlyMainContent: true
-    });
-
-    const result = await scraper.action();
-
-    if (!result.success) {
-      console.warn(\`Failed to scrape Example \${index + 1} (\${url}): \${result.error}\`);
-      return \`[Failed to retrieve content for Example \${index + 1}]\`;
-    }
-
-    return result.data.content || \`[No content found for Example \${index + 1}]\`;
-  }
-
-  // Builds the comprehensive context message for the AI agent from all scraped content
-  private buildAIPrompt(
-    draft: string,
-    examplesContent: string,
-    websiteContent: string,
-    repoContent: string
-  ): { systemPrompt: string, message: string } {
-    const systemPrompt = \`You are an expert copywriter specializing in YC (Y Combinator) launch posts (Bookface/Hacker News style). 
+// Builds the comprehensive context message for the AI agent from all scraped content
+private buildAIPrompt(
+  draft: string,
+  examplesContent: string,
+  websiteContent: string,
+  repoContent: string
+): { systemPrompt: string, message: string } {
+  const systemPrompt = \`You are an expert copywriter specializing in YC (Y Combinator) launch posts (Bookface/Hacker News style). 
 Your goal is to rewrite a user's draft to match the high-impact, clear, and developer-focused style of successful YC launches.
 Analyze the provided 'Style Examples' to understand the tone, structure, and formatting.
 Use the 'Company Website' and 'GitHub Repository' content to ensure technical accuracy and depth.
 The final output should be a polished, ready-to-publish launch post.\`;
 
-    const message = \`Here is the context for the launch post:
+  const message = \`Here is the context for the launch post:
 
 === STYLE EXAMPLES (Use these for tone and structure) ===
 
@@ -225,112 +264,101 @@ The final output should be a polished, ready-to-publish launch post.\`;
 
 Please generate the best possible YC launch post based on the above.\`;
 
-    return { systemPrompt, message };
+  return { systemPrompt, message };
+}
+
+// Uses the AI Agent to synthesize all scraped information and the draft into a final post
+private async generatePost(systemPrompt: string, message: string): Promise<string> {
+  // Using gemini-3-pro-preview for high-quality reasoning and creative writing capabilities.
+  const agent = new AIAgentBubble({
+    model: { model: 'google/gemini-3-pro-preview' },
+    systemPrompt: systemPrompt,
+    message: message
+  });
+
+  const agentResult = await agent.action();
+
+  if (!agentResult.success) {
+    throw new Error(\`AI generation failed: \${agentResult.error}\`);
   }
 
-  // Uses the AI Agent to synthesize all scraped information and the draft into a final post
-  private async generatePost(systemPrompt: string, message: string): Promise<string> {
-    // Using gemini-3-pro-preview for high-quality reasoning and creative writing capabilities.
-    const agent = new AIAgentBubble({
-      model: { model: 'google/gemini-3-pro-preview' },
-      systemPrompt: systemPrompt,
-      message: message
-    });
+  return agentResult.data.response;
+}
 
-    const agentResult = await agent.action();
+// Creates a Google Doc with the generated launch post content
+private async createDoc(content: string, docName: string): Promise<string> {
+  // The doc is uploaded as plain text and automatically converted to Google Docs format.
+  // Returns the webViewLink URL where users can view and edit the document.
+  const googleDrive = new GoogleDriveBubble({
+    operation: 'upload_file',
+    name: docName,
+    content: content,
+    mimeType: 'text/plain',
+    convert_to_google_docs: true
+  });
 
-    if (!agentResult.success) {
-      throw new Error(\`AI generation failed: \${agentResult.error}\`);
-    }
+  const driveResult = await googleDrive.action();
 
-    return agentResult.data.response;
+  if (!driveResult.success) {
+    throw new Error(\`Failed to create Google Doc: \${driveResult.error}\`);
   }
 
-  // Creates a Google Doc with the generated launch post content
-  private async createDoc(content: string, docName: string): Promise<string> {
-    // The doc is uploaded as plain text and automatically converted to Google Docs format.
-    // Returns the webViewLink URL where users can view and edit the document.
-    const googleDrive = new GoogleDriveBubble({
-      operation: 'upload_file',
-      name: docName,
-      content: content,
-      mimeType: 'text/plain',
-      convert_to_google_docs: true
-    });
-
-    const driveResult = await googleDrive.action();
-
-    if (!driveResult.success) {
-      throw new Error(\`Failed to create Google Doc: \${driveResult.error}\`);
-    }
-
-    if (!driveResult.data.file?.webViewLink) {
-      throw new Error('Google Doc was created but no view link was returned');
-    }
-
-    return driveResult.data.file.webViewLink;
+  if (!driveResult.data.file?.webViewLink) {
+    throw new Error('Google Doc was created but no view link was returned');
   }
 
-  // Main workflow orchestration
-  async handle(payload: YCLaunchGeneratorPayload): Promise<Output> {
-    const { 
-      exampleUrls = [], 
-      githubRepoUrl, 
-      companyWebsiteUrl, 
-      currentDraft,
-      docName = 'YC Launch Post - Final Draft'
-    } = payload;
+  return driveResult.data.file.webViewLink;
+}
 
-    this.validateInput(payload);
+// Main workflow orchestration
+async handle(payload: YCLaunchGeneratorPayload): Promise<Output> {
+  const { 
+    exampleUrls = [], 
+    githubRepoUrl, 
+    companyWebsiteUrl, 
+    currentDraft,
+    docName = 'YC Launch Post - Final Draft'
+  } = payload;
 
-    const websiteContent = await this.scrapeWebsite(companyWebsiteUrl);
+  this.validateInput(payload);
 
-    const repoContent = await this.scrapeRepo(githubRepoUrl);
+  const websiteContent = await this.scrapeWebsite(companyWebsiteUrl);
 
-    // Scrape all example YC launch posts to extract tone, structure, and formatting patterns
-    const exampleScrapers: Promise<string>[] = [];
+  const repoContent = await this.scrapeRepo(githubRepoUrl);
 
-    for (let i = 0; i < exampleUrls.length; i++) {
-      exampleScrapers.push(this.scrapeExample(exampleUrls[i], i));
-    }
+  // Scrape all example YC launch posts to extract tone, structure, and formatting patterns
+  const exampleScrapers: Promise<string>[] = [];
 
-    const exampleContents = await Promise.all(exampleScrapers);
-
-    const examplesContent = exampleContents.join("\\n\\n---\\n\\n");
-
-    // Build AI prompt with all gathered context
-    const { systemPrompt, message } = this.buildAIPrompt(
-      currentDraft,
-      examplesContent,
-      websiteContent,
-      repoContent
-    );
-
-    const generatedPost = await this.generatePost(systemPrompt, message);
-
-    const docUrl = await this.createDoc(generatedPost, docName);
-
-    return {
-      generatedLaunchPost: generatedPost,
-      docUrl: docUrl,
-      processed: true
-    };
+  for (let i = 0; i < exampleUrls.length; i++) {
+    exampleScrapers.push(this.scrapeExample(exampleUrls[i], i));
   }
+
+  const exampleContents = await Promise.all(exampleScrapers);
+
+  const examplesContent = exampleContents.join("\\n\\n---\\n\\n");
+
+  // Build AI prompt with all gathered context
+  const { systemPrompt, message } = this.buildAIPrompt(
+    currentDraft,
+    examplesContent,
+    websiteContent,
+    repoContent
+  );
+
+  const generatedPost = await this.generatePost(systemPrompt, message);
+
+  const docUrl = await this.createDoc(generatedPost, docName);
+
+  return {
+    generatedLaunchPost: generatedPost,
+    docUrl: docUrl,
+    processed: true
+  };
+}
 }
 `;
-
-      const validationResult = await getValidationResponse(code);
-      const stepGraph = await validateGraph(validationResult);
-      // Assert that the workflow was correctly parsed for Promise.all with array.push pattern
-      expect(validationResult.workflow).toBeDefined();
-      expect(Array.isArray(validationResult.workflow?.root)).toBe(true);
-      expect(validationResult.workflow?.root.length).toBeGreaterThan(0);
-
-      const stepsInMain = stepGraph.steps.filter(
-        (step) => step.id === 'step-main'
-      );
-      expect(stepsInMain.length).toBe(0);
-    });
+    const validationResult = await getValidationResponse(code);
+    await validateAllNodesAreUsed(validationResult);
   });
   it('should handle AI agent with tool configurations', async () => {
     const code = `
@@ -524,15 +552,74 @@ Structure your response clearly with headings: "Repository Comparison" and "Fact
 `;
 
     const validationResult = await getValidationResponse(code);
-    const stepGraph = await validateGraph(validationResult);
-    // Assert that the workflow was correctly parsed for AI agent with tool configurations
-    expect(validationResult.workflow).toBeDefined();
-    expect(Array.isArray(validationResult.workflow?.root)).toBe(true);
-    expect(validationResult.workflow?.root.length).toBeGreaterThan(0);
+    await validateEachBubbleHasAtLeastOneClone(validationResult);
+    await validateAllNodesAreUsed(validationResult);
+  });
+  it('should handle variables with same name in different scopes', async () => {
+    const code = `
+import { BubbleFlow, AIAgentBubble, type WebhookEvent } from '@bubblelab/bubble-core';
 
-    const stepsInMain = stepGraph.steps.filter(
-      (step) => step.id === 'step-main'
-    );
-    expect(stepsInMain.length).toBe(0);
+export interface CustomWebhookPayload extends WebhookEvent {
+  input?: string;
+}
+
+export interface Output {
+  message: string;
+  processed: boolean;
+}
+
+export class TestFlow extends BubbleFlow<'webhook/http'> {
+  
+  private transformData(input: string | undefined): string | null {
+    if (!input || input.trim().length === 0) return null;
+    return input.trim().toUpperCase();
+  }
+
+  private async processWithAI(input: string): Promise<string> {
+
+   if (input === 'Hello, how are you?2') {
+    const agent = new AIAgentBubble({
+      model: { model: 'google/gemini-2.5-flash' },
+      systemPrompt: 'You are a helpful assistant.',
+      message: \`Process this input: \${input}\`
+    });
+    await agent.action();
+    return "fd";
+   }
+    if (input === 'Hello, how are you?') {
+      const agent = new AIAgentBubble({
+        model: { model: 'google/gemini-2.5-flash' },
+        systemPrompt: 'You are a helpful assistant.',
+        message: 'Hello, how are you?',
+      });
+       await agent.action();
+      return "fd";
+    }
+
+    return "fd"
+  }
+
+  private formatOutput(response: string | null, wasProcessed: boolean): Output {
+    return {
+      message: response || 'No input provided',
+      processed: wasProcessed,
+    };
+  }
+
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
+    const transformedInput = this.transformData(payload.input);
+
+    let aiResponse: string | null = null;
+    if (transformedInput && transformedInput.length > 3) {
+      aiResponse = await this.processWithAI(transformedInput);
+    }
+
+    return this.formatOutput(aiResponse, aiResponse !== null);
+  }
+}
+`;
+    const validationResult = await getValidationResponse(code);
+    await validateEachBubbleHasAtLeastOneClone(validationResult);
+    await validateAllNodesAreUsed(validationResult);
   });
 });

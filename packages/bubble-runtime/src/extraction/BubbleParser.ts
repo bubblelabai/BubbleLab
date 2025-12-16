@@ -2318,10 +2318,16 @@ export class BubbleParser {
 
           // Handle Identifier declarations (const foo = ...)
           if (decl.id.type === 'Identifier') {
-            // Try to find bubble by variable name first (more reliable)
+            // Try to find bubble by variable name and location
+            // This handles same-named variables in different scopes by matching location
             const variableName = decl.id.name;
+            const stmtStartLine = stmt.loc?.start.line ?? 0;
+            const stmtEndLine = stmt.loc?.end.line ?? 0;
             const bubble = Array.from(bubbleMap.values()).find(
-              (b) => b.variableName === variableName
+              (b) =>
+                b.variableName === variableName &&
+                b.location.startLine >= stmtStartLine &&
+                b.location.endLine <= stmtEndLine
             );
             if (bubble) {
               return {
