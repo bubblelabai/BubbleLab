@@ -191,6 +191,8 @@ export {
 } from './bubbles/service-bubble/s3/index.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
+export { OlostepBubble } from './bubbles/service-bubble/olostep.js';
+export type { OlostepParamsInput } from './bubbles/service-bubble/olostep.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';
 export type { InsForgeDbParamsInput } from './bubbles/service-bubble/insforge-db.js';
 export {
