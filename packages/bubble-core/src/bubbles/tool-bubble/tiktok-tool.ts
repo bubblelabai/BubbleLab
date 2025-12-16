@@ -178,7 +178,7 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
   }> {
     const { operation, limit, shouldDownloadVideos } = this.params;
 
-    let input: any = {
+    const input: any = {
       resultsPerPage: limit,
       shouldDownloadVideos: shouldDownloadVideos || false,
       shouldDownloadCovers: true,

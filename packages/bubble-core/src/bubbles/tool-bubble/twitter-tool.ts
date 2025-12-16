@@ -215,7 +215,7 @@ export class TwitterTool extends ToolBubble<
   }> {
     const { operation, limit } = this.params;
 
-    let input: any = {
+    const input: any = {
       tweetsDesired: limit,
       onlyVerifiedUsers: this.params.onlyVerified,
       onlyTwitterBlue: this.params.onlyBlue,
