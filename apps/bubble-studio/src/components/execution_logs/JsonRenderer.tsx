@@ -4,6 +4,10 @@ import {
   getCacheKey,
   simplifyObjectForContext,
 } from '../../utils/executionLogsFormatUtils';
+import {
+  FileDownloadButton,
+  isDownloadableFileUrl,
+} from './FileDownloadButton';
 
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
@@ -104,6 +108,7 @@ function parseJSONString(str: string): unknown | null {
 /**
  * Detect URLs in text and convert them to React components with clickable links
  * Similar to makeLinksClickable but returns React components
+ * Adds download button for file URLs
  */
 function renderStringWithLinks(text: string): React.ReactNode {
   const urlRegex = /(https?:\/\/[^\s"<>]+)/g;
@@ -122,16 +127,24 @@ function renderStringWithLinks(text: string): React.ReactNode {
             !part.toLowerCase().startsWith('data:application/javascript')
               ? part
               : undefined;
+
+          const isDownloadable = safeHref && isDownloadableFileUrl(safeHref);
+
           return (
-            <a
+            <span
               key={index}
-              href={safeHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 underline"
+              className="inline-flex items-center gap-1.5 flex-wrap"
             >
-              {part}
-            </a>
+              <a
+                href={safeHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline break-all"
+              >
+                {part}
+              </a>
+              {isDownloadable && <FileDownloadButton url={safeHref} />}
+            </span>
           );
         }
         return <span key={index}>{part}</span>;
