@@ -588,6 +588,64 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
         required: ['ticker', 'email'],
       });
     });
+
+    it('should parse @canBeFile JSDoc tag correctly', () => {
+      const codeWithCanBeFile = `
+import { BubbleFlow, type WebhookEvent } from '@bubblelab/bubble-core';
+
+export interface CalendarEmailPayload extends WebhookEvent {
+  /**
+   * Email address where the calendar summary should be sent.
+   * @canBeFile false
+   */
+  email: string;
+
+  /**
+   * File to attach to the calendar digest email. Upload any document, image, or file.
+   * @canBeFile true
+   */
+  attachmentFile?: string;
+
+  /**
+   * The main content of the document to process.
+   */
+  documentContent: string;
+}
+
+export class CalendarEmailFlow extends BubbleFlow {
+  async handle(payload: CalendarEmailPayload) {
+    const { email, attachmentFile, documentContent } = payload;
+    return { success: true };
+  }
+}
+`;
+      const analyzer = new BubbleScript(codeWithCanBeFile, bubbleFactory);
+      const inputSchema = analyzer.getPayloadJsonSchema();
+      console.log(JSON.stringify(inputSchema, null, 2));
+      expect(inputSchema).toBeDefined();
+      expect(inputSchema).toEqual({
+        type: 'object',
+        properties: {
+          email: {
+            type: 'string',
+            description:
+              'Email address where the calendar summary should be sent.',
+            canBeFile: false,
+          },
+          attachmentFile: {
+            type: 'string',
+            description:
+              'File to attach to the calendar digest email. Upload any document, image, or file.',
+            canBeFile: true,
+          },
+          documentContent: {
+            type: 'string',
+            description: 'The main content of the document to process.',
+          },
+        },
+        required: ['email', 'documentContent'],
+      });
+    });
   });
 });
 

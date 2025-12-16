@@ -150,6 +150,50 @@ CRITICAL: EVERY input field MUST have a helpful, user-friendly comment that expl
 Write comments in plain, conversational language as if explaining to a non-technical user.
 DO NOT include example values in comments - example values should ONLY be provided as default values in the destructuring assignment using the = operator.
 
+FILE UPLOAD CONTROL (@canBeFile):
+For each string field, decide if it makes sense to upload file content. Use the @canBeFile JSDoc tag to control whether the file upload icon appears in the UI.
+
+ALLOW file uploads (@canBeFile true or omit the tag - default behavior) for:
+- Fields that hold document/media CONTENT (body, text, document, attachment, content, data, fileContent)
+- Fields where pasting large text content would be cumbersome
+- Fields that semantically represent file data to be processed
+
+DISABLE file uploads (@canBeFile false) for:
+- Identifiers and references (IDs, names, paths, URLs, emails, usernames)
+- Configuration values (settings, options, formats, modes)
+- Short user inputs (prompts, queries, search terms, titles)
+- Credential-like values (API keys, tokens, secrets)
+
+Example usage:
+\`\`\`typescript
+export interface DocumentProcessorPayload extends WebhookEvent {
+  /**
+   * Email address where the results should be sent.
+   * @canBeFile false
+   */
+  email: string;
+  
+  /**
+   * The document content to process. Paste text or upload a file.
+   * @canBeFile true
+   */
+  documentContent: string;
+  
+  /**
+   * Google Drive folder ID where files will be saved.
+   * @canBeFile false
+   */
+  folderId: string;
+  
+  /**
+   * File to attach to the email. Upload any document, image, or file.
+   */
+  attachment?: string;  // @canBeFile defaults to true, so no need to specify
+}
+\`\`\`
+
+Use your judgment based on what the field semantically represents, not just its name.
+
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 
 // The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
@@ -193,7 +237,10 @@ Examples of BAD comments (DO NOT USE):
 For example, for a workflow that processes user data and sends notifications:
   
 export interface UserNotificationPayload extends WebhookEvent {
-  /** Email address where notifications should be sent. */
+  /**
+   * Email address where notifications should be sent.
+   * @canBeFile false
+   */
   email: string;
   /** Custom message content to include in the notification. */
   message?: string;
@@ -201,7 +248,10 @@ export interface UserNotificationPayload extends WebhookEvent {
   priority?: 'low' | 'medium' | 'high';
   /** Whether to send SMS in addition to email. Set to true to enable SMS notifications, false to only send email. */
   includeSMS?: boolean;
-  /** The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL. */
+  /**
+   * The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
+   * @canBeFile false
+   */
   spreadsheetId: string;
 }
 

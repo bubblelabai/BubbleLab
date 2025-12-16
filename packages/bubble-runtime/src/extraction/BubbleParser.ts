@@ -800,10 +800,14 @@ export class BubbleParser {
         ? this.tsTypeToJsonSchema(m.typeAnnotation.typeAnnotation, ast) || {}
         : {};
 
-      // Extract comment/description for this property
-      const description = this.extractCommentForNode(m);
-      if (description) {
-        propSchema.description = description;
+      // Extract comment/description and JSDoc tags for this property
+      const jsDocInfo = this.extractJSDocForNode(m);
+      if (jsDocInfo.description) {
+        propSchema.description = jsDocInfo.description;
+      }
+      // Add canBeFile flag to schema if explicitly specified in JSDoc
+      if (jsDocInfo.canBeFile !== undefined) {
+        propSchema.canBeFile = jsDocInfo.canBeFile;
       }
 
       properties[keyName] = propSchema;
@@ -1981,6 +1985,104 @@ export class BubbleParser {
     }
 
     return cleaned || undefined;
+  }
+
+  /**
+   * Extract JSDoc info including description and @canBeFile tag from a node's preceding comments.
+   * The @canBeFile tag controls whether file upload is enabled for string fields in the UI.
+   */
+  private extractJSDocForNode(node: TSESTree.Node): {
+    description?: string;
+    canBeFile?: boolean;
+  } {
+    // Get the line number where this node starts
+    const nodeLine = node.loc?.start.line;
+    if (!nodeLine) return {};
+
+    // Split the script into lines to find comments
+    const lines = this.bubbleScript.split('\n');
+
+    // Look backwards from the node line to find comments
+    const commentLines: string[] = [];
+    let currentLine = nodeLine - 1;
+    let isBlockComment = false;
+
+    // Scan backwards to collect comment lines
+    while (currentLine > 0) {
+      const line = lines[currentLine - 1]?.trim();
+
+      if (!line) {
+        if (commentLines.length > 0) break;
+        currentLine--;
+        continue;
+      }
+
+      if (line.startsWith('//')) {
+        commentLines.unshift(line);
+        currentLine--;
+        continue;
+      }
+
+      if (
+        line.startsWith('*') ||
+        line.startsWith('/**') ||
+        line.startsWith('/*')
+      ) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        continue;
+      }
+
+      if (line.endsWith('*/')) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        continue;
+      }
+
+      if (commentLines.length > 0) {
+        break;
+      }
+
+      break;
+    }
+
+    if (commentLines.length === 0) return {};
+
+    const fullComment = commentLines.join('\n');
+    let canBeFile: boolean | undefined;
+
+    // Parse @canBeFile tag from the raw comment
+    const canBeFileMatch = fullComment.match(/@canBeFile\s+(true|false)/i);
+    if (canBeFileMatch) {
+      canBeFile = canBeFileMatch[1].toLowerCase() === 'true';
+    }
+
+    let description: string | undefined;
+
+    if (isBlockComment) {
+      description = fullComment
+        .replace(/^\/\*\*?\s*/, '')
+        .replace(/\s*\*\/\s*$/, '')
+        .split('\n')
+        .map((line) => line.replace(/^\s*\*\s?/, '').trim())
+        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .join(' ')
+        .trim();
+    } else {
+      description = fullComment
+        .split('\n')
+        .map((line) => line.replace(/^\/\/\s?/, '').trim())
+        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .join(' ')
+        .trim();
+    }
+
+    return {
+      description: description || undefined,
+      canBeFile,
+    };
   }
 
   /**

@@ -14,6 +14,8 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
+  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -21,6 +23,7 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -28,6 +31,7 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
