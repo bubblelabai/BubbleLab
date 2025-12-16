@@ -147,6 +147,9 @@ export class BubbleFactory {
       'apify',
       'instagram-tool',
       'linkedin-tool',
+      'tiktok-tool',
+      'twitter-tool',
+      'google-maps-tool',
       'youtube-tool',
       'github',
       'eleven-labs',
@@ -251,6 +254,13 @@ export class BubbleFactory {
     );
     const { YouTubeTool } = await import(
       './bubbles/tool-bubble/youtube-tool.js'
+    );
+    const { TikTokTool } = await import('./bubbles/tool-bubble/tiktok-tool.js');
+    const { TwitterTool } = await import(
+      './bubbles/tool-bubble/twitter-tool.js'
+    );
+    const { GoogleMapsTool } = await import(
+      './bubbles/tool-bubble/google-maps-tool.js'
     );
     const { SlackFormatterAgentBubble } = await import(
       './bubbles/workflow-bubble/slack-formatter-agent.js'
@@ -378,6 +388,12 @@ export class BubbleFactory {
     );
     this.register('instagram-tool', InstagramTool as BubbleClassWithMetadata);
     this.register('linkedin-tool', LinkedInTool as BubbleClassWithMetadata);
+    this.register('tiktok-tool', TikTokTool as BubbleClassWithMetadata);
+    this.register('twitter-tool', TwitterTool as BubbleClassWithMetadata);
+    this.register(
+      'google-maps-tool',
+      GoogleMapsTool as BubbleClassWithMetadata
+    );
     this.register('youtube-tool', YouTubeTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
     this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
@@ -683,6 +699,9 @@ import {
   WebSearchTool, // bubble name: 'web-search-tool'
   InstagramTool, // bubble name: 'instagram-tool'
   LinkedInTool, // bubble name: 'linkedin-tool'
+  TikTokTool, // bubble name: 'tiktok-tool'
+  TwitterTool, // bubble name: 'twitter-tool'
+  GoogleMapsTool, // bubble name: 'google-maps-tool'
   YouTubeTool, // bubble name: 'youtube-tool'
 
   // Event Types (How the workflow is triggered)
