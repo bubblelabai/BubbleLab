@@ -46,6 +46,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.NOTION_OAUTH_TOKEN]: {},
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
+  [CredentialType.OLOSTEP_API_KEY]: {},
 };
 
 // Fixed list of bubble names that need context injection
