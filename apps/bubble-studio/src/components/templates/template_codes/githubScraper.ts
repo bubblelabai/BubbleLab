@@ -13,7 +13,15 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * GitHub repository URL to scrape contributors from (e.g., "https://github.com/user/repo").
+   * @canBeFile false
+   */
   githubUrl: string;
+  /**
+   * Email address to send the contributor list to.
+   * @canBeFile false
+   */
   email: string;
 }
 

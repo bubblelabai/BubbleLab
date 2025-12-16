@@ -51,12 +51,40 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Email address where the video scripts will be sent.
+   * @canBeFile false
+   */
   email: string;
+  /**
+   * The main topic for your video scripts (e.g., "productivity tips", "cooking basics").
+   * @canBeFile false
+   */
   topic: string;
+  /**
+   * Description of your target audience (e.g., "beginners", "tech professionals").
+   * @canBeFile false
+   */
   targetAudience?: string;
+  /**
+   * Desired video length: 'short' (1-3 min), 'medium' (5-10 min), or 'long' (15-30 min).
+   * @canBeFile false
+   */
   videoLength?: 'short' | 'medium' | 'long';
+  /**
+   * Your brand's website URL for context extraction (e.g., "example.com").
+   * @canBeFile false
+   */
   brandWebsite?: string;
+  /**
+   * Additional context about your brand, voice, or specific requirements.
+   * @canBeFile false
+   */
   brandContext?: string;
+  /**
+   * Specific YouTube video URLs to analyze instead of searching.
+   * @canBeFile false
+   */
   specificVideoUrls?: string[];
 }
 

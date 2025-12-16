@@ -15,8 +15,20 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * The spreadsheet ID is the long string in the Google Sheets URL right after /d/ and before /edit.
+   * @canBeFile false
+   */
   spreadsheetId: string;
+  /**
+   * The subreddit to scrape for potential leads (e.g., "n8n", "entrepreneur").
+   * @canBeFile false
+   */
   subreddit: string;
+  /**
+   * Description of what type of users to identify (e.g., "expressing frustration with workflow automation tools").
+   * @canBeFile false
+   */
   searchCriteria: string;
 }
 

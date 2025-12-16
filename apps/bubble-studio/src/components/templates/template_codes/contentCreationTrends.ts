@@ -52,9 +52,25 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Email address where the content trends report will be sent.
+   * @canBeFile false
+   */
   email: string;
+  /**
+   * The industry or niche to research content trends for (e.g., "SaaS", "Fitness", "Finance").
+   * @canBeFile false
+   */
   industry: string;
+  /**
+   * Your brand's website URL for context extraction (e.g., "example.com").
+   * @canBeFile false
+   */
   brandWebsite?: string;
+  /**
+   * Description of your target audience (e.g., "small business owners", "tech enthusiasts").
+   * @canBeFile false
+   */
   targetAudience?: string;
 }
 
