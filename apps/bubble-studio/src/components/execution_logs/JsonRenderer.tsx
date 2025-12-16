@@ -4,10 +4,8 @@ import {
   getCacheKey,
   simplifyObjectForContext,
 } from '../../utils/executionLogsFormatUtils';
-import {
-  FileDownloadButton,
-  isDownloadableFileUrl,
-} from './FileDownloadButton';
+import { FileDownloadButton } from './FileDownloadButton';
+import { isDownloadableFileUrl } from './downloadUtils';
 
 // Constants for truncation
 const MAX_STRING_LENGTH = 50000; // ~50KB preview
