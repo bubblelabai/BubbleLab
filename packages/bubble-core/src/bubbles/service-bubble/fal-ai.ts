@@ -3,8 +3,9 @@ import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 
-// Base URL for fal.ai API
+// Base URLs for fal.ai APIs
 const FAL_AI_BASE_URL = 'https://queue.fal.run';
+const FAL_AI_MODELS_API_URL = 'https://api.fal.ai/v1';
 
 // Define the parameters schema for the fal.ai bubble
 export const FalAiParamsSchema = z.discriminatedUnion('operation', [
@@ -181,10 +182,213 @@ export const FalAiParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+  z.object({
+    operation: z
+      .literal('list_models')
+      .describe('List all available models from fal.ai'),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .default(50)
+      .describe('Maximum number of models to return (default: 50)'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor from previous response'),
+    expand: z
+      .array(z.literal('openapi-3.0'))
+      .optional()
+      .describe(
+        'Fields to expand - use ["openapi-3.0"] to include full OpenAPI schema'
+      ),
+    category: z
+      .string()
+      .optional()
+      .describe(
+        'Filter by category (e.g., "text-to-image", "image-to-video", "training")'
+      ),
+    status: z
+      .enum(['active', 'deprecated'])
+      .optional()
+      .describe('Filter models by status (active or deprecated)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+  z.object({
+    operation: z
+      .literal('search_models')
+      .describe('Search for models by query string'),
+    query: z
+      .string()
+      .min(1, 'Search query is required')
+      .describe(
+        'Free-text search query to filter models by name, description, or category'
+      ),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .default(50)
+      .describe('Maximum number of models to return (default: 50)'),
+    cursor: z
+      .string()
+      .optional()
+      .describe('Pagination cursor from previous response'),
+    expand: z
+      .array(z.literal('openapi-3.0'))
+      .optional()
+      .describe(
+        'Fields to expand - use ["openapi-3.0"] to include full OpenAPI schema'
+      ),
+    category: z
+      .string()
+      .optional()
+      .describe(
+        'Filter by category (e.g., "text-to-image", "image-to-video", "training")'
+      ),
+    status: z
+      .enum(['active', 'deprecated'])
+      .optional()
+      .describe('Filter models by status (active or deprecated)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+  z.object({
+    operation: z
+      .literal('get_model')
+      .describe('Get specific model(s) by endpoint ID'),
+    endpointId: z
+      .union([z.string().min(1), z.array(z.string().min(1))])
+      .describe(
+        'Model endpoint ID(s) to retrieve (e.g., "fal-ai/flux/dev" or ["fal-ai/flux/dev", "fal-ai/flux-pro"])'
+      ),
+    expand: z
+      .array(z.literal('openapi-3.0'))
+      .optional()
+      .describe(
+        'Fields to expand - use ["openapi-3.0"] to include full OpenAPI schema'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 export type FalAiParamsInput = z.input<typeof FalAiParamsSchema>;
 export type FalAiParamsParsed = z.output<typeof FalAiParamsSchema>;
+
+// Define model metadata schemas for model discovery operations
+const ModelGroupSchema = z
+  .object({
+    key: z.string().describe('Group key identifier'),
+    label: z.string().describe('Human-readable group label'),
+  })
+  .describe('Model group information');
+
+const ModelMetadataSchema = z
+  .object({
+    display_name: z.string().optional().describe('Human-readable model name'),
+    category: z
+      .string()
+      .optional()
+      .describe(
+        'Model category (e.g., text-to-image, image-to-video, training)'
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe('Brief description of the model'),
+    status: z
+      .enum(['active', 'deprecated'])
+      .optional()
+      .describe('Model status'),
+    tags: z
+      .array(z.string())
+      .optional()
+      .describe('Tags like new, beta, pro, turbo'),
+    updated_at: z
+      .string()
+      .optional()
+      .describe('ISO8601 timestamp of last update'),
+    is_favorited: z
+      .boolean()
+      .nullable()
+      .optional()
+      .describe('Whether favorited by authenticated user'),
+    thumbnail_url: z.string().optional().describe('Main thumbnail image URL'),
+    model_url: z.string().optional().describe('Full model endpoint URL'),
+    date: z.string().optional().describe('ISO8601 timestamp of creation'),
+    highlighted: z
+      .boolean()
+      .optional()
+      .describe('Whether model is highlighted'),
+    pinned: z.boolean().optional().describe('Whether model is pinned'),
+    thumbnail_animated_url: z
+      .string()
+      .optional()
+      .describe('Animated thumbnail URL'),
+    github_url: z.string().optional().describe('License or GitHub URL'),
+    license_type: z
+      .enum(['commercial', 'research', 'private'])
+      .optional()
+      .describe('License type'),
+    group: ModelGroupSchema.optional().describe('Model group information'),
+    kind: z.enum(['inference', 'training']).optional().describe('Model kind'),
+    training_endpoint_ids: z
+      .array(z.string())
+      .optional()
+      .describe('Related training endpoint IDs'),
+    inference_endpoint_ids: z
+      .array(z.string())
+      .optional()
+      .describe('Related inference endpoint IDs'),
+    stream_url: z.string().optional().describe('Streaming endpoint URL'),
+    duration_estimate: z
+      .number()
+      .optional()
+      .describe('Estimated duration in minutes'),
+  })
+  .passthrough() // Allow additional fields
+  .describe('Model metadata');
+
+const FalAiModelSchema = z
+  .object({
+    endpoint_id: z
+      .string()
+      .describe('Stable identifier used to call the model'),
+    metadata: ModelMetadataSchema.optional().describe(
+      'Model metadata (may be absent for endpoints without registry entries)'
+    ),
+    openapi: z
+      .union([
+        z
+          .object({
+            openapi: z.string().describe('OpenAPI version (e.g., 3.0.4)'),
+          })
+          .passthrough(), // Allow full OpenAPI schema
+        z.object({
+          error: z.string().describe('Error message if schema unavailable'),
+        }),
+      ])
+      .optional()
+      .describe('OpenAPI 3.0 specification (when expand=openapi-3.0)'),
+  })
+  .passthrough() // Allow additional fields
+  .describe('fal.ai model information');
 
 // Define result schemas
 export const FalAiResultSchema = z.discriminatedUnion('operation', [
@@ -267,6 +471,49 @@ export const FalAiResultSchema = z.discriminatedUnion('operation', [
       .describe('Whether the result retrieval was successful'),
     error: z.string().describe('Error message if the result retrieval failed'),
   }),
+  z.object({
+    operation: z.literal('list_models'),
+    models: z
+      .array(FalAiModelSchema)
+      .optional()
+      .describe('Array of available models'),
+    has_more: z
+      .boolean()
+      .optional()
+      .describe('Whether more results are available'),
+    next_cursor: z
+      .string()
+      .optional()
+      .describe('Cursor for next page of results'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
+  }),
+  z.object({
+    operation: z.literal('search_models'),
+    models: z
+      .array(FalAiModelSchema)
+      .optional()
+      .describe('Array of matching models'),
+    has_more: z
+      .boolean()
+      .optional()
+      .describe('Whether more results are available'),
+    next_cursor: z
+      .string()
+      .optional()
+      .describe('Cursor for next page of results'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
+  }),
+  z.object({
+    operation: z.literal('get_model'),
+    models: z
+      .array(FalAiModelSchema)
+      .optional()
+      .describe('Array of requested models'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if the operation failed'),
+  }),
 ]);
 
 export type FalAiResult = z.output<typeof FalAiResultSchema>;
@@ -279,28 +526,37 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
   static readonly schema = FalAiParamsSchema;
   static readonly resultSchema = FalAiResultSchema;
   static readonly shortDescription =
-    'Fal AI integration for media generation (text-to-image, image-to-image)';
+    'fal.ai integration for media generation and model discovery';
   static readonly longDescription = `
-    Integrate with Fal AI's media generation APIs for creating and transforming images.
+    Integrate with Fal AI's media generation and model discovery APIs.
 
-    Features:
+    Media Generation Features:
     - Text-to-image generation with various models (Flux, Stable Diffusion, etc.)
     - Image-to-image transformation
     - Configurable image sizes and quality settings
     - Async job status checking and result retrieval
     - Automatic polling for long-running operations
 
+    Model Discovery Features:
+    - List all available models with pagination
+    - Search models by query string (e.g., "veo3" finds Google Veo 3)
+    - Get specific models by endpoint ID
+    - Retrieve OpenAPI schemas for models
+    - Filter by category (text-to-image, image-to-video, etc.) and status
+
     Use cases:
     - Generate images from text descriptions
     - Transform existing images with AI
     - Create multiple variations of images
-    - Batch image generation workflows
+    - Discover available models for Pearl and other AI agents
+    - Dynamically retrieve model metadata and schemas
+    - Build model selection interfaces
 
     Supported Models:
     - fal-ai/flux/dev - Fast, high-quality image generation
     - fal-ai/stable-diffusion-v1-5 - Classic Stable Diffusion
     - fal-ai/flux/schnell - Ultra-fast generation
-    - And many more (check Fal AI docs for full list)
+    - And many more (use list_models or search_models to discover)
   `;
   static readonly alias = 'falai';
 
@@ -354,6 +610,12 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
         return this.getStatus(params);
       case 'get_result':
         return this.getResult(params);
+      case 'list_models':
+        return this.listModels(params);
+      case 'search_models':
+        return this.searchModels(params);
+      case 'get_model':
+        return this.getModel(params);
       default:
         throw new Error(`Unknown operation: ${(params as any).operation}`);
     }
@@ -517,7 +779,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'text_to_image',
         success: false,
-        error: 'Fal AI API key is required',
+        error: 'fal.ai API key is required',
       };
     }
 
@@ -637,7 +899,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'image_to_image',
         success: false,
-        error: 'Fal AI API key is required',
+        error: 'fal.ai API key is required',
       };
     }
 
@@ -740,7 +1002,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
         operation: 'get_status',
         status: 'FAILED',
         success: false,
-        error: 'Fal AI API key is required',
+        error: 'fal.ai API key is required',
       };
     }
 
@@ -790,7 +1052,7 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
       return {
         operation: 'get_result',
         success: false,
-        error: 'Fal AI API key is required',
+        error: 'fal.ai API key is required',
       };
     }
 
@@ -839,6 +1101,224 @@ export class FalAiBubble extends ServiceBubble<FalAiParamsParsed, FalAiResult> {
     } catch (error) {
       return {
         operation: 'get_result',
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  /**
+   * List all available models from fal.ai
+   */
+  private async listModels(
+    params: Extract<FalAiParamsParsed, { operation: 'list_models' }>
+  ): Promise<Extract<FalAiResult, { operation: 'list_models' }>> {
+    const { limit, cursor, expand, category, status } = params;
+    const apiKey = this.chooseCredential();
+
+    try {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      if (limit !== undefined) {
+        queryParams.append('limit', limit.toString());
+      }
+      if (cursor) {
+        queryParams.append('cursor', cursor);
+      }
+      if (expand && expand.length > 0) {
+        expand.forEach((e) => queryParams.append('expand', e));
+      }
+      if (category) {
+        queryParams.append('category', category);
+      }
+      if (status) {
+        queryParams.append('status', status);
+      }
+
+      const url = `${FAL_AI_MODELS_API_URL}/models${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey) {
+        headers['Authorization'] = `Key ${apiKey}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          operation: 'list_models',
+          success: false,
+          error: `Failed to list models: ${response.status} ${response.statusText} - ${errorText}`,
+        };
+      }
+
+      const data = (await response.json()) as {
+        models?: unknown[];
+        has_more?: boolean;
+        next_cursor?: string;
+      };
+
+      return {
+        operation: 'list_models',
+        models: data.models as any[], // Will be validated by Zod schema
+        has_more: data.has_more,
+        next_cursor: data.next_cursor,
+        success: true,
+        error: '',
+      };
+    } catch (error) {
+      return {
+        operation: 'list_models',
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  /**
+   * Search for models by query string
+   */
+  private async searchModels(
+    params: Extract<FalAiParamsParsed, { operation: 'search_models' }>
+  ): Promise<Extract<FalAiResult, { operation: 'search_models' }>> {
+    const { query, limit, cursor, expand, category, status } = params;
+    const apiKey = this.chooseCredential();
+
+    try {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append('q', query);
+      if (limit !== undefined) {
+        queryParams.append('limit', limit.toString());
+      }
+      if (cursor) {
+        queryParams.append('cursor', cursor);
+      }
+      if (expand && expand.length > 0) {
+        expand.forEach((e) => queryParams.append('expand', e));
+      }
+      if (category) {
+        queryParams.append('category', category);
+      }
+      if (status) {
+        queryParams.append('status', status);
+      }
+
+      const url = `${FAL_AI_MODELS_API_URL}/models?${queryParams.toString()}`;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey) {
+        headers['Authorization'] = `Key ${apiKey}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          operation: 'search_models',
+          success: false,
+          error: `Failed to search models: ${response.status} ${response.statusText} - ${errorText}`,
+        };
+      }
+
+      const data = (await response.json()) as {
+        models?: unknown[];
+        has_more?: boolean;
+        next_cursor?: string;
+      };
+
+      return {
+        operation: 'search_models',
+        models: data.models as any[], // Will be validated by Zod schema
+        has_more: data.has_more,
+        next_cursor: data.next_cursor,
+        success: true,
+        error: '',
+      };
+    } catch (error) {
+      return {
+        operation: 'search_models',
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      };
+    }
+  }
+
+  /**
+   * Get specific model(s) by endpoint ID
+   */
+  private async getModel(
+    params: Extract<FalAiParamsParsed, { operation: 'get_model' }>
+  ): Promise<Extract<FalAiResult, { operation: 'get_model' }>> {
+    const { endpointId, expand } = params;
+    const apiKey = this.chooseCredential();
+
+    try {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+
+      // Handle single or multiple endpoint IDs
+      const endpointIds = Array.isArray(endpointId) ? endpointId : [endpointId];
+      endpointIds.forEach((id) => queryParams.append('endpoint_id', id));
+
+      if (expand && expand.length > 0) {
+        expand.forEach((e) => queryParams.append('expand', e));
+      }
+
+      const url = `${FAL_AI_MODELS_API_URL}/models?${queryParams.toString()}`;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (apiKey) {
+        headers['Authorization'] = `Key ${apiKey}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          operation: 'get_model',
+          success: false,
+          error: `Failed to get model: ${response.status} ${response.statusText} - ${errorText}`,
+        };
+      }
+
+      const data = (await response.json()) as {
+        models?: unknown[];
+      };
+
+      return {
+        operation: 'get_model',
+        models: data.models as any[], // Will be validated by Zod schema
+        success: true,
+        error: '',
+      };
+    } catch (error) {
+      return {
+        operation: 'get_model',
         success: false,
         error:
           error instanceof Error ? error.message : 'Unknown error occurred',

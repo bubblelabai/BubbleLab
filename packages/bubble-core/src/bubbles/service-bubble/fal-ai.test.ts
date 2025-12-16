@@ -834,4 +834,513 @@ describe('FalAiBubble', () => {
       });
     });
   });
+
+  describe('list_models', () => {
+    it('should successfully list models', async () => {
+      const mockModels = [
+        {
+          endpoint_id: 'fal-ai/flux/dev',
+          metadata: {
+            display_name: 'FLUX.1 [dev]',
+            category: 'text-to-image',
+            description: 'Fast text-to-image generation',
+            status: 'active',
+          },
+        },
+        {
+          endpoint_id: 'fal-ai/flux/schnell',
+          metadata: {
+            display_name: 'FLUX.1 [schnell]',
+            category: 'text-to-image',
+            status: 'active',
+          },
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: mockModels,
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        limit: 10,
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'list_models',
+        models: mockModels,
+        has_more: false,
+        success: true,
+        error: '',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.fal.ai/v1/models?limit=10',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: `Key ${mockApiKey}`,
+          }),
+        })
+      );
+    });
+
+    it('should handle pagination with cursor', async () => {
+      const mockCursor = 'cursor-123';
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: true,
+          next_cursor: 'cursor-456',
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        limit: 5,
+        cursor: mockCursor,
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      expect(result.has_more).toBe(true);
+      expect(result.next_cursor).toBe('cursor-456');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining(`cursor=${mockCursor}`),
+        expect.any(Object)
+      );
+    });
+
+    it('should support OpenAPI schema expansion', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [
+            {
+              endpoint_id: 'fal-ai/flux/dev',
+              openapi: {
+                openapi: '3.0.4',
+                paths: {},
+                components: {},
+              },
+            },
+          ],
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        limit: 1,
+        expand: ['openapi-3.0'],
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('expand=openapi-3.0'),
+        expect.any(Object)
+      );
+    });
+
+    it('should support category filtering', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        category: 'text-to-image',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      await bubble.performAction();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('category=text-to-image'),
+        expect.any(Object)
+      );
+    });
+
+    it('should support status filtering', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        status: 'active',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      await bubble.performAction();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('status=active'),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle API errors', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        text: async () => 'Server error',
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'list_models',
+        success: false,
+        error: expect.stringContaining('Failed to list models'),
+      });
+    });
+
+    it('should work without credentials (lower rate limits)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'list_models',
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      // Should not include Authorization header
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({
+            Authorization: expect.any(String),
+          }),
+        })
+      );
+    });
+  });
+
+  describe('search_models', () => {
+    it('should successfully search models', async () => {
+      const mockModels = [
+        {
+          endpoint_id: 'fal-ai/flux/dev',
+          metadata: {
+            display_name: 'FLUX.1 [dev]',
+            category: 'text-to-image',
+          },
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: mockModels,
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'search_models',
+        query: 'flux',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'search_models',
+        models: mockModels,
+        has_more: false,
+        success: true,
+        error: '',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('q=flux'),
+        expect.any(Object)
+      );
+    });
+
+    it('should support combined search and filters', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: false,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'search_models',
+        query: 'video',
+        category: 'image-to-video',
+        limit: 5,
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      await bubble.performAction();
+
+      const callUrl = mockFetch.mock.calls[0][0] as string;
+      expect(callUrl).toContain('q=video');
+      expect(callUrl).toContain('category=image-to-video');
+      expect(callUrl).toContain('limit=5');
+    });
+
+    it('should handle search with pagination', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [],
+          has_more: true,
+          next_cursor: 'search-cursor-123',
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'search_models',
+        query: 'stable diffusion',
+        cursor: 'prev-cursor',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      expect(result.next_cursor).toBe('search-cursor-123');
+    });
+
+    it('should handle API errors', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        text: async () => 'Invalid query',
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'search_models',
+        query: 'test',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'search_models',
+        success: false,
+        error: expect.stringContaining('Failed to search models'),
+      });
+    });
+  });
+
+  describe('get_model', () => {
+    it('should successfully get a single model', async () => {
+      const mockModel = {
+        endpoint_id: 'fal-ai/flux/dev',
+        metadata: {
+          display_name: 'FLUX.1 [dev]',
+          category: 'text-to-image',
+          description: 'Fast, high-quality image generation',
+          status: 'active',
+          tags: ['fast', 'pro'],
+        },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [mockModel],
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'get_model',
+        endpointId: 'fal-ai/flux/dev',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'get_model',
+        models: [mockModel],
+        success: true,
+        error: '',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('endpoint_id=fal-ai%2Fflux%2Fdev'),
+        expect.any(Object)
+      );
+    });
+
+    it('should support multiple endpoint IDs', async () => {
+      const mockModels = [
+        { endpoint_id: 'fal-ai/flux/dev' },
+        { endpoint_id: 'fal-ai/flux/schnell' },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: mockModels,
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'get_model',
+        endpointId: ['fal-ai/flux/dev', 'fal-ai/flux/schnell'],
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      expect(result.models).toHaveLength(2);
+
+      const callUrl = mockFetch.mock.calls[0][0] as string;
+      expect(callUrl).toContain('endpoint_id=fal-ai%2Fflux%2Fdev');
+      expect(callUrl).toContain('endpoint_id=fal-ai%2Fflux%2Fschnell');
+    });
+
+    it('should support OpenAPI schema expansion', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          models: [
+            {
+              endpoint_id: 'fal-ai/flux/dev',
+              openapi: {
+                openapi: '3.0.4',
+                paths: {
+                  '/': {
+                    post: {
+                      requestBody: {},
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        }),
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'get_model',
+        endpointId: 'fal-ai/flux/dev',
+        expand: ['openapi-3.0'],
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('expand=openapi-3.0'),
+        expect.any(Object)
+      );
+    });
+
+    it('should handle model not found', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        text: async () => 'Model not found',
+      });
+
+      bubble = new FalAiBubble({
+        operation: 'get_model',
+        endpointId: 'fal-ai/nonexistent',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result).toEqual({
+        operation: 'get_model',
+        success: false,
+        error: expect.stringContaining('Failed to get model'),
+      });
+    });
+
+    it('should handle network errors', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('Network timeout'));
+
+      bubble = new FalAiBubble({
+        operation: 'get_model',
+        endpointId: 'fal-ai/flux/dev',
+        credentials: {
+          [CredentialType.FAL_AI_API_KEY]: mockApiKey,
+        },
+      });
+
+      const result = await bubble.performAction();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Network timeout');
+    });
+  });
 });
