@@ -1037,10 +1037,12 @@ export function PearlChat() {
           !pearl.pendingPlan &&
           pearl.timeline.filter((item) => item.kind === 'event').length ===
             0 && (
-            <div className="p-3">
-              <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-sm text-gray-300">Processing...</span>
+            <div className="p-1">
+              <div className="text-sm text-gray-400 p-2 bg-gray-800/30 rounded border-l-2 border-gray-600">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Thinking...</span>
+                </div>
               </div>
             </div>
           )}
