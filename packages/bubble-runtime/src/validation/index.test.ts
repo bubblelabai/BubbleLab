@@ -174,5 +174,33 @@ export class TestFlow extends BubbleFlow<'webhook/http'> {
         )
       ).toBe(true);
     });
+
+    it('should fail validation when try catch is inside a for loop', async () => {
+      const code = `
+import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';
+
+export class TestFlow extends BubbleFlow<'webhook/http'> {
+  async handle(payload: any): Promise<any> {
+    for (let i = 0; i < 10; i++) {
+      try {
+        console.log('test');
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  }
+}
+      `;
+      const result = await validateBubbleFlow(code);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(
+        result.errors?.some((error) =>
+          error.includes(
+            'try-catch statements are not allowed in handle method'
+          )
+        )
+      ).toBe(true);
+    });
   });
 });
