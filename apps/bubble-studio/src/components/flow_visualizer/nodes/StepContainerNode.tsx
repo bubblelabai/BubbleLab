@@ -59,10 +59,10 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
     <div
       className={`relative backdrop-blur-sm rounded-lg border shadow-xl cursor-pointer ${
         isExecuting
-          ? 'bg-neutral-800/60'
+          ? 'bg-node-bg'
           : isHighlighted
             ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-            : 'border-neutral-600/60 bg-neutral-800/60 hover:border-neutral-500/80'
+            : 'border-node-border bg-node-bg hover:border-node-border'
       }`}
       style={{
         width: `${STEP_CONTAINER_LAYOUT.WIDTH}px`,
@@ -113,18 +113,18 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
 
       {/* Header Section */}
       <div
-        className="bg-neutral-900/80 border-b border-neutral-600/60 rounded-t-lg px-5 py-4 flex-shrink-0 pointer-events-none"
+        className="bg-node-bg border-b border-node-border rounded-t-lg px-5 py-4 flex-shrink-0 pointer-events-none"
         style={{
           height: `${headerHeight}px`,
         }}
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xl font-semibold text-white truncate">
+          <span className="text-xl font-semibold text-foreground truncate">
             {functionName}()
           </span>
         </div>
         {description && (
-          <p className="text-base text-neutral-200 break-words">
+          <p className="text-base text-muted-foreground break-words">
             {description}
           </p>
         )}

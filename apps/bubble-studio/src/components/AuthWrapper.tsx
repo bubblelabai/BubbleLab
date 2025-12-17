@@ -15,10 +15,10 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   // Don't render children until Clerk is loaded and token sync is initialized
   if (!isLoaded) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0d1117] text-gray-100">
+      <div className="h-screen flex items-center justify-center bg-panel text-foreground">
         <div className="text-center space-y-4">
-          <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-gray-400">Loading...</p>
+          <div className="animate-spin w-8 h-8 border-2 border-info border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );

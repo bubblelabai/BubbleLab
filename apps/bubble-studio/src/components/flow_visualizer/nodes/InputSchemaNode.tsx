@@ -14,8 +14,6 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
-  /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
-  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -23,7 +21,6 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
-      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -31,7 +28,6 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
-          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -165,14 +161,14 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-[400px] ${
+      className={`bg-node-bg border-node-border rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
         isExecuting
           ? `border-blue-400 shadow-lg shadow-blue-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : hasMissingRequired
             ? `border-amber-500 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
             : isHighlighted
               ? `${BUBBLE_COLORS.SELECTED.border} ${BUBBLE_COLORS.SELECTED.background}`
-              : 'border-neutral-600'
+              : 'border-node-border'
       }`}
     >
       {/* Output handle on the right to connect to first bubble */}
@@ -204,7 +200,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
               <FileInput className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-neutral-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 Flow Inputs
               </h3>
             </div>
@@ -237,7 +233,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
       </div>
 
       {/* Execute button */}
-      <div className="p-4 border-t border-neutral-600">
+      <div className="p-4 border-t border-node-border">
         <button
           type="button"
           onClick={handleExecuteFlow}
@@ -247,7 +243,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
           className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             isFormValid && !isExecuting
               ? 'bg-blue-600 hover:bg-blue-500 text-white'
-              : 'bg-neutral-700 text-neutral-400 cursor-not-allowed'
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
           }`}
         >
           {isExecuting ? (

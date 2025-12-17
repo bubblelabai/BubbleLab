@@ -284,12 +284,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 cursor-pointer ${
+      className={`bg-node-bg rounded-lg border border-node-border transition-all duration-300 cursor-pointer ${
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
         isSubBubble
-          ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
-          : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
+          ? 'scale-75 w-64' // Sub-bubbles are smaller
+          : 'w-80' // Main bubbles fixed width
       } ${
         isExecuting
           ? `${BUBBLE_COLORS.RUNNING.border} ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : BUBBLE_COLORS.RUNNING.background}`
@@ -322,23 +322,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
           />
           {isCompleted && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-              style={{
-                left: '0',
-                backgroundColor: hasError
-                  ? 'rgba(239, 68, 68, 0.9)'
-                  : 'rgba(245, 245, 244, 0.95)',
-                borderColor: hasError
-                  ? '#dc2626'
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm ${
+                hasError
+                  ? 'bg-node-error-bg border-node-error-border text-white'
                   : isInputSelected
-                    ? 'rgba(99, 102, 241, 0.9)'
-                    : 'rgba(212, 212, 211, 0.8)',
-                borderWidth: isInputSelected ? '2.5px' : '1.5px',
-                color: hasError ? '#ffffff' : 'rgba(23, 23, 23, 0.95)',
-                boxShadow: isInputSelected
-                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                  : undefined,
-              }}
+                    ? 'bg-node-badge-bg border-node-badge-selected text-node-badge-text border-[2.5px] shadow-[0_0_0_2px_var(--color-node-badge-selected)]'
+                    : 'bg-node-badge-bg border-node-badge-border text-node-badge-text border-[1.5px]'
+              }`}
+              style={{ left: '0' }}
               onClick={(e) => {
                 e.stopPropagation();
 
@@ -370,23 +361,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
           />
           {isCompleted && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm"
-              style={{
-                right: '0',
-                backgroundColor: hasError
-                  ? 'rgba(239, 68, 68, 0.9)'
-                  : 'rgba(23, 23, 23, 0.95)',
-                borderColor: hasError
-                  ? '#dc2626'
+              className={`absolute top-1/2 -translate-y-1/2 translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap shadow-lg border transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-sm ${
+                hasError
+                  ? 'bg-node-error-bg border-node-error-border text-white'
                   : isOutputSelected
-                    ? 'rgba(99, 102, 241, 0.9)'
-                    : 'rgba(64, 64, 64, 0.8)',
-                borderWidth: isOutputSelected ? '2.5px' : '1.5px',
-                color: hasError ? '#ffffff' : 'rgba(245, 245, 244, 0.95)',
-                boxShadow: isOutputSelected
-                  ? '0 0 0 2px rgba(99, 102, 241, 0.3)'
-                  : undefined,
-              }}
+                    ? 'bg-node-output-bg border-node-badge-selected text-node-output-text border-[2.5px] shadow-[0_0_0_2px_var(--color-node-badge-selected)]'
+                    : 'bg-node-output-bg border-node-output-border text-node-output-text border-[1.5px]'
+              }`}
+              style={{ right: '0' }}
               onClick={(e) => {
                 e.stopPropagation();
                 const liveOutputStore = getLiveOutputStore(flowId);
@@ -445,7 +427,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
       {/* Header */}
       <div
-        className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-neutral-600' : ''}`}
+        className={`p-4 relative ${bubble.parameters.length > 0 ? 'border-b border-node-border' : ''}`}
       >
         <div className="absolute top-4 right-4 flex items-center gap-2">
           {(hasError ||
@@ -501,12 +483,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 }}
                 onMouseEnter={() => setShowCodeTooltip(true)}
                 onMouseLeave={() => setShowCodeTooltip(false)}
-                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                className="inline-flex items-center justify-center p-1.5 rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <Code className="w-3.5 h-3.5" />
               </button>
               {showCodeTooltip && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-popover-foreground bg-popover rounded shadow-lg whitespace-nowrap border border-border z-50">
                   {showEditor ? 'Hide Code' : 'View Code'}
                 </div>
               )}
@@ -521,12 +503,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={() => setShowDocsTooltip(true)}
                 onMouseLeave={() => setShowDocsTooltip(false)}
-                className="inline-flex items-center justify-center p-1.5 rounded text-neutral-300 hover:bg-neutral-700 hover:text-neutral-100 transition-colors"
+                className="inline-flex items-center justify-center p-1.5 rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <BookOpen className="w-3.5 h-3.5" />
               </a>
               {showDocsTooltip && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap border border-neutral-700 z-50">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 text-xs font-medium text-popover-foreground bg-popover rounded shadow-lg whitespace-nowrap border border-border z-50">
                   See Docs
                 </div>
               )}
@@ -558,24 +540,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
           {/* Content */}
           <div className="flex items-start gap-3 w-full">
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-neutral-100 truncate">
+              <h3 className="text-sm font-semibold text-foreground truncate">
                 {bubble.variableName}
               </h3>
               {bubble.description && (
-                <p className="text-xs text-neutral-400 mt-1.5 break-words">
+                <p className="text-xs text-muted-foreground mt-1.5 break-words">
                   {bubble.description}
                 </p>
               )}
-              {/* <p className="text-xs text-neutral-400 truncate mt-1">
-                {bubble.bubbleName}
-              </p> */}
-              {/* {bubble.location && bubble.location.startLine > 0 && (
-                <p className="text-xs text-neutral-500 truncate mt-1">
-                  Line {bubble.location.startLine}:{bubble.location.startCol}
-                  {bubble.location.startLine !== bubble.location.endLine &&
-                    ` - ${bubble.location.endLine}:${bubble.location.endCol}`}
-                </p>
-              )} */}
             </div>
           </div>
         </div>
@@ -620,10 +592,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
                   return (
                     <div key={credType} className={`space-y-1`}>
-                      <label className="block text-[11px] text-neutral-300">
+                      <label className="block text-[11px] text-muted-foreground">
                         {credType}
                         {/* {systemCred && (
-                        <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-neutral-600 text-neutral-200 rounded">
+                        <span className="ml-1 text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
                           System Managed
                         </span>
                       )} */}
@@ -649,20 +621,30 @@ function BubbleNode({ data }: BubbleNodeProps) {
                           const credId = val ? parseInt(val, 10) : null;
                           handleCredentialChange(credType, credId);
                         }}
-                        className={`w-full px-2 py-1 text-xs bg-neutral-700 border ${isMissingSelection ? 'border-amber-500' : 'border-neutral-500'} rounded text-neutral-100`}
+                        className={`w-full px-2 py-1 text-xs bg-muted border ${isMissingSelection ? 'border-amber-500' : 'border-node-border'} rounded text-foreground`}
                       >
-                        <option value="">
+                        <option
+                          value=""
+                          className="bg-popover text-popover-foreground"
+                        >
                           {systemCred
                             ? 'Use system default'
                             : 'Select credential...'}
                         </option>
                         {availableForType.map((cred) => (
-                          <option key={cred.id} value={String(cred.id)}>
+                          <option
+                            key={cred.id}
+                            value={String(cred.id)}
+                            className="bg-popover text-popover-foreground"
+                          >
                             {cred.name || `${cred.credentialType} (${cred.id})`}
                           </option>
                         ))}
                         <option disabled>────────────</option>
-                        <option value="__ADD_NEW__">
+                        <option
+                          value="__ADD_NEW__"
+                          className="bg-popover text-popover-foreground"
+                        >
                           + Add New Credential…
                         </option>
                       </select>
@@ -676,7 +658,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
       </div>
 
       {hasSubBubbles && (
-        <div className="px-4 py-3 border-t border-neutral-600 bg-neutral-800/70">
+        <div className="px-4 py-3 border-t border-node-border bg-muted/40">
           <button
             type="button"
             onClick={(event) => {

@@ -38,7 +38,6 @@ import { useEditor } from '@/hooks/useEditor';
 import CronScheduleNode from './nodes/CronScheduleNode';
 import { useEditorStore } from '@/stores/editorStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
-import { GeneratingOverlay } from './GeneratingOverlay';
 
 // Keep backward compatibility - use the shared schema type
 type ParsedBubble = ParsedBubbleWithInfo;
@@ -65,6 +64,15 @@ const sanitizeIdSegment = (value: string) =>
 
 // Edge label visibility
 const SHOW_EDGE_LABELS = false; // Set to true to show conditional edge labels
+
+// Theme-aware edge colors using CSS custom properties
+const EDGE_COLORS = {
+  default: 'var(--color-edge-default)',
+  highlighted: 'var(--color-edge-highlighted)',
+  success: 'var(--color-edge-success)',
+  muted: 'var(--color-edge-muted)',
+  schedule: 'var(--color-edge-schedule)',
+} as const;
 
 function generateDependencyNodeId(
   dependencyNode: DependencyGraphNode,
@@ -95,19 +103,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   const { setCenter, getNode } = useReactFlow();
 
   // Get all data from global stores
-  // Poll every 10 seconds when flow is in pending/generating state (code is empty and no error)
-  const { data: currentFlow, loading } = useBubbleFlow(flowId, {
-    refetchInterval: (query) => {
-      // Check if flow is in pending/generating state
-      const data = query.state.data;
-      const isPending =
-        data &&
-        (!data.code || data.code.trim() === '') &&
-        !data.generationError;
-      // Poll every 10 seconds (10000ms) when pending, otherwise no polling
-      return isPending ? 10000 : false;
-    },
-  });
+  const { data: currentFlow, loading } = useBubbleFlow(flowId);
   const { unsavedCode, setExecutionHighlight } = useEditor(flowId);
   // Select only needed execution store actions/state to avoid re-renders from events
   // Note: Individual nodes subscribe to their own state - FlowVisualizer only needs minimal state
@@ -483,7 +479,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           sourceHandle: 'bottom',
           targetHandle: 'top',
           style: {
-            stroke: isEdgeHighlighted ? '#9333ea' : '#9ca3af',
+            stroke: isEdgeHighlighted
+              ? EDGE_COLORS.highlighted
+              : EDGE_COLORS.default,
             strokeWidth: isEdgeHighlighted ? 3 : 2,
           },
         });
@@ -547,13 +545,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
           if (isHighlighted) {
             // Highlighted edges: solid, thick, bright green
-            edgeColor = '#22c55e'; // green-500
+            edgeColor = EDGE_COLORS.success; // green-500
             strokeWidth = 3;
             strokeDasharray = undefined;
             strokeOpacity = 1;
           } else {
             // Non-highlighted edges: dashed, thin, subtle
-            edgeColor = '#6b7280'; // gray-500
+            edgeColor = EDGE_COLORS.muted; // gray-500
             strokeWidth = 1;
             strokeDasharray = '6,3';
             strokeOpacity = 0.4;
@@ -776,7 +774,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       required?: boolean;
       description?: string;
       default?: unknown;
-      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -784,7 +781,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           description?: string;
           default?: unknown;
           required?: boolean;
-          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -803,14 +799,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 type?: string;
                 description?: string;
                 default?: unknown;
-                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
                     type?: string;
                     description?: string;
                     default?: unknown;
-                    canBeFile?: boolean;
                   }
                 >;
                 required?: string[];
@@ -833,7 +827,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                 description?: string;
                 default?: unknown;
                 required?: boolean;
-                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -841,7 +834,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     description?: string;
                     default?: unknown;
                     required?: boolean;
-                    canBeFile?: boolean;
                   }
                 >;
                 requiredProperties?: string[];
@@ -853,7 +845,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     type?: string;
                     description?: string;
                     default?: unknown;
-                    canBeFile?: boolean;
                     properties?: Record<string, unknown>;
                     required?: string[];
                   };
@@ -868,7 +859,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                       description: propSchema.description,
                       default: propSchema.default,
                       required: objectRequired.includes(propName),
-                      canBeFile: propSchema.canBeFile,
                       properties: processProperties(propSchema.properties),
                       requiredProperties: nestedRequired,
                     };
@@ -878,7 +868,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                       description: propSchema?.description,
                       default: propSchema?.default,
                       required: objectRequired.includes(propName),
-                      canBeFile: propSchema?.canBeFile,
                     };
                   }
                   return acc;
@@ -890,7 +879,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                     description?: string;
                     default?: unknown;
                     required?: boolean;
-                    canBeFile?: boolean;
                     properties?: Record<
                       string,
                       {
@@ -898,7 +886,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                         description?: string;
                         default?: unknown;
                         required?: boolean;
-                        canBeFile?: boolean;
                       }
                     >;
                     requiredProperties?: string[];
@@ -913,7 +900,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               required: req.includes(name),
               description: valObj.description,
               default: valObj.default,
-              canBeFile: valObj.canBeFile,
               properties: processProperties(valObj.properties),
               requiredProperties: objectRequired,
             };
@@ -925,8 +911,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             required: req.includes(name),
             description: valObj?.description,
             default: (valObj as { default?: unknown } | undefined)?.default,
-            canBeFile: (valObj as { canBeFile?: boolean } | undefined)
-              ?.canBeFile,
           };
         });
       } catch {
@@ -1178,7 +1162,10 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type: 'straight',
             animated: true,
             style: {
-              stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
+              stroke:
+                eventType === 'schedule/cron'
+                  ? EDGE_COLORS.highlighted
+                  : EDGE_COLORS.schedule,
               strokeWidth: 2,
               strokeDasharray: '5,5',
             },
@@ -1212,7 +1199,9 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type: 'straight',
             animated: true,
             style: {
-              stroke: isSequentialEdgeHighlighted ? '#9333ea' : '#9ca3af',
+              stroke: isSequentialEdgeHighlighted
+                ? EDGE_COLORS.highlighted
+                : EDGE_COLORS.default,
               strokeWidth: isSequentialEdgeHighlighted ? 3 : 2,
               strokeDasharray: '5,5',
             },
@@ -1735,13 +1724,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
         if (isHighlighted) {
           // Highlighted edges: solid, thick, bright green
-          edgeColor = '#22c55e'; // green-500
+          edgeColor = EDGE_COLORS.success; // green-500
           strokeWidth = 4;
           strokeDasharray = undefined;
           strokeOpacity = 1;
         } else {
           // Non-highlighted edges: dashed, thin, subtle
-          edgeColor = '#6b7280'; // gray-500
+          edgeColor = EDGE_COLORS.muted; // gray-500
           strokeWidth = 1.5;
           strokeDasharray = '8,4';
           strokeOpacity = 0.4;
@@ -1785,13 +1774,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
       if (isHighlighted) {
         // Highlighted edges: solid, thick, bright green - clearly visible
-        edgeColor = '#22c55e'; // green-500
+        edgeColor = EDGE_COLORS.success; // green-500
         strokeWidth = 4; // Thicker for better visibility
         strokeDasharray = undefined; // Solid line - no dashes
         strokeOpacity = 1; // Fully opaque
       } else {
         // Non-highlighted edges: dashed, thin, subtle gray - fade into background
-        edgeColor = '#6b7280'; // gray-500 (lighter than before)
+        edgeColor = EDGE_COLORS.muted; // gray-500
         strokeWidth = isConditional ? 1.5 : 1.5; // Thinner
         strokeDasharray = '8,4'; // Dashed - more subtle
         strokeOpacity = 0.4; // Semi-transparent to fade into background
@@ -1817,7 +1806,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
           : undefined,
         labelBgStyle: SHOW_EDGE_LABELS
           ? {
-              fill: '#1e1e1e',
+              fill: 'hsl(var(--canvas))',
               fillOpacity: 0.9,
             }
           : undefined,
@@ -2164,16 +2153,13 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
   // Show loading state
   if (loading) {
     return (
-      <div
-        className="h-full flex items-center justify-center"
-        style={{ backgroundColor: '#1e1e1e' }}
-      >
+      <div className="h-full flex items-center justify-center bg-canvas">
         <div className="text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
           <p className="text-purple-400 text-lg mb-2">Loading Flow...</p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Processing flow data and setting up visualization
           </p>
         </div>
@@ -2181,76 +2167,21 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
     );
   }
 
-  // Show generation error state
-  if (currentFlow?.generationError) {
-    return (
-      <div
-        className="h-full flex items-center justify-center"
-        style={{ backgroundColor: '#1e1e1e' }}
-      >
-        <div className="text-center max-w-md">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-red-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-          <p className="text-red-400 text-lg mb-2 font-medium">
-            Code Generation Failed
-          </p>
-          <p className="text-gray-400 text-sm mb-4">
-            {currentFlow.generationError}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              // TODO: Implement retry generation
-              console.log('Retry generation for flow', flowId);
-            }}
-            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            Retry Generation
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if code is empty and no error (generating state)
-  // If there's an error, we show the error state instead
-  const isGenerating =
-    (!currentFlow?.code || currentFlow.code.trim() === '') &&
-    !currentFlow?.generationError;
-
   // Note: We no longer early return when there are no bubbles
   // The entry node (InputSchemaNode or CronScheduleNode) should always be visible
 
   return (
-    <div
-      className="h-full overflow-hidden relative"
-      style={{ backgroundColor: '#1e1e1e' }}
-    >
-      {onValidate && !isGenerating && (
+    <div className="h-full overflow-hidden relative bg-canvas">
+      {onValidate && (
         <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
           <button
             type="button"
             onClick={onValidate}
             disabled={isExecuting}
-            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-gray-600/20 disabled:cursor-not-allowed disabled:border-gray-600/50 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 disabled:text-gray-400 flex items-center gap-1"
+            className="bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 disabled:bg-secondary/20 disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 text-purple-300 hover:text-purple-200 flex items-center gap-1"
           >
             <RefreshCw className="w-3 h-3" />
-            Sync changes
+            Sync with code
           </button>
           {hasUnsavedChanges && (
             <div className="bg-orange-500/20 border border-orange-500/50 px-2 py-1 rounded text-xs font-medium text-orange-300">
@@ -2260,147 +2191,124 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         </div>
       )}
 
-      {/* Show blank state when code is empty (generating in Pearl) */}
-      {isGenerating ? (
-        <GeneratingOverlay />
-      ) : (
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          onNodeClick={(_event, node) => {
-            const executionStore = getExecutionStore(currentFlow?.id || flowId);
-            const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
-            const isDesktopView =
-              window.matchMedia('(min-width: 768px)').matches;
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        onNodeClick={(_event, node) => {
+          const executionStore = getExecutionStore(currentFlow?.id || flowId);
+          const pearlChatStore = getPearlChatStore(currentFlow?.id || flowId);
 
-            if (node.type === 'stepContainerNode') {
-              const stepData = node.data as unknown as {
-                stepId: string;
-                stepInfo: {
-                  functionName: string;
-                  description?: string;
-                  location: { startLine: number; endLine: number };
-                  isAsync: boolean;
-                };
+          if (node.type === 'stepContainerNode') {
+            const stepData = node.data as unknown as {
+              stepId: string;
+              stepInfo: {
+                functionName: string;
+                description?: string;
+                location: { startLine: number; endLine: number };
+                isAsync: boolean;
               };
-              const functionName = stepData.stepInfo.functionName;
+            };
+            const functionName = stepData.stepInfo.functionName;
 
-              // Highlight the step container
-              executionStore.highlightBubble(node.id);
+            // Highlight the step container
+            executionStore.highlightBubble(node.id);
 
-              console.log('addStepToContext', functionName);
+            console.log('addStepToContext', functionName);
 
-              // Add step to context (automatically clears bubble and transformation context)
-              pearlChatStore.getState().addStepToContext(functionName);
+            // Add step to context (automatically clears bubble and transformation context)
+            pearlChatStore.getState().addStepToContext(functionName);
 
-              // Open Pearl panel (only on desktop - on mobile, user can use the Flow/Panel toggle)
-              if (isDesktopView) {
-                useUIStore.getState().openConsolidatedPanelWith('pearl');
-              }
-            } else if (node.type === 'transformationNode') {
-              const transformationInfo = (
-                node.data as unknown as TransformationNodeData
-              ).transformationInfo;
-              const functionName = transformationInfo.functionName;
+            // Open Pearl panel
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (node.type === 'transformationNode') {
+            const transformationInfo = (
+              node.data as unknown as TransformationNodeData
+            ).transformationInfo;
+            const functionName = transformationInfo.functionName;
 
-              // Highlight the transformation node
-              executionStore.highlightBubble(node.id);
+            // Highlight the transformation node
+            executionStore.highlightBubble(node.id);
 
-              console.log('addTransformationToContext', functionName);
+            console.log('addTransformationToContext', functionName);
 
-              // Add transformation to context (automatically clears bubble context)
-              pearlChatStore
-                .getState()
-                .addTransformationToContext(functionName);
+            // Add transformation to context (automatically clears bubble context)
+            pearlChatStore.getState().addTransformationToContext(functionName);
 
-              // Open Pearl panel (only on desktop)
-              if (isDesktopView) {
-                useUIStore.getState().openConsolidatedPanelWith('pearl');
-              }
-            } else if (node.type === 'bubbleNode') {
-              // For bubble nodes, use variableId
-              const bubbleData = (node.data as unknown as BubbleNodeData)
-                .bubble;
-              const bubbleId = bubbleData.variableId
-                ? String(bubbleData.variableId)
-                : node.id;
+            // Open Pearl panel
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (node.type === 'bubbleNode') {
+            // For bubble nodes, use variableId
+            const bubbleData = (node.data as unknown as BubbleNodeData).bubble;
+            const bubbleId = bubbleData.variableId
+              ? String(bubbleData.variableId)
+              : node.id;
 
-              // Highlight the bubble
-              executionStore.highlightBubble(bubbleId);
+            // Highlight the bubble
+            executionStore.highlightBubble(bubbleId);
 
-              // Set execution highlight in editor
-              if (
-                bubbleData.location.startLine > 0 &&
-                bubbleData.location.endLine > 0
-              ) {
-                setExecutionHighlight({
-                  startLine: bubbleData.location.startLine,
-                  endLine: bubbleData.location.endLine,
-                });
-              }
-
-              // Clear and set context
-              pearlChatStore.getState().clearBubbleContext();
-              const contextKey = bubbleData.variableId
-                ? bubbleData.variableId
-                : Number(node.id);
-
-              pearlChatStore.getState().addBubbleToContext(contextKey);
-              // Open Pearl panel (only on desktop)
-              if (isDesktopView) {
-                useUIStore.getState().openConsolidatedPanelWith('pearl');
-              }
-            } else if (
-              node.type === 'inputSchemaNode' ||
-              node.type === 'cronScheduleNode'
+            // Set execution highlight in editor
+            if (
+              bubbleData.location.startLine > 0 &&
+              bubbleData.location.endLine > 0
             ) {
-              // Highlight the entry node
-              executionStore.highlightBubble(node.id);
-              // Clear the bubble context (entry nodes don't have bubble context)
-              pearlChatStore.getState().clearBubbleContext();
-              // Open Pearl panel (only on desktop)
-              if (isDesktopView) {
-                useUIStore.getState().openConsolidatedPanelWith('pearl');
-              }
+              setExecutionHighlight({
+                startLine: bubbleData.location.startLine,
+                endLine: bubbleData.location.endLine,
+              });
             }
-          }}
-          onPaneClick={() => {
-            // Dismiss the highlighted bubble
-            getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
-            useEditorStore.getState().clearExecutionHighlight();
 
-            // Clear the bubble context
-            // Only open panel on desktop - on mobile, user can use the Flow/Panel toggle
-            if (window.matchMedia('(min-width: 768px)').matches) {
-              useUIStore.getState().openConsolidatedPanelWith('pearl');
-            }
-            getPearlChatStore(currentFlow?.id || flowId)
-              .getState()
-              .clearBubbleContext();
-          }}
-          proOptions={proOptions}
-          minZoom={FLOW_LAYOUT.VIEWPORT.MIN_ZOOM}
-          maxZoom={FLOW_LAYOUT.VIEWPORT.MAX_ZOOM}
-          defaultViewport={{
-            x: 0,
-            y: 0,
-            zoom: FLOW_LAYOUT.VIEWPORT.INITIAL_ZOOM,
-          }}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          elementsSelectable={true}
-          panOnDrag={true}
-          zoomOnScroll={true}
-          zoomOnPinch={true}
-          zoomOnDoubleClick={false}
-        >
-          <Controls className="!bg-neutral-900 !border-neutral-600 [&_button]:!bg-neutral-800 [&_button]:!text-neutral-200 [&_button]:!border-neutral-600 [&_button:hover]:!bg-neutral-700" />
-          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        </ReactFlow>
-      )}
+            // Clear and set context
+            pearlChatStore.getState().clearBubbleContext();
+            const contextKey = bubbleData.variableId
+              ? bubbleData.variableId
+              : Number(node.id);
+
+            pearlChatStore.getState().addBubbleToContext(contextKey);
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          } else if (
+            node.type === 'inputSchemaNode' ||
+            node.type === 'cronScheduleNode'
+          ) {
+            // Highlight the entry node
+            executionStore.highlightBubble(node.id);
+            // Clear the bubble context (entry nodes don't have bubble context)
+            pearlChatStore.getState().clearBubbleContext();
+            useUIStore.getState().openConsolidatedPanelWith('pearl');
+          }
+        }}
+        onPaneClick={() => {
+          // Dismiss the highlighted bubble
+          getExecutionStore(currentFlow?.id || flowId).highlightBubble(null);
+          useEditorStore.getState().clearExecutionHighlight();
+
+          // Clear the bubble context
+          useUIStore.getState().openConsolidatedPanelWith('pearl');
+          getPearlChatStore(currentFlow?.id || flowId)
+            .getState()
+            .clearBubbleContext();
+        }}
+        proOptions={proOptions}
+        minZoom={FLOW_LAYOUT.VIEWPORT.MIN_ZOOM}
+        maxZoom={FLOW_LAYOUT.VIEWPORT.MAX_ZOOM}
+        defaultViewport={{
+          x: 0,
+          y: 0,
+          zoom: FLOW_LAYOUT.VIEWPORT.INITIAL_ZOOM,
+        }}
+        nodesDraggable={true}
+        nodesConnectable={true}
+        elementsSelectable={true}
+        panOnDrag={true}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={false}
+      >
+        <Controls className="!bg-card !border-border [&_button]:!bg-muted [&_button]:!text-foreground [&_button]:!border-border [&_button:hover]:!bg-accent" />
+        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+      </ReactFlow>
     </div>
   );
 }

@@ -455,26 +455,26 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
               R2 Storage Demo
             </h1>
           </div>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Upload files to Cloudflare R2 using StorageBubble, then retrieve
             them with secure presigned URLs
           </p>
         </div>
 
         {/* Configuration */}
-        <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 mb-8">
+        <div className="bg-card border border-border rounded-xl p-6 mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center">
               <span className="text-blue-400 text-sm">⚙️</span>
             </div>
-            <h2 className="text-xl font-semibold text-gray-200">
+            <h2 className="text-xl font-semibold text-foreground">
               Configuration
             </h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-foreground-80 mb-2">
                 Bucket Name
               </label>
               <input
@@ -482,9 +482,9 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 value={bucketName}
                 onChange={(e) => setBucketName(e.target.value)}
                 placeholder="bubble-lab-bucket"
-                className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3 text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 The R2 bucket name where files will be stored
               </p>
             </div>
@@ -493,12 +493,12 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Upload Section */}
-          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <span className="text-green-400">📤</span>
               </div>
-              <h2 className="text-xl font-semibold text-gray-200">
+              <h2 className="text-xl font-semibold text-foreground">
                 Upload to R2
               </h2>
             </div>
@@ -506,7 +506,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
             {/* File Upload */}
             <div className="space-y-4">
               <div
-                className="border-2 border-dashed border-[#30363d] rounded-xl p-8 text-center transition-all duration-200 hover:border-green-500/50 hover:bg-green-500/5"
+                className="border-2 border-dashed border-border rounded-xl p-8 text-center transition-all duration-200 hover:border-green-500/50 hover:bg-green-500/5"
                 onDrop={(e) => {
                   e.preventDefault();
                   const file = e.dataTransfer.files[0];
@@ -528,16 +528,16 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                   <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="text-green-400 text-2xl">📁</span>
                   </div>
-                  <p className="text-gray-300 mb-2">
+                  <p className="text-foreground-80 mb-2">
                     {selectedFile
                       ? selectedFile.name
                       : 'Click to select or drag & drop'}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-muted-foreground">
                     Supports images, PDFs, documents, and text files
                   </p>
                   {selectedFile && (
-                    <div className="mt-4 text-sm text-gray-400">
+                    <div className="mt-4 text-sm text-muted-foreground">
                       <p>Size: {formatFileSize(selectedFile.size)}</p>
                       <p>Type: {selectedFile.type || 'Unknown'}</p>
                     </div>
@@ -547,8 +547,8 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
 
               {/* File Preview */}
               {previewUrl && (
-                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-300 mb-3">
+                <div className="bg-background border border-border rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-foreground-80 mb-3">
                     Preview
                   </h4>
                   {previewType === 'image' && (
@@ -561,7 +561,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                   {previewType === 'pdf' && (
                     <iframe
                       src={previewUrl}
-                      className="w-full h-48 rounded-lg border border-[#30363d]"
+                      className="w-full h-48 rounded-lg border border-border"
                       title="PDF Preview"
                     />
                   )}
@@ -573,7 +573,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 disabled={!selectedFile || isUploading}
                 className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
                   !selectedFile || isUploading
-                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-gray-500'
+                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-muted-foreground'
                     : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/25 border border-green-400/30'
                 }`}
               >
@@ -620,7 +620,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                           : 'Upload Failed'}
                       </h4>
                       {uploadResult.success && uploadResult.data?.result && (
-                        <div className="mt-2 text-sm text-gray-400">
+                        <div className="mt-2 text-sm text-muted-foreground">
                           <p>File: {uploadResult.data.result.fileName}</p>
                           <p>Uploaded to bucket: {bucketName}</p>
                         </div>
@@ -638,19 +638,19 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
           </div>
 
           {/* Retrieve Section */}
-          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+          <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
                 <span className="text-blue-400">📥</span>
               </div>
-              <h2 className="text-xl font-semibold text-gray-200">
+              <h2 className="text-xl font-semibold text-foreground">
                 Retrieve from R2
               </h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-foreground-80 mb-2">
                   File Name
                 </label>
                 <input
@@ -658,9 +658,9 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                   value={fileNameToGet}
                   onChange={(e) => setFileNameToGet(e.target.value)}
                   placeholder="example.pdf"
-                  className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-3 text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Enter the exact filename as stored in R2
                 </p>
               </div>
@@ -670,7 +670,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 disabled={!fileNameToGet.trim() || isRetrieving}
                 className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
                   !fileNameToGet.trim() || isRetrieving
-                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-gray-500'
+                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-muted-foreground'
                     : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30'
                 }`}
               >
@@ -721,7 +721,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                       {retrieveResult.success &&
                         retrieveResult.data?.result && (
                           <div className="mt-2 space-y-2">
-                            <div className="text-sm text-gray-400">
+                            <div className="text-sm text-muted-foreground">
                               <p>File: {retrieveResult.data.result.fileName}</p>
                               {retrieveResult.data.result.fileSize && (
                                 <p>
@@ -776,12 +776,12 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
 
         {/* Uploaded Files History */}
         {uploadedFiles.length > 0 && (
-          <div className="mt-8 bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+          <div className="mt-8 bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center">
                 <span className="text-purple-400">📋</span>
               </div>
-              <h2 className="text-xl font-semibold text-gray-200">
+              <h2 className="text-xl font-semibold text-foreground">
                 Recent Uploads
               </h2>
             </div>
@@ -790,7 +790,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
               {uploadedFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 hover:border-[#484f58] transition-colors"
+                  className="bg-background border border-border rounded-lg p-4 hover:border-border-80 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -798,10 +798,10 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                         <span className="text-blue-400">📁</span>
                       </div>
                       <div>
-                        <h4 className="font-medium text-gray-200">
+                        <h4 className="font-medium text-foreground">
                           {file.name}
                         </h4>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {formatFileSize(file.size)} • {file.type} •{' '}
                           {new Date(file.uploadedAt).toLocaleString()}
                         </p>
@@ -834,19 +834,19 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
         )}
 
         {/* Technical Info */}
-        <div className="mt-8 bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+        <div className="mt-8 bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-6 h-6 bg-gray-500/20 rounded-lg flex items-center justify-center">
-              <span className="text-gray-400 text-sm">ℹ️</span>
+              <span className="text-muted-foreground text-sm">ℹ️</span>
             </div>
-            <h3 className="text-lg font-semibold text-gray-200">
+            <h3 className="text-lg font-semibold text-foreground">
               How it Works
             </h3>
           </div>
 
-          <div className="space-y-4 text-sm text-gray-400">
+          <div className="space-y-4 text-sm text-muted-foreground">
             <div>
-              <h4 className="font-medium text-gray-300 mb-2">
+              <h4 className="font-medium text-foreground-80 mb-2">
                 Upload Process:
               </h4>
               <ol className="list-decimal list-inside space-y-1 ml-4">
@@ -861,7 +861,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-300 mb-2">
+              <h4 className="font-medium text-foreground-80 mb-2">
                 Retrieval Process:
               </h4>
               <ol className="list-decimal list-inside space-y-1 ml-4">
@@ -877,8 +877,8 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
               </ol>
             </div>
 
-            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-              <h4 className="font-medium text-gray-300 mb-2">
+            <div className="bg-background border border-border rounded-lg p-4">
+              <h4 className="font-medium text-foreground-80 mb-2">
                 🔒 Security Features:
               </h4>
               <ul className="list-disc list-inside space-y-1 ml-4">
@@ -903,7 +903,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 <li>Add localhost:3000 and *.bubblelab.ai to AllowedOrigins</li>
                 <li>Include PUT, GET, POST, DELETE, HEAD in AllowedMethods</li>
               </ol>
-              <div className="mt-3 bg-[#0d1117] border border-yellow-500/20 rounded-lg p-3">
+              <div className="mt-3 bg-background border border-yellow-500/20 rounded-lg p-3">
                 <h5 className="font-medium text-yellow-300 text-sm mb-2">
                   CORS Configuration JSON:
                 </h5>
