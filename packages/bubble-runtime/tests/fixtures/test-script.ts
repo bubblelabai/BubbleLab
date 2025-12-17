@@ -14,7 +14,7 @@ export class TestBubbleFlow extends BubbleFlow<'webhook/http'> {
   async handle(
     payload: BubbleTriggerEventRegistry['webhook/http']
   ): Promise<Output> {
-    const shouldFail = payload.body && (payload.body as any).shouldFail;
+    const shouldFail = payload.body && payload.body.shouldFail;
 
     if (shouldFail) {
       throw new Error('Test failure');

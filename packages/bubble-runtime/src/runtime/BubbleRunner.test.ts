@@ -416,9 +416,12 @@ describe('BubbleRunner correctly runs and plans', () => {
         // Check validation result
         const parseResult = await validateBubbleFlow(
           runner.bubbleScript.bubblescript,
-          true
+          false
         );
-        // console.log('Parse result:', parseResult);
+        if (!parseResult.valid) {
+          console.log(runner.bubbleScript.bubblescript);
+          console.log(parseResult.errors);
+        }
         expect(parseResult.valid).toBe(true);
         console.log(result.error);
         expect(result).toBeDefined();
@@ -448,9 +451,14 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
         const parseResult = await validateBubbleFlow(
           runner.bubbleScript.bubblescript,
-          true
+          false
         );
+        if (!parseResult.valid) {
+          console.log(runner.bubbleScript.bubblescript);
+          console.log(parseResult.errors);
+        }
         expect(parseResult.valid).toBe(true);
+
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it('should correctly inject logging for method calls inside if-body (not condition)', async () => {
@@ -467,6 +475,29 @@ describe('BubbleRunner correctly runs and plans', () => {
         );
         expect(parseResult.valid).toBe(true);
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      });
+      it('should execute a flow with a nested condition handle', async () => {
+        const testScript = getFixture('nested-condition-hanlde');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        expect(runner.bubbleScript.bubblescript).toContain('rowsToSave.push');
+        const result = await runner.runAll({
+          subreddits: [],
+          spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+          limit: 5,
+        });
+        expect(result).toBeDefined();
+        //script to be valid
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          true
+        );
+        expect(parseResult.valid).toBe(true);
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+        // Expect saveToSheet to be called
+        expect(runner.bubbleScript.bubblescript).toContain('rowsToSave.push');
+        console.log(runner.bubbleScript.bubblescript);
       });
       it.skip('should execute a flow with a batch process loop', async () => {
         const testScript = getFixture('batch-process-loop');

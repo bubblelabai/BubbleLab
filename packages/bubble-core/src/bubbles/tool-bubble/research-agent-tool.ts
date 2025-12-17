@@ -1,5 +1,4 @@
 import { z, type ZodTypeAny } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
@@ -7,6 +6,7 @@ import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 import { parseJsonWithFallbacks } from '../../utils/json-parsing.js';
 import { RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
+import { isZodSchema, zodSchemaToJsonString } from '../../utils/zod-schema.js';
 
 // Schema for the expected JSON result structure - accepts either a Zod schema or a JSON schema string
 const ExpectedResultSchema = z.union([
@@ -282,26 +282,11 @@ export class ResearchAgentTool extends ToolBubble<
   }
 
   public getExpectedResultSchema(): string {
-    // Helper function to detect if a value is a Zod schema
-    const isZodSchema = (value: unknown): value is ZodTypeAny => {
-      return (
-        typeof value === 'object' &&
-        value !== null &&
-        '_def' in value &&
-        typeof (value as { _def?: unknown })._def === 'object' &&
-        (value as { _def?: { typeName?: string } })._def?.typeName !== undefined
-      );
-    };
-
-    // Convert Zod schema to JSON schema string if needed
-    const isZod = isZodSchema(this.params.expectedResultSchema);
-
-    if (isZod) {
-      return JSON.stringify(
-        zodToJsonSchema(
-          this.params.expectedResultSchema as ZodTypeAny,
-          'ResultSchema'
-        )
+    // Use shared utility to convert Zod schema to JSON schema string
+    if (isZodSchema(this.params.expectedResultSchema)) {
+      return zodSchemaToJsonString(
+        this.params.expectedResultSchema,
+        'ResultSchema'
       );
     }
 

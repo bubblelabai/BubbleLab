@@ -111,6 +111,8 @@ ${CRITICAL_INSTRUCTIONS}
 - Ask questions ONLY when there's genuine ambiguity
 - Each question should have 2-4 clear choices
 - Questions should be actionable and help determine the implementation
+- Set "allowMultiple": true when the user can reasonably select multiple options (e.g., "Which fields to include?", "Which integrations to connect?")
+- Set "allowMultiple": false (or omit) when only one option should be selected (e.g., "Which database type?", "What trigger type?")
 - Focus on:
   - Data sources (where does the data come from?)
   - Output destinations (where should results go?)
@@ -170,10 +172,12 @@ When you need clarification:
         { "id": "choice_1", "label": "Option A", "description": "What this option means" },
         { "id": "choice_2", "label": "Option B", "description": "What this option means" }
       ],
-      "context": "Why this question is important (optional)"
+      "context": "Why this question is important (optional)",
+      "allowMultiple": true / false depending on the question
     }
   ]
 }
+
 
 When you have enough information to generate a plan:
 {

@@ -1122,7 +1122,8 @@ export class BubbleParser {
               | 'assignment'
               | 'return'
               | 'simple'
-              | 'condition_expression' = 'simple';
+              | 'condition_expression'
+              | 'nested_call_expression' = 'simple';
             let variableName: string | undefined;
             let variableType: 'const' | 'let' | 'var' | undefined;
             let destructuringPattern: string | undefined;
@@ -1207,6 +1208,41 @@ export class BubbleParser {
 
               if (parentIsPromiseAllElement) {
                 invocationContext = 'promise_all_element';
+              }
+
+              // Check if we're nested inside another CallExpression (e.g., arr.push(this.method()))
+              // This needs special handling similar to condition_expression - extract call before
+              // the statement and replace the call text inline
+              if (
+                currentParent.type === 'CallExpression' &&
+                currentParent !== node
+              ) {
+                // This is a nested call - the tracked method is an argument to another call
+                // Find the containing ExpressionStatement line
+                let stmtParent: TSESTree.Node | undefined = currentParent;
+                while (
+                  stmtParent &&
+                  stmtParent.type !== 'ExpressionStatement'
+                ) {
+                  stmtParent = parentMap.get(stmtParent);
+                }
+                if (stmtParent?.type === 'ExpressionStatement') {
+                  statementType = 'nested_call_expression';
+                  containingStatementLine = stmtParent.loc?.start.line;
+                  // Capture the call range - include await if present
+                  const callNode = hasAwait ? parent : node;
+                  if (callNode?.range) {
+                    callRange = {
+                      start: callNode.range[0],
+                      end: callNode.range[1],
+                    };
+                    callText = this.bubbleScript.substring(
+                      callRange.start,
+                      callRange.end
+                    );
+                  }
+                  break;
+                }
               }
 
               if (currentParent.type === 'VariableDeclarator') {

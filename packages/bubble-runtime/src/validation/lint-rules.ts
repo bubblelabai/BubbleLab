@@ -924,6 +924,38 @@ function findMethodCallsInNode(
 }
 
 /**
+ * Lint rule that prevents usage of 'any' type
+ * Using 'any' bypasses TypeScript's type checking and should be avoided
+ */
+export const noAnyTypeRule: LintRule = {
+  name: 'no-any-type',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    const visit = (node: ts.Node) => {
+      // Check for 'any' keyword in type nodes
+      if (node.kind === ts.SyntaxKind.AnyKeyword) {
+        const { line, character } =
+          context.sourceFile.getLineAndCharacterOfPosition(
+            node.getStart(context.sourceFile)
+          );
+        errors.push({
+          line: line + 1,
+          column: character + 1,
+          message:
+            "Type 'any' is not allowed. Use a specific type, 'unknown', or a generic type parameter instead.",
+        });
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -934,3 +966,4 @@ defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);
 defaultLintRuleRegistry.register(noProcessEnvRule);
 defaultLintRuleRegistry.register(noMethodCallingMethodRule);
 defaultLintRuleRegistry.register(noTryCatchInHandleRule);
+defaultLintRuleRegistry.register(noAnyTypeRule);

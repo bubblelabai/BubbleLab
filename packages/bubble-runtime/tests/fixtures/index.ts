@@ -57,6 +57,7 @@ export const fixtures = {
   'linkedin-gen-step-flow': '',
   'for-and-promises-flow': '',
   'github-pr-sequential': '',
+  'nested-condition-hanlde': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

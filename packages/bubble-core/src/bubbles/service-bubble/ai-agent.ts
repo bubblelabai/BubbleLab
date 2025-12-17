@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import {
@@ -33,6 +33,10 @@ import {
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { SafeGeminiChat } from '../../utils/safe-gemini-chat.js';
+import {
+  zodSchemaToJsonString,
+  buildJsonSchemaInstruction,
+} from '../../utils/zod-schema.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -134,7 +138,9 @@ const ModelConfigSchema = z.object({
   jsonMode: z
     .boolean()
     .default(false)
-    .describe('When true, returns clean JSON response'),
+    .describe(
+      'When true, returns clean JSON response, you must provide the exact JSON schema in the system prompt'
+    ),
   backupModel: BackupModelConfigSchema.default({
     model: 'openai/gpt-5-mini',
   })
@@ -221,6 +227,12 @@ const ImageInputSchema = z.discriminatedUnion('type', [
   UrlImageSchema,
 ]);
 
+// Schema for the expected JSON output structure - accepts either a Zod schema or a JSON schema string
+const ExpectedOutputSchema = z.union([
+  z.custom<ZodTypeAny>((val) => val?._def !== undefined),
+  z.string(),
+]);
+
 /** Type for conversation history messages - enables KV cache optimization */
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 
@@ -295,6 +307,9 @@ const AIAgentParamsSchema = z.object({
     .describe(
       'Enable real-time streaming of tokens, tool calls, and iteration progress'
     ),
+  expectedOutputSchema: ExpectedOutputSchema.optional().describe(
+    'Zod schema or JSON schema string that defines the expected structure of the AI response. When provided, automatically enables JSON mode and instructs the AI to output in the exact format. Example: z.object({ summary: z.string(), items: z.array(z.object({ name: z.string(), score: z.number() })) })'
+  ),
   // Note: beforeToolCall and afterToolCall are function hooks added via TypeScript interface
   // They cannot be part of the Zod schema but are available in the params
 });
@@ -450,15 +465,33 @@ export class AIAgentBubble extends ServiceBubble<
     );
   }
 
+  /**
+   * Modify params before execution - centralizes all param transformations
+   */
+  private beforeAction(): void {
+    // Auto-enable JSON mode when expectedOutputSchema is provided
+    if (this.params.expectedOutputSchema) {
+      this.params.model.jsonMode = true;
+
+      // Enhance system prompt with JSON schema instructions
+      const schemaString = zodSchemaToJsonString(
+        this.params.expectedOutputSchema
+      );
+      this.params.systemPrompt = `${this.params.systemPrompt}\n\n${buildJsonSchemaInstruction(schemaString)}`;
+    }
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-    const { model } = this.params;
+
+    // Apply param transformations before execution
+    this.beforeAction();
 
     try {
-      return await this.executeWithModel(model);
+      return await this.executeWithModel(this.params.model);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -585,20 +618,23 @@ export class AIAgentBubble extends ServiceBubble<
           streaming: enableStreaming,
           maxRetries: retries,
         });
-      case 'google':
+      case 'google': {
+        const thinkingConfig = reasoningEffort
+          ? {
+              includeThoughts: reasoningEffort ? true : false,
+              thinkingBudget:
+                reasoningEffort === 'low'
+                  ? 1025
+                  : reasoningEffort === 'medium'
+                    ? 5000
+                    : 10000,
+            }
+          : undefined;
         return new SafeGeminiChat({
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
-          thinkingConfig: {
-            includeThoughts: reasoningEffort ? true : false,
-            thinkingBudget:
-              reasoningEffort === 'low'
-                ? 1025
-                : reasoningEffort === 'medium'
-                  ? 5000
-                  : 10000,
-          },
+          ...(thinkingConfig && { thinkingConfig }),
           apiKey,
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
@@ -624,6 +660,7 @@ export class AIAgentBubble extends ServiceBubble<
             },
           ],
         });
+      }
       case 'anthropic': {
         // Configure Anthropic "thinking" only when reasoning is enabled.
         // Anthropic's API does not allow `budget_tokens` when thinking is disabled.
@@ -968,8 +1005,7 @@ export class AIAgentBubble extends ServiceBubble<
   ) {
     // Define the agent node
     const agentNode = async ({ messages }: typeof MessagesAnnotation.State) => {
-      // Enhance system prompt for JSON mode
-
+      // systemPrompt is already enhanced by beforeAction() if expectedOutputSchema was provided
       const systemMessage = new HumanMessage(systemPrompt);
       const allMessages = [systemMessage, ...messages];
 
