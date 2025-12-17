@@ -18,7 +18,7 @@ export const RECOMMENDED_MODELS = {
   FAST: 'google/gemini-2.5-flash',
   FAST_ALT: 'anthropic/claude-haiku-4-5',
   LITE: 'google/gemini-2.5-flash-lite',
-  IMAGE: 'google/gemini-2.5-flash-image-preview',
+  IMAGE: 'google/gemini-3-pro-image-preview',
 } as Record<string, AvailableModel>;
 
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:

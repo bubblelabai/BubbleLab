@@ -619,19 +619,22 @@ export class AIAgentBubble extends ServiceBubble<
           maxRetries: retries,
         });
       case 'google':
+        const thinkingConfig = reasoningEffort
+          ? {
+              includeThoughts: reasoningEffort ? true : false,
+              thinkingBudget:
+                reasoningEffort === 'low'
+                  ? 1025
+                  : reasoningEffort === 'medium'
+                    ? 5000
+                    : 10000,
+            }
+          : undefined;
         return new SafeGeminiChat({
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
-          thinkingConfig: {
-            includeThoughts: reasoningEffort ? true : false,
-            thinkingBudget:
-              reasoningEffort === 'low'
-                ? 1025
-                : reasoningEffort === 'medium'
-                  ? 5000
-                  : 10000,
-          },
+          ...(thinkingConfig && { thinkingConfig }),
           apiKey,
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
