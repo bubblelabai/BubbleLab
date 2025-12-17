@@ -18,7 +18,7 @@
 //   - Return file metadata with view link
 //
 // OUTPUT: Transformed image (base64), message, Google Drive file info
-
+import { RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 export const templateCode = `import {z} from 'zod';
 
 import {
@@ -84,7 +84,7 @@ export class ProductImageTransformer extends BubbleFlow<'webhook/http'> {
     // Accepts only base64 data from file upload. The model applies the transformation
     // prompt to generate enhanced imagery with professional lighting and background.
     const agent = new AIAgentBubble({
-      model: { model: 'google/gemini-2.5-flash-image-preview' },
+      model: { model: '${RECOMMENDED_MODELS.IMAGE}' },
       systemPrompt: 'You are a professional product photographer and photo editor AI.',
       message: finalPrompt,
       images: [{ type: 'base64' as const, data: imageFile, mimeType: 'image/png' }],
