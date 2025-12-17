@@ -30,7 +30,8 @@ export interface MethodInvocationInfo {
     | 'assignment'
     | 'return'
     | 'simple'
-    | 'condition_expression';
+    | 'condition_expression'
+    | 'nested_call_expression';
   variableName?: string;
   variableType?: 'const' | 'let' | 'var';
   destructuringPattern?: string; // e.g., "{ a, b }" or "[x, y]" for destructuring assignments
