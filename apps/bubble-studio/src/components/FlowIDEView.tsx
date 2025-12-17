@@ -185,6 +185,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
 
   const isRunnable = () => {
     if (!currentFlow) return false;
+    // Disable if no bubble parameters (flow is still generating)
+    if (Object.keys(currentFlow.bubbleParameters || {}).length === 0)
+      return false;
     const { isValid } = canExecute();
     return isValid && !isRunning;
   };
@@ -202,6 +205,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
 
   const getRunDisabledReason = () => {
     if (!currentFlow) return 'Create or select a flow first';
+    if (Object.keys(currentFlow.bubbleParameters || {}).length === 0) {
+      return 'Flow is still generating...';
+    }
     if (executionState.isValidating) return 'Validating code...';
     if (isRunning) return 'Working on it...please be patient :)';
 
