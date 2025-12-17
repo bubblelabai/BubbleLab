@@ -618,7 +618,7 @@ export class AIAgentBubble extends ServiceBubble<
           streaming: enableStreaming,
           maxRetries: retries,
         });
-      case 'google':
+      case 'google': {
         const thinkingConfig = reasoningEffort
           ? {
               includeThoughts: reasoningEffort ? true : false,
@@ -660,6 +660,7 @@ export class AIAgentBubble extends ServiceBubble<
             },
           ],
         });
+      }
       case 'anthropic': {
         // Configure Anthropic "thinking" only when reasoning is enabled.
         // Anthropic's API does not allow `budget_tokens` when thinking is disabled.
