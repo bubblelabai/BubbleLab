@@ -288,6 +288,7 @@ When an error occurs, the issue is most likely with misconfiguration, using the 
 You should carefully observe the data flow and the context to understand what happened.
 
 Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
+Regarding errors reading gmail emails, remind the user to recreate a new credential and check the "allow access to all your email", since by default bubble lab only can only send emails to the user's own email address.
 Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the response should be a valid JSON object unless the user's request cannot be fulfilled, then the response should be a text output explaining why it can't perform the task and make it unable to be parsed as JSON.
 `;
 
