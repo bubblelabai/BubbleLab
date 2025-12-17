@@ -416,9 +416,12 @@ describe('BubbleRunner correctly runs and plans', () => {
         // Check validation result
         const parseResult = await validateBubbleFlow(
           runner.bubbleScript.bubblescript,
-          true
+          false
         );
-        // console.log('Parse result:', parseResult);
+        if (!parseResult.valid) {
+          console.log(runner.bubbleScript.bubblescript);
+          console.log(parseResult.errors);
+        }
         expect(parseResult.valid).toBe(true);
         console.log(result.error);
         expect(result).toBeDefined();
