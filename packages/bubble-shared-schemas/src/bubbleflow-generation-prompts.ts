@@ -48,7 +48,7 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      private transformData(input: string): string { ... }
 
      // Sends cleaned input to AI for natural language processing
-     // Condition: Only runs when input length is greater than 3 characters
+     // Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
 
 6. Use the exact parameter structures shown in the bubble details
@@ -65,6 +65,12 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
 20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. ALL user-specific or environment-specific values MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). If a value needs to be configured by the user, it belongs in the payload interface, NOT in a constant.
+21. NEVER use the 'any' type. TypeScript's type inference is powerful - let it work for you:
+    - For bubble results: DO NOT annotate the type. Just write \`const result = await new GmailBubble({...}).readEmail()\` and TypeScript will infer the correct type automatically.
+    - For function return types: Omit return type annotations when the return value is obvious from the implementation. TypeScript infers them correctly.
+    - When you MUST annotate: Use the specific type (e.g., \`BubbleResult<GmailReadEmailData>\`), generic parameters, or \`unknown\` if truly unknown.
+    - WRONG: \`const result: any = await bubble.action()\` or \`function transform(data: any)\`
+    - RIGHT: \`const result = await bubble.action()\` (let TypeScript infer) or \`function transform(data: EmailData)\` (use specific type)
 
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
