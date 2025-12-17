@@ -910,7 +910,8 @@ export function PearlChat() {
                   ) : (
                     <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
                       <div className="text-xs text-amber-400 mb-2">
-                        Context request:
+                        Pearl needs permission to access your data to help you
+                        build this workflow:
                       </div>
                       <div className="text-sm text-gray-300">
                         {message.request.description}
@@ -926,9 +927,9 @@ export function PearlChat() {
                   <div className="bg-gray-100 rounded-lg px-3 py-2 max-w-[80%]">
                     <div className="text-sm text-gray-900">
                       {message.answer.status === 'success' &&
-                        'Context gathered successfully'}
+                        'Successfully granted permission to access data'}
                       {message.answer.status === 'rejected' &&
-                        'Skipped context gathering'}
+                        'Rejected request to access data'}
                       {message.answer.status === 'error' &&
                         `Error: ${message.answer.error}`}
                     </div>
