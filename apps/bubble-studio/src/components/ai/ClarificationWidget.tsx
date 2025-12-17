@@ -14,6 +14,124 @@ interface ClarificationWidgetProps {
 
 const OTHER_CHOICE_ID = 'other';
 
+interface ChoicesListProps {
+  question: ClarificationQuestion;
+  selectedAnswers: Record<string, string[]>;
+  isSubmitting: boolean;
+  handleChoiceSelect: (
+    questionId: string,
+    choiceId: string,
+    allowMultiple: boolean
+  ) => void;
+  customTexts: Record<string, string>;
+  handleCustomTextChange: (questionId: string, text: string) => void;
+}
+
+function ChoicesList({
+  question,
+  selectedAnswers,
+  isSubmitting,
+  handleChoiceSelect,
+  customTexts,
+  handleCustomTextChange,
+}: ChoicesListProps) {
+  const allowMultiple = question.allowMultiple ?? false;
+
+  return (
+    <div className="ml-8 space-y-1.5">
+      {question.choices.map((choice) => {
+        const isSelected = selectedAnswers[question.id]?.includes(choice.id);
+
+        return (
+          <button
+            type="button"
+            key={choice.id}
+            onClick={() =>
+              handleChoiceSelect(question.id, choice.id, allowMultiple)
+            }
+            disabled={isSubmitting}
+            className={`w-full text-left px-3 py-2 rounded border transition-colors ${
+              isSelected
+                ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
+                : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
+            } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-3.5 h-3.5 ${allowMultiple ? 'rounded' : 'rounded-full'} border-2 flex items-center justify-center flex-shrink-0 ${
+                  isSelected
+                    ? 'border-blue-500 bg-blue-500'
+                    : 'border-neutral-600'
+                }`}
+              >
+                {isSelected && <Check className="w-2 h-2 text-white" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm">{choice.label}</span>
+                {choice.description && (
+                  <p
+                    className={`text-xs mt-0.5 ${isSelected ? 'text-blue-200/70' : 'text-neutral-400'}`}
+                  >
+                    {choice.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+
+      {/* "Other" option with custom text field */}
+      <button
+        type="button"
+        onClick={() =>
+          handleChoiceSelect(question.id, OTHER_CHOICE_ID, allowMultiple)
+        }
+        disabled={isSubmitting}
+        className={`w-full text-left px-3 py-2 rounded border transition-colors ${
+          selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+            ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
+            : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
+        } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            className={`w-3.5 h-3.5 ${allowMultiple ? 'rounded' : 'rounded-full'} border-2 flex items-center justify-center flex-shrink-0 ${
+              selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
+                ? 'border-blue-500 bg-blue-500'
+                : 'border-neutral-600'
+            }`}
+          >
+            {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
+              <Check className="w-2 h-2 text-white" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-sm">Other</span>
+            <p
+              className={`text-xs mt-0.5 ${selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) ? 'text-blue-200/70' : 'text-neutral-400'}`}
+            >
+              Specify your own answer
+            </p>
+          </div>
+        </div>
+      </button>
+
+      {/* Custom text input - shown when "Other" is selected */}
+      {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
+        <input
+          type="text"
+          value={customTexts[question.id] || ''}
+          onChange={(e) => handleCustomTextChange(question.id, e.target.value)}
+          disabled={isSubmitting}
+          placeholder="Enter your answer..."
+          className="w-full px-3 py-2 text-sm rounded border border-neutral-600 bg-neutral-900/60 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none disabled:opacity-50"
+        />
+      )}
+    </div>
+  );
+}
+
 export function ClarificationWidget({
   questions,
   onSubmit,
@@ -27,19 +145,58 @@ export function ClarificationWidget({
   // Track custom text for "Other" option (questionId -> customText)
   const [customTexts, setCustomTexts] = useState<Record<string, string>>({});
 
-  const handleChoiceSelect = (questionId: string, choiceId: string) => {
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [questionId]: [choiceId], // Single select - replace previous selection
-    }));
+  const handleChoiceSelect = (
+    questionId: string,
+    choiceId: string,
+    allowMultiple: boolean
+  ) => {
+    setSelectedAnswers((prev) => {
+      const currentSelections = prev[questionId] || [];
 
-    // Clear custom text if "Other" is not selected
-    if (choiceId !== OTHER_CHOICE_ID) {
+      if (allowMultiple) {
+        // Multi-select: toggle the choice
+        if (currentSelections.includes(choiceId)) {
+          // Remove the choice
+          return {
+            ...prev,
+            [questionId]: currentSelections.filter((id) => id !== choiceId),
+          };
+        } else {
+          // Add the choice
+          return {
+            ...prev,
+            [questionId]: [...currentSelections, choiceId],
+          };
+        }
+      } else {
+        // Single select: replace previous selection
+        return {
+          ...prev,
+          [questionId]: [choiceId],
+        };
+      }
+    });
+
+    // Clear custom text if "Other" is not selected (only for single select)
+    if (!allowMultiple && choiceId !== OTHER_CHOICE_ID) {
       setCustomTexts((prev) => {
         const next = { ...prev };
         delete next[questionId];
         return next;
       });
+    }
+
+    // For multi-select, clear custom text only if "Other" is being deselected
+    if (allowMultiple && choiceId === OTHER_CHOICE_ID) {
+      const currentSelections = selectedAnswers[questionId] || [];
+      if (currentSelections.includes(OTHER_CHOICE_ID)) {
+        // "Other" is being deselected, clear custom text
+        setCustomTexts((prev) => {
+          const next = { ...prev };
+          delete next[questionId];
+          return next;
+        });
+      }
     }
   };
 
@@ -133,97 +290,14 @@ export function ClarificationWidget({
             </div>
 
             {/* Choices */}
-            <div className="ml-8 space-y-1.5">
-              {question.choices.map((choice) => {
-                const isSelected = selectedAnswers[question.id]?.includes(
-                  choice.id
-                );
-
-                return (
-                  <button
-                    type="button"
-                    key={choice.id}
-                    onClick={() => handleChoiceSelect(question.id, choice.id)}
-                    disabled={isSubmitting}
-                    className={`w-full text-left px-3 py-2 rounded border transition-colors ${
-                      isSelected
-                        ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
-                        : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
-                    } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-neutral-600'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-2 h-2 text-white" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm">{choice.label}</span>
-                        {choice.description && (
-                          <p
-                            className={`text-xs mt-0.5 ${isSelected ? 'text-blue-200/70' : 'text-neutral-400'}`}
-                          >
-                            {choice.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {/* "Other" option with custom text field */}
-              <button
-                type="button"
-                onClick={() => handleChoiceSelect(question.id, OTHER_CHOICE_ID)}
-                disabled={isSubmitting}
-                className={`w-full text-left px-3 py-2 rounded border transition-colors ${
-                  selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
-                    ? 'border-blue-500/50 bg-blue-500/15 text-neutral-100'
-                    : 'border-neutral-600 bg-neutral-900/60 text-neutral-300 hover:border-neutral-500 hover:bg-neutral-900/80'
-                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID)
-                        ? 'border-blue-500 bg-blue-500'
-                        : 'border-neutral-600'
-                    }`}
-                  >
-                    {selectedAnswers[question.id]?.includes(
-                      OTHER_CHOICE_ID
-                    ) && <Check className="w-2 h-2 text-white" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm">Other</span>
-                    <p
-                      className={`text-xs mt-0.5 ${selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) ? 'text-blue-200/70' : 'text-neutral-400'}`}
-                    >
-                      Specify your own answer
-                    </p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Custom text input - shown when "Other" is selected */}
-              {selectedAnswers[question.id]?.includes(OTHER_CHOICE_ID) && (
-                <input
-                  type="text"
-                  value={customTexts[question.id] || ''}
-                  onChange={(e) =>
-                    handleCustomTextChange(question.id, e.target.value)
-                  }
-                  disabled={isSubmitting}
-                  placeholder="Enter your answer..."
-                  className="w-full px-3 py-2 text-sm rounded border border-neutral-600 bg-neutral-900/60 text-neutral-200 placeholder-neutral-500 focus:border-blue-500/50 focus:outline-none disabled:opacity-50"
-                />
-              )}
-            </div>
+            <ChoicesList
+              question={question}
+              selectedAnswers={selectedAnswers}
+              isSubmitting={isSubmitting}
+              handleChoiceSelect={handleChoiceSelect}
+              customTexts={customTexts}
+              handleCustomTextChange={handleCustomTextChange}
+            />
           </div>
         ))}
       </div>
