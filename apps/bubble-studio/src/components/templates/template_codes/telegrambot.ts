@@ -23,7 +23,10 @@ export interface Output {
 
 // Input payload for the Telegram AI responder bot
 export interface TelegramMessagePayload extends CronEvent {
-  /** The numeric chat ID where the bot should respond. Find it by messaging @userinfobot (for users), adding @userinfobot to a group, or for channels use the channel username (@yourchannel) or numeric ID (-1001234567890). Leave empty to auto-detect from recent messages. */
+  /**
+   * The numeric chat ID where the bot should respond. Find it by messaging @userinfobot (for users), adding @userinfobot to a group, or for channels use the channel username (@yourchannel) or numeric ID (-1001234567890). Leave empty to auto-detect from recent messages.
+   * @canBeFile false
+   */
   chatId?: number;
 }
 

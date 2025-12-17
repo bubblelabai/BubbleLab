@@ -49,13 +49,22 @@ export interface Output {
 
 // TRIGGER TYPE 1: Webhook HTTP Trigger
 export interface ProductImagePayload extends WebhookEvent {
-  /** Upload an image file directly using the paperclip icon. */
+  /**
+   * Upload an image file directly using the paperclip icon.
+   * @canBeFile true
+   */
   imageFile: string;
   
-  /** Custom transformation instructions for how the AI should transform your product image. */
+  /**
+   * Custom transformation instructions for how the AI should transform your product image.
+   * @canBeFile false
+   */
   prompt?: string;
 
-  /** Filename for Google Drive. Defaults to "transformed-product-{timestamp}.png" if not provided. */
+  /**
+   * Filename for Google Drive. Defaults to "transformed-product-{timestamp}.png" if not provided.
+   * @canBeFile false
+   */
   filename?: string;
 }
 

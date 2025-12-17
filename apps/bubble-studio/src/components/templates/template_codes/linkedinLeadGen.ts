@@ -34,7 +34,15 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Email address to receive the lead generation report.
+   * @canBeFile false
+   */
   email: string;
+  /**
+   * Description of your ideal lead persona (e.g., "Devs who run automation agencies").
+   * @canBeFile false
+   */
   leadPersona: string;
 }
 

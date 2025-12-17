@@ -20,6 +20,10 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Maximum number of emails to classify and label (default: 25).
+   * @canBeFile false
+   */
   maxResults?: number;
 }
 

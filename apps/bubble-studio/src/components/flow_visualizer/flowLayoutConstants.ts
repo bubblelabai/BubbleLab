@@ -14,7 +14,7 @@ export const FLOW_LAYOUT = {
     HORIZONTAL_SPACING: 450, // Space between bubbles in sequential layout
     BASE_Y: 300, // Base Y position for sequential layout
     START_X: 50, // Starting X position
-    ENTRY_NODE_OFFSET: 450, // Offset for entry node (input-schema-node, cron-schedule-node)
+    ENTRY_NODE_OFFSET: 520, // Offset for entry node (input-schema-node, cron-schedule-node)
   },
 
   // Hierarchical layout (step-based flow)

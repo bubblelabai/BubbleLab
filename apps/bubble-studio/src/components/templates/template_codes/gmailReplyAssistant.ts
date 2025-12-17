@@ -18,6 +18,10 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * Whether to filter out marketing and promotional emails before drafting replies.
+   * @canBeFile false
+   */
   filterMarketing?: boolean;
 }
 

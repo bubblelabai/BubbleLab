@@ -18,11 +18,20 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
-  /** Email address where the daily news digest will be sent. */
+  /**
+   * Email address where the daily news digest will be sent.
+   * @canBeFile false
+   */
   email: string;
-  /** Subreddit names to scrape for news (without the r/ prefix). */
+  /**
+   * Subreddit names to scrape for news (without the r/ prefix).
+   * @canBeFile false
+   */
   subreddits?: string[];
-  /** Full URLs of news websites to scrape for headlines. */
+  /**
+   * Full URLs of news websites to scrape for headlines.
+   * @canBeFile false
+   */
   newsUrls?: string[];
 }
 
