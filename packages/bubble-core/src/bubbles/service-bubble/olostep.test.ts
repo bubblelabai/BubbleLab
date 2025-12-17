@@ -351,4 +351,96 @@ describe('OlostepBubble', () => {
       expect(res.data.answer).toBeDefined();
     });
   });
+
+  //
+  // ERROR HANDLING
+  //
+  describe('Error Handling', () => {
+    it('should handle API request failures (non-2xx responses)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => JSON.stringify({ error: 'Invalid API key' }),
+      });
+
+      const bubble = new OlostepBubble({
+        operation: 'scrape',
+        url: 'https://example.com',
+        credentials: createTestCredentials(),
+      });
+
+      const res = await bubble.action();
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBeDefined();
+      expect(res.error).not.toBe('');
+    });
+
+    it('should handle network errors (fetch throws exception)', async () => {
+      mockFetch.mockRejectedValueOnce(
+        new Error('Network error: Failed to fetch')
+      );
+
+      const bubble = new OlostepBubble({
+        operation: 'scrape',
+        url: 'https://example.com',
+        credentials: createTestCredentials(),
+      });
+
+      const res = await bubble.action();
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('Network error');
+    });
+
+    it('should handle malformed response data gracefully', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: async () => 'not valid json {{{',
+      });
+
+      const bubble = new OlostepBubble({
+        operation: 'scrape',
+        url: 'https://example.com',
+        credentials: createTestCredentials(),
+      });
+
+      const res = await bubble.action();
+
+      // Implementation gracefully handles malformed JSON by returning raw text
+      expect(res.data.operation).toBe('scrape');
+    });
+
+    it('should handle missing credentials gracefully', async () => {
+      const bubble = new OlostepBubble({
+        operation: 'scrape',
+        url: 'https://example.com',
+        // No credentials provided
+      });
+
+      const res = await bubble.action();
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('OLOSTEP_API_KEY');
+    });
+
+    it('should handle rate limiting responses', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        text: async () => JSON.stringify({ error: 'Rate limit exceeded' }),
+      });
+
+      const bubble = new OlostepBubble({
+        operation: 'scrape',
+        url: 'https://example.com',
+        credentials: createTestCredentials(),
+      });
+
+      const res = await bubble.action();
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBeDefined();
+    });
+  });
 });

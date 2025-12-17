@@ -571,8 +571,11 @@ export class OlostepBubble extends ServiceBubble<OlostepParams, OlostepResult> {
         return { operation: 'map', ...base };
       case 'answer':
         return { operation: 'answer', ...base };
-      default:
+      default: {
+        // Exhaustive check: TypeScript will error if a case is missing
+        const _exhaustiveCheck: never = operation;
         return { operation: 'scrape', ...base };
+      }
     }
   }
 }
