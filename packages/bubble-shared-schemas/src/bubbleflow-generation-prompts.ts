@@ -287,6 +287,7 @@ export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
 You should carefully observe the data flow and the context to understand what happened.
 
+Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
 Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the response should be a valid JSON object unless the user's request cannot be fulfilled, then the response should be a text output explaining why it can't perform the task and make it unable to be parsed as JSON.
 `;
 
