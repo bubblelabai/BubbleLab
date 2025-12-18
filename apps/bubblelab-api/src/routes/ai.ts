@@ -1,6 +1,6 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { streamSSE } from 'hono/streaming';
-import { milkTeaRoute, pearlRoute } from '../schemas/ai.js';
+import { milkTeaRoute, pearlRoute, speechToTextRoute } from '../schemas/ai.js';
 import {
   setupErrorHandler,
   validationErrorHook,
@@ -154,6 +154,70 @@ app.openapi(pearlRoute, async (c) => {
       });
     }
   });
+});
+
+app.openapi(speechToTextRoute, async (c) => {
+  const { audio, language } = c.req.valid('json');
+  console.log('audio', audio, 'language', language);
+
+  if (!env.WISPR_API_KEY) {
+    return c.json(
+      {
+        error: 'WISPR_API_KEY is not configured',
+      },
+      500
+    );
+  }
+
+  try {
+    const response = await fetch(
+      'https://platform-api.wisprflow.ai/api/v1/dash/api',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${env.WISPR_API_KEY}`,
+        },
+        body: JSON.stringify({
+          audio,
+          language: language || ['en'],
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Wispr API error:', response.status, errorText);
+      console.log('there was an error brother');
+      return c.json(
+        {
+          error: `Wispr API returned ${response.status}`,
+        },
+        500
+      );
+    }
+
+    const result = (await response.json()) as {
+      text: string;
+      api_duration?: number;
+    };
+
+    return c.json(
+      {
+        text: result.text || '',
+        duration: result.api_duration,
+      },
+      200
+    );
+  } catch (error) {
+    console.error('Speech-to-text error:', error);
+    return c.json(
+      {
+        error: 'Internal server error during speech-to-text',
+      },
+      500
+    );
+  }
 });
 
 export default app;

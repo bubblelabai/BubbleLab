@@ -87,6 +87,7 @@ export const env = {
   POSTHOG_API_KEY: process.env.POSTHOG_API_KEY,
   POSTHOG_HOST: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
   POSTHOG_ENABLED: process.env.POSTHOG_ENABLED === 'true',
+  WISPR_API_KEY: process.env.WISPR_API_KEY,
   isDev:
     process.env.BUBBLE_ENV?.toLowerCase() === 'dev' ||
     process.env.BUBBLE_ENV?.toLowerCase() === 'test',
@@ -128,4 +129,5 @@ console.log('🔧 Environment variables loaded:', {
   POSTHOG_API_KEY: env.POSTHOG_API_KEY ? '✅ Set' : '❌ Missing',
   POSTHOG_HOST: env.POSTHOG_HOST,
   POSTHOG_ENABLED: env.POSTHOG_ENABLED ? '✅ Enabled' : '❌ Disabled',
+  WISPR_API_KEY: env.WISPR_API_KEY ? '✅ Set' : '❌ Missing',
 });
