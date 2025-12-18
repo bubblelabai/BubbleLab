@@ -272,7 +272,7 @@ const AIAgentParamsSchema = z.object({
     maxRetries: 3,
     jsonMode: false,
   }).describe(
-    'AI model configuration including provider, temperature, and tokens. For model unless otherwise specified, use google/gemini-2.5-flash as default. Use google/gemini-2.5-flash-image-preview to edit and generate images.'
+    'AI model configuration including provider, temperature, and tokens, retries, and json mode.'
   ),
   tools: z
     .array(ToolConfigSchema)

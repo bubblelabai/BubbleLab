@@ -50,7 +50,7 @@ const SlackBlockType = z.enum([
 
 // Define model configuration
 const ModelConfigSchema = z.object({
-  model: AvailableModels.default('google/gemini-2.5-flash').describe(
+  model: AvailableModels.default('google/gemini-3-flash-preview').describe(
     'AI model to use (format: provider/model-name)'
   ),
   temperature: z
