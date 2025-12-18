@@ -4,6 +4,7 @@ import type { BubbleContext } from '../../types/bubble.js';
 import {
   CredentialType,
   BUBBLE_CREDENTIAL_OPTIONS,
+  RECOMMENDED_MODELS,
 } from '@bubblelab/shared-schemas';
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
@@ -97,7 +98,7 @@ const BackupModelConfigSchema = z.object({
 
 // Define model configuration
 const ModelConfigSchema = z.object({
-  model: AvailableModels.default('google/gemini-3-flash-preview').describe(
+  model: AvailableModels.default(RECOMMENDED_MODELS.FAST).describe(
     'AI model to use (format: provider/model-name).'
   ),
   temperature: z
@@ -142,7 +143,7 @@ const ModelConfigSchema = z.object({
       'When true, returns clean JSON response, you must provide the exact JSON schema in the system prompt'
     ),
   backupModel: BackupModelConfigSchema.default({
-    model: 'openai/gpt-5-mini',
+    model: RECOMMENDED_MODELS.FAST,
   })
     .optional()
     .describe('Backup model configuration to use if the primary model fails.'),
@@ -266,7 +267,7 @@ const AIAgentParamsSchema = z.object({
     .optional()
     .describe('A friendly name for the AI agent'),
   model: ModelConfigSchema.default({
-    model: 'google/gemini-3-flash-preview',
+    model: RECOMMENDED_MODELS.FAST,
     temperature: 0.7,
     maxTokens: 50000,
     maxRetries: 3,
