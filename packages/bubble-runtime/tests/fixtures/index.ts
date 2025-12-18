@@ -58,6 +58,7 @@ export const fixtures = {
   'for-and-promises-flow': '',
   'github-pr-sequential': '',
   'nested-condition-hanlde': '',
+  'mapping-function-call': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

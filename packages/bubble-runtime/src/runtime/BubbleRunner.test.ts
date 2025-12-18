@@ -515,6 +515,26 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
     });
+    it.skip('should execute with mapping function call', async () => {
+      const testScript = getFixture('mapping-function-call');
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      // Check script is valid
+      const parseResult = await validateBubbleFlow(
+        runner.bubbleScript.bubblescript,
+        false
+      );
+      if (!parseResult.valid) {
+        console.log(runner.bubbleScript.bubblescript);
+        console.log(parseResult.errors);
+      }
+      expect(parseResult.valid).toBe(true);
+      console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
+      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+    });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory, {
