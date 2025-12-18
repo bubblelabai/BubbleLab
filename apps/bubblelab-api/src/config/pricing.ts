@@ -212,6 +212,25 @@ export const PRICING_TABLE: PricingTable = {
     unitCost: 12.0 / 1_000_000, // $12.00 per 1M tokens = $0.000012 per token (for prompts <= 200k tokens; $18.00 for prompts > 200k tokens, includes thinking tokens)
   },
 
+  // Gemini 3.0 Flash - Official Google pricing
+  // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-flash-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.5 * 1.05) / 1_000_000, // $0.50 per 1M tokens = $0.0000005 per token
+  },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-flash-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (3.0 * 1.05) / 1_000_000, // $3.00 per 1M tokens = $0.000003 per token
+  },
+
   // AI Services - OpenAI with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
   // Pricing includes 1.05x markup
