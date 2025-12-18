@@ -75,7 +75,7 @@ describe('AIAgentBubble', () => {
       });
 
       const params = bubble.currentParams;
-      expect(params.model.model).toBe('google/gemini-2.5-flash');
+      expect(params.model.model).toBe(RECOMMENDED_MODELS.FAST);
       expect(params.model.temperature).toBe(0.5);
       expect(params.model.maxTokens).toBe(1000);
     });
