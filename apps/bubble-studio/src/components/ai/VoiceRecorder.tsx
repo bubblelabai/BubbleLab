@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Square, Loader2 } from 'lucide-react';
+import { Mic, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { api } from '../../lib/api';
 
@@ -56,96 +56,104 @@ export function VoiceRecorder({
 
   const convertWebMToWAV = async (webmBlob: Blob): Promise<Blob> => {
     const audioContext = new AudioContext();
-    const arrayBuffer = await webmBlob.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    await audioContext.close();
+    try {
+      const arrayBuffer = await webmBlob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-    // Calculate the correct number of samples at 16 kHz
-    const targetSampleRate = 16000;
-    const resampleRatio = targetSampleRate / audioBuffer.sampleRate;
-    const newLength = Math.floor(audioBuffer.length * resampleRatio);
+      // Calculate the correct number of samples at 16 kHz
+      const targetSampleRate = 16000;
+      const resampleRatio = targetSampleRate / audioBuffer.sampleRate;
+      const newLength = Math.floor(audioBuffer.length * resampleRatio);
 
-    // Create an OfflineAudioContext with the correct length
-    const offlineAudioContext = new OfflineAudioContext(
-      1, // mono channel
-      newLength,
-      targetSampleRate
-    );
+      // Create an OfflineAudioContext with the correct length
+      const offlineAudioContext = new OfflineAudioContext(
+        1, // mono channel
+        newLength,
+        targetSampleRate
+      );
 
-    const source = offlineAudioContext.createBufferSource();
-    source.buffer = audioBuffer;
+      const source = offlineAudioContext.createBufferSource();
+      source.buffer = audioBuffer;
 
-    // Connect the source to the destination
-    source.connect(offlineAudioContext.destination);
+      // Connect the source to the destination
+      source.connect(offlineAudioContext.destination);
 
-    source.start(0);
-    const renderedBuffer = await offlineAudioContext.startRendering();
+      source.start(0);
+      const renderedBuffer = await offlineAudioContext.startRendering();
 
-    // Prepare WAV file headers and data
-    const numberOfChannels = 1;
-    const length = renderedBuffer.length * numberOfChannels * 2 + 44;
-    const buffer = new ArrayBuffer(length);
-    const view = new DataView(buffer);
+      // Prepare WAV file headers and data
+      const numberOfChannels = 1;
+      const length = renderedBuffer.length * numberOfChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
 
-    const writeString = (view: DataView, offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
+      const writeString = (view: DataView, offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
 
-    let offset = 0;
+      let offset = 0;
 
-    // RIFF chunk descriptor
-    writeString(view, offset, 'RIFF');
-    offset += 4;
-    view.setUint32(
-      offset,
-      36 + renderedBuffer.length * numberOfChannels * 2,
-      true
-    );
-    offset += 4;
-    writeString(view, offset, 'WAVE');
-    offset += 4;
+      // RIFF chunk descriptor
+      writeString(view, offset, 'RIFF');
+      offset += 4;
+      view.setUint32(
+        offset,
+        36 + renderedBuffer.length * numberOfChannels * 2,
+        true
+      );
+      offset += 4;
+      writeString(view, offset, 'WAVE');
+      offset += 4;
 
-    // fmt sub-chunk
-    writeString(view, offset, 'fmt ');
-    offset += 4;
-    view.setUint32(offset, 16, true);
-    offset += 4;
-    view.setUint16(offset, 1, true);
-    offset += 2;
-    view.setUint16(offset, numberOfChannels, true);
-    offset += 2;
-    view.setUint32(offset, targetSampleRate, true);
-    offset += 4;
-    view.setUint32(offset, targetSampleRate * numberOfChannels * 2, true);
-    offset += 4;
-    view.setUint16(offset, numberOfChannels * 2, true);
-    offset += 2;
-    view.setUint16(offset, 16, true);
-    offset += 2;
-
-    // data sub-chunk
-    writeString(view, offset, 'data');
-    offset += 4;
-    view.setUint32(offset, renderedBuffer.length * numberOfChannels * 2, true);
-    offset += 4;
-
-    // Write PCM samples
-    const channelData = renderedBuffer.getChannelData(0);
-    for (let i = 0; i < renderedBuffer.length; i++) {
-      const sample = channelData[i];
-      const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-      view.setInt16(offset, intSample, true);
+      // fmt sub-chunk
+      writeString(view, offset, 'fmt ');
+      offset += 4;
+      view.setUint32(offset, 16, true);
+      offset += 4;
+      view.setUint16(offset, 1, true);
       offset += 2;
-    }
+      view.setUint16(offset, numberOfChannels, true);
+      offset += 2;
+      view.setUint32(offset, targetSampleRate, true);
+      offset += 4;
+      view.setUint32(offset, targetSampleRate * numberOfChannels * 2, true);
+      offset += 4;
+      view.setUint16(offset, numberOfChannels * 2, true);
+      offset += 2;
+      view.setUint16(offset, 16, true);
+      offset += 2;
 
-    return new Blob([view], { type: 'audio/wav' });
+      // data sub-chunk
+      writeString(view, offset, 'data');
+      offset += 4;
+      view.setUint32(
+        offset,
+        renderedBuffer.length * numberOfChannels * 2,
+        true
+      );
+      offset += 4;
+
+      // Write PCM samples
+      const channelData = renderedBuffer.getChannelData(0);
+      for (let i = 0; i < renderedBuffer.length; i++) {
+        const sample = channelData[i];
+        const intSample = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+        view.setInt16(offset, intSample, true);
+        offset += 2;
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    } finally {
+      await audioContext.close();
+    }
   };
 
   const startRecording = useCallback(async () => {
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -180,13 +188,15 @@ export function VoiceRecorder({
           toast.error('Error processing audio recording');
         } finally {
           setIsProcessing(false);
-          stream.getTracks().forEach((track) => track.stop());
+          stream?.getTracks().forEach((track) => track.stop());
         }
       };
 
       mediaRecorder.start();
       setIsRecording(true);
     } catch (error) {
+      // Stop the stream if it was acquired but something else failed
+      stream?.getTracks().forEach((track) => track.stop());
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone');
     }

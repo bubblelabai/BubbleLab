@@ -205,6 +205,11 @@ app.openapi(speechToTextRoute, async (c) => {
       200
     );
   } catch (error) {
+    console.error(
+      '[API] speech-to-text error:',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : undefined
+    );
     return c.json(
       {
         error: 'Internal server error during speech-to-text',
