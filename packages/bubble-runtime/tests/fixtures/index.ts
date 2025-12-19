@@ -59,6 +59,7 @@ export const fixtures = {
   'github-pr-sequential': '',
   'nested-condition-hanlde': '',
   'mapping-function-call': '',
+  'multiple-bubble-class-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

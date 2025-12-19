@@ -175,6 +175,19 @@ export class TestFlow extends BubbleFlow<'webhook/http'> {
       ).toBe(true);
     });
 
+    it('should fail validation when multiple BubbleFlow classes are in the same file', async () => {
+      const code = getFixture('multiple-bubble-class-flow');
+      const result = await validateBubbleFlow(code);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      console.log(result.errors);
+      expect(
+        result.errors?.some((error) =>
+          error.includes('Multiple BubbleFlow classes are not allowed')
+        )
+      ).toBe(true);
+    });
+
     it('should fail validation when try catch is inside a for loop', async () => {
       const code = `
 import { BubbleFlow, AIAgentBubble } from '@bubblelab/bubble-core';

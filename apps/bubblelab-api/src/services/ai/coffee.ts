@@ -118,7 +118,7 @@ ${CRITICAL_INSTRUCTIONS}
   - Output destinations (where should results go?)
   - Specific integrations to use
   - Processing logic (filtering, transforming, etc.)
-  - Trigger type (manual, scheduled, webhook)
+  - Trigger type (scheduled vs webhook, cannot be both)
 
 ## CONTEXT GATHERING WITH WEB TOOLS:
 When the user mentions a website URL, wants to scrape/extract data from a site, or asks about vague topics that would benefit from web research, use the web tools to gather context:

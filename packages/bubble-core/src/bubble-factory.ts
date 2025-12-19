@@ -706,7 +706,7 @@ export interface CustomWebhookPayload extends WebhookEvent {
 export class ${className} extends BubbleFlow<'webhook/http'> {
   
   // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
-  private transformData(input: string | undefined): string | null {
+  private transformData(input: string | undefined) {
     // Example: Transform or clean the input data
     if (!input || input.trim().length === 0) return null;
     return input.trim().toUpperCase();
@@ -714,7 +714,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
 
   // Sends cleaned input to AI agent for natural language processing and response generation
   // Condition: Only runs when transformedInput is not null and has more than 3 characters
-  private async processWithAI(input: string): Promise<string> {
+  private async processWithAI(input: string) {
     const agent = new AIAgentBubble({
       model: { model: 'google/gemini-2.5-flash' },
       systemPrompt: 'You are a helpful assistant.',
@@ -731,7 +731,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   }
 
   // Constructs final output payload with either AI-generated response or default fallback message
-  private formatOutput(response: string | null, wasProcessed: boolean): Output {
+  private formatOutput(response: string | null, wasProcessed: boolean) {
     return {
       message: response || 'No input provided',
       processed: wasProcessed,
@@ -742,7 +742,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   // - No Bubbles directly in handle()
   // - No try/catch in handle() (let errors bubble up)
   // - Only calls to private methods
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
+  async handle(payload: CustomWebhookPayload) {
     const transformedInput = this.transformData(payload.input);
 
     // Only process with AI if input meets minimum length requirement
@@ -775,12 +775,12 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
   // Performs scheduled database check or external API call to fetch latest data
-  private async performScheduledTask(): Promise<string> {
+  private async performScheduledTask() {
      // Example: Check a database or API
      return "Task completed";
   }
 
-  async handle(payload: CustomCronPayload): Promise<Output> {
+  async handle(payload: CustomCronPayload) {
     const result = await this.performScheduledTask();
 
     return { message: result, processed: true };
