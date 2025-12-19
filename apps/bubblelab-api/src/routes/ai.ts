@@ -158,8 +158,6 @@ app.openapi(pearlRoute, async (c) => {
 
 app.openapi(speechToTextRoute, async (c) => {
   const { audio, language } = c.req.valid('json');
-  console.log('audio', audio, 'language', language);
-
   if (!env.WISPR_API_KEY) {
     return c.json(
       {
@@ -186,12 +184,9 @@ app.openapi(speechToTextRoute, async (c) => {
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Wispr API error:', response.status, errorText);
-      console.log('there was an error brother');
       return c.json(
         {
-          error: `Wispr API returned ${response.status}`,
+          error: `Error generating transcript`,
         },
         500
       );
@@ -210,7 +205,6 @@ app.openapi(speechToTextRoute, async (c) => {
       200
     );
   } catch (error) {
-    console.error('Speech-to-text error:', error);
     return c.json(
       {
         error: 'Internal server error during speech-to-text',
