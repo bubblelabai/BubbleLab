@@ -366,10 +366,8 @@ export class LinkedInTool extends ToolBubble<
     - Brand monitoring and reputation management
     - Recruitment and talent sourcing
     - Partnership and collaboration discovery
-    
-    - Partnership and collaboration discovery
     - Job market research and salary analysis
-    
+
     The tool uses Apify's LinkedIn scrapers behind the scenes while maintaining a clean, consistent interface.
   `;
   static readonly alias = 'li';

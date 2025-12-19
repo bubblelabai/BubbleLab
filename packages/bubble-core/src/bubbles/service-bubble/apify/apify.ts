@@ -198,7 +198,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - pintostudio/youtube-transcript-scraper - YouTube video transcripts
     - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags
     - apidojo/twitter-user-scraper - Twitter/X profiles, tweets, search results
-    - nwua/google-maps-scraper - Google Maps business listings and reviews
+    - compass/crawler-google-places - Google Maps business listings and reviews
     - apify/web-scraper - Generic web scraping
     - apify/google-search-scraper - Google search results
     - IMPORTANT: For other actors, use discovery mode to find the actor and its page, then use the web scrape tool to scrape the input schema page to get the input/output schema details.

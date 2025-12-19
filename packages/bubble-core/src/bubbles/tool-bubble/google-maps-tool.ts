@@ -128,7 +128,7 @@ export class GoogleMapsTool extends ToolBubble<
     Operations:
     - search: Find businesses and places by keyword and location
     
-    Uses Apify's nwua/google-maps-scraper.
+    Uses Apify's compass/crawler-google-places.
   `;
   static readonly alias = 'maps';
   static readonly type = 'tool';
@@ -206,9 +206,9 @@ export class GoogleMapsTool extends ToolBubble<
       includeWebResults: false,
     };
 
-    const scraper = new ApifyBubble<'nwua/google-maps-scraper'>(
+    const scraper = new ApifyBubble<'compass/crawler-google-places'>(
       {
-        actorId: 'nwua/google-maps-scraper',
+        actorId: 'compass/crawler-google-places',
         input,
         waitForFinish: true,
         timeout: 240000, // 4 minutes, maps can be slow
@@ -239,7 +239,7 @@ export class GoogleMapsTool extends ToolBubble<
   }
 
   private transformPlaces(
-    items: ActorOutput<'nwua/google-maps-scraper'>[]
+    items: ActorOutput<'compass/crawler-google-places'>[]
   ): z.infer<typeof GoogleMapsPlaceSchema>[] {
     return items.map((item) => ({
       title: item.title || null,

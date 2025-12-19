@@ -109,12 +109,12 @@ export const APIFY_ACTOR_SCHEMAS = {
     documentation: 'https://apify.com/apidojo/twitter-user-scraper',
     category: 'social-media',
   },
-  'nwua/google-maps-scraper': {
+  'compass/crawler-google-places': {
     input: GoogleMapsScraperInputSchema,
     output: GoogleMapsPlaceSchema,
     description:
       'Scrape Google Maps for business listings, reviews, and place data',
-    documentation: 'https://apify.com/nwua/google-maps-scraper',
+    documentation: 'https://apify.com/compass/crawler-google-places',
     category: 'maps',
   },
 };
