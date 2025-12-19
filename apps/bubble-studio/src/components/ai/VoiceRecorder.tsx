@@ -9,6 +9,16 @@ interface VoiceRecorderProps {
   disabled?: boolean;
 }
 
+const PulsingRings = () => (
+  <div className="relative w-12 h-12 flex items-center justify-center">
+    <div className="absolute inset-0 rounded-full bg-gray-500 opacity-20 animate-ping" />
+    <div className="absolute inset-0 rounded-full bg-gray-500 opacity-40 animate-pulse" />
+    <div className="relative w-12 h-12 rounded-full flex  bg-gray-700/40 items-center justify-center">
+      <Mic className="w-5 h-5 text-white" />
+    </div>
+  </div>
+);
+
 export function VoiceRecorder({
   onTranscription,
   onStateChange,
@@ -197,17 +207,13 @@ export function VoiceRecorder({
       type="button"
       onClick={isRecording ? stopRecording : startRecording}
       disabled={disabled || isProcessing}
-      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 border ${
-        isRecording
-          ? 'bg-red-500/20 border-red-500/50 text-red-500'
-          : 'bg-gray-700/40 border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
-      } ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 border bg-gray-700/40 border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200 ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
       title={isRecording ? 'Stop recording' : 'Start voice recording'}
     >
       {isProcessing ? (
         <Loader2 className="w-5 h-5 animate-spin" />
       ) : isRecording ? (
-        <Square className="w-5 h-5" />
+        <PulsingRings />
       ) : (
         <Mic className="w-5 h-5" />
       )}

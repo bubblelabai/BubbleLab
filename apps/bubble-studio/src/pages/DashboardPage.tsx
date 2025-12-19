@@ -468,6 +468,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             <div className="bg-[#1a1a1a] rounded-2xl p-4 shadow-2xl border border-white/5 relative group transition-all duration-300 hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
               <textarea
                 ref={promptRef}
+                disabled={isVoiceBusy}
                 placeholder={
                   selectedCategory === 'Import JSON'
                     ? 'Paste in your existing JSON workflow to be converted into a Bubble flow...'

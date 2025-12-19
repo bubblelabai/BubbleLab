@@ -1099,7 +1099,7 @@ export function PearlChat() {
             onSubmit={handleGenerate}
             placeholder="Get help modifying, debugging, or understanding your workflow..."
             className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
-            disabled={pearl.isPending || isGenerating}
+            disabled={pearl.isPending || isGenerating || isVoiceBusy}
             flowId={selectedFlowId}
             selectedBubbleContext={pearl.selectedBubbleContext}
             selectedTransformationContext={pearl.selectedTransformationContext}
