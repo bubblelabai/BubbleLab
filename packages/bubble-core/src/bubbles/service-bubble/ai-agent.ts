@@ -56,6 +56,20 @@ export type ToolHookBefore = (
   context: ToolHookContext
 ) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
 
+// Context for afterLLMCall hook - provides access to messages and the last AI response
+export type AfterLLMCallContext = {
+  messages: BaseMessage[];
+  lastAIMessage: AIMessage | AIMessageChunk;
+  hasToolCalls: boolean;
+};
+
+// Hook that runs after LLM responds but before routing decision
+// Can modify messages and force continuation back to LLM instead of ending
+export type AfterLLMCallHook = (context: AfterLLMCallContext) => Promise<{
+  messages: BaseMessage[];
+  continueToAgent?: boolean; // If true, routes back to agent instead of ending
+}>;
+
 // Type for streaming callback function
 export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;
 
@@ -344,11 +358,14 @@ type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   // Optional hooks for intercepting tool calls
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  // Hook that runs after LLM responds but before routing (can force retry)
+  afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
 type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
 
@@ -379,8 +396,10 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  private afterLLMCallHook: AfterLLMCallHook | undefined;
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
+  private shouldContinueToAgent = false;
 
   constructor(
     params: AIAgentParams = {
@@ -393,6 +412,7 @@ export class AIAgentBubble extends ServiceBubble<
     super(params, context, instanceId);
     this.beforeToolCallHook = params.beforeToolCall;
     this.afterToolCallHook = params.afterToolCall;
+    this.afterLLMCallHook = params.afterLLMCall;
     this.streamingCallback = params.streamingCallback;
     this.factory = new BubbleFactory();
   }
@@ -993,6 +1013,12 @@ export class AIAgentBubble extends ServiceBubble<
     // Return the updated messages
     // If hooks modified messages, use those; otherwise use the original messages + tool messages
     if (currentMessages.length !== messages.length + toolMessages.length) {
+      console.error(
+        '[AIAgent] Current messages length does not match expected length',
+        currentMessages.length,
+        messages.length,
+        toolMessages.length
+      );
       return { messages: currentMessages };
     }
 
@@ -1166,14 +1192,74 @@ export class AIAgentBubble extends ServiceBubble<
       }
     };
 
-    // Define conditional edge function
-    const shouldContinue = ({ messages }: typeof MessagesAnnotation.State) => {
+    // Node that runs after agent to check afterLLMCall hook before routing
+    const afterLLMCheckNode = async ({
+      messages,
+    }: typeof MessagesAnnotation.State) => {
+      // Reset the flag at the start
+      this.shouldContinueToAgent = false;
+
+      // Get the last AI message
       const lastMessage = messages[messages.length - 1] as
         | AIMessage
         | AIMessageChunk;
 
-      // Check if the last message has tool calls
-      if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+      const hasToolCalls = !!(
+        lastMessage.tool_calls && lastMessage.tool_calls.length > 0
+      );
+
+      // Only call hook if we're about to end (no tool calls) and hook is provided
+      if (!hasToolCalls && this.afterLLMCallHook) {
+        console.log(
+          '[AIAgent] No tool calls detected, calling afterLLMCall hook'
+        );
+
+        const hookResult = await this.afterLLMCallHook({
+          messages,
+          lastAIMessage: lastMessage,
+          hasToolCalls,
+        });
+
+        // If hook wants to continue to agent, set flag and return modified messages
+        if (hookResult.continueToAgent) {
+          console.log('[AIAgent] afterLLMCall hook requested retry to agent');
+          this.shouldContinueToAgent = true;
+          // Return the modified messages from the hook
+          // We need to return only the new messages to append
+          const newMessages = hookResult.messages.slice(messages.length);
+          return { messages: newMessages };
+        }
+      }
+
+      // No modifications needed
+      return { messages: [] };
+    };
+
+    // Define conditional edge function after LLM check
+    const shouldContinueAfterLLMCheck = ({
+      messages,
+    }: typeof MessagesAnnotation.State) => {
+      // First check if afterLLMCall hook requested continuing to agent
+      if (this.shouldContinueToAgent) {
+        return 'agent';
+      }
+
+      // Find the last AI message (could be followed by human messages from hook)
+      const aiMessages: (AIMessage | AIMessageChunk)[] = [];
+      for (const msg of messages) {
+        if (isAIMessage(msg)) {
+          aiMessages.push(msg);
+        } else if (
+          'tool_calls' in msg &&
+          (msg as AIMessageChunk).constructor?.name === 'AIMessageChunk'
+        ) {
+          aiMessages.push(msg as AIMessageChunk);
+        }
+      }
+      const lastAIMessage = aiMessages[aiMessages.length - 1];
+
+      // Check if the last AI message has tool calls
+      if (lastAIMessage?.tool_calls && lastAIMessage.tool_calls.length > 0) {
         return 'tools';
       }
       return '__end__';
@@ -1203,11 +1289,18 @@ export class AIAgentBubble extends ServiceBubble<
 
       graph
         .addNode('tools', toolNode)
+        .addNode('afterLLMCheck', afterLLMCheckNode)
         .addEdge('__start__', 'agent')
-        .addConditionalEdges('agent', shouldContinue)
+        .addEdge('agent', 'afterLLMCheck')
+        .addConditionalEdges('afterLLMCheck', shouldContinueAfterLLMCheck)
         .addConditionalEdges('tools', shouldContinueAfterTools);
     } else {
-      graph.addEdge('__start__', 'agent').addEdge('agent', '__end__');
+      // Even without tools, add the afterLLMCheck node for hook support
+      graph
+        .addNode('afterLLMCheck', afterLLMCheckNode)
+        .addEdge('__start__', 'agent')
+        .addEdge('agent', 'afterLLMCheck')
+        .addConditionalEdges('afterLLMCheck', shouldContinueAfterLLMCheck);
     }
 
     return graph.compile();

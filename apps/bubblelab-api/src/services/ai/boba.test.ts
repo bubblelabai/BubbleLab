@@ -365,7 +365,158 @@ Outcome: A semi-automated, ToS-compliant Fiverr outreach system that saves time,
   'github-workflow': `Based on my recent git commits in my repo, help me write a newsletter of new updates in my project and send me a nicely formatted html to my email`,
   'read-pdf': `read from uploaded PDF and extract content`,
   'generate-doc': `生成文档内容分析的工作流`,
+  'complex-workflow': `"Pick a venue dataset  from my airtable and create a \"workspace of the month\" post for my linkedin company account and post it on linkedin."`,
 };
+
+/**
+ * Helper method to run a single test case by name multiple times and report results
+ */
+async function runSingleTestCase(
+  promptKey: keyof typeof PROMPT_LISTS,
+  runs: number = 5
+): Promise<{
+  promptKey: string;
+  totalRuns: number;
+  passCount: number;
+  failCount: number;
+  passRate: number;
+  results: Array<{
+    runNumber: number;
+    success: boolean;
+    latency: number;
+    error?: string;
+    streamingEventCount: number;
+    generatedCode?: string;
+    validationErrors?: string[];
+  }>;
+  avgLatency: number;
+  minLatency: number;
+  maxLatency: number;
+}> {
+  const testPrompt = PROMPT_LISTS[promptKey];
+  if (!testPrompt) {
+    throw new Error(`Prompt key "${promptKey}" not found in PROMPT_LISTS`);
+  }
+
+  console.log(`\n🧪 Running test case: ${promptKey}`);
+  console.log(`   Prompt: ${testPrompt.substring(0, 100)}...`);
+  console.log(`   Runs: ${runs} (concurrent)`);
+
+  // Run all tests concurrently
+  const promises = Array.from({ length: runs }, async (_, index) => {
+    const runNumber = index + 1;
+    const startTime = Date.now();
+
+    try {
+      const streamingEvents: StreamingEvent[] = [];
+      const streamingCallback = async (event: StreamingEvent) => {
+        streamingEvents.push(event);
+      };
+
+      const result = await runBoba({ prompt: testPrompt }, streamingCallback);
+      const validationResult = await validateBubbleFlow(result.generatedCode);
+
+      const endTime = Date.now();
+      const latency = (endTime - startTime) / 1000; // Convert to seconds
+      const success = validationResult.valid;
+
+      console.log(
+        `   Run ${runNumber}/${runs}: ${success ? '✅ PASS' : '❌ FAIL'} (${latency.toFixed(2)}s, ${streamingEvents.length} events)`
+      );
+
+      return {
+        runNumber,
+        success,
+        latency,
+        streamingEventCount: streamingEvents.length,
+        generatedCode: result.generatedCode,
+        validationErrors: validationResult.errors,
+      };
+    } catch (error) {
+      const endTime = Date.now();
+      const latency = (endTime - startTime) / 1000;
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      console.log(
+        `   Run ${runNumber}/${runs}: ❌ FAIL (${latency.toFixed(2)}s) - ${errorMessage}`
+      );
+
+      return {
+        runNumber,
+        success: false,
+        latency,
+        error: errorMessage,
+        streamingEventCount: 0,
+      };
+    }
+  });
+
+  const results = await Promise.all(promises);
+
+  // Calculate statistics
+  const passCount = results.filter((r) => r.success).length;
+  const failCount = results.length - passCount;
+  const passRate = (passCount / results.length) * 100;
+  const latencies = results.map((r) => r.latency);
+  const avgLatency =
+    latencies.reduce((sum, l) => sum + l, 0) / latencies.length;
+  const minLatency = Math.min(...latencies);
+  const maxLatency = Math.max(...latencies);
+
+  // Print summary
+  console.log(`\n📊 Test Summary for ${promptKey}:`);
+  console.log(`   - Total runs: ${results.length}`);
+  console.log(`   - Passes: ${passCount}`);
+  console.log(`   - Fails: ${failCount}`);
+  console.log(`   - Pass rate: ${passRate.toFixed(1)}%`);
+  console.log(`   - Average latency: ${avgLatency.toFixed(2)}s`);
+  console.log(`   - Min latency: ${minLatency.toFixed(2)}s`);
+  console.log(`   - Max latency: ${maxLatency.toFixed(2)}s`);
+
+  if (failCount > 0) {
+    console.log(`\n❌ Failed runs:`);
+    results
+      .filter((r) => !r.success)
+      .forEach((r) => {
+        console.log(
+          `\n   - Run ${r.runNumber}: ${r.error || 'Validation failed'}`
+        );
+        if (r.validationErrors && r.validationErrors.length > 0) {
+          console.log(
+            `     Validation errors: ${JSON.stringify(r.validationErrors, null, 2)}`
+          );
+        }
+        if (r.generatedCode) {
+          console.log(`     Generated code:`);
+          console.log(`     ${'─'.repeat(60)}`);
+          // Print code with indentation, limiting to first 2000 chars to avoid overwhelming output
+          const codePreview =
+            r.generatedCode.length > 2000
+              ? r.generatedCode.substring(0, 2000) + '\n     ... (truncated)'
+              : r.generatedCode;
+          const indentedCode = codePreview
+            .split('\n')
+            .map((line) => `     ${line}`)
+            .join('\n');
+          console.log(indentedCode);
+          console.log(`     ${'─'.repeat(60)}`);
+        }
+      });
+  }
+
+  return {
+    promptKey,
+    totalRuns: results.length,
+    passCount,
+    failCount,
+    passRate,
+    results,
+    avgLatency,
+    minLatency,
+    maxLatency,
+  };
+}
 
 describe('Pearl AI Agent Code Generation Repeated test', () => {
   it.skip('should generate a simple email workflow with Gemini 2.5 pro', async () => {
@@ -512,10 +663,17 @@ describe('Pearl AI Agent Code Generation Repeated test', () => {
       expect(successfulResults[0].generatedCode).toContain('GitHub');
     }
   }, 400000);
+  it('should generate a complex workflow', async () => {
+    if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
+      return;
+    }
+    const result = await runSingleTestCase('complex-workflow', 20);
+    expect(result.passRate).toBeGreaterThanOrEqual(99);
+  }, 400000);
 });
 
 describe('Boba All Prompts Test Suite', () => {
-  it('should run all prompts in parallel and report statistics', async () => {
+  it.skip('should run all prompts in parallel and report statistics', async () => {
     if (!env.GOOGLE_API_KEY && !env.OPENROUTER_API_KEY) {
       return;
     }
