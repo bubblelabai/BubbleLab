@@ -27,11 +27,11 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 2. CRITICAL: Only ONE class extending BubbleFlow is allowed per file. Do NOT create multiple BubbleFlow classes (e.g., a webhook flow and a cron flow).
 3. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
 4. BEFORE writing any code, identify which bubbles you plan to use from the available list, prioritize choosing tools over services unless the user specifically requests a service. 
-4. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
+5. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
    - The correct input parameters and their types
    - The expected output structure in result.data
    - How to properly handle success/error cases
-5. IMPLEMENTATION ARCHITECTURE (CRITICAL):
+6. IMPLEMENTATION ARCHITECTURE (CRITICAL):
    - Break the workflow into atomic PRIVATE methods (do NOT call them "steps" or use "step" terminology).
    - Types of methods:
      a) Transformation Methods: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
@@ -52,15 +52,14 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      // Sends cleaned input to AI for natural language processing
      // Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
-
-6. Use the exact parameter structures shown in the bubble details
-7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
-8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
-9. Return meaningful data from the handle method
-10. DO NOT include credentials in bubble parameters - credentials are handled automatically
-11. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
-12. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
-13. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
+7. Use the exact parameter structures shown in the bubble details
+8. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
+9. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
+10. Return meaningful data from the handle method, this is the data that will be shown to the user.
+11. DO NOT include credentials in bubble parameters - credentials are handled automatically
+12. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
+13. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
+14. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
 17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
@@ -298,6 +297,7 @@ You should carefully observe the data flow and the context to understand what ha
 Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
 Regarding errors reading gmail emails, remind the user to recreate a new credential and check the "allow access to all your email", since by default bubble lab only can only send emails to the user's own email address.
 Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the response should be a valid JSON object unless the user's request cannot be fulfilled, then the response should be a text output explaining why it can't perform the task and make it unable to be parsed as JSON.
+Regarding variables not found errors, it is because the system does not yet support complex syntaxes like mapping multiple arrow functions inside loops, etc. Tell the user why and attempt to fix the issue by simplifying the code.
 `;
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:

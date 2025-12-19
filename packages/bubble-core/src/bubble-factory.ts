@@ -742,7 +742,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   // - No Bubbles directly in handle()
   // - No try/catch in handle() (let errors bubble up)
   // - Only calls to private methods
-  async handle(payload: CustomWebhookPayload) {
+  async handle(payload: CustomWebhookPayload): Promise<Output> {
     const transformedInput = this.transformData(payload.input);
 
     // Only process with AI if input meets minimum length requirement
@@ -780,7 +780,7 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
      return "Task completed";
   }
 
-  async handle(payload: CustomCronPayload) {
+  async handle(payload: CustomCronPayload): Promise<Output> {
     const result = await this.performScheduledTask();
 
     return { message: result, processed: true };
