@@ -262,7 +262,7 @@ export class GoogleMapsTool extends ToolBubble<
       openingHours: item.openingHours
         ? item.openingHours.map((h: any) => ({
             day: h.day || null,
-            hours: Array.isArray(h.hours) ? null : h.hours || null, // Simplified
+            hours: h.hours || null, // Can be string or array per schema
           }))
         : null,
       reviews: item.reviews
