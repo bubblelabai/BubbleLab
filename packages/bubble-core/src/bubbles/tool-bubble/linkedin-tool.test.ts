@@ -9,7 +9,7 @@ describe('LinkedInTool', () => {
         operation: 'scrapeJobs' as const,
         keyword: 'software engineer',
         location: 'United States',
-        limit: 10,
+        limit: 100,
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-token',
         },
@@ -21,7 +21,7 @@ describe('LinkedInTool', () => {
         operation: 'scrapeJobs',
         keyword: 'software engineer',
         location: 'United States',
-        limit: 10,
+        limit: 100,
       });
     });
 
@@ -49,7 +49,7 @@ describe('LinkedInTool', () => {
       const params = {
         operation: 'scrapePosts' as const,
         profileUrl: 'https://linkedin.com/in/williamhgates',
-        limit: 5,
+        limit: 100,
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-token',
         },
@@ -73,7 +73,7 @@ describe('LinkedInTool', () => {
       const tool = new LinkedInTool({
         operation: 'scrapeJobs',
         keyword: 'test',
-        limit: 1,
+        limit: 100,
       });
 
       const result = await tool.action();

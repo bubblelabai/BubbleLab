@@ -7,8 +7,8 @@ describe('TwitterTool', () => {
     it('should validate scrapeProfile parameters', () => {
       const params = {
         operation: 'scrapeProfile' as const,
-        usernames: ['elonmusk'],
-        limit: 10,
+        twitterHandles: ['elonmusk'],
+        maxItems: 10,
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-token',
         },
@@ -18,8 +18,8 @@ describe('TwitterTool', () => {
       expect(tool).toBeDefined();
       expect((tool as any).params).toMatchObject({
         operation: 'scrapeProfile',
-        usernames: ['elonmusk'],
-        limit: 10,
+        twitterHandles: ['elonmusk'],
+        maxItems: 10,
       });
     });
   });
@@ -28,8 +28,8 @@ describe('TwitterTool', () => {
     it('should validate search parameters', () => {
       const params = {
         operation: 'search' as const,
-        queries: ['openai'],
-        limit: 20,
+        searchTerms: ['openai'],
+        maxItems: 20,
         credentials: {
           [CredentialType.APIFY_CRED]: 'test-token',
         },
@@ -39,8 +39,8 @@ describe('TwitterTool', () => {
       expect(tool).toBeDefined();
       expect((tool as any).params).toMatchObject({
         operation: 'search',
-        queries: ['openai'],
-        limit: 20,
+        searchTerms: ['openai'],
+        maxItems: 20,
       });
     });
   });
