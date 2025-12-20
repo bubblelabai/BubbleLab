@@ -1,5 +1,4 @@
 // Centralized mapping of companies/services/models to logo assets
-import type { BubbleName } from '@bubblelab/shared-schemas';
 
 // Assets live under apps/bubble-studio/public/integrations/*.png
 
