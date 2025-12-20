@@ -192,6 +192,20 @@ export function useRunExecution(
                     bubbleId,
                     executionTimeMs
                   );
+
+                  // Check if the bubble execution failed (result.success === false)
+                  const result = eventData.additionalData?.result as
+                    | { success?: boolean }
+                    | undefined;
+                  const success = result?.success !== false; // Default to true if not specified
+
+                  // Update bubble result status in store
+                  getExecutionStore(flowId).setBubbleResult(bubbleId, success);
+
+                  // If failed, also mark it in bubbleWithError for error highlighting
+                  if (!success) {
+                    getExecutionStore(flowId).setBubbleError(bubbleId);
+                  }
                 }
               }
             }
