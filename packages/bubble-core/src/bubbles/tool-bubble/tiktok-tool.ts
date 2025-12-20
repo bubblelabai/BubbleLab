@@ -3,6 +3,7 @@ import { ToolBubble } from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { ApifyBubble } from '../service-bubble/apify/apify.js';
+import type { TikTokScraperInputSchema } from '../service-bubble/apify/actors/tiktok-scraper.js';
 import type { ActorOutput } from '../service-bubble/apify/types.js';
 
 // Unified TikTok data types
@@ -74,7 +75,7 @@ const TikTokToolParamsSchema = z.object({
     .max(1000)
     .default(20)
     .optional()
-    .describe('Number of results to fetch'),
+    .describe('Number of results in total to fetch'),
 
   shouldDownloadVideos: z
     .boolean()
@@ -178,7 +179,7 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
   }> {
     const { operation, limit, shouldDownloadVideos } = this.params;
 
-    const input: any = {
+    const input: z.infer<typeof TikTokScraperInputSchema> = {
       resultsPerPage: limit,
       shouldDownloadVideos: shouldDownloadVideos || false,
       shouldDownloadCovers: true,
@@ -188,7 +189,7 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
       if (!this.params.profiles?.length) {
         return { videos: [], success: false, error: 'Profiles required' };
       }
-      input.profileUrls = this.params.profiles;
+      input.profiles = this.params.profiles;
     } else if (operation === 'scrapeHashtag') {
       if (!this.params.hashtags?.length) {
         return { videos: [], success: false, error: 'Hashtags required' };
@@ -198,7 +199,7 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
       if (!this.params.videoUrls?.length) {
         return { videos: [], success: false, error: 'Video URLs required' };
       }
-      input.videoUrls = this.params.videoUrls;
+      input.postURLs = this.params.videoUrls;
     }
 
     const scraper = new ApifyBubble<'clockworks/tiktok-scraper'>(
@@ -206,7 +207,8 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
         actorId: 'clockworks/tiktok-scraper',
         input,
         waitForFinish: true,
-        timeout: 180000,
+        timeout: 500000,
+        limit: limit,
         credentials: this.params.credentials,
       },
       this.context,

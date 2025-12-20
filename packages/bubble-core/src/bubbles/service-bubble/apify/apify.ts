@@ -52,9 +52,9 @@ const ApifyParamsSchema = z.object({
   timeout: z
     .number()
     .min(1000)
-    .max(300000)
+    .max(500000)
     .optional()
-    .default(120000)
+    .default(300000)
     .describe(
       'Maximum time to wait for actor completion in milliseconds (default: 120000)'
     ),
