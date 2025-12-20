@@ -15,6 +15,10 @@ import {
   LinkedInPostsSearchOutputSchema,
 } from './actors/linkedin-posts-search.js';
 import {
+  LinkedInJobsScraperInputSchema,
+  LinkedInJobSchema,
+} from './actors/linkedin-jobs-scraper.js';
+import {
   YouTubeScraperInputSchema,
   YouTubeVideoSchema,
 } from './actors/youtube-scraper.js';
@@ -22,6 +26,18 @@ import {
   YouTubeTranscriptScraperInputSchema,
   YouTubeTranscriptResultSchema,
 } from './actors/youtube-transcript-scraper.js';
+import {
+  TikTokScraperInputSchema,
+  TikTokVideoSchema,
+} from './actors/tiktok-scraper.js';
+import {
+  TwitterScraperInputSchema,
+  TwitterTweetSchema,
+} from './actors/twitter-scraper.js';
+import {
+  GoogleMapsScraperInputSchema,
+  GoogleMapsPlaceSchema,
+} from './actors/google-maps-scraper.js';
 
 // ============================================================================
 // ACTOR REGISTRY
@@ -70,5 +86,35 @@ export const APIFY_ACTOR_SCHEMAS = {
     description: 'Extract transcripts from YouTube videos with timestamps',
     documentation: 'https://apify.com/pintostudio/youtube-transcript-scraper',
     category: 'social-media',
+  },
+  'curious_coder/linkedin-jobs-scraper': {
+    input: LinkedInJobsScraperInputSchema,
+    output: LinkedInJobSchema,
+    description: 'Scrape LinkedIn job postings with detailed information',
+    documentation: 'https://apify.com/curious_coder/linkedin-jobs-scraper',
+    category: 'jobs',
+  },
+  'clockworks/tiktok-scraper': {
+    input: TikTokScraperInputSchema,
+    output: TikTokVideoSchema,
+    description:
+      'Scrape TikTok profiles, videos, hashtags, and trending content',
+    documentation: 'https://apify.com/clockworks/tiktok-scraper',
+    category: 'social-media',
+  },
+  'apidojo/tweet-scraper': {
+    input: TwitterScraperInputSchema,
+    output: TwitterTweetSchema,
+    description: 'Scrape Twitter/X profiles, tweets, and search results',
+    documentation: 'https://apify.com/apidojo/tweet-scraper',
+    category: 'social-media',
+  },
+  'compass/crawler-google-places': {
+    input: GoogleMapsScraperInputSchema,
+    output: GoogleMapsPlaceSchema,
+    description:
+      'Scrape Google Maps for business listings, reviews, and place data',
+    documentation: 'https://apify.com/compass/crawler-google-places',
+    category: 'maps',
   },
 };

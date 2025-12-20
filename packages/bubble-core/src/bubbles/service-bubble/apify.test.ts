@@ -68,7 +68,7 @@ describe('ApifyBubble', () => {
 
       const bubble = new ApifyBubble(params);
       expect((bubble as any).params.waitForFinish).toBe(true);
-      expect((bubble as any).params.timeout).toBe(120000);
+      expect((bubble as any).params.timeout).toBe(300000);
     });
 
     it('should accept arbitrary input structure', () => {

@@ -52,9 +52,9 @@ const ApifyParamsSchema = z.object({
   timeout: z
     .number()
     .min(1000)
-    .max(300000)
+    .max(500000)
     .optional()
-    .default(120000)
+    .default(300000)
     .describe(
       'Maximum time to wait for actor completion in milliseconds (default: 120000)'
     ),
@@ -190,8 +190,15 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
 
     Supported Actors (examples):
     - apify/instagram-scraper - Instagram posts, profiles, hashtags
-    - apify/reddit-scraper - Reddit posts, comments, subreddits
-    - apify/linkedin-scraper - LinkedIn profiles, companies, jobs
+    - apify/instagram-hashtag-scraper - Instagram hashtag posts
+    - apimaestro/linkedin-profile-posts - LinkedIn profile posts and activity
+    - apimaestro/linkedin-posts-search-scraper-no-cookies - Search LinkedIn posts by keyword
+    - curious_coder/linkedin-jobs-scraper - LinkedIn job postings
+    - streamers/youtube-scraper - YouTube videos and channels
+    - pintostudio/youtube-transcript-scraper - YouTube video transcripts
+    - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags
+    - apidojo/tweet-scraper - Twitter/X profiles, tweets, search results
+    - compass/crawler-google-places - Google Maps business listings and reviews
     - apify/web-scraper - Generic web scraping
     - apify/google-search-scraper - Google search results
     - IMPORTANT: For other actors, use discovery mode to find the actor and its page, then use the web scrape tool to scrape the input schema page to get the input/output schema details.
