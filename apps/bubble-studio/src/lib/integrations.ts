@@ -1,4 +1,6 @@
 // Centralized mapping of companies/services/models to logo assets
+import type { BubbleName } from '@bubblelab/shared-schemas';
+
 // Assets live under apps/bubble-studio/public/integrations/*.png
 
 export interface IntegrationLogo {
@@ -42,6 +44,9 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   OpenAI: '/integrations/gpt.svg',
   Anthropic: '/integrations/claude.svg',
   Google: '/integrations/gemini.svg', // Prefer Gemini for generic Google AI
+  Twitter: '/integrations/twitter.png',
+  X: '/integrations/x.png',
+  TikTok: '/integrations/tiktok.png',
 });
 
 // Canonical tool names → asset path
@@ -81,6 +86,8 @@ export const SCRAPING_SERVICES: IntegrationLogo[] = [
   { name: 'YouTube', file: SERVICE_LOGOS['YouTube'] },
   { name: 'Instagram', file: SERVICE_LOGOS['Instagram'] },
   { name: 'Reddit', file: SERVICE_LOGOS['Reddit'] },
+  { name: 'TikTok', file: SERVICE_LOGOS['TikTok'] },
+  { name: 'X', file: SERVICE_LOGOS['X'] },
   { name: 'Websites', file: TOOL_LOGOS['Web Scrape'] },
 ];
 
@@ -97,11 +104,14 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   gmail: 'Gmail',
   gcalendar: 'Google Calendar',
   calendar: 'Google Calendar',
+  'google-calendar': 'Google Calendar',
   gdrive: 'Google Drive',
   drive: 'Google Drive',
+  'google-drive': 'Google Drive',
   sheets: 'Google Sheets',
   sheet: 'Google Sheets',
   spreadsheet: 'Google Sheets',
+  'google-sheets': 'Google Sheets',
   postgres: 'Postgres',
   postgresql: 'Postgres',
   pg: 'Postgres',
@@ -118,8 +128,11 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   resend: 'Resend',
   reddit: 'Reddit',
   linkedin: 'LinkedIn',
+  'linkedin-tool': 'LinkedIn',
   youtube: 'YouTube',
+  'youtube-tool': 'YouTube',
   instagram: 'Instagram',
+  'instagram-tool': 'Instagram',
   apify: 'Apify',
   github: 'GitHub',
   elevenlabs: 'ElevenLabs',
@@ -155,6 +168,32 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'web-crawl-tool': 'Web Crawl',
   webcrawl: 'Web Crawl',
   crawl: 'Web Crawl',
+  'web-extract-tool': 'Web Scrape',
+  twitter: 'Twitter',
+  'twitter-tool': 'Twitter',
+  tiktok: 'TikTok',
+  'tiktok-tool': 'TikTok',
+  'google-maps': 'Google Maps Tool',
+  'google-maps-tool': 'Google Maps Tool',
+  'hello-world': 'Hello World',
+  http: 'HTTP',
+  'slack-formatter-agent': 'Slack',
+  'database-analyzer': 'Database Analyzer',
+  'slack-notifier': 'Slack',
+  'get-bubble-details-tool': 'Bubble Details',
+  'list-bubbles-tool': 'List Bubbles',
+  'sql-query-tool': 'SQL Query',
+  'chart-js-tool': 'Chart.js',
+  'reddit-scrape-tool': 'Reddit',
+  'slack-data-assistant': 'Slack',
+  'bubbleflow-code-generator': 'Bubbleflow Generator',
+  'bubbleflow-generator': 'Bubbleflow Generator',
+  'pdf-form-operations': 'PDF Form',
+  'pdf-ocr-workflow': 'PDF OCR',
+  'generate-document-workflow': 'Document Generator',
+  'parse-document-workflow': 'Document Parser',
+  'bubbleflow-validation-tool': 'Bubbleflow Validation',
+  'code-edit-tool': 'Code Edit',
 });
 
 function normalize(value: string): string {
