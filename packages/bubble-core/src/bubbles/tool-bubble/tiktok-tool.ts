@@ -241,34 +241,34 @@ export class TikTokTool extends ToolBubble<TikTokToolParams, TikTokToolResult> {
       text: item.text || null,
       createTime: item.createTime || null,
       createTimeISO: item.createTimeISO || null,
-      author: item.author
+      author: item.authorMeta
         ? {
-            id: item.author.id || null,
-            uniqueId: item.author.uniqueId || null,
-            nickname: item.author.nickname || null,
-            avatarThumb: item.author.avatarThumb || null,
-            signature: item.author.signature || null,
-            verified: item.author.verified || null,
-            followerCount: item.author.followerCount || null,
-            followingCount: item.author.followingCount || null,
-            videoCount: item.author.videoCount || null,
-            heartCount: item.author.heartCount || null,
+            id: item.authorMeta.id || null,
+            uniqueId: item.authorMeta.name || null,
+            nickname: item.authorMeta.nickName || null,
+            avatarThumb: item.authorMeta.avatar || null,
+            signature: item.authorMeta.signature || null,
+            verified: item.authorMeta.verified || null,
+            followerCount: item.authorMeta.fans || null,
+            followingCount: item.authorMeta.following || null,
+            videoCount: item.authorMeta.video || null,
+            heartCount: item.authorMeta.heart || null,
           }
         : null,
-      stats: item.stats
-        ? {
-            diggCount: item.stats.diggCount || null,
-            shareCount: item.stats.shareCount || null,
-            commentCount: item.stats.commentCount || null,
-            playCount: item.stats.playCount || null,
-            collectCount: item.stats.collectCount || null,
-          }
-        : null,
-      videoUrl: item.videoUrl || null,
+      stats: {
+        diggCount: item.diggCount || null,
+        shareCount: item.shareCount || null,
+        commentCount: item.commentCount || null,
+        playCount: item.playCount || null,
+        collectCount: item.collectCount || null,
+      },
+      videoUrl: null,
       webVideoUrl: item.webVideoUrl || null,
-      covers: item.covers || null,
+      covers: item.videoMeta?.coverUrl
+        ? [item.videoMeta.coverUrl]
+        : item.mediaUrls || null,
       hashtags: item.hashtags
-        ? item.hashtags.map((tag) => ({ name: tag.title || tag.name || null }))
+        ? item.hashtags.map((tag) => ({ name: tag.name || null }))
         : null,
     }));
   }

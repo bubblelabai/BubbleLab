@@ -4,6 +4,7 @@ import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import { ApifyBubble } from '../service-bubble/apify/apify.js';
 import type { ActorOutput } from '../service-bubble/apify/types.js';
+import { GoogleMapsScraperInputSchema } from '../service-bubble/apify/actors/google-maps-scraper.js';
 
 // Unified Google Maps data types
 const GoogleMapsReviewSchema = z.object({
@@ -184,26 +185,15 @@ export class GoogleMapsTool extends ToolBubble<
     success: boolean;
     error: string;
   }> {
-    const {
-      queries,
-      location,
-      limit,
-      language,
-      extractReviews,
-      extractPhotos,
-    } = this.params;
+    const { queries, location, limit, language } = this.params;
 
-    const input: any = {
+    const input: z.infer<typeof GoogleMapsScraperInputSchema> = {
       searchStringsArray: queries,
       locationQuery: location,
       maxCrawledPlaces: limit,
       language,
-      scrapeReviewsCount: extractReviews || 0,
-      scrapePhotosCount: extractPhotos || 0,
       // Default safer settings
       onlyDataFromSearchPage: false,
-      scrapeDirections: false,
-      includeWebResults: false,
     };
 
     const scraper = new ApifyBubble<'compass/crawler-google-places'>(
@@ -246,12 +236,12 @@ export class GoogleMapsTool extends ToolBubble<
       placeId: item.placeId || null,
       url: item.url || null,
       address: item.address || null,
-      category: item.categories?.[0] || null,
+      category: item.categoryName || item.categories?.[0] || null,
       website: item.website || null,
       phone: item.phone || item.phoneUnformatted || null,
-      rating: item.rating || null,
+      rating: item.totalScore || null,
       reviewsCount: item.reviewsCount || null,
-      priceLevel: item.priceLevel || null,
+      priceLevel: item.price || null,
       isAdvertisement: item.isAdvertisement || null,
       location: item.location
         ? {
@@ -265,22 +255,22 @@ export class GoogleMapsTool extends ToolBubble<
             hours: h.hours || null, // Can be string or array per schema
           }))
         : null,
-      reviews: item.reviews
-        ? item.reviews.map((r) => ({
-            name: r.name || null,
-            rating: r.rating || null,
-            text: r.text || null,
-            publishedAtDate: r.publishedAtDate || null,
-            likesCount: r.likesCount || null,
-            responseFromOwnerText: r.responseFromOwnerText || null,
-          }))
-        : null,
-      imageUrls: item.imageUrls || null,
+      reviews: null, // Reviews are not available in the current schema
+      imageUrls: item.imageUrl ? [item.imageUrl] : null,
       additionalInfo: item.additionalInfo
         ? (Object.fromEntries(
-            Object.entries(item.additionalInfo).filter(([_, v]) =>
-              Array.isArray(v)
-            )
+            Object.entries(item.additionalInfo).map(([key, value]) => [
+              key,
+              Array.isArray(value)
+                ? value
+                    .flatMap((v) =>
+                      typeof v === 'object' && v !== null
+                        ? Object.keys(v).filter((k) => v[k] === true)
+                        : []
+                    )
+                    .filter((v) => v)
+                : [],
+            ])
           ) as Record<string, string[]>)
         : null,
     }));

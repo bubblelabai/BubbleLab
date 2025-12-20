@@ -201,9 +201,9 @@ const LinkedInToolParamsSchema = z.object({
   // Common fields
   limit: z
     .number()
-    .min(1)
-    .max(100)
-    .default(50)
+    .min(100)
+    .max(1000)
+    .default(100)
     .optional()
     .describe('Maximum number of items to fetch (default: 50)'),
 
@@ -394,6 +394,14 @@ export class LinkedInTool extends ToolBubble<
 
     try {
       const { operation } = this.params;
+
+      if (
+        operation === 'scrapeJobs' &&
+        this.params?.limit &&
+        this.params.limit < 100
+      ) {
+        this.params!.limit = 100;
+      }
 
       // Validate required fields based on operation
       if (
@@ -823,24 +831,85 @@ export class LinkedInTool extends ToolBubble<
       return this.createErrorResult('Keyword is required for scrapeJobs');
     }
 
+    // Construct LinkedIn jobs search URL
+    const searchParams = new URLSearchParams();
+    searchParams.set('keywords', params.keyword);
+    if (params.location) {
+      searchParams.set('location', params.location);
+    }
+    if (params.dateFilter) {
+      // Map dateFilter to LinkedIn's format
+      const dateMap: Record<string, string> = {
+        'past-24h': 'r86400',
+        'past-week': 'r604800',
+        'past-month': 'r2592000',
+      };
+      if (dateMap[params.dateFilter]) {
+        searchParams.set('f_TPR', dateMap[params.dateFilter]);
+      }
+    }
+    if (params.experienceLevel && params.experienceLevel.length > 0) {
+      const experienceMap: Record<string, string> = {
+        internship: '1',
+        'entry-level': '2',
+        associate: '3',
+        'mid-senior': '4',
+        director: '6',
+        executive: '7',
+      };
+      const experienceValues = params.experienceLevel
+        .map((level) => experienceMap[level])
+        .filter((v): v is string => v !== undefined);
+      if (experienceValues.length > 0) {
+        searchParams.set('f_E', experienceValues.join(','));
+      }
+    }
+    if (params.jobType && params.jobType.length > 0) {
+      const jobTypeMap: Record<string, string> = {
+        'full-time': 'F',
+        'part-time': 'P',
+        contract: 'C',
+        temporary: 'T',
+        internship: 'I',
+      };
+      const jobTypeValues = params.jobType
+        .map((type) => jobTypeMap[type])
+        .filter((v): v is string => v !== undefined);
+      if (jobTypeValues.length > 0) {
+        searchParams.set('f_JT', jobTypeValues.join(','));
+      }
+    }
+    if (params.workplaceType && params.workplaceType.length > 0) {
+      const workplaceMap: Record<string, string> = {
+        remote: '2',
+        'on-site': '1',
+        hybrid: '3',
+      };
+      const workplaceValues = params.workplaceType
+        .map((type) => workplaceMap[type])
+        .filter((v): v is string => v !== undefined);
+      if (workplaceValues.length > 0) {
+        searchParams.set('f_WT', workplaceValues.join(','));
+      }
+    }
+    searchParams.set('sort_by', 'date_posted');
+
+    const searchUrl = `https://www.linkedin.com/jobs/search?${searchParams.toString()}`;
+
     const jobScraper = new ApifyBubble<'curious_coder/linkedin-jobs-scraper'>(
       {
         actorId: 'curious_coder/linkedin-jobs-scraper',
         input: {
-          search: params.keyword,
-          location: params.location,
-          datePosted: params.dateFilter || 'any-time',
-          experienceLevel: params.experienceLevel,
-          jobType: params.jobType,
-          workplaceType: params.workplaceType,
-          limit: params.limit || 50,
+          urls: [searchUrl],
+          count: params.limit || 50,
+          scrapeCompany: true,
         },
         waitForFinish: true,
         timeout: 240000,
         credentials: params.credentials,
       },
       this.context,
-      'linkedinJobScraper'
+      'jobScraper'
     );
 
     const apifyResult = await jobScraper.action();
@@ -872,32 +941,62 @@ export class LinkedInTool extends ToolBubble<
   private transformJobs(
     items: ActorOutput<'curious_coder/linkedin-jobs-scraper'>[]
   ): LinkedInJob[] {
-    return items.map((item) => ({
-      id: item.jobId || null,
-      title: item.title || null,
-      company: item.company
-        ? {
-            name: item.company.name || null,
-            url: item.company.url || null,
-            logo: null,
-          }
-        : null,
-      location: item.location || null,
-      description: item.description || null,
-      employmentType: item.employmentType || null,
-      seniorityLevel: item.seniorityLevel || null,
-      postedAt: item.postedAt || null,
-      url: item.url || null,
-      applyUrl: item.applyUrl || null,
-      salary: item.salary
-        ? {
-            from: item.salary.from || null,
-            to: item.salary.to || null,
-            currency: item.salary.currency || null,
-            period: item.salary.period || null,
-          }
-        : null,
-      skills: item.skills || null,
-    }));
+    return items.map((item) => {
+      // Parse salary from salaryInfo array (e.g., ["$105,910.00", "$178,000.00"])
+      let salary: {
+        from: number | null;
+        to: number | null;
+        currency: string | null;
+        period: string | null;
+      } | null = null;
+      if (item.salaryInfo && item.salaryInfo.length > 0) {
+        const salaryValues = item.salaryInfo
+          .map((s) => {
+            // Extract numeric value and currency from strings like "$105,910.00"
+            const match = s.match(/^([$€£¥]?)([\d,]+\.?\d*)/);
+            if (match) {
+              const currency = match[1] || 'USD';
+              const value = parseFloat(match[2].replace(/,/g, ''));
+              return { currency, value };
+            }
+            return null;
+          })
+          .filter((v): v is { currency: string; value: number } => v !== null);
+
+        if (salaryValues.length > 0) {
+          const from = salaryValues[0]?.value || null;
+          const to = salaryValues.length > 1 ? salaryValues[1]?.value : from;
+          const currency = salaryValues[0]?.currency || null;
+          salary = {
+            from,
+            to,
+            currency,
+            period: null, // Period not available in salaryInfo
+          };
+        }
+      }
+
+      return {
+        id: item.id || null,
+        title: item.title || null,
+        company:
+          item.companyName || item.companyLinkedinUrl || item.companyLogo
+            ? {
+                name: item.companyName || null,
+                url: item.companyLinkedinUrl || null,
+                logo: item.companyLogo || null,
+              }
+            : null,
+        location: item.location || null,
+        description: item.descriptionText || item.descriptionHtml || null,
+        employmentType: item.employmentType || null,
+        seniorityLevel: item.seniorityLevel || null,
+        postedAt: item.postedAt || null,
+        url: item.link || null,
+        applyUrl: item.applyUrl || null,
+        salary,
+        skills: null, // Skills not available in actual actor output
+      };
+    });
   }
 }

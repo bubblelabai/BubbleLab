@@ -111,6 +111,38 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'per_result',
     unitCost: 0.00525, // $0.00525 per result ($5.00 for 1000 results with 1.05x markup)
   },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'curious_coder/linkedin-jobs-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0042, // $0.0042 per result ($4.00 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'clockworks/tiktok-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0021, // $0.0021 per result ($2.00 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'apidojo/tweet-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.00042, // $0.00042 per result ($0.40 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'compass/crawler-google-places',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0042, // $0.0042 per result ($4.00 for 1000 results with 1.05x markup)
+  },
 
   // AI Services - Google Gemini with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)

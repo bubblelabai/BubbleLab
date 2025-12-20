@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TikTokTool } from './tiktok-tool.js';
+import { TikTokTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
 describe('TikTokTool', () => {

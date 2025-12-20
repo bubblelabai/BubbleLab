@@ -102,11 +102,11 @@ export const APIFY_ACTOR_SCHEMAS = {
     documentation: 'https://apify.com/clockworks/tiktok-scraper',
     category: 'social-media',
   },
-  'apidojo/twitter-user-scraper': {
+  'apidojo/tweet-scraper': {
     input: TwitterScraperInputSchema,
     output: TwitterTweetSchema,
     description: 'Scrape Twitter/X profiles, tweets, and search results',
-    documentation: 'https://apify.com/apidojo/twitter-user-scraper',
+    documentation: 'https://apify.com/apidojo/tweet-scraper',
     category: 'social-media',
   },
   'compass/crawler-google-places': {

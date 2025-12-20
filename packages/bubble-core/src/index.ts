@@ -42,6 +42,9 @@ export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
 export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
 export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
+export { TwitterTool } from './bubbles/tool-bubble/twitter-tool.js';
+export { TikTokTool } from './bubbles/tool-bubble/tiktok-tool.js';
+export { GoogleMapsTool } from './bubbles/tool-bubble/google-maps-tool.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,

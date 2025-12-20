@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TwitterTool } from './twitter-tool.js';
+import { TwitterTool } from '@bubblelab/bubble-core';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
 describe('TwitterTool', () => {
@@ -61,8 +61,8 @@ describe('TwitterTool', () => {
     it('should return error when no credentials provided', async () => {
       const tool = new TwitterTool({
         operation: 'scrapeProfile',
-        usernames: ['elonmusk'],
-        limit: 1,
+        twitterHandles: ['elonmusk'],
+        maxItems: 1,
       });
 
       const result = await tool.action();

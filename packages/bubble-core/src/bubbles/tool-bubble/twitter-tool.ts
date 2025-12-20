@@ -70,52 +70,56 @@ const TwitterTweetSchema = z.object({
 const TwitterToolParamsSchema = z.object({
   operation: z
     .enum(['scrapeProfile', 'search', 'scrapeUrl'])
-    .describe('Operation to perform'),
+    .describe(
+      'Operation to perform: scrapeProfile (get tweets from user handles), search (search tweets by query), scrapeUrl (scrape specific Twitter URLs)'
+    ),
 
-  usernames: z
+  // === scrapeProfile operation ===
+  twitterHandles: z
     .array(z.string())
     .optional()
-    .describe('Twitter usernames to scrape (without @) (for scrapeProfile)'),
+    .describe(
+      '[scrapeProfile] Twitter handles/usernames to scrape (without @). Example: ["elonmusk", "OpenAI"]'
+    ),
 
-  queries: z
+  // === search operation ===
+  searchTerms: z
     .array(z.string())
     .optional()
-    .describe('Search queries (for search)'),
+    .describe(
+      '[search] Search queries. Supports advanced search syntax: https://github.com/igorbrigadir/twitter-advanced-search. Example: ["AI news", "#machinelearning"]'
+    ),
 
-  urls: z
+  // === scrapeUrl operation ===
+  startUrls: z
     .array(z.string())
     .optional()
-    .describe('Direct URLs to scrape (for scrapeUrl)'),
+    .describe(
+      '[scrapeUrl] Direct Twitter URLs to scrape. Supports Tweet, Profile, Search, or List URLs. Example: ["https://twitter.com/elonmusk/status/123456"]'
+    ),
 
-  limit: z
+  // === Common options ===
+  maxItems: z
     .number()
     .min(1)
     .max(1000)
     .default(20)
     .optional()
-    .describe('Maximum number of tweets to scrape per query'),
+    .describe('Maximum number of tweets to return (default: 20, max: 1000)'),
 
-  // Filters
-  onlyVerified: z
-    .boolean()
-    .default(false)
+  sort: z
+    .enum(['Top', 'Latest'])
     .optional()
-    .describe('Filter: Verified users only'),
-  onlyBlue: z
-    .boolean()
-    .default(false)
+    .describe(
+      '[search only] Sort results by "Top" (most relevant) or "Latest" (most recent)'
+    ),
+
+  tweetLanguage: z
+    .string()
     .optional()
-    .describe('Filter: Blue verified users only'),
-  onlyImage: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter: Tweets with images only'),
-  onlyVideo: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter: Tweets with videos only'),
+    .describe(
+      'Filter tweets by language using ISO 639-1 code (e.g., "en" for English, "es" for Spanish)'
+    ),
 
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
@@ -138,7 +142,27 @@ const TwitterToolResultSchema = z.object({
 type TwitterToolParams = z.output<typeof TwitterToolParamsSchema>;
 type TwitterToolResult = z.output<typeof TwitterToolResultSchema>;
 type TwitterToolParamsInput = z.input<typeof TwitterToolParamsSchema>;
+export type TwitterTweet = z.output<typeof TwitterTweetSchema>;
+export type TwitterUser = z.output<typeof TwitterUserSchema>;
 
+// Helper type to get the result type for a specific operation
+export type TwitterOperationResult<T extends TwitterToolParams['operation']> =
+  Extract<TwitterToolResult, { operation: T }>;
+
+/**
+ * Generic Twitter/X scraping tool with unified interface
+ *
+ * This tool abstracts away the underlying scraping service (currently Apify)
+ * and provides a simple, opinionated interface for Twitter data extraction.
+ *
+ * Supports three operations:
+ * - scrapeProfile: Scrape user profiles and their tweets
+ * - search: Search for tweets by keywords or hashtags
+ * - scrapeUrl: Scrape specific Twitter URLs (tweets, profiles, searches, lists)
+ *
+ * Future versions can add support for other services (BrightData, custom scrapers)
+ * while maintaining the same interface.
+ */
 export class TwitterTool extends ToolBubble<
   TwitterToolParams,
   TwitterToolResult
@@ -147,16 +171,67 @@ export class TwitterTool extends ToolBubble<
   static readonly schema = TwitterToolParamsSchema;
   static readonly resultSchema = TwitterToolResultSchema;
   static readonly shortDescription =
-    'Scrape Twitter/X profiles, tweets, and search results.';
+    'Scrape Twitter/X profiles, tweets, and search results with a simple, unified interface.';
   static readonly longDescription = `
-    Universal Twitter/X scraping tool.
+    Universal Twitter/X scraping tool that provides a simple, opinionated interface for extracting Twitter data.
     
-    Operations:
-    - scrapeProfile: Get tweets from user profiles
-    - search: Search for tweets by keyword or hashtag
-    - scrapeUrl: Scrape specific Tweet URLs
+    **OPERATIONS:**
+    1. **scrapeProfile**: Scrape user profiles and their tweets
+       - Get tweets from specific user handles
+       - Track influencer or brand accounts
+       - Monitor user activity and engagement
     
-    Uses Apify's apidojo/twitter-user-scraper.
+    2. **search**: Search for tweets by keywords or hashtags
+       - Find tweets by search terms or hashtags
+       - Monitor brand mentions and campaigns
+       - Research trending topics and conversations
+       - Supports advanced search syntax (see Twitter advanced search)
+    
+    3. **scrapeUrl**: Scrape specific Twitter URLs
+       - Scrape individual tweets, profiles, search results, or lists
+       - Extract data from specific Twitter URLs
+       - Useful for targeted data collection
+    
+    **WHEN TO USE THIS TOOL:**
+    - **Any Twitter scraping task** - profiles, tweets, searches, engagement data
+    - **Social media research** - influencer analysis, competitor monitoring
+    - **Content gathering** - tweets, replies, retweets, engagement metrics
+    - **Market research** - brand mentions, user sentiment on Twitter
+    - **Trend analysis** - hashtag tracking, viral content discovery
+    - **Real-time monitoring** - track conversations and mentions
+    
+    **DO NOT USE research-agent-tool or web-scrape-tool for Twitter** - This tool is specifically optimized for Twitter and provides:
+    - Unified data format across all Twitter sources
+    - Automatic service selection and optimization
+    - Rate limiting and reliability handling
+    - Clean, structured data ready for analysis
+    
+    **Simple Interface:**
+    Just specify the operation and provide Twitter handles, search terms, or URLs to get back clean, structured data.
+    The tool automatically handles:
+    - Handle normalization (accepts handles with or without @)
+    - Service selection (currently Apify, future: multiple sources)
+    - Data transformation to unified format
+    - Error handling and retries
+    
+    **What you get:**
+    - Tweets with text, engagement stats, timestamps
+    - Author information (for scrapeProfile operation)
+    - Hashtags, mentions, and URLs
+    - Media attachments
+    - Language and metadata
+    
+    **Use cases:**
+    - Influencer analysis and discovery
+    - Brand monitoring and sentiment analysis
+    - Competitor research on Twitter
+    - Content strategy and trend analysis
+    - Market research through Twitter data
+    - Campaign performance tracking
+    - Hashtag research and optimization
+    - Real-time event monitoring
+    
+    The tool uses best-available services behind the scenes while maintaining a consistent, simple interface.
   `;
   static readonly alias = 'twitter';
   static readonly type = 'tool';
@@ -164,8 +239,8 @@ export class TwitterTool extends ToolBubble<
   constructor(
     params: TwitterToolParamsInput = {
       operation: 'scrapeProfile',
-      usernames: ['elonmusk'],
-      limit: 20,
+      twitterHandles: ['elonmusk'],
+      maxItems: 20,
     },
     context?: BubbleContext
   ) {
@@ -173,7 +248,7 @@ export class TwitterTool extends ToolBubble<
   }
 
   async performAction(): Promise<TwitterToolResult> {
-    const credentials = this.params.credentials;
+    const credentials = this.params?.credentials;
     if (!credentials || !credentials[CredentialType.APIFY_CRED]) {
       return this.createErrorResult(
         'Twitter scraping requires authentication. Please configure APIFY_CRED.'
@@ -182,15 +257,49 @@ export class TwitterTool extends ToolBubble<
 
     try {
       const { operation } = this.params;
-      const result = await this.runScraper();
 
-      return {
-        operation,
-        tweets: result.tweets,
-        totalTweets: result.tweets.length,
-        success: result.success,
-        error: result.error,
-      };
+      // Validate required fields based on operation
+      if (
+        operation === 'scrapeProfile' &&
+        (!this.params.twitterHandles || this.params.twitterHandles.length === 0)
+      ) {
+        return this.createErrorResult(
+          'twitterHandles array is required for scrapeProfile operation'
+        );
+      }
+
+      if (
+        operation === 'search' &&
+        (!this.params.searchTerms || this.params.searchTerms.length === 0)
+      ) {
+        return this.createErrorResult(
+          'searchTerms array is required for search operation'
+        );
+      }
+
+      if (
+        operation === 'scrapeUrl' &&
+        (!this.params.startUrls || this.params.startUrls.length === 0)
+      ) {
+        return this.createErrorResult(
+          'startUrls array is required for scrapeUrl operation'
+        );
+      }
+
+      const result = await (async (): Promise<TwitterToolResult> => {
+        switch (operation) {
+          case 'scrapeProfile':
+            return await this.handleScrapeProfile(this.params);
+          case 'search':
+            return await this.handleSearch(this.params);
+          case 'scrapeUrl':
+            return await this.handleScrapeUrl(this.params);
+          default:
+            throw new Error(`Unsupported operation: ${operation}`);
+        }
+      })();
+
+      return result;
     } catch (error) {
       return this.createErrorResult(
         error instanceof Error ? error.message : 'Unknown error occurred'
@@ -198,9 +307,14 @@ export class TwitterTool extends ToolBubble<
     }
   }
 
+  /**
+   * Create an error result
+   */
   private createErrorResult(errorMessage: string): TwitterToolResult {
+    const { operation } = this.params;
+
     return {
-      operation: this.params.operation,
+      operation: operation || 'scrapeProfile',
       tweets: [],
       totalTweets: 0,
       success: false,
@@ -208,57 +322,125 @@ export class TwitterTool extends ToolBubble<
     };
   }
 
-  private async runScraper(): Promise<{
+  /**
+   * Handle scrapeProfile operation
+   */
+  private async handleScrapeProfile(
+    params: TwitterToolParams
+  ): Promise<TwitterToolResult> {
+    // Normalize handles (remove @ if present)
+    const normalizedHandles = this.normalizeHandles(params.twitterHandles!);
+
+    // Use Apify service to scrape profiles
+    const result = await this.scrapeWithApifyProfiles(
+      normalizedHandles,
+      params.maxItems || 20,
+      params.tweetLanguage,
+      params.credentials
+    );
+
+    return {
+      operation: 'scrapeProfile',
+      tweets: result.tweets,
+      totalTweets: result.totalTweets,
+      success: result.success,
+      error: result.error,
+    };
+  }
+
+  /**
+   * Handle search operation
+   */
+  private async handleSearch(
+    params: TwitterToolParams
+  ): Promise<TwitterToolResult> {
+    // Use Apify service to search tweets
+    const result = await this.scrapeWithApifySearch(
+      params.searchTerms!,
+      params.maxItems || 20,
+      params.sort,
+      params.tweetLanguage,
+      params.credentials
+    );
+
+    return {
+      operation: 'search',
+      tweets: result.tweets,
+      totalTweets: result.totalTweets,
+      success: result.success,
+      error: result.error,
+    };
+  }
+
+  /**
+   * Handle scrapeUrl operation
+   */
+  private async handleScrapeUrl(
+    params: TwitterToolParams
+  ): Promise<TwitterToolResult> {
+    // Use Apify service to scrape URLs
+    const result = await this.scrapeWithApifyUrls(
+      params.startUrls!,
+      params.maxItems || 20,
+      params.tweetLanguage,
+      params.credentials
+    );
+
+    return {
+      operation: 'scrapeUrl',
+      tweets: result.tweets,
+      totalTweets: result.totalTweets,
+      success: result.success,
+      error: result.error,
+    };
+  }
+
+  /**
+   * Scrape profiles using Apify service
+   * This is the current implementation - future versions could add other services
+   */
+  private async scrapeWithApifyProfiles(
+    handles: string[],
+    maxItems: number,
+    tweetLanguage?: string,
+    credentials?: Record<string, string>
+  ): Promise<{
     tweets: z.infer<typeof TwitterTweetSchema>[];
+    totalTweets: number;
     success: boolean;
     error: string;
   }> {
-    const { operation, limit } = this.params;
-
-    const input: any = {
-      tweetsDesired: limit,
-      onlyVerifiedUsers: this.params.onlyVerified,
-      onlyTwitterBlue: this.params.onlyBlue,
-      onlyImage: this.params.onlyImage,
-      onlyVideo: this.params.onlyVideo,
+    const input: Record<string, unknown> = {
+      twitterHandles: handles,
+      maxItems,
     };
 
-    if (operation === 'scrapeProfile') {
-      if (!this.params.usernames?.length) {
-        return { tweets: [], success: false, error: 'Usernames required' };
-      }
-      input.twitterHandles = this.params.usernames;
-    } else if (operation === 'search') {
-      if (!this.params.queries?.length) {
-        return { tweets: [], success: false, error: 'Queries required' };
-      }
-      input.searchTerms = this.params.queries;
-    } else if (operation === 'scrapeUrl') {
-      if (!this.params.urls?.length) {
-        return { tweets: [], success: false, error: 'URLs required' };
-      }
-      input.urls = this.params.urls;
+    if (tweetLanguage) {
+      input.tweetLanguage = tweetLanguage;
     }
 
-    const scraper = new ApifyBubble<'apidojo/twitter-user-scraper'>(
+    const tweetProfileScraper = new ApifyBubble<'apidojo/tweet-scraper'>(
       {
-        actorId: 'apidojo/twitter-user-scraper',
+        actorId: 'apidojo/tweet-scraper',
         input,
         waitForFinish: true,
-        timeout: 180000,
-        credentials: this.params.credentials,
+        timeout: 180000, // 3 minutes
+        credentials,
       },
       this.context,
-      'twitterScraper'
+      'tweetProfileScraper'
     );
 
-    const apifyResult = await scraper.action();
+    const apifyResult = await tweetProfileScraper.action();
 
     if (!apifyResult.data.success) {
       return {
         tweets: [],
+        totalTweets: 0,
         success: false,
-        error: apifyResult.data.error || 'Failed to scrape Twitter',
+        error:
+          apifyResult.data.error ||
+          'Failed to scrape Twitter profiles. Please try again.',
       };
     }
 
@@ -267,15 +449,150 @@ export class TwitterTool extends ToolBubble<
 
     return {
       tweets,
+      totalTweets: tweets.length,
       success: true,
       error: '',
     };
   }
 
+  /**
+   * Search tweets using Apify service
+   * This is the current implementation - future versions could add other services
+   */
+  private async scrapeWithApifySearch(
+    searchTerms: string[],
+    maxItems: number,
+    sort?: 'Top' | 'Latest',
+    tweetLanguage?: string,
+    credentials?: Record<string, string>
+  ): Promise<{
+    tweets: z.infer<typeof TwitterTweetSchema>[];
+    totalTweets: number;
+    success: boolean;
+    error: string;
+  }> {
+    const input: Record<string, unknown> = {
+      searchTerms,
+      maxItems,
+    };
+
+    if (sort) {
+      input.sort = sort;
+    }
+    if (tweetLanguage) {
+      input.tweetLanguage = tweetLanguage;
+    }
+
+    const tweetSearcher = new ApifyBubble<'apidojo/tweet-scraper'>(
+      {
+        actorId: 'apidojo/tweet-scraper',
+        input,
+        waitForFinish: true,
+        timeout: 180000, // 3 minutes
+        credentials,
+      },
+      this.context,
+      'tweetSearcher'
+    );
+
+    const apifyResult = await tweetSearcher.action();
+
+    if (!apifyResult.data.success) {
+      return {
+        tweets: [],
+        totalTweets: 0,
+        success: false,
+        error:
+          apifyResult.data.error ||
+          'Failed to search Twitter. Please try again.',
+      };
+    }
+
+    const items = apifyResult.data.items || [];
+    const tweets = this.transformTweets(items);
+
+    return {
+      tweets,
+      totalTweets: tweets.length,
+      success: true,
+      error: '',
+    };
+  }
+
+  /**
+   * Scrape URLs using Apify service
+   * This is the current implementation - future versions could add other services
+   */
+  private async scrapeWithApifyUrls(
+    urls: string[],
+    maxItems: number,
+    tweetLanguage?: string,
+    credentials?: Record<string, string>
+  ): Promise<{
+    tweets: z.infer<typeof TwitterTweetSchema>[];
+    totalTweets: number;
+    success: boolean;
+    error: string;
+  }> {
+    const input: Record<string, unknown> = {
+      startUrls: urls,
+      maxItems,
+    };
+
+    if (tweetLanguage) {
+      input.tweetLanguage = tweetLanguage;
+    }
+
+    const tweetUrlScraper = new ApifyBubble<'apidojo/tweet-scraper'>(
+      {
+        actorId: 'apidojo/tweet-scraper',
+        input,
+        waitForFinish: true,
+        timeout: 180000, // 3 minutes
+        credentials,
+      },
+      this.context,
+      'tweetUrlScraper'
+    );
+
+    const apifyResult = await tweetUrlScraper.action();
+
+    if (!apifyResult.data.success) {
+      return {
+        tweets: [],
+        totalTweets: 0,
+        success: false,
+        error:
+          apifyResult.data.error ||
+          'Failed to scrape Twitter URLs. Please try again.',
+      };
+    }
+
+    const items = apifyResult.data.items || [];
+    const tweets = this.transformTweets(items);
+
+    return {
+      tweets,
+      totalTweets: tweets.length,
+      success: true,
+      error: '',
+    };
+  }
+
+  /**
+   * Normalize Twitter handles (remove @ if present)
+   */
+  private normalizeHandles(handles: string[]): string[] {
+    return handles.map((handle) => {
+      // Remove @ if present
+      return handle.startsWith('@') ? handle.slice(1) : handle;
+    });
+  }
+
   private transformTweets(
-    items: ActorOutput<'apidojo/twitter-user-scraper'>[]
+    items: ActorOutput<'apidojo/tweet-scraper'>[]
   ): z.infer<typeof TwitterTweetSchema>[] {
-    return items.map((item) => ({
+    return items.map((item: ActorOutput<'apidojo/tweet-scraper'>) => ({
       id: item.id || null,
       url: item.url || null,
       text: item.text || null,
@@ -306,13 +623,24 @@ export class TwitterTool extends ToolBubble<
       },
       lang: item.lang || null,
       media: item.media
-        ? item.media.map((m) => ({
-            type: m.type || null,
-            url: m.url || null,
-            width: m.width || null,
-            height: m.height || null,
-            duration: m.duration || null,
-          }))
+        ? item.media.map((m) => {
+            if (typeof m === 'string') {
+              return {
+                type: null,
+                url: m,
+                width: null,
+                height: null,
+                duration: null,
+              };
+            }
+            return {
+              type: m.type || null,
+              url: m.url || null,
+              width: m.width || null,
+              height: m.height || null,
+              duration: m.duration || null,
+            };
+          })
         : null,
       entities: item.entities
         ? {

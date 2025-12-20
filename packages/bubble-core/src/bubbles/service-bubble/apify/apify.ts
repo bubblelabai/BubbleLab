@@ -197,7 +197,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - streamers/youtube-scraper - YouTube videos and channels
     - pintostudio/youtube-transcript-scraper - YouTube video transcripts
     - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags
-    - apidojo/twitter-user-scraper - Twitter/X profiles, tweets, search results
+    - apidojo/tweet-scraper - Twitter/X profiles, tweets, search results
     - compass/crawler-google-places - Google Maps business listings and reviews
     - apify/web-scraper - Generic web scraping
     - apify/google-search-scraper - Google search results

@@ -32,103 +32,58 @@ export const GoogleMapsScraperInputSchema = z.object({
     .default(false)
     .optional()
     .describe('Only scrape data from search page (faster but less detailed)'),
-
-  scrapeReviewsCount: z
-    .number()
-    .min(0)
-    .max(1000)
-    .default(0)
-    .optional()
-    .describe('Number of reviews to scrape per place (default: 0)'),
-
-  scrapePhotosCount: z
-    .number()
-    .min(0)
-    .max(100)
-    .default(0)
-    .optional()
-    .describe('Number of photos to scrape per place (default: 0)'),
-
-  scrapeDirections: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Whether to scrape directions information'),
-
-  includeWebResults: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Include web search results'),
 });
 
 const GoogleMapsOpeningHoursSchema = z.object({
-  monday: z.string().optional(),
-  tuesday: z.string().optional(),
-  wednesday: z.string().optional(),
-  thursday: z.string().optional(),
-  friday: z.string().optional(),
-  saturday: z.string().optional(),
-  sunday: z.string().optional(),
+  day: z.string().describe('Day of the week'),
+  hours: z.string().describe('Opening hours for the day'),
 });
 
-const GoogleMapsReviewSchema = z.object({
-  name: z.string().optional().describe('Reviewer name'),
-
-  rating: z.number().optional().describe('Rating given (1-5)'),
-
-  text: z.string().optional().describe('Review text'),
-
-  publishedAtDate: z.string().optional().describe('When review was published'),
-
-  likesCount: z.number().optional().describe('Number of likes on review'),
-
-  reviewerId: z.string().optional().describe('Reviewer ID'),
-
-  reviewerUrl: z.string().optional().describe('Reviewer profile URL'),
-
-  reviewerNumberOfReviews: z
-    .number()
-    .optional()
-    .describe('Total reviews by this reviewer'),
-
-  responseFromOwnerText: z
-    .string()
-    .optional()
-    .describe('Owner response to review'),
+const GoogleMapsReviewsDistributionSchema = z.object({
+  oneStar: z.number().optional(),
+  twoStar: z.number().optional(),
+  threeStar: z.number().optional(),
+  fourStar: z.number().optional(),
+  fiveStar: z.number().optional(),
 });
 
-const GoogleMapsCoordinatesSchema = z.object({
-  lat: z.number().optional().describe('Latitude'),
-  lng: z.number().optional().describe('Longitude'),
+const GoogleMapsLocationSchema = z.object({
+  lat: z.number().describe('Latitude'),
+  lng: z.number().describe('Longitude'),
 });
+
+const GoogleMapsAdditionalInfoSchema = z.record(
+  z.string(),
+  z.array(z.record(z.string(), z.boolean()))
+);
+
+const GoogleMapsAdditionalOpeningHoursSchema = z.record(
+  z.string(),
+  z.array(GoogleMapsOpeningHoursSchema)
+);
 
 export const GoogleMapsPlaceSchema = z.object({
   title: z.string().optional().describe('Place name'),
 
-  placeId: z.string().optional().describe('Google Maps place ID'),
+  description: z.string().optional().describe('Place description'),
 
-  url: z.string().optional().describe('Google Maps URL'),
+  price: z.string().nullable().optional().describe('Price level indicator'),
+
+  categoryName: z.string().optional().describe('Primary category name'),
 
   address: z.string().optional().describe('Full address'),
 
-  addressParsed: z
-    .object({
-      neighborhood: z.string().optional(),
-      street: z.string().optional(),
-      city: z.string().optional(),
-      postalCode: z.string().optional(),
-      state: z.string().optional(),
-      countryCode: z.string().optional(),
-    })
-    .optional()
-    .describe('Parsed address components'),
+  neighborhood: z.string().nullable().optional().describe('Neighborhood'),
 
-  location: GoogleMapsCoordinatesSchema.optional().describe(
-    'Geographic coordinates'
-  ),
+  street: z.string().nullable().optional().describe('Street address'),
 
-  categories: z.array(z.string()).optional().describe('Place categories'),
+  city: z.string().optional().describe('City'),
+
+  postalCode: z.string().nullable().optional().describe('Postal code'),
+
+  state: z.string().optional().describe('State or province'),
+
+  countryCode: z.string().optional().describe('Country code'),
 
   website: z.string().optional().describe('Business website'),
 
@@ -136,83 +91,103 @@ export const GoogleMapsPlaceSchema = z.object({
 
   phoneUnformatted: z.string().optional().describe('Unformatted phone number'),
 
-  rating: z.number().optional().describe('Average rating (1-5)'),
-
-  reviewsCount: z.number().optional().describe('Total number of reviews'),
-
-  reviews: z
-    .array(GoogleMapsReviewSchema)
+  claimThisBusiness: z
+    .boolean()
     .optional()
-    .describe('Array of reviews (if scrapeReviewsCount > 0)'),
+    .describe('Whether business is unclaimed'),
+
+  location: GoogleMapsLocationSchema.optional().describe(
+    'Geographic coordinates'
+  ),
+
+  locatedIn: z.string().optional().describe('Located within another business'),
+
+  totalScore: z.number().optional().describe('Average rating score'),
+
+  permanentlyClosed: z
+    .boolean()
+    .optional()
+    .describe('Whether permanently closed'),
+
+  temporarilyClosed: z
+    .boolean()
+    .optional()
+    .describe('Whether temporarily closed'),
+
+  placeId: z.string().optional().describe('Google Maps place ID'),
+
+  categories: z.array(z.string()).optional().describe('Place categories'),
+
+  fid: z.string().optional().describe('Feature ID'),
+
+  cid: z.string().optional().describe('Customer ID'),
+
+  reviewsCount: z
+    .number()
+    .nullable()
+    .optional()
+    .describe('Total number of reviews'),
+
+  reviewsDistribution: GoogleMapsReviewsDistributionSchema.optional().describe(
+    'Distribution of reviews by star rating'
+  ),
+
+  imagesCount: z.number().optional().describe('Number of images'),
+
+  imageCategories: z.array(z.string()).optional().describe('Image categories'),
+
+  scrapedAt: z.string().optional().describe('When data was scraped'),
+
+  googleFoodUrl: z.string().nullable().optional().describe('Google Food URL'),
+
+  hotelAds: z.array(z.unknown()).optional().describe('Hotel advertisements'),
 
   openingHours: z
     .array(GoogleMapsOpeningHoursSchema)
     .optional()
     .describe('Opening hours by day'),
 
+  additionalOpeningHours:
+    GoogleMapsAdditionalOpeningHoursSchema.optional().describe(
+      'Additional opening hours for specific services'
+    ),
+
+  peopleAlsoSearch: z
+    .array(z.string())
+    .optional()
+    .describe('Related search suggestions'),
+
+  placesTags: z.array(z.string()).optional().describe('Place tags'),
+
+  reviewsTags: z.array(z.string()).optional().describe('Review tags'),
+
+  additionalInfo: GoogleMapsAdditionalInfoSchema.optional().describe(
+    'Additional place attributes and amenities'
+  ),
+
+  gasPrices: z
+    .array(z.unknown())
+    .optional()
+    .describe('Gas prices if applicable'),
+
+  url: z.string().optional().describe('Google Maps URL'),
+
+  searchPageUrl: z.string().optional().describe('Search page URL'),
+
+  searchString: z.string().optional().describe('Original search string'),
+
+  language: z.string().optional().describe('Language of the results'),
+
+  rank: z.number().optional().describe('Rank in search results'),
+
   isAdvertisement: z
     .boolean()
     .optional()
     .describe('Whether this is a sponsored result'),
 
-  priceLevel: z.string().optional().describe('Price level ($, $$, $$$, $$$$)'),
+  imageUrl: z.string().optional().describe('Primary image URL'),
 
-  temporarily_closed: z
-    .boolean()
-    .optional()
-    .describe('Whether temporarily closed'),
-
-  permanently_closed: z
-    .boolean()
-    .optional()
-    .describe('Whether permanently closed'),
-
-  claimThisBusiness: z
-    .boolean()
-    .optional()
-    .describe('Whether business is unclaimed'),
-
-  plus_code: z.string().optional().describe('Plus code'),
-
-  imageUrls: z
-    .array(z.string())
-    .optional()
-    .describe('Array of image URLs (if scrapePhotosCount > 0)'),
-
-  menuUrl: z.string().optional().describe('Menu URL if available'),
-
-  orderUrl: z.string().optional().describe('Online ordering URL if available'),
-
-  reservationUrl: z
-    .string()
-    .optional()
-    .describe('Reservation URL if available'),
-
-  popularTimes: z
-    .array(
-      z.object({
-        day: z.string().optional(),
-        hours: z.array(z.number()).optional(),
-      })
-    )
-    .optional()
-    .describe('Popular times data'),
-
-  additionalInfo: z
-    .object({
-      accessibility: z.array(z.string()).optional(),
-      amenities: z.array(z.string()).optional(),
-      atmosphere: z.array(z.string()).optional(),
-      crowd: z.array(z.string()).optional(),
-      highlights: z.array(z.string()).optional(),
-      offerings: z.array(z.string()).optional(),
-      payments: z.array(z.string()).optional(),
-      planning: z.array(z.string()).optional(),
-      popularFor: z.array(z.string()).optional(),
-      serviceOptions: z.array(z.string()).optional(),
-    })
-    .optional()
-    .describe('Additional place attributes'),
+  kgmid: z.string().optional().describe('Knowledge Graph machine ID'),
 });
 
 export type GoogleMapsScraperInput = z.output<

@@ -1,83 +1,232 @@
 import { z } from 'zod';
 
 export const TwitterScraperInputSchema = z.object({
+  startUrls: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Twitter (X) URLs. Paste the URLs and get the results immediately. Tweet, Profile, Search or List URLs are supported.'
+    ),
+
   searchTerms: z
     .array(z.string())
     .optional()
-    .describe('Keywords or hashtags to search for on Twitter/X'),
+    .describe(
+      'Search terms you want to search from Twitter (X). You can refer to https://github.com/igorbrigadir/twitter-advanced-search.'
+    ),
 
   twitterHandles: z
     .array(z.string())
     .optional()
-    .describe(
-      'Twitter/X usernames to scrape (without @ symbol). Examples: ["elonmusk", "openai"]'
-    ),
+    .describe('Twitter handles that you want to search on Twitter (X)'),
 
-  urls: z
+  conversationIds: z
     .array(z.string())
     .optional()
-    .describe('Direct URLs to tweets, profiles, or search results'),
-
-  tweetsDesired: z
-    .number()
-    .min(1)
-    .max(1000)
-    .default(100)
-    .optional()
-    .describe('Maximum number of tweets to scrape per query (default: 100)'),
+    .describe('Conversation IDs that you want to search on Twitter (X)'),
 
   maxItems: z
     .number()
-    .min(1)
-    .max(1000)
-    .default(100)
     .optional()
-    .describe('Maximum total items to scrape'),
-
-  onlyImage: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter to only tweets with images'),
-
-  onlyVideo: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter to only tweets with videos'),
-
-  onlyQuote: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter to only quote tweets'),
-
-  onlyVerifiedUsers: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter to only verified users'),
-
-  onlyTwitterBlue: z
-    .boolean()
-    .default(false)
-    .optional()
-    .describe('Filter to only Twitter Blue subscribers'),
+    .describe('Maximum number of items that you want as output.'),
 
   sort: z
-    .enum(['Latest', 'Top', 'People', 'Photos', 'Videos'])
+    .enum(['Top', 'Latest'])
     .optional()
-    .describe('Sort order for search results'),
+    .describe(
+      'Sorts search results by the given option. Only works with search terms and search URLs.'
+    ),
 
-  startDate: z
-    .string()
+  tweetLanguage: z
+    .enum([
+      'ab',
+      'aa',
+      'af',
+      'ak',
+      'sq',
+      'am',
+      'ar',
+      'an',
+      'hy',
+      'as',
+      'av',
+      'ae',
+      'ay',
+      'az',
+      'bm',
+      'ba',
+      'eu',
+      'be',
+      'bn',
+      'bi',
+      'bs',
+      'br',
+      'bg',
+      'my',
+      'ca',
+      'ch',
+      'ce',
+      'ny',
+      'zh',
+      'cu',
+      'cv',
+      'kw',
+      'co',
+      'cr',
+      'hr',
+      'cs',
+      'da',
+      'dv',
+      'nl',
+      'dz',
+      'en',
+      'eo',
+      'et',
+      'ee',
+      'fo',
+      'fj',
+      'fi',
+      'fr',
+      'fy',
+      'ff',
+      'gd',
+      'gl',
+      'lg',
+      'ka',
+      'de',
+      'el',
+      'kl',
+      'gn',
+      'gu',
+      'ht',
+      'ha',
+      'he',
+      'hz',
+      'hi',
+      'ho',
+      'hu',
+      'is',
+      'io',
+      'ig',
+      'id',
+      'ia',
+      'ie',
+      'iu',
+      'ik',
+      'ga',
+      'it',
+      'ja',
+      'jv',
+      'kn',
+      'kr',
+      'ks',
+      'kk',
+      'km',
+      'ki',
+      'rw',
+      'ky',
+      'kv',
+      'kg',
+      'ko',
+      'kj',
+      'ku',
+      'lo',
+      'la',
+      'lv',
+      'li',
+      'ln',
+      'lt',
+      'lu',
+      'lb',
+      'mk',
+      'mg',
+      'ms',
+      'ml',
+      'mt',
+      'gv',
+      'mi',
+      'mr',
+      'mh',
+      'mn',
+      'na',
+      'nv',
+      'nd',
+      'nr',
+      'ng',
+      'ne',
+      'no',
+      'nb',
+      'nn',
+      'ii',
+      'oc',
+      'oj',
+      'or',
+      'om',
+      'os',
+      'pi',
+      'ps',
+      'fa',
+      'pl',
+      'pt',
+      'pa',
+      'qu',
+      'ro',
+      'rm',
+      'rn',
+      'ru',
+      'se',
+      'sm',
+      'sg',
+      'sa',
+      'sc',
+      'sr',
+      'sn',
+      'sd',
+      'si',
+      'sk',
+      'sl',
+      'so',
+      'st',
+      'es',
+      'su',
+      'sw',
+      'ss',
+      'sv',
+      'tl',
+      'ty',
+      'tg',
+      'ta',
+      'tt',
+      'te',
+      'th',
+      'bo',
+      'ti',
+      'to',
+      'ts',
+      'tn',
+      'tr',
+      'tk',
+      'tw',
+      'ug',
+      'uk',
+      'ur',
+      'uz',
+      've',
+      'vi',
+      'vo',
+      'wa',
+      'cy',
+      'wo',
+      'xh',
+      'yi',
+      'yo',
+      'za',
+      'zu',
+    ])
     .optional()
-    .describe('Start date for search (YYYY-MM-DD format)'),
-
-  endDate: z
-    .string()
-    .optional()
-    .describe('End date for search (YYYY-MM-DD format)'),
+    .describe(
+      'Restricts tweets to the given language, given by an ISO 639-1 code.'
+    ),
 });
 
 const TwitterUserSchema = z.object({
@@ -184,7 +333,10 @@ export const TwitterTweetSchema = z.object({
 
   lang: z.string().optional().describe('Tweet language code'),
 
-  media: z.array(TwitterMediaSchema).optional().describe('Media attachments'),
+  media: z
+    .array(z.union([z.string(), TwitterMediaSchema]))
+    .optional()
+    .describe('Media attachments (can be URLs or media objects)'),
 
   entities: TwitterEntitySchema.optional().describe('Tweet entities'),
 
@@ -193,29 +345,6 @@ export const TwitterTweetSchema = z.object({
   isQuote: z.boolean().optional().describe('Whether this is a quote tweet'),
 
   isReply: z.boolean().optional().describe('Whether this is a reply'),
-
-  inReplyToStatusId: z
-    .string()
-    .optional()
-    .describe('ID of tweet being replied to'),
-
-  quotedTweet: z
-    .object({
-      id: z.string().optional(),
-      text: z.string().optional(),
-      author: TwitterUserSchema.optional(),
-    })
-    .optional()
-    .describe('Quoted tweet information'),
-
-  retweetedTweet: z
-    .object({
-      id: z.string().optional(),
-      text: z.string().optional(),
-      author: TwitterUserSchema.optional(),
-    })
-    .optional()
-    .describe('Retweeted tweet information'),
 });
 
 export type TwitterScraperInput = z.output<typeof TwitterScraperInputSchema>;
