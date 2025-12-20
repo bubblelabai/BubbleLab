@@ -1,126 +1,116 @@
 import { z } from 'zod';
 
 export const LinkedInJobsScraperInputSchema = z.object({
-  search: z
-    .string()
-    .min(1, 'Search keyword is required')
-    .describe('Job title, keyword, or company name to search for'),
-
-  location: z
-    .string()
-    .optional()
+  urls: z
+    .array(z.string().url())
+    .min(1, 'At least one LinkedIn jobs search URL is required')
     .describe(
-      'Location for job search (e.g., "New York", "Remote", "United States")'
+      'LinkedIn jobs search URLs. Go to linkedin jobs search page on incognito window (to access public version), search with required filters and once you are done, copy the full URL from address bar and pass it here. You can pass multiple search URLs'
     ),
 
-  datePosted: z
-    .enum(['', 'past-24h', 'past-week', 'past-month', 'any-time'])
-    .default('any-time')
+  scrapeCompany: z
+    .boolean()
+    .default(true)
     .optional()
-    .describe('Filter jobs by when they were posted'),
+    .describe(
+      'This will require additional scraping requests for each job record and take longer to scrape. Default value is true'
+    ),
 
-  experienceLevel: z
-    .array(
-      z.enum([
-        'internship',
-        'entry-level',
-        'associate',
-        'mid-senior',
-        'director',
-        'executive',
-      ])
-    )
-    .optional()
-    .describe('Filter by experience level'),
-
-  jobType: z
-    .array(
-      z.enum([
-        'full-time',
-        'part-time',
-        'contract',
-        'temporary',
-        'volunteer',
-        'internship',
-        'other',
-      ])
-    )
-    .optional()
-    .describe('Filter by job type'),
-
-  workplaceType: z
-    .array(z.enum(['on-site', 'remote', 'hybrid']))
-    .optional()
-    .describe('Filter by workplace type (on-site, remote, hybrid)'),
-
-  limit: z
+  count: z
     .number()
-    .min(1)
-    .max(1000)
-    .default(100)
+    .min(100)
     .optional()
-    .describe('Maximum number of jobs to scrape (default: 100)'),
+    .describe('Limit number of jobs scraped'),
 });
 
 export const LinkedInJobSchema = z.object({
-  jobId: z.string().optional().describe('LinkedIn job ID'),
+  id: z.string().optional().describe('LinkedIn job ID'),
+
+  trackingId: z.string().optional().describe('Tracking ID for the job'),
+
+  refId: z.string().optional().describe('Reference ID for the job'),
+
+  link: z.string().optional().describe('Job posting URL'),
 
   title: z.string().optional().describe('Job title'),
 
-  company: z
-    .object({
-      name: z.string().optional().describe('Company name'),
-      url: z.string().optional().describe('Company LinkedIn URL'),
-    })
-    .optional()
-    .describe('Company information'),
+  companyName: z.string().optional().describe('Company name'),
+
+  companyLinkedinUrl: z.string().optional().describe('Company LinkedIn URL'),
+
+  companyLogo: z.string().optional().describe('Company logo URL'),
 
   location: z.string().optional().describe('Job location'),
 
-  description: z.string().optional().describe('Job description (full text)'),
+  salaryInfo: z
+    .array(z.string())
+    .optional()
+    .describe('Salary information as array of strings'),
+
+  postedAt: z
+    .string()
+    .optional()
+    .describe('When the job was posted (YYYY-MM-DD format)'),
+
+  benefits: z.array(z.string()).optional().describe('Job benefits'),
 
   descriptionHtml: z
     .string()
     .optional()
     .describe('Job description (HTML format)'),
 
+  applicantsCount: z
+    .string()
+    .optional()
+    .describe('Number of applicants as string'),
+
+  applyUrl: z.string().optional().describe('Direct apply URL'),
+
+  salary: z.string().optional().describe('Salary as string (may be empty)'),
+
+  descriptionText: z
+    .string()
+    .optional()
+    .describe('Job description (plain text)'),
+
+  seniorityLevel: z.string().optional().describe('Seniority level'),
+
   employmentType: z
     .string()
     .optional()
     .describe('Employment type (Full-time, Part-time, etc.)'),
 
-  seniorityLevel: z.string().optional().describe('Seniority level'),
+  jobFunction: z.string().optional().describe('Job function/role'),
 
-  industries: z.array(z.string()).optional().describe('Related industries'),
+  industries: z.string().optional().describe('Related industries'),
 
-  jobFunctions: z.array(z.string()).optional().describe('Job functions/roles'),
+  inputUrl: z.string().optional().describe('Original search URL used'),
 
-  postedAt: z.string().optional().describe('When the job was posted'),
-
-  postedTimestamp: z.number().optional().describe('Posted time as timestamp'),
-
-  applicants: z.number().optional().describe('Number of applicants'),
-
-  url: z.string().optional().describe('Job posting URL'),
-
-  applyUrl: z.string().optional().describe('Direct apply URL'),
-
-  workplaceType: z
-    .string()
-    .optional()
-    .describe('Workplace type (On-site, Remote, Hybrid)'),
-
-  salary: z
+  companyAddress: z
     .object({
-      from: z.number().optional(),
-      to: z.number().optional(),
-      currency: z.string().optional(),
-      period: z.string().optional(),
+      type: z
+        .string()
+        .optional()
+        .describe('Address type (e.g., "PostalAddress")'),
+      streetAddress: z.string().optional().describe('Street address'),
+      addressLocality: z.string().optional().describe('City'),
+      addressRegion: z.string().optional().describe('State/Region'),
+      postalCode: z.string().optional().describe('Postal/ZIP code'),
+      addressCountry: z.string().optional().describe('Country code'),
     })
     .optional()
-    .describe('Salary information if available'),
+    .describe('Company address information'),
 
-  skills: z.array(z.string()).optional().describe('Required skills'),
+  companyWebsite: z.string().optional().describe('Company website URL'),
+
+  companySlogan: z.string().optional().describe('Company slogan/tagline'),
+
+  companyDescription: z.string().optional().describe('Company description'),
+
+  companyEmployeesCount: z
+    .number()
+    .optional()
+    .describe('Number of company employees'),
 });
 
 export type LinkedInJobsScraperInput = z.output<
