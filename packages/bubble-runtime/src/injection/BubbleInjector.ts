@@ -680,8 +680,16 @@ export class BubbleInjector {
       // Revert the script to the original script
       this.bubbleScript.currentBubbleScript = script;
     }
-    this.loggerInjector.injectSelfCapture();
-    this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
+
+    try {
+      this.loggerInjector.injectSelfCapture();
+      this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
+    } catch (error) {
+      this.bubbleScript.parsingErrors.push(
+        `Error injecting self capture: ${error instanceof Error ? error.message : String(error)}`
+      );
+      console.error('Error injecting self capture:', error);
+    }
   }
 
   /** Takes in bubbleId and key, value pair and changes the parameter in the bubble script */

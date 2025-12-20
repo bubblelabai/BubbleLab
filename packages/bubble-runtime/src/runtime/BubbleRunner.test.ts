@@ -499,6 +499,29 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(runner.bubbleScript.bubblescript).toContain('rowsToSave.push');
         console.log(runner.bubbleScript.bubblescript);
       });
+      it('should execute a flow with a complex calender flow', async () => {
+        const testScript = getFixture('bracket-less-control-flow');
+        const runner = new BubbleRunner(testScript, bubbleFactory, {
+          pricingTable: {},
+        });
+        const result = await runner.runAll();
+        expect(result).toBeDefined();
+        console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+        const parseResult = await validateBubbleFlow(
+          runner.bubbleScript.bubblescript,
+          false
+        );
+
+        if (!parseResult.valid) {
+          // console.log(runner.bubbleScript.bubblescript);
+          console.log(parseResult.errors);
+        }
+
+        expect(parseResult.valid).toBe(true);
+
+        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      });
       it.skip('should execute a flow with a batch process loop', async () => {
         const testScript = getFixture('batch-process-loop');
         const runner = new BubbleRunner(testScript, bubbleFactory, {

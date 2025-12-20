@@ -14,6 +14,7 @@ import type {
   ParsedWorkflow,
 } from '@bubblelab/shared-schemas';
 import { BubbleParser } from '../extraction/BubbleParser';
+import { normalizeBracelessControlFlow } from '../utils/normalize-control-flow';
 
 /**
  * Detailed information about a method invocation captured during AST parsing
@@ -114,11 +115,14 @@ export class BubbleScript {
     // Reset ID generator to ensure deterministic variable IDs
     resetIds();
 
+    // Normalize braceless control flow statements to prevent injection issues
+    const normalizedScript = normalizeBracelessControlFlow(bubbleScript);
+
     // Parse the bubble script into AST
-    this.bubbleScript = bubbleScript;
-    this.currentBubbleScript = bubbleScript;
+    this.bubbleScript = normalizedScript;
+    this.currentBubbleScript = normalizedScript;
     this.bubbleFactory = bubbleFactory;
-    this.ast = parse(bubbleScript, {
+    this.ast = parse(normalizedScript, {
       range: true, // Required for scope-manager
       loc: true, // Location info for line numbers
       sourceType: 'module', // Treat as ES module
@@ -135,7 +139,7 @@ export class BubbleScript {
     this.scriptVariables = this.buildVariableMapping();
 
     // Parse bubble dependencies from AST using the provided factory and scope manager
-    const bubbleParser = new BubbleParser(bubbleScript);
+    const bubbleParser = new BubbleParser(normalizedScript);
     const parseResult = bubbleParser.parseBubblesFromAST(
       bubbleFactory,
       this.ast,

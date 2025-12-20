@@ -60,6 +60,7 @@ export const fixtures = {
   'nested-condition-hanlde': '',
   'mapping-function-call': '',
   'multiple-bubble-class-flow': '',
+  'bracket-less-control-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
