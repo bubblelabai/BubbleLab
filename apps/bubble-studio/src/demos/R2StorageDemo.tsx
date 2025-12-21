@@ -181,10 +181,7 @@ export class R2UploadFlow extends BubbleFlow<'webhook/http'> {
         throw new Error(error.error || 'Failed to get upload URL');
       }
 
-      const executeResult = await executeResponse.json();
-      console.log('Execute result:', executeResult);
-
-      // The result might be nested in different ways depending on BubbleFlow execution
+      const executeResult = await executeResponse.json(); // The result might be nested in different ways depending on BubbleFlow execution
       const uploadUrl =
         executeResult.uploadUrl ||
         executeResult.data?.uploadUrl ||
@@ -365,10 +362,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
         throw new Error(error.error || 'Failed to get download URL');
       }
 
-      const executeResult = await executeResponse.json();
-      console.log('Retrieve execute result:', executeResult);
-
-      // The result might be nested in different ways depending on BubbleFlow execution
+      const executeResult = await executeResponse.json(); // The result might be nested in different ways depending on BubbleFlow execution
       const downloadUrl =
         executeResult.downloadUrl ||
         executeResult.data?.downloadUrl ||

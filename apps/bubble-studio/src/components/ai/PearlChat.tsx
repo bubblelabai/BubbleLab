@@ -169,7 +169,6 @@ export function PearlChat() {
             const model = editorInstance.getModel();
             if (model) {
               model.setValue(data.generatedCode);
-              console.log('[PearlChat] Editor updated with generated code');
             } else {
               setPendingCode(data.generatedCode);
             }
@@ -307,17 +306,9 @@ export function PearlChat() {
     }
 
     // Log for debugging
-    console.log('Processed files:', {
-      totalSelected: files.length,
-      successfullyProcessed: newFiles.length,
-      errorCount: errors.length,
-      files: newFiles.map((f) => ({ name: f.name, type: f.fileType })),
-    });
-
     // Update state only once at the end - replace instead of append
     if (newFiles.length > 0) {
       setUploadedFiles(newFiles);
-      console.log('Uploaded file:', newFiles[0]?.name, newFiles[0]?.fileType);
     }
 
     // Set error message if any errors occurred (show first error)

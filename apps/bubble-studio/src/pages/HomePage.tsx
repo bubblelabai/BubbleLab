@@ -45,7 +45,6 @@ export const HomePage: React.FC<HomePageProps> = ({
   const { duplicateFlow, isLoading: isDuplicating } = useDuplicateFlow({
     flowId: duplicatingFlowId,
     onSuccess: (newFlowId) => {
-      console.log('[HomePage] Flow duplicated successfully:', newFlowId);
       setDuplicatingFlowId(null);
       setOpenMenuId(null);
       // Stay on the flows page - the new flow will appear at the top of the list

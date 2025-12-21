@@ -57,5 +57,4 @@ export function patchDOMForGoogleTranslate(): void {
   };
 
   isPatched = true;
-  console.log('✅ DOM patched to handle Google Translate mutations');
 }

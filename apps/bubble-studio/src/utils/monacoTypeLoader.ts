@@ -253,58 +253,38 @@ export async function loadMonacoTypes(
   monacoInstance: typeof monaco
 ): Promise<void> {
   try {
-    console.log('📦 Loading bundled type definitions...');
-
     // Load TypeScript ES2015 lib (includes Promise, etc.)
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       es2015Types,
       'file:///node_modules/typescript/lib/lib.es2015.d.ts'
     );
-    console.log('✅ Loaded ES2015 types (Promise, etc.)');
-
     // Load DOM lib
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       domTypes,
       'file:///node_modules/typescript/lib/lib.dom.d.ts'
-    );
-    console.log('✅ Loaded DOM types');
-
-    // Load ES2020 full lib (includes Array.flat, etc.)
+    ); // Load ES2020 full lib (includes Array.flat, etc.)
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       es2020FullTypes,
       'file:///node_modules/typescript/lib/lib.es2020.full.d.ts'
     );
-    console.log('✅ Loaded ES2020 full types (includes Array.flat, etc.)');
-
     // Load Buffer types
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       bufferTypes,
       'file:///node_modules/@types/node/buffer.d.ts'
-    );
-    console.log('✅ Loaded Buffer type definitions');
-
-    // Load Zod types (inline, no fetch needed)
+    ); // Load Zod types (inline, no fetch needed)
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       zodTypes,
       'file:///node_modules/zod/index.d.ts'
-    );
-    console.log('✅ Loaded Zod type definitions');
-
-    // Load Zod namespace merge for z.infer support
+    ); // Load Zod namespace merge for z.infer support
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       zodNamespaceMerge,
       'file:///node_modules/zod/namespace.d.ts'
     );
-    console.log('✅ Loaded Zod namespace merge (z.infer support)');
-
     // Load JSON Schema to Zod converter types
     monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
       jsonSchemaConverterTypes,
       'file:///utils/json-schema-converter.d.ts'
     );
-    console.log('✅ Loaded JSON Schema to Zod converter types');
-
-    console.log('✅ All type definitions loaded successfully (no CDN fetches)');
   } catch (error) {
     console.error('❌ Failed to load type definitions:', error);
     throw error;
@@ -321,12 +301,7 @@ export async function loadBubbleCoreTypes(
   try {
     const response = await fetch('/bubble-types.txt');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const bundledTypes = await response.text();
-    console.log('✅ Loaded minified bubble types from public directory');
-
-    console.log('📏 Total fetched length:', bundledTypes.length);
-
-    // Find the module declaration and remove it
+    const bundledTypes = await response.text(); // Find the module declaration and remove it
     const moduleDeclarationMatch = bundledTypes.match(
       /declare module '@bubblelab\/bubble-core'[\s\S]*$/
     );
@@ -350,8 +325,6 @@ ${cleanedTypes.replace(/^/gm, '  ')}
       moduleDeclaration,
       'file:///node_modules/@types/nodex__bubble-core/index.d.ts'
     );
-
-    console.log('✅ Successfully loaded @bubblelab/bubble-core types');
   } catch (error) {
     console.error('❌ Failed to load bundled types:', error);
   }

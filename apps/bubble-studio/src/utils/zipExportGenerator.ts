@@ -20,9 +20,6 @@ export async function generateFlowZip(
   options: ZipExportOptions
 ): Promise<Blob> {
   const { flowName, code, requiredCredentials = {}, inputsSchema } = options;
-
-  console.log('requiredCredentials', requiredCredentials);
-
   const zip = new JSZip();
 
   // Generate sanitized file name from flow name
@@ -247,15 +244,9 @@ config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-async function main() {
-  console.log('🫧 Starting BubbleFlow execution\\n');
-
-  // Step 1: Create a BubbleFactory and register defaults
+async function main() {  // Step 1: Create a BubbleFactory and register defaults
   const bubbleFactory = new BubbleFactory();
-  await bubbleFactory.registerDefaults();
-  console.log('✅ BubbleFactory initialized\\n');
-
-  // Step 2: Read the flow code as a string
+  await bubbleFactory.registerDefaults();  // Step 2: Read the flow code as a string
   const flowCode = readFileSync(join(__dirname, '${flowFileName}'), 'utf-8');
 
   // Step 3: Create a BubbleRunner with your flow code
@@ -277,30 +268,16 @@ ${credentialMapping}
 
   // Step 6: Execute the flow with payload
   ${payloadComment}
-  const payload = ${mockPayload};
-
-  console.log('🤖 Running flow...\\n');
-  const result = await runner.runAll(payload);
+  const payload = ${mockPayload};  const result = await runner.runAll(payload);
 
   // Step 7: Display results
-  console.log('📊 Results:');
-  console.log('─'.repeat(50));
-  console.log(JSON.stringify(result, null, 2));
-  console.log('─'.repeat(50));
-
   // Optional: View execution logs
   const logs = runner.getLogger()?.getLogs();
-  if (logs && logs.length > 0) {
-    console.log('\\n📝 Execution Logs:');
-    console.log(logs.slice(0, 5)); // Show first 5 logs
-  }
+  if (logs && logs.length > 0) {  }
 
   // Optional: View execution summary
   const summary = runner.getLogger()?.getExecutionSummary();
-  if (summary) {
-    console.log('\\n📈 Execution Summary:');
-    console.log(summary);
-  }
+  if (summary) {  }
 
   // Force exit to close any lingering connections
   process.exit(0);

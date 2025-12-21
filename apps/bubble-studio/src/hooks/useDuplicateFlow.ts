@@ -35,8 +35,6 @@ export function useDuplicateFlow({
     }
 
     try {
-      console.log('[useDuplicateFlow] Starting flow duplication:', flowId);
-
       // Get the bubbles from the flow list for optimistic update
       const sourceFlowInList = flowList?.bubbleFlows.find(
         (f) => f.id === flowId
@@ -56,14 +54,7 @@ export function useDuplicateFlow({
       };
 
       // Create the new flow
-      const result = await createFlowMutation.mutateAsync(duplicateRequest);
-
-      console.log(
-        '[useDuplicateFlow] Flow duplicated successfully:',
-        result.id
-      );
-
-      // Call success callback if provided
+      const result = await createFlowMutation.mutateAsync(duplicateRequest); // Call success callback if provided
       if (onSuccess) {
         onSuccess(result.id);
       }

@@ -43,10 +43,6 @@ export const useFlowGeneration = () => {
     // Determine if we're creating an empty flow or a regular flow with code
     const hasCode = generatedCode && generatedCode.trim() !== '';
 
-    console.log(
-      `🚀 [createFlowFromGeneration] Starting ${hasCode ? 'regular' : 'empty'} flow creation...`
-    );
-
     try {
       if (!fromPearl) {
         setOutput('Creating flow and preparing the visuals...');
@@ -76,18 +72,12 @@ export const useFlowGeneration = () => {
         });
       }
 
-      console.log(
-        `📥 [createFlowFromGeneration] ${hasCode ? 'Regular' : 'Empty'} flow created successfully with ID:`,
-        createResult.id
-      );
-
       const bubbleFlowId = createResult.id;
 
       // Auto-select the newly created flow
       selectFlow(bubbleFlowId);
 
       // Navigate to the flow page
-      console.log('[createFlowFromGeneration] Navigating to flow IDE route');
       navigate({
         to: '/flow/$flowId',
         params: { flowId: bubbleFlowId.toString() },
@@ -108,10 +98,6 @@ export const useFlowGeneration = () => {
         stopGenerationFlow();
 
         if (fromPearl && prompt) {
-          console.log(
-            '[createFlowFromGeneration] Triggering generation stream for flow',
-            bubbleFlowId
-          );
           // Update generation params to include flowId, which will trigger the streaming query
           setGenerationParams({
             prompt: prompt,
@@ -206,7 +192,6 @@ export const useFlowGeneration = () => {
     generationStartTimeRef.current = Date.now();
 
     // For AI generation: Create empty flow first, then trigger generation
-    console.log('[generateCode] Creating empty flow and triggering generation');
     await createFlowFromGeneration(
       undefined, // No code yet - creating empty flow
       generationPrompt.trim(),

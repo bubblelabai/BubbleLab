@@ -88,8 +88,6 @@ export default function DocumentGenerationDemo() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'DOWNLOAD_EXCEL') {
-        console.log('Received Excel download request from iframe');
-
         // Create download link in parent window
         const link = document.createElement('a');
         link.href = event.data.url;
@@ -97,11 +95,7 @@ export default function DocumentGenerationDemo() {
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-
-        console.log('Excel download initiated from parent window');
-
-        // Clean up the blob URL after a short delay
+        document.body.removeChild(link); // Clean up the blob URL after a short delay
         setTimeout(() => {
           URL.revokeObjectURL(event.data.url);
         }, 1000);
@@ -149,17 +143,6 @@ export default function DocumentGenerationDemo() {
 
     try {
       const compressedFile = await imageCompression(file, options);
-      console.log(`[DocumentGenerationDemo] Image compressed: ${file.name}`);
-      console.log(
-        `[DocumentGenerationDemo] Original size: ${Math.round(file.size / 1024)}KB`
-      );
-      console.log(
-        `[DocumentGenerationDemo] Compressed size: ${Math.round(compressedFile.size / 1024)}KB`
-      );
-      console.log(
-        `[DocumentGenerationDemo] Compression ratio: ${Math.round((1 - compressedFile.size / file.size) * 100)}%`
-      );
-
       return compressedFile;
     } catch (error) {
       console.error(
@@ -176,13 +159,7 @@ export default function DocumentGenerationDemo() {
 
       // Compress image files before converting to base64
       if (file.type.startsWith('image/')) {
-        console.log(
-          `[DocumentGenerationDemo] Compressing image: ${file.name} (${Math.round(file.size / 1024)}KB)`
-        );
         processedFile = await compressImage(file);
-        console.log(
-          `[DocumentGenerationDemo] Compressed to: ${Math.round(processedFile.size / 1024)}KB`
-        );
       }
 
       return new Promise((resolve, reject) => {
@@ -504,14 +481,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
 
       const executeResult = await executeResponse.json();
 
-      // Debug the result structure
-      console.log('=== GENERATION RESULT DEBUG ===');
-      console.log('Full executeResult:', executeResult);
-      console.log('executeResult.data:', executeResult.data);
-      console.log('executeResult.data?.result:', executeResult.data?.result);
-      console.log('=== END DEBUG ===');
-
-      setGenerationResult(executeResult.data?.result || executeResult);
+      // Debug the result structure      setGenerationResult(executeResult.data?.result || executeResult);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Unknown error occurred';
@@ -562,8 +532,6 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
   );
 
   const downloadResult = () => {
-    console.log('Download attempt - outputFormat:', outputFormat);
-
     if (outputFormat === 'html') {
       // For HTML, create the enhanced version with Excel export
       const rawHtml =
@@ -656,9 +624,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
         const filename = 'expense-report-' + timestamp + '.xlsx';
         
-        XLSX.writeFile(wb, filename);
-        console.log('Excel file exported successfully as: ' + filename);
-      } catch (error) {
+        XLSX.writeFile(wb, filename);      } catch (error) {
         console.error('Export failed:', error);
         alert('Export failed: ' + error.message);
       }
@@ -676,7 +642,6 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        console.log('Enhanced HTML downloaded with Excel export functionality');
       } else {
         console.error('No HTML content found for download');
       }
@@ -1109,9 +1074,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                                     
                                     try {
                                       // Try direct download first
-                                      XLSX.writeFile(wb, filename);
-                                      console.log('Excel file exported successfully as: ' + filename);
-                                    } catch (downloadError) {
+                                      XLSX.writeFile(wb, filename);                                    } catch (downloadError) {
                                       console.warn('Direct download failed, trying alternative method:', downloadError);
                                       
                                       // Alternative: Generate data and send to parent
@@ -1126,10 +1089,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                                         type: 'DOWNLOAD_EXCEL',
                                         url: url,
                                         filename: filename
-                                      }, '*');
-                                      
-                                      console.log('Sent download request to parent window');
-                                    }
+                                      }, '*');                                    }
                                   } catch (error) {
                                     console.error('Export failed:', error);
                                     alert('Export failed: ' + error.message);

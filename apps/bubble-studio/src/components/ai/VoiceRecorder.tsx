@@ -172,10 +172,6 @@ export function VoiceRecorder({
           });
           const wavBlob = await convertWebMToWAV(webmBlob);
           const base64Audio = await blobToBase64(wavBlob);
-          console.log('Sending audio to backend...', {
-            base64Length: base64Audio.length,
-          });
-
           const data = await api.post<{ text: string }>('/ai/speech-to-text', {
             audio: base64Audio,
           });

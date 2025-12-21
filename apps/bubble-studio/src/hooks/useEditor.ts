@@ -49,20 +49,17 @@ function setEditorCode(code: string): void {
   const { editorInstance, setPendingCode } = useEditorStore.getState();
 
   if (!editorInstance) {
-    console.log('[EditorStore] Editor not ready, storing as pending code');
     setPendingCode(code);
     return;
   }
 
   const model = editorInstance.getModel();
   if (!model) {
-    console.log('[EditorStore] Model not ready, storing as pending code');
     setPendingCode(code);
     return;
   }
 
   model.setValue(code);
-  console.log('[EditorStore] Code set:', code.length, 'characters');
 }
 
 /**

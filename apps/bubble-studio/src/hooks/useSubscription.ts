@@ -17,13 +17,9 @@ export function useSubscription(): UseSubscriptionResult {
   const query = useQuery({
     queryKey: ['subscription'],
     queryFn: async () => {
-      console.log(
-        '[useSubscription] Fetching subscription status from backend'
-      );
       const response = await api.get<SubscriptionStatusResponse>(
         '/subscription/status'
       );
-      console.log('[useSubscription] Subscription status received:', response);
       return response;
     },
     enabled: isLoaded && isSignedIn && isTokenFunctionReady(), // Only run query when user is authenticated AND token function is ready

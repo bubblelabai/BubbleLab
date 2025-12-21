@@ -233,17 +233,6 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
     return { result };
   }
 }`;
-
-      console.log('=== PRE-VALIDATION DEBUG ===');
-      console.log('Raw workflow parameters object:');
-      console.log(workflowParams);
-      console.log('JSON stringified parameters:');
-      console.log(JSON.stringify(workflowParams, null, 2));
-      console.log('Generated workflow code BEFORE validation:');
-      console.log(createFlowCode);
-      console.log('Code length:', createFlowCode.length);
-      console.log('=== END PRE-VALIDATION DEBUG ===');
-
       // Create the BubbleFlow
       const createPayload = {
         name: `PDF_OCR_Demo_${Date.now()}`,
@@ -252,16 +241,6 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
         eventType: 'webhook/http',
         webhookActive: false,
       };
-
-      console.log('=== POST /bubble-flow payload ===');
-      console.log('Name:', createPayload.name);
-      console.log('Description:', createPayload.description);
-      console.log('Event Type:', createPayload.eventType);
-      console.log('Webhook Active:', createPayload.webhookActive);
-      console.log('Generated Code:');
-      console.log(createPayload.code);
-      console.log('=== End payload ===');
-
       const createResponse = await fetch(`${API_BASE_URL_LOCAL}/bubble-flow`, {
         method: 'POST',
         headers: {
@@ -285,18 +264,8 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
           clientInformation: workflowParams.clientInformation,
         }),
       };
-
-      console.log('=== EXECUTE PAYLOAD ===');
-      console.log('Execute payload keys:', Object.keys(executePayload));
-      console.log('PDF data length:', executePayload.pdfData?.length || 0);
       if (executePayload.clientInformation) {
-        console.log(
-          'Client info length:',
-          executePayload.clientInformation.length
-        );
       }
-      console.log('=== END EXECUTE PAYLOAD ===');
-
       const executeResponse = await fetch(
         `${API_BASE_URL_LOCAL}/bubble-flow/${bubbleFlowId}/execute`,
         {
@@ -315,16 +284,7 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
 
       const executeResult = await executeResponse.json();
 
-      // Debug the actual result structure
-      console.log('=== EXECUTE RESULT ===');
-      console.log('Full result:', executeResult);
-      console.log('Result keys:', Object.keys(executeResult));
-      if (executeResult.data) {
-        console.log('Result.data keys:', Object.keys(executeResult.data));
-        console.log('extractedFields:', executeResult.data.extractedFields);
-      }
-      console.log('=== END EXECUTE RESULT ===');
-
+      // Debug the actual result structure      if (executeResult.data) {      }
       setResult(executeResult);
 
       // Create preview URL for filled PDF if available

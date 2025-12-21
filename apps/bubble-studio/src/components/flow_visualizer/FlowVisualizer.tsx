@@ -983,7 +983,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
     // Extract steps with control flow graph from workflow
     const stepGraph = extractStepGraph(currentFlow?.workflow, bubbleParameters);
-    console.log('stepGraph', stepGraph);
     const steps = stepGraph.steps;
     const stepEdges = stepGraph.edges;
 
@@ -1522,7 +1521,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             flowId: currentFlow?.id || flowId,
             transformationId: stepNodeId,
             onTransformationClick: () => {
-              console.log('onTransformationClick', step.transformationData);
               useUIStore.getState().showEditorPanel();
               setExecutionHighlight({
                 startLine: step.location.startLine,
@@ -2216,7 +2214,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             type="button"
             onClick={() => {
               // TODO: Implement retry generation
-              console.log('Retry generation for flow', flowId);
             }}
             className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
@@ -2291,8 +2288,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               // Highlight the step container
               executionStore.highlightBubble(node.id);
 
-              console.log('addStepToContext', functionName);
-
               // Add step to context (automatically clears bubble and transformation context)
               pearlChatStore.getState().addStepToContext(functionName);
 
@@ -2308,8 +2303,6 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
               // Highlight the transformation node
               executionStore.highlightBubble(node.id);
-
-              console.log('addTransformationToContext', functionName);
 
               // Add transformation to context (automatically clears bubble context)
               pearlChatStore

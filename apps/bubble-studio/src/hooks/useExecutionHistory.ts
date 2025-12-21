@@ -50,17 +50,9 @@ export function useExecutionHistory(
       if (!flowId) {
         throw new Error('Flow ID is required');
       }
-
-      console.log(
-        `[useExecutionHistory] Fetching execution history for ID: ${flowId}`
-      );
       const response = await bubbleFlowApi.getBubbleFlowExecutions(
         flowId,
         queryOptions
-      );
-      console.log(
-        '[useExecutionHistory] Execution history received:',
-        response
       );
       return response;
     },
@@ -72,9 +64,6 @@ export function useExecutionHistory(
   });
 
   if (isOptimistic) {
-    console.log(
-      `[useExecutionHistory] Skipping execution history fetch for optimistic flow ID: ${flowId}`
-    );
   }
 
   return {

@@ -71,7 +71,6 @@ class ApiClient {
     // Get fresh token from Clerk on every request
     // This ensures we always have a valid, non-expired token
 
-    console.log('Making request to', endpoint);
     const token = await refreshToken();
 
     const url = `${this.baseURL}${endpoint}`;
@@ -197,7 +196,6 @@ class ApiClient {
         errorData = await response.text();
       }
       try {
-        console.log('Error data:', errorData);
         if (response.status !== 404) {
           const message = this.extractErrorMessage(errorData);
           toast.error(message || 'Request failed', {

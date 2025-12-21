@@ -189,10 +189,7 @@ export async function getAllVariablesWithTypes(): Promise<VariableInfo[]> {
     }
 
     // Check the model's language mode
-    const languageId = model.getLanguageId();
-    console.log('Model language ID:', languageId);
-
-    // Verify TypeScript language is available
+    const languageId = model.getLanguageId(); // Verify TypeScript language is available
     if (!monacoInstance.languages.typescript) {
       console.error('Monaco TypeScript language service is not available');
       return [];
@@ -221,11 +218,7 @@ export async function getAllVariablesWithTypes(): Promise<VariableInfo[]> {
         model.uri.toString()
       );
       return [];
-    }
-
-    console.log('✅ Successfully connected to TypeScript worker');
-
-    // Get the semantic diagnostics to ensure the file is fully analyzed
+    } // Get the semantic diagnostics to ensure the file is fully analyzed
     await client.getSemanticDiagnostics(model.uri.toString());
 
     const lineCount = model.getLineCount();

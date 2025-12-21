@@ -29,5 +29,3 @@ export const POSTHOG_HOST: string =
   import.meta.env.VITE_POSTHOG_HOST || 'https://us.i.posthog.com';
 export const ANALYTICS_ENABLED: boolean =
   import.meta.env.VITE_ANALYTICS_ENABLED !== 'false'; // Enabled by default unless explicitly disabled
-
-console.log('DISABLE_AUTH', DISABLE_AUTH);

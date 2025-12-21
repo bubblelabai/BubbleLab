@@ -281,7 +281,6 @@ export interface FlowExecutionState {
 
 // Factory function to create a store for a specific flow
 function createExecutionStore(flowId: number) {
-  console.debug('Creating execution store for flow:', flowId);
   return createWithEqualityFn<FlowExecutionState>(
     (set, get) => ({
       // Initial state
@@ -697,7 +696,6 @@ export function cleanupExecutionStore(flowId: number): void {
     // Reset state before deleting
     store.getState().reset();
     executionStores.delete(flowId);
-    console.log(`[ExecutionStore] Cleaned up store for flow ${flowId}`);
   }
 }
 

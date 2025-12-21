@@ -188,13 +188,6 @@ export const InputParameters: React.FC<InputParametersProps> = ({
 }) => {
   // Generate storage key based on flow name and inputs schema
   const storageKey = `flow-inputs-${flowName}-${btoa(inputsSchema || '').slice(0, 10)}`;
-  console.log(
-    '[InputParameters] Generated storage key:',
-    storageKey,
-    'for flowName:',
-    flowName
-  );
-
   const [inputs, setInputs] = useState<Record<string, unknown>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const [inputTypes, setInputTypes] = useState<Record<string, 'text' | 'file'>>(
@@ -216,19 +209,10 @@ export const InputParameters: React.FC<InputParametersProps> = ({
 
   // Load saved data from localStorage on component mount
   useEffect(() => {
-    console.log(
-      '[InputParameters] Attempting to load from localStorage with key:',
-      storageKey
-    );
     try {
       const saved = localStorage.getItem(storageKey);
-      console.log('[InputParameters] Raw saved data:', saved);
-
       if (saved) {
-        const parsedData = JSON.parse(saved);
-        console.log('[InputParameters] Parsed saved data:', parsedData);
-
-        // Only load if data exists and is valid
+        const parsedData = JSON.parse(saved); // Only load if data exists and is valid
         let dataLoaded = false;
         if (parsedData.inputs && typeof parsedData.inputs === 'object') {
           setInputs(parsedData.inputs);
@@ -261,7 +245,6 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         }
         setHasLoadedFromStorage(dataLoaded);
       } else {
-        console.log('[InputParameters] No saved data found in localStorage');
       }
     } catch (error) {
       console.warn('[InputParameters] Error loading saved inputs:', error);
@@ -274,7 +257,6 @@ export const InputParameters: React.FC<InputParametersProps> = ({
   // Save data to localStorage whenever inputs change (but only after initialization)
   useEffect(() => {
     if (!hasInitialized) {
-      console.log('[InputParameters] Skipping save - not yet initialized');
       return;
     }
 
@@ -288,10 +270,6 @@ export const InputParameters: React.FC<InputParametersProps> = ({
         timestamp: Date.now(),
       };
       localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-      console.log(
-        '[InputParameters] Saving inputs to localStorage:',
-        dataToSave
-      );
     } catch (error) {
       console.warn('[InputParameters] Error saving inputs:', error);
     }
@@ -393,7 +371,6 @@ export const InputParameters: React.FC<InputParametersProps> = ({
       setArrayItemCounts({});
       setCustomFieldNames({});
       setHasLoadedFromStorage(false);
-      console.log('[InputParameters] Cleared saved inputs');
     } catch (error) {
       console.warn('[InputParameters] Error clearing saved inputs:', error);
     }

@@ -79,10 +79,6 @@ export function useCreateBubbleFlow(options?: {
         | CreateBubbleFlowWithOptimisticData
         | CreateEmptyBubbleFlowWithOptimisticData
     ): Promise<CreateBubbleFlowResponse> => {
-      console.log(
-        `[useCreateBubbleFlow] Creating ${isEmpty ? 'empty' : 'new'} bubble flow:`,
-        request
-      );
       // Remove optimistic data before sending to server
       const { _optimisticBubbles: _, ...serverRequest } = request;
       void _; // Silence unused variable warning
@@ -92,7 +88,6 @@ export function useCreateBubbleFlow(options?: {
         endpoint,
         serverRequest
       );
-      console.log('[useCreateBubbleFlow] Flow created successfully:', response);
       return response;
     },
     onMutate: async (newFlow) => {
@@ -134,7 +129,6 @@ export function useCreateBubbleFlow(options?: {
         };
 
         queryClient.setQueryData(['bubbleFlowList'], updatedFlowList);
-        console.log('[useCreateBubbleFlow] Optimistic flow list updated');
       }
 
       // Also optimistically cache the full flow details using the temporary ID
@@ -157,16 +151,9 @@ export function useCreateBubbleFlow(options?: {
       };
 
       queryClient.setQueryData(['bubbleFlow', tempId], optimisticFlowDetails);
-      console.log(
-        '[useCreateBubbleFlow] Optimistic flow details cached with temp ID:',
-        tempId
-      );
-
       return { previousFlowList, tempId };
     },
     onSuccess: (data, variables, context) => {
-      console.log('[useCreateBubbleFlow] Flow creation succeeded:', data);
-
       // Update the flow list with the real data from server
       queryClient.setQueryData<OptimisticBubbleFlowListResponse>(
         ['bubbleFlowList'],
@@ -227,18 +214,10 @@ export function useCreateBubbleFlow(options?: {
               optimisticFlowDetails.requiredCredentials,
             inputSchema: data.inputSchema || optimisticFlowDetails.inputSchema,
           });
-          console.log(
-            '[useCreateBubbleFlow] Set flow cache with real ID:',
-            data.id
-          );
         }
 
         // Remove the optimistic flow details with temporary ID
         queryClient.removeQueries({ queryKey: ['bubbleFlow', context.tempId] });
-        console.log(
-          '[useCreateBubbleFlow] Removed optimistic flow data for tempId:',
-          context.tempId
-        );
       } else {
         // If no tempId, set the cache with data from server response
         queryClient.setQueryData(['bubbleFlow', data.id], {
@@ -259,10 +238,6 @@ export function useCreateBubbleFlow(options?: {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
-        console.log(
-          '[useCreateBubbleFlow] Set flow cache for real ID (no tempId):',
-          data.id
-        );
       }
       queryClient.invalidateQueries({ queryKey: ['bubbleFlow', data.id] });
     },
@@ -272,24 +247,16 @@ export function useCreateBubbleFlow(options?: {
       // Rollback optimistic updates
       if (context?.previousFlowList) {
         queryClient.setQueryData(['bubbleFlowList'], context.previousFlowList);
-        console.log(
-          '[useCreateBubbleFlow] Rolled back optimistic flow list update'
-        );
       }
 
       // Remove the optimistic flow details
       if (context?.tempId) {
         queryClient.removeQueries({ queryKey: ['bubbleFlow', context.tempId] });
-        console.log(
-          '[useCreateBubbleFlow] Removed optimistic flow details for tempId:',
-          context.tempId
-        );
       }
     },
     onSettled: () => {
       // Always refetch the flow list to ensure consistency
       void queryClient.invalidateQueries({ queryKey: ['bubbleFlowList'] });
-      console.log('[useCreateBubbleFlow] Invalidated flow list queries');
     },
   });
 

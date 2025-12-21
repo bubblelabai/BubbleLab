@@ -196,7 +196,6 @@ interface PearlChatState {
 const stores = new Map<number, ReturnType<typeof createPearlChatStore>>();
 
 function createPearlChatStore(_flowId: number) {
-  console.debug('Creating pearl chat store for flow:', _flowId);
   return create<PearlChatState>((set, get) => ({
     // Unified timeline
     timeline: [],

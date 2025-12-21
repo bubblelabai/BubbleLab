@@ -94,7 +94,6 @@ export function useBubbleFlow(
         ['bubbleFlowList'],
         (currentData: BubbleFlowListResponse | undefined) => {
           if (!currentData) return currentData;
-          console.log('Current data', JSON.stringify(currentData, null, 2));
           return {
             ...currentData,
             bubbleFlows: currentData.bubbleFlows.map((flow) => {

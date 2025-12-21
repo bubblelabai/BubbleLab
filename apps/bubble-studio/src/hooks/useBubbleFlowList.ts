@@ -17,9 +17,7 @@ export function useBubbleFlowList(): UseBubbleFlowListResult {
   const query = useQuery({
     queryKey: ['bubbleFlowList'],
     queryFn: async () => {
-      console.log('[useBubbleFlowList] Fetching flow list from backend');
       const response = await api.get<BubbleFlowListResponse>('/bubble-flow');
-      console.log('[useBubbleFlowList] Flow list received:', response);
       return response;
     },
     enabled: isLoaded && isSignedIn && isTokenFunctionReady(), // Only run query when user is authenticated AND token function is ready

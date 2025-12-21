@@ -50,7 +50,6 @@ export function MonacoEditor() {
     editor: monaco.editor.IStandaloneCodeEditor,
     monacoInstance: typeof monaco
   ) => {
-    console.log('Editor mounted');
     editorRef.current = editor;
 
     // Store the configured Monaco instance for TypeScript worker access
@@ -64,7 +63,6 @@ export function MonacoEditor() {
     if (editorDomNode) {
       editorDomNode.classList.add('notranslate');
       editorDomNode.setAttribute('translate', 'no');
-      console.log('✅ Added notranslate attributes to Monaco editor DOM');
     }
 
     // Track cursor position changes
@@ -210,8 +208,6 @@ export function MonacoEditor() {
       return;
     }
 
-    console.log('Applying range highlight:', executionHighlightRange);
-
     // Clear previous decorations
     if (rangeDecorationRef.current.length > 0) {
       editor.deltaDecorations(rangeDecorationRef.current, []);
@@ -253,10 +249,7 @@ export function MonacoEditor() {
     const newDecorations = editor.deltaDecorations([], [decoration]);
     rangeDecorationRef.current = newDecorations;
 
-    console.log('Applied range decorations:', newDecorations);
-
     // Auto-scroll to highlight
-    console.log('Auto-scrolling to highlight:', executionHighlightRange);
     setTimeout(() => {
       editor.revealRangeInCenter(range);
     }, 100);

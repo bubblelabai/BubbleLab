@@ -135,10 +135,6 @@ export function extractStepGraph(
       }
 
       edges.push(edge);
-      // eslint-disable-next-line no-console
-      console.log(
-        `[StepGraph]   Edge: ${sourceStepId} → ${targetStepId} (${edge.edgeType}, label: ${edge.label || 'none'})`
-      );
     }
   }
 
@@ -301,12 +297,7 @@ export function extractStepGraph(
           frontier = { level: branchLevel, parents: uniqueParents };
         }
 
-        // eslint-disable-next-line no-console
-        console.log(
-          `[StepGraph] After if/else, frontier level=${frontier.level}, parents=`,
-          frontier.parents
-        );
-      } else if (node.type === 'for' || node.type === 'while') {
+        // eslint-disable-next-line no-console      } else if (node.type === 'for' || node.type === 'while') {
         const loopNode =
           node as import('@bubblelab/shared-schemas').ControlFlowWorkflowNode;
 

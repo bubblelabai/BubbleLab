@@ -195,11 +195,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const model = instance.getModel();
       if (model) {
         model.setValue(pendingCode);
-        console.log(
-          '[EditorStore] Applied pending code:',
-          pendingCode.length,
-          'characters'
-        );
         set({ pendingCode: null }); // Clear pending code
       }
     }

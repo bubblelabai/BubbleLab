@@ -138,7 +138,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   // Sync flow code to editor when flow changes
   useEffect(() => {
     selectFlow(flowId);
-    console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
     if (currentFlow) {
       editor.setCode(currentFlow.code);
       const extractedCredentials: Record<string, Record<string, number>> = {};

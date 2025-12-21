@@ -20,7 +20,6 @@ class AnalyticsService {
     this.enabled = config.enabled;
 
     if (!this.enabled) {
-      console.log('[Analytics] PostHog analytics disabled via configuration');
       return;
     }
 
@@ -49,7 +48,6 @@ class AnalyticsService {
       });
 
       this.initialized = true;
-      console.log('[Analytics] PostHog initialized successfully');
     } catch (error) {
       console.error('[Analytics] Failed to initialize PostHog:', error);
       this.enabled = false;

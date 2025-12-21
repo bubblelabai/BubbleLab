@@ -1110,7 +1110,6 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
   const handleRefreshOAuth = async (credential: CredentialResponse) => {
     try {
       await refreshOAuthMutation.mutateAsync(credential);
-      console.log(`OAuth token refreshed for ${credential.name}`);
     } catch (error) {
       console.error('Failed to refresh OAuth token:', error);
     }

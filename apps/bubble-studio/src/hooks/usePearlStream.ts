@@ -48,9 +48,6 @@ export function usePearlStream(options?: UsePearlStreamOptions) {
         additionalContext: pearlRequest.additionalContext,
         uploadedFiles: pearlRequest.uploadedFiles,
       };
-
-      console.log('fullRequest', JSON.stringify(fullRequest, null, 2));
-
       const response = await api.postStream(
         '/ai/pearl?stream=true',
         fullRequest
@@ -140,9 +137,6 @@ async function startGenerationStream(
     storeState.hasActiveGenerationStream() ||
     storeState.generationCompleted
   ) {
-    console.log(
-      `[startGenerationStream] Stream already active or completed for flow ${flowId}`
-    );
     return;
   }
 
@@ -161,7 +155,6 @@ async function startGenerationStream(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (abortController.signal.aborted) {
-      console.log(`[startGenerationStream] Stream aborted for flow ${flowId}`);
       return;
     }
 
@@ -196,9 +189,6 @@ async function startGenerationStream(
 
       for await (const event of sseToAsyncIterable(response)) {
         if (abortController.signal.aborted) {
-          console.log(
-            `[startGenerationStream] Stream aborted during iteration for flow ${flowId}`
-          );
           return;
         }
 
@@ -207,26 +197,16 @@ async function startGenerationStream(
 
         // Stop coffee loading indicator when coffee phase is complete
         if (event.type === 'coffee_complete') {
-          console.log(
-            `[startGenerationStream] Coffee planning completed for flow ${flowId}`
-          );
           pearlStore.getState().setIsCoffeeLoading(false);
         }
 
         // generation_complete and error are handled by handleStreamingEvent
         // which sets generationCompleted and isGenerating appropriately
       }
-
-      console.log(
-        `[startGenerationStream] Stream completed successfully for flow ${flowId}`
-      );
       pearlStore.getState().setIsCoffeeLoading(false);
       return;
     } catch (error) {
       if (abortController.signal.aborted) {
-        console.log(
-          `[startGenerationStream] Stream aborted during error handling for flow ${flowId}`
-        );
         return;
       }
 
@@ -255,10 +235,6 @@ async function startGenerationStream(
       // Retry logic
       if (attempt < maxRetries) {
         const delayMs = Math.min(5000 * Math.pow(2, attempt), 4000);
-        console.log(
-          `[startGenerationStream] Retrying in ${delayMs}ms... (attempt ${attempt + 2}/${maxRetries + 1})`
-        );
-
         handleStreamingEvent(
           {
             type: 'retry_attempt',
@@ -335,19 +311,12 @@ export async function startBuildingPhase(
 
     for await (const event of sseToAsyncIterable(response)) {
       if (abortController.signal.aborted) {
-        console.log(
-          `[startBuildingPhase] Stream aborted during iteration for flow ${flowId}`
-        );
         return;
       }
 
       // All events go through unified handleStreamingEvent
       handleStreamingEvent(event, pearlStore);
     }
-
-    console.log(
-      `[startBuildingPhase] Stream completed successfully for flow ${flowId}`
-    );
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Build failed';
     console.error(`[startBuildingPhase] Error:`, errorMsg);
@@ -429,9 +398,6 @@ export async function submitClarificationAndContinue(
 
     for await (const event of sseToAsyncIterable(response)) {
       if (abortController.signal.aborted) {
-        console.log(
-          `[submitClarificationAndContinue] Stream aborted for flow ${flowId}`
-        );
         return;
       }
 
@@ -439,16 +405,9 @@ export async function submitClarificationAndContinue(
       handleStreamingEvent(event, pearlStore);
 
       if (event.type === 'coffee_complete') {
-        console.log(
-          `[submitClarificationAndContinue] Coffee planning completed for flow ${flowId}`
-        );
         storeState.setIsCoffeeLoading(false);
       }
     }
-
-    console.log(
-      `[submitClarificationAndContinue] Stream completed successfully for flow ${flowId}`
-    );
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Planning failed';
     console.error(`[submitClarificationAndContinue] Error:`, errorMsg);

@@ -19,8 +19,6 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
   const { data: bubbleFlowListResponse } = useBubbleFlowList();
   const navigate = useNavigate();
 
-  console.log('subscription', subscription);
-
   const handleUpgradeClick = () => {
     navigate({ to: '/pricing' });
   };

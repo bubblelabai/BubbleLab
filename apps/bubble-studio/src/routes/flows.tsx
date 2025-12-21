@@ -66,12 +66,8 @@ function HomeRoute() {
 
     if (confirmed) {
       try {
-        console.log('[deleteFlow] Deleting flow with ID:', flowId);
-
         // Use the delete mutation with optimistic updates
         await deleteBubbleFlowMutation.mutateAsync(flowId);
-
-        console.log('[deleteFlow] Flow deletion completed successfully');
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';

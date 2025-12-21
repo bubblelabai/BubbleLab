@@ -65,12 +65,8 @@ export async function* sseToAsyncIterable(
               line.slice(6)
             ) as GenerationStreamingEvent;
 
-            // Debug: Log all events
-            console.log('SSE Event:', eventData.type, eventData);
-
-            // Filter out heartbeat events - just update activity, don't yield
+            // Debug: Log all events            // Filter out heartbeat events - just update activity, don't yield
             if (eventData.type === 'heartbeat') {
-              console.log('💓 Heartbeat received, connection healthy');
               continue;
             }
 
