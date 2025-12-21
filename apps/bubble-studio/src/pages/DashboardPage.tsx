@@ -25,6 +25,7 @@ import {
 import { trackTemplate } from '../services/analytics';
 import { GenerationOutputOverlay } from '../components/GenerationOutputOverlay';
 import { SubmitTemplateModal } from '../components/SubmitTemplateModal';
+import { VoiceRecorder } from '../components/ai/VoiceRecorder';
 
 // INTEGRATIONS and AI_MODELS now imported from shared lib
 
@@ -100,10 +101,11 @@ export function DashboardPage({
   const [pendingJsonImport, setPendingJsonImport] = useState<boolean>(false);
   const [isCreatingFromScratch, setIsCreatingFromScratch] =
     useState<boolean>(false);
+  const [isVoiceBusy, setIsVoiceBusy] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const isGenerateDisabled = useMemo(
-    () => isStreaming || !generationPrompt?.trim(),
-    [isStreaming, generationPrompt]
+    () => isStreaming || !generationPrompt?.trim() || isVoiceBusy,
+    [isStreaming, generationPrompt, isVoiceBusy]
   );
 
   // Handler for "Build from Scratch" button
@@ -466,6 +468,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             <div className="bg-[#1a1a1a] rounded-2xl p-4 shadow-2xl border border-white/5 relative group transition-all duration-300 hover:border-white/10 focus-within:border-purple-500/30 focus-within:ring-1 focus-within:ring-purple-500/30">
               <textarea
                 ref={promptRef}
+                disabled={isVoiceBusy}
                 placeholder={
                   selectedCategory === 'Import JSON'
                     ? 'Paste in your existing JSON workflow to be converted into a Bubble flow...'
@@ -535,7 +538,17 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 }}
               />
               {/* Generate Button - Inside the prompt container */}
-              <div className="flex justify-end mt-4">
+              <div className="flex justify-end mt-4 items-end gap-3">
+                <VoiceRecorder
+                  disabled={isStreaming}
+                  onStateChange={setIsVoiceBusy}
+                  onTranscription={(text) => {
+                    const newValue = generationPrompt
+                      ? `${generationPrompt} ${text}`
+                      : text;
+                    setGenerationPrompt(newValue);
+                  }}
+                />
                 <div className="flex flex-col items-end">
                   <button
                     type="button"
@@ -568,13 +581,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   >
                     <ArrowUp className="w-5 h-5" />
                   </button>
-                  <div
-                    className={`mt-2 text-[10px] leading-none transition-colors duration-200 ${
-                      isGenerateDisabled ? 'text-gray-500/60' : 'text-gray-400'
-                    }`}
-                  >
-                    Ctrl+Enter
-                  </div>
                 </div>
               </div>
             </div>

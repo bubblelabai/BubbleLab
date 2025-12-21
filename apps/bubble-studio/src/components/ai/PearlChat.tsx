@@ -65,6 +65,7 @@ import {
 import type { ChatMessage, PlanApprovalMessage } from './type';
 import { playGenerationCompleteSound } from '../../utils/soundUtils';
 import { renderJson } from '../../utils/executionLogsFormatUtils';
+import { VoiceRecorder } from './VoiceRecorder';
 
 /**
  * LazyDetails component - only renders children when the details element is open.
@@ -106,12 +107,16 @@ const LazyDetails = memo(function LazyDetails({
   );
 });
 
+type UploadedFile = {
+  name: string;
+  content: string;
+  fileType: 'image' | 'text';
+};
+
 export function PearlChat() {
-  // UI-only state (non-shared)
-  const [uploadedFiles, setUploadedFiles] = useState<
-    Array<{ name: string; content: string; fileType: 'image' | 'text' }>
-  >([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isVoiceBusy, setIsVoiceBusy] = useState(false);
   const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
     new Set()
   );
@@ -1097,7 +1102,7 @@ export function PearlChat() {
             onSubmit={handleGenerate}
             placeholder="Get help modifying, debugging, or understanding your workflow..."
             className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
-            disabled={pearl.isPending || isGenerating}
+            disabled={pearl.isPending || isGenerating || isVoiceBusy}
             flowId={selectedFlowId}
             selectedBubbleContext={pearl.selectedBubbleContext}
             selectedTransformationContext={pearl.selectedTransformationContext}
@@ -1112,8 +1117,8 @@ export function PearlChat() {
             {/* Upload button - handles both images and text files */}
             <label
               className={`${
-                pearl.isPending || isGenerating
-                  ? 'cursor-not-allowed'
+                pearl.isPending || isGenerating || isVoiceBusy
+                  ? 'cursor-not-allowed opacity-50'
                   : 'cursor-pointer'
               }`}
               title="Upload file (Images: PNG, JPG, GIF, WebP | Text: TXT, CSV, MD, HTML)"
@@ -1122,7 +1127,7 @@ export function PearlChat() {
                 type="file"
                 className="hidden"
                 accept="image/png,image/jpeg,image/jpg,image/gif,image/webp,.txt,.csv,.md,.html,.htm"
-                disabled={pearl.isPending || isGenerating}
+                disabled={pearl.isPending || isGenerating || isVoiceBusy}
                 aria-label="Upload file"
                 onChange={(e) => {
                   handleFileChange(e.target.files);
@@ -1131,14 +1136,27 @@ export function PearlChat() {
               />
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                  pearl.isPending || isGenerating
-                    ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
+                  pearl.isPending || isGenerating || isVoiceBusy
+                    ? 'bg-gray-700/40 border border-gray-700/60 text-gray-500'
                     : 'bg-gray-700/40 border border-gray-600/60 text-gray-400 hover:bg-gray-700/60 hover:border-gray-500/80 hover:text-gray-200'
                 }`}
               >
                 <Paperclip className="w-5 h-5" />
               </div>
             </label>
+
+            {/* Voice Recording Button */}
+            <VoiceRecorder
+              disabled={pearl.isPending || isGenerating}
+              onStateChange={setIsVoiceBusy}
+              onTranscription={(text) => {
+                const currentValue = pearl.prompt;
+                const newValue = currentValue
+                  ? `${currentValue} ${text}`
+                  : text;
+                pearl.setPrompt(newValue);
+              }}
+            />
 
             {/* Send button */}
             <button
@@ -1147,12 +1165,14 @@ export function PearlChat() {
               disabled={
                 (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                 pearl.isPending ||
-                isGenerating
+                isGenerating ||
+                isVoiceBusy
               }
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
                 (!pearl.prompt.trim() && uploadedFiles.length === 0) ||
                 pearl.isPending ||
-                isGenerating
+                isGenerating ||
+                isVoiceBusy
                   ? 'bg-gray-700/40 border border-gray-700/60 cursor-not-allowed text-gray-500'
                   : 'bg-white text-gray-900 border border-white/80 hover:bg-gray-100 hover:border-gray-300 shadow-lg hover:scale-105'
               }`}

@@ -50,7 +50,7 @@ export function useExecutionStream(
         executionState.stopExecution();
       }
     };
-  }, [flowId]);
+  }, [flowId, executionState.startExecution]);
 
   const executeWithStreaming = useCallback(
     async (payload: Record<string, unknown> = {}) => {
