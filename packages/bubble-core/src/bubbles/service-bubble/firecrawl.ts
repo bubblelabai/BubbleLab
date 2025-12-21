@@ -1331,13 +1331,13 @@ export class FirecrawlBubble<
   ): 'per_result' | 'per_10_results' | 'per_url' | 'per_page' {
     switch (operation) {
       case 'scrape':
-        return 'per_page';
+        return 'per_result';
       case 'search':
         return 'per_10_results';
       case 'map':
         return 'per_result';
       case 'crawl':
-        return 'per_page';
+        return 'per_result';
       case 'extract':
         return 'per_url';
       default:
