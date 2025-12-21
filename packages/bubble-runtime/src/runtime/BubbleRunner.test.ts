@@ -558,6 +558,41 @@ describe('BubbleRunner correctly runs and plans', () => {
       console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
       expect(runner.bubbleScript.parsingErrors.length).toBe(0);
     });
+    it('should execute a flow with a custom tool', async () => {
+      const testScript = getFixture('agent-with-custom-tool-flow');
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
+      const result = await runner.runAll();
+      expect(result).toBeDefined();
+      // No parsing errors
+      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      // No validation errors
+      const parseResult = await validateBubbleFlow(
+        runner.bubbleScript.bubblescript,
+        false
+      );
+      if (!parseResult.valid) {
+        console.log('=== GENERATED SCRIPT (first 2000 chars) ===');
+        console.log(runner.bubbleScript.bubblescript.substring(0, 2000));
+        console.log('=== VALIDATION ERRORS ===');
+        console.log(parseResult.errors);
+        // Check if customTools still has functions
+        const customToolsMatch = runner.bubbleScript.bubblescript.match(
+          /customTools:\s*\[([\s\S]*?)\]/
+        );
+        if (customToolsMatch) {
+          console.log('=== CUSTOM TOOLS FOUND (first 500 chars) ===');
+          console.log(customToolsMatch[0].substring(0, 500));
+          console.log('Has func:', customToolsMatch[0].includes('func:'));
+        } else {
+          console.log('=== NO CUSTOM TOOLS FOUND IN SCRIPT ===');
+        }
+      }
+      expect(parseResult.valid).toBe(true);
+      console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
+      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+    });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {
       const runner = new BubbleRunner(researchWeatherScript, bubbleFactory, {
