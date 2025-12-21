@@ -197,6 +197,16 @@ app.openapi(speechToTextRoute, async (c) => {
       api_duration?: number;
     };
 
+    posthog.captureEvent(
+      {
+        userId: getUserId(c),
+        requestPath: c.req.path,
+        requestMethod: c.req.method,
+        prompt: result.text,
+      },
+      'speech_to_text_success'
+    );
+
     return c.json(
       {
         text: result.text || '',
@@ -205,6 +215,15 @@ app.openapi(speechToTextRoute, async (c) => {
       200
     );
   } catch (error) {
+    posthog.captureErrorEvent(
+      error,
+      {
+        userId: getUserId(c),
+        requestPath: c.req.path,
+        requestMethod: c.req.method,
+      },
+      'speech_to_text_error'
+    );
     console.error(
       '[API] speech-to-text error:',
       error instanceof Error ? error.message : String(error),
