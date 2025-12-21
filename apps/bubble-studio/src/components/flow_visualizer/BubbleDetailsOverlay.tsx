@@ -167,14 +167,14 @@ export function BubbleDetailsOverlay({
 
   return createPortal(
     <div
-      className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-[53%]"
+      className="fixed left-0 top-0 bottom-0 z-[var(--bubble-overlay-z,1200)] w-full sm:w-[85%] md:w-[70%] lg:w-[55%] xl:w-[50%]"
       style={{ '--bubble-overlay-z': DEFAULT_MODAL_Z_INDEX } as CSSProperties}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-8 lg:px-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="ml-8 max-w-3xl overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/95 shadow-2xl">
-            <header className="relative border-b border-neutral-900 p-8">
+        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-12 lg:px-12 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/95 shadow-2xl sm:ml-8">
+            <header className="relative border-b border-neutral-900 p-6 sm:p-8">
               <button
                 type="button"
                 onClick={(e) => {
@@ -196,11 +196,11 @@ export function BubbleDetailsOverlay({
                       </span>
                     )}
                   </div>
-                  <h2 className="mt-3 text-3xl font-semibold text-white">
+                  <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
                     {bubble.variableName}
                   </h2>
                   {bubble.description && (
-                    <p className="mt-3 text-base text-neutral-300">
+                    <p className="mt-3 text-sm text-neutral-300 sm:text-base">
                       {bubble.description}
                     </p>
                   )}
@@ -241,7 +241,7 @@ export function BubbleDetailsOverlay({
               </div>
             </header>
 
-            <section className="border-b border-neutral-900 bg-neutral-950/90 p-8">
+            <section className="border-b border-neutral-900 bg-neutral-950/90 p-6 sm:p-8">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
                   <Info className="h-4 w-4" />
@@ -261,7 +261,7 @@ export function BubbleDetailsOverlay({
               </div>
             </section>
 
-            <section className="border-b border-neutral-900 bg-neutral-950/95 p-8">
+            <section className="border-b border-neutral-900 bg-neutral-950/95 p-6 sm:p-8">
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
                 <Info className="h-4 w-4" />
                 Parameters
