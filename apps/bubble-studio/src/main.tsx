@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
@@ -19,6 +19,7 @@ import {
 import { dark } from '@clerk/themes';
 import { analytics } from './services/analytics';
 import { patchDOMForGoogleTranslate } from './utils/googleTranslateFix';
+import { useSettingsStore } from './stores/settingsStore';
 
 // Disable console.debug in dev mode (can be enabled with ENABLE_DEBUG_LOGS=true)
 if (!import.meta.env.VITE_ENABLE_DEBUG_LOGS) {
@@ -54,6 +55,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// Wrapper component that provides Clerk with dynamic theme based on user preference
+function ClerkWithTheme({ children }: { children: React.ReactNode }) {
+  const resolvedTheme = useSettingsStore((state) => state.resolvedTheme);
+
+  return (
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY!}
+      afterSignOutUrl="/"
+      appearance={{
+        baseTheme: resolvedTheme === 'dark' ? dark : undefined,
+      }}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
+
 // Check for OAuth callback BEFORE rendering router
 const urlParams = new URLSearchParams(window.location.search);
 const isOAuthCallback =
@@ -84,19 +102,13 @@ if (isOAuthCallback) {
             </QueryProvider>
           </AuthWrapper>
         ) : (
-          <ClerkProvider
-            publishableKey={PUBLISHABLE_KEY!}
-            afterSignOutUrl="/"
-            appearance={{
-              baseTheme: dark,
-            }}
-          >
+          <ClerkWithTheme>
             <AuthWrapper>
               <QueryProvider>
                 <RouterProvider router={router} />
               </QueryProvider>
             </AuthWrapper>
-          </ClerkProvider>
+          </ClerkWithTheme>
         )}
       </ThemeProvider>
     </StrictMode>

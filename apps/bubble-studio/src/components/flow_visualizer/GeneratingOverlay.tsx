@@ -6,7 +6,7 @@ export function GeneratingOverlay() {
   return (
     <div className="h-full relative">
       {/* Background with dots - same as ReactFlow */}
-      <div className="absolute inset-0" style={{ backgroundColor: '#1e1e1e' }}>
+      <div className="absolute inset-0 bg-sidebar">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern
@@ -17,7 +17,12 @@ export function GeneratingOverlay() {
               height="12"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="1" cy="1" r="1" fill="#525252" />
+              <circle
+                cx="1"
+                cy="1"
+                r="1"
+                className="fill-slate-400 dark:fill-[#525252]"
+              />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dots)" />
@@ -55,7 +60,7 @@ export function GeneratingOverlay() {
             </div>
           </div>
 
-          <p className="text-gray-300 text-base font-medium">
+          <p className="text-muted-foreground text-base font-medium">
             Please be patient, Pearl is generating your workflow...
           </p>
         </div>

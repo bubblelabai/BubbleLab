@@ -443,7 +443,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0d1117] to-[#161b22] p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -573,7 +573,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 disabled={!selectedFile || isUploading}
                 className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
                   !selectedFile || isUploading
-                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-muted-foreground'
+                    ? 'bg-muted border border-border cursor-not-allowed text-muted-foreground'
                     : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg shadow-green-500/25 border border-green-400/30'
                 }`}
               >
@@ -670,7 +670,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
                 disabled={!fileNameToGet.trim() || isRetrieving}
                 className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 ${
                   !fileNameToGet.trim() || isRetrieving
-                    ? 'bg-gray-600/20 border border-gray-600/50 cursor-not-allowed text-muted-foreground'
+                    ? 'bg-muted border border-border cursor-not-allowed text-muted-foreground'
                     : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 border border-blue-400/30'
                 }`}
               >
@@ -836,7 +836,7 @@ export class R2RetrieveFlow extends BubbleFlow<'webhook/http'> {
         {/* Technical Info */}
         <div className="mt-8 bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-6 h-6 bg-gray-500/20 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-muted rounded-lg flex items-center justify-center">
               <span className="text-muted-foreground text-sm">ℹ️</span>
             </div>
             <h3 className="text-lg font-semibold text-foreground">

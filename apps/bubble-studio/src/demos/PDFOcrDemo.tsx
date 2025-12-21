@@ -478,7 +478,7 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
                   disabled={!pdfFile || isProcessing}
                   className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
                     !pdfFile || isProcessing
-                      ? 'bg-gray-600 cursor-not-allowed'
+                      ? 'bg-muted cursor-not-allowed'
                       : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
@@ -498,7 +498,7 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
                     value={clientInfo}
                     onChange={(e) => setClientInfo(e.target.value)}
                     placeholder="Client information for auto-filling form fields (pre-filled with sample data)"
-                    className="w-full h-64 bg-muted text-foreground px-3 py-2 rounded-lg text-sm placeholder-gray-400 resize-none border border-border focus:border-blue-500 focus:outline-none"
+                    className="w-full h-64 bg-muted text-foreground px-3 py-2 rounded-lg text-sm placeholder-muted-foreground resize-none border border-border focus:border-blue-500 focus:outline-none"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Provide relevant information that should be filled into the
@@ -525,9 +525,9 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
                       <button
                         type="button"
                         onClick={() => window.open(originalPdfUrl, '_blank')}
-                        className="text-sm bg-muted hover:bg-gray-600 px-3 py-1 rounded transition-colors"
+                        className="text-sm bg-muted hover:bg-slate-200 dark:hover:bg-gray-600 px-3 py-1 rounded transition-colors"
                       >
-                        👁️ Open in Tab
+                        Open in Tab
                       </button>
                     )}
                   </div>
@@ -589,9 +589,9 @@ export class PDFOcrDemoFlow extends BubbleFlow<'webhook/http'> {
                         <button
                           type="button"
                           onClick={() => window.open(previewUrl, '_blank')}
-                          className="text-sm bg-muted hover:bg-gray-600 px-3 py-1 rounded transition-colors"
+                          className="text-sm bg-muted hover:bg-slate-200 dark:hover:bg-gray-600 px-3 py-1 rounded transition-colors"
                         >
-                          👁️ Open in Tab
+                          Open in Tab
                         </button>
                         {mode === 'autofill' && (
                           <button

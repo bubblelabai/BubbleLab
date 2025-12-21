@@ -29,7 +29,7 @@ const markdownComponentsWithCollapsibleJson: Components = {
     if (isJsonBlock) {
       return (
         <details className="group mb-2">
-          <summary className="cursor-pointer text-xs font-medium text-gray-400 hover:text-gray-300 mb-2 flex items-center gap-2 select-none">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground mb-2 flex items-center gap-2 select-none">
             <svg
               className="w-3 h-3 transition-transform group-open:rotate-90"
               fill="none"
@@ -46,7 +46,7 @@ const markdownComponentsWithCollapsibleJson: Components = {
             <span>JSON Response</span>
           </summary>
           <div className="mt-2">
-            <pre className="bg-gray-900/50 rounded-lg overflow-x-auto mb-2">
+            <pre className="bg-slate-100 dark:bg-gray-900/50 rounded-lg overflow-x-auto mb-2">
               {children}
             </pre>
           </div>
@@ -56,7 +56,7 @@ const markdownComponentsWithCollapsibleJson: Components = {
 
     // For non-JSON code blocks, use the default rendering
     return (
-      <pre className="bg-gray-900/50 rounded-lg overflow-x-auto mb-2">
+      <pre className="bg-slate-100 dark:bg-gray-900/50 rounded-lg overflow-x-auto mb-2">
         {children}
       </pre>
     );

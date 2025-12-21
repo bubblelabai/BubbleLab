@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { DiffEditor } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import { XMarkIcon } from '@heroicons/react/24/solid';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 interface CodeRestoreModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export function CodeRestoreModal({
   const diffEditorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(
     null
   );
+  const resolvedTheme = useSettingsStore((state) => state.resolvedTheme);
+  const monacoTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'vs';
 
   const handleEditorDidMount = (
     editor: monaco.editor.IStandaloneDiffEditor
@@ -53,18 +56,21 @@ export function CodeRestoreModal({
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#0f1115]/50" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-slate-900/50 dark:bg-sidebar/50"
+        onClick={onClose}
+      />
 
       {/* Modal */}
-      <div className="relative bg-[#0f1115] rounded-lg shadow-xl max-w-6xl w-full mx-4 h-[90vh] overflow-hidden flex flex-col border border-[#30363d]">
+      <div className="relative bg-background dark:bg-sidebar rounded-lg shadow-xl max-w-6xl w-full mx-4 h-[90vh] overflow-hidden flex flex-col border border-border">
         {/* Header */}
-        <div className="bg-[#1a1a1a] px-6 py-4 border-b border-[#30363d] flex-shrink-0">
+        <div className="bg-card px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-gray-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 Preview Code Changes
               </h2>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Review changes from execution #{executionId} before applying
               </p>
             </div>
@@ -72,7 +78,7 @@ export function CodeRestoreModal({
               title="Close"
               onClick={onClose}
               disabled={isApplying}
-              className="text-gray-400 hover:text-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
@@ -81,14 +87,14 @@ export function CodeRestoreModal({
 
         {/* Diff Editor */}
         <div
-          className="flex-1 overflow-hidden"
-          style={{ minHeight: 0, backgroundColor: '#1e1e1e' }}
+          className="flex-1 overflow-hidden bg-code-background"
+          style={{ minHeight: 0 }}
         >
           <DiffEditor
             original={currentCode}
             modified={restoredCode}
             language="typescript"
-            theme="vs-dark"
+            theme={monacoTheme}
             onMount={handleEditorDidMount}
             height="100%"
             width="100%"
@@ -123,13 +129,13 @@ export function CodeRestoreModal({
           />
         </div>
 
-        <div className="bg-[#1a1a1a] px-6 py-4 border-t border-[#30363d] flex-shrink-0">
+        <div className="bg-card px-6 py-4 border-t border-border flex-shrink-0">
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isApplying}
-              className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted hover:bg-slate-200 dark:hover:bg-gray-700 border border-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

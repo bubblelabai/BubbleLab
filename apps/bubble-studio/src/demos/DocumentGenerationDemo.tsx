@@ -704,31 +704,31 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-6 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-blue-400 mb-2">
-              📄 Document Generation Demo
+              Document Generation Demo
             </h1>
-            <p className="text-gray-400">
+            <p className="text-muted-foreground">
               Upload receipts, invoices, or documents (PDF/images) to parse and
               generate structured reports
             </p>
           </div>
 
           {/* Upload Section */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+          <div className="bg-card rounded-lg border border-border p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">Upload Documents</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* File Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-foreground-80 mb-2">
                   Documents (PDF, JPEG, PNG)
                 </label>
-                <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                   <input
                     type="file"
                     accept=".pdf,image/*"
@@ -738,10 +738,10 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                     id="documents-upload"
                   />
                   <label htmlFor="documents-upload" className="cursor-pointer">
-                    <div className="text-gray-400 mb-2">
-                      📁 Click to upload documents
+                    <div className="text-muted-foreground mb-2">
+                      Click to upload documents
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Support for PDF, JPEG, PNG files (multiple selection)
                     </div>
                   </label>
@@ -764,7 +764,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                       {documents.map((doc) => (
                         <div
                           key={doc.id}
-                          className="flex items-center justify-between bg-gray-700 rounded p-2"
+                          className="flex items-center justify-between bg-muted rounded p-2"
                         >
                           <div className="flex items-center space-x-2">
                             <span className="text-xs">
@@ -776,7 +776,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                             <span className="text-sm truncate">
                               {doc.file.name}
                             </span>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-muted-foreground">
                               (
                               {Math.round(
                                 (doc.compressedSize || doc.file.size) / 1024
@@ -808,7 +808,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
               {/* Output Configuration */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground-80 mb-2">
                     Output Format
                   </label>
                   <div className="flex gap-4">
@@ -840,16 +840,16 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-foreground-80 mb-2">
                     Output Description
                   </label>
                   <textarea
                     value={outputSpec}
                     onChange={(e) => setOutputSpec(e.target.value)}
                     placeholder="Describe what data to extract (e.g., 'expense tracking with vendor, amount, date, category')..."
-                    className="w-full h-32 bg-gray-700 text-gray-100 px-3 py-2 rounded-lg text-sm placeholder-gray-400 resize-none border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full h-32 bg-muted text-foreground px-3 py-2 rounded-lg text-sm placeholder-muted-foreground resize-none border border-border focus:border-blue-500 focus:outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Describe what information to extract from the documents
                     (e.g., "expense tracking with vendor, amount, date,
                     category")
@@ -861,7 +861,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Processing Status */}
           {documents.length > 0 && (
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+            <div className="bg-card rounded-lg border border-border p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Processing Status</h2>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -869,13 +869,15 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                   <div className="text-2xl font-bold text-blue-400">
                     {documents.length}
                   </div>
-                  <div className="text-sm text-gray-400">Total Files</div>
+                  <div className="text-sm text-muted-foreground">
+                    Total Files
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-yellow-400">
                     {documents.filter((d) => d.status === 'parsing').length}
                   </div>
-                  <div className="text-sm text-gray-400">Parsing</div>
+                  <div className="text-sm text-muted-foreground">Parsing</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-400">
@@ -886,13 +888,13 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                       ).length
                     }
                   </div>
-                  <div className="text-sm text-gray-400">Completed</div>
+                  <div className="text-sm text-muted-foreground">Completed</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-400">
                     {documents.filter((d) => d.status === 'error').length}
                   </div>
-                  <div className="text-sm text-gray-400">Errors</div>
+                  <div className="text-sm text-muted-foreground">Errors</div>
                 </div>
               </div>
 
@@ -908,7 +910,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                   !allParsingComplete ||
                   !hasSuccessfullyParsedDocs ||
                   isGenerating
-                    ? 'bg-gray-600 cursor-not-allowed'
+                    ? 'bg-muted cursor-not-allowed'
                     : 'bg-green-600 hover:bg-green-700'
                 }`}
               >
@@ -935,7 +937,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Generation Results */}
           {generationResult && (
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
+            <div className="bg-card rounded-lg border border-border p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Generated Document</h2>
 
               {generationResult.success ? (
@@ -953,7 +955,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                         onClick={downloadResult}
                         className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm font-medium transition-colors"
                       >
-                        📥 Download {outputFormat.toUpperCase()}
+                        Download {outputFormat.toUpperCase()}
                       </button>
                     </div>
                     {generationResult.data?.summary && (
@@ -1006,7 +1008,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                       </details>
                     </div>
 
-                    <div className="bg-gray-900 rounded-lg p-4 h-96 lg:h-[600px] overflow-y-auto">
+                    <div className="bg-background rounded-lg p-4 h-96 lg:h-[600px] overflow-y-auto">
                       {outputFormat === 'html' ? (
                         <iframe
                           title="Generated HTML Preview"
@@ -1141,7 +1143,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                           `}
                         />
                       ) : (
-                        <pre className="text-sm text-gray-300 whitespace-pre-wrap">
+                        <pre className="text-sm text-muted-foreground whitespace-pre-wrap">
                           {generationResult.generatedFiles?.csv ||
                             generationResult.data?.generatedFiles?.csv ||
                             generationResult.data?.output ||
@@ -1166,14 +1168,14 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
 
           {/* Document Previews and Parsed Content */}
           {documents.length > 0 && (
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div className="bg-card rounded-lg border border-border p-6">
               <h2 className="text-xl font-semibold mb-4">
                 Document Previews & Parsed Content
               </h2>
 
               <div className="space-y-6">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="bg-gray-900 rounded-lg p-4">
+                  <div key={doc.id} className="bg-background rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-2">
                         <span>
@@ -1182,10 +1184,10 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                           {doc.status === 'completed' && '✅'}
                           {doc.status === 'error' && '❌'}
                         </span>
-                        <span className="font-medium text-gray-300">
+                        <span className="font-medium text-foreground-80">
                           {doc.file.name}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           (
                           {Math.round(
                             (doc.compressedSize || doc.file.size) / 1024
@@ -1204,7 +1206,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                       <div className="flex items-center space-x-2">
                         {doc.status === 'completed' &&
                           doc.parsedResult?.data?.metadata && (
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-muted-foreground">
                               {doc.parsedResult.data.metadata.totalPages} pages,{' '}
                               {Math.round(
                                 doc.parsedResult.data.metadata.processingTime /
@@ -1226,11 +1228,11 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {/* File Preview */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-400 mb-2">
+                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
                           File Preview
                         </h4>
                         <div
-                          className="bg-gray-800 rounded border border-gray-600 overflow-hidden"
+                          className="bg-card rounded border border-border overflow-hidden"
                           style={{ height: '300px' }}
                         >
                           {doc.previewUrl ? (
@@ -1250,7 +1252,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                               />
                             )
                           ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500">
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
                               <div className="text-center">
                                 <div className="text-2xl mb-2">📄</div>
                                 <p>Loading preview...</p>
@@ -1263,7 +1265,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                       {/* Parsed Content */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-gray-400">
+                          <h4 className="text-sm font-medium text-muted-foreground">
                             Parsed Content
                           </h4>
                           {doc.status === 'parsing' && (
@@ -1281,7 +1283,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                               updateEditableMarkdown(doc.id, e.target.value)
                             }
                             placeholder="Parsed markdown content will appear here..."
-                            className="w-full h-72 bg-gray-800 text-gray-100 px-3 py-2 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm resize-none font-mono"
+                            className="w-full h-72 bg-card text-foreground px-3 py-2 rounded border border-border focus:border-blue-500 focus:outline-none text-sm resize-none font-mono"
                           />
                         ) : doc.status === 'error' ? (
                           <div className="h-72 bg-red-900 border border-red-700 rounded p-3 flex items-center justify-center">
@@ -1294,8 +1296,8 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                             </div>
                           </div>
                         ) : (
-                          <div className="h-72 bg-gray-800 border border-gray-600 rounded p-3 flex items-center justify-center">
-                            <div className="text-gray-500 text-center">
+                          <div className="h-72 bg-card border border-border rounded p-3 flex items-center justify-center">
+                            <div className="text-muted-foreground text-center">
                               <div className="text-2xl mb-2">
                                 {doc.status === 'parsing' ? '🔄' : '⏳'}
                               </div>
@@ -1311,7 +1313,7 @@ export class GenerateDocDemoFlow extends BubbleFlow<'webhook/http'> {
                     </div>
 
                     {doc.status === 'completed' && doc.parsedResult?.data && (
-                      <div className="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-500">
+                      <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div>
                             Pages:{' '}

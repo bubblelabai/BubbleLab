@@ -166,10 +166,10 @@ export const OnboardingQuestionnaire: React.FC<
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 What describes you best?
               </h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Help us personalize your experience
               </p>
             </div>
@@ -190,15 +190,15 @@ export const OnboardingQuestionnaire: React.FC<
                     className={`p-4 rounded-xl border text-left transition-all duration-200 ${
                       isSelected
                         ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                        : 'border-border bg-slate-100/50 dark:bg-white/5 hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-200/50 dark:hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <IconComponent
-                        className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-400'}`}
+                        className={`w-5 h-5 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                       />
                       <span
-                        className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}
+                        className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                       >
                         {option.label}
                       </span>
@@ -214,7 +214,7 @@ export const OnboardingQuestionnaire: React.FC<
                   value={personaOtherText}
                   onChange={(e) => setPersonaOtherText(e.target.value)}
                   placeholder="Please specify..."
-                  className="w-full px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-muted text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500 focus:bg-background transition-all"
                   autoFocus
                 />
               </div>
@@ -226,10 +226,10 @@ export const OnboardingQuestionnaire: React.FC<
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 How did you discover us?
               </h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 We'd love to know where you found Bubble Lab
               </p>
             </div>
@@ -249,7 +249,7 @@ export const OnboardingQuestionnaire: React.FC<
                     className={`p-4 rounded-xl border text-left transition-all duration-200 ${
                       isSelected
                         ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                        : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                        : 'border-border bg-slate-100/50 dark:bg-white/5 hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-200/50 dark:hover:bg-white/10'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -263,11 +263,11 @@ export const OnboardingQuestionnaire: React.FC<
                         />
                       ) : (
                         <option.icon
-                          className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-gray-400'}`}
+                          className={`w-5 h-5 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                         />
                       )}
                       <span
-                        className={`font-medium ${isSelected ? 'text-white' : 'text-gray-300'}`}
+                        className={`font-medium ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
                       >
                         {option.label}
                       </span>
@@ -283,7 +283,7 @@ export const OnboardingQuestionnaire: React.FC<
                   value={discoveryOtherText}
                   onChange={(e) => setDiscoveryOtherText(e.target.value)}
                   placeholder="Please specify..."
-                  className="w-full px-4 py-3 rounded-xl border border-white/20 bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:bg-white/10 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-muted text-foreground placeholder-muted-foreground focus:outline-none focus:border-purple-500 focus:bg-background transition-all"
                   autoFocus
                 />
               </div>
@@ -295,14 +295,13 @@ export const OnboardingQuestionnaire: React.FC<
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Want a $20 Amazon gift card?
               </h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Join a quick 15-minute user interview and get gift card on us!
-                🎁
               </p>
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-muted-foreground/70 text-xs mt-2">
                 We'll reach out to {user?.emailAddresses?.[0]?.emailAddress} to
                 schedule
               </p>
@@ -314,20 +313,20 @@ export const OnboardingQuestionnaire: React.FC<
                 className={`p-5 rounded-xl border text-left transition-all duration-200 ${
                   wantsInterview === true
                     ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    : 'border-border bg-slate-100/50 dark:bg-white/5 hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-200/50 dark:hover:bg-white/10'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Gift
-                    className={`w-6 h-6 ${wantsInterview === true ? 'text-white' : 'text-gray-400'}`}
+                    className={`w-6 h-6 ${wantsInterview === true ? 'text-foreground' : 'text-muted-foreground'}`}
                   />
                   <div>
                     <span
-                      className={`font-medium text-lg ${wantsInterview === true ? 'text-white' : 'text-gray-300'}`}
+                      className={`font-medium text-lg ${wantsInterview === true ? 'text-foreground' : 'text-muted-foreground'}`}
                     >
                       Yes, I'd love to!
                     </span>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-muted-foreground/70 text-sm mt-1">
                       Get $20 Amazon gift card + help shape the product
                     </p>
                   </div>
@@ -339,20 +338,20 @@ export const OnboardingQuestionnaire: React.FC<
                 className={`p-5 rounded-xl border text-left transition-all duration-200 ${
                   wantsInterview === false
                     ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(147,51,234,0.2)]'
-                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10'
+                    : 'border-border bg-slate-100/50 dark:bg-white/5 hover:border-slate-400 dark:hover:border-white/20 hover:bg-slate-200/50 dark:hover:bg-white/10'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <SkipForward
-                    className={`w-6 h-6 ${wantsInterview === false ? 'text-white' : 'text-gray-400'}`}
+                    className={`w-6 h-6 ${wantsInterview === false ? 'text-foreground' : 'text-muted-foreground'}`}
                   />
                   <div>
                     <span
-                      className={`font-medium text-lg ${wantsInterview === false ? 'text-white' : 'text-gray-300'}`}
+                      className={`font-medium text-lg ${wantsInterview === false ? 'text-foreground' : 'text-muted-foreground'}`}
                     >
                       Maybe later
                     </span>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-muted-foreground/70 text-sm mt-1">
                       No worries, you can always reach out later
                     </p>
                   </div>
@@ -369,14 +368,16 @@ export const OnboardingQuestionnaire: React.FC<
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#1a1a1a] border border-gray-700 rounded-2xl shadow-2xl max-w-lg w-full mx-4 p-8 relative">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full mx-4 p-8 relative">
         {/* Progress indicator */}
         <div className="flex gap-2 mb-8 justify-center">
           {[0, 1, 2].map((step) => (
             <div
               key={step}
               className={`h-1.5 w-16 rounded-full transition-all duration-300 ${
-                step <= currentStep ? 'bg-white' : 'bg-white/10'
+                step <= currentStep
+                  ? 'bg-foreground'
+                  : 'bg-slate-300 dark:bg-white/10'
               }`}
             />
           ))}
@@ -397,7 +398,7 @@ export const OnboardingQuestionnaire: React.FC<
           <button
             type="button"
             onClick={handleBack}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors ${
               currentStep === 0 ? 'invisible' : ''
             }`}
           >
@@ -411,8 +412,8 @@ export const OnboardingQuestionnaire: React.FC<
             disabled={!canProceed() || isSubmitting}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
               canProceed() && !isSubmitting
-                ? 'bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl hover:scale-105'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-foreground text-background hover:opacity-90 shadow-lg hover:shadow-xl hover:scale-105'
+                : 'bg-muted text-muted-foreground cursor-not-allowed'
             }`}
           >
             {isSubmitting ? (
