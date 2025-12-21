@@ -53,8 +53,10 @@ export function useDuplicateFlow({
         _optimisticBubbles: bubbles,
       };
 
-      // Create the new flow
-      const result = await createFlowMutation.mutateAsync(duplicateRequest); // Call success callback if provided
+      // Execute createFlow mutation
+      const result = await createFlowMutation.mutateAsync(duplicateRequest);
+
+      // Call success callback if provided
       if (onSuccess) {
         onSuccess(result.id);
       }
