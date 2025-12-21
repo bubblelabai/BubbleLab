@@ -9,512 +9,10 @@
   font-style: normal;
 }
 
-/* ============================================
-   CSS Custom Properties for Theme Switching
-   Define base values in :root, override in html.dark
-   Use --theme-* prefix to avoid circular references with Tailwind
-   ============================================ */
-
 :root {
-  /* Font settings */
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  /* Radius */
-  --radius: 0.5rem;
-
-  /* Light theme colors - using oklch for opacity support */
-  --theme-background: oklch(100% 0 0);
-  --theme-foreground: oklch(13.1% 0.046 264.7);
-
-  --theme-card: oklch(100% 0 0);
-  --theme-card-foreground: oklch(13.1% 0.046 264.7);
-
-  --theme-popover: oklch(100% 0 0);
-  --theme-popover-foreground: oklch(13.1% 0.046 264.7);
-
-  --theme-primary: oklch(55.3% 0.267 293.4);
-  --theme-primary-foreground: oklch(98.4% 0.003 247.9);
-
-  --theme-secondary: oklch(96.7% 0.003 264.5);
-  --theme-secondary-foreground: oklch(21.5% 0.022 264.7);
-
-  --theme-muted: oklch(96.7% 0.003 264.5);
-  --theme-muted-foreground: oklch(55.2% 0.014 264.4);
-
-  --theme-accent: oklch(96.7% 0.003 264.5);
-  --theme-accent-foreground: oklch(21.5% 0.022 264.7);
-
-  --theme-destructive: oklch(57.7% 0.245 27.3);
-  --theme-destructive-foreground: oklch(98.4% 0.003 247.9);
-
-  --theme-border: oklch(91.4% 0.007 264.5);
-  --theme-input: oklch(91.4% 0.007 264.5);
-  --theme-ring: oklch(55.3% 0.267 293.4);
-
-  /* Sidebar specific */
-  --theme-sidebar: oklch(98.5% 0 0);
-  --theme-sidebar-foreground: oklch(13.1% 0.046 264.7);
-  --theme-sidebar-border: oklch(91.4% 0.007 264.5);
-  --theme-sidebar-hover: oklch(96.7% 0.003 264.5);
-  --theme-sidebar-active: oklch(94.5% 0.003 264.5);
-  --theme-sidebar-tooltip: oklch(98.5% 0 0);
-
-  /* Canvas/IDE specific */
-  --theme-canvas: oklch(96.5% 0 0);
-  --theme-panel: oklch(100% 0 0);
-  --theme-panel-foreground: oklch(13.1% 0.046 264.7);
-  --theme-panel-border: oklch(91.4% 0.007 264.5);
-  --theme-panel-header: oklch(98.5% 0 0);
-
-  /* Code/Monaco specific */
-  --theme-code-background: oklch(98.5% 0 0);
-
-  /* Status colors */
-  --theme-success: oklch(52.8% 0.177 145.4);
-  --theme-success-foreground: oklch(98.3% 0.014 343.2);
-  --theme-warning: oklch(76.9% 0.188 70.1);
-  --theme-warning-foreground: oklch(95.5% 0.053 89.9);
-  --theme-info: oklch(62.3% 0.214 259.1);
-  --theme-info-foreground: oklch(98.4% 0.003 247.9);
-
-  /* Flow/Edge colors for visualization - matching original hex values */
-  --theme-edge-default: oklch(70.8% 0.015 256.8); /* #9ca3af - gray-400 */
-  --theme-edge-highlighted: oklch(55.3% 0.267 293.4); /* #9333ea - purple */
-  --theme-edge-success: oklch(62.8% 0.209 145.4); /* #22c55e - green-500 */
-  --theme-edge-muted: oklch(53.5% 0.014 256.8); /* #6b7280 - gray-500 */
-  --theme-edge-schedule: oklch(68.5% 0.165 252.3); /* #60a5fa - blue-400 */
-
-  /* Node button colors (Input/Output badges) - matching original rgba values */
-  --theme-node-bg: oklch(100% 0 0);
-  --theme-node-border: oklch(91.4% 0.007 264.5); /* matches --theme-border */
-  --theme-node-badge-bg: oklch(
-    96.5% 0.003 90 / 95%
-  ); /* rgba(245, 245, 244, 0.95) */
-  --theme-node-badge-text: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
-  --theme-node-badge-border: oklch(
-    85% 0.003 90 / 80%
-  ); /* rgba(212, 212, 211, 0.8) */
-  --theme-node-badge-selected: oklch(
-    55% 0.22 277 / 90%
-  ); /* rgba(99, 102, 241, 0.9) - indigo */
-  --theme-node-output-bg: oklch(15% 0 0 / 95%); /* rgba(23, 23, 23, 0.95) */
-  --theme-node-output-text: oklch(
-    96.5% 0.003 90 / 95%
-  ); /* rgba(245, 245, 244, 0.95) */
-  --theme-node-output-border: oklch(35% 0 0 / 80%); /* rgba(64, 64, 64, 0.8) */
-  --theme-node-error-bg: oklch(60% 0.22 27 / 90%); /* rgba(239, 68, 68, 0.9) */
-  --theme-node-error-border: oklch(52% 0.22 27); /* #dc2626 */
-
-  /* Scrollbar */
-  --scrollbar-thumb: oklch(75.8% 0.013 256.1);
-  --scrollbar-thumb-hover: oklch(65% 0.013 256.1);
-
-  /* Toast colors - light theme */
-  --theme-toast-success: oklch(50.2% 0.177 145.4); /* #238636 */
-  --theme-toast-error: oklch(53.5% 0.205 27.3); /* #da3633 */
-  --theme-toast-info: oklch(54.5% 0.205 259.1); /* #1f6feb */
-  --theme-toast-warning: oklch(72.5% 0.188 55.1); /* #fb8500 */
-
-  /* ============================================
-     Pre-computed opacity variants for Tailwind v4
-     Needed because opacity modifiers don't work reliably with CSS custom properties
-     ============================================ */
-
-  /* Foreground opacity variants */
-  --theme-foreground-60: oklch(13.1% 0.046 264.7 / 60%);
-  --theme-foreground-80: oklch(13.1% 0.046 264.7 / 80%);
-  --theme-foreground-90: oklch(13.1% 0.046 264.7 / 90%);
-
-  /* Muted opacity variants */
-  --theme-muted-20: oklch(96.7% 0.003 264.5 / 20%);
-  --theme-muted-30: oklch(96.7% 0.003 264.5 / 30%);
-  --theme-muted-40: oklch(96.7% 0.003 264.5 / 40%);
-  --theme-muted-50: oklch(96.7% 0.003 264.5 / 50%);
-  --theme-muted-60: oklch(96.7% 0.003 264.5 / 60%);
-  --theme-muted-80: oklch(96.7% 0.003 264.5 / 80%);
-
-  /* Background opacity variants */
-  --theme-background-20: oklch(100% 0 0 / 20%);
-  --theme-background-50: oklch(100% 0 0 / 50%);
-  --theme-background-80: oklch(100% 0 0 / 80%);
-
-  /* Card opacity variants */
-  --theme-card-30: oklch(100% 0 0 / 30%);
-  --theme-card-40: oklch(100% 0 0 / 40%);
-  --theme-card-60: oklch(100% 0 0 / 60%);
-  --theme-card-80: oklch(100% 0 0 / 80%);
-
-  /* Border opacity variants */
-  --theme-border-30: oklch(91.4% 0.007 264.5 / 30%);
-  --theme-border-50: oklch(91.4% 0.007 264.5 / 50%);
-  --theme-border-80: oklch(91.4% 0.007 264.5 / 80%);
-
-  /* Primary opacity variants */
-  --theme-primary-20: oklch(55.3% 0.267 293.4 / 20%);
-  --theme-primary-30: oklch(55.3% 0.267 293.4 / 30%);
-  --theme-primary-40: oklch(55.3% 0.267 293.4 / 40%);
-  --theme-primary-80: oklch(55.3% 0.267 293.4 / 80%);
-  --theme-primary-90: oklch(55.3% 0.267 293.4 / 90%);
-
-  /* Secondary opacity variants */
-  --theme-secondary-80: oklch(96.7% 0.003 264.5 / 80%);
-
-  /* Destructive opacity variants */
-  --theme-destructive-5: oklch(57.7% 0.245 27.3 / 5%);
-  --theme-destructive-10: oklch(57.7% 0.245 27.3 / 10%);
-  --theme-destructive-20: oklch(57.7% 0.245 27.3 / 20%);
-  --theme-destructive-30: oklch(57.7% 0.245 27.3 / 30%);
-  --theme-destructive-50: oklch(57.7% 0.245 27.3 / 50%);
-  --theme-destructive-80: oklch(57.7% 0.245 27.3 / 80%);
-  --theme-destructive-90: oklch(57.7% 0.245 27.3 / 90%);
-
-  /* Info opacity variants */
-  --theme-info-10: oklch(62.3% 0.214 259.1 / 10%);
-  --theme-info-20: oklch(62.3% 0.214 259.1 / 20%);
-  --theme-info-30: oklch(62.3% 0.214 259.1 / 30%);
-  --theme-info-50: oklch(62.3% 0.214 259.1 / 50%);
-  --theme-info-80: oklch(62.3% 0.214 259.1 / 80%);
-  --theme-info-90: oklch(62.3% 0.214 259.1 / 90%);
-
-  /* Success opacity variants */
-  --theme-success-10: oklch(52.8% 0.177 145.4 / 10%);
-  --theme-success-20: oklch(52.8% 0.177 145.4 / 20%);
-  --theme-success-30: oklch(52.8% 0.177 145.4 / 30%);
-  --theme-success-50: oklch(52.8% 0.177 145.4 / 50%);
-  --theme-success-80: oklch(52.8% 0.177 145.4 / 80%);
-  --theme-success-90: oklch(52.8% 0.177 145.4 / 90%);
-
-  /* Warning opacity variants */
-  --theme-warning-5: oklch(76.9% 0.188 70.1 / 5%);
-  --theme-warning-10: oklch(76.9% 0.188 70.1 / 10%);
-  --theme-warning-20: oklch(76.9% 0.188 70.1 / 20%);
-  --theme-warning-30: oklch(76.9% 0.188 70.1 / 30%);
-  --theme-warning-50: oklch(76.9% 0.188 70.1 / 50%);
-  --theme-warning-80: oklch(76.9% 0.188 70.1 / 80%);
-
-  /* Ring opacity variants */
-  --theme-ring-20: oklch(55.3% 0.267 293.4 / 20%);
-}
-
-/* ============================================
-   Dark theme overrides - EXACTLY matching main branch
-   ============================================ */
-
-html.dark {
-  /* Main branch: body background #0f0f23, FlowIDEView uses #1a1a1a for panels */
-  --theme-background: #0f0f23; /* main branch body background - deep blue-black */
-  --theme-foreground: #e5e7eb; /* Tailwind gray-200 for better match with main */
-
-  --theme-card: #1a1a1a; /* FlowIDEView panel background */
-  --theme-card-foreground: #e5e7eb; /* Tailwind gray-200 */
-
-  --theme-popover: #1e1e1e;
-  --theme-popover-foreground: #e5e7eb; /* Tailwind gray-200 */
-
-  --theme-primary: #9333ea; /* purple */
-  --theme-primary-foreground: #ffffff;
-
-  --theme-secondary: #374151; /* Tailwind gray-700 */
-  --theme-secondary-foreground: #e5e7eb; /* Tailwind gray-200 */
-
-  --theme-muted: #1f2937; /* Tailwind gray-800 - matches main branch bg-gray-800 */
-  --theme-muted-foreground: #9ca3af; /* Tailwind gray-400 - matches main text-gray-400 */
-
-  --theme-accent: #1f2937; /* Tailwind gray-800 for consistency */
-  --theme-accent-foreground: #e5e7eb; /* Tailwind gray-200 */
-
-  --theme-destructive: #da3633;
-  --theme-destructive-foreground: #ffffff;
-
-  --theme-border: #374151; /* Tailwind gray-700 - matches main branch border-gray-700 */
-  --theme-input: #0a0a0a; /* FlowIDEView input field bg */
-  --theme-ring: #9333ea;
-
-  /* Sidebar specific - main branch Sidebar.tsx uses bg-[#0f1115] */
-  --theme-sidebar: #0f1115; /* sidebar background from main */
-  --theme-sidebar-foreground: #cccccc;
-  --theme-sidebar-border: #30363d; /* main branch sidebar border */
-  --theme-sidebar-hover: #21262d; /* main branch hover state */
-  --theme-sidebar-active: #21262d; /* active item bg */
-  --theme-sidebar-tooltip: #0f1115; /* main branch tooltip bg */
-
-  /* Canvas/IDE specific - main branch uses #1e1e1e for canvas, #1a1a1a for panels */
-  --theme-canvas: #1e1e1e; /* main branch FlowVisualizer background */
-  --theme-panel: #1a1a1a; /* FlowIDEView panels */
-  --theme-panel-foreground: #cccccc;
-  --theme-panel-border: #30363d;
-  --theme-panel-header: #0f1115; /* ConsolidatedSidePanel tab bar bg */
-
-  /* Code/Monaco specific */
-  --theme-code-background: #1e1e1e;
-
-  /* Status colors */
-  --theme-success: #22c55e;
-  --theme-success-foreground: #000000;
-  --theme-warning: #fb8500;
-  --theme-warning-foreground: #000000;
-  --theme-info: #1f6feb;
-  --theme-info-foreground: #ffffff;
-
-  /* Flow/Edge colors - exact hex from main branch */
-  --theme-edge-default: #9ca3af; /* gray-400 */
-  --theme-edge-highlighted: #9333ea; /* purple */
-  --theme-edge-success: #22c55e; /* green-500 */
-  --theme-edge-muted: #6b7280; /* gray-500 */
-  --theme-edge-schedule: #60a5fa; /* blue-400 */
-
-  /* Node colors */
-  --theme-node-bg: #1f2937; /* neutral-800 */
-  --theme-node-border: #4b5563; /* neutral-600 */
-
-  /* Node button colors */
-  --theme-node-badge-bg: rgba(245, 245, 244, 0.95);
-  --theme-node-badge-text: rgba(23, 23, 23, 0.95);
-  --theme-node-badge-border: rgba(212, 212, 211, 0.8);
-  --theme-node-badge-selected: rgba(99, 102, 241, 0.9);
-  --theme-node-output-bg: rgba(23, 23, 23, 0.95);
-  --theme-node-output-text: rgba(245, 245, 244, 0.95);
-  --theme-node-output-border: rgba(64, 64, 64, 0.8);
-  --theme-node-error-bg: rgba(239, 68, 68, 0.9);
-  --theme-node-error-border: #dc2626;
-
-  /* Scrollbar - main branch uses #3a3f45, #4b5563 */
-  --scrollbar-thumb: #3a3f45;
-  --scrollbar-thumb-hover: #4b5563;
-
-  /* Toast colors - exact from main branch */
-  --theme-toast-success: #238636;
-  --theme-toast-error: #da3633;
-  --theme-toast-info: #1f6feb;
-  --theme-toast-warning: #fb8500;
-
-  /* ============================================
-     Pre-computed opacity variants for Tailwind v4 (dark theme)
-     ============================================ */
-
-  /* Foreground opacity variants - using lighter gray for better readability */
-  /* Tailwind gray-200 (#e5e7eb = rgb(229, 231, 235)) for primary text */
-  --theme-foreground-60: rgb(229 231 235 / 60%);
-  --theme-foreground-80: rgb(229 231 235 / 80%);
-  --theme-foreground-90: rgb(229 231 235 / 90%);
-
-  /* Muted opacity variants - using Tailwind gray-800 for better visual match */
-  /* Tailwind gray-800 (#1f2937 = rgb(31, 41, 55)) instead of VS Code gray */
-  --theme-muted-20: rgb(31 41 55 / 20%);
-  --theme-muted-30: rgb(31 41 55 / 30%);
-  --theme-muted-40: rgb(31 41 55 / 40%);
-  --theme-muted-50: rgb(31 41 55 / 50%);
-  --theme-muted-60: rgb(31 41 55 / 60%);
-  --theme-muted-80: rgb(31 41 55 / 80%);
-
-  /* Background opacity variants */
-  --theme-background-20: rgb(15 15 35 / 20%);
-  --theme-background-50: rgb(15 15 35 / 50%);
-  --theme-background-80: rgb(15 15 35 / 80%);
-
-  /* Card opacity variants */
-  --theme-card-30: rgb(26 26 26 / 30%);
-  --theme-card-40: rgb(26 26 26 / 40%);
-  --theme-card-60: rgb(26 26 26 / 60%);
-  --theme-card-80: rgb(26 26 26 / 80%);
-
-  /* Border opacity variants - Tailwind gray-700 (#374151 = rgb(55, 65, 81)) */
-  --theme-border-30: rgb(55 65 81 / 30%);
-  --theme-border-50: rgb(55 65 81 / 50%);
-  --theme-border-80: rgb(55 65 81 / 80%);
-
-  /* Primary opacity variants */
-  --theme-primary-20: rgb(147 51 234 / 20%);
-  --theme-primary-30: rgb(147 51 234 / 30%);
-  --theme-primary-40: rgb(147 51 234 / 40%);
-  --theme-primary-80: rgb(147 51 234 / 80%);
-  --theme-primary-90: rgb(147 51 234 / 90%);
-
-  /* Secondary opacity variants - Tailwind gray-700 (#374151 = rgb(55, 65, 81)) */
-  --theme-secondary-80: rgb(55 65 81 / 80%);
-
-  /* Destructive opacity variants */
-  --theme-destructive-5: rgb(218 54 51 / 5%);
-  --theme-destructive-10: rgb(218 54 51 / 10%);
-  --theme-destructive-20: rgb(218 54 51 / 20%);
-  --theme-destructive-30: rgb(218 54 51 / 30%);
-  --theme-destructive-50: rgb(218 54 51 / 50%);
-  --theme-destructive-80: rgb(218 54 51 / 80%);
-  --theme-destructive-90: rgb(218 54 51 / 90%);
-
-  /* Info opacity variants */
-  --theme-info-10: rgb(31 111 235 / 10%);
-  --theme-info-20: rgb(31 111 235 / 20%);
-  --theme-info-30: rgb(31 111 235 / 30%);
-  --theme-info-50: rgb(31 111 235 / 50%);
-  --theme-info-80: rgb(31 111 235 / 80%);
-  --theme-info-90: rgb(31 111 235 / 90%);
-
-  /* Success opacity variants */
-  --theme-success-10: rgb(34 197 94 / 10%);
-  --theme-success-20: rgb(34 197 94 / 20%);
-  --theme-success-30: rgb(34 197 94 / 30%);
-  --theme-success-50: rgb(34 197 94 / 50%);
-  --theme-success-80: rgb(34 197 94 / 80%);
-  --theme-success-90: rgb(34 197 94 / 90%);
-
-  /* Warning opacity variants */
-  --theme-warning-5: rgb(251 133 0 / 5%);
-  --theme-warning-10: rgb(251 133 0 / 10%);
-  --theme-warning-20: rgb(251 133 0 / 20%);
-  --theme-warning-30: rgb(251 133 0 / 30%);
-  --theme-warning-50: rgb(251 133 0 / 50%);
-  --theme-warning-80: rgb(251 133 0 / 80%);
-
-  /* Ring opacity variants */
-  --theme-ring-20: rgb(147 51 234 / 20%);
-}
-
-/* ============================================
-   Tailwind v4 Theme Configuration
-   Reference --theme-* CSS custom properties for dynamic theming
-   ============================================ */
-
-@theme inline {
-  --color-background: var(--theme-background);
-  --color-foreground: var(--theme-foreground);
-
-  --color-card: var(--theme-card);
-  --color-card-foreground: var(--theme-card-foreground);
-
-  --color-popover: var(--theme-popover);
-  --color-popover-foreground: var(--theme-popover-foreground);
-
-  --color-primary: var(--theme-primary);
-  --color-primary-foreground: var(--theme-primary-foreground);
-
-  --color-secondary: var(--theme-secondary);
-  --color-secondary-foreground: var(--theme-secondary-foreground);
-
-  --color-muted: var(--theme-muted);
-  --color-muted-foreground: var(--theme-muted-foreground);
-
-  --color-accent: var(--theme-accent);
-  --color-accent-foreground: var(--theme-accent-foreground);
-
-  --color-destructive: var(--theme-destructive);
-  --color-destructive-foreground: var(--theme-destructive-foreground);
-
-  --color-border: var(--theme-border);
-  --color-input: var(--theme-input);
-  --color-ring: var(--theme-ring);
-
-  --color-sidebar: var(--theme-sidebar);
-  --color-sidebar-foreground: var(--theme-sidebar-foreground);
-  --color-sidebar-border: var(--theme-sidebar-border);
-  --color-sidebar-hover: var(--theme-sidebar-hover);
-  --color-sidebar-active: var(--theme-sidebar-active);
-  --color-sidebar-tooltip: var(--theme-sidebar-tooltip);
-
-  --color-canvas: var(--theme-canvas);
-  --color-panel: var(--theme-panel);
-  --color-panel-foreground: var(--theme-panel-foreground);
-  --color-panel-border: var(--theme-panel-border);
-  --color-panel-header: var(--theme-panel-header);
-
-  --color-code-background: var(--theme-code-background);
-
-  --color-success: var(--theme-success);
-  --color-success-foreground: var(--theme-success-foreground);
-  --color-warning: var(--theme-warning);
-  --color-warning-foreground: var(--theme-warning-foreground);
-  --color-info: var(--theme-info);
-  --color-info-foreground: var(--theme-info-foreground);
-
-  --color-edge-default: var(--theme-edge-default);
-  --color-edge-highlighted: var(--theme-edge-highlighted);
-  --color-edge-success: var(--theme-edge-success);
-  --color-edge-muted: var(--theme-edge-muted);
-  --color-edge-schedule: var(--theme-edge-schedule);
-
-  --color-node-bg: var(--theme-node-bg);
-  --color-node-border: var(--theme-node-border);
-
-  --color-node-badge-bg: var(--theme-node-badge-bg);
-  --color-node-badge-text: var(--theme-node-badge-text);
-  --color-node-badge-border: var(--theme-node-badge-border);
-  --color-node-badge-selected: var(--theme-node-badge-selected);
-  --color-node-output-bg: var(--theme-node-output-bg);
-  --color-node-output-text: var(--theme-node-output-text);
-  --color-node-output-border: var(--theme-node-output-border);
-  --color-node-error-bg: var(--theme-node-error-bg);
-  --color-node-error-border: var(--theme-node-error-border);
-
-  /* Pre-computed opacity variants */
-  --color-foreground-60: var(--theme-foreground-60);
-  --color-foreground-80: var(--theme-foreground-80);
-  --color-foreground-90: var(--theme-foreground-90);
-
-  --color-muted-20: var(--theme-muted-20);
-  --color-muted-30: var(--theme-muted-30);
-  --color-muted-40: var(--theme-muted-40);
-  --color-muted-50: var(--theme-muted-50);
-  --color-muted-60: var(--theme-muted-60);
-  --color-muted-80: var(--theme-muted-80);
-
-  --color-background-20: var(--theme-background-20);
-  --color-background-50: var(--theme-background-50);
-  --color-background-80: var(--theme-background-80);
-
-  --color-card-30: var(--theme-card-30);
-  --color-card-40: var(--theme-card-40);
-  --color-card-60: var(--theme-card-60);
-  --color-card-80: var(--theme-card-80);
-
-  --color-border-30: var(--theme-border-30);
-  --color-border-50: var(--theme-border-50);
-  --color-border-80: var(--theme-border-80);
-
-  --color-primary-20: var(--theme-primary-20);
-  --color-primary-30: var(--theme-primary-30);
-  --color-primary-40: var(--theme-primary-40);
-  --color-primary-80: var(--theme-primary-80);
-  --color-primary-90: var(--theme-primary-90);
-
-  --color-secondary-80: var(--theme-secondary-80);
-
-  --color-destructive-5: var(--theme-destructive-5);
-  --color-destructive-10: var(--theme-destructive-10);
-  --color-destructive-20: var(--theme-destructive-20);
-  --color-destructive-30: var(--theme-destructive-30);
-  --color-destructive-50: var(--theme-destructive-50);
-  --color-destructive-80: var(--theme-destructive-80);
-  --color-destructive-90: var(--theme-destructive-90);
-
-  --color-info-10: var(--theme-info-10);
-  --color-info-20: var(--theme-info-20);
-  --color-info-30: var(--theme-info-30);
-  --color-info-50: var(--theme-info-50);
-  --color-info-80: var(--theme-info-80);
-  --color-info-90: var(--theme-info-90);
-
-  --color-success-10: var(--theme-success-10);
-  --color-success-20: var(--theme-success-20);
-  --color-success-30: var(--theme-success-30);
-  --color-success-50: var(--theme-success-50);
-  --color-success-80: var(--theme-success-80);
-  --color-success-90: var(--theme-success-90);
-
-  --color-warning-5: var(--theme-warning-5);
-  --color-warning-10: var(--theme-warning-10);
-  --color-warning-20: var(--theme-warning-20);
-  --color-warning-30: var(--theme-warning-30);
-  --color-warning-50: var(--theme-warning-50);
-  --color-warning-80: var(--theme-warning-80);
-
-  --color-ring-20: var(--theme-ring-20);
-
-  /* Radius */
-  --radius-lg: 0.5rem;
-  --radius-md: calc(0.5rem - 2px);
-  --radius-sm: calc(0.5rem - 4px);
 }
 
 * {
@@ -527,9 +25,7 @@ html.dark {
 .monaco-editor *:not(.codicon),
 .monaco-editor-container,
 .monaco-editor-container *:not(.codicon) {
-  font-family:
-    'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace',
-    'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
 }
 
 /* Ensure codicon icons use the correct font - MUST come after Monaco editor rules */
@@ -553,23 +49,21 @@ html.dark {
 /* JSON output code font */
 .json-output,
 .json-output * {
-  font-family:
-    'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace',
-    'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: var(--theme-background);
-  color: var(--theme-foreground);
+  background-color: #0f0f23;
+  color: #cccccc;
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 /* Thin, minimal scrollbar for prompt and other scroll areas */
 .thin-scrollbar {
   scrollbar-width: thin; /* Firefox */
-  scrollbar-color: var(--scrollbar-thumb) transparent; /* Firefox */
+  scrollbar-color: #3a3f45 transparent; /* Firefox */
   scrollbar-gutter: stable; /* Keeps content from shifting */
 }
 
@@ -582,14 +76,14 @@ body {
 }
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
+  background-color: #3a3f45;
   border-radius: 9999px;
   border: 2px solid transparent; /* creates a slim pill */
   background-clip: content-box;
 }
 
 .thin-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-hover);
+  background-color: #4b5563;
 }
 
 /* Ensure Monaco Editor containers have proper height */
@@ -611,150 +105,144 @@ body {
 
 /* Monaco Editor highlighting styles */
 .monaco-editor .highlighted-line {
-  background-color: oklch(55.3% 0.267 293.4 / 15%) !important;
-  border-left: 3px solid var(--theme-primary) !important;
+  background-color: rgba(
+    147,
+    51,
+    234,
+    0.15
+  ) !important; /* Purple highlight with transparency */
+  border-left: 3px solid #9333ea !important;
   animation: highlight-pulse 0.5s ease-in-out;
 }
 
 .monaco-editor .highlighted-line-margin {
-  background-color: oklch(55.3% 0.267 293.4 / 20%) !important;
-  border-left: 3px solid var(--theme-primary) !important;
+  background-color: rgba(147, 51, 234, 0.2) !important;
+  border-left: 3px solid #9333ea !important;
 }
 
 .monaco-editor .highlighted-line-inline {
-  background-color: oklch(55.3% 0.267 293.4 / 20%) !important;
-  border-left: 3px solid var(--theme-primary) !important;
+  background-color: rgba(147, 51, 234, 0.2) !important;
+  border-left: 3px solid #9333ea !important;
 }
 
 .monaco-editor .highlighted-line-glyph {
-  background-color: oklch(55.3% 0.267 293.4 / 30%) !important;
-  border-left: 3px solid var(--theme-primary) !important;
+  background-color: rgba(147, 51, 234, 0.3) !important;
+  border-left: 3px solid #9333ea !important;
 }
 
 .monaco-editor .highlighted-line-after {
-  color: var(--theme-primary) !important;
+  color: #9333ea !important;
   font-weight: bold !important;
   padding-left: 6px;
 }
 
 .monaco-editor .highlighted-line-before {
-  color: var(--theme-primary) !important;
+  color: #9333ea !important;
   font-weight: bold !important;
   margin-right: 4px;
 }
 
 /* Range highlighting styles */
 .monaco-editor .highlighted-range {
-  background-color: oklch(59.6% 0.177 145.4 / 20%) !important;
-  border-left: 3px solid var(--theme-success) !important;
+  background-color: rgba(34, 197, 94, 0.2) !important;
+  border-left: 3px solid #22c55e !important;
   animation: range-highlight-pulse 2s ease-in-out infinite !important;
 }
 
 .monaco-editor .highlighted-range-margin {
-  background-color: oklch(59.6% 0.177 145.4 / 30%) !important;
-  border-left: 3px solid var(--theme-success) !important;
+  background-color: rgba(34, 197, 94, 0.3) !important;
+  border-left: 3px solid #22c55e !important;
 }
 
 .monaco-editor .highlighted-range-inline {
-  background-color: oklch(59.6% 0.177 145.4 / 10%) !important;
+  background-color: rgba(34, 197, 94, 0.1) !important;
 }
 
 .monaco-editor .highlighted-range-glyph {
-  color: var(--theme-success) !important;
+  color: #22c55e !important;
   font-weight: bold !important;
 }
 
 .monaco-editor .highlighted-range-after {
-  color: var(--theme-success) !important;
+  color: #22c55e !important;
   font-weight: bold !important;
 }
 
 .monaco-editor .highlighted-range-before {
-  color: var(--theme-success) !important;
+  color: #22c55e !important;
   font-weight: bold !important;
 }
 
 @keyframes highlight-pulse {
   0% {
-    background-color: oklch(55.3% 0.267 293.4 / 30%);
+    background-color: rgba(147, 51, 234, 0.3);
   }
   50% {
-    background-color: oklch(55.3% 0.267 293.4 / 10%);
+    background-color: rgba(147, 51, 234, 0.1);
   }
   100% {
-    background-color: oklch(55.3% 0.267 293.4 / 15%);
+    background-color: rgba(147, 51, 234, 0.15);
   }
 }
 
 @keyframes range-highlight-pulse {
   0% {
-    background-color: oklch(59.6% 0.177 145.4 / 20%);
+    background-color: rgba(34, 197, 94, 0.2);
   }
   50% {
-    background-color: oklch(59.6% 0.177 145.4 / 10%);
+    background-color: rgba(34, 197, 94, 0.1);
   }
   100% {
-    background-color: oklch(59.6% 0.177 145.4 / 15%);
+    background-color: rgba(34, 197, 94, 0.15);
   }
 }
 
 @keyframes border-flash {
-  0%,
-  100% {
-    border-color: var(--theme-border);
+  0%, 100% {
+    border-color: rgb(71, 85, 105);
   }
   50% {
-    border-color: var(--theme-muted-foreground);
+    border-color: rgb(100, 116, 139);
   }
 }
 
-/* Toast customizations - theme aware */
+/* Toast customizations for dark theme */
 .Toastify__toast-container {
-  font-family:
-    ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo,
-    monospace;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 .Toastify__toast {
-  background: var(--theme-card) !important;
-  border: 1px solid var(--theme-border) !important;
-  color: var(--theme-card-foreground) !important;
+  background: #161b22 !important;
+  border: 1px solid #30363d !important;
+  color: #e6edf3 !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 12px oklch(0% 0 0 / 15%) !important;
-}
-
-html.dark .Toastify__toast {
-  box-shadow: 0 4px 12px oklch(0% 0 0 / 30%) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
 .Toastify__toast--success {
-  border-color: var(--theme-toast-success) !important;
+  border-color: #238636 !important;
 }
 
 .Toastify__toast--error {
-  border-color: var(--theme-toast-error) !important;
+  border-color: #da3633 !important;
 }
 
 .Toastify__toast--info {
-  border-color: var(--theme-toast-info) !important;
+  border-color: #1f6feb !important;
 }
 
 .Toastify__toast--warning {
-  border-color: var(--theme-toast-warning) !important;
+  border-color: #fb8500 !important;
 }
 
 .Toastify__progress-bar {
-  background: linear-gradient(
-    90deg,
-    var(--theme-toast-info),
-    var(--theme-toast-success)
-  ) !important;
+  background: linear-gradient(90deg, #1f6feb, #238636) !important;
 }
 
 .Toastify__close-button {
-  color: var(--theme-muted-foreground) !important;
+  color: #7d8590 !important;
 }
 
 .Toastify__close-button:hover {
-  color: var(--theme-foreground) !important;
+  color: #e6edf3 !important;
 }
