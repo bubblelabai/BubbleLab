@@ -1516,8 +1516,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         // Parent bubble needs bottom handle, each step container needs top handle
         if (bubble.dependencyGraph.functionCallChildren?.length) {
           markHandleUsed(parentNodeId, 'bottom'); // Source handle on parent bubble
+          // Use the same invocation suffix format as when creating step containers
+          const invocationSuffix = bubble.invocationCallSiteKey
+            ? `-${bubble.invocationCallSiteKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+            : '';
           bubble.dependencyGraph.functionCallChildren.forEach((funcCall) => {
-            const stepNodeId = `custom-tool-${funcCall.variableId}`;
+            const stepNodeId = `custom-tool-${funcCall.variableId}${invocationSuffix}`;
             markHandleUsed(stepNodeId, 'top'); // Target handle on step container
           });
         }
@@ -1739,7 +1743,12 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
 
           funcCallChildren.forEach((funcCall, funcIdx) => {
             // Create step container node for each custom tool function
-            const stepNodeId = `custom-tool-${funcCall.variableId}`;
+            // Include invocation context to make the ID unique when the same method is called multiple times
+            // Sanitize the invocation key to only contain React Flow compatible characters (alphanumeric, _, -)
+            const invocationSuffix = bubble.invocationCallSiteKey
+              ? `-${bubble.invocationCallSiteKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+              : '';
+            const stepNodeId = `custom-tool-${funcCall.variableId}${invocationSuffix}`;
 
             // Get bubble IDs from children
             const customToolBubbleIds = funcCall.children
