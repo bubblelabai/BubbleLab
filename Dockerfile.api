@@ -19,7 +19,7 @@ RUN cd packages/bubble-shared-schemas && pnpm run build
 RUN cd packages/bubble-core && pnpm run build
 RUN cd packages/bubble-runtime && pnpm run build
 
-# Stage 2: Build bubblelab-api with Bun
+# Stage 2: Runtime with Bun
 FROM oven/bun:1.1.38-debian AS runtime
 
 # Install Python and pip
@@ -27,28 +27,36 @@ RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/
 
 WORKDIR /app
 
-# Copy workspace from builder
+# Copy built workspace from builder (includes node_modules with workspace links)
 COPY --from=builder /workspace ./
 
 # Install Python requirements
-RUN pip3 install -r packages/bubble-core/scripts/requirements.txt
+RUN pip3 install -r packages/bubble-core/scripts/requirements.txt --break-system-packages
 
 # Accept DATABASE_URL at build time and expose it to subsequent steps
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
 ENV PYTHON_PATH=/usr/bin/python3
 
-# Reinstall dependencies for correct architecture (skip postinstall scripts)
-RUN bun install --frozen-lockfile --ignore-scripts
+# Link workspace packages manually for bun resolution
+RUN mkdir -p node_modules/@bubblelab && \
+    ln -sf /app/packages/bubble-core node_modules/@bubblelab/bubble-core && \
+    ln -sf /app/packages/bubble-runtime node_modules/@bubblelab/bubble-runtime && \
+    ln -sf /app/packages/bubble-shared-schemas node_modules/@bubblelab/shared-schemas
 
 # Set working directory to API
 WORKDIR /app/apps/bubblelab-api
 
+# Link workspace packages in API's node_modules too
+RUN mkdir -p node_modules/@bubblelab && \
+    ln -sf /app/packages/bubble-core node_modules/@bubblelab/bubble-core && \
+    ln -sf /app/packages/bubble-runtime node_modules/@bubblelab/bubble-runtime && \
+    ln -sf /app/packages/bubble-shared-schemas node_modules/@bubblelab/shared-schemas
 
 # Create data directory
 RUN mkdir -p data
 
-
 EXPOSE 3001
-# Generate schema and run migrations at startup, then start the app
-CMD ["sh", "-c", "bun run src/index.ts"]
+
+# Run directly with bun (no build step needed)
+CMD ["bun", "run", "src/index.ts"]
