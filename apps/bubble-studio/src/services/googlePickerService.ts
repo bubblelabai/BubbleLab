@@ -4,16 +4,31 @@
  * Handles OAuth flows and Picker initialization for Google Drive file selection.
  */
 
-import { credentialsApi } from './credentialsApi';
 import { cachePickerToken } from '../utils/googlePickerCache';
 import { GOOGLE_API_KEY, GOOGLE_OAUTH_CLIENT_ID } from '../env';
-import type { CredentialResponse } from '@bubblelab/shared-schemas';
 
 // Google Picker API types
 declare global {
   interface Window {
-    gapi: any;
-    google: any;
+    gapi: unknown;
+    google: {
+      picker?: unknown;
+      accounts?: {
+        oauth2?: {
+          initTokenClient: (config: {
+            client_id: string;
+            scope: string;
+            callback: (response: {
+              error?: string;
+              access_token?: string;
+              hd?: string;
+              email?: string;
+            }) => void;
+            error_callback: (error: unknown) => void;
+          }) => { requestAccessToken: (options: { prompt: string }) => void };
+        };
+      };
+    };
   }
 }
 
@@ -32,18 +47,27 @@ export interface GooglePickerConfig {
 /**
  * Get the appropriate Google Picker View ID based on file type
  */
-export const getPickerViewId = (fileType: GooglePickerFileType): any => {
+export const getPickerViewId = (fileType: GooglePickerFileType): unknown => {
   if (!window.google?.picker) return null;
+
+  const picker = window.google.picker as {
+    ViewId: {
+      SPREADSHEETS: unknown;
+      DOCUMENTS: unknown;
+      FOLDERS: unknown;
+      DOCS: unknown;
+    };
+  };
 
   switch (fileType) {
     case 'spreadsheet':
-      return window.google.picker.ViewId.SPREADSHEETS;
+      return picker.ViewId.SPREADSHEETS;
     case 'document':
-      return window.google.picker.ViewId.DOCUMENTS;
+      return picker.ViewId.DOCUMENTS;
     case 'folder':
-      return window.google.picker.ViewId.FOLDERS;
+      return picker.ViewId.FOLDERS;
     default:
-      return window.google.picker.ViewId.DOCS;
+      return picker.ViewId.DOCS;
   }
 };
 
@@ -57,10 +81,15 @@ export const requestPickerAccessToken = async (
 
   return new Promise((resolve, reject) => {
     try {
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+      const tokenClient = window.google.accounts!.oauth2!.initTokenClient({
         client_id: GOOGLE_OAUTH_CLIENT_ID!,
         scope: 'https://www.googleapis.com/auth/drive.readonly',
-        callback: (response: any) => {
+        callback: (response: {
+          error?: string;
+          access_token?: string;
+          hd?: string;
+          email?: string;
+        }) => {
           if (response.error) {
             console.error('Token request error:', response);
             onLoadingChange(false);
@@ -81,11 +110,11 @@ export const requestPickerAccessToken = async (
 
           // Got the token! Cache it for future use
           const accountEmail = response.hd || response.email || 'default';
-          cachePickerToken(response.access_token, accountEmail);
+          cachePickerToken(response.access_token!, accountEmail);
 
-          resolve(response.access_token);
+          resolve(response.access_token!);
         },
-        error_callback: (error: any) => {
+        error_callback: (error: unknown) => {
           console.error('Token client error:', error);
           onLoadingChange(false);
           reject(new Error('Failed to initialize token client'));
@@ -116,29 +145,57 @@ export const showPicker = (
       throw new Error('Invalid file type');
     }
 
+    type PickerBuilder = {
+      setOAuthToken: (token: string) => PickerBuilder;
+      setDeveloperKey: (key: string) => PickerBuilder;
+      setAppId: (id: string) => PickerBuilder;
+      addView: (view: unknown) => PickerBuilder;
+      setCallback: (
+        callback: (data: {
+          action: string;
+          docs?: Array<{ id: string; name: string }>;
+        }) => void
+      ) => PickerBuilder;
+      build: () => { setVisible: (visible: boolean) => void };
+    };
+
+    const googlePicker = window.google.picker as {
+      PickerBuilder: new () => PickerBuilder;
+      Action: {
+        PICKED: string;
+        CANCEL: string;
+      };
+    };
+
     // Create the picker
-    const picker = new window.google.picker.PickerBuilder()
+    const pickerBuilder = new googlePicker.PickerBuilder();
+    const builtPicker = pickerBuilder
       .setOAuthToken(accessToken)
       .setDeveloperKey(GOOGLE_API_KEY!)
       .setAppId(GOOGLE_OAUTH_CLIENT_ID!)
       .addView(viewId)
-      .setCallback((data: any) => {
-        if (data.action === window.google.picker.Action.PICKED) {
-          const file = data.docs[0];
-          const fileId = file.id;
-          const fileName = file.name;
+      .setCallback(
+        (data: {
+          action: string;
+          docs?: Array<{ id: string; name: string }>;
+        }) => {
+          if (data.action === googlePicker.Action.PICKED) {
+            const file = data.docs![0];
+            const fileId = file.id;
+            const fileName = file.name;
 
-          console.log('File selected:', { fileId, fileName });
-          onSelect(fileId, fileName);
-          onLoadingChange(false);
-        } else if (data.action === window.google.picker.Action.CANCEL) {
-          onLoadingChange(false);
+            console.log('File selected:', { fileId, fileName });
+            onSelect(fileId, fileName);
+            onLoadingChange(false);
+          } else if (data.action === googlePicker.Action.CANCEL) {
+            onLoadingChange(false);
+          }
         }
-      })
+      )
       .build();
 
     // Show the picker
-    picker.setVisible(true);
+    builtPicker.setVisible(true);
   } catch (error) {
     console.error('Error showing picker:', error);
     onLoadingChange(false);

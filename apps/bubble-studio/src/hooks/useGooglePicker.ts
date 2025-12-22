@@ -96,7 +96,18 @@ async function loadGooglePickerApi(): Promise<boolean> {
 
     // Load the Picker library
     await new Promise<void>((resolve, reject) => {
-      window.gapi.load('picker', {
+      const gapi = window.gapi as {
+        load: (
+          api: string,
+          options: {
+            callback: () => void;
+            onerror: () => void;
+            timeout: number;
+            ontimeout: () => void;
+          }
+        ) => void;
+      };
+      gapi.load('picker', {
         callback: () => {
           console.log('✅ Loaded Google Picker library');
           resolve();
