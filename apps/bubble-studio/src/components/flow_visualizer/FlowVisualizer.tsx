@@ -22,7 +22,6 @@ import {
   calculateCustomToolContainerHeight,
   calculateCustomToolBubblePosition,
   STEP_CONTAINER_LAYOUT,
-  CUSTOM_TOOL_LAYOUT,
 } from './stepContainerUtils';
 import { calculateSubbubblePositionWithContext } from './nodePositioning';
 import { FLOW_LAYOUT } from './flowLayoutConstants';
