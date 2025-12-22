@@ -30,9 +30,8 @@ WORKDIR /app
 # Copy built workspace from builder (includes node_modules with workspace links)
 COPY --from=builder /workspace ./
 
-# Install Python requirements (use --root-user-action=ignore for older pip versions)
-RUN pip3 install --upgrade pip && pip3 install -r packages/bubble-core/scripts/requirements.txt || \
-    pip3 install -r packages/bubble-core/scripts/requirements.txt --break-system-packages
+# Install Python requirements
+RUN pip3 install -r packages/bubble-core/scripts/requirements.txt
 
 # Accept DATABASE_URL at build time and expose it to subsequent steps
 ARG DATABASE_URL
