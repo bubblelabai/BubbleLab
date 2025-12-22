@@ -16,7 +16,7 @@ export function sanitizeScript(code: string): string {
   // Step 1: First replace process['env'] and process["env"] patterns BEFORE protecting strings
   // This is necessary because the string protection would match "env" as a string literal
   // e.g., process['env'].FOO, process['env']['FOO'], process["env"].BAR
-  let transformedCode = code.replace(
+  const transformedCode = code.replace(
     /process\s*\[\s*['"]env['"]\s*\](\s*(\[['"`]?[^'"`\]]+['"`]?\]|\.\w+))*/g,
     throwError
   );
