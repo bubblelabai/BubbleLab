@@ -1,0 +1,7 @@
+# Force Railway to use Dockerfile instead of Nixpacks/Railpack
+# This file tells Railway to skip automatic detection
+[phases.build]
+cmds = []
+
+[start]
+cmd = ""
