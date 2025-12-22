@@ -3,17 +3,50 @@ import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
 import { BubbleFactory, WorkflowNode } from '@bubblelab/bubble-core';
 import { BubbleInjector } from '../injection/BubbleInjector';
 import { validateBubbleFlow } from '../validation/index';
+
+/**
+ * Utility function to validate that a BubbleRunner's script is valid after execution.
+ * This should be called after runAll() to ensure the injected code didn't break the script.
+ */
+async function expectValidScript(
+  runner: BubbleRunner,
+  logOnError = false
+): Promise<void> {
+  expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+
+  const parseResult = await validateBubbleFlow(
+    runner.bubbleScript.bubblescript,
+    false
+  );
+
+  if (!parseResult.valid && logOnError) {
+    console.log('=== Invalid Script ===');
+    console.log(runner.bubbleScript.bubblescript);
+    console.log('=== Validation Errors ===');
+    console.log(parseResult.errors);
+  }
+
+  expect(parseResult.valid).toBe(true);
+}
+
 describe('BubbleRunner correctly runs and plans', () => {
   const bubbleFactory = new BubbleFactory();
-  const redditLeadFinderScript = getFixture('reddit-lead-finder');
-  const imageGenerationFlowScript = getFixture('image-generation-flow');
-  const multipleActionCallsScript = getFixture('mulitple-action-calls');
   const helloWorldScript = getFixture('hello-world');
-  const helloWorldMultipleScript = getFixture('hello-world-multiple');
   const researchWeatherScript = getFixture('research-weather');
   const simpleHttpScript = getFixture('simple-http');
-  const helloWorldNoPayloadScript = getFixture('hello-world-no-payload');
-  const methodInsideHandlerScript = getFixture('method-inside-handler');
+  const maliciousProcessEnvScript = getFixture('malicious-process-env');
+  const maliciousProcessEnvBracketScript = getFixture(
+    'malicious-process-env-bracket'
+  );
+  const maliciousProcessEnvStandaloneScript = getFixture(
+    'malicious-process-env-standalone'
+  );
+  const maliciousProcessBracketEnvScript = getFixture(
+    'malicious-process-bracket-env'
+  );
+  const legitimateProcessEnvStringScript = getFixture(
+    'legitimate-process-env-string'
+  );
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -395,15 +428,11 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        // Make sure the script passes parsing (final script)
-        const code = runner.bubbleScript.bubblescript;
-        const parseResult = await validateBubbleFlow(code, false);
-        expect(parseResult.valid).toBe(true);
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
         expect(
           result.success || result.error?.includes('credential')
         ).toBeTruthy();
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it('should execute a flow with a content creation step', async () => {
         const testScript = getFixture('content-creation-step');
@@ -412,20 +441,8 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        // console.log('Result:', runner.bubbleScript.bubblescript);
-        // Check validation result
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          false
-        );
-        if (!parseResult.valid) {
-          console.log(runner.bubbleScript.bubblescript);
-          console.log(parseResult.errors);
-        }
-        expect(parseResult.valid).toBe(true);
-        console.log(result.error);
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it('should execute a flow with a for and promises flow', async () => {
         const testScript = getFixture('for-and-promises-flow');
@@ -433,13 +450,13 @@ describe('BubbleRunner correctly runs and plans', () => {
           pricingTable: {},
         });
         runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
-        //Check script is valid
+
+        // Note: parsingErrors check was previously commented out for this test
         const parseResult = await validateBubbleFlow(
           runner.bubbleScript.bubblescript,
           true
         );
         expect(parseResult.valid).toBe(true);
-        // expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it('should execute a flow with a research agent step', async () => {
         const testScript = getFixture('research-agent-step');
@@ -447,19 +464,9 @@ describe('BubbleRunner correctly runs and plans', () => {
           pricingTable: {},
         });
         const result = await runner.runAll();
-        expect(result).toBeDefined();
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          false
-        );
-        if (!parseResult.valid) {
-          console.log(runner.bubbleScript.bubblescript);
-          console.log(parseResult.errors);
-        }
-        expect(parseResult.valid).toBe(true);
 
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+        await expectValidScript(runner, true);
+        expect(result).toBeDefined();
       });
       it('should correctly inject logging for method calls inside if-body (not condition)', async () => {
         const testScript = getFixture('weather-deep-research');
@@ -467,14 +474,9 @@ describe('BubbleRunner correctly runs and plans', () => {
           pricingTable: {},
         });
         const result = await runner.runAll();
+
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
-        // validate script
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          true
-        );
-        expect(parseResult.valid).toBe(true);
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it('should execute a flow with a nested condition handle', async () => {
         const testScript = getFixture('nested-condition-hanlde');
@@ -487,17 +489,11 @@ describe('BubbleRunner correctly runs and plans', () => {
           spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
           limit: 5,
         });
+
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
-        //script to be valid
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          true
-        );
-        expect(parseResult.valid).toBe(true);
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
         // Expect saveToSheet to be called
         expect(runner.bubbleScript.bubblescript).toContain('rowsToSave.push');
-        console.log(runner.bubbleScript.bubblescript);
       });
       it('should execute a flow with a complex calender flow', async () => {
         const testScript = getFixture('bracket-less-control-flow');
@@ -505,22 +501,9 @@ describe('BubbleRunner correctly runs and plans', () => {
           pricingTable: {},
         });
         const result = await runner.runAll();
+
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
-        console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          false
-        );
-
-        if (!parseResult.valid) {
-          // console.log(runner.bubbleScript.bubblescript);
-          console.log(parseResult.errors);
-        }
-
-        expect(parseResult.valid).toBe(true);
-
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
       it.skip('should execute a flow with a batch process loop', async () => {
         const testScript = getFixture('batch-process-loop');
@@ -528,14 +511,9 @@ describe('BubbleRunner correctly runs and plans', () => {
           pricingTable: {},
         });
         const result = await runner.runAll();
+
+        await expectValidScript(runner, true);
         expect(result).toBeDefined();
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
-        const parseResult = await validateBubbleFlow(
-          runner.bubbleScript.bubblescript,
-          true
-        );
-        expect(parseResult.valid).toBe(true);
-        expect(runner.bubbleScript.parsingErrors.length).toBe(0);
       });
     });
     it.skip('should execute with mapping function call', async () => {
@@ -544,19 +522,9 @@ describe('BubbleRunner correctly runs and plans', () => {
         pricingTable: {},
       });
       const result = await runner.runAll();
+
+      await expectValidScript(runner, true);
       expect(result).toBeDefined();
-      // Check script is valid
-      const parseResult = await validateBubbleFlow(
-        runner.bubbleScript.bubblescript,
-        false
-      );
-      if (!parseResult.valid) {
-        console.log(runner.bubbleScript.bubblescript);
-        console.log(parseResult.errors);
-      }
-      expect(parseResult.valid).toBe(true);
-      console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
-      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
     });
     it('should execute a flow with a custom tool', async () => {
       const testScript = getFixture('agent-with-custom-tool-flow');
@@ -564,35 +532,9 @@ describe('BubbleRunner correctly runs and plans', () => {
         pricingTable: {},
       });
       const result = await runner.runAll();
+
+      await expectValidScript(runner, true);
       expect(result).toBeDefined();
-      // No parsing errors
-      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
-      // No validation errors
-      const parseResult = await validateBubbleFlow(
-        runner.bubbleScript.bubblescript,
-        false
-      );
-      if (!parseResult.valid) {
-        console.log('=== GENERATED SCRIPT (first 2000 chars) ===');
-        console.log(runner.bubbleScript.bubblescript.substring(0, 2000));
-        console.log('=== VALIDATION ERRORS ===');
-        console.log(parseResult.errors);
-        // Check if customTools still has functions
-        const customToolsMatch = runner.bubbleScript.bubblescript.match(
-          /customTools:\s*\[([\s\S]*?)\]/
-        );
-        if (customToolsMatch) {
-          console.log('=== CUSTOM TOOLS FOUND (first 500 chars) ===');
-          console.log(customToolsMatch[0].substring(0, 500));
-          console.log('Has func:', customToolsMatch[0].includes('func:'));
-        } else {
-          console.log('=== NO CUSTOM TOOLS FOUND IN SCRIPT ===');
-        }
-      }
-      expect(parseResult.valid).toBe(true);
-      console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
-      expect(runner.bubbleScript.parsingErrors.length).toBe(0);
-      console.log('Final script:', runner.bubbleScript.bubblescript);
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {
@@ -621,5 +563,117 @@ describe('BubbleRunner correctly runs and plans', () => {
       ).toBe(false);
       expect(result.success).toBe(true);
     }, 300000); // 5 minutes timeout
+  });
+
+  describe('Security - process.env access prevention', () => {
+    it('should block access to process.env with dot notation', async () => {
+      const runner = new BubbleRunner(
+        maliciousProcessEnvScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // First validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should fail with a security error when trying to access process.env
+      expect(result.success).toBe(false);
+      const errorMessage =
+        typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+      expect(errorMessage).toContain('Access to process.env is not allowed');
+    });
+
+    it('should block access to process.env with bracket notation', async () => {
+      const runner = new BubbleRunner(
+        maliciousProcessEnvBracketScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // First validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should fail with a security error when trying to access process.env
+      expect(result.success).toBe(false);
+      const errorMessage =
+        typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+      expect(errorMessage).toContain('Access to process.env is not allowed');
+    });
+
+    it('should block access to standalone process.env object', async () => {
+      const runner = new BubbleRunner(
+        maliciousProcessEnvStandaloneScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // First validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should fail with a security error when trying to access process.env
+      expect(result.success).toBe(false);
+      const errorMessage =
+        typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+      expect(errorMessage).toContain('Access to process.env is not allowed');
+    });
+
+    it("should block access to process['env'] with bracket notation on env", async () => {
+      const runner = new BubbleRunner(
+        maliciousProcessBracketEnvScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // First validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should fail with a security error when trying to access process['env']
+      expect(result.success).toBe(false);
+      const errorMessage =
+        typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+      expect(errorMessage).toContain('Access to process.env is not allowed');
+    });
+
+    it('should allow process.env mentioned in strings and comments (legitimate use)', async () => {
+      const runner = new BubbleRunner(
+        legitimateProcessEnvStringScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // Validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should succeed because process.env is only in strings/comments
+      expect(result.success).toBe(true);
+    });
   });
 });

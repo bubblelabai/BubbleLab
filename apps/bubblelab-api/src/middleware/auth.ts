@@ -173,7 +173,28 @@ export async function authMiddleware(c: Context, next: Next) {
       try {
         const clerkUser = await clerkClient.users.getUser(userId);
         if (clerkUser) {
-          // Check for plan override in private metadata (for special users who bypass subscription system)
+          // Check for active hackathon offer in private metadata FIRST
+          const hackathonOffer = clerkUser.privateMetadata?.hackathonOffer as
+            | { expiresAt?: string }
+            | undefined;
+
+          if (hackathonOffer?.expiresAt) {
+            const expiresAt = new Date(hackathonOffer.expiresAt);
+            const isOfferActive = expiresAt > new Date();
+
+            if (isOfferActive) {
+              // Apply unlimited access during hackathon offer
+              finalPlan = 'pro_plus' as PLAN_TYPE;
+              finalFeatures = ['base_usage', 'pro_usage'];
+            } else {
+              console.debug(
+                `[authMiddleware] Hackathon offer expired at ${expiresAt.toISOString()}`
+              );
+            }
+          }
+
+          // Check for explicit plan override in private metadata (takes precedence over hackathon offer)
+          // This allows admins to have explicit overrides that supersede hackathon offers
           const privatePlanValue = clerkUser.privateMetadata?.plan;
           if (privatePlanValue) {
             const privatePlan =

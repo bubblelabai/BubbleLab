@@ -13,6 +13,7 @@ import {
   Star,
   Video,
   BookOpen,
+  Settings,
 } from 'lucide-react';
 import { useUser } from '../hooks/useUser';
 import { useGitHubStars } from '../hooks/useGitHubStars';
@@ -197,6 +198,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, ref }) => {
             {!isOpen && (
               <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
                 Credentials
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Settings button */}
+        <div className="mt-2">
+          <div className="relative group">
+            <Link
+              to="/settings"
+              activeProps={{
+                className:
+                  'w-full flex items-center rounded-lg bg-[#21262d] text-gray-200 transition-colors',
+              }}
+              inactiveProps={{
+                className:
+                  'w-full flex items-center rounded-lg hover:bg-[#21262d] text-gray-400 hover:text-gray-200 transition-colors',
+              }}
+              aria-label="Settings"
+            >
+              {/* Fixed icon column */}
+              <span className="w-12 flex-none flex justify-center p-2">
+                <Settings className="w-5 h-5" />
+              </span>
+              {/* Expanding label column */}
+              <span
+                className={`text-sm overflow-hidden whitespace-nowrap transition-all duration-200 ${
+                  isOpen
+                    ? 'opacity-100 max-w-[160px] pr-3'
+                    : 'opacity-0 max-w-0'
+                }`}
+              >
+                Settings
+              </span>
+            </Link>
+            {/* Tooltip when collapsed */}
+            {!isOpen && (
+              <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 whitespace-nowrap rounded bg-[#0f1115] px-2 py-1 text-xs text-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                Settings
               </span>
             )}
           </div>

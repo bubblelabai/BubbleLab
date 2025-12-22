@@ -88,6 +88,7 @@ export const env = {
   POSTHOG_HOST: process.env.POSTHOG_HOST || 'https://us.i.posthog.com',
   POSTHOG_ENABLED: process.env.POSTHOG_ENABLED === 'true',
   WISPR_API_KEY: process.env.WISPR_API_KEY,
+  HACKATHON_COUPON_CODES: process.env.HACKATHON_COUPON_CODES || '',
   isDev:
     process.env.BUBBLE_ENV?.toLowerCase() === 'dev' ||
     process.env.BUBBLE_ENV?.toLowerCase() === 'test',
@@ -130,4 +131,7 @@ console.log('🔧 Environment variables loaded:', {
   POSTHOG_HOST: env.POSTHOG_HOST,
   POSTHOG_ENABLED: env.POSTHOG_ENABLED ? '✅ Enabled' : '❌ Disabled',
   WISPR_API_KEY: env.WISPR_API_KEY ? '✅ Set' : '❌ Missing',
+  HACKATHON_COUPON_CODES: env.HACKATHON_COUPON_CODES
+    ? '✅ Set'
+    : '❌ Not configured',
 });

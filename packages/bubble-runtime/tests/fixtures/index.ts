@@ -63,6 +63,11 @@ export const fixtures = {
   'bracket-less-control-flow': '',
   'agent-with-custom-tool-flow': '',
   'calendar-booking-flow': '',
+  'malicious-process-env': '',
+  'malicious-process-env-bracket': '',
+  'malicious-process-env-standalone': '',
+  'malicious-process-bracket-env': '',
+  'legitimate-process-env-string': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
