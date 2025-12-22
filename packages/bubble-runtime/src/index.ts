@@ -5,3 +5,4 @@ export * from './types';
 export * from './runtime';
 export * from './parse';
 export * from './injection';
+export { sanitizeScript } from './utils/sanitize-script';
