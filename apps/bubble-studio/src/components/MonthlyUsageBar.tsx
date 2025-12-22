@@ -93,6 +93,22 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  // Format hackathon offer expiration date
+  const formatOfferExpiration = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  // Check for active hackathon offer
+  const hasActiveOffer = subscription.hackathonOffer?.isActive;
+  const offerExpiresAt = subscription.hackathonOffer?.expiresAt;
+
   // Centralized error messages
   const limitMessages = {
     credits: {
@@ -174,6 +190,16 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Hackathon offer banner */}
+              {hasActiveOffer && offerExpiresAt && (
+                <div className="mb-3 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="text-xs text-green-400">
+                    Promotional offer active · Unlimited access until{' '}
+                    {formatOfferExpiration(offerExpiresAt)}
+                  </div>
+                </div>
+              )}
 
               {/* Warning message if any limit exceeded */}
               {anyLimitExceeded && (
