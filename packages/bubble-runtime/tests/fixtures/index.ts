@@ -66,6 +66,7 @@ export const fixtures = {
   'malicious-process-env': '',
   'malicious-process-env-bracket': '',
   'malicious-process-env-standalone': '',
+  'malicious-process-bracket-env': '',
   'legitimate-process-env-string': '',
 } as const;
 

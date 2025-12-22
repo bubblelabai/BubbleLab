@@ -41,6 +41,9 @@ describe('BubbleRunner correctly runs and plans', () => {
   const maliciousProcessEnvStandaloneScript = getFixture(
     'malicious-process-env-standalone'
   );
+  const maliciousProcessBracketEnvScript = getFixture(
+    'malicious-process-bracket-env'
+  );
   const legitimateProcessEnvStringScript = getFixture(
     'legitimate-process-env-string'
   );
@@ -624,6 +627,29 @@ describe('BubbleRunner correctly runs and plans', () => {
       const result = await runner.runAll();
 
       // The script should fail with a security error when trying to access process.env
+      expect(result.success).toBe(false);
+      const errorMessage =
+        typeof result.error === 'string'
+          ? result.error
+          : JSON.stringify(result.error);
+      expect(errorMessage).toContain('Access to process.env is not allowed');
+    });
+
+    it("should block access to process['env'] with bracket notation on env", async () => {
+      const runner = new BubbleRunner(
+        maliciousProcessBracketEnvScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // First validate the script is syntactically valid after injection
+      await expectValidScript(runner, true);
+
+      const result = await runner.runAll();
+
+      // The script should fail with a security error when trying to access process['env']
       expect(result.success).toBe(false);
       const errorMessage =
         typeof result.error === 'string'

@@ -5,6 +5,7 @@ import {
   getSubscriptionInfo,
   getAppType,
 } from '../middleware/auth.js';
+import { couponRedemptionRateLimit } from '../middleware/rate-limit.js';
 import {
   PLAN_TYPE,
   APP_PLAN_TO_MONTHLY_LIMITS,
@@ -32,6 +33,17 @@ const app = new OpenAPIHono();
 
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
+
+// Helper: Format date for user-friendly display
+function formatExpirationDate(date: Date): string {
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
 
 // Helper: Parse valid coupon codes from env
 function getValidCouponCodes(): string[] {
@@ -76,6 +88,9 @@ function getActiveHackathonOffer(
     redeemedAt: hackathonOffer.redeemedAt || null,
   };
 }
+
+// Apply rate limiting to redeem endpoint (5 attempts per hour per user)
+app.use('/redeem', couponRedemptionRateLimit);
 
 // POST /subscription/redeem - Redeem a hackathon coupon code
 app.openapi(redeemCouponRoute, async (c) => {
@@ -160,7 +175,7 @@ app.openapi(redeemCouponRoute, async (c) => {
 
     return c.json({
       success: true,
-      message: 'Coupon redeemed successfully! You now have unlimited access.',
+      message: `Coupon redeemed successfully! You now have Pro Plus access until ${formatExpirationDate(expiresAt)}.`,
       expiresAt: expiresAt.toISOString(),
     });
   } catch (err) {
