@@ -62,6 +62,7 @@ export const fixtures = {
   'multiple-bubble-class-flow': '',
   'bracket-less-control-flow': '',
   'agent-with-custom-tool-flow': '',
+  'calendar-booking-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

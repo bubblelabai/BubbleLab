@@ -506,6 +506,76 @@ describe('BubbleInjector.injectCredentials()', () => {
       expect(result.code).toContain('fake-telegram-bot-token-klmno');
       expect(result.code).toContain('fake-gemini-key-system');
     });
+
+    it('should inject Google Gemini credentials for AI agent with custom tools in calendar booking flow', () => {
+      const bubbleScript = getFixture('calendar-booking-flow');
+      const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+      const injector = new BubbleInjector(mockBubbleScript);
+
+      // Find the AI agent bubble
+      const aiAgentBubble = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'ai-agent');
+
+      expect(aiAgentBubble).toBeDefined();
+
+      // Verify the model parameter exists and contains a comment (this is the edge case we're testing)
+      // The model is: { model: 'google/gemini-3-pro-preview', temperature: 0.1 // Low temperature }
+      const modelParam = aiAgentBubble?.parameters.find(
+        (p) => p.name === 'model'
+      );
+      expect(modelParam).toBeDefined();
+      // The model value should contain a comment like "// Low temperature"
+      expect(String(modelParam?.value)).toContain('//');
+
+      // Find the Google Calendar bubble (nested inside customTools)
+      const googleCalendarBubble = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'google-calendar');
+
+      expect(googleCalendarBubble).toBeDefined();
+
+      // Set up credentials - AI agent uses Google Gemini, nested bubble uses Google Calendar
+      const userCredentials: UserCredentialWithId[] = [
+        {
+          bubbleVarId: googleCalendarBubble!.variableId,
+          secret: 'fake-google-calendar-token-for-booking',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+        },
+      ];
+
+      const systemCredentials: Partial<Record<CredentialType, string>> = {
+        [CredentialType.GOOGLE_GEMINI_CRED]:
+          'fake-gemini-key-for-calendar-booking',
+      };
+
+      const result = injector.injectCredentials(
+        userCredentials,
+        systemCredentials
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.injectedCredentials).toBeDefined();
+
+      // Verify Google Gemini credential was injected for the AI agent
+      const geminiCredentialKey = Object.keys(result.injectedCredentials!).find(
+        (key) => key.includes('GOOGLE_GEMINI_CRED')
+      );
+      expect(geminiCredentialKey).toBeDefined();
+
+      // Verify the final script contains both credentials
+      expect(result.code).toContain('fake-gemini-key-for-calendar-booking');
+      expect(result.code).toContain('fake-google-calendar-token-for-booking');
+
+      // Verify the reparsed bubbles have credentials in their parameters
+      const aiAgentAfterInjection = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((b) => b.bubbleName === 'ai-agent');
+      const credentialsParam = aiAgentAfterInjection?.parameters.find(
+        (p) => p.name === 'credentials'
+      );
+      expect(credentialsParam).toBeDefined();
+    });
   });
 
   describe('Error handling', () => {
