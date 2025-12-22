@@ -2,8 +2,10 @@ import { memo, useMemo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import {
   STEP_CONTAINER_LAYOUT,
+  CUSTOM_TOOL_LAYOUT,
   calculateStepContainerHeight,
   calculateHeaderHeight,
+  calculateCustomToolContainerHeight,
 } from '@/components/flow_visualizer/stepContainerUtils';
 import { useExecutionStore } from '@/stores/executionStore';
 import { BUBBLE_COLORS } from '@/components/flow_visualizer/BubbleColors';
@@ -18,6 +20,7 @@ export interface StepContainerNodeData {
     isAsync: boolean;
   };
   bubbleIds: string[]; // IDs of bubbles inside this step
+  isCustomTool?: boolean; // Whether this is a custom tool function call (rendered smaller)
   usedHandles?: {
     top?: boolean;
     bottom?: boolean;
@@ -31,8 +34,18 @@ interface StepContainerNodeProps {
 }
 
 function StepContainerNode({ data }: StepContainerNodeProps) {
-  const { flowId, stepId, stepInfo, bubbleIds, usedHandles = {} } = data;
+  const {
+    flowId,
+    stepId,
+    stepInfo,
+    bubbleIds,
+    isCustomTool = false,
+    usedHandles = {},
+  } = data;
   const { functionName, description } = stepInfo;
+
+  // Use scaled layout for custom tool containers
+  const layout = isCustomTool ? CUSTOM_TOOL_LAYOUT : STEP_CONTAINER_LAYOUT;
 
   // Get execution state from execution store
   const highlightedBubble = useExecutionStore(
@@ -49,11 +62,14 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
   }, [bubbleIds, runningBubbles]);
 
   // Calculate dynamic header height based on content
-  const headerHeight = calculateHeaderHeight(functionName, description);
-  const calculatedHeight = calculateStepContainerHeight(
-    bubbleIds.length,
-    headerHeight
-  );
+  const baseHeaderHeight = calculateHeaderHeight(functionName, description);
+  // Scale header height for custom tools
+  const headerHeight = isCustomTool
+    ? Math.round(baseHeaderHeight * CUSTOM_TOOL_LAYOUT.SCALE)
+    : baseHeaderHeight;
+  const calculatedHeight = isCustomTool
+    ? calculateCustomToolContainerHeight(bubbleIds.length, baseHeaderHeight)
+    : calculateStepContainerHeight(bubbleIds.length, baseHeaderHeight);
 
   return (
     <div
@@ -65,7 +81,7 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
             : 'border-neutral-600/60 bg-neutral-800/60 hover:border-neutral-500/80'
       }`}
       style={{
-        width: `${STEP_CONTAINER_LAYOUT.WIDTH}px`,
+        width: `${layout.WIDTH}px`,
         height: `${calculatedHeight}px`,
         ...(isExecuting && {
           animation: 'border-flash 1s ease-in-out infinite',
@@ -113,18 +129,28 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
 
       {/* Header Section */}
       <div
-        className="bg-neutral-900/80 border-b border-neutral-600/60 rounded-t-lg px-5 py-4 flex-shrink-0 pointer-events-none"
+        className={`bg-neutral-900/80 border-b border-neutral-600/60 rounded-t-lg flex-shrink-0 pointer-events-none ${
+          isCustomTool ? 'px-3 py-2' : 'px-5 py-4'
+        }`}
         style={{
           height: `${headerHeight}px`,
         }}
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xl font-semibold text-white truncate">
+          <span
+            className={`font-semibold text-white truncate ${
+              isCustomTool ? 'text-sm' : 'text-xl'
+            }`}
+          >
             {functionName}()
           </span>
         </div>
         {description && (
-          <p className="text-base text-neutral-200 break-words">
+          <p
+            className={`text-neutral-200 break-words ${
+              isCustomTool ? 'text-xs' : 'text-base'
+            }`}
+          >
             {description}
           </p>
         )}
@@ -135,7 +161,7 @@ function StepContainerNode({ data }: StepContainerNodeProps) {
         className="relative flex-shrink-0"
         style={{
           height: `${calculatedHeight - headerHeight}px`,
-          padding: `${STEP_CONTAINER_LAYOUT.PADDING}px`,
+          padding: `${layout.PADDING}px`,
         }}
       >
         {/* Bubbles will be positioned here */}

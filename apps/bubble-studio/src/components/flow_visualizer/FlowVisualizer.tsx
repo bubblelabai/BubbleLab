@@ -19,7 +19,10 @@ import {
   calculateBubblePosition,
   calculateStepContainerHeight,
   calculateHeaderHeight,
+  calculateCustomToolContainerHeight,
+  calculateCustomToolBubblePosition,
   STEP_CONTAINER_LAYOUT,
+  CUSTOM_TOOL_LAYOUT,
 } from './stepContainerUtils';
 import { calculateSubbubblePositionWithContext } from './nodePositioning';
 import { FLOW_LAYOUT } from './flowLayoutConstants';
@@ -1509,6 +1512,16 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
         bubble.dependencyGraph.dependencies.forEach((dep, idx) => {
           markSubBubbleHandles(parentNodeId, dep, `${idx}`);
         });
+
+        // Mark handles for custom tool function call edges
+        // Parent bubble needs bottom handle, each step container needs top handle
+        if (bubble.dependencyGraph.functionCallChildren?.length) {
+          markHandleUsed(parentNodeId, 'bottom'); // Source handle on parent bubble
+          bubble.dependencyGraph.functionCallChildren.forEach((funcCall) => {
+            const stepNodeId = `custom-tool-${funcCall.variableId}`;
+            markHandleUsed(stepNodeId, 'top'); // Target handle on step container
+          });
+        }
       }
     });
 
@@ -1754,8 +1767,8 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               persistedPositions.current.get(stepNodeId)
             );
 
-            // Calculate step container height based on number of bubbles
-            const stepHeight = calculateStepContainerHeight(
+            // Calculate step container height based on number of bubbles (scaled for custom tools)
+            const stepHeight = calculateCustomToolContainerHeight(
               customToolBubbleIds.length
             );
 
@@ -1785,6 +1798,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             nodes.push(customToolStepNode);
 
             // Create edge from parent bubble to step container
+            // Note: Handles are already marked in the earlier handle-marking loop
             edges.push({
               id: `${nodeId}-${stepNodeId}`,
               source: nodeId,
@@ -1799,14 +1813,14 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
               },
             });
 
-            // Create bubble nodes inside the step container
+            // Create bubble nodes inside the step container (scaled for custom tools)
             customToolBubbleIds.forEach((ctBubbleId, ctBubbleIdx) => {
               const ctBubbleNodeId = String(ctBubbleId);
               const ctHeaderHeight = calculateHeaderHeight(
                 funcCall.functionName,
                 funcCall.description
               );
-              const ctBubblePosition = calculateBubblePosition(
+              const ctBubblePosition = calculateCustomToolBubblePosition(
                 ctBubbleIdx,
                 ctHeaderHeight
               );
@@ -1860,6 +1874,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
                         endLine: ctBubbleData.location.endLine,
                       });
                     },
+                    isCustomToolBubble: true, // Render smaller inside custom tool containers
                     usedHandles: usedHandlesMap.get(ctBubbleNodeId),
                   },
                 };

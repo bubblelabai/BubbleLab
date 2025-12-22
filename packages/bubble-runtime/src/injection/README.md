@@ -273,3 +273,144 @@ Common errors:
 
 - Syntax errors after rewriting (usually indicates a bug in the injection logic)
 - Missing credentials for required bubble types
+
+## Helper Methods for Modifying Bubble Parameters
+
+The `BubbleInjector` class provides helper methods for programmatically modifying bubble parameters after parsing but before execution.
+
+### `changeBubbleParameters(bubbleId, key, value)`
+
+**Purpose:** Modifies a specific parameter value for a bubble.
+
+**Signature:**
+
+```typescript
+changeBubbleParameters(
+  bubbleId: number,
+  key: string,
+  value: string | number | boolean | Record<string, unknown> | unknown[]
+): void
+```
+
+**Parameters:**
+
+- `bubbleId`: The unique identifier of the bubble (from `ParsedBubbleWithInfo.variableId`)
+- `key`: The parameter name to modify (e.g., `'operation'`, `'model'`, `'prompt'`)
+- `value`: The new value for the parameter
+
+**Usage:**
+
+```typescript
+const injector = new BubbleInjector(bubbleScript);
+
+// Change a string parameter
+injector.changeBubbleParameters(1, 'operation', 'create_event');
+
+// Change an object parameter
+injector.changeBubbleParameters(1, 'model', {
+  provider: 'openai',
+  name: 'gpt-4',
+});
+
+// Change a boolean parameter
+injector.changeBubbleParameters(1, 'stream', true);
+```
+
+**Errors:**
+
+- Throws if the bubble with the given ID is not found
+- Throws if the parameter with the given key doesn't exist in the bubble
+
+**Note:** This method modifies the in-memory parameter array. To apply these changes to the source code, call `reapplyBubbleInstantiations()` afterward.
+
+### `changeCredentials(bubbleId, credentials)`
+
+**Purpose:** Adds or updates credentials for a specific bubble.
+
+**Signature:**
+
+```typescript
+changeCredentials(
+  bubbleId: number,
+  credentials: Record<CredentialType, string>
+): void
+```
+
+**Parameters:**
+
+- `bubbleId`: The unique identifier of the bubble
+- `credentials`: An object mapping credential types to their values
+
+**Usage:**
+
+```typescript
+const injector = new BubbleInjector(bubbleScript);
+
+// Add credentials to a bubble
+injector.changeCredentials(1, {
+  GOOGLE_CALENDAR_CRED: 'oauth_token_here',
+});
+
+// Add multiple credentials
+injector.changeCredentials(2, {
+  OPENAI_API_KEY: 'sk-...',
+  ANTHROPIC_API_KEY: 'sk-ant-...',
+});
+```
+
+**Behavior:**
+
+- If the bubble doesn't have a `credentials` parameter, one is created
+- If the bubble already has a `credentials` parameter, the values are replaced
+- The credential type must be a valid `CredentialType` enum value
+
+**Errors:**
+
+- Throws if the bubble with the given ID is not found
+
+### `getBubble(bubbleId)`
+
+**Purpose:** Retrieves a parsed bubble by its ID.
+
+**Signature:**
+
+```typescript
+getBubble(bubbleId: number): ParsedBubbleWithInfo
+```
+
+**Usage:**
+
+```typescript
+const bubble = injector.getBubble(1);
+console.log(bubble.bubbleName); // e.g., 'GoogleCalendarBubble'
+console.log(bubble.parameters); // Array of parameters
+console.log(bubble.location); // { startLine, endLine }
+```
+
+### Typical Workflow
+
+```typescript
+// 1. Parse the bubble script
+const bubbleScript = new BubbleScript(sourceCode);
+await bubbleScript.parse();
+
+// 2. Create injector
+const injector = new BubbleInjector(bubbleScript);
+
+// 3. Modify parameters as needed
+injector.changeBubbleParameters(1, 'operation', 'list_events');
+injector.changeCredentials(1, { GOOGLE_CALENDAR_CRED: 'token' });
+
+// 4. Apply changes to source code
+injector.reapplyBubbleInstantiations();
+
+// 5. Get the modified source
+const modifiedCode = bubbleScript.currentBubbleScript;
+```
+
+### Important Notes
+
+1. **Order matters:** Modify parameters before calling `reapplyBubbleInstantiations()`
+2. **In-memory changes:** These methods modify the parsed representation, not the source code directly
+3. **Use with injection:** Typically used in conjunction with `injectCredentials()` which handles the full injection flow
+4. **Parameter existence:** `changeBubbleParameters()` requires the parameter to already exist; it cannot add new parameters

@@ -12,4 +12,13 @@ alwaysApply: true
 
 # How bubble flow is supposed to be generated
 @packages/bubble-shared-schemas/src/bubbleflow-generation-prompts.ts
+
+# Bubble parsing, dependency graphs, and per-invocation cloning
+@packages/bubble-runtime/src/extraction/README.md
+
+# Credential injection and bubble parameter reinitialization
+@packages/bubble-runtime/src/injection/README.md
+
+# Flow visualizer architecture and node rendering
+@apps/bubble-studio/src/components/flow_visualizer/README.md
 ---
