@@ -70,7 +70,6 @@ export class BubbleInjector {
       // For AI agent bubbles, optimize credential requirements based on model
       if (bubble.bubbleName === 'ai-agent' && credentialOptions) {
         const modelCredentialTypes = this.extractModelCredentialType(bubble);
-
         if (modelCredentialTypes !== null) {
           // Model is static - only include the credentials needed for primary and backup models
           credentialOptions = credentialOptions.filter((credType) =>
@@ -143,8 +142,11 @@ export class BubbleInjector {
         if (typeof modelParam.value !== 'string') {
           throw new Error('Model parameter value must be a string');
         }
+        // Remove single-line comments (// ...) before parsing
+        // This handles cases like: { model: 'google/gemini-3-pro-preview', temperature: 0.1 // Low temperature }
+        const withoutComments = modelParam.value.replace(/\/\/[^\n]*/g, '');
         // Convert single quotes to double quotes (handle escaped quotes)
-        const jsonStr = modelParam.value
+        const jsonStr = withoutComments
           .replace(/'/g, '"')
           .replace(/(\w+):/g, '"$1":')
           .replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
@@ -337,7 +339,6 @@ export class BubbleInjector {
         // For AI agent bubbles, optimize credential injection based on model
         if (bubble.bubbleName === 'ai-agent') {
           const modelCredentialTypes = this.extractModelCredentialType(bubble);
-
           if (modelCredentialTypes !== null) {
             // Model is static - only inject the credentials needed for primary and backup models
             bubbleCredentialOptions = bubbleCredentialOptions.filter(
@@ -578,13 +579,23 @@ export class BubbleInjector {
     }
 
     // Now process non-nested bubbles in order, tracking line shifts
+    // For parent bubbles: lines were deleted from INSIDE them (nested bubbles), not before them
+    // So their start line should NOT be shifted by phase1LinesDeleted
+    // For non-parent bubbles: lines were deleted BEFORE them, so both start and end should be shifted
     let lineShift = -phase1LinesDeleted; // Start with the shift from phase 1
     for (const bubble of nonNestedBubbles) {
+      const isParentBubble = parentBubbleIds.has(bubble.variableId);
+
       const adjustedBubble = {
         ...bubble,
         location: {
           ...bubble.location,
-          startLine: bubble.location.startLine + lineShift,
+          // For parent bubbles, start line is not affected by phase 1 deletions (they're inside, not before)
+          // For non-parent bubbles, start line is shifted by lines deleted in phase 1
+          startLine: isParentBubble
+            ? bubble.location.startLine
+            : bubble.location.startLine + lineShift,
+          // End line is always shifted for bubbles that come after phase 1 deletions
           endLine: bubble.location.endLine + lineShift,
         },
       };
