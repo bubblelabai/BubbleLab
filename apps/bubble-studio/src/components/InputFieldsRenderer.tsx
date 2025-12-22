@@ -15,6 +15,7 @@ import {
   ALLOWED_FILE_TYPES_DISPLAY,
 } from '../utils/fileUtils';
 import AutoResizeTextarea from './AutoResizeTextarea';
+import { GoogleFilePicker } from './GoogleFilePicker';
 
 interface SchemaField {
   name: string;
@@ -300,6 +301,34 @@ function InputFieldsRenderer({
         return next;
       });
     }
+  };
+
+  // Helper function to detect if a field is a Google file ID field
+  const isGoogleFileField = (fieldName: string): boolean => {
+    return /spreadsheet.*id|document.*id|drive.*id|folder.*id|file.*id/i.test(
+      fieldName
+    );
+  };
+
+  // Helper function to determine Google file type from field name
+  const getGoogleFileType = (
+    fieldName: string
+  ): 'spreadsheet' | 'document' | 'folder' | 'any' => {
+    if (/spreadsheet/i.test(fieldName)) return 'spreadsheet';
+    if (/document/i.test(fieldName)) return 'document';
+    if (/folder/i.test(fieldName)) return 'folder';
+    return 'any';
+  };
+
+  // Handler for Google Picker selection
+  const handleGoogleFileSelect = (
+    fieldName: string,
+    fileId: string,
+    fileName: string
+  ) => {
+    onInputChange(fieldName, fileId);
+    // Optionally show the file name as feedback
+    console.log(`Selected ${fileName} with ID: ${fileId}`);
   };
 
   if (schemaFields.length === 0) {
@@ -1006,98 +1035,113 @@ function InputFieldsRenderer({
               </div>
             ) : (
               <div className="space-y-1">
-                <div className="relative">
-                  <AutoResizeTextarea
-                    value={
-                      uploadedFileNames[field.name] &&
-                      (field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false
-                        ? uploadedFileNames[field.name]
-                        : typeof currentValue === 'string' ||
-                            typeof currentValue === 'number'
-                          ? String(currentValue)
-                          : ''
-                    }
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
-                      onInputChange(field.name, e.target.value);
-                    }}
-                    placeholder={
-                      field.default !== undefined
-                        ? String(field.default)
-                        : field.description || `Enter ${field.name}...`
-                    }
-                    disabled={
-                      isExecuting ||
-                      ((field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false
-                        ? !!uploadedFileNames[field.name]
-                        : false)
-                    }
-                    className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
-                      isMissing
-                        ? 'border-amber-500 focus:border-amber-400'
-                        : 'border-neutral-600 focus:border-blue-500'
-                    } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
-                      isMissing
-                        ? 'focus:ring-amber-500/50'
-                        : 'focus:ring-blue-500/50'
-                    } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
-                      (field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false &&
-                      uploadedFileNames[field.name]
-                        ? 'pr-14'
-                        : (field.type === undefined ||
-                              field.type === 'string') &&
-                            field.canBeFile !== false
-                          ? 'pr-7'
-                          : ''
-                    }`}
-                  />
-                  {(field.type === undefined || field.type === 'string') &&
-                    field.canBeFile !== false && (
-                      <div className="absolute right-2 top-2 flex items-center gap-1">
-                        {uploadedFileNames[field.name] ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteFile(field.name)}
-                              disabled={isExecuting}
-                              className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              aria-label={`Delete uploaded file for ${field.name}`}
+                <div className="flex gap-1">
+                  <div className="relative flex-1">
+                    <AutoResizeTextarea
+                      value={
+                        uploadedFileNames[field.name] &&
+                        (field.type === undefined || field.type === 'string') &&
+                        field.canBeFile !== false
+                          ? uploadedFileNames[field.name]
+                          : typeof currentValue === 'string' ||
+                              typeof currentValue === 'number'
+                            ? String(currentValue)
+                            : ''
+                      }
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                        onInputChange(field.name, e.target.value);
+                      }}
+                      placeholder={
+                        field.default !== undefined
+                          ? String(field.default)
+                          : field.description || `Enter ${field.name}...`
+                      }
+                      disabled={
+                        isExecuting ||
+                        ((field.type === undefined ||
+                          field.type === 'string') &&
+                        field.canBeFile !== false
+                          ? !!uploadedFileNames[field.name]
+                          : false)
+                      }
+                      className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
+                        isMissing
+                          ? 'border-amber-500 focus:border-amber-400'
+                          : 'border-neutral-600 focus:border-blue-500'
+                      } rounded text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 ${
+                        isMissing
+                          ? 'focus:ring-amber-500/50'
+                          : 'focus:ring-blue-500/50'
+                      } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
+                        (field.type === undefined || field.type === 'string') &&
+                        field.canBeFile !== false &&
+                        uploadedFileNames[field.name]
+                          ? 'pr-14'
+                          : (field.type === undefined ||
+                                field.type === 'string') &&
+                              field.canBeFile !== false
+                            ? 'pr-7'
+                            : ''
+                      }`}
+                    />
+                    {(field.type === undefined || field.type === 'string') &&
+                      field.canBeFile !== false && (
+                        <div className="absolute right-2 top-2 flex items-center gap-1">
+                          {uploadedFileNames[field.name] ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteFile(field.name)}
+                                disabled={isExecuting}
+                                className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label={`Delete uploaded file for ${field.name}`}
+                              >
+                                <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
+                              </button>
+                              <Paperclip className="w-3 h-3 text-neutral-300" />
+                            </>
+                          ) : (
+                            <label
+                              className="cursor-pointer group"
+                              title={`Upload file (${ALLOWED_FILE_TYPES_DISPLAY})`}
                             >
-                              <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
-                            </button>
-                            <Paperclip className="w-3 h-3 text-neutral-300" />
-                          </>
-                        ) : (
-                          <label
-                            className="cursor-pointer group"
-                            title={`Upload file (${ALLOWED_FILE_TYPES_DISPLAY})`}
-                          >
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept={FILE_INPUT_ACCEPT}
-                              disabled={isExecuting}
-                              aria-label={`Upload file for ${field.name}`}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0] || null;
-                                handleFileChange(field.name, f);
-                                // reset so selecting the same file again triggers onChange
-                                e.currentTarget.value = '';
-                              }}
-                            />
-                            <Paperclip
-                              className={`w-3.5 h-3.5 transition-all ${
-                                isExecuting
-                                  ? 'text-neutral-600 cursor-not-allowed'
-                                  : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
-                              }`}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )}
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept={FILE_INPUT_ACCEPT}
+                                disabled={isExecuting}
+                                aria-label={`Upload file for ${field.name}`}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0] || null;
+                                  handleFileChange(field.name, f);
+                                  // reset so selecting the same file again triggers onChange
+                                  e.currentTarget.value = '';
+                                }}
+                              />
+                              <Paperclip
+                                className={`w-3.5 h-3.5 transition-all ${
+                                  isExecuting
+                                    ? 'text-neutral-600 cursor-not-allowed'
+                                    : 'text-neutral-400 group-hover:text-blue-400 group-hover:scale-110'
+                                }`}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      )}
+                  </div>
+                  {/* Google File Picker Button */}
+                  {isGoogleFileField(field.name) && (
+                    <div className="w-10">
+                      <GoogleFilePicker
+                        fileType={getGoogleFileType(field.name)}
+                        onSelect={(fileId, fileName) =>
+                          handleGoogleFileSelect(field.name, fileId, fileName)
+                        }
+                        disabled={isExecuting}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {fieldErrors[field.name] && (
