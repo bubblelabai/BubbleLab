@@ -141,6 +141,11 @@ export interface DependencyGraphNode {
    */
   variableId?: number;
   dependencies: DependencyGraphNode[];
+  /**
+   * Custom tool functions parsed as FunctionCallWorkflowNode.
+   * Used when an ai-agent has customTools with func properties containing bubble instantiations.
+   */
+  functionCallChildren?: FunctionCallWorkflowNode[];
 }
 
 // Detailed dependency specification for factory metadata
@@ -172,6 +177,15 @@ export interface ParsedBubbleWithInfo extends ParsedBubble {
    * represents an invocation-specific clone.
    */
   clonedFromVariableId?: number;
+  /**
+   * Indicates that this bubble is inside a custom tool function.
+   * Such bubbles should not appear in top-level flow visualization.
+   */
+  isInsideCustomTool?: boolean;
+  /**
+   * Reference to the custom tool function's uniqueId that contains this bubble.
+   */
+  containingCustomToolId?: string;
 }
 
 export const BubbleNodeTypeSchema = z.enum([
@@ -190,6 +204,10 @@ export const DependencyGraphNodeSchema: z.ZodType<DependencyGraphNode> = z.lazy(
       uniqueId: z.string().optional(),
       variableId: z.number().optional(),
       dependencies: z.array(DependencyGraphNodeSchema),
+      // Use lazy reference since FunctionCallWorkflowNodeSchema is defined later
+      functionCallChildren: z
+        .lazy(() => z.array(FunctionCallWorkflowNodeSchema))
+        .optional(),
     })
 );
 
@@ -229,6 +247,8 @@ export const ParsedBubbleWithInfoSchema = z.object({
   description: z.string().optional(),
   invocationCallSiteKey: z.string().optional(),
   clonedFromVariableId: z.number().optional(),
+  isInsideCustomTool: z.boolean().optional(),
+  containingCustomToolId: z.string().optional(),
 });
 
 // Inferred types from Zod schemas

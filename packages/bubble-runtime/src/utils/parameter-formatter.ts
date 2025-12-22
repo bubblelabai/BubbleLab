@@ -2,9 +2,6 @@
  * Utility functions for formatting bubble parameters
  */
 
-/**
- * Build parameters object string from bubble parameters
- */
 import {
   BubbleParameter,
   ParsedBubbleWithInfo,
@@ -12,6 +9,28 @@ import {
 
 const INVOCATION_KEY_EXPR =
   '__bubbleFlowSelf?.__getInvocationCallSiteKey?.() ?? ""';
+
+/**
+ * Patterns that indicate function literals in source code.
+ * Used to detect when parameters contain functions that cannot be safely condensed.
+ */
+const FUNCTION_LITERAL_PATTERNS = [
+  'func:', // Object property with function value
+  '=>', // Arrow function
+  'function(', // Function expression
+  'function (', // Function expression with space
+  'async(', // Async arrow function
+  'async (', // Async function with space
+] as const;
+
+/**
+ * Check if a string contains function literal patterns.
+ * When function literals are present, the source code must be preserved as-is
+ * because functions cannot be safely serialized or condensed to single-line.
+ */
+export function containsFunctionLiteral(value: string): boolean {
+  return FUNCTION_LITERAL_PATTERNS.some((pattern) => value.includes(pattern));
+}
 
 function buildInvocationOverrideReference(
   variableId: number | undefined
@@ -210,19 +229,27 @@ export function formatParameterValue(value: unknown, type: string): string {
       // If caller provided a source literal string, keep it as code
       if (typeof value === 'string') {
         const trimmed = value.trim();
+        // Preserve source code if it contains function literals
+        if (containsFunctionLiteral(trimmed)) {
+          return value;
+        }
         if (
           (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
           trimmed.startsWith('new ')
         ) {
-          return value as string;
+          return value;
         }
       }
       return JSON.stringify(value, null, 2);
     case 'array':
       if (typeof value === 'string') {
         const trimmed = value.trim();
+        // Preserve source code if it contains function literals
+        if (containsFunctionLiteral(trimmed)) {
+          return value;
+        }
         if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-          return value as string;
+          return value;
         }
       }
       return JSON.stringify(value);
@@ -401,12 +428,60 @@ function stripCommentsOutsideStrings(input: string): string {
 }
 
 /**
+ * Condense a parameters string to a single line.
+ * Used when parameters don't contain function literals.
+ */
+export function condenseToSingleLine(input: string): string {
+  return input
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\{\s+/g, '{ ')
+    .replace(/\s+\}/g, ' }')
+    .replace(/\s*,\s*/g, ', ')
+    .trim();
+}
+
+/**
+ * Replace lines in an array, handling both single-line and multi-line replacements.
+ * Returns the number of lines that were effectively added or removed.
+ */
+function replaceLines(
+  lines: string[],
+  startIndex: number,
+  deleteCount: number,
+  replacement: string
+): number {
+  const replacementLines = replacement.split('\n');
+  const isMultiLine = replacementLines.length > 1;
+
+  if (isMultiLine) {
+    // Multi-line replacement: replace first line, delete old lines, insert remaining
+    lines[startIndex] = replacementLines[0];
+    if (deleteCount > 0) {
+      lines.splice(startIndex + 1, deleteCount);
+    }
+    if (replacementLines.length > 1) {
+      lines.splice(startIndex + 1, 0, ...replacementLines.slice(1));
+    }
+    return replacementLines.length - 1 - deleteCount;
+  } else {
+    // Single-line replacement
+    lines[startIndex] = replacement;
+    if (deleteCount > 0) {
+      lines.splice(startIndex + 1, deleteCount);
+    }
+    return -deleteCount;
+  }
+}
+
+/**
  * Replace a bubble instantiation with updated parameters
  *
  * This function:
- * 1. Replaces the bubble instantiation line with a single-line version
- * 2. Deletes all lines that were part of the original multi-line parameters
- * 3. Uses bubble.location.endLine to know exactly where to stop deleting
+ * 1. Replaces the bubble instantiation line with updated parameters
+ * 2. Preserves multi-line structure when function literals are present
+ * 3. Condenses to single-line otherwise
+ * 4. Uses bubble.location.endLine to know exactly where to stop deleting
  */
 export function replaceBubbleInstantiation(
   lines: string[],
@@ -418,7 +493,7 @@ export function replaceBubbleInstantiation(
   }
   const { location, className, parameters } = bubble;
 
-  // Build the new single-line instantiation
+  // Build the parameters object string
   const dependencyGraphLiteral = JSON.stringify(
     bubble.dependencyGraph || { name: bubble.bubbleName, dependencies: [] }
   ).replace(/</g, '\u003c');
@@ -433,17 +508,16 @@ export function replaceBubbleInstantiation(
     currentUniqueIdValue
   );
 
-  // Remove JS/TS comments that would otherwise break single-line formatting
+  // Remove JS/TS comments that would otherwise break formatting
   parametersObject = stripCommentsOutsideStrings(parametersObject);
 
-  // Condense to single line
-  parametersObject = parametersObject
-    .replace(/\s*\n\s*/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\{\s+/g, '{ ')
-    .replace(/\s+\}/g, ' }')
-    .replace(/\s*,\s*/g, ', ')
-    .trim();
+  // Check if parameters contain function literals before condensing
+  // Function literals cannot be safely condensed to single-line
+  const hasFunctions = containsFunctionLiteral(parametersObject);
+
+  if (!hasFunctions) {
+    parametersObject = condenseToSingleLine(parametersObject);
+  }
 
   const newInstantiationBase = `new ${className}(${parametersObject})`;
 
@@ -464,13 +538,8 @@ export function replaceBubbleInstantiation(
         const newExpression = `${hadAwait ? 'await ' : ''}${newInstantiationBase}${actionCall}`;
         const replacement = `${indentation}${declaration} ${variableName} = ${newExpression}`;
 
-        lines[i] = replacement;
-
-        // Delete all lines that were part of the old multi-line parameters
         const linesToDelete = location.endLine - (i + 1);
-        if (linesToDelete > 0) {
-          lines.splice(i + 1, linesToDelete);
-        }
+        replaceLines(lines, i, linesToDelete, replacement);
       }
       // Pattern 2: Anonymous bubble (await new Bubble(...).action())
       else if (bubble.variableName.startsWith('_anonymous_')) {
@@ -484,13 +553,8 @@ export function replaceBubbleInstantiation(
         const beforeClean = beforePattern.replace(/\bawait\s*$/, '');
         const replacement = `${beforeClean}${newExpression}`;
 
-        lines[i] = replacement;
-
-        // Delete all lines that were part of the old multi-line parameters
         const linesToDelete = location.endLine - (i + 1);
-        if (linesToDelete > 0) {
-          lines.splice(i + 1, linesToDelete);
-        }
+        replaceLines(lines, i, linesToDelete, replacement);
       }
       break;
     }

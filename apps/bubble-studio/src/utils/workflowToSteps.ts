@@ -703,10 +703,11 @@ function extractTopLevelBubbles(
   const topLevelBubbleIds: number[] = [];
   for (const [id, bubble] of Object.entries(bubbles)) {
     const bubbleId = bubble.variableId || parseInt(id, 10);
-    // Skips invocation clones, original bubbles
+    // Skip invocation clones, bubbles inside function steps, and bubbles inside custom tools
     if (
       clonesReferencingOriginal.has(bubbleId) ||
-      bubblesInSteps.has(bubbleId)
+      bubblesInSteps.has(bubbleId) ||
+      bubble.isInsideCustomTool
     ) {
       continue;
     }

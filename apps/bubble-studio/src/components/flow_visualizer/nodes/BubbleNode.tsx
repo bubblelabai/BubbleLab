@@ -35,6 +35,7 @@ export interface BubbleNodeData {
   // Request to edit a specific parameter in code (show code + highlight line)
   onParamEditInCode?: (paramName: string) => void;
   hasSubBubbles?: boolean;
+  isCustomToolBubble?: boolean; // Whether this bubble is inside a custom tool container (rendered smaller)
   usedHandles?: {
     top?: boolean;
     bottom?: boolean;
@@ -56,6 +57,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
     onBubbleClick,
     onParamEditInCode,
     hasSubBubbles = false,
+    isCustomToolBubble = false,
     usedHandles = {},
   } = data;
 
@@ -282,13 +284,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
     bubble.variableId < 0 ||
     (bubble.dependencyGraph?.uniqueId?.includes('.') ?? false);
 
+  // Bubbles inside custom tool containers or sub-bubbles are rendered smaller
+  const isSmallBubble = isSubBubble || isCustomToolBubble;
+
   return (
     <div
       className={`bg-neutral-800/90 rounded-lg border transition-all duration-300 cursor-pointer ${
         isCompleted ? 'overflow-visible' : 'overflow-hidden'
       } ${
-        isSubBubble
-          ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles are smaller and darker
+        isSmallBubble
+          ? 'bg-gray-600 border-gray-500 scale-75 w-64' // Sub-bubbles and custom tool bubbles are smaller and darker
           : 'bg-gray-700 border-gray-600 w-80' // Main bubbles fixed width
       } ${
         isExecuting
@@ -490,7 +495,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
               )}
             </>
           )}
-          {!isSubBubble && (
+          {!isSmallBubble && (
             <div className="relative">
               <button
                 title={'View Code'}

@@ -61,6 +61,7 @@ export const fixtures = {
   'mapping-function-call': '',
   'multiple-bubble-class-flow': '',
   'bracket-less-control-flow': '',
+  'agent-with-custom-tool-flow': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
