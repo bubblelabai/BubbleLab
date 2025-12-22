@@ -408,6 +408,104 @@ describe('BubbleInjector.injectCredentials()', () => {
         'system-firecrawl-key'
       );
     });
+    it('should inject credentials for AI agent with custom tools', () => {
+      const bubbleScript = getFixture('agent-with-custom-tool-flow');
+      const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+      const injector = new BubbleInjector(mockBubbleScript);
+      const googleSheetsVarId = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'google-calendar')?.variableId;
+      if (!googleSheetsVarId) {
+        throw new Error('Google Sheets variable id not found');
+      }
+
+      const userCredentials: UserCredentialWithId[] = [
+        {
+          bubbleVarId: 434,
+          secret: 'fake-google-sheets-token-12345',
+          credentialType: CredentialType.GOOGLE_SHEETS_CRED,
+          credentialId: 15,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 437,
+          secret: 'fake-google-sheets-token-67890',
+          credentialType: CredentialType.GOOGLE_SHEETS_CRED,
+          credentialId: 15,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 425,
+          secret: 'fake-google-calendar-token-abcde',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+          credentialId: 16,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 433,
+          secret: 'fake-google-calendar-token-fghij',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+          credentialId: 16,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 442,
+          secret: 'fake-telegram-bot-token-klmno',
+          credentialType: CredentialType.TELEGRAM_BOT_TOKEN,
+          credentialId: 17,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 798456,
+          secret: 'fake-telegram-bot-token-pqrst',
+          credentialType: CredentialType.TELEGRAM_BOT_TOKEN,
+          credentialId: 17,
+          metadata: undefined,
+        },
+      ];
+
+      const systemCredentials: Partial<Record<CredentialType, string>> = {
+        [CredentialType.OPENAI_CRED]: 'fake-openai-key-system',
+        [CredentialType.GOOGLE_GEMINI_CRED]: 'fake-gemini-key-system',
+        [CredentialType.ANTHROPIC_CRED]: 'fake-anthropic-key-system',
+        [CredentialType.FIRECRAWL_API_KEY]: 'fake-firecrawl-key-system',
+        [CredentialType.DATABASE_CRED]: 'fake-database-url-system',
+        [CredentialType.RESEND_CRED]: 'fake-resend-key-system',
+        [CredentialType.OPENROUTER_CRED]: 'fake-openrouter-key-system',
+        [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'fake-r2-access-key-system',
+        [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'fake-r2-secret-key-system',
+        [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'fake-r2-account-id-system',
+        [CredentialType.APIFY_CRED]: 'fake-apify-key-system',
+      };
+
+      const result = injector.injectCredentials(
+        userCredentials,
+        systemCredentials
+      );
+
+      if (!result.success) {
+        console.log('Errors:', result.errors);
+      }
+
+      expect(result.success).toBe(true);
+      expect(result.injectedCredentials).toBeDefined();
+      expect(Object.keys(result.injectedCredentials!)).toHaveLength(8);
+      console.log(result.injectedCredentials);
+      console.log(result.injectedCredentials);
+      expect(
+        result.injectedCredentials![`${googleSheetsVarId}.GOOGLE_CALENDAR_CRED`]
+          .credentialValue
+      ).toBe('fake************************bcde');
+      // print final script
+      // Expect final script to cotain google sheet token
+      console.log('Final script:', result.code);
+      expect(result.code).toContain('fake-google-calendar-token-abcde');
+      expect(result.code).toContain('fake-google-calendar-token-fghij');
+      expect(result.code).toContain('fake-google-sheets-token-12345');
+      expect(result.code).toContain('fake-google-sheets-token-67890');
+      expect(result.code).toContain('fake-telegram-bot-token-klmno');
+      expect(result.code).toContain('fake-gemini-key-system');
+    });
   });
 
   describe('Error handling', () => {

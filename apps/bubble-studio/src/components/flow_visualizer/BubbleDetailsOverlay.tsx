@@ -249,7 +249,8 @@ export function BubbleDetailsOverlay({
                 </div>
                 {requiredCredentialTypes.length === 0 ? (
                   <p className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/80 px-4 py-6 text-sm text-neutral-400">
-                    This bubble does not require credentials.
+                    This bubble does not require credentials {bubble.variableId}
+                    .
                   </p>
                 ) : (
                   <div className="mt-4 space-y-4">

@@ -17,6 +17,25 @@ export const STEP_CONTAINER_LAYOUT = {
   BUBBLE_X_OFFSET: 40, // (WIDTH - BUBBLE_WIDTH) / 2
 } as const;
 
+// Smaller layout for custom tool containers (60% of regular size)
+export const CUSTOM_TOOL_LAYOUT = {
+  WIDTH: 260, // Smaller width
+  PADDING: 12,
+  INTERNAL_WIDTH: 236, // WIDTH - (PADDING * 2)
+  HEADER_HEIGHT: 50, // Much smaller header
+  MIN_HEADER_HEIGHT: 40,
+  HEADER_PADDING_Y: 8,
+  HEADER_PADDING_X: 12,
+  TITLE_LINE_HEIGHT: 18, // Smaller text
+  DESCRIPTION_LINE_HEIGHT: 14,
+  TITLE_MARGIN_BOTTOM: 2,
+  CHARS_PER_LINE: 30,
+  BUBBLE_HEIGHT: 160, // Smaller bubble slots
+  BUBBLE_SPACING: 10,
+  BUBBLE_WIDTH: 200, // Smaller bubbles
+  BUBBLE_X_OFFSET: 30, // (WIDTH - BUBBLE_WIDTH) / 2
+} as const;
+
 /**
  * Calculate the dynamic header height based on text content
  * @param functionName - The function name to display

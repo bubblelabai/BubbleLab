@@ -592,6 +592,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       expect(parseResult.valid).toBe(true);
       console.log('Parsing errors:', runner.bubbleScript.parsingErrors);
       expect(runner.bubbleScript.parsingErrors.length).toBe(0);
+      console.log('Final script:', runner.bubbleScript.bubblescript);
     });
 
     it('should inject logger with credentials and modify bubble parameters', async () => {

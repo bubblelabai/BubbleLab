@@ -516,16 +516,70 @@ export class BubbleInjector {
       (bubble) => !bubble.invocationCallSiteKey
     );
     const lines = this.bubbleScript.currentBubbleScript.split('\n');
-    // Sort bubbles by start line to process in order
+
+    // Sort bubbles by start line
     const sortedBubbles = [...bubbles].sort(
       (a, b) => a.location.startLine - b.location.startLine
     );
 
-    // Track cumulative line shift as we delete lines
-    let lineShift = 0;
-
+    // Identify which bubbles are nested inside another bubble's location range.
+    // Parent bubbles contain other bubbles (e.g., AIAgentBubble with customTools).
+    const nestedBubbleIds = new Set<number>();
+    const parentBubbleIds = new Set<number>();
     for (const bubble of sortedBubbles) {
-      // Adjust bubble location for deletions from previous bubbles
+      for (const other of sortedBubbles) {
+        if (
+          other.variableId !== bubble.variableId &&
+          other.location.startLine < bubble.location.startLine &&
+          other.location.endLine > bubble.location.endLine
+        ) {
+          // bubble is completely contained within other's range
+          nestedBubbleIds.add(bubble.variableId);
+          parentBubbleIds.add(other.variableId);
+          break;
+        }
+      }
+    }
+
+    // Separate into nested and non-nested bubbles
+    const nestedBubbles = sortedBubbles.filter((b) =>
+      nestedBubbleIds.has(b.variableId)
+    );
+    const nonNestedBubbles = sortedBubbles.filter(
+      (b) => !nestedBubbleIds.has(b.variableId)
+    );
+
+    // PHASE 1: Process nested bubbles first (in reverse order to handle line shifts correctly)
+    // This updates the source code for inner bubbles before their parent reads it.
+    // Process from bottom to top so line deletions don't affect earlier bubbles.
+    const nestedBubblesReversed = [...nestedBubbles].sort(
+      (a, b) => b.location.startLine - a.location.startLine
+    );
+
+    // Track total lines deleted during phase 1 for adjusting parent bubble locations
+    let phase1LinesDeleted = 0;
+
+    for (const bubble of nestedBubblesReversed) {
+      const linesBefore = lines.length;
+      replaceBubbleInstantiation(lines, bubble);
+      const linesAfter = lines.length;
+      phase1LinesDeleted += linesBefore - linesAfter;
+    }
+
+    // PHASE 2: Process non-nested bubbles (including parent bubbles)
+    // For parent bubbles, refresh their parameters that contain nested bubble code
+    // from the now-updated lines array.
+    for (const bubble of nonNestedBubbles) {
+      if (parentBubbleIds.has(bubble.variableId)) {
+        // Adjust parent bubble's end line to account for lines deleted from nested bubbles
+        const adjustedEndLine = bubble.location.endLine - phase1LinesDeleted;
+        this.refreshBubbleParametersFromSource(bubble, lines, adjustedEndLine);
+      }
+    }
+
+    // Now process non-nested bubbles in order, tracking line shifts
+    let lineShift = -phase1LinesDeleted; // Start with the shift from phase 1
+    for (const bubble of nonNestedBubbles) {
       const adjustedBubble = {
         ...bubble,
         location: {
@@ -539,7 +593,6 @@ export class BubbleInjector {
       replaceBubbleInstantiation(lines, adjustedBubble);
       const linesAfter = lines.length;
 
-      // Update shift: negative means lines were deleted
       const linesDeleted = linesBefore - linesAfter;
       lineShift -= linesDeleted;
     }
@@ -548,6 +601,65 @@ export class BubbleInjector {
     this.bubbleScript.currentBubbleScript = finalScript;
     this.bubbleScript.reparseAST();
     return finalScript;
+  }
+
+  /**
+   * Refresh bubble parameters that are sourced from code (like customTools arrays)
+   * by re-reading the relevant portion from the updated lines array.
+   * @param bubble - The bubble to refresh parameters for
+   * @param lines - The current lines array (after nested bubble processing)
+   * @param adjustedBubbleEndLine - The bubble's end line adjusted for lines deleted during nested processing
+   */
+  private refreshBubbleParametersFromSource(
+    bubble: ParsedBubbleWithInfo,
+    lines: string[],
+    adjustedBubbleEndLine: number
+  ): void {
+    // Calculate how many lines were deleted from within this bubble
+    const linesDeletedInBubble =
+      bubble.location.endLine - adjustedBubbleEndLine;
+
+    // Find parameters that contain function literals (like customTools)
+    for (const param of bubble.parameters) {
+      if (
+        (param.type === 'array' || param.type === 'object') &&
+        typeof param.value === 'string'
+      ) {
+        // Check if this parameter contains function literals
+        const containsFunc =
+          param.value.includes('func:') ||
+          param.value.includes('=>') ||
+          param.value.includes('function(') ||
+          param.value.includes('async(') ||
+          param.value.includes('async (');
+
+        if (containsFunc && param.location) {
+          // Adjust param end line for deleted lines
+          const adjustedParamEndLine =
+            param.location.endLine - linesDeletedInBubble;
+
+          // Re-read this parameter's value from the updated lines
+          const startLine = param.location.startLine - 1;
+          const endLine = adjustedParamEndLine;
+          if (startLine >= 0 && endLine <= lines.length) {
+            const paramLines = lines.slice(startLine, endLine);
+            // Extract just the parameter value portion
+            // This is a simplified extraction - the parameter value starts after the property name
+            const fullText = paramLines.join('\n');
+            // Find where the array/object starts (after "paramName:")
+            const colonIndex = fullText.indexOf(':');
+            if (colonIndex !== -1) {
+              let valueText = fullText.substring(colonIndex + 1).trim();
+              // Remove trailing comma if present (to avoid double commas when buildParametersObject joins)
+              if (valueText.endsWith(',')) {
+                valueText = valueText.slice(0, -1);
+              }
+              param.value = valueText;
+            }
+          }
+        }
+      }
+    }
   }
 
   private buildInvocationDependencyGraphLiteral(): string {
