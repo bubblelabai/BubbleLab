@@ -175,7 +175,12 @@ export class BubbleInjector {
 
     // If we couldn't extract a static model string, treat as dynamic
     if (!modelString) {
-      return [CredentialType.GOOGLE_GEMINI_CRED];
+      return [
+        CredentialType.GOOGLE_GEMINI_CRED,
+        CredentialType.OPENAI_CRED,
+        CredentialType.ANTHROPIC_CRED,
+        CredentialType.OPENROUTER_CRED,
+      ];
     }
 
     const credentialTypes: CredentialType[] = [];

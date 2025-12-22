@@ -40,7 +40,7 @@ describe('BubbleInjector.findCredentials()', () => {
 
   const aiAgentWithSingleToolBubbleScript = `
     const aiAgent = new AIAgentBubble({
-      model: 'gemini-2.0-flash-exp',
+      model: { model: 'gemini-2.0-flash-exp' },
       tools: [{"name": "slack"}],
     });
   `;
@@ -51,7 +51,7 @@ describe('BubbleInjector.findCredentials()', () => {
       message: 'Hello world'
     });
     const aiAgent = new AIAgentBubble({
-      model: 'gemini-2.0-flash-exp',
+      model: { model: 'google/gemini-2.5-flash' },
       tools: [{"name": "sql-query-tool"}, {"name": "web-scrape-tool"}]
     });
   `;
@@ -742,6 +742,92 @@ describe('BubbleInjector.injectCredentials()', () => {
       );
       expect(operationLines).toHaveLength(1);
     });
+  });
+});
+
+describe('BubbleInjector - Model Credential Type Resolution', () => {
+  let bubbleFactory: BubbleFactory;
+
+  beforeEach(async () => {
+    bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+  });
+
+  /**
+   * Helper function to generate a poem using the AI agent.
+   * This demonstrates what parameters the AI agent receives and how
+   * model params determine the required credential type.
+   */
+  async function generatePoem(
+    topic: string,
+    model: string,
+    modelName: string
+  ): Promise<string> {
+    // Generates a creative one-sentence poem based on the provided topic using the specified AI model
+    const bubbleScript = `
+      const poemAgent = new AIAgentBubble({
+        model: { model: '${model}' as 'openai/gpt-5-mini' | 'google/gemini-2.5-flash' | 'openrouter/deepseek/deepseek-chat-v3.1' },
+        systemPrompt: 'You are a creative poet. Write a beautiful, meaningful one-sentence poem based on the given topic. Only output the poem itself, no explanations or additional text.',
+        message: 'Write a one-sentence poem about: ${topic}'
+      });
+    `;
+
+    const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+    const injector = new BubbleInjector(mockBubbleScript);
+    const credentials = injector.findCredentials();
+
+    console.log(`=== generatePoem test for ${modelName} ===`);
+    console.log('Model string:', model);
+    console.log('Parsed bubbles:', mockBubbleScript.getParsedBubbles());
+    console.log('Required credentials:', credentials);
+
+    // Get the model parameter to see what was parsed
+    const aiAgentBubble = Object.values(
+      mockBubbleScript.getParsedBubbles()
+    ).find((b) => b.bubbleName === 'ai-agent');
+    const modelParam = aiAgentBubble?.parameters.find(
+      (p) => p.name === 'model'
+    );
+    console.log('Model param type:', modelParam?.type);
+    console.log('Model param value:', modelParam?.value);
+
+    return JSON.stringify(credentials);
+  }
+
+  it('should extract OpenAI credential type from model param', async () => {
+    const result = await generatePoem(
+      'sunset',
+      'openai/gpt-4o-mini',
+      'OpenAI GPT-4o Mini'
+    );
+    expect(result).toContain('OPENAI_CRED');
+  });
+
+  it('should extract Google Gemini credential type from model param', async () => {
+    const result = await generatePoem(
+      'ocean',
+      'google/gemini-2.5-flash',
+      'Google Gemini Flash'
+    );
+    expect(result).toContain('GOOGLE_GEMINI_CRED');
+  });
+
+  it('should extract OpenRouter credential type from model param', async () => {
+    const result = await generatePoem(
+      'stars',
+      'openrouter/deepseek/deepseek-chat-v3-0324',
+      'OpenRouter DeepSeek'
+    );
+    expect(result).toContain('OPENROUTER_CRED');
+  });
+
+  it('should extract Anthropic credential type from model param', async () => {
+    const result = await generatePoem(
+      'mountains',
+      'anthropic/claude-sonnet-4-20250514',
+      'Anthropic Claude'
+    );
+    expect(result).toContain('ANTHROPIC_CRED');
   });
 });
 
