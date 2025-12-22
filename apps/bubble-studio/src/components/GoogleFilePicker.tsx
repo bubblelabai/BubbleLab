@@ -147,10 +147,12 @@ export const GoogleFilePicker: React.FC<GoogleFilePickerProps> = ({
       });
     } catch (error) {
       console.error('Error after credential creation:', error);
+      const baseMessage =
+        'Your Google credential was saved successfully, so you can try opening the picker again using the Google Drive button.';
       alert(
         error instanceof Error
-          ? error.message
-          : 'Failed to open Google Picker. Please try again.'
+          ? `${error.message}\n\n${baseMessage}`
+          : `Failed to open Google Picker. Please try again.\n\n${baseMessage}`
       );
       setIsLoading(false);
     }

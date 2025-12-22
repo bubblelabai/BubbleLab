@@ -305,7 +305,9 @@ function InputFieldsRenderer({
 
   // Helper function to detect if a field is a Google file ID field
   const isGoogleFileField = (fieldName: string): boolean => {
-    return /spreadsheet.*id|document.*id|drive.*id|folder.*id|file.*id/i.test(
+    // Match common Google-related file ID field names while avoiding false positives
+    // such as "driver_id" or "profile_id".
+    return /\b(google[_\s-]*)?(spreadsheet|sheet|document|doc|drive|folder|file)[_\s-]*id\b/i.test(
       fieldName
     );
   };

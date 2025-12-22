@@ -81,7 +81,14 @@ export const requestPickerAccessToken = async (
 
   return new Promise((resolve, reject) => {
     try {
-      const tokenClient = window.google.accounts!.oauth2!.initTokenClient({
+      // Check if Google Sign-In API is loaded
+      if (!window.google?.accounts?.oauth2) {
+        onLoadingChange(false);
+        reject(new Error('Google Sign-In API not loaded'));
+        return;
+      }
+
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_OAUTH_CLIENT_ID!,
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: (response: {
@@ -108,6 +115,8 @@ export const requestPickerAccessToken = async (
             return;
           }
 
+          // Success case - loading state will be managed by the picker
+
           // Got the token! Cache it for future use
           const accountEmail = response.hd || response.email || 'default';
           cachePickerToken(response.access_token!, accountEmail);
@@ -121,8 +130,8 @@ export const requestPickerAccessToken = async (
         },
       });
 
-      // Request the token - Google will show account picker
-      tokenClient.requestAccessToken({ prompt: '' });
+      // Request the token - explicitly show Google account picker
+      tokenClient.requestAccessToken({ prompt: 'select_account' });
     } catch (error) {
       onLoadingChange(false);
       reject(error);
@@ -167,20 +176,28 @@ export const showPicker = (
       };
     };
 
+    // Extract project number from OAuth Client ID for setAppId()
+    // Client ID format: {project_number}.apps.googleusercontent.com
+    const projectNumber = GOOGLE_OAUTH_CLIENT_ID?.split('.')[0];
+
     // Create the picker
     const pickerBuilder = new googlePicker.PickerBuilder();
     const builtPicker = pickerBuilder
       .setOAuthToken(accessToken)
       .setDeveloperKey(GOOGLE_API_KEY!)
-      .setAppId(GOOGLE_OAUTH_CLIENT_ID!)
+      .setAppId(projectNumber!)
       .addView(viewId)
       .setCallback(
         (data: {
           action: string;
           docs?: Array<{ id: string; name: string }>;
         }) => {
-          if (data.action === googlePicker.Action.PICKED) {
-            const file = data.docs![0];
+          if (
+            data.action === googlePicker.Action.PICKED &&
+            data.docs &&
+            data.docs.length > 0
+          ) {
+            const file = data.docs[0];
             const fileId = file.id;
             const fileName = file.name;
 
