@@ -424,7 +424,7 @@ export class BubbleRunner {
       tempFilePath = path.join(tempDir, tempFileName);
 
       // Sanitize script to block access to process.env for security
-      scriptToExecute = sanitizeScript(scriptToExecute, tempFilePath);
+      scriptToExecute = sanitizeScript(scriptToExecute);
       // Write the script code to the temporary file
       try {
         console.log(
