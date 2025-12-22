@@ -30,13 +30,25 @@ export const getCachedPickerToken = (): string | null => {
 
         const token: CachedPickerToken = JSON.parse(cached);
 
+        // Validate token structure
+        if (
+          !token.accessToken ||
+          typeof token.accessToken !== 'string' ||
+          typeof token.expiresAt !== 'number' ||
+          !token.accountEmail ||
+          typeof token.accountEmail !== 'string'
+        ) {
+          sessionStorage.removeItem(key);
+          continue;
+        }
+
         // Check if expired (with buffer)
         if (Date.now() >= token.expiresAt - EXPIRY_BUFFER_MS) {
           sessionStorage.removeItem(key);
           continue;
         }
 
-        console.log(`✅ Using cached token for ${token.accountEmail}`);
+        // console.log(`✅ Using cached token for ${token.accountEmail}`);
         return token.accessToken;
       }
     }
@@ -65,7 +77,7 @@ export const cachePickerToken = (
     };
 
     sessionStorage.setItem(key, JSON.stringify(token));
-    console.log(`💾 Cached token for ${accountEmail}`);
+    // console.log(`💾 Cached token for ${accountEmail}`);
   } catch (error) {
     console.error('Error caching token:', error);
   }
@@ -84,7 +96,7 @@ export const clearAllPickerTokens = (): void => {
       }
     }
     keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-    console.log(`🗑️ Cleared ${keysToRemove.length} cached tokens`);
+    // console.log(`🗑️ Cleared ${keysToRemove.length} cached tokens`);
   } catch (error) {
     console.error('Error clearing cached tokens:', error);
   }

@@ -22,12 +22,17 @@ export const useGooglePicker = () => {
 
     // If currently loading, wait for the existing promise
     if (isLoading && loadPromise) {
-      loadPromise.then((loaded) => {
-        setApiLoaded(loaded);
-        if (!loaded) {
-          setError('Failed to load Google Picker API');
-        }
-      });
+      loadPromise
+        .then((loaded) => {
+          setApiLoaded(loaded);
+          if (!loaded) {
+            setError('Failed to load Google Picker API');
+          }
+        })
+        .catch((err) => {
+          setError(err.message || 'Failed to load Google Picker API');
+          setApiLoaded(false);
+        });
       return;
     }
 
@@ -62,33 +67,37 @@ async function loadGooglePickerApi(): Promise<boolean> {
   try {
     // Check if already loaded
     if (window.gapi && window.google?.picker) {
-      console.log('✅ Google Picker API already loaded');
+      // console.log('✅ Google Picker API already loaded');
       return true;
     }
 
     // Load Google API client if not already loaded
     if (!window.gapi) {
       await loadScript('https://apis.google.com/js/api.js');
-      console.log('✅ Loaded gapi script');
+      // console.log('✅ Loaded gapi script');
     }
 
     // Load Google Sign-In if not already loaded
     if (!window.google) {
       await loadScript('https://accounts.google.com/gsi/client');
-      console.log('✅ Loaded Google Sign-In script');
+      // console.log('✅ Loaded Google Sign-In script');
     }
 
     // Wait for gapi to be ready
-    await new Promise<void>((resolve) => {
+    await new Promise<void>((resolve, reject) => {
       if (window.gapi) {
         resolve();
       } else {
         // Retry a few times
         let attempts = 0;
         const interval = setInterval(() => {
-          if (window.gapi || attempts++ > 20) {
+          attempts++;
+          if (window.gapi) {
             clearInterval(interval);
             resolve();
+          } else if (attempts >= 20) {
+            clearInterval(interval);
+            reject(new Error('Timeout waiting for Google API to initialize'));
           }
         }, 100);
       }
