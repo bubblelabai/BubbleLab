@@ -838,7 +838,7 @@ export function generateDisplayedBubbleParameters(
   return {
     'slack-listener': {
       variableName: 'Listen for Slack mentions',
-      bubbleName: 'Slack Event Listener',
+      bubbleName: 'slack',
       className: 'Slack Event Listener',
       parameters: [
         {
@@ -857,7 +857,7 @@ export function generateDisplayedBubbleParameters(
     },
     'message-parser': {
       variableName: 'Extract question from message',
-      bubbleName: 'Message Parser',
+      bubbleName: 'slack-formatter-agent',
       className: 'Message Parser',
       parameters: [
         {
@@ -876,7 +876,7 @@ export function generateDisplayedBubbleParameters(
     },
     'database-query': {
       variableName: 'Query database for data',
-      bubbleName: 'Database Schema Analysis',
+      bubbleName: 'database-analyzer',
       className: 'Database Schema Analysis',
       parameters: [
         {
@@ -900,7 +900,7 @@ export function generateDisplayedBubbleParameters(
     },
     'ai-analyzer': {
       variableName: 'Analyze data with AI agent',
-      bubbleName: 'AI Agent',
+      bubbleName: 'ai-agent',
       className: 'AI Agent',
       parameters: [
         {
@@ -924,7 +924,7 @@ export function generateDisplayedBubbleParameters(
     },
     'slack-responder': {
       variableName: 'Send insights back to Slack',
-      bubbleName: 'Slack Message Sender',
+      bubbleName: 'slack',
       className: 'Slack Message Sender',
       parameters: [
         {

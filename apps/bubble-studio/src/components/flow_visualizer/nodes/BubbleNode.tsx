@@ -1,8 +1,13 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code } from 'lucide-react';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  AvailableModels,
+  BubbleParameterType,
+} from '@bubblelab/shared-schemas';
+import type { BubbleParameter } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
@@ -23,6 +28,9 @@ import {
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
+import { useEditor } from '@/hooks/useEditor';
+import { extractParamValue } from '@/utils/bubbleParamEditor';
+import { getAllInlineParamConfigs } from '@/config/bubbleInlineParams';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -46,6 +54,242 @@ export interface BubbleNodeData {
 
 interface BubbleNodeProps {
   data: BubbleNodeData;
+}
+
+/**
+ * Number input that uses a text field for better UX
+ * (avoids spinner/increment issues with native number input)
+ */
+function NumberInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [inputValue, setInputValue] = useState(String(value));
+
+  // Sync input value when prop changes
+  useEffect(() => setInputValue(String(value)), [value]);
+
+  const handleBlur = () => {
+    const parsed = Number(inputValue);
+    if (!isNaN(parsed) && parsed !== value) {
+      onChange(parsed);
+    } else if (isNaN(parsed)) {
+      // Reset to original value if invalid
+      setInputValue(String(value));
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-purple-300">
+        {label}
+      </label>
+      <input
+        type="text"
+        inputMode="numeric"
+        title={label}
+        value={inputValue}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
+        className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
+      />
+    </div>
+  );
+}
+
+/**
+ * Boolean toggle switch for better UX than checkbox
+ */
+function BooleanToggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-purple-300">
+        {label}
+      </label>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        title={`${label}: ${value ? 'On' : 'Off'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(!value);
+        }}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-neutral-800 ${
+          value ? 'bg-purple-600' : 'bg-neutral-600'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            value ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Generic inline params component - renders based on config
+ */
+interface BubbleInlineParamsProps {
+  bubbleName: string | undefined;
+  paramNames: string[]; // All param names from the bubble
+  variableId: number;
+  getParam: (
+    variableId: number,
+    paramName: string
+  ) => BubbleParameter | undefined;
+  updateBubbleParam: (
+    variableId: number,
+    paramName: string,
+    newValue: unknown
+  ) => void;
+  onOpenDetails: () => void;
+}
+
+function BubbleInlineParams({
+  bubbleName,
+  paramNames,
+  variableId,
+  getParam,
+  updateBubbleParam,
+  onOpenDetails,
+}: BubbleInlineParamsProps) {
+  // Get configs including wildcards that match the bubble's params
+  const configs = getAllInlineParamConfigs(bubbleName, paramNames);
+
+  if (configs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      {configs.map((config) => {
+        const extracted = extractParamValue(
+          getParam(variableId, config.paramName),
+          config.paramPath,
+          bubbleName
+        );
+
+        if (!extracted?.shouldBeEditable) {
+          return null;
+        }
+
+        const value = extracted.value;
+
+        // Model dropdown
+        if (config.isModel && config.inlineDisplay === 'dropdown') {
+          return (
+            <div key={config.paramName} className="space-y-1">
+              <label className="block text-xs font-medium text-purple-300">
+                {config.label || config.paramName}
+              </label>
+              <select
+                title={`Select ${config.label || config.paramName}`}
+                value={value as string}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  updateBubbleParam(
+                    variableId,
+                    config.paramPath,
+                    e.target.value
+                  )
+                }
+                className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
+              >
+                {AvailableModels.options.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+
+        // Number input (text field that accepts numbers only)
+        if (
+          config.inlineDisplay === 'preview' &&
+          extracted.type === BubbleParameterType.NUMBER
+        ) {
+          return (
+            <NumberInput
+              key={config.paramName}
+              label={config.label || config.paramName}
+              value={value as number}
+              onChange={(newValue) =>
+                updateBubbleParam(variableId, config.paramPath, newValue)
+              }
+            />
+          );
+        }
+
+        // Boolean toggle switch
+        if (
+          config.inlineDisplay === 'preview' &&
+          extracted.type === BubbleParameterType.BOOLEAN
+        ) {
+          return (
+            <BooleanToggle
+              key={config.paramName}
+              label={config.label || config.paramName}
+              value={value as boolean}
+              onChange={(newValue) =>
+                updateBubbleParam(variableId, config.paramPath, newValue)
+              }
+            />
+          );
+        }
+
+        // Preview (truncated text that opens details on click)
+        if (
+          config.inlineDisplay === 'preview' &&
+          typeof value === 'string' &&
+          value
+        ) {
+          return (
+            <div key={config.paramName} className="space-y-1">
+              <label className="block text-xs font-medium text-purple-300">
+                {config.label || config.paramName}
+              </label>
+              <p
+                className="px-2 py-1.5 text-[11px] bg-neutral-800 border border-neutral-600 rounded text-neutral-300 truncate cursor-pointer hover:bg-neutral-700 transition-colors"
+                title={value}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDetails();
+                }}
+              >
+                {value.length > 80 ? value.substring(0, 80) + '...' : value}
+              </p>
+            </div>
+          );
+        }
+
+        return null;
+      })}
+    </div>
+  );
 }
 
 function BubbleNode({ data }: BubbleNodeProps) {
@@ -101,6 +345,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Get flow data to find clones
   const { data: currentFlow } = useBubbleFlow(flowId);
+
+  // Get editor functions for accessing/updating params
+  const { getParam, updateBubbleParam } = useEditor(flowId);
 
   // Get sub-bubble visibility state from store
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
@@ -678,6 +925,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
             </div>
           );
         })()}
+
+        {/* Inline Params - Model dropdowns & preview text based on config */}
+        <BubbleInlineParams
+          bubbleName={bubble.bubbleName}
+          paramNames={bubble.parameters.map((p) => p.name)}
+          variableId={bubble.variableId}
+          getParam={getParam}
+          updateBubbleParam={updateBubbleParam}
+          onOpenDetails={() => setIsDetailsOpen(true)}
+        />
       </div>
 
       {hasSubBubbles && (
@@ -705,6 +962,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
       <BubbleDetailsOverlay
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
+        flowId={flowId}
         bubble={bubble}
         logo={logo}
         logoErrored={logoError}

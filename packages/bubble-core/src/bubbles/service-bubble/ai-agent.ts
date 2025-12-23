@@ -112,7 +112,7 @@ const BackupModelConfigSchema = z.object({
 
 // Define model configuration
 const ModelConfigSchema = z.object({
-  model: AvailableModels.default(RECOMMENDED_MODELS.FAST).describe(
+  model: AvailableModels.describe(
     'AI model to use (format: provider/model-name).'
   ),
   temperature: z
@@ -282,12 +282,12 @@ const AIAgentParamsSchema = z.object({
     .describe('A friendly name for the AI agent'),
   model: ModelConfigSchema.default({
     model: RECOMMENDED_MODELS.FAST,
-    temperature: 0.7,
+    temperature: 1,
     maxTokens: 50000,
     maxRetries: 3,
     jsonMode: false,
   }).describe(
-    'AI model configuration including provider, temperature, and tokens, retries, and json mode.'
+    'AI model configuration including provider, temperature, and tokens, retries, and json mode. Always include this.'
   ),
   tools: z
     .array(ToolConfigSchema)
@@ -405,6 +405,7 @@ export class AIAgentBubble extends ServiceBubble<
     params: AIAgentParams = {
       message: 'Hello, how are you?',
       systemPrompt: 'You are a helpful AI assistant',
+      model: { model: RECOMMENDED_MODELS.FAST },
     },
     context?: BubbleContext,
     instanceId?: string

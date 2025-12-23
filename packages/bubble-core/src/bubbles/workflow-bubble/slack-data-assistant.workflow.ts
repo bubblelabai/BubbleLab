@@ -5,7 +5,7 @@ import { SlackBubble } from '../service-bubble/slack.js';
 import { DatabaseAnalyzerWorkflowBubble } from './database-analyzer.workflow.js';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { SlackFormatterAgentBubble } from './slack-formatter-agent.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import { CredentialType, RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 
 // Define the parameters schema for the Slack Data Assistant workflow
@@ -394,7 +394,7 @@ After running your queries, provide a comprehensive answer to the user's questio
         {
           message: dataAnalysisPrompt,
           model: {
-            model: this.params.aiModel,
+            model: this.params.aiModel ?? RECOMMENDED_MODELS.FAST,
             temperature: this.params.temperature,
           },
           systemPrompt:

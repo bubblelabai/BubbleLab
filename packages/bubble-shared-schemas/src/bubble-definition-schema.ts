@@ -114,7 +114,7 @@ export type BubbleParameter = z.infer<typeof BubbleParameterSchema>;
 // Parsed bubble from backend parser (matches backend ParsedBubble interface)
 export interface ParsedBubble {
   variableName: string;
-  bubbleName: string; // This comes from the registry (e.g., 'postgresql', 'slack')
+  bubbleName: BubbleName; // This comes from the registry (e.g., 'postgresql', 'slack')
   className: string; // This is the actual class name (e.g., 'PostgreSQLBubble', 'SlackBubble')
   parameters: BubbleParameter[];
   hasAwait: boolean; // Whether the original expression was awaited
@@ -157,37 +157,6 @@ export interface BubbleDependencySpec {
 
 export type BubbleNodeType = 'service' | 'tool' | 'workflow' | 'unknown';
 
-export interface ParsedBubbleWithInfo extends ParsedBubble {
-  variableId: number;
-  nodeType: BubbleNodeType;
-  location: {
-    startLine: number;
-    startCol: number;
-    endLine: number;
-    endCol: number;
-  };
-  description?: string;
-  /**
-   * Indicates that this bubble was cloned for a specific invocation context,
-   * using the provided call site key for uniqueness.
-   */
-  invocationCallSiteKey?: string;
-  /**
-   * Reference to the original parsed bubble's variableId when this entry
-   * represents an invocation-specific clone.
-   */
-  clonedFromVariableId?: number;
-  /**
-   * Indicates that this bubble is inside a custom tool function.
-   * Such bubbles should not appear in top-level flow visualization.
-   */
-  isInsideCustomTool?: boolean;
-  /**
-   * Reference to the custom tool function's uniqueId that contains this bubble.
-   */
-  containingCustomToolId?: string;
-}
-
 export const BubbleNodeTypeSchema = z.enum([
   'service',
   'tool',
@@ -213,7 +182,7 @@ export const DependencyGraphNodeSchema: z.ZodType<DependencyGraphNode> = z.lazy(
 
 export const ParsedBubbleSchema = z.object({
   variableName: z.string(),
-  bubbleName: z.string(),
+  bubbleName: z.string() as z.ZodType<BubbleName>,
   className: z.string(),
   parameters: z.array(BubbleParameterSchema),
   hasAwait: z.boolean(),
@@ -229,7 +198,7 @@ export const BubbleDependencySpecSchema = z.object({
 
 export const ParsedBubbleWithInfoSchema = z.object({
   variableName: z.string(),
-  bubbleName: z.string(),
+  bubbleName: z.string() as z.ZodType<BubbleName>,
   className: z.string(),
   parameters: z.array(BubbleParameterSchema),
   hasAwait: z.boolean(),
@@ -251,6 +220,7 @@ export const ParsedBubbleWithInfoSchema = z.object({
   containingCustomToolId: z.string().optional(),
 });
 
+export type ParsedBubbleWithInfo = z.infer<typeof ParsedBubbleWithInfoSchema>;
 // Inferred types from Zod schemas
 export type BubbleParameterTypeInferred = z.infer<
   typeof BubbleParameterTypeSchema

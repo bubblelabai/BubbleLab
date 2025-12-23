@@ -1502,7 +1502,7 @@ export class BubbleParser {
     nodes: Record<number, ParsedBubbleWithInfo>,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >,
     scopeManager: ScopeManager
   ): void {
@@ -1815,7 +1815,7 @@ export class BubbleParser {
     expr: TSESTree.Expression,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >
   ): ParsedBubbleWithInfo | null {
     // await new X(...)
@@ -1863,7 +1863,7 @@ export class BubbleParser {
     newExpr: TSESTree.NewExpression,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >
   ): ParsedBubbleWithInfo | null {
     if (!newExpr.callee || newExpr.callee.type !== 'Identifier') return null;
@@ -2072,7 +2072,7 @@ export class BubbleParser {
     nodes: Record<number, ParsedBubbleWithInfo>,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >
   ): void {
     // Get all ai-agent bubbles from nodes

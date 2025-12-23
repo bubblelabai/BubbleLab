@@ -6,6 +6,7 @@ import {
   ParsedWorkflowSchema,
 } from './bubble-definition-schema.js';
 import { CredentialType } from './types.js';
+import type { BubbleName } from './types.js';
 // POST /bubble-flow - Create new BubbleFlow schema (with code)
 export const createBubbleFlowSchema = z
   .object({
@@ -327,7 +328,9 @@ export const bubbleFlowListItemSchema = z.object({
   bubbles: z
     .array(
       z.object({
-        bubbleName: z.string().openapi({ description: 'Bubble name' }),
+        bubbleName: z
+          .string()
+          .openapi({ description: 'Bubble name' }) as z.ZodType<BubbleName>,
         className: z.string().openapi({ description: 'Bubble class name' }),
       })
     )
