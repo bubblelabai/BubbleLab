@@ -13,7 +13,7 @@ export const GoogleMapsScraperInputSchema = z.object({
     .optional()
     .describe('Location to search in. Examples: "New York, USA", "London, UK"'),
 
-  maxCrawledPlaces: z
+  maxCrawledPlacesPerSearch: z
     .number()
     .min(1)
     .max(1000)

@@ -447,7 +447,7 @@ describe('Apify Integration Tests', () => {
           actorId,
           input: {
             searchStringsArray: ['coffee shops in San Francisco'],
-            maxCrawledPlaces: 3,
+            maxCrawledPlacesPerSearch: 3,
             language: 'en',
           },
           limit: 10,

@@ -78,22 +78,6 @@ const GoogleMapsToolParamsSchema = z.object({
 
   language: z.string().default('en').optional().describe('Result language'),
 
-  extractReviews: z
-    .number()
-    .min(0)
-    .max(100)
-    .default(0)
-    .optional()
-    .describe('Number of reviews to extract per place'),
-
-  extractPhotos: z
-    .number()
-    .min(0)
-    .max(100)
-    .default(0)
-    .optional()
-    .describe('Number of photos to extract per place'),
-
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -190,7 +174,7 @@ export class GoogleMapsTool extends ToolBubble<
     const input: z.infer<typeof GoogleMapsScraperInputSchema> = {
       searchStringsArray: queries,
       locationQuery: location,
-      maxCrawledPlaces: limit,
+      maxCrawledPlacesPerSearch: limit,
       language,
       // Default safer settings
       onlyDataFromSearchPage: false,
