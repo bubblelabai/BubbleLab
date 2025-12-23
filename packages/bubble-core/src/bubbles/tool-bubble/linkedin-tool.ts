@@ -201,9 +201,8 @@ const LinkedInToolParamsSchema = z.object({
   // Common fields
   limit: z
     .number()
-    .min(100)
     .max(1000)
-    .default(100)
+    .default(50)
     .optional()
     .describe('Maximum number of items to fetch (default: 50)'),
 
