@@ -268,8 +268,8 @@ body {
   }
 }
 
-.group-hover\:shake:group-hover {
-  animation: shake 0.15s ease-in-out infinite;
+.group:hover .group-hover\:shake {
+  animation: shake 0.15s ease-in-out 3;
 }
 
 @keyframes fade-in {
