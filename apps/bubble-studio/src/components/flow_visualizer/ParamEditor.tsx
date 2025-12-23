@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Pencil, Lock } from 'lucide-react';
 import type { BubbleParameter } from '@bubblelab/shared-schemas';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
@@ -45,7 +45,7 @@ export function ParamEditor({
     formattedValue.includes('\n') || formattedValue.length > 50;
 
   // Sync local state when param.value changes (e.g., from code editor)
-  useMemo(() => setEditValue(formattedValue), [formattedValue]);
+  useEffect(() => setEditValue(formattedValue), [formattedValue]);
 
   const handleBlur = () => {
     if (editValue !== formattedValue) {

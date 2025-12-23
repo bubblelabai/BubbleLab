@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code } from 'lucide-react';
@@ -72,7 +72,7 @@ function NumberInput({
   const [inputValue, setInputValue] = useState(String(value));
 
   // Sync input value when prop changes
-  useMemo(() => setInputValue(String(value)), [value]);
+  useEffect(() => setInputValue(String(value)), [value]);
 
   const handleBlur = () => {
     const parsed = Number(inputValue);

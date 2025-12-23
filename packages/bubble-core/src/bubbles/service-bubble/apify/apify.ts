@@ -210,7 +210,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
 
     Use cases:
     - Discovering available actors and their schemas then
-    - Specific scraping tasks that are not covered by the supported actors and seems hard to do through normal scraping
+    - IMPORTANT: Specific scraping tasks that are not covered by the supported actors and seems hard to do through normal scraping by going to actor https://apify.com/$owner/$actorid/input-schema page and scrape the input schema details.
 
     DO NOT Use:
     - Media generation tasks (e.g., image generation, video generation, audio generation, etc.)

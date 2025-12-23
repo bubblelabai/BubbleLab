@@ -462,7 +462,7 @@ describe('extractModelValue', () => {
       source: 'object-property',
     };
 
-    const result = extractParamValue(modelParam, 'model.model');
+    const result = extractParamValue(modelParam, 'model.model', 'ai-agent');
     expect(result?.value).toBe('google/gemini-2.5-pro');
   });
   it('should return undefined when param is invalid', () => {
@@ -472,7 +472,8 @@ describe('extractModelValue', () => {
         value: '{ model: "random string" }',
         type: BubbleParameterType.STRING,
       },
-      'model.model'
+      'model.model',
+      'ai-agent'
     );
     expect(result?.value).toBe('random string');
     expect(result?.shouldBeEditable).toBe(false);

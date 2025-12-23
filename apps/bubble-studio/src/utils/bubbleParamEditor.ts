@@ -450,25 +450,38 @@ export function updateCachedBubbleParameters(
       updatedBubble.parameters = updatedBubble.parameters.map((p) => {
         if (p.name !== baseParamName) return p;
 
-        // For nested paths like "model.model", parse as JS object, update, stringify
+        // For nested paths like "model.model", use regex to update the specific key
+        // This avoids using `new Function()` which would execute arbitrary code
+        //
+        // Limitations: This regex handles flat object literals with simple values
+        // (strings, numbers, booleans). It does NOT support:
+        // - Nested objects or arrays as values
+        // - Template literals as values
+        // For the current use cases (model names, numbers), this is sufficient.
         if (pathParts.length > 1 && typeof p.value === 'string') {
-          try {
-            // Parse the JS object literal string
-            // eslint-disable-next-line no-new-func
-            const obj = new Function(`return ${p.value}`)() as Record<
-              string,
-              unknown
-            >;
-            obj[pathParts[1]] = newValue;
-            // Stringify back to JS object literal format
-            const entries = Object.entries(obj).map(
-              ([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`
+          const keyToUpdate = pathParts[1];
+          const serializedNewValue =
+            typeof newValue === 'string' ? `'${newValue}'` : String(newValue);
+
+          // Match the key followed by its value:
+          // - Single-quoted strings (with escaped quotes): '(?:[^'\\]|\\.)*'
+          // - Double-quoted strings (with escaped quotes): "(?:[^"\\]|\\.)*"
+          // - Primitives (numbers, booleans, null, undefined): [^,}\\s]+
+          const keyPattern = new RegExp(
+            `(${keyToUpdate}:\\s*)('(?:[^'\\\\]|\\\\.)*'|"(?:[^"\\\\]|\\\\.)*"|[^,}\\s]+)`
+          );
+
+          if (keyPattern.test(p.value)) {
+            // Replace existing key's value
+            const updatedValue = p.value.replace(
+              keyPattern,
+              `$1${serializedNewValue}`
             );
-            return { ...p, value: `{ ${entries.join(', ')} }` };
-          } catch (e) {
-            console.error(`Failed to update cached param: ${e}`);
-            return p;
+            return { ...p, value: updatedValue };
           }
+          // Key not found - return unchanged (shouldn't happen in normal usage)
+          console.warn(`Key "${keyToUpdate}" not found in cached param value`);
+          return p;
         }
 
         // For simple paths, replace the whole value

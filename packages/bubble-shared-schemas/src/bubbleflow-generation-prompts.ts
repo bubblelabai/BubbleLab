@@ -304,6 +304,7 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 3. When using the ai-agent bubble, always include the model parameter object with the model name and relevant configurations. Set temperature, maxTokens, and other parameters that users might want to adjust for their specific workflow needs.
+4. When using custom apify bubble, always discover the actor and its schema first using the apify bubble, DO NOT use any actor that are not discovered as it could be rented actor and not available to run.
 
 BUBBLE COMMENT REQUIREMENTS:
 Place a descriptive comment directly above each bubble instantiation (the \`new BubbleName({...})\` line).
