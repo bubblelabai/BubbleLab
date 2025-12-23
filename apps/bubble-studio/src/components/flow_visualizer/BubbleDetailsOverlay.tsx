@@ -1,21 +1,24 @@
 import { type CSSProperties, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, X, Info } from 'lucide-react';
+import { BookOpen, Code, X, Info, Cpu, Pencil, Lock } from 'lucide-react';
 import type {
   CredentialResponse,
   ParsedBubbleWithInfo,
   CredentialType,
+  BubbleParameter,
 } from '@bubblelab/shared-schemas';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
+import { SYSTEM_CREDENTIALS, AvailableModels } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { useOverlay } from '@/hooks/useOverlay';
+import { useEditor } from '@/hooks/useEditor';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
 
 interface BubbleDetailsOverlayProps {
   isOpen: boolean;
   onClose: () => void;
+  flowId: number;
   bubble: ParsedBubbleWithInfo;
   logo: { name: string; file: string } | null;
   logoErrored: boolean;
@@ -41,11 +44,106 @@ const formatValue = (value: unknown): string => {
   }
 };
 
+// Individual param editor with local state only for editable fields
+function ParamEditor({
+  param,
+  variableId,
+  updateBubbleParam,
+  onParamEditInCode,
+}: {
+  param: BubbleParameter;
+  variableId: number;
+  updateBubbleParam: (
+    variableId: number,
+    paramName: string,
+    newValue: unknown
+  ) => void;
+  onParamEditInCode?: (paramName: string) => void;
+}) {
+  const extracted = extractParamValue(param, param.name);
+  const isEditable = extracted?.shouldBeEditable ?? false;
+  const formattedValue = formatValue(extracted?.value ?? param.value);
+  const [editValue, setEditValue] = useState(formattedValue);
+  const isMultiline =
+    formattedValue.includes('\n') || formattedValue.length > 50;
+
+  // Sync local state when param.value changes (e.g., from code editor)
+  useMemo(() => setEditValue(formattedValue), [formattedValue]);
+
+  const handleBlur = () => {
+    if (editValue !== formattedValue) {
+      updateBubbleParam(variableId, param.name, editValue);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <p className="text-base font-semibold text-white">
+            {param.name}
+            {param.type && (
+              <span className="ml-2 text-sm text-neutral-400">
+                ({param.type})
+              </span>
+            )}
+          </p>
+          {isEditable ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-xs font-medium text-purple-300 border border-purple-500/30">
+              <Pencil className="h-3 w-3" />
+              Editable
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-0.5 text-xs font-medium text-neutral-400 border border-neutral-700">
+              <Lock className="h-3 w-3" />
+              Read-only
+            </span>
+          )}
+        </div>
+        {onParamEditInCode && (
+          <button
+            type="button"
+            onClick={() => onParamEditInCode(param.name)}
+            className="text-sm font-medium text-purple-300 transition hover:text-purple-200"
+          >
+            View Code
+          </button>
+        )}
+      </div>
+      {isEditable ? (
+        isMultiline ? (
+          <textarea
+            className="mt-3 w-full min-h-[120px] max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none resize-y"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleBlur}
+            title={param.name}
+          />
+        ) : (
+          <input
+            type="text"
+            className="mt-3 w-full rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleBlur}
+            title={param.name}
+          />
+        )
+      ) : (
+        <pre className="mt-3 w-full max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-700 bg-neutral-950/50 px-4 py-3 text-sm text-neutral-400 font-mono">
+          {formattedValue}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 const DEFAULT_MODAL_Z_INDEX = 1200;
 
 export function BubbleDetailsOverlay({
   isOpen,
   onClose,
+  flowId,
   bubble,
   logo,
   logoErrored,
@@ -63,13 +161,32 @@ export function BubbleDetailsOverlay({
     null
   );
   const createCredentialMutation = useCreateCredential();
+  const { updateBubbleParam } = useEditor(flowId);
 
+  // Determine if this is an agent bubble
+  const isAgentBubble = bubble.bubbleName === 'ai-agent';
+
+  // Get current model from bubble.parameters (for agent bubbles)
+  const modelParam = bubble.parameters.find((p) => p.name === 'model');
+  const modelExtracted = extractParamValue(modelParam, 'model.model');
+  const currentModel = modelExtracted?.value as string | undefined;
+  const isModelEditable = modelExtracted?.shouldBeEditable ?? false;
+
+  // Filter params for display
+  // - Always exclude: credentials, env params
+  // - For agent bubbles: also exclude model (handled in Model section)
   const displayParams = useMemo(
     () =>
-      bubble.parameters.filter(
-        (param) => param.name !== 'credentials' && !param.name.includes('env')
-      ),
-    [bubble.parameters]
+      bubble.parameters.filter((param) => {
+        if (param.name === 'credentials' || param.name.includes('env')) {
+          return false;
+        }
+        if (isAgentBubble && param.name === 'model') {
+          return false;
+        }
+        return true;
+      }),
+    [bubble.parameters, isAgentBubble]
   );
 
   const sensitiveEnvParams = useMemo(
@@ -237,27 +354,62 @@ export function BubbleDetailsOverlay({
               </div>
             </header>
 
-            <section className="border-b border-neutral-900 bg-neutral-950/90 p-6 sm:p-8">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
-                  <Info className="h-4 w-4" />
-                  Credentials
-                </div>
-                {requiredCredentialTypes.length === 0 ? (
-                  <p className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/80 px-4 py-6 text-sm text-neutral-400">
-                    This bubble does not require credentials {bubble.variableId}
-                    .
-                  </p>
-                ) : (
-                  <div className="mt-4 space-y-4">
-                    {requiredCredentialTypes.map((credType) =>
-                      renderCredentialControl(credType)
+            {/* Model Section - Only for agent bubbles */}
+            {isAgentBubble && (
+              <section className="border-b border-neutral-900 bg-neutral-950/90 p-6 sm:p-8">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
+                    <Cpu className="h-4 w-4" />
+                    Model
+                  </div>
+                  <div className="mt-4 space-y-2 rounded-xl border border-neutral-800 bg-neutral-900/80 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-100">
+                          AI Model
+                        </p>
+                        <p className="mt-0.5 text-xs text-neutral-400">
+                          {isModelEditable
+                            ? 'Select the model for this agent'
+                            : 'Model is set dynamically in code'}
+                        </p>
+                      </div>
+                      {!isModelEditable && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-300 border border-blue-500/30">
+                          Dynamic
+                        </span>
+                      )}
+                    </div>
+                    {isModelEditable ? (
+                      <select
+                        title="Select AI Model"
+                        className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus:border-purple-500 focus:outline-none"
+                        value={currentModel}
+                        onChange={(e) =>
+                          updateBubbleParam(
+                            bubble.variableId,
+                            'model.model',
+                            e.target.value
+                          )
+                        }
+                      >
+                        {AvailableModels.options.map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <pre className="w-full rounded-lg border border-neutral-700 bg-neutral-950/50 px-3 py-2 text-sm text-neutral-400 font-mono">
+                        {currentModel || 'Variable'}
+                      </pre>
                     )}
                   </div>
-                )}
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
 
+            {/* Parameters Section */}
             <section className="border-b border-neutral-900 bg-neutral-950/95 p-6 sm:p-8">
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
                 <Info className="h-4 w-4" />
@@ -269,40 +421,15 @@ export function BubbleDetailsOverlay({
                 </p>
               ) : (
                 <div className="mt-6 space-y-5">
-                  {displayParams.map((param) => {
-                    const extracted = extractParamValue(param, param.name);
-                    return (
-                      <div
-                        key={param.name}
-                        className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-base font-semibold text-white">
-                              {param.name}
-                              {param.type && (
-                                <span className="ml-2 text-sm text-neutral-400">
-                                  ({param.type})
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          {onParamEditInCode && (
-                            <button
-                              type="button"
-                              onClick={() => onParamEditInCode(param.name)}
-                              className="text-sm font-medium text-purple-300 transition hover:text-purple-200"
-                            >
-                              View Code
-                            </button>
-                          )}
-                        </div>
-                        <pre className="mt-3 max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-800 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                          {formatValue(extracted?.value ?? param.value)}
-                        </pre>
-                      </div>
-                    );
-                  })}
+                  {displayParams.map((param) => (
+                    <ParamEditor
+                      key={param.name}
+                      param={param}
+                      variableId={bubble.variableId}
+                      updateBubbleParam={updateBubbleParam}
+                      onParamEditInCode={onParamEditInCode}
+                    />
+                  ))}
                   {sensitiveEnvParams.length > 0 && (
                     <div className="rounded-2xl border border-yellow-900 bg-yellow-950/40 p-5 text-yellow-200">
                       <p className="text-base font-semibold">
@@ -321,6 +448,27 @@ export function BubbleDetailsOverlay({
                   )}
                 </div>
               )}
+            </section>
+
+            {/* Credentials Section */}
+            <section className="border-b border-neutral-900 bg-neutral-950/90 p-6 sm:p-8">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
+                  <Info className="h-4 w-4" />
+                  Credentials
+                </div>
+                {requiredCredentialTypes.length === 0 ? (
+                  <p className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/80 px-4 py-6 text-sm text-neutral-400">
+                    This bubble does not require credentials.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-4">
+                    {requiredCredentialTypes.map((credType) =>
+                      renderCredentialControl(credType)
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
           </div>
         </div>

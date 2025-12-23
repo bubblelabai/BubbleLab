@@ -14,7 +14,6 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
 import BubbleDetailsOverlay from '@/components/flow_visualizer/BubbleDetailsOverlay';
-import AgentBubbleDetailsOverlay from '@/components/flow_visualizer/AgentBubbleDetailsOverlay';
 import {
   BUBBLE_COLORS,
   BADGE_COLORS,
@@ -807,40 +806,22 @@ function BubbleNode({ data }: BubbleNodeProps) {
           </button>
         </div>
       )}
-      {isAgentBubble ? (
-        <AgentBubbleDetailsOverlay
-          isOpen={isDetailsOpen}
-          onClose={() => setIsDetailsOpen(false)}
-          flowId={flowId}
-          bubble={bubble}
-          logo={logo}
-          logoErrored={logoError}
-          docsUrl={docsUrl}
-          requiredCredentialTypes={requiredCredentialTypes}
-          selectedBubbleCredentials={selectedBubbleCredentials}
-          availableCredentials={availableCredentials}
-          onCredentialChange={handleCredentialChange}
-          onParamEditInCode={onParamEditInCode}
-          onViewCode={() => onBubbleClick?.()}
-          showEditor={showEditor}
-        />
-      ) : (
-        <BubbleDetailsOverlay
-          isOpen={isDetailsOpen}
-          onClose={() => setIsDetailsOpen(false)}
-          bubble={bubble}
-          logo={logo}
-          logoErrored={logoError}
-          docsUrl={docsUrl}
-          requiredCredentialTypes={requiredCredentialTypes}
-          selectedBubbleCredentials={selectedBubbleCredentials}
-          availableCredentials={availableCredentials}
-          onCredentialChange={handleCredentialChange}
-          onParamEditInCode={onParamEditInCode}
-          onViewCode={() => onBubbleClick?.()}
-          showEditor={showEditor}
-        />
-      )}
+      <BubbleDetailsOverlay
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        flowId={flowId}
+        bubble={bubble}
+        logo={logo}
+        logoErrored={logoError}
+        docsUrl={docsUrl}
+        requiredCredentialTypes={requiredCredentialTypes}
+        selectedBubbleCredentials={selectedBubbleCredentials}
+        availableCredentials={availableCredentials}
+        onCredentialChange={handleCredentialChange}
+        onParamEditInCode={onParamEditInCode}
+        onViewCode={() => onBubbleClick?.()}
+        showEditor={showEditor}
+      />
 
       {/* Create Credential Modal */}
       {createModalForType && (
