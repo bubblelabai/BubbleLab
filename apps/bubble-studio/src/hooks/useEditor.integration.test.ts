@@ -10,7 +10,6 @@ import {
   extractParamValue,
 } from '../utils/bubbleParamEditor';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
-import { assert } from 'console';
 
 const API_BASE_URL =
   process.env.VITE_API_BASE_URL ||

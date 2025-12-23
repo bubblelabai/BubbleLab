@@ -7,10 +7,7 @@ import {
   AvailableModels,
   BubbleParameterType,
 } from '@bubblelab/shared-schemas';
-import type {
-  AvailableModel,
-  BubbleParameter,
-} from '@bubblelab/shared-schemas';
+import type { BubbleParameter } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
