@@ -41,11 +41,6 @@ function testBubbleParamUpdate(opts: {
     opts.newValue
   );
 
-  console.log(`[Test] Update result for ${opts.paramPath}:`, result);
-  if (result.success) {
-    console.log('[Test] Updated code:', result.code);
-  }
-
   expect(result.success).toBe(true);
   if (result.success) {
     for (const expected of opts.shouldContain) {
@@ -92,11 +87,6 @@ function testBubbleParamUpdateWithCache(opts: {
     opts.newValue
   );
 
-  console.log(`[Test] Update result for ${opts.paramPath}:`, result);
-  if (result.success) {
-    console.log('[Test] Updated code:', result.code);
-  }
-
   expect(result.success).toBe(true);
   if (result.success) {
     for (const expected of opts.shouldContain) {
@@ -116,11 +106,6 @@ function testBubbleParamUpdateWithCache(opts: {
       result.lineDiff,
       result.editedBubbleEndLine,
       result.editedParamEndLine
-    );
-
-    console.log(
-      '[Test] Updated bubbleParameters:',
-      JSON.stringify(updatedBubbleParameters, null, 2)
     );
 
     return { code: result.code, bubbleParameters: updatedBubbleParameters };

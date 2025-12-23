@@ -182,7 +182,7 @@ export const DependencyGraphNodeSchema: z.ZodType<DependencyGraphNode> = z.lazy(
 
 export const ParsedBubbleSchema = z.object({
   variableName: z.string(),
-  bubbleName: z.string(),
+  bubbleName: z.string() as z.ZodType<BubbleName>,
   className: z.string(),
   parameters: z.array(BubbleParameterSchema),
   hasAwait: z.boolean(),

@@ -102,6 +102,9 @@ export function ParamEditor({
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            setEditValue(formattedValue);
+            e.currentTarget.blur();
           }
         }}
         title={param.name}

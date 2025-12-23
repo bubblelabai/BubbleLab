@@ -112,8 +112,10 @@ function getNestedParamValue(
   // The param.value is a string like "{ model: 'google/gemini-2.5-pro' }"
   if (typeof param.value === 'string') {
     const attrName = parts[1]; // e.g., "model" from "model.model"
+    // Escape regex special characters in attrName to avoid malformed patterns
+    const escapedAttrName = attrName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const match = param.value.match(
-      new RegExp(`${attrName}:\\s*['"]([^'"]+)['"]`)
+      new RegExp(`${escapedAttrName}:\\s*['"]([^'"]+)['"]`)
     );
     if (match) {
       return { value: match[1], isTemplateLiteral: false };
@@ -329,10 +331,6 @@ export function updateBubbleParamInCode(
     isTemplateLiteral
   );
   const newValueSerialized = serializeValue(newValue, isTemplateLiteral);
-  console.log(
-    '[updateBubbleParam] currentValueSerialized:',
-    currentValueSerialized + ' matching in code: ' + code
-  );
 
   // Get the source location (uses original's location if this is a clone)
   // Use param location if available for more precise line range

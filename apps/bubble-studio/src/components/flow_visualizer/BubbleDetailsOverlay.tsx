@@ -7,7 +7,11 @@ import type {
   ParsedBubbleWithInfo,
   CredentialType,
 } from '@bubblelab/shared-schemas';
-import { SYSTEM_CREDENTIALS, AvailableModels } from '@bubblelab/shared-schemas';
+import {
+  SYSTEM_CREDENTIALS,
+  AvailableModels,
+  BubbleParameterType,
+} from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { useOverlay } from '@/hooks/useOverlay';
@@ -81,12 +85,15 @@ export function BubbleDetailsOverlay({
   const excludedParamNames = getExcludedParamNames(bubble.bubbleName);
 
   // Filter params for display
-  // - Always exclude: credentials, env params
+  // - Always exclude: credentials, env params (by type)
   // - Exclude model params (they have their own section)
   const displayParams = useMemo(
     () =>
       bubble.parameters.filter((param) => {
-        if (param.name === 'credentials' || param.name.includes('env')) {
+        if (
+          param.name === 'credentials' ||
+          param.type === BubbleParameterType.ENV
+        ) {
           return false;
         }
         if (excludedParamNames.includes(param.name)) {
@@ -98,7 +105,10 @@ export function BubbleDetailsOverlay({
   );
 
   const sensitiveEnvParams = useMemo(
-    () => bubble.parameters.filter((param) => param.name.includes('env')),
+    () =>
+      bubble.parameters.filter(
+        (param) => param.type === BubbleParameterType.ENV
+      ),
     [bubble.parameters]
   );
 

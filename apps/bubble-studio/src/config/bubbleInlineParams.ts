@@ -168,7 +168,10 @@ export function hasModelParam(bubbleName: string | undefined): boolean {
 
 /**
  * Get params that should be excluded from the Parameters section
- * (because they're shown in the Model section or inline)
+ * (because they're shown in the Model section).
+ *
+ * Note: This only excludes model params (those with isModel: true).
+ * Other inline params (like systemPrompt preview) are still shown in Parameters.
  */
 export function getExcludedParamNames(
   bubbleName: string | undefined
