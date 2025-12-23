@@ -112,6 +112,46 @@ function NumberInput({
 }
 
 /**
+ * Boolean toggle switch for better UX than checkbox
+ */
+function BooleanToggle({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-purple-300">
+        {label}
+      </label>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        title={`${label}: ${value ? 'On' : 'Off'}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange(!value);
+        }}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-neutral-800 ${
+          value ? 'bg-purple-600' : 'bg-neutral-600'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            value ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/**
  * Generic inline params component - renders based on config
  */
 interface BubbleInlineParamsProps {
@@ -200,6 +240,23 @@ function BubbleInlineParams({
               key={config.paramName}
               label={config.label || config.paramName}
               value={value as number}
+              onChange={(newValue) =>
+                updateBubbleParam(variableId, config.paramPath, newValue)
+              }
+            />
+          );
+        }
+
+        // Boolean toggle switch
+        if (
+          config.inlineDisplay === 'preview' &&
+          extracted.type === BubbleParameterType.BOOLEAN
+        ) {
+          return (
+            <BooleanToggle
+              key={config.paramName}
+              label={config.label || config.paramName}
+              value={value as boolean}
               onChange={(newValue) =>
                 updateBubbleParam(variableId, config.paramPath, newValue)
               }

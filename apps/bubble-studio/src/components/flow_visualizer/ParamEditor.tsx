@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Pencil, Lock } from 'lucide-react';
 import type { BubbleParameter } from '@bubblelab/shared-schemas';
+import { BubbleParameterType } from '@bubblelab/shared-schemas';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
 
 const formatValue = (value: unknown): string => {
@@ -36,6 +37,8 @@ export function ParamEditor({
 }: ParamEditorProps) {
   const extracted = extractParamValue(param, param.name, bubbleName);
   const isEditable = extracted?.shouldBeEditable ?? false;
+  const isBoolean = extracted?.type === BubbleParameterType.BOOLEAN;
+  const isNumber = extracted?.type === BubbleParameterType.NUMBER;
   const formattedValue = formatValue(extracted?.value ?? param.value);
   const [editValue, setEditValue] = useState(formattedValue);
   const isMultiline =
@@ -46,8 +49,64 @@ export function ParamEditor({
 
   const handleBlur = () => {
     if (editValue !== formattedValue) {
-      updateBubbleParam(variableId, param.name, editValue);
+      // For number params, convert to number before updating
+      if (isNumber) {
+        const numValue = Number(editValue);
+        if (!isNaN(numValue)) {
+          updateBubbleParam(variableId, param.name, numValue);
+        }
+      } else {
+        updateBubbleParam(variableId, param.name, editValue);
+      }
     }
+  };
+
+  // Render boolean toggle
+  const renderBooleanToggle = () => {
+    const boolValue = extracted?.value === true;
+    return (
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={boolValue}
+          title={`${param.name}: ${boolValue ? 'On' : 'Off'}`}
+          onClick={() => updateBubbleParam(variableId, param.name, !boolValue)}
+          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-neutral-900 ${
+            boolValue ? 'bg-purple-600' : 'bg-neutral-600'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+              boolValue ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+        <span className="text-sm text-neutral-300">
+          {boolValue ? 'true' : 'false'}
+        </span>
+      </div>
+    );
+  };
+
+  // Render number input
+  const renderNumberInput = () => {
+    return (
+      <input
+        type="text"
+        inputMode="numeric"
+        className="mt-3 w-full rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
+        title={param.name}
+      />
+    );
   };
 
   return (
@@ -85,7 +144,11 @@ export function ParamEditor({
         )}
       </div>
       {isEditable ? (
-        isMultiline ? (
+        isBoolean ? (
+          renderBooleanToggle()
+        ) : isNumber ? (
+          renderNumberInput()
+        ) : isMultiline ? (
           <textarea
             className="mt-3 w-full min-h-[120px] max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none resize-y"
             value={editValue}

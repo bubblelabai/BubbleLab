@@ -229,24 +229,39 @@ export function serializeValue(
 }
 
 /**
- * Get the source location for a bubble.
+ * Get the source location for a bubble or a specific parameter.
  * If the bubble is a clone, finds and returns the original bubble's location
  * since clones share the same source code location.
+ *
+ * @param bubble - The bubble to get location from
+ * @param bubbleParameters - All bubble parameters (needed to find original if clone)
+ * @param paramName - Optional parameter name to get that param's location instead
  */
 function getSourceLocation(
   bubble: ParsedBubbleWithInfo,
-  bubbleParameters: Record<string, ParsedBubbleWithInfo>
+  bubbleParameters: Record<string, ParsedBubbleWithInfo>,
+  paramName?: string
 ): ParsedBubbleWithInfo['location'] {
-  // If this is a clone, find the original bubble's location
+  // If this is a clone, find the original bubble
+  let targetBubble = bubble;
   if (bubble.clonedFromVariableId !== undefined) {
     const originalBubble = Object.values(bubbleParameters).find(
       (b) => b.variableId === bubble.clonedFromVariableId
     );
     if (originalBubble) {
-      return originalBubble.location;
+      targetBubble = originalBubble;
     }
   }
-  return bubble.location;
+
+  // If paramName provided and param has location, return param's location
+  if (paramName) {
+    const param = targetBubble.parameters.find((p) => p.name === paramName);
+    if (param?.location) {
+      return param.location;
+    }
+  }
+
+  return targetBubble.location;
 }
 
 /**
@@ -320,9 +335,11 @@ export function updateBubbleParamInCode(
   );
 
   // Get the source location (uses original's location if this is a clone)
-  const location = getSourceLocation(bubble, bubbleParameters);
+  // Use param location if available for more precise line range
+  const location = getSourceLocation(bubble, bubbleParameters, baseParamName);
+  const bubbleLocation = getSourceLocation(bubble, bubbleParameters);
 
-  // Split code into lines and do replacement only within the bubble's line range
+  // Split code into lines and do replacement only within the param/bubble's line range
   const lines = code.split('\n');
   const startLineIndex = location.startLine - 1; // Convert to 0-based index
   const endLineIndex = location.endLine - 1;
@@ -331,36 +348,36 @@ export function updateBubbleParamInCode(
   if (startLineIndex < 0 || endLineIndex >= lines.length) {
     return {
       success: false,
-      error: `Visual Editing is not currently supported for this parameter:Invalid bubble location: lines ${location.startLine}-${location.endLine} in code with ${lines.length} lines`,
+      error: `Visual Editing is not currently supported for this parameter: Invalid location: lines ${location.startLine}-${location.endLine} in code with ${lines.length} lines`,
     };
   }
 
-  // Extract the bubble's code section
-  const bubbleLines = lines.slice(startLineIndex, endLineIndex + 1);
-  const bubbleCode = bubbleLines.join('\n');
+  // Extract the code section (param location or bubble location)
+  const sectionLines = lines.slice(startLineIndex, endLineIndex + 1);
+  const sectionCode = sectionLines.join('\n');
 
-  // Do string replacement only within the bubble's code section
-  // Use replaceAll to replace all occurrences of the value
-  const updatedBubbleCode = bubbleCode.replaceAll(
-    currentValueSerialized,
-    newValueSerialized
-  );
-
-  if (updatedBubbleCode === bubbleCode) {
+  // Replace only the last occurrence of the value within the section
+  // This is safer when using param location as it targets the specific value
+  const lastIndex = sectionCode.lastIndexOf(currentValueSerialized);
+  if (lastIndex === -1) {
     return {
       success: false,
       error: `Visual Editing is not currently supported for this parameter: No value to replace for "${paramPath}"`,
     };
   }
 
-  // Reconstruct the full code with the updated bubble section
-  const updatedBubbleLines = updatedBubbleCode.split('\n');
-  const updatedLines = [
+  const updatedSectionCode =
+    sectionCode.substring(0, lastIndex) +
+    newValueSerialized +
+    sectionCode.substring(lastIndex + currentValueSerialized.length);
+
+  // Reconstruct the full code with the updated section
+  const updatedSectionLines = updatedSectionCode.split('\n');
+  const updatedCode = [
     ...lines.slice(0, startLineIndex),
-    ...updatedBubbleLines,
+    ...updatedSectionLines,
     ...lines.slice(endLineIndex + 1),
-  ];
-  const updatedCode = updatedLines.join('\n');
+  ].join('\n');
 
   // Get all related bubble variable IDs (original + clones) for cache updates
   const relatedVariableIds = getRelatedBubbleVariableIds(
@@ -379,7 +396,7 @@ export function updateBubbleParamInCode(
     relatedVariableIds,
     isTemplateLiteral,
     lineDiff,
-    editedBubbleEndLine: location.endLine,
+    editedBubbleEndLine: bubbleLocation.endLine,
     editedParamEndLine: param.location?.endLine,
   };
 }

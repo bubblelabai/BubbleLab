@@ -154,7 +154,8 @@ describe('extractParamValue', () => {
         value: '{ model: "random string" }',
         type: BubbleParameterType.STRING,
       },
-      'model.model'
+      'model.model',
+      'ai-agent' // bubbleName needed for config-based model detection
     );
     expect(result?.value).toBe('random string');
     expect(result?.shouldBeEditable).toBe(false);
@@ -626,6 +627,54 @@ describe('updateBubbleParamInCode with number parameters', () => {
   });
 });
 
+describe('updateBubbleParamInCode with boolean parameters', () => {
+  it('should update boolean parameter from true to false', () => {
+    const CODE_WITH_BOOLEAN = `const scraper = new WebScrapeTool({
+  url: 'https://example.com',
+  useProxy: true,
+  timeout: 30000,
+});`;
+
+    testBubbleParamUpdate({
+      code: CODE_WITH_BOOLEAN,
+      bubbleParameters: {
+        scraper: {
+          variableId: 1,
+          variableName: 'scraper',
+          bubbleName: 'web-scrape-tool',
+          className: 'WebScrapeTool',
+          nodeType: 'tool',
+          location: { startLine: 1, startCol: 1, endLine: 5, endCol: 3 },
+          parameters: [
+            {
+              name: 'url',
+              value: 'https://example.com',
+              type: BubbleParameterType.STRING,
+            },
+            {
+              name: 'useProxy',
+              value: 'true',
+              type: BubbleParameterType.BOOLEAN,
+            },
+            {
+              name: 'timeout',
+              value: '30000',
+              type: BubbleParameterType.NUMBER,
+            },
+          ],
+          hasAwait: false,
+          hasActionCall: false,
+        },
+      },
+      variableName: 'scraper',
+      paramPath: 'useProxy',
+      newValue: false,
+      shouldContain: ['useProxy: false'],
+      shouldNotContain: ['useProxy: true'],
+    });
+  });
+});
+
 describe('updateBubbleParamInCode with real parser output', () => {
   // This test uses actual bubble data from the parser to ensure compatibility
   // cspell:disable
@@ -687,21 +736,22 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
           value: 'query',
           type: BubbleParameterType.VARIABLE,
           location: {
-            startLine: 17,
+            startLine: 16,
             startCol: 15,
-            endLine: 17,
+            endLine: 16,
             endCol: 20,
           },
           source: 'object-property',
+          variableId: 413,
         },
         {
           name: 'systemPrompt',
           value: '`Hello\n`',
           type: BubbleParameterType.STRING,
           location: {
-            startLine: 18,
+            startLine: 17,
             startCol: 20,
-            endLine: 19,
+            endLine: 18,
             endCol: 1,
           },
           source: 'object-property',
@@ -712,9 +762,9 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             "{\n        model: 'openrouter/z-ai/glm-4.6',\n        temperature: 0.6\n      }",
           type: BubbleParameterType.OBJECT,
           location: {
-            startLine: 20,
+            startLine: 19,
             startCol: 13,
-            endLine: 23,
+            endLine: 22,
             endCol: 7,
           },
           source: 'object-property',
@@ -725,9 +775,9 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             "[\n        {\n          name: 'web-search-tool',\n          config: {\n            limit: 1,\n          },\n        },\n      ]",
           type: BubbleParameterType.ARRAY,
           location: {
-            startLine: 24,
+            startLine: 23,
             startCol: 13,
-            endLine: 31,
+            endLine: 30,
             endCol: 7,
           },
           source: 'object-property',
@@ -737,10 +787,37 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       hasActionCall: false,
       nodeType: 'service',
       location: {
-        startLine: 16,
+        startLine: 15,
         startCol: 18,
-        endLine: 32,
+        endLine: 31,
         endCol: 6,
+      },
+      dependencies: ['web-search-tool', 'firecrawl'],
+      dependencyGraph: {
+        name: 'ai-agent',
+        uniqueId: '414',
+        variableId: 414,
+        variableName: 'agent',
+        nodeType: 'service',
+        dependencies: [
+          {
+            name: 'web-search-tool',
+            uniqueId: '414.web-search-tool#1',
+            variableId: 605684,
+            variableName: 'web-search-tool',
+            nodeType: 'tool',
+            dependencies: [
+              {
+                name: 'firecrawl',
+                uniqueId: '414.web-search-tool#1.firecrawl#1',
+                variableId: 881696,
+                variableName: 'firecrawl',
+                nodeType: 'service',
+                dependencies: [],
+              },
+            ],
+          },
+        ],
       },
     },
   };
@@ -781,35 +858,35 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     console.log('  tools location:', toolsParam?.location);
 
     // message is BEFORE systemPrompt, should NOT shift
-    // Original: startLine: 17, endLine: 17
-    expect(messageParam?.location?.startLine).toBe(17);
-    expect(messageParam?.location?.endLine).toBe(17);
+    // Original: startLine: 16, endLine: 16
+    expect(messageParam?.location?.startLine).toBe(16);
+    expect(messageParam?.location?.endLine).toBe(16);
 
     // systemPrompt location doesn't shift (it's the edited param)
     // But its endLine extends by 1 due to the added line
-    // Original: startLine: 18, endLine: 19 (2 lines)
-    // After adding 1 line: startLine: 18, endLine: 20 (3 lines)
+    // Original: startLine: 17, endLine: 18 (2 lines)
+    // After adding 1 line: startLine: 17, endLine: 19 (3 lines)
     // Actually the param location in the cache might not change because
     // we only shift params that come AFTER the bubble's endLine
     // Let's check what we expect based on implementation
 
     // model is AFTER systemPrompt, should shift down by 1
-    // Original: startLine: 20, endLine: 23
-    // After +1 line shift: startLine: 21, endLine: 24
-    expect(modelParam?.location?.startLine).toBe(21);
-    expect(modelParam?.location?.endLine).toBe(24);
+    // Original: startLine: 19, endLine: 22
+    // After +1 line shift: startLine: 20, endLine: 23
+    expect(modelParam?.location?.startLine).toBe(20);
+    expect(modelParam?.location?.endLine).toBe(23);
 
     // tools is AFTER model, should also shift down by 1
-    // Original: startLine: 24, endLine: 31
-    // After +1 line shift: startLine: 25, endLine: 32
-    expect(toolsParam?.location?.startLine).toBe(25);
-    expect(toolsParam?.location?.endLine).toBe(32);
+    // Original: startLine: 23, endLine: 30
+    // After +1 line shift: startLine: 24, endLine: 31
+    expect(toolsParam?.location?.startLine).toBe(24);
+    expect(toolsParam?.location?.endLine).toBe(31);
 
     // Verify the bubble's overall location also updates
-    // Original: startLine: 16, endLine: 32
-    // After +1 line: startLine: 16, endLine: 33
-    expect(bubble?.location.startLine).toBe(16);
-    expect(bubble?.location.endLine).toBe(33);
+    // Original: startLine: 15, endLine: 31
+    // After +1 line: startLine: 15, endLine: 32
+    expect(bubble?.location.startLine).toBe(15);
+    expect(bubble?.location.endLine).toBe(32);
   });
 
   it('should update model.model in real parser output', () => {
