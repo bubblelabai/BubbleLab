@@ -60,7 +60,7 @@ describe('AIAgentBubble', () => {
       const params = bubble.currentParams;
       expect(params.systemPrompt).toBe('You are a helpful AI assistant');
       expect(params.model.model).toBe(RECOMMENDED_MODELS.FAST);
-      expect(params.model.temperature).toBe(0.7);
+      expect(params.model.temperature).toBe(1);
       expect(params.maxIterations).toBe(10);
     });
 
