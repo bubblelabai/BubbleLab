@@ -572,6 +572,60 @@ const agent2 = new AIAgentBubble({
   });
 });
 
+describe('updateBubbleParamInCode with number parameters', () => {
+  it('should update limit number parameter', () => {
+    const CODE_WITH_REDDIT_SCRAPER = `const redditScraper = new RedditScrapeTool({
+  subreddit: 'programming',
+  limit: 15,
+  sort: 'top',
+  timeFilter: 'day',
+});`;
+
+    testBubbleParamUpdate({
+      code: CODE_WITH_REDDIT_SCRAPER,
+      bubbleParameters: {
+        redditScraper: {
+          variableId: 1,
+          variableName: 'redditScraper',
+          bubbleName: 'reddit-scrape-tool',
+          className: 'RedditScrapeTool',
+          nodeType: 'tool',
+          location: { startLine: 1, startCol: 1, endLine: 6, endCol: 3 },
+          parameters: [
+            {
+              name: 'subreddit',
+              value: 'programming',
+              type: BubbleParameterType.STRING,
+            },
+            {
+              name: 'limit',
+              value: '15',
+              type: BubbleParameterType.NUMBER,
+            },
+            {
+              name: 'sort',
+              value: 'top',
+              type: BubbleParameterType.STRING,
+            },
+            {
+              name: 'timeFilter',
+              value: 'day',
+              type: BubbleParameterType.STRING,
+            },
+          ],
+          hasAwait: false,
+          hasActionCall: false,
+        },
+      },
+      variableName: 'redditScraper',
+      paramPath: 'limit',
+      newValue: 25,
+      shouldContain: ['limit: 25'],
+      shouldNotContain: ['limit: 15'],
+    });
+  });
+});
+
 describe('updateBubbleParamInCode with real parser output', () => {
   // This test uses actual bubble data from the parser to ensure compatibility
   // cspell:disable

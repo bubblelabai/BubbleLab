@@ -55,7 +55,7 @@ export function getRelatedBubbleVariableIds(
   return relatedIds;
 }
 interface NestedParamResult {
-  value: string;
+  value: string | number | boolean;
   isTemplateLiteral: boolean;
 }
 
@@ -67,14 +67,36 @@ function getNestedParamValue(
   param: BubbleParameter | undefined,
   path: string
 ): NestedParamResult | undefined {
-  if (!param?.value) return undefined;
+  if (param?.value === undefined || param?.value === null) return undefined;
 
   const parts = path.split('.');
 
-  // If path is just the param name (e.g., "systemPrompt"), return value directly
+  // If path is just the param name (e.g., "systemPrompt" or "limit"), return value directly
   if (parts.length === 1) {
+    // Handle number/boolean values (return as-is, serializeValue will handle them)
+    if (typeof param.value === 'number' || typeof param.value === 'boolean') {
+      return { value: param.value, isTemplateLiteral: false };
+    }
+    // Handle string values
     if (typeof param.value === 'string') {
-      let value = param.value;
+      // If the param.type is NUMBER or BOOLEAN, parse the string to native type
+      // This handles cases where parser stores "15" but we need 15 for serialization
+      if (param.type === BubbleParameterType.NUMBER) {
+        const numValue = Number(param.value);
+        if (!isNaN(numValue)) {
+          return { value: numValue, isTemplateLiteral: false };
+        }
+      }
+      if (param.type === BubbleParameterType.BOOLEAN) {
+        if (param.value === 'true') {
+          return { value: true, isTemplateLiteral: false };
+        }
+        if (param.value === 'false') {
+          return { value: false, isTemplateLiteral: false };
+        }
+      }
+      // Regular string handling
+      let value: string = param.value;
       let isTemplateLiteral = false;
       // Strip template literal backticks if present (e.g., `Hello ${name}` -> Hello ${name})
       if (value.startsWith('`') && value.endsWith('`')) {
@@ -309,7 +331,7 @@ export function updateBubbleParamInCode(
   if (startLineIndex < 0 || endLineIndex >= lines.length) {
     return {
       success: false,
-      error: `Invalid bubble location: lines ${location.startLine}-${location.endLine} in code with ${lines.length} lines`,
+      error: `Visual Editing is not currently supported for this parameter:Invalid bubble location: lines ${location.startLine}-${location.endLine} in code with ${lines.length} lines`,
     };
   }
 
@@ -327,7 +349,7 @@ export function updateBubbleParamInCode(
   if (updatedBubbleCode === bubbleCode) {
     return {
       success: false,
-      error: `Could not find value to replace for "${paramPath}"`,
+      error: `Visual Editing is not currently supported for this parameter: No value to replace for "${paramPath}"`,
     };
   }
 

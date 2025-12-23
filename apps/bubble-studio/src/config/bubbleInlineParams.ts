@@ -26,6 +26,9 @@ export type BubbleInlineParamsConfig = Partial<
   Record<BubbleName, InlineParamConfig[]>
 >;
 
+/**
+ * Bubble-specific inline param configs
+ */
 export const BUBBLE_INLINE_PARAMS: BubbleInlineParamsConfig = {
   'ai-agent': [
     {
@@ -55,6 +58,27 @@ export const BUBBLE_INLINE_PARAMS: BubbleInlineParamsConfig = {
 };
 
 /**
+ * Wildcard patterns for params that should always show inline
+ * regardless of bubble type. Matches are case-insensitive.
+ */
+export const WILDCARD_INLINE_PARAMS: InlineParamConfig[] = [
+  {
+    paramName: 'url',
+    paramPath: 'url',
+    isModel: false,
+    inlineDisplay: 'preview',
+    label: 'URL',
+  },
+  {
+    paramName: 'limit',
+    paramPath: 'limit',
+    isModel: false,
+    inlineDisplay: 'preview',
+    label: 'Limit',
+  },
+];
+
+/**
  * Check if a param is configured as a model selector.
  * This is used by extractParamValue to determine editability rules.
  */
@@ -71,13 +95,58 @@ export function isModelParam(
 }
 
 /**
- * Get inline param configs for a bubble name
+ * Get inline param configs for a bubble name.
+ * Returns bubble-specific configs only (wildcards are handled separately).
  */
 export function getInlineParamConfigs(
   bubbleName: string | undefined
 ): InlineParamConfig[] {
   if (!bubbleName) return [];
   return BUBBLE_INLINE_PARAMS[bubbleName as BubbleName] ?? [];
+}
+
+/**
+ * Get inline param config for a specific param, checking both
+ * bubble-specific configs and wildcard patterns.
+ */
+export function getInlineParamConfig(
+  bubbleName: string | undefined,
+  paramName: string
+): InlineParamConfig | undefined {
+  // First check bubble-specific configs
+  const bubbleConfigs = getInlineParamConfigs(bubbleName);
+  const bubbleConfig = bubbleConfigs.find(
+    (c) => c.paramName.toLowerCase() === paramName.toLowerCase()
+  );
+  if (bubbleConfig) return bubbleConfig;
+
+  // Then check wildcard patterns (case-insensitive)
+  return WILDCARD_INLINE_PARAMS.find(
+    (c) => c.paramName.toLowerCase() === paramName.toLowerCase()
+  );
+}
+
+/**
+ * Get all inline param configs for a bubble, including wildcards
+ * that match the bubble's parameters.
+ */
+export function getAllInlineParamConfigs(
+  bubbleName: string | undefined,
+  paramNames: string[]
+): InlineParamConfig[] {
+  const bubbleConfigs = getInlineParamConfigs(bubbleName);
+  const bubbleParamNames = new Set(
+    bubbleConfigs.map((c) => c.paramName.toLowerCase())
+  );
+
+  // Add wildcard configs for params not already configured
+  const wildcardConfigs = WILDCARD_INLINE_PARAMS.filter(
+    (wc) =>
+      !bubbleParamNames.has(wc.paramName.toLowerCase()) &&
+      paramNames.some((p) => p.toLowerCase() === wc.paramName.toLowerCase())
+  );
+
+  return [...bubbleConfigs, ...wildcardConfigs];
 }
 
 /**

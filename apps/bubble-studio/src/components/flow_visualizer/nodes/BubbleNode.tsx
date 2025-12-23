@@ -2,7 +2,11 @@ import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code } from 'lucide-react';
-import { CredentialType, AvailableModels } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  AvailableModels,
+  BubbleParameterType,
+} from '@bubblelab/shared-schemas';
 import type {
   AvailableModel,
   BubbleParameter,
@@ -29,7 +33,7 @@ import {
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
-import { getInlineParamConfigs } from '@/config/bubbleInlineParams';
+import { getAllInlineParamConfigs } from '@/config/bubbleInlineParams';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -56,10 +60,63 @@ interface BubbleNodeProps {
 }
 
 /**
+ * Number input that uses a text field for better UX
+ * (avoids spinner/increment issues with native number input)
+ */
+function NumberInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const [inputValue, setInputValue] = useState(String(value));
+
+  // Sync input value when prop changes
+  useMemo(() => setInputValue(String(value)), [value]);
+
+  const handleBlur = () => {
+    const parsed = Number(inputValue);
+    if (!isNaN(parsed) && parsed !== value) {
+      onChange(parsed);
+    } else if (isNaN(parsed)) {
+      // Reset to original value if invalid
+      setInputValue(String(value));
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <label className="block text-xs font-medium text-purple-300">
+        {label}
+      </label>
+      <input
+        type="text"
+        inputMode="numeric"
+        title={label}
+        value={inputValue}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setInputValue(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
+        className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
+      />
+    </div>
+  );
+}
+
+/**
  * Generic inline params component - renders based on config
  */
 interface BubbleInlineParamsProps {
   bubbleName: string | undefined;
+  paramNames: string[]; // All param names from the bubble
   variableId: number;
   getParam: (
     variableId: number,
@@ -75,12 +132,14 @@ interface BubbleInlineParamsProps {
 
 function BubbleInlineParams({
   bubbleName,
+  paramNames,
   variableId,
   getParam,
   updateBubbleParam,
   onOpenDetails,
 }: BubbleInlineParamsProps) {
-  const configs = getInlineParamConfigs(bubbleName);
+  // Get configs including wildcards that match the bubble's params
+  const configs = getAllInlineParamConfigs(bubbleName, paramNames);
 
   if (configs.length === 0) {
     return null;
@@ -128,6 +187,23 @@ function BubbleInlineParams({
                 ))}
               </select>
             </div>
+          );
+        }
+
+        // Number input (text field that accepts numbers only)
+        if (
+          config.inlineDisplay === 'preview' &&
+          extracted.type === BubbleParameterType.NUMBER
+        ) {
+          return (
+            <NumberInput
+              key={config.paramName}
+              label={config.label || config.paramName}
+              value={value as number}
+              onChange={(newValue) =>
+                updateBubbleParam(variableId, config.paramPath, newValue)
+              }
+            />
           );
         }
 
@@ -799,6 +875,7 @@ function BubbleNode({ data }: BubbleNodeProps) {
         {/* Inline Params - Model dropdowns & preview text based on config */}
         <BubbleInlineParams
           bubbleName={bubble.bubbleName}
+          paramNames={bubble.parameters.map((p) => p.name)}
           variableId={bubble.variableId}
           getParam={getParam}
           updateBubbleParam={updateBubbleParam}
