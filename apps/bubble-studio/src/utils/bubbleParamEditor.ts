@@ -154,7 +154,10 @@ export function serializeValue(
   if (typeof val === 'string') {
     // Check if it looks like a template literal (contains ${) or if forced
     if (val.includes('${') || forceTemplateLiteral) {
-      return '`' + val.replace(/\\/g, '\\\\').replace(/`/g, '\\`') + '`';
+      // For template literals, only escape backticks which would break the literal.
+      // Backslashes should be preserved as-is since they form valid escape sequences
+      // (e.g., \n for newline, \t for tab) that the user intends to keep.
+      return '`' + val.replace(/`/g, '\\`') + '`';
     }
     // Use single quotes for regular strings
     return `'${val
@@ -267,6 +270,7 @@ export function updateBubbleParamInCode(
 
   // Serialize both values as strings (newValue should be the raw string, not wrapped)
   // Preserve the original format (template literal vs regular string)
+  // For currentValue, use isFromSourceCode=true since it already has proper escape sequences
   const currentValueSerialized = serializeValue(
     currentValue,
     isTemplateLiteral

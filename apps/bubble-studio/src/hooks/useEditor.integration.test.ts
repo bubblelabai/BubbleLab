@@ -10,6 +10,7 @@ import {
   extractParamValue,
 } from '../utils/bubbleParamEditor';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
+import { assert } from 'console';
 
 const API_BASE_URL =
   process.env.VITE_API_BASE_URL ||
@@ -238,7 +239,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     const aiPrompt = "HIHIHHI"
     // Simple AI agent that responds to user queries with web search
     const agent = new AIAgentBubble({
-      message: query,
+      message: \`\\nMessage\`,
       model :{
         model: aiModel,
         temperature: 0.6
@@ -278,11 +279,133 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     });
   });
 
+  it('should update message with escaped newline and produce valid code', async () => {
+    // This test simulates the actual frontend behavior:
+    // 1. API returns param.value from source code
+    // 2. extractParamValue processes it → displays value to user
+    // 3. User modifies the displayed value (appending/changing text)
+    // 4. updateBubbleParamInCode produces new code
+    // 5. Repeat - second update uses displayed value from step 2 on the updated code
+    //
+    // All updates derive their values from what the frontend would display,
+    // maximizing simulation of real frontend behavior.
+
+    // First, validate the original code to get bubble parameters
+    const originalValidation = await validateCode(
+      TEMPLATE_STRING_SYSTEM_PROMPT
+    );
+    expect(originalValidation.valid).toBe(true);
+    expect(originalValidation.bubbles).toBeDefined();
+
+    let currentCode = TEMPLATE_STRING_SYSTEM_PROMPT;
+    let bubbleParameters = originalValidation.bubbles as Record<
+      string,
+      ParsedBubbleWithInfo
+    >;
+
+    // Get the message param and extract the displayed value (simulating frontend)
+    let bubble = Object.values(bubbleParameters).find(
+      (b) => b.variableName === 'agent'
+    );
+    expect(bubble).toBeDefined();
+    let messageParam = bubble?.parameters.find((p) => p.name === 'message');
+    expect(messageParam).toBeDefined();
+
+    // This is what the frontend displays to the user (after stripping backticks)
+    let displayedValue = extractParamValue(messageParam, 'message');
+    console.log(
+      '[Test] Initial displayed value to user:',
+      displayedValue?.value
+    );
+    expect(displayedValue?.value).toBe('\\nMessage'); // backslash-n-Message
+
+    // FIRST UPDATE: User appends ' hi' to the displayed value
+    const firstUpdateValue = displayedValue?.value + ' hi';
+    console.log('[Test] First update - user changes to:', firstUpdateValue);
+
+    const firstResult = updateBubbleParamInCode(
+      currentCode,
+      bubbleParameters,
+      'agent',
+      'message',
+      firstUpdateValue
+    );
+    expect(firstResult.success).toBe(true);
+    if (!firstResult.success) return;
+
+    console.log('[Test] First update result code snippet:');
+    console.log(firstResult.code.substring(0, 500));
+
+    // Validate the updated code to get new bubble parameters for second update
+    const firstValidation = await validateCode(firstResult.code);
+    expect(firstValidation.valid).toBe(true);
+    expect(firstValidation.bubbles).toBeDefined();
+
+    currentCode = firstResult.code;
+    bubbleParameters = firstValidation.bubbles as Record<
+      string,
+      ParsedBubbleWithInfo
+    >;
+
+    // Get the new displayed value (simulating what frontend shows after first update)
+    bubble = Object.values(bubbleParameters).find(
+      (b) => b.variableName === 'agent'
+    );
+    messageParam = bubble?.parameters.find((p) => p.name === 'message');
+    displayedValue = extractParamValue(messageParam, 'message');
+    console.log(
+      '[Test] After first update, displayed value:',
+      displayedValue?.value
+    );
+    expect(displayedValue?.value).toBe('\\nMessage hi');
+
+    // SECOND UPDATE: User modifies the displayed value (replacing ' hi' with ' updated')
+    const secondUpdateValue = (displayedValue?.value as string).replace(
+      ' hi',
+      ' updated'
+    );
+    console.log('[Test] Second update - user changes to:', secondUpdateValue);
+
+    const secondResult = updateBubbleParamInCode(
+      currentCode,
+      bubbleParameters,
+      'agent',
+      'message',
+      secondUpdateValue
+    );
+    expect(secondResult.success).toBe(true);
+    if (!secondResult.success) return;
+
+    console.log('[Test] Second update result code snippet:');
+    console.log(secondResult.code.substring(0, 500));
+
+    // Verify the final code is valid
+    const finalValidation = await validateCode(secondResult.code);
+    console.log('[Test] Final validation:', finalValidation.valid);
+    expect(finalValidation.valid).toBe(true);
+
+    // Verify the final displayed value
+    const finalBubbleParameters = finalValidation.bubbles as Record<
+      string,
+      ParsedBubbleWithInfo
+    >;
+    const finalBubble = Object.values(finalBubbleParameters).find(
+      (b) => b.variableName === 'agent'
+    );
+    const finalMessageParam = finalBubble?.parameters.find(
+      (p) => p.name === 'message'
+    );
+    const finalDisplayedValue = extractParamValue(finalMessageParam, 'message');
+    console.log('[Test] Final displayed value:', finalDisplayedValue?.value);
+    expect(finalDisplayedValue?.value).toBe('\\nMessage updated');
+  });
+
   it('should update template string systemPrompt and produce valid code', async () => {
     // First validate to check extractParamValue behavior
     const originalValidation = await validateCode(
       TEMPLATE_STRING_SYSTEM_PROMPT
     );
+    console.log(originalValidation.error);
     expect(originalValidation.valid).toBe(true);
     expect(originalValidation.bubbles).toBeDefined();
 
