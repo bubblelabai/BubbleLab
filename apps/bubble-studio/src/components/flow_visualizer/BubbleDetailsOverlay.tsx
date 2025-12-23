@@ -298,7 +298,7 @@ export function BubbleDetailsOverlay({
                         </span>
                       )}
                     </div>
-                    {isModelEditable ? (
+                    {currentModel && isModelEditable ? (
                       <select
                         title="Select AI Model"
                         className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 focus:border-purple-500 focus:outline-none"

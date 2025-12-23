@@ -160,6 +160,12 @@ export function ParamEditor({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setEditValue(formattedValue);
+                e.currentTarget.blur();
+              }
+            }}
             title={param.name}
           />
         ) : (
