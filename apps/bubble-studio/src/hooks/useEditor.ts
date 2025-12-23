@@ -299,7 +299,7 @@ export function useEditor(flowId?: number) {
       const result = updateBubbleParamInCode(
         currentCode,
         bubbleParameters,
-        bubble.variableName,
+        variableId,
         paramName,
         newValue
       );

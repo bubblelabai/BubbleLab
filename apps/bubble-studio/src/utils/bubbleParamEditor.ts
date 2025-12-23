@@ -225,7 +225,7 @@ function getSourceLocation(
 export function updateBubbleParamInCode(
   code: string,
   bubbleParameters: Record<string, ParsedBubbleWithInfo>,
-  variableName: string,
+  variableId: number,
   paramPath: string, // e.g., "systemPrompt" or "model.model"
   newValue: unknown
 ):
@@ -240,11 +240,11 @@ export function updateBubbleParamInCode(
     }
   | { success: false; error: string } {
   const bubble = Object.values(bubbleParameters).find(
-    (b) => b.variableName === variableName
+    (b) => b.variableId === variableId
   );
 
   if (!bubble) {
-    return { success: false, error: `Could not find bubble: ${variableName}` };
+    return { success: false, error: `Could not find bubble: ${variableId}` };
   }
 
   // Parse the path - "model.model" -> baseParam="model", nested path
@@ -256,7 +256,7 @@ export function updateBubbleParamInCode(
   if (!param) {
     return {
       success: false,
-      error: `Could not find parameter "${baseParamName}" in ${variableName}`,
+      error: `Updating is not currently supported for ${bubble.variableName}`,
     };
   }
 

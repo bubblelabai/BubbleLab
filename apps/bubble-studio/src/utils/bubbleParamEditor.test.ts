@@ -25,10 +25,18 @@ function testBubbleParamUpdate(opts: {
   shouldContain: string[];
   shouldNotContain: string[];
 }): string | undefined {
+  // Find the bubble by variableName to get its variableId
+  const bubble = Object.values(opts.bubbleParameters).find(
+    (b) => b.variableName === opts.variableName
+  );
+  if (!bubble) {
+    throw new Error(`Bubble not found: ${opts.variableName}`);
+  }
+
   const result = updateBubbleParamInCode(
     opts.code,
     opts.bubbleParameters,
-    opts.variableName,
+    bubble.variableId,
     opts.paramPath,
     opts.newValue
   );
@@ -68,10 +76,18 @@ function testBubbleParamUpdateWithCache(opts: {
 }):
   | { code: string; bubbleParameters: Record<string, ParsedBubbleWithInfo> }
   | undefined {
+  // Find the bubble by variableName to get its variableId
+  const bubble = Object.values(opts.bubbleParameters).find(
+    (b) => b.variableName === opts.variableName
+  );
+  if (!bubble) {
+    throw new Error(`Bubble not found: ${opts.variableName}`);
+  }
+
   const result = updateBubbleParamInCode(
     opts.code,
     opts.bubbleParameters,
-    opts.variableName,
+    bubble.variableId,
     opts.paramPath,
     opts.newValue
   );
