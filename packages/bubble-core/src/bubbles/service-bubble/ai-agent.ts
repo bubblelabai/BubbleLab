@@ -287,7 +287,7 @@ const AIAgentParamsSchema = z.object({
     maxRetries: 3,
     jsonMode: false,
   }).describe(
-    'AI model configuration including provider, temperature, and tokens, retries, and json mode.'
+    'AI model configuration including provider, temperature, and tokens, retries, and json mode. Always include this.'
   ),
   tools: z
     .array(ToolConfigSchema)
