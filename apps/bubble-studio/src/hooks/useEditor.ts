@@ -2,7 +2,10 @@ import { useMemo, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { useBubbleFlow } from './useBubbleFlow';
 import { toast } from 'react-toastify';
-import { updateBubbleParamInCode } from '../utils/bubbleParamEditor';
+import {
+  updateBubbleParamInCode,
+  updateCachedBubbleParameters,
+} from '../utils/bubbleParamEditor';
 import type {
   BubbleParameter,
   ParsedBubbleWithInfo,
@@ -11,7 +14,9 @@ import type {
 // Re-export for external use
 export {
   updateBubbleParamInCode,
+  updateCachedBubbleParameters,
   serializeValue,
+  getRelatedBubbleVariableIds,
 } from '../utils/bubbleParamEditor';
 
 /**
@@ -302,47 +307,16 @@ export function useEditor(flowId?: number) {
       if (result.success) {
         model.setValue(result.code);
 
-        // Update the cached bubbleParameters so subsequent edits find the new value
-        const updatedBubbleParameters = { ...bubbleParameters };
-        const bubbleKey = Object.keys(updatedBubbleParameters).find(
-          (key) =>
-            updatedBubbleParameters[key].variableName === bubble.variableName
+        // Update the cached bubbleParameters for ALL related bubbles (original + clones)
+        // so subsequent edits find the new value
+        const updatedBubbleParameters = updateCachedBubbleParameters(
+          bubbleParameters,
+          result.relatedVariableIds,
+          paramName,
+          newValue,
+          result.isTemplateLiteral
         );
-        if (bubbleKey) {
-          const updatedBubble = { ...updatedBubbleParameters[bubbleKey] };
-          const pathParts = paramName.split('.');
-          const baseParamName = pathParts[0];
-
-          updatedBubble.parameters = updatedBubble.parameters.map((p) => {
-            if (p.name !== baseParamName) return p;
-
-            // For nested paths like "model.model", parse as JS object, update, stringify
-            if (pathParts.length > 1 && typeof p.value === 'string') {
-              try {
-                // Parse the JS object literal string
-                // eslint-disable-next-line no-new-func
-                const obj = new Function(`return ${p.value}`)() as Record<
-                  string,
-                  unknown
-                >;
-                obj[pathParts[1]] = newValue;
-                // Stringify back to JS object literal format
-                const entries = Object.entries(obj).map(
-                  ([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`
-                );
-                return { ...p, value: `{ ${entries.join(', ')} }` };
-              } catch (e) {
-                toast.error(`Failed to update cached param: ${e}`);
-                return p;
-              }
-            }
-
-            // For simple paths, replace the whole value
-            return { ...p, value: newValue as typeof p.value };
-          });
-          updatedBubbleParameters[bubbleKey] = updatedBubble;
-          updateBubbleParameters(updatedBubbleParameters);
-        }
+        updateBubbleParameters(updatedBubbleParameters);
       } else {
         toast.error(result.error);
       }
