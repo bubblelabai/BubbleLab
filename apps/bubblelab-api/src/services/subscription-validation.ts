@@ -205,22 +205,43 @@ async function getUserSubscriptionInfo(
       throw new Error('User not found in Clerk');
     }
 
-    // Check for plan override in private metadata (for special users who bypass subscription system)
-    const privatePlan = clerkUser.privateMetadata?.plan as
-      | PLAN_TYPE
-      | undefined;
-    const privateFeatures = clerkUser.privateMetadata?.features as
-      | FEATURE_TYPE[]
+    const privateMetadata = clerkUser.privateMetadata || {};
+
+    // Check for active hackathon offer in private metadata
+    const hackathonOffer = privateMetadata.hackathonOffer as
+      | { expiresAt?: string }
       | undefined;
 
-    // Extract subscription info from Clerk metadata
-    // Private metadata overrides public metadata if present
+    // Extract subscription info from Clerk public metadata as a base
     let plan = parseClerkPlan(clerkUser.publicMetadata?.plan as string);
     let features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
       'base_usage',
     ];
 
-    // Override with private metadata if present
+    if (hackathonOffer?.expiresAt) {
+      const expiresAt = new Date(hackathonOffer.expiresAt);
+      const isOfferActive = expiresAt > new Date();
+
+      if (isOfferActive) {
+        // Mirror auth middleware: grant full unlimited access during active hackathon
+        plan = 'unlimited';
+        features = ['unlimited_usage'];
+        console.debug(
+          `[getUserSubscriptionInfo] Applying unlimited plan due to active hackathon offer expiring at ${expiresAt.toISOString()}`
+        );
+      } else {
+        console.debug(
+          `[getUserSubscriptionInfo] Hackathon offer expired at ${expiresAt.toISOString()}`
+        );
+      }
+    }
+
+    // Check for explicit plan/feature override in private metadata (takes precedence)
+    const privatePlan = privateMetadata.plan as PLAN_TYPE | undefined;
+    const privateFeatures = privateMetadata.features as
+      | FEATURE_TYPE[]
+      | undefined;
+
     if (privatePlan) {
       plan = privatePlan;
       console.debug(
