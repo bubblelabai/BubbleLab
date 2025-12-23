@@ -2,7 +2,11 @@ import { memo, useMemo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code } from 'lucide-react';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import { CredentialType, AvailableModels } from '@bubblelab/shared-schemas';
+import type {
+  AvailableModel,
+  BubbleParameter,
+} from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
@@ -10,6 +14,7 @@ import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
 import BubbleDetailsOverlay from '@/components/flow_visualizer/BubbleDetailsOverlay';
+import AgentBubbleDetailsOverlay from '@/components/flow_visualizer/AgentBubbleDetailsOverlay';
 import {
   BUBBLE_COLORS,
   BADGE_COLORS,
@@ -23,6 +28,8 @@ import {
   useLiveOutputStore,
 } from '@/stores/liveOutputStore';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
+import { useEditor } from '@/hooks/useEditor';
+import { extractParamValue } from '@/utils/bubbleParamEditor';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -46,6 +53,88 @@ export interface BubbleNodeData {
 
 interface BubbleNodeProps {
   data: BubbleNodeData;
+}
+
+/**
+ * Inline params for agent bubbles - model dropdown and system prompt preview
+ */
+interface AgentInlineParamsProps {
+  variableId: number;
+  getParam: (
+    variableId: number,
+    paramName: string
+  ) => BubbleParameter | undefined;
+  updateBubbleParam: (
+    variableId: number,
+    paramName: string,
+    newValue: unknown
+  ) => void;
+  onOpenDetails: () => void;
+}
+
+function AgentInlineParams({
+  variableId,
+  getParam,
+  updateBubbleParam,
+  onOpenDetails,
+}: AgentInlineParamsProps) {
+  const modelExtracted = extractParamValue(
+    getParam(variableId, 'model'),
+    'model.model'
+  );
+  const systemPromptExtracted = extractParamValue(
+    getParam(variableId, 'systemPrompt'),
+    'systemPrompt'
+  );
+  const systemPromptValue = systemPromptExtracted?.value as string | undefined;
+  const isSystemPromptEditable =
+    systemPromptExtracted?.shouldBeEditable ?? false;
+
+  return (
+    <div className="mt-4 space-y-3">
+      {modelExtracted?.shouldBeEditable && (
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-purple-300">
+            Model
+          </label>
+          <select
+            title="Select AI Model"
+            value={modelExtracted?.value as string}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) =>
+              updateBubbleParam(variableId, 'model.model', e.target.value)
+            }
+            className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
+          >
+            {AvailableModels.options.map((model) => (
+              <option key={model} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {systemPromptValue && isSystemPromptEditable && (
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-purple-300">
+            System Prompt
+          </label>
+          <p
+            className="px-2 py-1.5 text-[11px] bg-neutral-800 border border-neutral-600 rounded text-neutral-300 truncate cursor-pointer hover:bg-neutral-700 transition-colors"
+            title={systemPromptValue}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails();
+            }}
+          >
+            {systemPromptValue.length > 80
+              ? systemPromptValue.substring(0, 80) + '...'
+              : systemPromptValue}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BubbleNode({ data }: BubbleNodeProps) {
@@ -101,6 +190,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Get flow data to find clones
   const { data: currentFlow } = useBubbleFlow(flowId);
+
+  // Get editor functions for accessing/updating params
+  const { getParam, updateBubbleParam } = useEditor(flowId);
 
   // Get sub-bubble visibility state from store
   const expandedRootIds = useExecutionStore(flowId, (s) => s.expandedRootIds);
@@ -286,6 +378,9 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Bubbles inside custom tool containers or sub-bubbles are rendered smaller
   const isSmallBubble = isSubBubble || isCustomToolBubble;
+
+  // Determine if this is an agent bubble
+  const isAgentBubble = bubble.bubbleName === 'ai-agent';
 
   return (
     <div
@@ -678,6 +773,16 @@ function BubbleNode({ data }: BubbleNodeProps) {
             </div>
           );
         })()}
+
+        {/* Agent Bubble Inline Params - Model & SystemPrompt */}
+        {isAgentBubble && (
+          <AgentInlineParams
+            variableId={bubble.variableId}
+            getParam={getParam}
+            updateBubbleParam={updateBubbleParam}
+            onOpenDetails={() => setIsDetailsOpen(true)}
+          />
+        )}
       </div>
 
       {hasSubBubbles && (
@@ -702,21 +807,40 @@ function BubbleNode({ data }: BubbleNodeProps) {
           </button>
         </div>
       )}
-      <BubbleDetailsOverlay
-        isOpen={isDetailsOpen}
-        onClose={() => setIsDetailsOpen(false)}
-        bubble={bubble}
-        logo={logo}
-        logoErrored={logoError}
-        docsUrl={docsUrl}
-        requiredCredentialTypes={requiredCredentialTypes}
-        selectedBubbleCredentials={selectedBubbleCredentials}
-        availableCredentials={availableCredentials}
-        onCredentialChange={handleCredentialChange}
-        onParamEditInCode={onParamEditInCode}
-        onViewCode={() => onBubbleClick?.()}
-        showEditor={showEditor}
-      />
+      {isAgentBubble ? (
+        <AgentBubbleDetailsOverlay
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          flowId={flowId}
+          bubble={bubble}
+          logo={logo}
+          logoErrored={logoError}
+          docsUrl={docsUrl}
+          requiredCredentialTypes={requiredCredentialTypes}
+          selectedBubbleCredentials={selectedBubbleCredentials}
+          availableCredentials={availableCredentials}
+          onCredentialChange={handleCredentialChange}
+          onParamEditInCode={onParamEditInCode}
+          onViewCode={() => onBubbleClick?.()}
+          showEditor={showEditor}
+        />
+      ) : (
+        <BubbleDetailsOverlay
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          bubble={bubble}
+          logo={logo}
+          logoErrored={logoError}
+          docsUrl={docsUrl}
+          requiredCredentialTypes={requiredCredentialTypes}
+          selectedBubbleCredentials={selectedBubbleCredentials}
+          availableCredentials={availableCredentials}
+          onCredentialChange={handleCredentialChange}
+          onParamEditInCode={onParamEditInCode}
+          onViewCode={() => onBubbleClick?.()}
+          showEditor={showEditor}
+        />
+      )}
 
       {/* Create Credential Modal */}
       {createModalForType && (
