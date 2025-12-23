@@ -6,6 +6,7 @@ import {
   CredentialType,
   AvailableModels,
   BubbleParameterType,
+  type AvailableModel,
 } from '@bubblelab/shared-schemas';
 import type { BubbleParameter } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
@@ -217,6 +218,16 @@ function BubbleInlineParams({
                 }
                 className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
               >
+                {/* Show current value if not in available options */}
+                {value &&
+                  typeof value === 'string' &&
+                  !AvailableModels.options.includes(
+                    value as AvailableModel
+                  ) && (
+                    <option value={value as string} disabled>
+                      {value as string} (unsupported)
+                    </option>
+                  )}
                 {AvailableModels.options.map((model) => (
                   <option key={model} value={model}>
                     {model}

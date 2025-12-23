@@ -54,6 +54,9 @@ export function ParamEditor({
         const numValue = Number(editValue);
         if (!isNaN(numValue)) {
           updateBubbleParam(variableId, param.name, numValue);
+        } else {
+          // Reset to previous valid value if invalid
+          setEditValue(formattedValue);
         }
       } else {
         updateBubbleParam(variableId, param.name, editValue);

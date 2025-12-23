@@ -147,7 +147,7 @@ export function extractParamValue(
   bubbleName?: string
 ):
   | {
-      value: unknown;
+      value: string | number | boolean | undefined;
       shouldBeEditable: boolean;
       type: BubbleParameterType;
     }
