@@ -231,6 +231,9 @@ export function updateBubbleParamInCode(
       code: string;
       relatedVariableIds: number[];
       isTemplateLiteral: boolean;
+      lineDiff: number;
+      editedBubbleEndLine: number;
+      editedParamEndLine: number | undefined;
     }
   | { success: false; error: string } {
   const bubble = Object.values(bubbleParameters).find(
@@ -323,11 +326,19 @@ export function updateBubbleParamInCode(
     bubbleParameters
   );
 
+  // Calculate line diff for location updates
+  const oldLineCount = currentValueSerialized.split('\n').length;
+  const newLineCount = newValueSerialized.split('\n').length;
+  const lineDiff = newLineCount - oldLineCount;
+
   return {
     success: true,
     code: updatedCode,
     relatedVariableIds,
     isTemplateLiteral,
+    lineDiff,
+    editedBubbleEndLine: location.endLine,
+    editedParamEndLine: param.location?.endLine,
   };
 }
 
@@ -340,63 +351,129 @@ export function updateBubbleParamInCode(
  * the backtick wrapping so that `getNestedParamValue` can detect it as a
  * template literal on subsequent updates.
  *
+ * Also handles line shift updates: when a value changes from multi-line to
+ * single-line (or vice versa), all bubble locations need to be adjusted.
+ *
  * @param bubbleParameters - The current bubble parameters cache
- * @param relatedVariableIds - Variable IDs of bubbles to update
+ * @param relatedVariableIds - Variable IDs of bubbles to update (for param values)
  * @param paramPath - The parameter path (e.g., "systemPrompt" or "model.model")
  * @param newValue - The new value to cache
  * @param isTemplateLiteral - Whether the original value was a template literal
- * @returns Updated bubble parameters cache
+ * @param lineDiff - Number of lines added (positive) or removed (negative)
+ * @param editedBubbleEndLine - The original endLine of the edited bubble (before the edit)
+ * @param editedParamEndLine - The original endLine of the edited parameter (for shifting params within same bubble)
+ * @returns Updated bubble parameters cache with adjusted locations
  */
 export function updateCachedBubbleParameters(
   bubbleParameters: Record<string, ParsedBubbleWithInfo>,
   relatedVariableIds: number[],
   paramPath: string,
   newValue: unknown,
-  isTemplateLiteral: boolean
+  isTemplateLiteral: boolean,
+  lineDiff: number,
+  editedBubbleEndLine: number,
+  editedParamEndLine?: number
 ): Record<string, ParsedBubbleWithInfo> {
   const updatedBubbleParameters = { ...bubbleParameters };
   const pathParts = paramPath.split('.');
   const baseParamName = pathParts[0];
 
-  // Create a set of variable IDs that need their cache updated
+  // Create a set of variable IDs that need their param values updated
   const relatedVariableIdSet = new Set(relatedVariableIds);
 
-  // Update all related bubbles' cached parameters
+  // Update all bubbles
   for (const [key, bubbleToUpdate] of Object.entries(updatedBubbleParameters)) {
-    if (!relatedVariableIdSet.has(bubbleToUpdate.variableId)) continue;
-
     const updatedBubble = { ...bubbleToUpdate };
-    updatedBubble.parameters = updatedBubble.parameters.map((p) => {
-      if (p.name !== baseParamName) return p;
+    const isRelatedBubble = relatedVariableIdSet.has(bubbleToUpdate.variableId);
 
-      // For nested paths like "model.model", parse as JS object, update, stringify
-      if (pathParts.length > 1 && typeof p.value === 'string') {
-        try {
-          // Parse the JS object literal string
-          // eslint-disable-next-line no-new-func
-          const obj = new Function(`return ${p.value}`)() as Record<
-            string,
-            unknown
-          >;
-          obj[pathParts[1]] = newValue;
-          // Stringify back to JS object literal format
-          const entries = Object.entries(obj).map(
-            ([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`
-          );
-          return { ...p, value: `{ ${entries.join(', ')} }` };
-        } catch (e) {
-          console.error(`Failed to update cached param: ${e}`);
-          return p;
+    // Update parameter values for related bubbles
+    if (isRelatedBubble) {
+      updatedBubble.parameters = updatedBubble.parameters.map((p) => {
+        if (p.name !== baseParamName) return p;
+
+        // For nested paths like "model.model", parse as JS object, update, stringify
+        if (pathParts.length > 1 && typeof p.value === 'string') {
+          try {
+            // Parse the JS object literal string
+            // eslint-disable-next-line no-new-func
+            const obj = new Function(`return ${p.value}`)() as Record<
+              string,
+              unknown
+            >;
+            obj[pathParts[1]] = newValue;
+            // Stringify back to JS object literal format
+            const entries = Object.entries(obj).map(
+              ([k, v]) => `${k}: ${typeof v === 'string' ? `'${v}'` : v}`
+            );
+            return { ...p, value: `{ ${entries.join(', ')} }` };
+          } catch (e) {
+            console.error(`Failed to update cached param: ${e}`);
+            return p;
+          }
         }
-      }
 
-      // For simple paths, replace the whole value
-      // IMPORTANT: Preserve template literal format by wrapping with backticks
-      if (isTemplateLiteral && typeof newValue === 'string') {
-        return { ...p, value: '`' + newValue + '`' };
+        // For simple paths, replace the whole value
+        // IMPORTANT: Preserve template literal format by wrapping with backticks
+        if (isTemplateLiteral && typeof newValue === 'string') {
+          return { ...p, value: '`' + newValue + '`' };
+        }
+        return { ...p, value: newValue as typeof p.value };
+      });
+    }
+
+    // Update locations based on line diff
+    if (lineDiff !== 0) {
+      const location = updatedBubble.location;
+
+      if (isRelatedBubble) {
+        // This is the edited bubble (or its clone) - update endLine
+        updatedBubble.location = {
+          ...location,
+          endLine: location.endLine + lineDiff,
+        };
+        // Also update parameter locations within this bubble
+        // Shift params that come AFTER the edited param's original endLine
+        updatedBubble.parameters = updatedBubble.parameters.map((p) => {
+          if (!p.location) return p;
+          // Shift params that start after the edited param's original endLine
+          if (
+            editedParamEndLine !== undefined &&
+            p.location.startLine > editedParamEndLine
+          ) {
+            return {
+              ...p,
+              location: {
+                ...p.location,
+                startLine: p.location.startLine + lineDiff,
+                endLine: p.location.endLine + lineDiff,
+              },
+            };
+          }
+          return p;
+        });
+      } else if (location.startLine > editedBubbleEndLine) {
+        // This bubble comes AFTER the edited bubble - shift both start and end
+        updatedBubble.location = {
+          ...location,
+          startLine: location.startLine + lineDiff,
+          endLine: location.endLine + lineDiff,
+        };
+        // Also shift all parameter locations within this bubble
+        updatedBubble.parameters = updatedBubble.parameters.map((p) => {
+          if (!p.location) return p;
+          return {
+            ...p,
+            location: {
+              ...p.location,
+              startLine: p.location.startLine + lineDiff,
+              endLine: p.location.endLine + lineDiff,
+            },
+          };
+        });
       }
-      return { ...p, value: newValue as typeof p.value };
-    });
+      // Bubbles that come BEFORE the edited bubble don't need location updates
+    }
+
     updatedBubbleParameters[key] = updatedBubble;
   }
 

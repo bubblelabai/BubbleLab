@@ -308,13 +308,16 @@ export function useEditor(flowId?: number) {
         model.setValue(result.code);
 
         // Update the cached bubbleParameters for ALL related bubbles (original + clones)
-        // so subsequent edits find the new value
+        // so subsequent edits find the new value, and adjust line numbers if needed
         const updatedBubbleParameters = updateCachedBubbleParameters(
           bubbleParameters,
           result.relatedVariableIds,
           paramName,
           newValue,
-          result.isTemplateLiteral
+          result.isTemplateLiteral,
+          result.lineDiff,
+          result.editedBubbleEndLine,
+          result.editedParamEndLine
         );
         updateBubbleParameters(updatedBubbleParameters);
       } else {

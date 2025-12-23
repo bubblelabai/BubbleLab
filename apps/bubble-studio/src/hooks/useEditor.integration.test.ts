@@ -111,7 +111,9 @@ function testBubbleParamUpdateWithCache(opts: {
       result.relatedVariableIds,
       opts.paramPath,
       opts.newValue,
-      result.isTemplateLiteral
+      result.isTemplateLiteral,
+      result.lineDiff,
+      result.editedBubbleEndLine
     );
 
     console.log(
@@ -675,5 +677,192 @@ export class LinkedInAnalyzerFlow extends BubbleFlow<'webhook/http'> {
       (p) => p.name === 'systemPrompt'
     );
     expect(cachedParam3?.value).toBe('`Final message ${username}!`');
+  });
+});
+
+describe('updateBubbleParamInCode with line shift handling', () => {
+  // This tests the scenario where a multi-line value is replaced with a single-line value
+  // The line numbers should be adjusted so subsequent edits still work
+
+  // Code with two bubbles: agent1 (multi-line systemPrompt) and agent2 (after agent1)
+  const CODE_WITH_TWO_BUBBLES = `const agent1 = new AIAgentBubble({
+  systemPrompt: \`Line1
+Line2
+Line3\`,
+});
+
+const agent2 = new AIAgentBubble({
+  systemPrompt: 'I am agent2',
+});`;
+
+  it('should adjust line numbers when multi-line value becomes single-line', () => {
+    const initialBubbleParameters: Record<string, ParsedBubbleWithInfo> = {
+      agent1: {
+        variableId: 1,
+        variableName: 'agent1',
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        nodeType: 'service',
+        // agent1 spans lines 1-5 (the multi-line template takes 4 lines + closing)
+        location: { startLine: 1, startCol: 1, endLine: 5, endCol: 3 },
+        parameters: [
+          {
+            name: 'systemPrompt',
+            value: '`Line1\nLine2\nLine3`',
+            type: BubbleParameterType.STRING,
+          },
+        ],
+        hasAwait: false,
+        hasActionCall: false,
+      },
+      agent2: {
+        variableId: 2,
+        variableName: 'agent2',
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        nodeType: 'service',
+        // agent2 starts at line 7 (after blank line 6)
+        location: { startLine: 7, startCol: 1, endLine: 9, endCol: 3 },
+        parameters: [
+          {
+            name: 'systemPrompt',
+            // Note: value is the raw content, serialization adds quotes
+            value: 'I am agent2',
+            type: BubbleParameterType.STRING,
+          },
+        ],
+        hasAwait: false,
+        hasActionCall: false,
+      },
+    };
+
+    // First update: replace agent1's 3-line value with 1-line value (-2 lines)
+    const firstResult = testBubbleParamUpdateWithCache({
+      code: CODE_WITH_TWO_BUBBLES,
+      bubbleParameters: initialBubbleParameters,
+      variableName: 'agent1',
+      paramPath: 'systemPrompt',
+      newValue: 'Single line prompt',
+      shouldContain: ['Single line prompt'],
+      shouldNotContain: ['Line1', 'Line2', 'Line3'],
+    });
+
+    expect(firstResult).toBeDefined();
+    if (!firstResult) return;
+
+    // Verify agent1's location was updated (endLine reduced by 2)
+    const agent1Location = firstResult.bubbleParameters['agent1']?.location;
+    console.log('[Test] agent1 location after first update:', agent1Location);
+    expect(agent1Location?.endLine).toBe(3); // Was 5, now 5 - 2 = 3
+
+    // Verify agent2's location was shifted up by 2 lines
+    const agent2Location = firstResult.bubbleParameters['agent2']?.location;
+    console.log('[Test] agent2 location after first update:', agent2Location);
+    expect(agent2Location?.startLine).toBe(5); // Was 7, now 7 - 2 = 5
+    expect(agent2Location?.endLine).toBe(7); // Was 9, now 9 - 2 = 7
+
+    // Second update: edit agent2's systemPrompt using the updated locations
+    const secondResult = testBubbleParamUpdateWithCache({
+      code: firstResult.code,
+      bubbleParameters: firstResult.bubbleParameters,
+      variableName: 'agent2',
+      paramPath: 'systemPrompt',
+      newValue: 'Updated agent2 prompt',
+      shouldContain: ['Updated agent2 prompt'],
+      shouldNotContain: ['I am agent2'],
+    });
+
+    expect(secondResult).toBeDefined();
+    if (!secondResult) return;
+
+    // Verify both updates are in the final code
+    expect(secondResult.code).toContain('Single line prompt');
+    expect(secondResult.code).toContain('Updated agent2 prompt');
+    expect(secondResult.code).not.toContain('Line1');
+    expect(secondResult.code).not.toContain('I am agent2');
+  });
+
+  it('should handle line expansion (single-line to multi-line)', () => {
+    const CODE_SINGLE_LINE = `const agent1 = new AIAgentBubble({
+  systemPrompt: \`Short\`,
+});
+
+const agent2 = new AIAgentBubble({
+  systemPrompt: 'I am agent2',
+});`;
+
+    const initialBubbleParameters: Record<string, ParsedBubbleWithInfo> = {
+      agent1: {
+        variableId: 1,
+        variableName: 'agent1',
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        nodeType: 'service',
+        location: { startLine: 1, startCol: 1, endLine: 3, endCol: 3 },
+        parameters: [
+          {
+            name: 'systemPrompt',
+            value: '`Short`',
+            type: BubbleParameterType.STRING,
+          },
+        ],
+        hasAwait: false,
+        hasActionCall: false,
+      },
+      agent2: {
+        variableId: 2,
+        variableName: 'agent2',
+        bubbleName: 'ai-agent',
+        className: 'AIAgentBubble',
+        nodeType: 'service',
+        location: { startLine: 5, startCol: 1, endLine: 7, endCol: 3 },
+        parameters: [
+          {
+            name: 'systemPrompt',
+            // Note: value is the raw content, serialization adds quotes
+            value: 'I am agent2',
+            type: BubbleParameterType.STRING,
+          },
+        ],
+        hasAwait: false,
+        hasActionCall: false,
+      },
+    };
+
+    // Replace single-line with multi-line (+2 lines)
+    const result = testBubbleParamUpdateWithCache({
+      code: CODE_SINGLE_LINE,
+      bubbleParameters: initialBubbleParameters,
+      variableName: 'agent1',
+      paramPath: 'systemPrompt',
+      newValue: 'Line1\nLine2\nLine3',
+      shouldContain: ['Line1', 'Line2', 'Line3'],
+      shouldNotContain: ['Short'],
+    });
+
+    expect(result).toBeDefined();
+    if (!result) return;
+
+    // Verify agent1's endLine increased by 2
+    const agent1Location = result.bubbleParameters['agent1']?.location;
+    expect(agent1Location?.endLine).toBe(5); // Was 3, now 3 + 2 = 5
+
+    // Verify agent2's location shifted down by 2
+    const agent2Location = result.bubbleParameters['agent2']?.location;
+    expect(agent2Location?.startLine).toBe(7); // Was 5, now 5 + 2 = 7
+    expect(agent2Location?.endLine).toBe(9); // Was 7, now 7 + 2 = 9
+
+    // Verify agent2 can still be edited with updated location
+    const secondResult = testBubbleParamUpdateWithCache({
+      code: result.code,
+      bubbleParameters: result.bubbleParameters,
+      variableName: 'agent2',
+      paramPath: 'systemPrompt',
+      newValue: 'Agent2 still works!',
+      shouldContain: ['Agent2 still works!'],
+      shouldNotContain: ['I am agent2'],
+    });
+
+    expect(secondResult).toBeDefined();
   });
 });
