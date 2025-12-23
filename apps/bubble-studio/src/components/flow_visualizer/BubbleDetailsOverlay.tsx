@@ -1,12 +1,11 @@
 import { type CSSProperties, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
-import { BookOpen, Code, X, Info, Cpu, Pencil, Lock } from 'lucide-react';
+import { BookOpen, Code, X, Info, Cpu } from 'lucide-react';
 import type {
   CredentialResponse,
   ParsedBubbleWithInfo,
   CredentialType,
-  BubbleParameter,
 } from '@bubblelab/shared-schemas';
 import { SYSTEM_CREDENTIALS, AvailableModels } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
@@ -14,6 +13,11 @@ import { useCreateCredential } from '@/hooks/useCredentials';
 import { useOverlay } from '@/hooks/useOverlay';
 import { useEditor } from '@/hooks/useEditor';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
+import { ParamEditor } from '@/components/flow_visualizer/ParamEditor';
+import {
+  getModelParamConfig,
+  getExcludedParamNames,
+} from '@/config/bubbleInlineParams';
 
 interface BubbleDetailsOverlayProps {
   isOpen: boolean;
@@ -30,112 +34,6 @@ interface BubbleDetailsOverlayProps {
   onParamEditInCode?: (paramName: string) => void;
   onViewCode?: () => void;
   showEditor: boolean;
-}
-
-const formatValue = (value: unknown): string => {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean')
-    return String(value);
-  if (value === null || value === undefined) return '';
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return String(value);
-  }
-};
-
-// Individual param editor with local state only for editable fields
-function ParamEditor({
-  param,
-  variableId,
-  updateBubbleParam,
-  onParamEditInCode,
-}: {
-  param: BubbleParameter;
-  variableId: number;
-  updateBubbleParam: (
-    variableId: number,
-    paramName: string,
-    newValue: unknown
-  ) => void;
-  onParamEditInCode?: (paramName: string) => void;
-}) {
-  const extracted = extractParamValue(param, param.name);
-  const isEditable = extracted?.shouldBeEditable ?? false;
-  const formattedValue = formatValue(extracted?.value ?? param.value);
-  const [editValue, setEditValue] = useState(formattedValue);
-  const isMultiline =
-    formattedValue.includes('\n') || formattedValue.length > 50;
-
-  // Sync local state when param.value changes (e.g., from code editor)
-  useMemo(() => setEditValue(formattedValue), [formattedValue]);
-
-  const handleBlur = () => {
-    if (editValue !== formattedValue) {
-      updateBubbleParam(variableId, param.name, editValue);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <p className="text-base font-semibold text-white">
-            {param.name}
-            {param.type && (
-              <span className="ml-2 text-sm text-neutral-400">
-                ({param.type})
-              </span>
-            )}
-          </p>
-          {isEditable ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/20 px-2 py-0.5 text-xs font-medium text-purple-300 border border-purple-500/30">
-              <Pencil className="h-3 w-3" />
-              Editable
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-0.5 text-xs font-medium text-neutral-400 border border-neutral-700">
-              <Lock className="h-3 w-3" />
-              Read-only
-            </span>
-          )}
-        </div>
-        {onParamEditInCode && (
-          <button
-            type="button"
-            onClick={() => onParamEditInCode(param.name)}
-            className="text-sm font-medium text-purple-300 transition hover:text-purple-200"
-          >
-            View Code
-          </button>
-        )}
-      </div>
-      {isEditable ? (
-        isMultiline ? (
-          <textarea
-            className="mt-3 w-full min-h-[120px] max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none resize-y"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleBlur}
-            title={param.name}
-          />
-        ) : (
-          <input
-            type="text"
-            className="mt-3 w-full rounded-xl border border-neutral-700 bg-neutral-950/90 px-4 py-3 text-sm text-neutral-200 font-mono focus:border-purple-500 focus:outline-none"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleBlur}
-            title={param.name}
-          />
-        )
-      ) : (
-        <pre className="mt-3 w-full max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-neutral-700 bg-neutral-950/50 px-4 py-3 text-sm text-neutral-400 font-mono">
-          {formattedValue}
-        </pre>
-      )}
-    </div>
-  );
 }
 
 const DEFAULT_MODAL_Z_INDEX = 1200;
@@ -163,30 +61,40 @@ export function BubbleDetailsOverlay({
   const createCredentialMutation = useCreateCredential();
   const { updateBubbleParam } = useEditor(flowId);
 
-  // Determine if this is an agent bubble
-  const isAgentBubble = bubble.bubbleName === 'ai-agent';
+  // Get model config for this bubble type (if any)
+  const modelConfig = getModelParamConfig(bubble.bubbleName);
+  const hasModelSection = modelConfig !== undefined;
 
-  // Get current model from bubble.parameters (for agent bubbles)
-  const modelParam = bubble.parameters.find((p) => p.name === 'model');
-  const modelExtracted = extractParamValue(modelParam, 'model.model');
+  // Get model value if this bubble has a model param
+  const modelParam =
+    hasModelSection && modelConfig
+      ? bubble.parameters.find((p) => p.name === modelConfig.paramName)
+      : undefined;
+  const modelExtracted =
+    modelParam && modelConfig
+      ? extractParamValue(modelParam, modelConfig.paramPath, bubble.bubbleName)
+      : undefined;
   const currentModel = modelExtracted?.value as string | undefined;
   const isModelEditable = modelExtracted?.shouldBeEditable ?? false;
 
+  // Get param names to exclude from Parameters section
+  const excludedParamNames = getExcludedParamNames(bubble.bubbleName);
+
   // Filter params for display
   // - Always exclude: credentials, env params
-  // - For agent bubbles: also exclude model (handled in Model section)
+  // - Exclude model params (they have their own section)
   const displayParams = useMemo(
     () =>
       bubble.parameters.filter((param) => {
         if (param.name === 'credentials' || param.name.includes('env')) {
           return false;
         }
-        if (isAgentBubble && param.name === 'model') {
+        if (excludedParamNames.includes(param.name)) {
           return false;
         }
         return true;
       }),
-    [bubble.parameters, isAgentBubble]
+    [bubble.parameters, excludedParamNames]
   );
 
   const sensitiveEnvParams = useMemo(
@@ -354,8 +262,8 @@ export function BubbleDetailsOverlay({
               </div>
             </header>
 
-            {/* Model Section - Only for agent bubbles */}
-            {isAgentBubble && (
+            {/* Model Section - Only for bubbles with model config */}
+            {hasModelSection && modelConfig && (
               <section className="border-b border-neutral-900 bg-neutral-950/90 p-6 sm:p-8">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
@@ -366,11 +274,11 @@ export function BubbleDetailsOverlay({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-neutral-100">
-                          AI Model
+                          {modelConfig.label || 'AI Model'}
                         </p>
                         <p className="mt-0.5 text-xs text-neutral-400">
                           {isModelEditable
-                            ? 'Select the model for this agent'
+                            ? 'Select the model for this bubble'
                             : 'Model is set dynamically in code'}
                         </p>
                       </div>
@@ -388,7 +296,7 @@ export function BubbleDetailsOverlay({
                         onChange={(e) =>
                           updateBubbleParam(
                             bubble.variableId,
-                            'model.model',
+                            modelConfig.paramPath,
                             e.target.value
                           )
                         }
@@ -426,6 +334,7 @@ export function BubbleDetailsOverlay({
                       key={param.name}
                       param={param}
                       variableId={bubble.variableId}
+                      bubbleName={bubble.bubbleName}
                       updateBubbleParam={updateBubbleParam}
                       onParamEditInCode={onParamEditInCode}
                     />

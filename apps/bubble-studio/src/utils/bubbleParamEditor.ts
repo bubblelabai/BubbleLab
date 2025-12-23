@@ -5,6 +5,7 @@ import type {
   AvailableModel,
 } from '@bubblelab/shared-schemas';
 import { BubbleParameterType } from '@bubblelab/shared-schemas';
+import { isModelParam } from '@/config/bubbleInlineParams';
 
 /**
  * Find all related bubble variable IDs (original and all clones).
@@ -109,9 +110,17 @@ function getNestedParamValue(
   return undefined;
 }
 
+/**
+ * Extract a parameter value and determine if it should be editable.
+ *
+ * @param param - The bubble parameter
+ * @param path - The path to extract (e.g., "systemPrompt" or "model.model")
+ * @param bubbleName - Optional bubble name to enable config-based model detection
+ */
 export function extractParamValue(
   param: BubbleParameter | undefined,
-  path: string
+  path: string,
+  bubbleName?: string
 ):
   | {
       value: unknown;
@@ -122,10 +131,11 @@ export function extractParamValue(
   if (!param) {
     return undefined;
   }
-  const result = getNestedParamValue(param, path);
 
-  if (param.name === 'model') {
-    const modelResult = getNestedParamValue(param, 'model.model');
+  // Check if this param is configured as a model selector
+  const modelConfig = isModelParam(bubbleName, param.name);
+  if (modelConfig) {
+    const modelResult = getNestedParamValue(param, modelConfig.paramPath);
     const modelValue = modelResult?.value;
     if (
       !modelValue ||
@@ -135,9 +145,15 @@ export function extractParamValue(
     }
     return { value: modelValue, shouldBeEditable: true, type: param.type };
   }
+
+  // Standard param extraction
+  const result = getNestedParamValue(param, path);
   return {
     value: result?.value,
-    shouldBeEditable: param.type == BubbleParameterType.STRING,
+    shouldBeEditable:
+      param.type == BubbleParameterType.STRING ||
+      param.type == BubbleParameterType.NUMBER ||
+      param.type == BubbleParameterType.BOOLEAN,
     type: param.type,
   };
 }

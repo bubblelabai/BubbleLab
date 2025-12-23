@@ -29,6 +29,7 @@ import {
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
+import { getInlineParamConfigs } from '@/config/bubbleInlineParams';
 
 export interface BubbleNodeData {
   flowId: number;
@@ -55,9 +56,10 @@ interface BubbleNodeProps {
 }
 
 /**
- * Inline params for agent bubbles - model dropdown and system prompt preview
+ * Generic inline params component - renders based on config
  */
-interface AgentInlineParamsProps {
+interface BubbleInlineParamsProps {
+  bubbleName: string | undefined;
   variableId: number;
   getParam: (
     variableId: number,
@@ -71,67 +73,91 @@ interface AgentInlineParamsProps {
   onOpenDetails: () => void;
 }
 
-function AgentInlineParams({
+function BubbleInlineParams({
+  bubbleName,
   variableId,
   getParam,
   updateBubbleParam,
   onOpenDetails,
-}: AgentInlineParamsProps) {
-  const modelExtracted = extractParamValue(
-    getParam(variableId, 'model'),
-    'model.model'
-  );
-  const systemPromptExtracted = extractParamValue(
-    getParam(variableId, 'systemPrompt'),
-    'systemPrompt'
-  );
-  const systemPromptValue = systemPromptExtracted?.value as string | undefined;
-  const isSystemPromptEditable =
-    systemPromptExtracted?.shouldBeEditable ?? false;
+}: BubbleInlineParamsProps) {
+  const configs = getInlineParamConfigs(bubbleName);
+
+  if (configs.length === 0) {
+    return null;
+  }
 
   return (
     <div className="mt-4 space-y-3">
-      {modelExtracted?.shouldBeEditable && (
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-purple-300">
-            Model
-          </label>
-          <select
-            title="Select AI Model"
-            value={modelExtracted?.value as string}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) =>
-              updateBubbleParam(variableId, 'model.model', e.target.value)
-            }
-            className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
-          >
-            {AvailableModels.options.map((model) => (
-              <option key={model} value={model}>
-                {model}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      {systemPromptValue && isSystemPromptEditable && (
-        <div className="space-y-1">
-          <label className="block text-xs font-medium text-purple-300">
-            System Prompt
-          </label>
-          <p
-            className="px-2 py-1.5 text-[11px] bg-neutral-800 border border-neutral-600 rounded text-neutral-300 truncate cursor-pointer hover:bg-neutral-700 transition-colors"
-            title={systemPromptValue}
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDetails();
-            }}
-          >
-            {systemPromptValue.length > 80
-              ? systemPromptValue.substring(0, 80) + '...'
-              : systemPromptValue}
-          </p>
-        </div>
-      )}
+      {configs.map((config) => {
+        const extracted = extractParamValue(
+          getParam(variableId, config.paramName),
+          config.paramPath,
+          bubbleName
+        );
+
+        if (!extracted?.shouldBeEditable) {
+          return null;
+        }
+
+        const value = extracted.value;
+
+        // Model dropdown
+        if (config.isModel && config.inlineDisplay === 'dropdown') {
+          return (
+            <div key={config.paramName} className="space-y-1">
+              <label className="block text-xs font-medium text-purple-300">
+                {config.label || config.paramName}
+              </label>
+              <select
+                title={`Select ${config.label || config.paramName}`}
+                value={value as string}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  updateBubbleParam(
+                    variableId,
+                    config.paramPath,
+                    e.target.value
+                  )
+                }
+                className="w-full px-2 py-1 text-xs bg-neutral-700 border border-neutral-500 rounded text-neutral-100 focus:border-purple-500 focus:outline-none"
+              >
+                {AvailableModels.options.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+
+        // Preview (truncated text that opens details on click)
+        if (
+          config.inlineDisplay === 'preview' &&
+          typeof value === 'string' &&
+          value
+        ) {
+          return (
+            <div key={config.paramName} className="space-y-1">
+              <label className="block text-xs font-medium text-purple-300">
+                {config.label || config.paramName}
+              </label>
+              <p
+                className="px-2 py-1.5 text-[11px] bg-neutral-800 border border-neutral-600 rounded text-neutral-300 truncate cursor-pointer hover:bg-neutral-700 transition-colors"
+                title={value}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDetails();
+                }}
+              >
+                {value.length > 80 ? value.substring(0, 80) + '...' : value}
+              </p>
+            </div>
+          );
+        }
+
+        return null;
+      })}
     </div>
   );
 }
@@ -377,9 +403,6 @@ function BubbleNode({ data }: BubbleNodeProps) {
 
   // Bubbles inside custom tool containers or sub-bubbles are rendered smaller
   const isSmallBubble = isSubBubble || isCustomToolBubble;
-
-  // Determine if this is an agent bubble
-  const isAgentBubble = bubble.bubbleName === 'ai-agent';
 
   return (
     <div
@@ -773,15 +796,14 @@ function BubbleNode({ data }: BubbleNodeProps) {
           );
         })()}
 
-        {/* Agent Bubble Inline Params - Model & SystemPrompt */}
-        {isAgentBubble && (
-          <AgentInlineParams
-            variableId={bubble.variableId}
-            getParam={getParam}
-            updateBubbleParam={updateBubbleParam}
-            onOpenDetails={() => setIsDetailsOpen(true)}
-          />
-        )}
+        {/* Inline Params - Model dropdowns & preview text based on config */}
+        <BubbleInlineParams
+          bubbleName={bubble.bubbleName}
+          variableId={bubble.variableId}
+          getParam={getParam}
+          updateBubbleParam={updateBubbleParam}
+          onOpenDetails={() => setIsDetailsOpen(true)}
+        />
       </div>
 
       {hasSubBubbles && (
