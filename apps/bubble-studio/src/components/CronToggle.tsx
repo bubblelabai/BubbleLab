@@ -6,6 +6,7 @@ import {
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useExecutionStore } from '../stores/executionStore';
+import { validateFlow } from '../utils/flowValidation';
 
 interface CronToggleProps {
   flowId: number;
@@ -44,8 +45,28 @@ export function CronToggle({
 
   const isPending = validateCodeMutation.isPending;
 
+  // Check if cron can be activated
+  const canActivateCron = () => {
+    // Allow deactivation even if validation fails
+    if (cronActive) {
+      return { isValid: true, reasons: [] };
+    }
+
+    // When activating, check both inputs and credentials
+    return validateFlow(flowId, currentFlow, {
+      executionInputs: executionState.executionInputs,
+      pendingCredentials: executionState.pendingCredentials,
+    });
+  };
+
+  const validationResult = canActivateCron();
+  const canToggle = validationResult.isValid || cronActive; // Allow deactivation
+  const disabledReason = !canToggle
+    ? validationResult.reasons[0] || 'Missing required fields or credentials'
+    : '';
+
   const handleToggle = async () => {
-    if (!cronSchedule || isPending || !currentFlow) return;
+    if (!cronSchedule || isPending || !currentFlow || !canToggle) return;
 
     const newActiveState = !cronActive;
 
@@ -74,9 +95,9 @@ export function CronToggle({
         <button
           type="button"
           onClick={handleToggle}
-          disabled={isPending}
+          disabled={isPending || !canToggle}
           className={`relative inline-flex items-center h-5 w-9 rounded-full transition-all duration-200 ${
-            isPending
+            isPending || !canToggle
               ? 'cursor-not-allowed opacity-50 bg-neutral-700'
               : cronActive
                 ? 'bg-green-600 hover:bg-green-500'
@@ -85,9 +106,11 @@ export function CronToggle({
           title={
             isPending
               ? 'Updating schedule...'
-              : cronActive
-                ? 'Click to deactivate schedule'
-                : 'Click to activate schedule'
+              : !canToggle
+                ? disabledReason
+                : cronActive
+                  ? 'Click to deactivate schedule'
+                  : 'Click to activate schedule'
           }
         >
           <span className="sr-only">Toggle cron schedule</span>
@@ -157,9 +180,9 @@ export function CronToggle({
           <button
             type="button"
             onClick={handleToggle}
-            disabled={isPending}
+            disabled={isPending || !canToggle}
             className={`relative inline-flex items-center h-6 w-11 rounded-full transition-all duration-200 ${
-              isPending
+              isPending || !canToggle
                 ? 'cursor-not-allowed opacity-50 bg-neutral-700'
                 : cronActive
                   ? 'bg-green-600 hover:bg-green-500'
@@ -168,9 +191,11 @@ export function CronToggle({
             title={
               isPending
                 ? 'Updating schedule...'
-                : cronActive
-                  ? 'Click to deactivate schedule'
-                  : 'Click to activate schedule'
+                : !canToggle
+                  ? disabledReason
+                  : cronActive
+                    ? 'Click to deactivate schedule'
+                    : 'Click to activate schedule'
             }
           >
             <span className="sr-only">Toggle cron schedule</span>
@@ -204,6 +229,14 @@ export function CronToggle({
       {scheduleDescription && !scheduleDescription.isValid && (
         <div className="mt-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-2 py-1">
           ⚠️ Invalid schedule
+        </div>
+      )}
+
+      {!canToggle && !cronActive && (
+        <div className="mt-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1">
+          ⚠️{' '}
+          {disabledReason ||
+            'Please configure required fields and credentials before activating'}
         </div>
       )}
     </div>
