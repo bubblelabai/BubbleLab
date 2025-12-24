@@ -9,7 +9,7 @@ import { getClerkClient } from '../utils/clerk-client.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { HackathonOffer } from '@bubblelab/shared-schemas';
+import { HackathonOffer, SpecialOffer } from '@bubblelab/shared-schemas';
 
 /**
  * Raw hackathon offer structure from Clerk privateMetadata
@@ -40,6 +40,10 @@ export interface HackathonOfferResult {
 export interface PrivateMetadataOverrides {
   plan: PLAN_TYPE | null;
   features: FEATURE_TYPE[] | null;
+  /** If set, the override expires at this date. If null, never expires. */
+  expiresAt: Date | null;
+  /** Whether the override is currently active (not expired) */
+  isActive: boolean;
 }
 
 /**
@@ -48,6 +52,8 @@ export interface PrivateMetadataOverrides {
 export interface ClerkPrivateMetadata {
   hackathonOffer?: HackathonOfferMetadata;
   plan?: string;
+  /** Optional expiration date for plan override. If not set, never expires. */
+  planExpiresAt?: string;
   features?: FEATURE_TYPE[];
   [key: string]: unknown;
 }
@@ -81,9 +87,13 @@ export interface EffectiveSubscription {
 /**
  * Check if user has an active hackathon offer
  * Single source of truth for hackathon offer logic
+ *
+ * @param privateMetadata - Clerk private metadata
+ * @param now - Current date for testing (defaults to new Date())
  */
 export function checkHackathonOffer(
-  privateMetadata: ClerkPrivateMetadata
+  privateMetadata: ClerkPrivateMetadata,
+  now: Date = new Date()
 ): HackathonOfferResult {
   const hackathonOffer = privateMetadata?.hackathonOffer;
 
@@ -101,7 +111,7 @@ export function checkHackathonOffer(
   }
 
   const expiresAt = new Date(hackathonOffer.expiresAt);
-  const isActive = expiresAt > new Date();
+  const isActive = expiresAt > now;
 
   result.expiresAt = expiresAt;
   result.redeemedAt = hackathonOffer.redeemedAt
@@ -122,9 +132,11 @@ export function checkHackathonOffer(
 /**
  * Check for explicit plan/feature overrides in private metadata
  * Used for exclusive members with manual plan assignments
+ * Supports optional expiration date - if not set, override never expires
  */
 export function checkPrivateMetadataOverrides(
-  privateMetadata: ClerkPrivateMetadata
+  privateMetadata: ClerkPrivateMetadata,
+  now: Date = new Date()
 ): PrivateMetadataOverrides | null {
   const privatePlanValue = privateMetadata?.plan;
 
@@ -146,18 +158,33 @@ export function checkPrivateMetadataOverrides(
 
   const features = privateMetadata?.features ?? null;
 
-  return { plan, features };
+  // Check for expiration date
+  const planExpiresAtStr = privateMetadata?.planExpiresAt;
+  let expiresAt: Date | null = null;
+  let isActive = true;
+
+  if (planExpiresAtStr) {
+    expiresAt = new Date(planExpiresAtStr);
+    isActive = expiresAt > now;
+  }
+  // If no expiration date, override never expires (isActive = true)
+
+  return { plan, features, expiresAt, isActive };
 }
 
 /**
  * Resolve the effective subscription by applying offers and overrides
  * Priority order:
- * 1. Private metadata override (highest - admin-set)
+ * 1. Private metadata override (highest - admin-set, if not expired)
  * 2. Active hackathon offer
  * 3. Base subscription from JWT/public metadata (lowest)
+ *
+ * @param params - Subscription resolution parameters
+ * @param now - Current date for testing (defaults to new Date())
  */
 export function resolveEffectiveSubscription(
-  params: ResolveSubscriptionParams
+  params: ResolveSubscriptionParams,
+  now: Date = new Date()
 ): EffectiveSubscription {
   const { basePlan, baseFeatures, privateMetadata, appType } = params;
 
@@ -166,7 +193,7 @@ export function resolveEffectiveSubscription(
   let source: EffectiveSubscription['source'] = 'jwt';
 
   // Check hackathon offer (applied first, can be overridden)
-  const hackathonResult = checkHackathonOffer(privateMetadata);
+  const hackathonResult = checkHackathonOffer(privateMetadata, now);
   if (hackathonResult.isActive && hackathonResult.grantedPlan) {
     finalPlan = hackathonResult.grantedPlan;
     finalFeatures = hackathonResult.grantedFeatures ?? baseFeatures;
@@ -176,16 +203,20 @@ export function resolveEffectiveSubscription(
     );
   }
 
-  // Check private metadata override (takes precedence over hackathon)
-  const overrides = checkPrivateMetadataOverrides(privateMetadata);
-  if (overrides?.plan) {
+  // Check private metadata override (takes precedence over hackathon, if active/not expired)
+  const overrides = checkPrivateMetadataOverrides(privateMetadata, now);
+  if (overrides?.isActive && overrides?.plan) {
     finalPlan = overrides.plan;
     source = 'private_metadata_override';
     console.debug(
-      `[OfferHelper] Applied private metadata override: plan=${finalPlan}`
+      `[OfferHelper] Applied private metadata override: plan=${finalPlan}, expires=${overrides.expiresAt?.toISOString() ?? 'never'}`
     );
   }
-  if (overrides?.features && overrides.features.length > 0) {
+  if (
+    overrides?.isActive &&
+    overrides?.features &&
+    overrides.features.length > 0
+  ) {
     finalFeatures = overrides.features;
     console.debug(
       `[OfferHelper] Applied private metadata features: ${finalFeatures.join(', ')}`
@@ -305,5 +336,25 @@ export function getActiveHackathonOfferForResponse(
     isActive: result.isActive,
     expiresAt: result.expiresAt.toISOString(),
     redeemedAt: result.redeemedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Get special offer (private metadata override) in API response format
+ * Used by subscription routes
+ */
+export function getSpecialOfferForResponse(
+  privateMetadata: ClerkPrivateMetadata
+): SpecialOffer | null {
+  const result = checkPrivateMetadataOverrides(privateMetadata);
+
+  if (!result || !result.plan) {
+    return null;
+  }
+
+  return {
+    isActive: result.isActive,
+    plan: result.plan,
+    expiresAt: result.expiresAt?.toISOString() ?? null,
   };
 }

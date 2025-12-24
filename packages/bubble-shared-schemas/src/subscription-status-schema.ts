@@ -21,6 +21,27 @@ export const hackathonOfferSchema = z
 
 export type HackathonOffer = z.infer<typeof hackathonOfferSchema>;
 
+// Special offer schema for private metadata overrides (exclusive members)
+export const specialOfferSchema = z
+  .object({
+    isActive: z.boolean().openapi({
+      description: 'Whether a special offer is currently active',
+      example: true,
+    }),
+    plan: z.string().openapi({
+      description: 'The plan granted by the special offer',
+      example: 'unlimited',
+    }),
+    expiresAt: z.string().nullable().openapi({
+      description:
+        'ISO date when the special offer expires (null = never expires)',
+      example: '2025-06-15T14:30:00.000Z',
+    }),
+  })
+  .openapi('SpecialOffer');
+
+export type SpecialOffer = z.infer<typeof specialOfferSchema>;
+
 // Coupon redemption request schema
 export const redeemCouponRequestSchema = z
   .object({
@@ -130,6 +151,10 @@ export const subscriptionStatusResponseSchema = z
     }),
     hackathonOffer: hackathonOfferSchema.optional().openapi({
       description: 'Active hackathon promotional offer information',
+    }),
+    specialOffer: specialOfferSchema.optional().openapi({
+      description:
+        'Special offer from private metadata (takes precedence over hackathon offer)',
     }),
   })
   .openapi('SubscriptionStatusResponse');

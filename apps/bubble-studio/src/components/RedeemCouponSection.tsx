@@ -30,9 +30,18 @@ export const RedeemCouponSection: React.FC = () => {
     );
   }
 
-  // Check if user already has an active offer
-  const hasActiveOffer = subscription?.hackathonOffer?.isActive;
-  const offerExpiresAt = subscription?.hackathonOffer?.expiresAt;
+  // Check if user already has an active offer (special offer takes precedence)
+  const hasActiveSpecialOffer = subscription?.specialOffer?.isActive;
+  const specialOfferExpiresAt = subscription?.specialOffer?.expiresAt;
+  const hasActiveHackathonOffer = subscription?.hackathonOffer?.isActive;
+  const hackathonOfferExpiresAt = subscription?.hackathonOffer?.expiresAt;
+
+  // Determine which offer to display (special offer takes precedence)
+  const hasActiveOffer = hasActiveSpecialOffer || hasActiveHackathonOffer;
+  const isSpecialOffer = hasActiveSpecialOffer;
+  const offerExpiresAt = hasActiveSpecialOffer
+    ? specialOfferExpiresAt
+    : hackathonOfferExpiresAt;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,14 +82,29 @@ export const RedeemCouponSection: React.FC = () => {
         Redeem Promo Code
       </h3>
 
-      {hasActiveOffer && offerExpiresAt ? (
-        // Show active offer status
+      {hasActiveOffer ? (
+        // Show active offer status (special offer takes precedence)
         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-green-400" />
             <span className="text-sm text-green-300">
-              Promotional offer active until{' '}
-              {formatExpirationDate(offerExpiresAt)}
+              {isSpecialOffer ? (
+                offerExpiresAt ? (
+                  <>
+                    Special offer active until{' '}
+                    {formatExpirationDate(offerExpiresAt)}
+                  </>
+                ) : (
+                  <>Special offer active · No expiration</>
+                )
+              ) : offerExpiresAt ? (
+                <>
+                  Promotional offer active until{' '}
+                  {formatExpirationDate(offerExpiresAt)}
+                </>
+              ) : (
+                <>Promotional offer active</>
+              )}
             </span>
           </div>
         </div>

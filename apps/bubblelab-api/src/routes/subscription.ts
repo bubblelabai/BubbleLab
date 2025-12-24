@@ -13,6 +13,7 @@ import {
 import {
   checkHackathonOffer,
   getActiveHackathonOfferForResponse,
+  getSpecialOfferForResponse,
   ClerkPrivateMetadata,
 } from '../services/offer-helper.js';
 import { db } from '../db/index.js';
@@ -30,6 +31,7 @@ import {
   CredentialType,
   SubscriptionStatusResponse,
   HackathonOffer,
+  SpecialOffer,
 } from '@bubblelab/shared-schemas';
 import { getClerkClient } from '../utils/clerk-client.js';
 import { env } from '../config/env.js';
@@ -233,23 +235,28 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     0
   );
 
-  // Fetch hackathon offer status from Clerk
+  // Fetch offer status from Clerk (hackathon + special offer)
   let hackathonOffer: HackathonOffer | undefined;
+  let specialOffer: SpecialOffer | undefined;
   const clerkClient = getClerkClient(appType);
   if (clerkClient) {
     try {
       const clerkUser = await clerkClient.users.getUser(userId);
-      const offer = getActiveHackathonOfferForResponse(
-        clerkUser.privateMetadata as ClerkPrivateMetadata
-      );
-      if (offer) {
-        hackathonOffer = offer;
+      const privateMetadata = clerkUser.privateMetadata as ClerkPrivateMetadata;
+
+      // Get hackathon offer
+      const hackathon = getActiveHackathonOfferForResponse(privateMetadata);
+      if (hackathon) {
+        hackathonOffer = hackathon;
+      }
+
+      // Get special offer (private metadata override)
+      const special = getSpecialOfferForResponse(privateMetadata);
+      if (special) {
+        specialOffer = special;
       }
     } catch (err) {
-      console.error(
-        '[subscription/status] Error fetching hackathon offer:',
-        err
-      );
+      console.error('[subscription/status] Error fetching offers:', err);
     }
   }
 
@@ -280,6 +287,7 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
     },
     isActive: true, // TODO: Check actual subscription status from Clerk
     hackathonOffer,
+    specialOffer,
   });
 });
 

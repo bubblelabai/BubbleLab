@@ -105,9 +105,18 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
     });
   };
 
-  // Check for active hackathon offer
-  const hasActiveOffer = subscription.hackathonOffer?.isActive;
-  const offerExpiresAt = subscription.hackathonOffer?.expiresAt;
+  // Check for active offers (special offer takes precedence over hackathon)
+  const hasActiveSpecialOffer = subscription.specialOffer?.isActive;
+  const specialOfferExpiresAt = subscription.specialOffer?.expiresAt;
+  const hasActiveHackathonOffer = subscription.hackathonOffer?.isActive;
+  const hackathonOfferExpiresAt = subscription.hackathonOffer?.expiresAt;
+
+  // Determine which offer to display (special offer takes precedence)
+  const hasActiveOffer = hasActiveSpecialOffer || hasActiveHackathonOffer;
+  const isSpecialOffer = hasActiveSpecialOffer;
+  const offerExpiresAt = hasActiveSpecialOffer
+    ? specialOfferExpiresAt
+    : hackathonOfferExpiresAt;
 
   // Centralized error messages
   const limitMessages = {
@@ -191,12 +200,25 @@ export const MonthlyUsageBar: React.FC<MonthlyUsageBarProps> = ({
                 )}
               </div>
 
-              {/* Hackathon offer banner */}
-              {hasActiveOffer && offerExpiresAt && (
+              {/* Offer banner (special offer takes precedence over hackathon) */}
+              {hasActiveOffer && (
                 <div className="mb-3 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
                   <div className="text-xs text-green-400">
-                    Promotional offer active · Unlimited access until{' '}
-                    {formatOfferExpiration(offerExpiresAt)}
+                    {isSpecialOffer ? (
+                      offerExpiresAt ? (
+                        <>
+                          Special offer active · Valid until{' '}
+                          {formatOfferExpiration(offerExpiresAt)}
+                        </>
+                      ) : (
+                        <>Special offer active · No expiration</>
+                      )
+                    ) : offerExpiresAt ? (
+                      <>
+                        Promotional offer active · Unlimited access until{' '}
+                        {formatOfferExpiration(offerExpiresAt)}
+                      </>
+                    ) : null}
                   </div>
                 </div>
               )}
