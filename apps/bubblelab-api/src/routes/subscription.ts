@@ -10,6 +10,11 @@ import {
   PLAN_TYPE,
   APP_PLAN_TO_MONTHLY_LIMITS,
 } from '../services/subscription-validation.js';
+import {
+  checkHackathonOffer,
+  getActiveHackathonOfferForResponse,
+  ClerkPrivateMetadata,
+} from '../services/offer-helper.js';
 import { db } from '../db/index.js';
 import { users, userServiceUsage } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -58,35 +63,6 @@ function calculateOfferExpiration(): Date {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 1); // 1 day from now
   return expiresAt;
-}
-
-// Helper: Hackathon offer metadata structure
-interface HackathonOfferMetadata {
-  expiresAt?: string;
-  redeemedAt?: string;
-  code?: string;
-}
-
-// Helper: Check if hackathon offer is active
-function getActiveHackathonOffer(
-  privateMetadata: Record<string, unknown>
-): HackathonOffer | null {
-  const hackathonOffer = privateMetadata?.hackathonOffer as
-    | HackathonOfferMetadata
-    | undefined;
-
-  if (!hackathonOffer?.expiresAt) {
-    return null;
-  }
-
-  const expiresAt = new Date(hackathonOffer.expiresAt);
-  const isActive = expiresAt > new Date();
-
-  return {
-    isActive,
-    expiresAt: hackathonOffer.expiresAt,
-    redeemedAt: hackathonOffer.redeemedAt || null,
-  };
 }
 
 // Apply rate limiting to redeem endpoint (5 attempts per hour per user)
@@ -143,15 +119,14 @@ app.openapi(redeemCouponRoute, async (c) => {
     const clerkUser = await clerkClient.users.getUser(userId);
 
     // Check if user already has an active hackathon offer
-    const existingOffer = getActiveHackathonOffer(
-      clerkUser.privateMetadata as Record<string, unknown>
+    const existingOffer = checkHackathonOffer(
+      clerkUser.privateMetadata as ClerkPrivateMetadata
     );
-    if (existingOffer?.isActive) {
-      const expirationDate = new Date(existingOffer.expiresAt!);
+    if (existingOffer.isActive && existingOffer.expiresAt) {
       return c.json(
         {
           success: false,
-          message: `You already have an active promotional offer until ${expirationDate.toLocaleString()}.`,
+          message: `You already have an active promotional offer until ${existingOffer.expiresAt.toLocaleString()}.`,
         },
         409
       );
@@ -264,8 +239,8 @@ app.openapi(getSubscriptionStatusRoute, async (c) => {
   if (clerkClient) {
     try {
       const clerkUser = await clerkClient.users.getUser(userId);
-      const offer = getActiveHackathonOffer(
-        clerkUser.privateMetadata as Record<string, unknown>
+      const offer = getActiveHackathonOfferForResponse(
+        clerkUser.privateMetadata as ClerkPrivateMetadata
       );
       if (offer) {
         hackathonOffer = offer;
