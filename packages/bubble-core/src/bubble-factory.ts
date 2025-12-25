@@ -190,7 +190,7 @@ export class BubbleFactory {
     );
     const { GmailBubble } = await import('./bubbles/service-bubble/gmail.js');
     const { GoogleSheetsBubble } = await import(
-      './bubbles/service-bubble/google-sheets.js'
+      './bubbles/service-bubble/google-sheets'
     );
     const { GoogleCalendarBubble } = await import(
       './bubbles/service-bubble/google-calendar.js'
