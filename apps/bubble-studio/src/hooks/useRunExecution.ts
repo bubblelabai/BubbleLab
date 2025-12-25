@@ -13,6 +13,7 @@ import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 import { useUIStore } from '@/stores/uiStore';
+import { getLiveOutputStore } from '@/stores/liveOutputStore';
 import { useLiveOutput } from './useLiveOutput';
 import {
   validateInputs,
@@ -82,7 +83,14 @@ export function useRunExecution(
       // Start execution in store
       getExecutionStore(flowId).startExecution();
 
+      // Open output panel and select first tab (index 0) at execution start
+      // This gives users the "adrenaline rush" of seeing output stream in from the beginning
       useUIStore.getState().setConsolidatedPanelTab('output');
+      // Reset to first tab - when first bubble event comes in, it will appear here
+      getLiveOutputStore(flowId)
+        ?.getState()
+        .setSelectedTab({ kind: 'item', index: 0 });
+
       const abortController = new AbortController();
       getExecutionStore(flowId).setAbortController(abortController);
 
@@ -148,7 +156,9 @@ export function useRunExecution(
 
                   // Mark bubble as running
                   getExecutionStore(flowId).setBubbleRunning(bubbleId);
-                  selectBubbleInConsole(bubbleId);
+                  // Note: We intentionally don't call selectBubbleInConsole here
+                  // to avoid jumping the tab on every bubble execution.
+                  // Users can watch output stream in without jarring tab switches.
 
                   // Highlight the line range in the editor (validate line numbers)
                   if (
@@ -207,6 +217,10 @@ export function useRunExecution(
                   if (!success) {
                     getExecutionStore(flowId).setBubbleError(bubbleId);
                   }
+
+                  // Jump to this bubble's tab on completion (not on start)
+                  // This shows users the output when it's ready, for maximum adrenaline
+                  selectBubbleInConsole(bubbleId);
                 }
               }
             }
@@ -221,7 +235,9 @@ export function useRunExecution(
 
                 // Mark function call as running
                 getExecutionStore(flowId).setBubbleRunning(functionId);
-                selectBubbleInConsole(functionId);
+                // Note: We intentionally don't call selectBubbleInConsole here
+                // to avoid jumping the tab on every function call.
+                // Users can watch output stream in without jarring tab switches.
 
                 // Highlight the line range in the editor if line number is available
                 if (eventData.lineNumber && eventData.lineNumber > 0) {
@@ -251,6 +267,10 @@ export function useRunExecution(
                 // For now, we'll assume success unless explicitly marked as error
                 // This could be enhanced to check functionOutput for error indicators
                 getExecutionStore(flowId).setBubbleResult(functionId, true);
+
+                // Jump to this function's tab on completion (not on start)
+                // This shows users the output when it's ready, for maximum adrenaline
+                selectBubbleInConsole(functionId);
               }
             }
 
