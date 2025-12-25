@@ -1,9 +1,10 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { api } from '../lib/api';
 import type {
   ValidateBubbleFlowResponse,
   CredentialType,
+  BubbleFlowDetailsResponse,
 } from '@bubblelab/shared-schemas';
 import { getExecutionStore } from '../stores/executionStore';
 import { useBubbleFlow } from './useBubbleFlow';
@@ -23,6 +24,7 @@ interface ValidateCodeOptions {
 
 export function useValidateCode({ flowId }: ValidateCodeOptions) {
   const executionState = getExecutionStore(flowId ?? -1);
+  const queryClient = useQueryClient();
   const {
     // data: currentFlow,
     updateBubbleParameters,
@@ -136,6 +138,25 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         }
         executionState.stopValidation();
       } else {
+        // If code sync validation fails and cron is active, disable it
+        if (
+          variables.syncInputsWithFlow &&
+          variables.activateCron === undefined &&
+          flowId
+        ) {
+          const currentFlow =
+            queryClient.getQueryData<BubbleFlowDetailsResponse>([
+              'bubbleFlow',
+              flowId,
+            ]);
+          if (currentFlow?.cronActive) {
+            updateCronActive(false);
+            toast.warning('Cron schedule disabled due to validation errors', {
+              autoClose: 5000,
+            });
+          }
+        }
+
         // Show error toast with validation errors
         const errorCount = result.errors?.length || 0;
         toast.error(

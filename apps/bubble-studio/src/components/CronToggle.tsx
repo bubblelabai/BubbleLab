@@ -6,6 +6,9 @@ import {
 import { useBubbleFlow } from '../hooks/useBubbleFlow';
 import { useValidateCode } from '../hooks/useValidateCode';
 import { useExecutionStore } from '../stores/executionStore';
+import { validateFlow } from '../utils/flowValidation';
+import { Tooltip } from './shared/Tooltip';
+import { useEditor } from '../hooks/useEditor';
 
 interface CronToggleProps {
   flowId: number;
@@ -27,6 +30,7 @@ export function CronToggle({
   const { data: currentFlow } = useBubbleFlow(flowId);
   const validateCodeMutation = useValidateCode({ flowId });
   const executionState = useExecutionStore(flowId);
+  const { editor } = useEditor(flowId);
   const cronSchedule = currentFlow?.cron;
   const cronActive = currentFlow?.cronActive;
 
@@ -44,14 +48,47 @@ export function CronToggle({
 
   const isPending = validateCodeMutation.isPending;
 
+  // Check if cron can be activated
+  const canActivateCron = () => {
+    // Allow deactivation even if validation fails
+    if (cronActive) {
+      return { isValid: true, reasons: [] };
+    }
+
+    // When activating, check both inputs and credentials
+    return validateFlow(flowId, currentFlow, {
+      executionInputs: executionState.executionInputs,
+      pendingCredentials: executionState.pendingCredentials,
+    });
+  };
+
+  const validationResult = canActivateCron();
+  const canToggle = validationResult.isValid || cronActive; // Allow deactivation
+  const disabledReason = !canToggle
+    ? validationResult.reasons[0] || 'Missing required fields or credentials'
+    : '';
+
+  // Get tooltip content for the toggle button
+  const getToggleTooltip = () => {
+    if (isPending) return 'Updating schedule...';
+    if (!canToggle) return disabledReason;
+    return cronActive
+      ? 'Click to deactivate schedule'
+      : 'Click to activate schedule';
+  };
+
   const handleToggle = async () => {
-    if (!cronSchedule || isPending || !currentFlow) return;
+    if (!cronSchedule || isPending || !currentFlow || !canToggle) return;
 
     const newActiveState = !cronActive;
 
+    // Use editor code if available (for unsaved changes), otherwise use saved flow code
+    const editorCode = editor.getCode();
+    const codeToValidate = editorCode || currentFlow.code;
+
     try {
       await validateCodeMutation.mutateAsync({
-        code: currentFlow.code,
+        code: codeToValidate,
         flowId: currentFlow.id,
         syncInputsWithFlow: syncInputsWithFlow,
         credentials: executionState.pendingCredentials || {},
@@ -71,38 +108,38 @@ export function CronToggle({
     return (
       <div className="flex items-center gap-2">
         {/* Toggle Switch */}
-        <button
-          type="button"
-          onClick={handleToggle}
-          disabled={isPending}
-          className={`relative inline-flex items-center h-5 w-9 rounded-full transition-all duration-200 ${
-            isPending
-              ? 'cursor-not-allowed opacity-50 bg-neutral-700'
-              : cronActive
-                ? 'bg-green-600 hover:bg-green-500'
-                : 'bg-neutral-600 hover:bg-neutral-500'
-          }`}
-          title={
-            isPending
-              ? 'Updating schedule...'
-              : cronActive
-                ? 'Click to deactivate schedule'
-                : 'Click to activate schedule'
-          }
+        <Tooltip
+          content={getToggleTooltip()}
+          show={!canToggle && !cronActive}
+          position="bottom"
         >
-          <span className="sr-only">Toggle cron schedule</span>
-          {isPending ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
-                cronActive ? 'translate-x-4' : 'translate-x-0.5'
-              }`}
-            />
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={handleToggle}
+            disabled={isPending || !canToggle}
+            className={`relative inline-flex items-center h-5 w-9 rounded-full transition-all duration-200 ${
+              isPending || !canToggle
+                ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+                : cronActive
+                  ? 'bg-green-600 hover:bg-green-500'
+                  : 'bg-neutral-600 hover:bg-neutral-500'
+            }`}
+            title={getToggleTooltip()}
+          >
+            <span className="sr-only">Toggle cron schedule</span>
+            {isPending ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                  cronActive ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            )}
+          </button>
+        </Tooltip>
 
         {/* Status Text and Schedule */}
         <div className="flex items-center gap-2">
@@ -154,38 +191,38 @@ export function CronToggle({
           >
             {isPending ? 'Updating...' : cronActive ? 'Active' : 'Inactive'}
           </span>
-          <button
-            type="button"
-            onClick={handleToggle}
-            disabled={isPending}
-            className={`relative inline-flex items-center h-6 w-11 rounded-full transition-all duration-200 ${
-              isPending
-                ? 'cursor-not-allowed opacity-50 bg-neutral-700'
-                : cronActive
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-neutral-600 hover:bg-neutral-500'
-            }`}
-            title={
-              isPending
-                ? 'Updating schedule...'
-                : cronActive
-                  ? 'Click to deactivate schedule'
-                  : 'Click to activate schedule'
-            }
+          <Tooltip
+            content={getToggleTooltip()}
+            show={!canToggle && !cronActive}
+            position="left"
           >
-            <span className="sr-only">Toggle cron schedule</span>
-            {isPending ? (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : (
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
-                  cronActive ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={handleToggle}
+              disabled={isPending || !canToggle}
+              className={`relative inline-flex items-center h-6 w-11 rounded-full transition-all duration-200 ${
+                isPending || !canToggle
+                  ? 'cursor-not-allowed opacity-50 bg-neutral-700'
+                  : cronActive
+                    ? 'bg-green-600 hover:bg-green-500'
+                    : 'bg-neutral-600 hover:bg-neutral-500'
+              }`}
+              title={getToggleTooltip()}
+            >
+              <span className="sr-only">Toggle cron schedule</span>
+              {isPending ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
+                    cronActive ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              )}
+            </button>
+          </Tooltip>
         </div>
       </div>
 

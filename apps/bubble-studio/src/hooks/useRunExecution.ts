@@ -7,17 +7,18 @@ import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import type {
-  CredentialType,
-  StreamingLogEvent,
-} from '@bubblelab/shared-schemas';
+import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 import { useUIStore } from '@/stores/uiStore';
 import { useLiveOutput } from './useLiveOutput';
+import {
+  validateInputs,
+  validateCredentials,
+  validateFlow,
+} from '@/utils/flowValidation';
 
 interface RunExecutionOptions {
   validateCode?: boolean;
@@ -431,7 +432,7 @@ export function useRunExecution(
         }
 
         // 2. Validate inputs against the UPDATED schema (after code sync)
-        const inputValidation = validateInputs(flowToValidate);
+        const inputValidation = validateInputs(flowId, flowToValidate);
         if (!inputValidation.isValid) {
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
@@ -441,7 +442,10 @@ export function useRunExecution(
         }
 
         // 3. Validate credentials
-        const credentialValidation = validateCredentials(flowToValidate);
+        const credentialValidation = validateCredentials(
+          flowId,
+          flowToValidate
+        );
         if (!credentialValidation.isValid) {
           toast.error(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
@@ -501,97 +505,11 @@ export function useRunExecution(
     ]
   );
 
-  const validateInputs = (
-    currentFlow: BubbleFlowDetailsResponse | undefined
-  ) => {
-    if (!flowId) {
-      return { isValid: false, reasons: ['No flow selected'] };
-    }
-    const reasons: string[] = [];
-
-    if (!currentFlow) {
-      reasons.push('No flow selected');
-      return { isValid: false, reasons };
-    }
-    try {
-      let schema = currentFlow.inputSchema;
-      if (typeof schema === 'string') {
-        schema = JSON.parse(schema);
-      }
-      const requiredFields: string[] = Array.isArray(schema?.required)
-        ? schema.required
-        : [];
-
-      requiredFields.forEach((fieldName: string) => {
-        if (
-          getExecutionStore(flowId).executionInputs[fieldName] === undefined ||
-          getExecutionStore(flowId).executionInputs[fieldName] === ''
-        ) {
-          reasons.push(`Missing required input: ${fieldName}`);
-        }
-      });
-    } catch {
-      // If schema parsing fails, assume valid
-      return { isValid: true, reasons: [] };
-    }
-
-    return { isValid: reasons.length === 0, reasons };
-  };
-
-  const validateCredentials = (currentFlow: BubbleFlowDetailsResponse) => {
-    const reasons: string[] = [];
-
-    if (!currentFlow || !flowId) {
-      reasons.push('No flow selected');
-      return { isValid: false, reasons };
-    }
-
-    const required = currentFlow.requiredCredentials || {};
-    const requiredEntries = Object.entries(required) as Array<
-      [string, string[]]
-    >;
-
-    for (const [bubbleKey, credTypes] of requiredEntries) {
-      for (const credType of credTypes) {
-        if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
-
-        const selectedForBubble =
-          getExecutionStore(flowId).pendingCredentials[bubbleKey] || {};
-        const selectedId = selectedForBubble[credType];
-
-        if (selectedId === undefined || selectedId === null) {
-          reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
-        }
-      }
-    }
-
-    return { isValid: reasons.length === 0, reasons };
-  };
-
   const canExecute = () => {
-    if (!flowId) {
-      return { isValid: false, reasons: ['No flow selected'] };
-    }
-    const reasons: string[] = [];
-
-    if (!currentFlow) reasons.push('No flow selected');
-    if (getExecutionStore(flowId).isRunning) reasons.push('Already executing');
-    if (getExecutionStore(flowId).isValidating)
-      reasons.push('Currently validating');
-
-    const inputValidation = validateInputs(currentFlow);
-    if (!inputValidation.isValid) {
-      reasons.push(...inputValidation.reasons);
-    }
-
-    if (currentFlow) {
-      const credentialValidation = validateCredentials(currentFlow!);
-      if (!credentialValidation.isValid) {
-        reasons.push(...credentialValidation.reasons);
-      }
-    }
-
-    return { isValid: reasons.length === 0, reasons };
+    return validateFlow(flowId, currentFlow, {
+      checkRunning: true,
+      checkValidating: true,
+    });
   };
 
   const executionStatus = () => {
@@ -603,8 +521,8 @@ export function useRunExecution(
       };
     }
 
-    const inputValidation = validateInputs(currentFlow);
-    const credentialValidation = validateCredentials(currentFlow);
+    const inputValidation = validateInputs(flowId, currentFlow);
+    const credentialValidation = validateCredentials(flowId, currentFlow);
     const canExecuteResult = canExecute();
 
     return {
