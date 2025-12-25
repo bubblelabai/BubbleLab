@@ -56,7 +56,13 @@ describe('filterEmptyInputs', () => {
   });
 
   it('should handle null/undefined input gracefully', () => {
-    expect(filterEmptyInputs(null as any)).toEqual({});
-    expect(filterEmptyInputs(undefined as any)).toEqual({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(
+      filterEmptyInputs(null as unknown as Record<string, unknown>)
+    ).toEqual({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(
+      filterEmptyInputs(undefined as unknown as Record<string, unknown>)
+    ).toEqual({});
   });
 });
