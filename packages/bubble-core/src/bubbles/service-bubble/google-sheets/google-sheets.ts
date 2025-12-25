@@ -141,7 +141,7 @@ export class GoogleSheetsBubble<
       // Extract spreadsheet ID from endpoint if not provided
       const extractedSpreadsheetId =
         spreadsheetId ||
-        endpoint.match(/\/spreadsheets\/([^\/]+)/)?.[1] ||
+        endpoint.match(/\/spreadsheets\/([^/]+)/)?.[1] ||
         undefined;
       const enhancedError = enhanceErrorMessage(
         errorText,
