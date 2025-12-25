@@ -43,8 +43,8 @@ const ResearchAgentToolParamsSchema = z.object({
   maxIterations: z
     .number()
     .min(1)
-    .max(100)
-    .default(100)
+    .max(4000)
+    .default(400)
     .describe(
       'Maximum number of iterations for the research agent (default: 100)'
     ),

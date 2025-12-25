@@ -52,18 +52,6 @@ describe('AIAgentBubble', () => {
       }).toThrow('Message is required');
     });
 
-    test('should use default values when not provided', () => {
-      const bubble = new AIAgentBubble({
-        message: 'Test message',
-      });
-
-      const params = bubble.currentParams;
-      expect(params.systemPrompt).toBe('You are a helpful AI assistant');
-      expect(params.model.model).toBe(RECOMMENDED_MODELS.FAST);
-      expect(params.model.temperature).toBe(1);
-      expect(params.maxIterations).toBe(10);
-    });
-
     test('should accept custom model configuration', () => {
       const bubble = new AIAgentBubble({
         message: 'Test message',

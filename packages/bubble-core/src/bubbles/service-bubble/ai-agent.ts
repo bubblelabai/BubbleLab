@@ -305,10 +305,10 @@ const AIAgentParamsSchema = z.object({
   maxIterations: z
     .number()
     .positive()
-    .min(2)
-    .default(10)
+    .min(4)
+    .default(40)
     .describe(
-      'Maximum number of iterations for the agent workflow, 2 iterations per turn of conversation'
+      'Maximum number of iterations for the agent workflow, 5 iterations per turn of conversation'
     ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
