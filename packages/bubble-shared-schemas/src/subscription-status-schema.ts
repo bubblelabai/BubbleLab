@@ -8,11 +8,11 @@ export const hackathonOfferSchema = z
       description: 'Whether a hackathon offer is currently active',
       example: true,
     }),
-    expiresAt: z.string().nullable().openapi({
+    expiresAt: z.string().openapi({
       description: 'ISO date when the hackathon offer expires',
       example: '2025-01-15T14:30:00.000Z',
     }),
-    redeemedAt: z.string().nullable().openapi({
+    redeemedAt: z.string().openapi({
       description: 'ISO date when the code was redeemed',
       example: '2025-01-14T14:30:00.000Z',
     }),

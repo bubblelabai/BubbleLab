@@ -328,14 +328,14 @@ export function getActiveHackathonOfferForResponse(
 ): HackathonOffer | null {
   const result = checkHackathonOffer(privateMetadata);
 
-  if (!result.expiresAt) {
+  if (!result.expiresAt || !result.redeemedAt) {
     return null;
   }
 
   return {
     isActive: result.isActive,
     expiresAt: result.expiresAt.toISOString(),
-    redeemedAt: result.redeemedAt?.toISOString() ?? null,
+    redeemedAt: result.redeemedAt.toISOString(),
   };
 }
 
