@@ -306,6 +306,21 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
   },
+  // GPT-5.2: Official pricing from OpenAI
+  // Note: Cached input pricing is $0.125 / 1M tokens (not tracked separately)
+  [getPricingKey(CredentialType.OPENAI_CRED, 'openai/gpt-5.2', 'input_tokens')]:
+    {
+      unit: 'input_tokens',
+      unitCost: (1.25 * 1.05) / 1_000_000, // $1.25 per 1M tokens * 1.05 markup = $1.3125 per 1M tokens
+    },
+  [getPricingKey(
+    CredentialType.OPENAI_CRED,
+    'openai/gpt-5.2',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
+  },
 
   // AI Services - Anthropic with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
