@@ -1,5 +1,6 @@
 import { useMemo, memo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import Autolinker from 'autolinker';
 import {
   getCacheKey,
   simplifyObjectForContext,
@@ -104,51 +105,85 @@ function parseJSONString(str: string): unknown | null {
 }
 
 /**
+ * Autolinker instance configured for URL detection
+ * Handles trailing punctuation correctly (e.g., won't include period at end of sentence)
+ */
+const autolinker = new Autolinker({
+  urls: true,
+  email: false,
+  phone: false,
+  mention: false,
+  hashtag: false,
+  stripPrefix: false,
+  stripTrailingSlash: false,
+  decodePercentEncoding: false,
+  newWindow: true,
+});
+
+/**
  * Detect URLs in text and convert them to React components with clickable links
- * Similar to makeLinksClickable but returns React components
+ * Uses Autolinker for accurate URL detection that handles trailing punctuation
  * Adds download button for file URLs
  */
 function renderStringWithLinks(text: string): React.ReactNode {
-  const urlRegex = /(https?:\/\/[^\s"<>]+)/g;
-  const parts = text.split(urlRegex);
+  const matches = autolinker.parse(text);
 
-  return (
-    <>
-      {parts.map((part, index) => {
-        // Check if part is a URL by checking if it starts with http:// or https://
-        const isUrl = part.startsWith('http://') || part.startsWith('https://');
-        if (isUrl) {
-          // Sanitize href to prevent javascript: and dangerous data URLs
-          const safeHref =
-            !part.toLowerCase().startsWith('javascript:') &&
-            !part.toLowerCase().startsWith('data:text/html') &&
-            !part.toLowerCase().startsWith('data:application/javascript')
-              ? part
-              : undefined;
+  if (matches.length === 0) {
+    return <>{text}</>;
+  }
 
-          const isDownloadable = safeHref && isDownloadableFileUrl(safeHref);
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
 
-          return (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1.5 flex-wrap"
-            >
-              <a
-                href={safeHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline break-all"
-              >
-                {part}
-              </a>
-              {isDownloadable && <FileDownloadButton url={safeHref} />}
-            </span>
-          );
-        }
-        return <span key={index}>{part}</span>;
-      })}
-    </>
-  );
+  matches.forEach((match, index) => {
+    const offset = match.getOffset();
+    const matchedText = match.getMatchedText();
+    const url = match.getAnchorHref();
+
+    // Add text before this match
+    if (offset > lastIndex) {
+      elements.push(
+        <span key={`text-${index}`}>{text.slice(lastIndex, offset)}</span>
+      );
+    }
+
+    // Sanitize href to prevent javascript: and dangerous data URLs
+    const safeHref =
+      url &&
+      !url.toLowerCase().startsWith('javascript:') &&
+      !url.toLowerCase().startsWith('data:text/html') &&
+      !url.toLowerCase().startsWith('data:application/javascript')
+        ? url
+        : undefined;
+
+    const isDownloadable = safeHref && isDownloadableFileUrl(safeHref);
+
+    elements.push(
+      <span
+        key={`url-${index}`}
+        className="inline-flex items-center gap-1.5 flex-wrap"
+      >
+        <a
+          href={safeHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline break-all"
+        >
+          {matchedText}
+        </a>
+        {isDownloadable && safeHref && <FileDownloadButton url={safeHref} />}
+      </span>
+    );
+
+    lastIndex = offset + matchedText.length;
+  });
+
+  // Add remaining text after last match
+  if (lastIndex < text.length) {
+    elements.push(<span key="text-end">{text.slice(lastIndex)}</span>);
+  }
+
+  return <>{elements}</>;
 }
 
 /**

@@ -24,6 +24,7 @@
     "@tanstack/router-devtools": "^1.133.28",
     "@types/marked": "^6.0.0",
     "@xyflow/react": "^12.8.2",
+    "autolinker": "^4.1.5",
     "browser-image-compression": "^2.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.544.0",
