@@ -7,7 +7,6 @@ export {
   type GoogleSheetsParams,
   type GoogleSheetsResult,
   type GoogleSheetsParamsInput,
-  type GoogleSheetsOperationResult,
 } from './google-sheets.schema.js';
 export {
   normalizeRange,

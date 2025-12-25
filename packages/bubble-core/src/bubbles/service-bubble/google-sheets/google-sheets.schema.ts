@@ -64,35 +64,32 @@ export const SpreadsheetInfoSchema = z
   .describe('Google Sheets spreadsheet information');
 
 // Helper to create a range field with automatic normalization
+// Uses transform instead of preprocess to preserve string input type
 const createRangeField = (description: string) =>
   z
-    .preprocess(
-      (val) => (typeof val === 'string' ? normalizeRange(val) : val),
-      z.string().min(1, 'Range is required')
-    )
+    .string()
+    .min(1, 'Range is required')
+    .transform((val) => normalizeRange(val))
     .describe(description);
 
 // Helper to create a values field with automatic sanitization
+// Uses transform instead of preprocess to preserve array input type
+// Input accepts any cell values (string, number, boolean, null, undefined, Date, etc.)
+// Output is sanitized to only string, number, or boolean
 const createValuesField = (description: string) =>
   z
-    .preprocess(
-      sanitizeValues,
-      z
-        .array(z.array(z.union([z.string(), z.number(), z.boolean()])))
-        .min(1, 'Values array cannot be empty')
-    )
+    .array(z.array(z.unknown()))
+    .min(1, 'Values array cannot be empty')
+    .transform((val) => sanitizeValues(val))
     .describe(description);
 
 // Helper to create a ranges array field with automatic normalization
+// Uses transform instead of preprocess to preserve string[] input type
 const createRangesField = (description: string) =>
   z
-    .preprocess(
-      (val) =>
-        Array.isArray(val)
-          ? val.map((r) => (typeof r === 'string' ? normalizeRange(r) : r))
-          : val,
-      z.array(z.string()).min(1, 'At least one range is required')
-    )
+    .array(z.string())
+    .min(1, 'At least one range is required')
+    .transform((val) => val.map((r) => normalizeRange(r)))
     .describe(description);
 
 // Define the parameters schema for Google Sheets operations
@@ -313,18 +310,14 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .array(
         z.object({
           range: z
-            .preprocess(
-              (val) => (typeof val === 'string' ? normalizeRange(val) : val),
-              z.string()
-            )
+            .string()
+            .transform((val) => normalizeRange(val))
             .describe(
               'A1 notation range (sheet names with spaces are automatically quoted)'
             ),
           values: z
-            .preprocess(
-              sanitizeValues,
-              z.array(z.array(z.union([z.string(), z.number(), z.boolean()])))
-            )
+            .array(z.array(z.unknown()))
+            .transform((val) => sanitizeValues(val))
             .describe(
               'Data values (null/undefined automatically converted to empty strings)'
             ),
@@ -637,11 +630,6 @@ export type GoogleSheetsResult = z.output<typeof GoogleSheetsResultSchema>;
 // Use output type for params since preprocessing converts input to output
 // This ensures range, values, etc. have correct types (string, not unknown)
 export type GoogleSheetsParams = z.output<typeof GoogleSheetsParamsSchema>;
-
-// Helper type to get the result type for a specific operation
-export type GoogleSheetsOperationResult<
-  T extends GoogleSheetsParams['operation'],
-> = Extract<GoogleSheetsResult, { operation: T }>;
 
 // Export the input type for external usage
 export type GoogleSheetsParamsInput = z.input<typeof GoogleSheetsParamsSchema>;

@@ -35,7 +35,7 @@ import { enhanceErrorMessage } from './google-sheets.utils.js';
  * - User-controlled access to spreadsheet data
  */
 export class GoogleSheetsBubble<
-  T extends GoogleSheetsParams = GoogleSheetsParams,
+  T extends GoogleSheetsParamsInput = GoogleSheetsParamsInput,
 > extends ServiceBubble<
   T,
   Extract<GoogleSheetsResult, { operation: T['operation'] }>
@@ -73,11 +73,11 @@ export class GoogleSheetsBubble<
   static readonly alias = 'sheets';
 
   constructor(
-    params: GoogleSheetsParamsInput = {
+    params: T = {
       operation: 'read_values',
       spreadsheet_id: '',
       range: 'Sheet1!A1:B10',
-    },
+    } as T,
     context?: BubbleContext
   ) {
     super(params, context);
@@ -171,29 +171,86 @@ export class GoogleSheetsBubble<
 
     try {
       const result = await (async (): Promise<GoogleSheetsResult> => {
+        // Cast to output type since base class already parsed input through Zod
+        const parsedParams = this.params as GoogleSheetsParams;
         switch (operation) {
           case 'read_values':
-            return await this.readValues(this.params);
+            return await this.readValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'read_values' }
+              >
+            );
           case 'write_values':
-            return await this.writeValues(this.params);
+            return await this.writeValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'write_values' }
+              >
+            );
           case 'update_values':
-            return await this.updateValues(this.params);
+            return await this.updateValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'update_values' }
+              >
+            );
           case 'append_values':
-            return await this.appendValues(this.params);
+            return await this.appendValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'append_values' }
+              >
+            );
           case 'clear_values':
-            return await this.clearValues(this.params);
+            return await this.clearValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'clear_values' }
+              >
+            );
           case 'batch_read_values':
-            return await this.batchReadValues(this.params);
+            return await this.batchReadValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'batch_read_values' }
+              >
+            );
           case 'batch_update_values':
-            return await this.batchUpdateValues(this.params);
+            return await this.batchUpdateValues(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'batch_update_values' }
+              >
+            );
           case 'get_spreadsheet_info':
-            return await this.getSpreadsheetInfo(this.params);
+            return await this.getSpreadsheetInfo(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'get_spreadsheet_info' }
+              >
+            );
           case 'create_spreadsheet':
-            return await this.createSpreadsheet(this.params);
+            return await this.createSpreadsheet(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'create_spreadsheet' }
+              >
+            );
           case 'add_sheet':
-            return await this.addSheet(this.params);
+            return await this.addSheet(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'add_sheet' }
+              >
+            );
           case 'delete_sheet':
-            return await this.deleteSheet(this.params);
+            return await this.deleteSheet(
+              parsedParams as Extract<
+                GoogleSheetsParams,
+                { operation: 'delete_sheet' }
+              >
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }

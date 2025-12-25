@@ -12,6 +12,19 @@ describe('GoogleSheetsBubble', () => {
     expect(GoogleSheetsBubble).toBeDefined();
   });
 
+  it('should not produce errors when using the bubble', async () => {
+    // No compiler errors should be thrown
+    await new GoogleSheetsBubble({
+      operation: 'append_values',
+      spreadsheet_id: '1234567890',
+      range: 'Sheet1!A1:B10',
+      values: [
+        ['Value1', 'Value2'],
+        ['Value3', 'Value4'],
+      ],
+    }).action();
+  });
+
   describe('Range Normalization', () => {
     it('should automatically quote sheet names with spaces', () => {
       const params = {
