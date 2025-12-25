@@ -456,6 +456,39 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
           pricingTable: PRICING_TABLE,
         });
 
+        // Save inputs to defaultInputs after successful execution
+        // Filter out empty values (undefined, empty strings, empty arrays)
+        // Keep null values as they may be explicitly set by the user
+        const filteredInputs = Object.fromEntries(
+          Object.entries(userPayload).filter(([_, value]) => {
+            if (value === undefined) return false;
+            if (typeof value === 'string' && value.trim() === '') return false;
+            if (Array.isArray(value) && value.length === 0) return false;
+            return true;
+          })
+        );
+
+        // Only save if there are actual inputs
+        if (Object.keys(filteredInputs).length > 0) {
+          try {
+            await db
+              .update(bubbleFlows)
+              .set({
+                defaultInputs: filteredInputs,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId))
+              );
+          } catch (saveError) {
+            console.error(
+              `[API] Error saving inputs to flow ${id} defaultInputs:`,
+              saveError
+            );
+            // Non-blocking: continue even if save fails
+          }
+        }
+
         // Send stream completion
         await stream.writeSSE({
           data: JSON.stringify({

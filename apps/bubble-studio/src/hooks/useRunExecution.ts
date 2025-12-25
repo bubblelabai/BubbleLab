@@ -7,6 +7,7 @@ import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
+import { filterEmptyInputs } from '@/utils/inputUtils';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
@@ -65,7 +66,7 @@ export function useRunExecution(
   const queryClient = useQueryClient();
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
-  const { data: currentFlow } = useBubbleFlow(flowId);
+  const { data: currentFlow, updateDefaultInputs } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
   const { selectBubbleInConsole, selectResultsInConsole } =
@@ -476,7 +477,14 @@ export function useRunExecution(
           inputs || getExecutionStore(flowId).executionInputs
         );
 
-        // 7. Execute with streaming
+        // 7. Optimistically update defaultInputs at the beginning of execution
+        // Filter out empty values to match backend behavior
+        const filteredInputs = filterEmptyInputs(cleanedInputs);
+        if (Object.keys(filteredInputs).length > 0) {
+          updateDefaultInputs(filteredInputs);
+        }
+
+        // 8. Execute with streaming
         await executeWithStreaming(cleanedInputs);
         refetchSubscriptionStatus();
         // Invalidate all execution history queries to ensure all pages are updated
@@ -502,6 +510,7 @@ export function useRunExecution(
       queryClient,
       refetchSubscriptionStatus,
       editor,
+      updateDefaultInputs,
     ]
   );
 
