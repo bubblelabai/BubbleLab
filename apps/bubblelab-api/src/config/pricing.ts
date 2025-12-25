@@ -363,7 +363,7 @@ export const PRICING_TABLE: PricingTable = {
   },
   [getPricingKey(
     CredentialType.ANTHROPIC_CRED,
-    'anthropic/claude-opus-4.5',
+    'anthropic/claude-opus-4-5',
     'input_tokens'
   )]: {
     unit: 'input_tokens',
