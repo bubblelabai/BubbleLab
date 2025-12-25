@@ -3840,23 +3840,27 @@ export class BubbleParser {
   }
 
   /**
-   * Find all .push() calls for an array variable
+   * Find array elements from .push() calls or .map() callbacks
+   * Handles both patterns:
+   * - .push(): array.push(item1, item2, ...)
+   * - .map(): const promises = items.map(item => this.processItem(item))
    */
-  private findArrayPushCalls(
+  private findArrayElements(
     arrayVarName: string,
     ast: TSESTree.Program,
     contextLine: number,
     scopeManager: ScopeManager
   ): TSESTree.Expression[] {
-    const pushedArgs: TSESTree.Expression[] = [];
+    const elements: TSESTree.Expression[] = [];
     const varId = this.findVariableIdByName(
       arrayVarName,
       contextLine,
       scopeManager
     );
-    if (varId === undefined) return pushedArgs;
+    if (varId === undefined) return elements;
 
     const walk = (node: TSESTree.Node) => {
+      // Handle .push() calls: array.push(item1, item2, ...)
       if (
         node.type === 'CallExpression' &&
         node.callee.type === 'MemberExpression' &&
@@ -3865,17 +3869,60 @@ export class BubbleParser {
         node.callee.object.type === 'Identifier' &&
         node.callee.object.name === arrayVarName
       ) {
-        const pushLine = node.loc?.start.line || 0;
+        const callLine = node.loc?.start.line || 0;
         if (
-          this.findVariableIdByName(arrayVarName, pushLine, scopeManager) ===
+          this.findVariableIdByName(arrayVarName, callLine, scopeManager) ===
           varId
         ) {
-          // Handle all arguments to .push(), not just the first one
           node.arguments.forEach((arg) => {
-            pushedArgs.push(arg as TSESTree.Expression);
+            elements.push(arg as TSESTree.Expression);
           });
         }
       }
+
+      // Handle .map() calls: const promises = items.map(item => ...)
+      if (node.type === 'VariableDeclaration') {
+        for (const decl of node.declarations) {
+          if (
+            decl.id.type === 'Identifier' &&
+            decl.id.name === arrayVarName &&
+            decl.init &&
+            decl.init.type === 'CallExpression' &&
+            decl.init.callee.type === 'MemberExpression' &&
+            decl.init.callee.property.type === 'Identifier' &&
+            decl.init.callee.property.name === 'map'
+          ) {
+            const declLine = node.loc?.start.line || 0;
+            if (
+              this.findVariableIdByName(
+                arrayVarName,
+                declLine,
+                scopeManager
+              ) === varId
+            ) {
+              if (decl.init.arguments.length > 0) {
+                const callback = decl.init.arguments[0];
+                const callbackExpr = this.extractCallbackExpression(callback);
+                if (callbackExpr) {
+                  const sourceArray = decl.init.callee.object;
+                  const sourceElements = this.getSourceArrayElements(
+                    sourceArray,
+                    ast,
+                    declLine,
+                    scopeManager
+                  );
+                  // Create one expression per source element, or single fallback
+                  const count = sourceElements?.length || 1;
+                  for (let i = 0; i < count; i++) {
+                    elements.push(callbackExpr);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       for (const key in node) {
         const child = (node as any)[key];
         if (Array.isArray(child)) child.forEach(walk);
@@ -3883,7 +3930,113 @@ export class BubbleParser {
       }
     };
     walk(ast);
-    return pushedArgs;
+    return elements;
+  }
+
+  /**
+   * Extract expression from callback function
+   */
+  private extractCallbackExpression(
+    callback: TSESTree.Node
+  ): TSESTree.Expression | null {
+    if (
+      callback.type === 'ArrowFunctionExpression' &&
+      callback.body.type !== 'BlockStatement'
+    ) {
+      return callback.body as TSESTree.Expression;
+    }
+    if (
+      (callback.type === 'ArrowFunctionExpression' ||
+        callback.type === 'FunctionExpression') &&
+      callback.body.type === 'BlockStatement'
+    ) {
+      const returns = this.findReturnStatements(callback.body);
+      return returns[0]?.argument as TSESTree.Expression | null;
+    }
+    return null;
+  }
+
+  /**
+   * Get elements from source array (literal or variable)
+   */
+  private getSourceArrayElements(
+    sourceArray: TSESTree.Expression,
+    ast: TSESTree.Program,
+    contextLine: number,
+    scopeManager: ScopeManager
+  ): TSESTree.Expression[] | null {
+    if (sourceArray.type === 'ArrayExpression') {
+      return sourceArray.elements.filter(
+        (el): el is TSESTree.Expression =>
+          el !== null && el.type !== 'SpreadElement'
+      ) as TSESTree.Expression[];
+    }
+    if (sourceArray.type === 'Identifier') {
+      const varId = this.findVariableIdByName(
+        sourceArray.name,
+        contextLine,
+        scopeManager
+      );
+      if (varId === undefined) return null;
+
+      const walk = (node: TSESTree.Node): TSESTree.Expression[] | null => {
+        if (node.type === 'VariableDeclaration') {
+          for (const decl of node.declarations) {
+            if (
+              decl.id.type === 'Identifier' &&
+              decl.id.name === sourceArray.name &&
+              decl.init?.type === 'ArrayExpression' &&
+              this.findVariableIdByName(
+                sourceArray.name,
+                node.loc?.start.line || 0,
+                scopeManager
+              ) === varId
+            ) {
+              return decl.init.elements.filter(
+                (el): el is TSESTree.Expression =>
+                  el !== null && el.type !== 'SpreadElement'
+              ) as TSESTree.Expression[];
+            }
+          }
+        }
+        for (const key in node) {
+          const child = (node as any)[key];
+          if (Array.isArray(child)) {
+            for (const c of child) {
+              const result = walk(c);
+              if (result) return result;
+            }
+          } else if (child?.type) {
+            const result = walk(child);
+            if (result) return result;
+          }
+        }
+        return null;
+      };
+      return walk(ast);
+    }
+    return null;
+  }
+
+  /**
+   * Find all return statements in a block statement
+   */
+  private findReturnStatements(
+    block: TSESTree.BlockStatement
+  ): TSESTree.ReturnStatement[] {
+    const returns: TSESTree.ReturnStatement[] = [];
+    const walk = (node: TSESTree.Node) => {
+      if (node.type === 'ReturnStatement') {
+        returns.push(node);
+      }
+      for (const key in node) {
+        const child = (node as any)[key];
+        if (Array.isArray(child)) child.forEach(walk);
+        else if (child?.type) walk(child);
+      }
+    };
+    walk(block);
+    return returns;
   }
 
   /**
@@ -3908,7 +4061,8 @@ export class BubbleParser {
     if (promiseAllInfo.arrayExpr.type === 'Identifier' && this.cachedAST) {
       const arrayVarName = promiseAllInfo.arrayExpr.name;
       const contextLine = promiseAllInfo.arrayExpr.loc?.start.line || 0;
-      const pushedArgs = this.findArrayPushCalls(
+
+      const pushedArgs = this.findArrayElements(
         arrayVarName,
         this.cachedAST,
         contextLine,
