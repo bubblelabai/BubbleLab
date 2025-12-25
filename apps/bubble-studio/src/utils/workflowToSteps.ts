@@ -14,9 +14,10 @@ export interface StepData {
   location: { startLine: number; endLine: number };
   bubbleIds: number[]; // IDs of bubbles inside this step
   controlFlowNodes: WorkflowNode[]; // if/for/while nodes for edge generation
+  variableId?: number; // Unique variable ID for tracking execution in console
 
   // New: layout / structural metadata
-  level: number; // 0,1,2,... step “row” in the flow
+  level: number; // 0,1,2,... step "row" in the flow
   branchIndex?: number; // 0,1,2,... within a level (for siblings)
 
   // Branch information for hierarchical layout (kept for compatibility)
@@ -90,7 +91,8 @@ export function extractStepGraph(
     bubbleIds: number[],
     controlFlowNodes: WorkflowNode[],
     parentFrontier: Frontier,
-    ctx: ProcessContext
+    ctx: ProcessContext,
+    variableId?: number
   ): StepData {
     const parentStepId =
       parentFrontier.parents.length > 0 ? parentFrontier.parents[0] : undefined;
@@ -107,6 +109,7 @@ export function extractStepGraph(
       parentStepId,
       branchType: ctx.branchType,
       branchLabel: ctx.edgeLabel,
+      variableId,
     };
 
     return step;
@@ -179,7 +182,8 @@ export function extractStepGraph(
           bubbleIds,
           controlFlowNodes,
           frontier,
-          ctx
+          ctx,
+          functionCallNode.variableId
         );
         steps.push(step);
 
@@ -366,7 +370,8 @@ export function extractStepGraph(
               bubbleIds,
               controlFlowNodes,
               parentFrontier,
-              { frontier, branchType: 'sequential' }
+              { frontier, branchType: 'sequential' },
+              fnChild.variableId
             );
             steps.push(step);
             connectFrontierToStep(

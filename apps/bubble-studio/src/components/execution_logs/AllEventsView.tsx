@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { PlayIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 import {
   Sparkles,
@@ -6,6 +6,7 @@ import {
   XCircle,
   Loader2,
   Circle,
+  ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
@@ -71,6 +72,7 @@ export default function AllEventsView({
     setSelectedTab,
     selectedEventIndexByVariableId,
     setSelectedEventIndex,
+    selectBubbleInConsole,
   } = useLiveOutput(flowId);
 
   // Pearl chat integration for error fixing
@@ -85,6 +87,23 @@ export default function AllEventsView({
   const eventsEndRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
+
+  // State for expanded bubbles (bubbles with sub-bubbles can be expanded)
+  const [expandedBubbles, setExpandedBubbles] = useState<Set<string>>(
+    new Set()
+  );
+
+  const toggleBubbleExpansion = (bubbleId: string) => {
+    setExpandedBubbles((prev) => {
+      const next = new Set(prev);
+      if (next.has(bubbleId)) {
+        next.delete(bubbleId);
+      } else {
+        next.add(bubbleId);
+      }
+      return next;
+    });
+  };
 
   // Extract step graph from workflow
   const stepGraph = useMemo(() => {
@@ -113,10 +132,18 @@ export default function AllEventsView({
     return 'pending';
   };
 
-  // Helper to get step execution status (based on its bubbles)
+  // Helper to get step execution status (based on its bubbles OR its own variableId for transformation functions)
   const getStepStatus = (
     step: StepData
   ): 'pending' | 'running' | 'complete' | 'error' => {
+    // For transformation functions or steps with no bubbles, check the step's own variableId
+    const stepVariableId =
+      step.variableId ?? step.transformationData?.variableId;
+    if (step.bubbleIds.length === 0 && stepVariableId) {
+      return getBubbleStatus(String(stepVariableId));
+    }
+
+    // For steps with bubbles, check all bubble statuses
     const bubbleStatuses = step.bubbleIds.map((id) =>
       getBubbleStatus(String(id))
     );
@@ -260,10 +287,48 @@ export default function AllEventsView({
                   return step.bubbleIds.includes(parseInt(item.name, 10));
                 });
 
+                // Get the step's variableId (from step.variableId for regular functions, or transformationData for transformations)
+                const stepVariableId =
+                  step.variableId ?? step.transformationData?.variableId;
+
+                // Check if this step is selected
+                const isStepSelected = (() => {
+                  if (stepVariableId) {
+                    if (selectedTab.kind === 'item') {
+                      const item = orderedItems[selectedTab.index];
+                      return (
+                        item?.kind === 'group' &&
+                        item.name === String(stepVariableId)
+                      );
+                    }
+                    return false;
+                  }
+                  return stepBubbleTabs.some((tab) => isTabSelected(tab.type));
+                })();
+
+                // Click handler for step - selects the step's output in console
+                const handleStepClick = () => {
+                  // Use step's variableId if available
+                  if (stepVariableId) {
+                    selectBubbleInConsole(String(stepVariableId));
+                  } else if (stepBubbleTabs.length > 0) {
+                    // Fallback: select the first bubble
+                    setSelectedTab(stepBubbleTabs[0].type);
+                  }
+                };
+
                 return (
                   <div key={step.id} className="mb-1">
-                    {/* Step Header */}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-[#161b22]/30">
+                    {/* Step Header - Clickable */}
+                    <button
+                      type="button"
+                      onClick={handleStepClick}
+                      className={`w-full flex items-center gap-2 px-3 py-2 transition-all group ${
+                        isStepSelected
+                          ? 'bg-[#1f6feb]/10'
+                          : 'bg-[#161b22]/30 hover:bg-[#161b22]/60'
+                      }`}
+                    >
                       {/* Step number */}
                       <div
                         className={`
@@ -282,8 +347,14 @@ export default function AllEventsView({
                         {stepIndex + 1}
                       </div>
                       {/* Step name */}
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-medium text-gray-300 truncate block">
+                      <div className="flex-1 min-w-0 text-left">
+                        <span
+                          className={`text-[11px] font-medium truncate block ${
+                            isStepSelected
+                              ? 'text-[#58a6ff]'
+                              : 'text-gray-300 group-hover:text-gray-200'
+                          }`}
+                        >
                           {step.functionName}
                         </span>
                         {step.description && (
@@ -293,7 +364,7 @@ export default function AllEventsView({
                         )}
                       </div>
                       <StatusIndicator status={stepStatus} size="small" />
-                    </div>
+                    </button>
 
                     {/* Bubbles under this step */}
                     <div className="relative ml-5 border-l border-[#30363d]">
@@ -303,52 +374,171 @@ export default function AllEventsView({
                           orderedItems[
                             (tab.type as { kind: 'item'; index: number }).index
                           ];
+                        const bubbleId =
+                          item?.kind === 'group' ? item.name : '';
                         const bubbleStatus =
                           item?.kind === 'group'
                             ? getBubbleStatus(item.name)
                             : 'pending';
 
+                        // Check if this bubble has sub-bubbles via dependencyGraph
+                        const bubbleParam = bubbleParameters[bubbleId];
+                        const dependencyGraph = (
+                          bubbleParam as {
+                            dependencyGraph?: {
+                              dependencies?: Array<{
+                                variableId?: number;
+                                name?: string;
+                              }>;
+                            };
+                          }
+                        )?.dependencyGraph;
+                        const subBubbleDeps =
+                          dependencyGraph?.dependencies || [];
+                        const hasSubBubbles = subBubbleDeps.length > 0;
+                        const isExpanded = expandedBubbles.has(bubbleId);
+
+                        // Find sub-bubble tabs in allTabs that match the dependency variableIds
+                        const subBubbleTabs = hasSubBubbles
+                          ? allTabs.filter((t) => {
+                              if (t.type.kind !== 'item') return false;
+                              const subItem = orderedItems[t.type.index];
+                              if (subItem?.kind !== 'group') return false;
+                              // Check if this item's variableId matches any dependency
+                              return subBubbleDeps.some(
+                                (dep) => String(dep.variableId) === subItem.name
+                              );
+                            })
+                          : [];
+
                         return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setSelectedTab(tab.type)}
-                            className={`relative w-full flex items-center gap-2 pl-4 pr-3 py-1.5 transition-all group ${
-                              isSelected
-                                ? 'bg-[#1f6feb]/10'
-                                : 'hover:bg-[#161b22]'
-                            }`}
-                          >
-                            {/* Connecting dot */}
-                            <div className="absolute left-[-3px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#30363d]" />
-
-                            {/* Bubble icon */}
-                            <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
-                              {tab.icon}
-                            </div>
-
-                            {/* Bubble name */}
-                            <span
-                              className={`text-[10px] truncate flex-1 text-left ${
+                          <div key={tab.id}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTab(tab.type)}
+                              className={`relative w-full flex items-center gap-2 pl-4 pr-3 py-1.5 transition-all group ${
                                 isSelected
-                                  ? 'text-[#58a6ff]'
-                                  : 'text-gray-400 group-hover:text-gray-300'
+                                  ? 'bg-[#1f6feb]/10'
+                                  : 'hover:bg-[#161b22]'
                               }`}
                             >
-                              {tab.label}
-                            </span>
+                              {/* Connecting dot */}
+                              <div className="absolute left-[-3px] top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#30363d]" />
 
-                            {/* Status */}
-                            <StatusIndicator
-                              status={bubbleStatus}
-                              size="small"
-                            />
+                              {/* Expand/collapse button for bubbles with sub-bubbles */}
+                              {hasSubBubbles && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleBubbleExpansion(bubbleId);
+                                  }}
+                                  className="flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-3 h-3" />
+                                  ) : (
+                                    <ChevronRight className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
 
-                            {/* Selection indicator */}
-                            {isSelected && (
-                              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#1f6feb] rounded-l" />
-                            )}
-                          </button>
+                              {/* Bubble icon */}
+                              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                                {tab.icon}
+                              </div>
+
+                              {/* Bubble name */}
+                              <span
+                                className={`text-[10px] truncate flex-1 text-left ${
+                                  isSelected
+                                    ? 'text-[#58a6ff]'
+                                    : 'text-gray-400 group-hover:text-gray-300'
+                                }`}
+                              >
+                                {tab.label}
+                              </span>
+
+                              {/* Sub-bubble count badge */}
+                              {hasSubBubbles && (
+                                <span className="text-[9px] text-gray-500 bg-[#21262d] px-1.5 py-0.5 rounded">
+                                  {subBubbleDeps.length}
+                                </span>
+                              )}
+
+                              {/* Status */}
+                              <StatusIndicator
+                                status={bubbleStatus}
+                                size="small"
+                              />
+                            </button>
+
+                            {/* Sub-bubbles - nested under parent when expanded */}
+                            {hasSubBubbles &&
+                              isExpanded &&
+                              subBubbleTabs.length > 0 && (
+                                <div className="relative ml-6 border-l border-[#30363d]/50">
+                                  {subBubbleTabs.map((subTab) => {
+                                    const subIsSelected = isTabSelected(
+                                      subTab.type
+                                    );
+                                    const subItem =
+                                      orderedItems[
+                                        (
+                                          subTab.type as {
+                                            kind: 'item';
+                                            index: number;
+                                          }
+                                        ).index
+                                      ];
+                                    const subBubbleStatus =
+                                      subItem?.kind === 'group'
+                                        ? getBubbleStatus(subItem.name)
+                                        : 'pending';
+
+                                    return (
+                                      <button
+                                        key={subTab.id}
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedTab(subTab.type)
+                                        }
+                                        className={`relative w-full flex items-center gap-2 pl-4 pr-3 py-1 transition-all group ${
+                                          subIsSelected
+                                            ? 'bg-[#1f6feb]/10'
+                                            : 'hover:bg-[#161b22]'
+                                        }`}
+                                      >
+                                        {/* Connecting dot */}
+                                        <div className="absolute left-[-3px] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-[#30363d]/70" />
+
+                                        {/* Sub-bubble icon */}
+                                        <div className="flex-shrink-0 w-3.5 h-3.5 flex items-center justify-center opacity-75">
+                                          {subTab.icon}
+                                        </div>
+
+                                        {/* Sub-bubble name */}
+                                        <span
+                                          className={`text-[9px] truncate flex-1 text-left ${
+                                            subIsSelected
+                                              ? 'text-[#58a6ff]'
+                                              : 'text-gray-500 group-hover:text-gray-400'
+                                          }`}
+                                        >
+                                          {subTab.label}
+                                        </span>
+
+                                        {/* Status */}
+                                        <StatusIndicator
+                                          status={subBubbleStatus}
+                                          size="small"
+                                        />
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                          </div>
                         );
                       })}
                     </div>
@@ -391,9 +581,6 @@ export default function AllEventsView({
                         {tab.label}
                       </span>
                       <StatusIndicator status={bubbleStatus} size="small" />
-                      {isSelected && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#1f6feb] rounded-l" />
-                      )}
                     </button>
                   );
                 })}
@@ -424,9 +611,6 @@ export default function AllEventsView({
                   <span className="text-[9px] text-gray-500">
                     ({totalGlobalCount})
                   </span>
-                )}
-                {selectedTab.kind === 'results' && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#1f6feb] rounded-l" />
                 )}
               </button>
             </div>
