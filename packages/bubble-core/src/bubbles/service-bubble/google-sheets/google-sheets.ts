@@ -90,18 +90,12 @@ export class GoogleSheetsBubble<
     }
 
     try {
-      // Test the credentials by making a simple API call
+      // Test the credentials by validating the OAuth access token using Google's tokeninfo endpoint
       const response = await fetch(
-        'https://sheets.googleapis.com/v4/spreadsheets/test',
-        {
-          headers: {
-            Authorization: `Bearer ${credential}`,
-            'Content-Type': 'application/json',
-          },
-        }
+        `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(credential)}`
       );
-      // Even if the spreadsheet doesn't exist, a 404 with proper auth means credentials work
-      return response.status === 404 || response.ok;
+      // A successful response indicates that the access token is valid
+      return response.ok;
     } catch {
       return false;
     }
@@ -571,15 +565,14 @@ export class GoogleSheetsBubble<
   ): Promise<Extract<GoogleSheetsResult, { operation: 'create_spreadsheet' }>> {
     const { title, sheet_titles } = params;
 
-    if (!sheet_titles) {
-      throw new Error('Sheet titles are required');
-    }
+    // sheet_titles has a default value of ['Sheet1'] from schema, so this is a safety check
+    const sheets = sheet_titles ?? ['Sheet1'];
 
     const body = {
       properties: {
         title,
       },
-      sheets: sheet_titles.map((sheetTitle, index) => ({
+      sheets: sheets.map((sheetTitle, index) => ({
         properties: {
           title: sheetTitle,
           index,

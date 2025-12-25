@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { GoogleSheetsBubble } from './google-sheets';
 import { GoogleSheetsParamsSchema } from './google-sheets.schema';
+import {
+  normalizeRange,
+  validateAndNormalizeRange,
+} from './google-sheets.utils';
 
 describe('GoogleSheetsBubble', () => {
   it('should be defined', () => {
@@ -81,6 +85,47 @@ describe('GoogleSheetsBubble', () => {
         expect(result.ranges[0]).toBe('Sheet1!A1:B10');
         expect(result.ranges[1]).toBe("'My Data Sheet'!A:G");
         expect(result.ranges[2]).toBe("'Already Quoted'!C1:D5");
+      }
+    });
+
+    it('should escape single quotes in sheet names', () => {
+      const params = {
+        operation: 'read_values' as const,
+        spreadsheet_id: '1234567890',
+        range: "O'Brien's Data!A1:B10", // Contains single quotes
+      };
+
+      const result = GoogleSheetsParamsSchema.parse(params);
+      if (result.operation === 'read_values') {
+        expect(result.range).toBe("'O''Brien''s Data'!A1:B10");
+      }
+    });
+
+    it('should fix improperly escaped quoted sheet names', () => {
+      // Edge case: already quoted but internal quotes not escaped
+      const params = {
+        operation: 'read_values' as const,
+        spreadsheet_id: '1234567890',
+        range: "'O'Brien's Data'!A1:B10", // Quoted but not properly escaped
+      };
+
+      const result = GoogleSheetsParamsSchema.parse(params);
+      if (result.operation === 'read_values') {
+        expect(result.range).toBe("'O''Brien''s Data'!A1:B10");
+      }
+    });
+
+    it('should not double-escape already properly escaped sheet names', () => {
+      const params = {
+        operation: 'read_values' as const,
+        spreadsheet_id: '1234567890',
+        range: "'O''Brien''s Data'!A1:B10", // Already properly escaped
+      };
+
+      const result = GoogleSheetsParamsSchema.parse(params);
+      if (result.operation === 'read_values') {
+        // Should remain unchanged - already properly escaped
+        expect(result.range).toBe("'O''Brien''s Data'!A1:B10");
       }
     });
   });
@@ -181,6 +226,57 @@ describe('GoogleSheetsBubble', () => {
       if (result.operation === 'write_values') {
         expect(result.values[0]).toEqual(['Text', 123, true, 'More Text']);
       }
+    });
+  });
+
+  describe('Range Validation', () => {
+    it('should validate simple cell references', () => {
+      expect(validateAndNormalizeRange('A1')).toBe('A1');
+      expect(validateAndNormalizeRange('Z100')).toBe('Z100');
+    });
+
+    it('should validate range references', () => {
+      expect(validateAndNormalizeRange('A1:B10')).toBe('A1:B10');
+      expect(validateAndNormalizeRange('A:G')).toBe('A:G');
+    });
+
+    it('should validate ranges with unquoted sheet names', () => {
+      expect(validateAndNormalizeRange('Sheet1!A1:B10')).toBe('Sheet1!A1:B10');
+    });
+
+    it('should validate ranges with quoted sheet names', () => {
+      expect(validateAndNormalizeRange("'Sheet Name'!A1:B10")).toBe(
+        "'Sheet Name'!A1:B10"
+      );
+      expect(validateAndNormalizeRange("'My Data'!A:G")).toBe("'My Data'!A:G");
+    });
+
+    it('should normalize and validate ranges with spaces in sheet names', () => {
+      expect(validateAndNormalizeRange('Sheet With Spaces!A1:B10')).toBe(
+        "'Sheet With Spaces'!A1:B10"
+      );
+    });
+  });
+
+  describe('normalizeRange utility', () => {
+    it('should handle sheet names with single quotes', () => {
+      expect(normalizeRange("O'Brien's Data!A1")).toBe("'O''Brien''s Data'!A1");
+    });
+
+    it('should fix improperly quoted sheet names with unescaped quotes', () => {
+      expect(normalizeRange("'O'Brien's Data'!A1")).toBe(
+        "'O''Brien''s Data'!A1"
+      );
+    });
+
+    it('should not modify properly escaped quoted sheet names', () => {
+      expect(normalizeRange("'O''Brien''s Data'!A1")).toBe(
+        "'O''Brien''s Data'!A1"
+      );
+    });
+
+    it('should return ranges without sheet names unchanged', () => {
+      expect(normalizeRange('A1:B10')).toBe('A1:B10');
     });
   });
 

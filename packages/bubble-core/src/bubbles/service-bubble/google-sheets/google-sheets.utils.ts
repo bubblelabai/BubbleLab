@@ -23,8 +23,18 @@ export function normalizeRange(range: string): string {
 
   const [sheetPart, cellPart] = range.split('!', 2);
 
-  // If already quoted, return as-is
+  // If already quoted, ensure inner quotes are properly escaped
   if (sheetPart.startsWith("'") && sheetPart.endsWith("'")) {
+    const innerName = sheetPart.slice(1, -1);
+    // Detect any single quote that is not part of a doubled-quote escape
+    const hasUnescapedQuote = /(^|[^'])'([^']|$)/.test(innerName);
+    if (hasUnescapedQuote) {
+      // Re-escape all quotes - first undo any existing escaping, then escape properly
+      const unescapedName = innerName.replace(/''/g, "'");
+      const escapedInnerName = unescapedName.replace(/'/g, "''");
+      return `'${escapedInnerName}'!${cellPart}`;
+    }
+    // Already quoted and correctly escaped
     return range;
   }
 
@@ -60,7 +70,8 @@ export function validateAndNormalizeRange(range: string): string {
 
   // Basic validation: should contain at least one cell reference
   // Pattern: [SheetName!]A1[:B10] or [SheetName!]A[:G]
-  const rangePattern = /^([^!]*!)?[A-Z]+\d*(:[A-Z]+\d*)?$/;
+  // Handles both quoted ('Sheet Name'!) and unquoted (Sheet1!) sheet names
+  const rangePattern = /^(('[^']*'|[^!]*?)!)?[A-Z]+\d*(:[A-Z]+\d*)?$/;
   if (!normalized.match(rangePattern)) {
     throw new Error(
       `Invalid range format: "${range}". Expected format: "SheetName!A1:B10" or "'Sheet Name'!A:G"`
