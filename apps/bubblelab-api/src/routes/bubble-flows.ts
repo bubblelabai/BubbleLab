@@ -957,7 +957,14 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
-    if (flowId && options && activateCron !== undefined) {
+    // Only take the shortcut path if we're NOT syncing with flow
+    // When syncInputsWithFlow is true, we need to validate and sync the code first
+    if (
+      flowId &&
+      options &&
+      activateCron !== undefined &&
+      !options.syncInputsWithFlow
+    ) {
       // Check if cron is already active (skip limit check if already active)
       if (activateCron && !existingFlow?.cronActive) {
         // Check webhook limit before activating cron
@@ -1025,6 +1032,21 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       flowId &&
       options?.syncInputsWithFlow === true
     ) {
+      // Check webhook limit before activating cron (if activating)
+      if (activateCron && !existingFlow?.cronActive) {
+        const webhookUsage = await getCurrentWebhookUsage(userId);
+        if (webhookUsage.currentUsage >= webhookUsage.limit) {
+          return c.json(
+            {
+              error:
+                'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+              details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+            },
+            403
+          );
+        }
+      }
+
       // Prepare bubble parameters with credentials if provided
       let finalBubbleParameters = result.bubbleParameters || {};
       // If credentials are provided in the request, merge them into the bubble parameters
