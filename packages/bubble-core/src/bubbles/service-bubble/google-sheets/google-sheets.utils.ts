@@ -180,9 +180,12 @@ export function enhanceErrorMessage(
       } else if (apiError.message.includes('INVALID_ARGUMENT')) {
         errorMessage +=
           '. Please check that all values are strings, numbers, or booleans (not null/undefined). The bubble automatically converts null/undefined to empty strings.';
-      } else if (apiError.message.includes('PERMISSION_DENIED')) {
+      } else if (
+        apiError.message.includes('PERMISSION_DENIED') ||
+        apiError.message.includes('permission')
+      ) {
         errorMessage +=
-          '. Please ensure your credentials have access to this spreadsheet.';
+          '. Please ensure your credentials have access to this spreadsheet. The spreadsheet must be present on the same account you connected bubble lab to.';
       } else if (apiError.message.includes('NOT_FOUND')) {
         const spreadsheetLink = spreadsheetId
           ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}`
