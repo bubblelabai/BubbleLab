@@ -122,12 +122,37 @@ export function sanitizeValues(
  * @param errorText - Raw error text from API
  * @param status - HTTP status code
  * @param statusText - HTTP status text
+ * @param spreadsheetId - Optional spreadsheet ID for generating helpful links
  * @returns Enhanced error message with helpful hints
  */
+/**
+ * Extracts sheet name from a range string
+ * Examples:
+ *   "Sheet1!A1:B10" -> "Sheet1"
+ *   "'Sheet Name'!A1" -> "Sheet Name"
+ *   "A1:B10" -> undefined (no sheet name)
+ */
+function extractSheetName(range: string): string | undefined {
+  if (!range.includes('!')) {
+    return undefined;
+  }
+
+  const [sheetPart] = range.split('!', 2);
+
+  // Remove quotes if present
+  if (sheetPart.startsWith("'") && sheetPart.endsWith("'")) {
+    return sheetPart.slice(1, -1).replace(/''/g, "'");
+  }
+
+  return sheetPart;
+}
+
 export function enhanceErrorMessage(
   errorText: string,
   status: number,
-  statusText: string
+  statusText: string,
+  spreadsheetId?: string,
+  range?: string
 ): string {
   let errorMessage = `Google Sheets API error: ${status} ${statusText}`;
 
@@ -140,8 +165,18 @@ export function enhanceErrorMessage(
 
       // Provide helpful hints for common errors
       if (apiError.message.includes('Unable to parse range')) {
+        const spreadsheetLink = spreadsheetId
+          ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}`
+          : 'the spreadsheet';
+
+        const sheetName = range ? extractSheetName(range) : undefined;
+        const sheetNameInfo = sheetName ? ` "${sheetName}"` : '';
+
+        errorMessage += range ? `\nRange: "${range}"` : '';
         errorMessage +=
-          '. Tip: Sheet names with spaces must be quoted, e.g., "Sheet Name!A1" should be "\'Sheet Name\'!A1". The bubble automatically handles this for you.';
+          `\nPlease verify that the sheet name${sheetNameInfo} exists in ${spreadsheetLink}. ` +
+          `Navigate to the spreadsheet and check the exact sheet name (case-sensitive). ` +
+          `The sheet name in your range must match exactly, including any spaces or special characters.`;
       } else if (apiError.message.includes('INVALID_ARGUMENT')) {
         errorMessage +=
           '. Please check that all values are strings, numbers, or booleans (not null/undefined). The bubble automatically converts null/undefined to empty strings.';
@@ -149,8 +184,18 @@ export function enhanceErrorMessage(
         errorMessage +=
           '. Please ensure your credentials have access to this spreadsheet.';
       } else if (apiError.message.includes('NOT_FOUND')) {
-        errorMessage +=
-          '. The spreadsheet or sheet may not exist, or you may not have access to it.';
+        const spreadsheetLink = spreadsheetId
+          ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}`
+          : 'the spreadsheet';
+
+        const sheetName = range ? extractSheetName(range) : undefined;
+        const sheetNameInfo = sheetName ? ` "${sheetName}"` : '';
+
+        errorMessage += `. The spreadsheet or sheet may not exist, or you may not have access to it.`;
+        if (range) {
+          errorMessage += `\nRange: "${range}"`;
+        }
+        errorMessage += `\nPlease navigate to ${spreadsheetLink} and verify that the sheet name${sheetNameInfo} exists and matches exactly (case-sensitive).`;
       }
     }
   } catch {

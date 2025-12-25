@@ -111,7 +111,9 @@ export class GoogleSheetsBubble<
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
     body?: any,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    spreadsheetId?: string,
+    range?: string
   ): Promise<any> {
     const url = endpoint.startsWith('https://')
       ? endpoint
@@ -136,10 +138,17 @@ export class GoogleSheetsBubble<
 
     if (!response.ok) {
       const errorText = await response.text();
+      // Extract spreadsheet ID from endpoint if not provided
+      const extractedSpreadsheetId =
+        spreadsheetId ||
+        endpoint.match(/\/spreadsheets\/([^\/]+)/)?.[1] ||
+        undefined;
       const enhancedError = enhanceErrorMessage(
         errorText,
         response.status,
-        response.statusText
+        response.statusText,
+        extractedSpreadsheetId,
+        range
       );
       throw new Error(enhancedError);
     }
@@ -222,7 +231,12 @@ export class GoogleSheetsBubble<
     });
 
     const response = await this.makeSheetsApiRequest(
-      `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}?${queryParams.toString()}`
+      `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}?${queryParams.toString()}`,
+      'GET',
+      undefined,
+      {},
+      undefined,
+      range
     );
 
     return {
@@ -262,7 +276,10 @@ export class GoogleSheetsBubble<
     const response = await this.makeSheetsApiRequest(
       `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}?${queryParams.toString()}`,
       'PUT',
-      body
+      body,
+      {},
+      undefined,
+      range
     );
 
     return {
@@ -304,7 +321,10 @@ export class GoogleSheetsBubble<
     const response = await this.makeSheetsApiRequest(
       `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}?${queryParams.toString()}`,
       'PUT',
-      body
+      body,
+      {},
+      undefined,
+      range
     );
 
     return {
@@ -348,7 +368,10 @@ export class GoogleSheetsBubble<
     const response = await this.makeSheetsApiRequest(
       `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}:append?${queryParams.toString()}`,
       'POST',
-      body
+      body,
+      {},
+      undefined,
+      range
     );
 
     return {
@@ -371,7 +394,10 @@ export class GoogleSheetsBubble<
     const response = await this.makeSheetsApiRequest(
       `/spreadsheets/${spreadsheet_id}/values/${encodeURIComponent(range)}:clear`,
       'POST',
-      {}
+      {},
+      {},
+      undefined,
+      range
     );
 
     return {

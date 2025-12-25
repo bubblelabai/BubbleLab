@@ -10,23 +10,100 @@ This document serves as a comprehensive guide for AI agents to understand the co
 4. **Consistency**: Follow established naming conventions and patterns
 5. **Optimized Defaults**: Provide sensible defaults for 90% of use cases
 
+## 📚 Quick Reference: Key Concepts
+
+### Standard Folder Structure
+
+**Always use folder structure for all bubbles:**
+
+```
+{service-name}/
+├─ {service-name}.schema.ts  # All Zod schemas (with preprocessing if needed)
+├─ {service-name}.utils.ts   # Utility functions (optional, if needed)
+├─ {service-name}.ts         # Main bubble class
+├─ index.ts                  # Exports
+└─ {service-name}.test.ts    # Unit tests
+```
+
+**Benefits:**
+
+- ✅ Clean separation of concerns
+- ✅ Easy to add preprocessing later
+- ✅ Consistent structure across all bubbles
+- ✅ Better organization for multi-operation bubbles
+- ✅ Examples: `google-sheets/`, `apify/`, `google-drive/`
+
+### Type System Quick Guide
+
+| Type                      | When to Use                                 | Example                            |
+| ------------------------- | ------------------------------------------- | ---------------------------------- |
+| `ParamsInput = z.input<>` | Constructor parameter, user-facing APIs     | `constructor(params: ParamsInput)` |
+| `Params = z.output<>`     | Generic type, internal methods, stored data | `class Bubble<T extends Params>`   |
+| `Result = z.output<>`     | Always output (after validation)            | `Promise<Result>`                  |
+
+**Key Rule:** If using `z.preprocess()`, you **MUST** use `z.output<>` for `Params`!
+
+### Preprocessing Decision
+
+**Use `z.preprocess()` when:**
+
+- ✅ Normalizing user input (e.g., quoting sheet names)
+- ✅ Sanitizing values (e.g., null → empty string)
+- ✅ Transforming before validation
+
+**Don't use `z.preprocess()` when:**
+
+- ❌ Simple validation (use `.refine()`)
+- ❌ Default values (use `.default()`)
+- ❌ Optional fields (use `.optional()`)
+
+### Real-World Example: Google Sheets
+
+See `packages/bubble-core/src/bubbles/service-bubble/google-sheets/` for a complete example:
+
+```
+google-sheets/
+├── google-sheets.schema.ts  # Schemas with preprocessing
+├── google-sheets.utils.ts   # normalizeRange(), sanitizeValues()
+├── google-sheets.ts         # Main bubble class
+├── index.ts                 # Exports
+└── google-sheets.test.ts    # Edge case tests
+```
+
+**Key patterns from Google Sheets:**
+
+1. **Schema file** uses `z.preprocess()` for range normalization and value sanitization
+2. **Utils file** contains reusable preprocessing functions
+3. **Main class** uses `Params = z.output<>` (output type) for generic
+4. **Constructor** accepts `ParamsInput = z.input<>` (input type) for compile-time checking
+5. **Methods** extract from `Params` (output type) for correct types
+
 ## Bubble Architecture
 
 ### File Structure
 
+**Standard folder structure for all bubbles:**
+
 ```
 src/bubbles/
-├── service-bubble/             # Service bubbles (API integrations, etc.)
-│   ├── {service-name}.ts       # Main bubble implementation
-│   └── {service-name}.test.ts  # Unit tests
-├── workflow-bubble/            # Workflow bubbles (multi-step processes)
-│   ├── {workflow-name}.workflow.ts
-│   └── {workflow-name}.workflow.test.ts
-├── tool-bubble/                # Tool bubbles (AI agent tools)
-│   ├── {tool-name}-tool.ts
-│   └── {tool-name}-tool.test.ts
-└── bubble-factory.ts           # Registration of all bubbles
+├── service-bubble/
+│   ├── {service-name}/              # Folder for organized structure
+│   │   ├── {service-name}.schema.ts # All Zod schemas (with preprocessing if needed)
+│   │   ├── {service-name}.utils.ts  # Utility functions (optional, only if needed)
+│   │   ├── {service-name}.ts        # Main bubble class
+│   │   ├── index.ts                 # Exports
+│   │   └── {service-name}.test.ts   # Unit tests
 ```
+
+**File responsibilities:**
+
+- **`{service-name}.schema.ts`** - All Zod schemas, type definitions, preprocessing
+- **`{service-name}.utils.ts`** - Helper functions (optional, can be empty or contain placeholder comments if not needed)
+- **`{service-name}.ts`** - Main bubble class implementation
+- **`index.ts`** - Exports for external use
+- **`{service-name}.test.ts`** - Unit tests
+
+**Note:** All bubbles use this structure for consistency. The `utils.ts` file can be minimal or contain placeholder comments if no utilities are needed.
 
 ### Core Components
 
@@ -76,7 +153,55 @@ src/bubbles/
 - Each operation has different required parameters
 - You want type safety across different operations
 
-### 3. Define Zod Schemas (Updated Pattern)
+### 3. Preprocessing with `z.preprocess()` (When Needed)
+
+**When to use preprocessing:**
+
+- ✅ Normalizing user input (e.g., quoting sheet names with spaces)
+- ✅ Sanitizing values (e.g., converting `null`/`undefined` to empty strings)
+- ✅ Transforming data before validation
+- ✅ Handling edge cases automatically
+
+**When NOT to use preprocessing:**
+
+- ❌ Simple validation (use `.refine()` or `.transform()` instead)
+- ❌ Default values (use `.default()` instead)
+- ❌ Optional fields (use `.optional()` instead)
+
+#### Preprocessing Pattern
+
+```typescript
+// Example: Google Sheets range normalization
+import { normalizeRange, sanitizeValues } from './{service-name}.utils.js';
+
+// Helper to create preprocessed field
+const createRangeField = (description: string) =>
+  z.preprocess(
+    (val) => (typeof val === 'string' ? normalizeRange(val) : val),
+    z.string().min(1, 'Range is required')
+  ).describe(description);
+
+// Use in schema
+const {ServiceName}ParamsSchema = z.object({
+  range: createRangeField('A1 notation range (automatically normalized)'),
+  values: z.preprocess(
+    sanitizeValues,
+    z.array(z.array(z.union([z.string(), z.number(), z.boolean()])))
+  ).describe('Data values (null/undefined automatically converted)'),
+});
+```
+
+**Important:** When using `z.preprocess()`, you **MUST** use `z.output<>` for the params type:
+
+```typescript
+// ✅ CORRECT: Use output type after preprocessing
+export type {ServiceName}Params = z.output<typeof {ServiceName}ParamsSchema>;
+
+// ❌ WRONG: Input type won't have preprocessed values
+export type {ServiceName}Params = z.input<typeof {ServiceName}ParamsSchema>;
+```
+
+### 4. Define Zod Schemas (Updated Pattern)
 
 #### Modern Parameters Schema
 
@@ -137,25 +262,96 @@ const {ServiceName}ResultSchema = z.discriminatedUnion('operation', [
 ]);
 ```
 
-### 2. Define TypeScript Types
+### 2. Understanding Input vs Output Types
+
+**CRITICAL CONCEPT:** Zod schemas have two type phases:
+
+- **Input Type** (`z.input<>`) - What users pass to constructor (before validation/preprocessing)
+- **Output Type** (`z.output<>`) - What's stored internally (after validation/preprocessing)
+
+#### When to Use Each Type
+
+**Input Type (`ParamsInput`):**
+
+- ✅ Constructor parameter type (for compile-time enforcement)
+- ✅ User-facing APIs
+- ✅ What users import and use
+
+**Output Type (`Params`):**
+
+- ✅ Generic type parameter `T extends Params` (what's stored in `this.params`)
+- ✅ Internal method parameters (after validation)
+- ✅ Type extraction for specific operations
+
+#### Type Definition Pattern
 
 ```typescript
-// Export the input type for external usage
+// ============================================================================
+// TYPE DEFINITIONS - Understanding Input vs Output
+// ============================================================================
+
+// INPUT TYPE: What users pass (before preprocessing)
+// Use for: Constructor parameters, user-facing APIs
 export type {ServiceName}ParamsInput = z.input<typeof {ServiceName}ParamsSchema>;
 
-// Internal types for implementation
-type {ServiceName}Params = z.input<typeof {ServiceName}ParamsSchema>;
-type {ServiceName}ParamsParsed = z.output<typeof {ServiceName}ParamsSchema>;
-type {ServiceName}Result = z.output<typeof {ServiceName}ResultSchema>;
+// OUTPUT TYPE: What's stored internally (after preprocessing)
+// Use for: Generic type parameter, internal methods
+export type {ServiceName}Params = z.output<typeof {ServiceName}ParamsSchema>;
 
-// Exported specific operation types for better DX
+// RESULT TYPE: Always output (after validation)
+export type {ServiceName}Result = z.output<typeof {ServiceName}ResultSchema>;
+
+// Operation-specific types (for method parameters)
 export type {ServiceName}OperationNameParams = Extract<
-  {ServiceName}Params,
+  {ServiceName}Params,  // Use OUTPUT type here!
   { operation: 'operation_name' }
 >;
 ```
 
-### 3. Create Data Schemas
+#### Why This Matters
+
+**Without Preprocessing:**
+
+- Input and Output types are usually the same
+- `Params = z.input<>` works fine
+- Still use folder structure for consistency
+
+**With Preprocessing (`z.preprocess()`):**
+
+- Input type may have `null`, `undefined`, or unnormalized values
+- Output type has sanitized/normalized values
+- **MUST use `z.output<>` for `Params`** to get correct types
+- Example: `google-sheets` - ranges get quoted, nulls become empty strings
+
+#### Type Flow Example
+
+```typescript
+// 1. User passes INPUT type (may have null, unquoted ranges, etc.)
+const bubble = new GoogleSheetsBubble({
+  operation: 'update_values',
+  range: 'My Sheet!A1',        // Input: unquoted
+  values: [['Name', null]],    // Input: has null
+} as GoogleSheetsParamsInput); // ✅ Constructor accepts INPUT
+
+// 2. BaseBubble validates and preprocesses
+//    - Range: 'My Sheet!A1' → "'My Sheet'!A1" (normalized)
+//    - Values: [['Name', null]] → [['Name', '']] (sanitized)
+
+// 3. Stored as OUTPUT type
+//    this.params: GoogleSheetsParams (output type)
+//    - range: "'My Sheet'!A1" (string, not unknown)
+//    - values: [['Name', '']] (no nulls)
+
+// 4. Methods use OUTPUT type
+private async updateValues(
+  params: Extract<GoogleSheetsParams, { operation: 'update_values' }> // ✅ OUTPUT type
+) {
+  // params.range is string (not unknown)
+  // params.values has no null/undefined
+}
+```
+
+### 6. Create Data Schemas
 
 Define schemas for API response objects:
 
@@ -169,13 +365,49 @@ const {ServiceName}DataSchema = z.object({
 })
 ```
 
-### 4. Implement the Bubble Class (Modern Pattern)
+### 7. Implement the Bubble Class (Modern Pattern)
+
+#### Type Parameter Guidelines
+
+**Standard pattern (always use this for all bubbles):**
 
 ```typescript
-// MODERN PATTERN: Simpler class structure following hello-world example
-export class {ServiceName}Bubble extends ServiceBubble<
-  {ServiceName}ParamsParsed,
-  {ServiceName}Result
+// Always define both input and output types in schema file
+export type {ServiceName}Params = z.output<typeof {ServiceName}ParamsSchema>; // OUTPUT type
+export type {ServiceName}ParamsInput = z.input<typeof {ServiceName}ParamsSchema>; // INPUT type
+
+export class {ServiceName}Bubble<
+  T extends {ServiceName}Params = {ServiceName}Params,  // ✅ Always OUTPUT type
+> extends ServiceBubble<
+  T,
+  Extract<{ServiceName}Result, { operation: T['operation'] }>
+> {
+  constructor(
+    params: {ServiceName}ParamsInput,  // ✅ Always INPUT type for compile-time checking
+    context?: BubbleContext
+  ) {
+    super(params, context);
+  }
+}
+```
+
+**Why always use this pattern:**
+
+- ✅ Consistent across all bubbles (simple or complex)
+- ✅ Works with or without preprocessing
+- ✅ If you add preprocessing later, types are already correct
+- ✅ Constructor enforces compile-time type checking
+- ✅ Internal methods get correct types after validation
+
+#### Complete Class Template
+
+```typescript
+// MODERN PATTERN: Standard class structure with folder organization
+export class {ServiceName}Bubble<
+  T extends {ServiceName}Params = {ServiceName}Params,  // OUTPUT type (always)
+> extends ServiceBubble<
+  T,
+  Extract<{ServiceName}Result, { operation: T['operation'] }>
 > {
   // REQUIRED: Static metadata for BubbleFactory
   static readonly service = 'nodex-core'; // or your service name
@@ -196,7 +428,10 @@ export class {ServiceName}Bubble extends ServiceBubble<
   \`;
   static readonly alias = '{service-alias}';
 
-  constructor(params: {ServiceName}Params, context?: BubbleContext) {
+  constructor(
+    params: {ServiceName}ParamsInput,  // ✅ INPUT type for compile-time enforcement
+    context?: BubbleContext
+  ) {
     super(params, context);
   }
 
@@ -474,9 +709,14 @@ Before submitting a new bubble, ensure:
 
 ## File Templates
 
-### Basic Service Bubble Template
+### Standard Service Bubble Template
 
-See `src/bubbles/service-bubble/hello-world.ts` as the reference implementation that follows all modern patterns correctly.
+See `packages/bubble-core/src/bubbles/service-bubble/google-sheets/` as the reference implementation that follows all modern patterns correctly:
+
+- Folder structure with separated files
+- Schema with preprocessing
+- Utils for helper functions
+- Proper input/output type handling
 
 ### Tool Bubble Template
 
