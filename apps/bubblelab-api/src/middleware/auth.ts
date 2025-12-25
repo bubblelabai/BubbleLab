@@ -7,6 +7,10 @@ import {
   PLAN_TYPE,
   FEATURE_TYPE,
 } from '../services/subscription-validation.js';
+import {
+  resolveEffectiveSubscription,
+  ClerkPrivateMetadata,
+} from '../services/offer-helper.js';
 import { getClerkClient } from '../utils/clerk-client.js';
 import {
   AppType,
@@ -165,7 +169,7 @@ export async function authMiddleware(c: Context, next: Next) {
     const subscriptionInfo = extractSubscriptionInfoFromPayload(payload);
     console.debug('[authMiddleware] subscriptionInfo', subscriptionInfo);
 
-    // Fetch user from Clerk to check for private metadata overrides
+    // Fetch user from Clerk to check for private metadata overrides (hackathon offers + exclusive member overrides)
     let finalPlan = subscriptionInfo.plan;
     let finalFeatures = subscriptionInfo.features;
     const clerkClient = getClerkClient(appType);
@@ -173,59 +177,19 @@ export async function authMiddleware(c: Context, next: Next) {
       try {
         const clerkUser = await clerkClient.users.getUser(userId);
         if (clerkUser) {
-          // Check for active hackathon offer in private metadata FIRST
-          const hackathonOffer = clerkUser.privateMetadata?.hackathonOffer as
-            | { expiresAt?: string }
-            | undefined;
-
-          if (hackathonOffer?.expiresAt) {
-            const expiresAt = new Date(hackathonOffer.expiresAt);
-            const isOfferActive = expiresAt > new Date();
-
-            if (isOfferActive) {
-              // Apply unlimited access during hackathon offer
-              finalPlan = 'pro_plus' as PLAN_TYPE;
-              finalFeatures = ['base_usage', 'pro_usage'];
-            } else {
-              console.debug(
-                `[authMiddleware] Hackathon offer expired at ${expiresAt.toISOString()}`
-              );
-            }
-          }
-
-          // Check for explicit plan override in private metadata (takes precedence over hackathon offer)
-          // This allows admins to have explicit overrides that supersede hackathon offers
-          const privatePlanValue = clerkUser.privateMetadata?.plan;
-          if (privatePlanValue) {
-            const privatePlan =
-              typeof privatePlanValue === 'string' &&
-              ['free_user', 'pro_plan', 'pro_plus', 'unlimited'].includes(
-                privatePlanValue
-              )
-                ? (privatePlanValue as PLAN_TYPE)
-                : 'unlimited';
-            const privateFeatures = clerkUser.privateMetadata?.features as
-              | FEATURE_TYPE[]
-              | undefined;
-
-            // Override subscription info if private metadata contains plan
-            if (privatePlan) {
-              finalPlan = privatePlan;
-              console.debug(
-                `[authMiddleware] Overriding plan from private metadata: ${privatePlan}`
-              );
-            }
-            if (privateFeatures && privateFeatures.length > 0) {
-              finalFeatures = privateFeatures;
-              console.debug(
-                `[authMiddleware] Overriding features from private metadata: ${privateFeatures.join(', ')}`
-              );
-            }
-          }
+          // Use centralized offer helper to resolve effective subscription
+          const effectiveSubscription = resolveEffectiveSubscription({
+            basePlan: subscriptionInfo.plan,
+            baseFeatures: subscriptionInfo.features,
+            privateMetadata: clerkUser.privateMetadata as ClerkPrivateMetadata,
+            appType,
+          });
+          finalPlan = effectiveSubscription.plan;
+          finalFeatures = effectiveSubscription.features;
         }
       } catch (err) {
         console.error(
-          '[authMiddleware] Failed to fetch user from Clerk for private metadata check',
+          '[authMiddleware] Failed to resolve effective subscription',
           err
         );
         // Continue with JWT payload values if fetch fails
