@@ -13,8 +13,8 @@ export function filterEmptyInputs(
         return acc;
       }
 
-      // Skip empty strings
-      if (value === '') {
+      // Skip empty strings (trim to match backend behavior)
+      if (typeof value === 'string' && value.trim() === '') {
         return acc;
       }
 

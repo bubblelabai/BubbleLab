@@ -40,7 +40,7 @@ export { SlackFormatterAgentBubble } from './bubbles/workflow-bubble/slack-forma
 export { StorageBubble } from './bubbles/service-bubble/storage.js';
 export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
 export { GmailBubble } from './bubbles/service-bubble/gmail.js';
-export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
+export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets/index.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
 export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
 export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
