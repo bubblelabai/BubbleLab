@@ -2172,7 +2172,10 @@ function FlowVisualizerInner({
       if (!node) {
         const nodes = getNodes();
         node = nodes.find((n) => {
-          const data = n.data as any; // Type assertion to access bubble data
+          const data = n.data as {
+            bubble?: { variableId?: number };
+            bubbleKey?: string;
+          };
           // Check variable ID (handle number vs string mismatch)
           if (
             data?.bubble?.variableId !== undefined &&
