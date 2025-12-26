@@ -19,6 +19,8 @@ import {
   calculateBubblePosition,
   calculateStepContainerHeight,
   calculateHeaderHeight,
+  calculateCustomToolContainerHeight,
+  calculateCustomToolBubblePosition,
   STEP_CONTAINER_LAYOUT,
 } from './stepContainerUtils';
 import { calculateSubbubblePositionWithContext } from './nodePositioning';
@@ -29,6 +31,8 @@ import type { BubbleNodeData } from './nodes/BubbleNode';
 import type {
   DependencyGraphNode,
   ParsedBubbleWithInfo,
+  FunctionCallWorkflowNode,
+  BubbleWorkflowNode,
 } from '@bubblelab/shared-schemas';
 import { extractStepGraph, type StepData } from '@/utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
@@ -386,6 +390,7 @@ function FlowVisualizerInner({
         { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean }
       >
     ) => {
+      console.log('createNodesFromDependencyGraph', dependencyNode);
       const subBubble: ParsedBubble = {
         variableId: dependencyNode.variableId || -1,
         bubbleName: dependencyNode.name,
@@ -513,6 +518,8 @@ function FlowVisualizerInner({
           usedHandlesMap
         );
       });
+      // Note: functionCallChildren are handled at the root bubble level (in the main rendering loop)
+      // because only root bubbles have functionCallChildren set, not child dependency nodes
     },
     [autoVisibleNodes, currentFlow, flowId]
   );
@@ -785,6 +792,7 @@ function FlowVisualizerInner({
       required?: boolean;
       description?: string;
       default?: unknown;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -792,6 +800,7 @@ function FlowVisualizerInner({
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -810,12 +819,14 @@ function FlowVisualizerInner({
                 type?: string;
                 description?: string;
                 default?: unknown;
+                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
                     type?: string;
                     description?: string;
                     default?: unknown;
+                    canBeFile?: boolean;
                   }
                 >;
                 required?: string[];
@@ -838,6 +849,7 @@ function FlowVisualizerInner({
                 description?: string;
                 default?: unknown;
                 required?: boolean;
+                canBeFile?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -845,6 +857,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     required?: boolean;
+                    canBeFile?: boolean;
                   }
                 >;
                 requiredProperties?: string[];
@@ -856,6 +869,7 @@ function FlowVisualizerInner({
                     type?: string;
                     description?: string;
                     default?: unknown;
+                    canBeFile?: boolean;
                     properties?: Record<string, unknown>;
                     required?: string[];
                   };
@@ -870,6 +884,7 @@ function FlowVisualizerInner({
                       description: propSchema.description,
                       default: propSchema.default,
                       required: objectRequired.includes(propName),
+                      canBeFile: propSchema.canBeFile,
                       properties: processProperties(propSchema.properties),
                       requiredProperties: nestedRequired,
                     };
@@ -879,6 +894,7 @@ function FlowVisualizerInner({
                       description: propSchema?.description,
                       default: propSchema?.default,
                       required: objectRequired.includes(propName),
+                      canBeFile: propSchema?.canBeFile,
                     };
                   }
                   return acc;
@@ -890,6 +906,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     required?: boolean;
+                    canBeFile?: boolean;
                     properties?: Record<
                       string,
                       {
@@ -897,6 +914,7 @@ function FlowVisualizerInner({
                         description?: string;
                         default?: unknown;
                         required?: boolean;
+                        canBeFile?: boolean;
                       }
                     >;
                     requiredProperties?: string[];
@@ -911,6 +929,7 @@ function FlowVisualizerInner({
               required: req.includes(name),
               description: valObj.description,
               default: valObj.default,
+              canBeFile: valObj.canBeFile,
               properties: processProperties(valObj.properties),
               requiredProperties: objectRequired,
             };
@@ -922,6 +941,8 @@ function FlowVisualizerInner({
             required: req.includes(name),
             description: valObj?.description,
             default: (valObj as { default?: unknown } | undefined)?.default,
+            canBeFile: (valObj as { canBeFile?: boolean } | undefined)
+              ?.canBeFile,
           };
         });
       } catch {
@@ -1005,7 +1026,7 @@ function FlowVisualizerInner({
     const unparsedBubbles = bubbleEntries.filter(([, bubbleData]) => {
       const bubble = bubbleData;
       const id = bubble.variableId;
-      return !bubblesInSteps.has(id);
+      return !bubblesInSteps.has(id) && !bubble.isInsideCustomTool;
     });
     const stepsInMain = steps.filter((step) => step.id == 'step-main');
 
@@ -1494,10 +1515,27 @@ function FlowVisualizerInner({
         ? String(bubble.variableId)
         : String(key);
 
-      if (bubble.dependencyGraph?.dependencies) {
+      if (
+        bubble.dependencyGraph?.dependencies ||
+        bubble.dependencyGraph?.functionCallChildren
+      ) {
         bubble.dependencyGraph.dependencies.forEach((dep, idx) => {
           markSubBubbleHandles(parentNodeId, dep, `${idx}`);
         });
+
+        // Mark handles for custom tool function call edges
+        // Parent bubble needs bottom handle, each step container needs top handle
+        if (bubble.dependencyGraph.functionCallChildren?.length) {
+          markHandleUsed(parentNodeId, 'bottom'); // Source handle on parent bubble
+          // Use the same invocation suffix format as when creating step containers
+          const invocationSuffix = bubble.invocationCallSiteKey
+            ? `-${bubble.invocationCallSiteKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+            : '';
+          bubble.dependencyGraph.functionCallChildren.forEach((funcCall) => {
+            const stepNodeId = `custom-tool-${funcCall.variableId}${invocationSuffix}`;
+            markHandleUsed(stepNodeId, 'top'); // Target handle on step container
+          });
+        }
       }
     });
 
@@ -1689,7 +1727,8 @@ function FlowVisualizerInner({
         nodes.push(node);
 
         // Create sub-bubbles from dependency graph
-        if (bubble.dependencyGraph?.dependencies) {
+        // Note: dependencies and functionCallChildren are different types and need separate handling
+        if (bubble.dependencyGraph?.dependencies?.length) {
           bubble.dependencyGraph.dependencies.forEach((dep, idx, arr) => {
             createNodesFromDependencyGraph(
               dep,
@@ -1704,6 +1743,163 @@ function FlowVisualizerInner({
               bubbleId,
               usedHandlesMap
             );
+          });
+        }
+
+        // Handle functionCallChildren (custom tool functions) on the root dependency graph
+        // These are rendered as step containers below the ai-agent bubble
+        if (bubble.dependencyGraph?.functionCallChildren?.length) {
+          const funcCallChildren = bubble.dependencyGraph
+            .functionCallChildren as FunctionCallWorkflowNode[];
+
+          funcCallChildren.forEach((funcCall, funcIdx) => {
+            // Create step container node for each custom tool function
+            // Include invocation context to make the ID unique when the same method is called multiple times
+            // Sanitize the invocation key to only contain React Flow compatible characters (alphanumeric, _, -)
+            const invocationSuffix = bubble.invocationCallSiteKey
+              ? `-${bubble.invocationCallSiteKey.replace(/[^a-zA-Z0-9_-]/g, '-')}`
+              : '';
+            const stepNodeId = `custom-tool-${funcCall.variableId}${invocationSuffix}`;
+
+            // Get bubble IDs from children
+            const customToolBubbleIds = funcCall.children
+              .filter(
+                (child): child is BubbleWorkflowNode => child.type === 'bubble'
+              )
+              .map((child) => child.variableId);
+
+            // Position step container using subbubble positioning logic
+            const allStepNodes = nodes.filter(
+              (n) => n.type === 'stepContainerNode'
+            );
+            const parentNodeRef = nodes.find((n) => n.id === nodeId);
+            const containerNode = parentNodeRef?.parentId
+              ? (nodes.find((n) => n.id === parentNodeRef.parentId) ?? null)
+              : null;
+
+            const stepPosition = calculateSubbubblePositionWithContext(
+              parentNodeRef,
+              containerNode,
+              allStepNodes,
+              funcIdx,
+              funcCallChildren.length,
+              persistedPositions.current.get(stepNodeId)
+            );
+
+            // Calculate step container height based on number of bubbles (scaled for custom tools)
+            const stepHeight = calculateCustomToolContainerHeight(
+              customToolBubbleIds.length
+            );
+
+            const customToolStepNode: Node = {
+              id: stepNodeId,
+              type: 'stepContainerNode',
+              position: stepPosition,
+              draggable: true,
+              data: {
+                flowId: currentFlow?.id || flowId,
+                stepId: stepNodeId,
+                stepInfo: {
+                  functionName: funcCall.functionName,
+                  description: funcCall.description,
+                  location: funcCall.location,
+                  isAsync: funcCall.methodDefinition?.isAsync ?? true,
+                },
+                bubbleIds: customToolBubbleIds,
+                isCustomTool: true,
+                usedHandles: usedHandlesMap.get(stepNodeId),
+              },
+              style: {
+                zIndex: -1,
+                height: stepHeight,
+              },
+            };
+            nodes.push(customToolStepNode);
+
+            // Create edge from parent bubble to step container
+            // Note: Handles are already marked in the earlier handle-marking loop
+            edges.push({
+              id: `${nodeId}-${stepNodeId}`,
+              source: nodeId,
+              target: stepNodeId,
+              type: 'smoothstep',
+              animated: true,
+              sourceHandle: 'bottom',
+              targetHandle: 'top',
+              style: {
+                stroke: '#9ca3af',
+                strokeWidth: 2,
+              },
+            });
+
+            // Create bubble nodes inside the step container (scaled for custom tools)
+            customToolBubbleIds.forEach((ctBubbleId, ctBubbleIdx) => {
+              const ctBubbleNodeId = String(ctBubbleId);
+              const ctHeaderHeight = calculateHeaderHeight(
+                funcCall.functionName,
+                funcCall.description
+              );
+              const ctBubblePosition = calculateCustomToolBubblePosition(
+                ctBubbleIdx,
+                ctHeaderHeight
+              );
+
+              // Get bubble data from bubbleParameters
+              const ctBubbleEntry = Object.entries(
+                currentFlow?.bubbleParameters || {}
+              ).find(([, b]) => b.variableId === ctBubbleId);
+
+              if (ctBubbleEntry) {
+                const [, ctBubbleData] = ctBubbleEntry;
+                const ctBubbleNode: Node = {
+                  id: ctBubbleNodeId,
+                  type: 'bubbleNode',
+                  position: ctBubblePosition,
+                  parentId: stepNodeId,
+                  extent: 'parent',
+                  draggable: false,
+                  data: {
+                    flowId: currentFlow?.id || flowId,
+                    bubble: ctBubbleData,
+                    bubbleKey: ctBubbleNodeId,
+                    requiredCredentialTypes: (() => {
+                      const keyCandidates = [
+                        String(ctBubbleData.variableId),
+                        ctBubbleData.variableName,
+                        ctBubbleData.bubbleName,
+                      ];
+                      const credentialsKeyForBubble =
+                        keyCandidates.find(
+                          (k) =>
+                            k &&
+                            Array.isArray(
+                              (requiredCredentials as Record<string, unknown>)[
+                                k
+                              ]
+                            )
+                        ) || ctBubbleData.bubbleName;
+                      return (
+                        (requiredCredentials as Record<string, string[]>)[
+                          credentialsKeyForBubble
+                        ] || []
+                      );
+                    })(),
+                    onHighlightChange: () => {},
+                    onBubbleClick: () => {
+                      // Show editor and highlight the bubble's code location
+                      useUIStore.getState().showEditorPanel();
+                      setExecutionHighlight({
+                        startLine: ctBubbleData.location.startLine,
+                        endLine: ctBubbleData.location.endLine,
+                      });
+                    },
+                    isCustomToolBubble: true, // Render smaller inside custom tool containers
+                    usedHandles: usedHandlesMap.get(ctBubbleNodeId),
+                  },
+                };
+                nodes.push(ctBubbleNode);
+              }
+            });
           });
         }
       });

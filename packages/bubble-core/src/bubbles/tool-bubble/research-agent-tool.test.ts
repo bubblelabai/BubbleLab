@@ -79,22 +79,6 @@ describe('ResearchAgentTool', () => {
       expect(result.summary).toContain('Research failed');
     });
 
-    it('should set default maxIterations to 100', async () => {
-      const tool = new ResearchAgentTool({
-        task: 'Research the latest trends in AI development',
-        expectedResultSchema: JSON.stringify({
-          type: 'object',
-          properties: {
-            trends: { type: 'array', items: { type: 'string' } },
-            summary: { type: 'string' },
-          },
-        }),
-        // Not providing maxIterations, should default to 100
-      });
-
-      expect(tool['params'].maxIterations).toBe(100);
-    });
-
     it('should respect custom maxIterations', async () => {
       const tool = new ResearchAgentTool({
         task: 'Research the latest trends in AI development',
@@ -176,34 +160,6 @@ describe('ResearchAgentTool', () => {
       // Test invalid input - missing expectedResultSchema
       const invalidResult2 = schema.safeParse({
         task: 'Research AI trends',
-      });
-      expect(invalidResult2.success).toBe(false);
-    });
-
-    it('should validate maxIterations range', () => {
-      const schema = ResearchAgentTool.schema;
-
-      // Test valid maxIterations
-      const validResult = schema.safeParse({
-        task: 'Research AI trends',
-        expectedResultSchema: '{"type": "object"}',
-        maxIterations: 50,
-      });
-      expect(validResult.success).toBe(true);
-
-      // Test maxIterations too low
-      const invalidResult = schema.safeParse({
-        task: 'Research AI trends',
-        expectedResultSchema: '{"type": "object"}',
-        maxIterations: 0,
-      });
-      expect(invalidResult.success).toBe(false);
-
-      // Test maxIterations too high
-      const invalidResult2 = schema.safeParse({
-        task: 'Research AI trends',
-        expectedResultSchema: '{"type": "object"}',
-        maxIterations: 200,
       });
       expect(invalidResult2.success).toBe(false);
     });

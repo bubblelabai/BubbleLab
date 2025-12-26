@@ -27,6 +27,8 @@ export {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
+  type AfterLLMCallContext,
+  type AfterLLMCallHook,
   type ConversationMessage,
 } from './bubbles/service-bubble/ai-agent.js';
 export { PostgreSQLBubble } from './bubbles/service-bubble/postgresql.js';
@@ -38,10 +40,13 @@ export { SlackFormatterAgentBubble } from './bubbles/workflow-bubble/slack-forma
 export { StorageBubble } from './bubbles/service-bubble/storage.js';
 export { GoogleDriveBubble } from './bubbles/service-bubble/google-drive.js';
 export { GmailBubble } from './bubbles/service-bubble/gmail.js';
-export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets.js';
+export { GoogleSheetsBubble } from './bubbles/service-bubble/google-sheets/index.js';
 export { GoogleCalendarBubble } from './bubbles/service-bubble/google-calendar.js';
 export { ApifyBubble } from './bubbles/service-bubble/apify/apify.js';
 export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
+export { TwitterTool } from './bubbles/tool-bubble/twitter-tool.js';
+export { TikTokTool } from './bubbles/tool-bubble/tiktok-tool.js';
+export { GoogleMapsTool } from './bubbles/tool-bubble/google-maps-tool.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,

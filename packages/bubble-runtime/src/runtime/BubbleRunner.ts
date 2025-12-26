@@ -27,6 +27,7 @@ import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { getSafeErrorMessage } from '../utils/error-sanitizer.js';
+import { sanitizeScript } from '../utils/sanitize-script.js';
 export interface VariableState {
   value: unknown;
   error?: string;
@@ -421,6 +422,9 @@ export class BubbleRunner {
 
       const tempFileName = `bubble-script-${Date.now()}-${Math.random().toString(36).substring(7)}.ts`;
       tempFilePath = path.join(tempDir, tempFileName);
+
+      // Sanitize script to block access to process.env for security
+      scriptToExecute = sanitizeScript(scriptToExecute);
       // Write the script code to the temporary file
       try {
         console.log(

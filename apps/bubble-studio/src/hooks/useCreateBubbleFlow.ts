@@ -7,12 +7,13 @@ import type {
   CreateBubbleFlowRequest,
   CreateEmptyBubbleFlowRequest,
   BubbleFlowDetailsResponse,
+  BubbleName,
 } from '@bubblelab/shared-schemas';
 
 interface CreateBubbleFlowWithOptimisticData extends CreateBubbleFlowRequest {
   // Optional: bubble information for optimistic UI updates (e.g., when duplicating)
   _optimisticBubbles?: Array<{
-    bubbleName: string;
+    bubbleName: BubbleName;
     className: string;
   }>;
 }
@@ -21,7 +22,7 @@ interface CreateEmptyBubbleFlowWithOptimisticData
   extends CreateEmptyBubbleFlowRequest {
   // Optional: bubble information for optimistic UI updates
   _optimisticBubbles?: Array<{
-    bubbleName: string;
+    bubbleName: BubbleName;
     className: string;
   }>;
 }

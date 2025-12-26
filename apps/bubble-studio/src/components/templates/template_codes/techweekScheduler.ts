@@ -15,7 +15,15 @@ export const templateCode = `import {
   }
 
   export interface CustomWebhookPayload extends WebhookEvent {
+    /**
+     * Information about your product/interests to help curate relevant events.
+     * @canBeFile false
+     */
     preferences: string;
+    /**
+     * Email address to receive the personalized daily schedules.
+     * @canBeFile false
+     */
     email: string;
   }
 

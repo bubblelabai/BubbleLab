@@ -1,10 +1,23 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { useBubbleFlow } from './useBubbleFlow';
+import { toast } from 'react-toastify';
+import {
+  updateBubbleParamInCode,
+  updateCachedBubbleParameters,
+} from '../utils/bubbleParamEditor';
+import type {
+  BubbleParameter,
+  ParsedBubbleWithInfo,
+} from '@bubblelab/shared-schemas';
 
-// ============= Code Helper Functions =============
-// Monaco's model is the source of truth for code
-// These helpers make it easy to read/write code without prop drilling
+// Re-export for external use
+export {
+  updateBubbleParamInCode,
+  updateCachedBubbleParameters,
+  serializeValue,
+  getRelatedBubbleVariableIds,
+} from '../utils/bubbleParamEditor';
 
 /**
  * Get the current code from Monaco editor
@@ -175,7 +188,9 @@ export function useEditor(flowId?: number) {
     updateCronSchedule,
     executionHighlightRange,
   } = useEditorStore();
-  const { data: currentFlow } = useBubbleFlow(flowId || 0);
+  const { data: currentFlow, updateBubbleParameters } = useBubbleFlow(
+    flowId || 0
+  );
 
   // Get current editor code
   const currentEditorCode = getEditorCode();
@@ -221,6 +236,101 @@ export function useEditor(flowId?: number) {
     },
   };
 
+  /**
+   * Get bubble parameters map keyed by variableId
+   */
+  const bubbleParametersById = useMemo(() => {
+    const params = (currentFlow?.bubbleParameters || {}) as Record<
+      string,
+      ParsedBubbleWithInfo
+    >;
+    const byId: Record<number, ParsedBubbleWithInfo> = {};
+    Object.values(params).forEach((bubble) => {
+      byId[bubble.variableId] = bubble;
+    });
+    return byId;
+  }, [currentFlow?.bubbleParameters]);
+
+  /**
+   * Get a specific parameter value from a bubble
+   * @param variableId - The bubble's variableId
+   * @param paramName - The parameter name to retrieve
+   * @returns The parameter object or undefined
+   */
+  const getParam = useCallback(
+    (variableId: number, paramName: string): BubbleParameter | undefined => {
+      const bubble = bubbleParametersById[variableId];
+      if (!bubble) return undefined;
+      return bubble.parameters.find((p) => p.name === paramName);
+    },
+    [bubbleParametersById]
+  );
+
+  /**
+   * Update a bubble parameter in the editor using location-based editing
+   * Falls back to regex-based approach if location is not available
+   */
+  const updateBubbleParam = useCallback(
+    (variableId: number, paramName: string, newValue: unknown) => {
+      const editorInst = useEditorStore.getState().editorInstance;
+      if (!editorInst) {
+        toast.error('Editor instance not available');
+        return;
+      }
+
+      const model = editorInst.getModel();
+      if (!model) {
+        toast.error('Editor model not available');
+        return;
+      }
+
+      const bubble = bubbleParametersById[variableId];
+      if (!bubble) {
+        toast.error(`Bubble not found: ${variableId}`);
+        return;
+      }
+
+      const currentCode = model.getValue();
+      const bubbleParameters = (currentFlow?.bubbleParameters || {}) as Record<
+        string,
+        ParsedBubbleWithInfo
+      >;
+
+      const result = updateBubbleParamInCode(
+        currentCode,
+        bubbleParameters,
+        variableId,
+        paramName,
+        newValue
+      );
+
+      if (result.success) {
+        model.setValue(result.code);
+
+        // Update the cached bubbleParameters for ALL related bubbles (original + clones)
+        // so subsequent edits find the new value, and adjust line numbers if needed
+        const updatedBubbleParameters = updateCachedBubbleParameters(
+          bubbleParameters,
+          result.relatedVariableIds,
+          paramName,
+          newValue,
+          result.isTemplateLiteral,
+          result.lineDiff,
+          result.editedBubbleEndLine,
+          result.editedParamEndLine
+        );
+        updateBubbleParameters(updatedBubbleParameters);
+      } else {
+        toast.error(result.error);
+      }
+    },
+    [
+      bubbleParametersById,
+      currentFlow?.bubbleParameters,
+      updateBubbleParameters,
+    ]
+  );
+
   return {
     // Editor state
     editorInstance,
@@ -231,6 +341,9 @@ export function useEditor(flowId?: number) {
     // Editor store functions
     setExecutionHighlight,
     updateCronSchedule,
+    // Bubble param access (centralized in hook)
+    getParam,
+    updateBubbleParam,
     executionHighlightRange,
   };
 }

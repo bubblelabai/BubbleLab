@@ -428,7 +428,7 @@ Return only the JSON object as specified in the system prompt, no additional tex
           },
           credentials: this.params.credentials,
           tools: [], // No tools needed for this analysis
-          maxIterations: 3,
+          maxIterations: 6,
         },
         this.context
       );

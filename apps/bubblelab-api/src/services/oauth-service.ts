@@ -313,7 +313,7 @@ export class OAuthService {
   }
 
   /**
-   * Get a valid access token, refreshing if necessary
+   * Get a valid access token, always refreshing to ensure freshest credentials
    */
   async getValidToken(credentialId: number): Promise<string | null> {
     const credential = await db.query.userCredentials.findFirst({
@@ -324,17 +324,8 @@ export class OAuthService {
       return null;
     }
 
-    const now = new Date();
-    const expiresAt = credential.oauthExpiresAt;
-
-    // Check if token needs refresh (5 minute buffer)
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-
-    if (
-      expiresAt &&
-      expiresAt < fiveMinutesFromNow &&
-      credential.oauthRefreshToken
-    ) {
+    // Always refresh if we have a refresh token to ensure we use the freshest credentials
+    if (credential.oauthRefreshToken) {
       try {
         console.info(
           `[oauthService] Refreshing OAuth token for credential ${credentialId}`
@@ -342,12 +333,15 @@ export class OAuthService {
         const newToken = await this.refreshToken(credentialId);
         return newToken;
       } catch (error) {
-        console.error('Token refresh failed:', error);
-        return null;
+        console.error(
+          'Token refresh failed, falling back to stored token:',
+          error
+        );
+        // Fall through to return stored token if refresh fails
       }
     }
 
-    // Token is still valid, decrypt and return
+    // Return stored token if no refresh token or refresh failed
     try {
       return await CredentialEncryption.decrypt(credential.oauthAccessToken);
     } catch (error) {

@@ -154,6 +154,9 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
             description: (schema as Record<string, unknown>)
               ?.description as string,
             default: (schema as Record<string, unknown>)?.default,
+            canBeFile: (schema as Record<string, unknown>)?.canBeFile as
+              | boolean
+              | undefined,
           }))
         : [];
 
@@ -360,7 +363,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
+      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-[400px] ${
         isExecuting
           ? `border-purple-400 shadow-lg shadow-purple-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : !isActive

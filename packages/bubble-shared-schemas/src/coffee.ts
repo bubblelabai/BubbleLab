@@ -39,6 +39,13 @@ export const ClarificationQuestionSchema = z.object({
     .string()
     .optional()
     .describe('Optional context explaining why this question is being asked'),
+  allowMultiple: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'If true, user can select multiple choices. Default is false (single selection)'
+    ),
 });
 
 /** Event sent to frontend containing clarification questions */

@@ -26,7 +26,7 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    * - Should be skipped (not approved, already sent, or invalid status)
    *
    * This is perfect for testing the workflow without setting up a real approval process.
-   * Default: false
+   * @canBeFile false
    */
   createMockDb?: boolean;
 
@@ -34,42 +34,49 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    * The ID of the Notion database to monitor.
    * Open the database in Notion as a full page, the ID is the 32-character string in the URL.
    * Example: https://www.notion.so/myworkspace/a8aec43384f447ed84390e8e42c2e089?v=... -> a8aec43384f447ed84390e8e42c2e089
+   * @canBeFile false
    */
   databaseId: string;
 
   /**
    * The name of the column in Notion that contains the recipient's email address.
    * Default: "Email"
+   * @canBeFile false
    */
   emailField?: string;
 
   /**
    * The name of the Checkbox column in Notion that indicates approval.
    * Default: "Approved"
+   * @canBeFile false
    */
   approvedField?: string;
 
   /**
    * The name of the column in Notion that contains the current status.
    * Default: "Status"
+   * @canBeFile false
    */
   statusField?: string;
 
   /**
    * The list of valid status values that should trigger email sending when approved.
    * Default: ["Pending Review"]
+   * @canBeFile false
    */
   validStatusValues?: string[];
 
   /**
    * The name of the column in Notion that contains the draft content to send.
    * Default: "Draft"
+   * @canBeFile false
    */
   draftField?: string;
 
   /**
    * The subject line for the approval email.
    * Default: "Your draft has been approved"
+   * @canBeFile false
    */
   emailSubject?: string;
 
@@ -78,6 +85,7 @@ export interface NotionApprovalMonitorPayload extends CronEvent {
    * When enabled, the workflow will create mock lead records in the database at 00:00 UTC.
    * Set to false to disable automatic lead generation.
    * Default: true
+   * @canBeFile false
    */
   generateLead?: boolean;
 }

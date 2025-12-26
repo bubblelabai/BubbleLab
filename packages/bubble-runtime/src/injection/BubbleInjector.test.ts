@@ -40,7 +40,7 @@ describe('BubbleInjector.findCredentials()', () => {
 
   const aiAgentWithSingleToolBubbleScript = `
     const aiAgent = new AIAgentBubble({
-      model: 'gemini-2.0-flash-exp',
+      model: { model: 'gemini-2.0-flash-exp' },
       tools: [{"name": "slack"}],
     });
   `;
@@ -51,7 +51,7 @@ describe('BubbleInjector.findCredentials()', () => {
       message: 'Hello world'
     });
     const aiAgent = new AIAgentBubble({
-      model: 'gemini-2.0-flash-exp',
+      model: { model: 'google/gemini-2.5-flash' },
       tools: [{"name": "sql-query-tool"}, {"name": "web-scrape-tool"}]
     });
   `;
@@ -408,6 +408,174 @@ describe('BubbleInjector.injectCredentials()', () => {
         'system-firecrawl-key'
       );
     });
+    it('should inject credentials for AI agent with custom tools', () => {
+      const bubbleScript = getFixture('agent-with-custom-tool-flow');
+      const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+      const injector = new BubbleInjector(mockBubbleScript);
+      const googleSheetsVarId = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'google-calendar')?.variableId;
+      if (!googleSheetsVarId) {
+        throw new Error('Google Sheets variable id not found');
+      }
+
+      const userCredentials: UserCredentialWithId[] = [
+        {
+          bubbleVarId: 434,
+          secret: 'fake-google-sheets-token-12345',
+          credentialType: CredentialType.GOOGLE_SHEETS_CRED,
+          credentialId: 15,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 437,
+          secret: 'fake-google-sheets-token-67890',
+          credentialType: CredentialType.GOOGLE_SHEETS_CRED,
+          credentialId: 15,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 425,
+          secret: 'fake-google-calendar-token-abcde',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+          credentialId: 16,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 433,
+          secret: 'fake-google-calendar-token-fghij',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+          credentialId: 16,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 442,
+          secret: 'fake-telegram-bot-token-klmno',
+          credentialType: CredentialType.TELEGRAM_BOT_TOKEN,
+          credentialId: 17,
+          metadata: undefined,
+        },
+        {
+          bubbleVarId: 798456,
+          secret: 'fake-telegram-bot-token-pqrst',
+          credentialType: CredentialType.TELEGRAM_BOT_TOKEN,
+          credentialId: 17,
+          metadata: undefined,
+        },
+      ];
+
+      const systemCredentials: Partial<Record<CredentialType, string>> = {
+        [CredentialType.OPENAI_CRED]: 'fake-openai-key-system',
+        [CredentialType.GOOGLE_GEMINI_CRED]: 'fake-gemini-key-system',
+        [CredentialType.ANTHROPIC_CRED]: 'fake-anthropic-key-system',
+        [CredentialType.FIRECRAWL_API_KEY]: 'fake-firecrawl-key-system',
+        [CredentialType.DATABASE_CRED]: 'fake-database-url-system',
+        [CredentialType.RESEND_CRED]: 'fake-resend-key-system',
+        [CredentialType.OPENROUTER_CRED]: 'fake-openrouter-key-system',
+        [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'fake-r2-access-key-system',
+        [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: 'fake-r2-secret-key-system',
+        [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: 'fake-r2-account-id-system',
+        [CredentialType.APIFY_CRED]: 'fake-apify-key-system',
+      };
+
+      const result = injector.injectCredentials(
+        userCredentials,
+        systemCredentials
+      );
+
+      if (!result.success) {
+        console.log('Errors:', result.errors);
+      }
+
+      expect(result.success).toBe(true);
+      expect(result.injectedCredentials).toBeDefined();
+      expect(Object.keys(result.injectedCredentials!)).toHaveLength(8);
+      console.log(result.injectedCredentials);
+      console.log(result.injectedCredentials);
+      expect(
+        result.injectedCredentials![`${googleSheetsVarId}.GOOGLE_CALENDAR_CRED`]
+          .credentialValue
+      ).toBe('fake************************bcde');
+      // print final script
+      // Expect final script to cotain google sheet token
+      console.log('Final script:', result.code);
+      expect(result.code).toContain('fake-google-calendar-token-abcde');
+      expect(result.code).toContain('fake-google-calendar-token-fghij');
+      expect(result.code).toContain('fake-google-sheets-token-12345');
+      expect(result.code).toContain('fake-google-sheets-token-67890');
+      expect(result.code).toContain('fake-telegram-bot-token-klmno');
+      expect(result.code).toContain('fake-gemini-key-system');
+    });
+
+    it('should inject Google Gemini credentials for AI agent with custom tools in calendar booking flow', () => {
+      const bubbleScript = getFixture('calendar-booking-flow');
+      const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+      const injector = new BubbleInjector(mockBubbleScript);
+
+      // Find the AI agent bubble
+      const aiAgentBubble = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'ai-agent');
+
+      expect(aiAgentBubble).toBeDefined();
+
+      // Verify the model parameter exists and contains a comment (this is the edge case we're testing)
+      // The model is: { model: 'google/gemini-3-pro-preview', temperature: 0.1 // Low temperature }
+      const modelParam = aiAgentBubble?.parameters.find(
+        (p) => p.name === 'model'
+      );
+      expect(modelParam).toBeDefined();
+      // The model value should contain a comment like "// Low temperature"
+      expect(String(modelParam?.value)).toContain('//');
+
+      // Find the Google Calendar bubble (nested inside customTools)
+      const googleCalendarBubble = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'google-calendar');
+
+      expect(googleCalendarBubble).toBeDefined();
+
+      // Set up credentials - AI agent uses Google Gemini, nested bubble uses Google Calendar
+      const userCredentials: UserCredentialWithId[] = [
+        {
+          bubbleVarId: googleCalendarBubble!.variableId,
+          secret: 'fake-google-calendar-token-for-booking',
+          credentialType: CredentialType.GOOGLE_CALENDAR_CRED,
+        },
+      ];
+
+      const systemCredentials: Partial<Record<CredentialType, string>> = {
+        [CredentialType.GOOGLE_GEMINI_CRED]:
+          'fake-gemini-key-for-calendar-booking',
+      };
+
+      const result = injector.injectCredentials(
+        userCredentials,
+        systemCredentials
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.injectedCredentials).toBeDefined();
+
+      // Verify Google Gemini credential was injected for the AI agent
+      const geminiCredentialKey = Object.keys(result.injectedCredentials!).find(
+        (key) => key.includes('GOOGLE_GEMINI_CRED')
+      );
+      expect(geminiCredentialKey).toBeDefined();
+
+      // Verify the final script contains both credentials
+      expect(result.code).toContain('fake-gemini-key-for-calendar-booking');
+      expect(result.code).toContain('fake-google-calendar-token-for-booking');
+
+      // Verify the reparsed bubbles have credentials in their parameters
+      const aiAgentAfterInjection = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((b) => b.bubbleName === 'ai-agent');
+      const credentialsParam = aiAgentAfterInjection?.parameters.find(
+        (p) => p.name === 'credentials'
+      );
+      expect(credentialsParam).toBeDefined();
+    });
   });
 
   describe('Error handling', () => {
@@ -574,6 +742,92 @@ describe('BubbleInjector.injectCredentials()', () => {
       );
       expect(operationLines).toHaveLength(1);
     });
+  });
+});
+
+describe('BubbleInjector - Model Credential Type Resolution', () => {
+  let bubbleFactory: BubbleFactory;
+
+  beforeEach(async () => {
+    bubbleFactory = new BubbleFactory();
+    await bubbleFactory.registerDefaults();
+  });
+
+  /**
+   * Helper function to generate a poem using the AI agent.
+   * This demonstrates what parameters the AI agent receives and how
+   * model params determine the required credential type.
+   */
+  async function generatePoem(
+    topic: string,
+    model: string,
+    modelName: string
+  ): Promise<string> {
+    // Generates a creative one-sentence poem based on the provided topic using the specified AI model
+    const bubbleScript = `
+      const poemAgent = new AIAgentBubble({
+        model: { model: '${model}' as 'openai/gpt-5-mini' | 'google/gemini-2.5-flash' | 'openrouter/deepseek/deepseek-chat-v3.1' },
+        systemPrompt: 'You are a creative poet. Write a beautiful, meaningful one-sentence poem based on the given topic. Only output the poem itself, no explanations or additional text.',
+        message: 'Write a one-sentence poem about: ${topic}'
+      });
+    `;
+
+    const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
+    const injector = new BubbleInjector(mockBubbleScript);
+    const credentials = injector.findCredentials();
+
+    console.log(`=== generatePoem test for ${modelName} ===`);
+    console.log('Model string:', model);
+    console.log('Parsed bubbles:', mockBubbleScript.getParsedBubbles());
+    console.log('Required credentials:', credentials);
+
+    // Get the model parameter to see what was parsed
+    const aiAgentBubble = Object.values(
+      mockBubbleScript.getParsedBubbles()
+    ).find((b) => b.bubbleName === 'ai-agent');
+    const modelParam = aiAgentBubble?.parameters.find(
+      (p) => p.name === 'model'
+    );
+    console.log('Model param type:', modelParam?.type);
+    console.log('Model param value:', modelParam?.value);
+
+    return JSON.stringify(credentials);
+  }
+
+  it('should extract OpenAI credential type from model param', async () => {
+    const result = await generatePoem(
+      'sunset',
+      'openai/gpt-4o-mini',
+      'OpenAI GPT-4o Mini'
+    );
+    expect(result).toContain('OPENAI_CRED');
+  });
+
+  it('should extract Google Gemini credential type from model param', async () => {
+    const result = await generatePoem(
+      'ocean',
+      'google/gemini-2.5-flash',
+      'Google Gemini Flash'
+    );
+    expect(result).toContain('GOOGLE_GEMINI_CRED');
+  });
+
+  it('should extract OpenRouter credential type from model param', async () => {
+    const result = await generatePoem(
+      'stars',
+      'openrouter/deepseek/deepseek-chat-v3-0324',
+      'OpenRouter DeepSeek'
+    );
+    expect(result).toContain('OPENROUTER_CRED');
+  });
+
+  it('should extract Anthropic credential type from model param', async () => {
+    const result = await generatePoem(
+      'mountains',
+      'anthropic/claude-sonnet-4-20250514',
+      'Anthropic Claude'
+    );
+    expect(result).toContain('ANTHROPIC_CRED');
   });
 });
 

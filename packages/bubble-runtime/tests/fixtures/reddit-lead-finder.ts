@@ -18,12 +18,12 @@ export interface CustomWebhookPayload extends WebhookEvent {
 }
 
 interface RedditPost {
-    author: string;
-    title: string;
-    selftext: string;
-    url: string;
-    postUrl: string;
-    createdUtc: number;
+  author: string;
+  title: string;
+  selftext: string;
+  url: string;
+  postUrl: string;
+  createdUtc: number;
 }
 
 export class RedditFlow extends BubbleFlow<'webhook/http'> {
@@ -34,12 +34,14 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     const readSheet = new GoogleSheetsBubble({
       operation: 'read_values',
       spreadsheet_id: spreadsheetId,
-      range: 'Sheet1!A:A', // Read the entire 'Name' column
+      range: 'Sheet1!A:A',
     });
     const existingContactsResult = await readSheet.action();
 
     if (!existingContactsResult.success) {
-      throw new Error(`Failed to read from Google Sheet: ${existingContactsResult.error}`);
+      throw new Error(
+        `Failed to read from Google Sheet: ${existingContactsResult.error}`
+      );
     }
 
     const existingNames = existingContactsResult.data?.values
@@ -118,48 +120,51 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     } catch (error) {
       throw new Error('Failed to parse AI response as JSON.');
     }
-    
+
     if (!Array.isArray(newContacts) || newContacts.length === 0) {
       return { message: 'No new contacts were found.', newContactsAdded: 0 };
     }
 
     // 4. Check for headers and add them if they are missing
     const headerCheck = new GoogleSheetsBubble({
-        operation: 'read_values',
-        spreadsheet_id: spreadsheetId,
-        range: 'Sheet1!A1:E1',
+      operation: 'read_values',
+      spreadsheet_id: spreadsheetId,
+      range: 'Sheet1!A1:E1',
     });
     const headerResult = await headerCheck.action();
     if (!headerResult.success) {
-        throw new Error(`Failed to read headers: ${headerResult.error}`);
+      throw new Error(`Failed to read headers: ${headerResult.error}`);
     }
 
     const headers = headerResult.data?.values?.[0];
     if (!headers || headers.length < 5) {
-        const writeHeaders = new GoogleSheetsBubble({
-            operation: 'write_values',
-            spreadsheet_id: spreadsheetId,
-            range: 'Sheet1!A1',
-            values: [['Name', 'Link to Original Post', 'Message', 'Date', 'Status']],
-        });
-        const writeResult = await writeHeaders.action();
-        if (!writeResult.success) {
-            throw new Error(`Failed to write headers: ${writeResult.error}`);
-        }
+      const writeHeaders = new GoogleSheetsBubble({
+        operation: 'write_values',
+        spreadsheet_id: spreadsheetId,
+        range: 'Sheet1!A1',
+        values: [
+          ['Name', 'Link to Original Post', 'Message', 'Date', 'Status'],
+        ],
+      });
+      const writeResult = await writeHeaders.action();
+      if (!writeResult.success) {
+        throw new Error(`Failed to write headers: ${writeResult.error}`);
+      }
     }
 
-
     // 5. Format and append new contacts to the Google Sheet
-    const rowsToAppend = newContacts.map(contact => {
-        const post = posts.find((p: RedditPost) => p.url === contact.link);
-        const postDate = post ? new Date(post.createdUtc * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-        return [
-            contact.name,
-            contact.link,
-            contact.message,
-            postDate,
-            'Need to Reach Out',
-        ];
+    const rowsToAppend = newContacts.map((contact) => {
+      const post = posts.find((p: RedditPost) => p.url === contact.link);
+      const postDate = post
+        ? new Date(post.createdUtc * 1000).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
+      return [
+        contact.name,
+        contact.link,
+        contact.message,
+        postDate,
+        'Need to Reach Out',
+      ];
     });
 
     const appendSheet = new GoogleSheetsBubble({
@@ -172,7 +177,9 @@ export class RedditFlow extends BubbleFlow<'webhook/http'> {
     const appendResult = await appendSheet.action();
 
     if (!appendResult.success) {
-      throw new Error(`Failed to append data to Google Sheet: ${appendResult.error}`);
+      throw new Error(
+        `Failed to append data to Google Sheet: ${appendResult.error}`
+      );
     }
 
     return {

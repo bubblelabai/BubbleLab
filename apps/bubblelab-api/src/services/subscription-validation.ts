@@ -2,10 +2,9 @@ import { ClerkJWTPayload } from '../middleware/auth.js';
 import { db } from '../db/index.js';
 import { users, bubbleFlows, webhooks } from '../db/schema.js';
 import { eq, and, count } from 'drizzle-orm';
-import { clerk, getClerkClient } from '../utils/clerk-client.js';
 import { AppType } from '../config/clerk-apps.js';
 import { getTotalServiceCostForUser } from './service-usage-tracking.js';
-import { getCurrentUserInfo } from '../utils/request-context.js';
+import { getEffectiveUserSubscription } from './offer-helper.js';
 
 // Maps subscription plan id to monthly API limit
 export type PLAN_TYPE = 'free_user' | 'pro_plan' | 'pro_plus' | 'unlimited';
@@ -119,28 +118,14 @@ export async function getMonthlyLimitForPlan(userId: string): Promise<{
   credits: { limit: number; currentUsage: number };
 }> {
   try {
-    // Try to get subscription info from AsyncLocalStorage context first (set by auth middleware)
-    let userSubscriptionInfo: UserSubscriptionInfo;
-    const contextSubscriptionInfo = getCurrentUserInfo();
-
-    if (contextSubscriptionInfo && contextSubscriptionInfo.appType) {
-      // Use subscription info from context (no need to fetch from Clerk)
-      userSubscriptionInfo = {
-        appType: contextSubscriptionInfo.appType,
-        plan: contextSubscriptionInfo.plan,
-        features: contextSubscriptionInfo.features,
-      };
-      console.log(
-        '[getMonthlyLimitForPlan] Using subscription info from context:',
-        userSubscriptionInfo
-      );
-    } else {
-      // Fallback to fetching from Clerk if context not available
-      console.log(
-        '[getMonthlyLimitForPlan] Context not available, fetching from Clerk'
-      );
-      userSubscriptionInfo = await getUserSubscriptionInfo(userId);
-    }
+    // Get effective subscription (tries context first, falls back to Clerk)
+    const subscription = await getEffectiveUserSubscription(userId);
+    console.log(
+      '[getMonthlyLimitForPlan] Using subscription:',
+      subscription.plan,
+      'source:',
+      subscription.source
+    );
 
     // Get current usage and limit for webhooks (active webhooks + active crons)
     const webhookUsage = await getCurrentWebhookUsage(userId);
@@ -161,8 +146,7 @@ export async function getMonthlyLimitForPlan(userId: string): Promise<{
         currentUsage: executionUsage.currentUsage,
       },
       credits: {
-        limit:
-          APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].creditLimit,
+        limit: APP_PLAN_TO_MONTHLY_LIMITS[subscription.plan].creditLimit,
         currentUsage: currentCreditUsage,
       },
     };
@@ -183,77 +167,6 @@ export async function getMonthlyLimitForPlan(userId: string): Promise<{
 }
 
 /**
- * Helper function to get user subscription info from Clerk
- */
-async function getUserSubscriptionInfo(
-  userId: string
-): Promise<UserSubscriptionInfo> {
-  try {
-    // Get user from Clerk to extract subscription info
-    // Try to determine appType from user's database record first
-    const dbUser = await db.query.users.findFirst({
-      where: eq(users.clerkId, userId),
-      columns: { appType: true },
-    });
-    const appType = (dbUser?.appType as AppType) || AppType.BUBBLE_LAB;
-
-    // Get the appropriate Clerk client for this app
-    const appClerk = getClerkClient(appType) || clerk;
-    const clerkUser = await appClerk?.users.getUser(userId);
-
-    if (!clerkUser) {
-      throw new Error('User not found in Clerk');
-    }
-
-    // Check for plan override in private metadata (for special users who bypass subscription system)
-    const privatePlan = clerkUser.privateMetadata?.plan as
-      | PLAN_TYPE
-      | undefined;
-    const privateFeatures = clerkUser.privateMetadata?.features as
-      | FEATURE_TYPE[]
-      | undefined;
-
-    // Extract subscription info from Clerk metadata
-    // Private metadata overrides public metadata if present
-    let plan = parseClerkPlan(clerkUser.publicMetadata?.plan as string);
-    let features = (clerkUser.publicMetadata?.features as FEATURE_TYPE[]) || [
-      'base_usage',
-    ];
-
-    // Override with private metadata if present
-    if (privatePlan) {
-      plan = privatePlan;
-      console.debug(
-        `[getUserSubscriptionInfo] Overriding plan from private metadata: ${privatePlan}`
-      );
-    }
-    if (privateFeatures && privateFeatures.length > 0) {
-      features = privateFeatures;
-      console.debug(
-        `[getUserSubscriptionInfo] Overriding features from private metadata: ${privateFeatures.join(', ')}`
-      );
-    }
-
-    return {
-      appType: appType,
-      plan,
-      features,
-    };
-  } catch (err) {
-    console.error(
-      '[subscription-validation] Error getting user subscription info:',
-      err
-    );
-    // Return default subscription info as fallback
-    return {
-      appType: AppType.BUBBLE_LAB,
-      plan: 'pro_plus',
-      features: ['unlimited_usage'],
-    };
-  }
-}
-
-/**
  * Helper function to get current webhook usage and limit for a user
  * Counts active webhooks and active crons
  * Returns both limit and current usage
@@ -262,21 +175,8 @@ export async function getCurrentWebhookUsage(
   userId: string
 ): Promise<{ limit: number; currentUsage: number }> {
   try {
-    // Get subscription info (from context or Clerk)
-    let userSubscriptionInfo: UserSubscriptionInfo;
-    const contextSubscriptionInfo = getCurrentUserInfo();
-
-    if (contextSubscriptionInfo && contextSubscriptionInfo.appType) {
-      // Use subscription info from context (no need to fetch from Clerk)
-      userSubscriptionInfo = {
-        appType: contextSubscriptionInfo.appType,
-        plan: contextSubscriptionInfo.plan,
-        features: contextSubscriptionInfo.features,
-      };
-    } else {
-      // Fallback to fetching from Clerk if context not available
-      userSubscriptionInfo = await getUserSubscriptionInfo(userId);
-    }
+    // Get effective subscription (tries context first, falls back to Clerk)
+    const subscription = await getEffectiveUserSubscription(userId);
 
     // Count active webhooks
     const activeWebhooksResult = await db
@@ -300,8 +200,7 @@ export async function getCurrentWebhookUsage(
     const currentUsage = activeWebhooksCount + activeCronsCount;
 
     // Get limit from plan
-    const limit =
-      APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].webhookLimit;
+    const limit = APP_PLAN_TO_MONTHLY_LIMITS[subscription.plan].webhookLimit;
 
     return { limit, currentUsage };
   } catch (err) {
@@ -325,21 +224,8 @@ async function getCurrentExecutionUsage(
   userId: string
 ): Promise<{ limit: number; currentUsage: number }> {
   try {
-    // Get subscription info (from context or Clerk)
-    let userSubscriptionInfo: UserSubscriptionInfo;
-    const contextSubscriptionInfo = getCurrentUserInfo();
-
-    if (contextSubscriptionInfo && contextSubscriptionInfo.appType) {
-      // Use subscription info from context (no need to fetch from Clerk)
-      userSubscriptionInfo = {
-        appType: contextSubscriptionInfo.appType,
-        plan: contextSubscriptionInfo.plan,
-        features: contextSubscriptionInfo.features,
-      };
-    } else {
-      // Fallback to fetching from Clerk if context not available
-      userSubscriptionInfo = await getUserSubscriptionInfo(userId);
-    }
+    // Get effective subscription (tries context first, falls back to Clerk)
+    const subscription = await getEffectiveUserSubscription(userId);
 
     const userResult = await db
       .select({ monthlyUsageCount: users.monthlyUsageCount })
@@ -350,8 +236,7 @@ async function getCurrentExecutionUsage(
     const currentUsage = userResult[0]?.monthlyUsageCount || 0;
 
     // Get limit from plan
-    const limit =
-      APP_PLAN_TO_MONTHLY_LIMITS[userSubscriptionInfo.plan].executionLimit;
+    const limit = APP_PLAN_TO_MONTHLY_LIMITS[subscription.plan].executionLimit;
 
     return { limit, currentUsage };
   } catch (err) {

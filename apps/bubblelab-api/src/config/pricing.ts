@@ -111,6 +111,38 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'per_result',
     unitCost: 0.00525, // $0.00525 per result ($5.00 for 1000 results with 1.05x markup)
   },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'curious_coder/linkedin-jobs-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0042, // $0.0042 per result ($4.00 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'clockworks/tiktok-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0021, // $0.0021 per result ($2.00 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'apidojo/tweet-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.00042, // $0.00042 per result ($0.40 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'compass/crawler-google-places',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.0042, // $0.0042 per result ($4.00 for 1000 results with 1.05x markup)
+  },
 
   // AI Services - Google Gemini with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
@@ -178,6 +210,23 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: 2.63 / 1_000_000, // $2.63 per 1M tokens = $0.00000263 per token
   },
+  // pro image preview
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-image-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: 2.0 / 1_000_000, // $2.00 per 1M tokens = $0.000002 per token (for prompts <= 200k tokens; $4.00 for prompts > 200k tokens)
+  },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-pro-image-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: 12.0 / 1_000_000, // $12.00 per 1M tokens = $0.000012 per token (for prompts <= 200k tokens; $18.00 for prompts > 200k tokens, includes thinking tokens)
+  },
   [getPricingKey(
     CredentialType.GOOGLE_GEMINI_CRED,
     'google/gemini-3-pro-preview',
@@ -193,6 +242,25 @@ export const PRICING_TABLE: PricingTable = {
   )]: {
     unit: 'output_tokens',
     unitCost: 12.0 / 1_000_000, // $12.00 per 1M tokens = $0.000012 per token (for prompts <= 200k tokens; $18.00 for prompts > 200k tokens, includes thinking tokens)
+  },
+
+  // Gemini 3.0 Flash - Official Google pricing
+  // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-flash-preview',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (0.5 * 1.05) / 1_000_000, // $0.50 per 1M tokens = $0.0000005 per token
+  },
+  [getPricingKey(
+    CredentialType.GOOGLE_GEMINI_CRED,
+    'google/gemini-3-flash-preview',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (3.0 * 1.05) / 1_000_000, // $3.00 per 1M tokens = $0.000003 per token
   },
 
   // AI Services - OpenAI with subServices and Input/Output tokens
@@ -238,6 +306,21 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'output_tokens',
     unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
   },
+  // GPT-5.2: Official pricing from OpenAI
+  // Note: Cached input pricing is $0.125 / 1M tokens (not tracked separately)
+  [getPricingKey(CredentialType.OPENAI_CRED, 'openai/gpt-5.2', 'input_tokens')]:
+    {
+      unit: 'input_tokens',
+      unitCost: (1.25 * 1.05) / 1_000_000, // $1.25 per 1M tokens * 1.05 markup = $1.3125 per 1M tokens
+    },
+  [getPricingKey(
+    CredentialType.OPENAI_CRED,
+    'openai/gpt-5.2',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (10.0 * 1.05) / 1_000_000, // $10.00 per 1M tokens * 1.05 markup = $10.50 per 1M tokens
+  },
 
   // AI Services - Anthropic with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
@@ -277,6 +360,22 @@ export const PRICING_TABLE: PricingTable = {
   )]: {
     unit: 'output_tokens',
     unitCost: (5.0 * 1.05) / 1_000_000, // $5.00 per 1M tokens * 1.05 markup = $5.25 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-opus-4-5',
+    'input_tokens'
+  )]: {
+    unit: 'input_tokens',
+    unitCost: (3.0 * 1.05) / 1_000_000, // $3.00 per 1M tokens * 1.05 markup = $3.15 per 1M tokens
+  },
+  [getPricingKey(
+    CredentialType.ANTHROPIC_CRED,
+    'anthropic/claude-opus-4.5',
+    'output_tokens'
+  )]: {
+    unit: 'output_tokens',
+    unitCost: (15.0 * 1.05) / 1_000_000, // $15.00 per 1M tokens * 1.05 markup = $15.75 per 1M tokens
   },
 
   // AI Services - OpenRouter with subServices and Input/Output tokens

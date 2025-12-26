@@ -147,6 +147,9 @@ export class BubbleFactory {
       'apify',
       'instagram-tool',
       'linkedin-tool',
+      'tiktok-tool',
+      'twitter-tool',
+      'google-maps-tool',
       'youtube-tool',
       'github',
       'eleven-labs',
@@ -187,7 +190,7 @@ export class BubbleFactory {
     );
     const { GmailBubble } = await import('./bubbles/service-bubble/gmail.js');
     const { GoogleSheetsBubble } = await import(
-      './bubbles/service-bubble/google-sheets.js'
+      './bubbles/service-bubble/google-sheets'
     );
     const { GoogleCalendarBubble } = await import(
       './bubbles/service-bubble/google-calendar.js'
@@ -251,6 +254,13 @@ export class BubbleFactory {
     );
     const { YouTubeTool } = await import(
       './bubbles/tool-bubble/youtube-tool.js'
+    );
+    const { TikTokTool } = await import('./bubbles/tool-bubble/tiktok-tool.js');
+    const { TwitterTool } = await import(
+      './bubbles/tool-bubble/twitter-tool.js'
+    );
+    const { GoogleMapsTool } = await import(
+      './bubbles/tool-bubble/google-maps-tool.js'
     );
     const { SlackFormatterAgentBubble } = await import(
       './bubbles/workflow-bubble/slack-formatter-agent.js'
@@ -378,6 +388,12 @@ export class BubbleFactory {
     );
     this.register('instagram-tool', InstagramTool as BubbleClassWithMetadata);
     this.register('linkedin-tool', LinkedInTool as BubbleClassWithMetadata);
+    this.register('tiktok-tool', TikTokTool as BubbleClassWithMetadata);
+    this.register('twitter-tool', TwitterTool as BubbleClassWithMetadata);
+    this.register(
+      'google-maps-tool',
+      GoogleMapsTool as BubbleClassWithMetadata
+    );
     this.register('youtube-tool', YouTubeTool as BubbleClassWithMetadata);
     this.register('web-crawl-tool', WebCrawlTool as BubbleClassWithMetadata);
     this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
@@ -683,6 +699,9 @@ import {
   WebSearchTool, // bubble name: 'web-search-tool'
   InstagramTool, // bubble name: 'instagram-tool'
   LinkedInTool, // bubble name: 'linkedin-tool'
+  TikTokTool, // bubble name: 'tiktok-tool'
+  TwitterTool, // bubble name: 'twitter-tool'
+  GoogleMapsTool, // bubble name: 'google-maps-tool'
   YouTubeTool, // bubble name: 'youtube-tool'
 
   // Event Types (How the workflow is triggered)
@@ -706,7 +725,7 @@ export interface CustomWebhookPayload extends WebhookEvent {
 export class ${className} extends BubbleFlow<'webhook/http'> {
   
   // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
-  private transformData(input: string | undefined): string | null {
+  private transformData(input: string | undefined) {
     // Example: Transform or clean the input data
     if (!input || input.trim().length === 0) return null;
     return input.trim().toUpperCase();
@@ -714,7 +733,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
 
   // Sends cleaned input to AI agent for natural language processing and response generation
   // Condition: Only runs when transformedInput is not null and has more than 3 characters
-  private async processWithAI(input: string): Promise<string> {
+  private async processWithAI(input: string) {
     const agent = new AIAgentBubble({
       model: { model: 'google/gemini-2.5-flash' },
       systemPrompt: 'You are a helpful assistant.',
@@ -731,7 +750,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   }
 
   // Constructs final output payload with either AI-generated response or default fallback message
-  private formatOutput(response: string | null, wasProcessed: boolean): Output {
+  private formatOutput(response: string | null, wasProcessed: boolean) {
     return {
       message: response || 'No input provided',
       processed: wasProcessed,
@@ -775,7 +794,7 @@ export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
   readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
 
   // Performs scheduled database check or external API call to fetch latest data
-  private async performScheduledTask(): Promise<string> {
+  private async performScheduledTask() {
      // Example: Check a database or API
      return "Task completed";
   }

@@ -4,6 +4,8 @@ interface SchemaField {
   required: boolean;
   description?: string;
   default?: unknown;
+  /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
+  canBeFile?: boolean;
   minItems?: number;
   maxItems?: number;
   items?: {
@@ -96,6 +98,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
         type?: string;
         description?: string;
         default?: unknown;
+        canBeFile?: boolean;
         minItems?: number;
         maxItems?: number;
         items?: {
@@ -124,6 +127,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
               false,
             description: value.description,
             default: value.default,
+            canBeFile: value.canBeFile,
             minItems: value.minItems,
             maxItems: value.maxItems,
             items: value.items,

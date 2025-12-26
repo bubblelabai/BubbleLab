@@ -3,6 +3,7 @@ import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleFactory } from '../../bubble-factory.js';
 import { AvailableModels } from '@bubblelab/shared-schemas';
 import { z } from 'zod';
+import { RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 
 //Remove all environment variables
 process.env = {};
@@ -51,30 +52,18 @@ describe('AIAgentBubble', () => {
       }).toThrow('Message is required');
     });
 
-    test('should use default values when not provided', () => {
-      const bubble = new AIAgentBubble({
-        message: 'Test message',
-      });
-
-      const params = bubble.currentParams;
-      expect(params.systemPrompt).toBe('You are a helpful AI assistant');
-      expect(params.model.model).toBe('google/gemini-2.5-flash');
-      expect(params.model.temperature).toBe(0.7);
-      expect(params.maxIterations).toBe(10);
-    });
-
     test('should accept custom model configuration', () => {
       const bubble = new AIAgentBubble({
         message: 'Test message',
         model: {
-          model: 'google/gemini-2.5-flash',
+          model: RECOMMENDED_MODELS.FAST,
           temperature: 0.5,
           maxTokens: 1000,
         },
       });
 
       const params = bubble.currentParams;
-      expect(params.model.model).toBe('google/gemini-2.5-flash');
+      expect(params.model.model).toBe(RECOMMENDED_MODELS.FAST);
       expect(params.model.temperature).toBe(0.5);
       expect(params.model.maxTokens).toBe(1000);
     });

@@ -456,6 +456,39 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
           pricingTable: PRICING_TABLE,
         });
 
+        // Save inputs to defaultInputs after successful execution
+        // Filter out empty values (undefined, empty strings, empty arrays)
+        // Keep null values as they may be explicitly set by the user
+        const filteredInputs = Object.fromEntries(
+          Object.entries(userPayload).filter(([_, value]) => {
+            if (value === undefined) return false;
+            if (typeof value === 'string' && value.trim() === '') return false;
+            if (Array.isArray(value) && value.length === 0) return false;
+            return true;
+          })
+        );
+
+        // Only save if there are actual inputs
+        if (Object.keys(filteredInputs).length > 0) {
+          try {
+            await db
+              .update(bubbleFlows)
+              .set({
+                defaultInputs: filteredInputs,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId))
+              );
+          } catch (saveError) {
+            console.error(
+              `[API] Error saving inputs to flow ${id} defaultInputs:`,
+              saveError
+            );
+            // Non-blocking: continue even if save fails
+          }
+        }
+
         // Send stream completion
         await stream.writeSSE({
           data: JSON.stringify({
@@ -957,7 +990,14 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       }
     }
 
-    if (flowId && options && activateCron !== undefined) {
+    // Only take the shortcut path if we're NOT syncing with flow
+    // When syncInputsWithFlow is true, we need to validate and sync the code first
+    if (
+      flowId &&
+      options &&
+      activateCron !== undefined &&
+      !options.syncInputsWithFlow
+    ) {
       // Check if cron is already active (skip limit check if already active)
       if (activateCron && !existingFlow?.cronActive) {
         // Check webhook limit before activating cron
@@ -1025,6 +1065,21 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
       flowId &&
       options?.syncInputsWithFlow === true
     ) {
+      // Check webhook limit before activating cron (if activating)
+      if (activateCron && !existingFlow?.cronActive) {
+        const webhookUsage = await getCurrentWebhookUsage(userId);
+        if (webhookUsage.currentUsage >= webhookUsage.limit) {
+          return c.json(
+            {
+              error:
+                'Webhook limit exceeded, please deactivate some webhooks or crons, or upgrade your plan to activate more.',
+              details: `You have reached your limit of ${webhookUsage.limit} active webhooks/crons. You currently have ${webhookUsage.currentUsage} active. Please deactivate some webhooks or crons, or upgrade your plan to activate more.`,
+            },
+            403
+          );
+        }
+      }
+
       // Prepare bubble parameters with credentials if provided
       let finalBubbleParameters = result.bubbleParameters || {};
       // If credentials are provided in the request, merge them into the bubble parameters

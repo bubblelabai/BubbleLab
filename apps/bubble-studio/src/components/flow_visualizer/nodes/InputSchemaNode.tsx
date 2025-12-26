@@ -14,6 +14,8 @@ interface SchemaField {
   required?: boolean;
   description?: string;
   default?: unknown;
+  /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
+  canBeFile?: boolean;
   properties?: Record<
     string,
     {
@@ -21,6 +23,7 @@ interface SchemaField {
       description?: string;
       default?: unknown;
       required?: boolean;
+      canBeFile?: boolean;
       properties?: Record<
         string,
         {
@@ -28,6 +31,7 @@ interface SchemaField {
           description?: string;
           default?: unknown;
           required?: boolean;
+          canBeFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -165,7 +169,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
 
   return (
     <div
-      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-80 ${
+      className={`bg-neutral-800/90 rounded-lg border overflow-hidden transition-all duration-300 w-[400px] ${
         isExecuting
           ? `border-blue-400 shadow-lg shadow-blue-500/30 ${isHighlighted ? BUBBLE_COLORS.SELECTED.background : ''}`
           : hasMissingRequired

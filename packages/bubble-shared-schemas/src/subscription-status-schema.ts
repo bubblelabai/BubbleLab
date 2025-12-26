@@ -1,5 +1,79 @@
 import { z } from '@hono/zod-openapi';
 import { ServiceUsageSchema } from './bubbleflow-execution-schema';
+
+// Hackathon offer schema for promotional code redemptions
+export const hackathonOfferSchema = z
+  .object({
+    isActive: z.boolean().openapi({
+      description: 'Whether a hackathon offer is currently active',
+      example: true,
+    }),
+    expiresAt: z.string().openapi({
+      description: 'ISO date when the hackathon offer expires',
+      example: '2025-01-15T14:30:00.000Z',
+    }),
+    redeemedAt: z.string().openapi({
+      description: 'ISO date when the code was redeemed',
+      example: '2025-01-14T14:30:00.000Z',
+    }),
+  })
+  .openapi('HackathonOffer');
+
+export type HackathonOffer = z.infer<typeof hackathonOfferSchema>;
+
+// Special offer schema for private metadata overrides (exclusive members)
+export const specialOfferSchema = z
+  .object({
+    isActive: z.boolean().openapi({
+      description: 'Whether a special offer is currently active',
+      example: true,
+    }),
+    plan: z.string().openapi({
+      description: 'The plan granted by the special offer',
+      example: 'unlimited',
+    }),
+    expiresAt: z.string().nullable().openapi({
+      description:
+        'ISO date when the special offer expires (null = never expires)',
+      example: '2025-06-15T14:30:00.000Z',
+    }),
+  })
+  .openapi('SpecialOffer');
+
+export type SpecialOffer = z.infer<typeof specialOfferSchema>;
+
+// Coupon redemption request schema
+export const redeemCouponRequestSchema = z
+  .object({
+    code: z.string().min(1).openapi({
+      description: 'The coupon code to redeem',
+      example: 'HACKATHON2025',
+    }),
+  })
+  .openapi('RedeemCouponRequest');
+
+export type RedeemCouponRequest = z.infer<typeof redeemCouponRequestSchema>;
+
+// Coupon redemption response schema
+export const redeemCouponResponseSchema = z
+  .object({
+    success: z.boolean().openapi({
+      description: 'Whether the redemption was successful',
+      example: true,
+    }),
+    message: z.string().openapi({
+      description: 'Human-readable message about the redemption result',
+      example: 'Coupon redeemed successfully! You now have Pro access.',
+    }),
+    expiresAt: z.string().optional().openapi({
+      description: 'When the offer expires (if successful)',
+      example: '2025-01-15T14:30:00.000Z',
+    }),
+  })
+  .openapi('RedeemCouponResponse');
+
+export type RedeemCouponResponse = z.infer<typeof redeemCouponResponseSchema>;
+
 export const subscriptionStatusResponseSchema = z
   .object({
     userId: z.string().openapi({
@@ -74,6 +148,13 @@ export const subscriptionStatusResponseSchema = z
     isActive: z.boolean().openapi({
       description: 'Whether the subscription is active',
       example: true,
+    }),
+    hackathonOffer: hackathonOfferSchema.optional().openapi({
+      description: 'Active hackathon promotional offer information',
+    }),
+    specialOffer: specialOfferSchema.optional().openapi({
+      description:
+        'Special offer from private metadata (takes precedence over hackathon offer)',
     }),
   })
   .openapi('SubscriptionStatusResponse');

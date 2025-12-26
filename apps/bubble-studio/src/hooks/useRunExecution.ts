@@ -7,17 +7,20 @@ import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useEditor } from '@/hooks/useEditor';
 import { cleanupFlattenedKeys } from '@/utils/codeParser';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
-import type {
-  CredentialType,
-  StreamingLogEvent,
-} from '@bubblelab/shared-schemas';
+import { filterEmptyInputs } from '@/utils/inputUtils';
+import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '@/lib/api';
 import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 import { useUIStore } from '@/stores/uiStore';
+import { getLiveOutputStore } from '@/stores/liveOutputStore';
 import { useLiveOutput } from './useLiveOutput';
+import {
+  validateInputs,
+  validateCredentials,
+  validateFlow,
+} from '@/utils/flowValidation';
 
 interface RunExecutionOptions {
   validateCode?: boolean;
@@ -69,7 +72,7 @@ export function useRunExecution(
   const queryClient = useQueryClient();
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
-  const { data: currentFlow } = useBubbleFlow(flowId);
+  const { data: currentFlow, updateDefaultInputs } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
   const { selectBubbleInConsole, selectResultsInConsole } =
@@ -86,7 +89,14 @@ export function useRunExecution(
       // Start execution in store
       getExecutionStore(flowId).startExecution();
 
+      // Open output panel and select first tab (index 0) at execution start
+      // This gives users the "adrenaline rush" of seeing output stream in from the beginning
       useUIStore.getState().setConsolidatedPanelTab('output');
+      // Reset to first tab - when first bubble event comes in, it will appear here
+      getLiveOutputStore(flowId)
+        ?.getState()
+        .setSelectedTab({ kind: 'item', index: 0 });
+
       const abortController = new AbortController();
       getExecutionStore(flowId).setAbortController(abortController);
 
@@ -152,7 +162,9 @@ export function useRunExecution(
 
                   // Mark bubble as running
                   getExecutionStore(flowId).setBubbleRunning(bubbleId);
-                  selectBubbleInConsole(bubbleId);
+                  // Note: We intentionally don't call selectBubbleInConsole here
+                  // to avoid jumping the tab on every bubble execution.
+                  // Users can watch output stream in without jarring tab switches.
 
                   // Highlight the line range in the editor (validate line numbers)
                   if (
@@ -197,6 +209,24 @@ export function useRunExecution(
                     bubbleId,
                     executionTimeMs
                   );
+
+                  // Check if the bubble execution failed (result.success === false)
+                  const result = eventData.additionalData?.result as
+                    | { success?: boolean }
+                    | undefined;
+                  const success = result?.success !== false; // Default to true if not specified
+
+                  // Update bubble result status in store
+                  getExecutionStore(flowId).setBubbleResult(bubbleId, success);
+
+                  // If failed, also mark it in bubbleWithError for error highlighting
+                  if (!success) {
+                    getExecutionStore(flowId).setBubbleError(bubbleId);
+                  }
+
+                  // Jump to this bubble's tab on completion (not on start)
+                  // This shows users the output when it's ready, for maximum adrenaline
+                  selectBubbleInConsole(bubbleId);
                 }
               }
             }
@@ -211,7 +241,9 @@ export function useRunExecution(
 
                 // Mark function call as running
                 getExecutionStore(flowId).setBubbleRunning(functionId);
-                selectBubbleInConsole(functionId);
+                // Note: We intentionally don't call selectBubbleInConsole here
+                // to avoid jumping the tab on every function call.
+                // Users can watch output stream in without jarring tab switches.
 
                 // Highlight the line range in the editor if line number is available
                 if (eventData.lineNumber && eventData.lineNumber > 0) {
@@ -241,6 +273,10 @@ export function useRunExecution(
                 // For now, we'll assume success unless explicitly marked as error
                 // This could be enhanced to check functionOutput for error indicators
                 getExecutionStore(flowId).setBubbleResult(functionId, true);
+
+                // Jump to this function's tab on completion (not on start)
+                // This shows users the output when it's ready, for maximum adrenaline
+                selectBubbleInConsole(functionId);
               }
             }
 
@@ -425,7 +461,7 @@ export function useRunExecution(
         }
 
         // 2. Validate inputs against the UPDATED schema (after code sync)
-        const inputValidation = validateInputs(flowToValidate);
+        const inputValidation = validateInputs(flowId, flowToValidate);
         if (!inputValidation.isValid) {
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
@@ -435,7 +471,10 @@ export function useRunExecution(
         }
 
         // 3. Validate credentials
-        const credentialValidation = validateCredentials(flowToValidate);
+        const credentialValidation = validateCredentials(
+          flowId,
+          flowToValidate
+        );
         if (!credentialValidation.isValid) {
           toast.error(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
@@ -477,7 +516,14 @@ export function useRunExecution(
           inputs || getExecutionStore(flowId).executionInputs
         );
 
-        // 7. Execute with streaming
+        // 7. Optimistically update defaultInputs at the beginning of execution
+        // Filter out empty values to match backend behavior
+        const filteredInputs = filterEmptyInputs(cleanedInputs);
+        if (Object.keys(filteredInputs).length > 0) {
+          updateDefaultInputs(filteredInputs);
+        }
+
+        // 8. Execute with streaming
         await executeWithStreaming(cleanedInputs);
         refetchSubscriptionStatus();
         // Invalidate all execution history queries to ensure all pages are updated
@@ -503,6 +549,7 @@ export function useRunExecution(
       queryClient,
       refetchSubscriptionStatus,
       editor,
+      updateDefaultInputs,
     ]
   );
 
@@ -580,29 +627,10 @@ export function useRunExecution(
   };
 
   const canExecute = () => {
-    if (!flowId) {
-      return { isValid: false, reasons: ['No flow selected'] };
-    }
-    const reasons: string[] = [];
-
-    if (!currentFlow) reasons.push('No flow selected');
-    if (getExecutionStore(flowId).isRunning) reasons.push('Already executing');
-    if (getExecutionStore(flowId).isValidating)
-      reasons.push('Currently validating');
-
-    const inputValidation = validateInputs(currentFlow);
-    if (!inputValidation.isValid) {
-      reasons.push(...inputValidation.reasons);
-    }
-
-    if (currentFlow) {
-      const credentialValidation = validateCredentials(currentFlow!);
-      if (!credentialValidation.isValid) {
-        reasons.push(...credentialValidation.reasons);
-      }
-    }
-
-    return { isValid: reasons.length === 0, reasons };
+    return validateFlow(flowId, currentFlow, {
+      checkRunning: true,
+      checkValidating: true,
+    });
   };
 
   const executionStatus = () => {
@@ -614,8 +642,8 @@ export function useRunExecution(
       };
     }
 
-    const inputValidation = validateInputs(currentFlow);
-    const credentialValidation = validateCredentials(currentFlow);
+    const inputValidation = validateInputs(flowId, currentFlow);
+    const credentialValidation = validateCredentials(flowId, currentFlow);
     const canExecuteResult = canExecute();
 
     return {

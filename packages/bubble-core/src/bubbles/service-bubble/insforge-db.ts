@@ -104,21 +104,14 @@ export class InsForgeDbBubble extends ServiceBubble<
   static readonly schema = InsForgeDbParamsSchema;
   static readonly resultSchema = InsForgeDbResultSchema;
   static readonly shortDescription =
-    'Execute SQL queries against InsForge database';
+    'InsForge is the backend built for AI-assisted development. Connect InsForge with any agent. Add authentication, database, storage, functions, and AI integrations to your app in seconds.';
   static readonly longDescription = `
-    Execute SQL queries against an InsForge backend database using the REST API.
-
-    Use cases:
-    - Data retrieval with SELECT queries
-    - Data manipulation with INSERT, UPDATE, DELETE (when explicitly allowed)
-    - Database reporting and analytics
-    - Data migration and synchronization tasks
-
-    Security Features:
-    - Operation whitelist (defaults to SELECT only)
-    - Parameterized queries to prevent SQL injection
-    - Connection timeout controls
-    - Result row limits
+    Authentication - Complete user management system
+    Database - Flexible data storage and retrieval
+    Storage - File management and organization
+    AI Integration - Chat completions and image generation (OpenAI-compatible)
+    Serverless Functions - Scalable compute power
+    Site Deployment (coming soon) - Easy application deployment
   `;
   static readonly alias = 'insforge';
 

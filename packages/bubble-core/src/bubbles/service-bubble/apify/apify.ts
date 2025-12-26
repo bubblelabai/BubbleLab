@@ -52,9 +52,9 @@ const ApifyParamsSchema = z.object({
   timeout: z
     .number()
     .min(1000)
-    .max(300000)
+    .max(500000)
     .optional()
-    .default(120000)
+    .default(300000)
     .describe(
       'Maximum time to wait for actor completion in milliseconds (default: 120000)'
     ),
@@ -181,19 +181,24 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
   static readonly schema = ApifyParamsSchema;
   static readonly resultSchema = ApifyResultSchema;
   static readonly shortDescription =
-    'Run any Apify actor for web scraping and automation';
+    'Discover and run specialized Apify actors for complex web scraping tasks not covered by standard tools';
   static readonly longDescription = `
     Universal integration with Apify platform for running any Apify actor.
 
     This is a generic service bubble that can execute any Apify actor with any input.
     Actor-specific logic and data transformation should be handled by Tool Bubbles.
 
-    Supported Actors (examples):
+    Integrated Actors, use them through instagram-tool, reddit-tool, linkedin-tool, youtube-tool, tiktok-tool, twitter-tool, google-maps-tool, etc, not directly:
     - apify/instagram-scraper - Instagram posts, profiles, hashtags
-    - apify/reddit-scraper - Reddit posts, comments, subreddits
-    - apify/linkedin-scraper - LinkedIn profiles, companies, jobs
-    - apify/web-scraper - Generic web scraping
-    - apify/google-search-scraper - Google search results
+    - apify/instagram-hashtag-scraper - Instagram hashtag posts
+    - apimaestro/linkedin-profile-posts - LinkedIn profile posts and activity
+    - apimaestro/linkedin-posts-search-scraper-no-cookies - Search LinkedIn posts by keyword
+    - curious_coder/linkedin-jobs-scraper - LinkedIn job postings
+    - streamers/youtube-scraper - YouTube videos and channels
+    - pintostudio/youtube-transcript-scraper - YouTube video transcripts
+    - clockworks/tiktok-scraper - TikTok profiles, videos, hashtags
+    - apidojo/tweet-scraper - Twitter/X profiles, tweets, search results
+    - compass/crawler-google-places - Google Maps business listings and reviews
     - IMPORTANT: For other actors, use discovery mode to find the actor and its page, then use the web scrape tool to scrape the input schema page to get the input/output schema details.
 
     Discovery Mode:
@@ -201,15 +206,14 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     - Optionally set "limit" to control the number of results (default: 20, max: 100)
     - Returns actor information including input schemas, descriptions, and metadata
     - This mode is specifically designed for discovering available actors and their capabilities
-    - Example: { search: "instagram", limit: 10 } to find Instagram-related actors
+    - Example: { search: "google flights prices", limit: 10 } to find Google flights related actors
 
     Use cases:
-    - Social media scraping (Instagram, Reddit, LinkedIn, etc.)
-    - Web scraping and data extraction
-    - Search engine result scraping
-    - E-commerce data collection
-    - Market research and competitor analysis
-    - Discovering available actors and their schemas
+    - Discovering available actors and their schemas then
+    - IMPORTANT: Specific scraping tasks that are not covered by the supported actors and seems hard to do through normal scraping by going to actor https://apify.com/$owner/$actorid/input-schema page and scrape the input schema details.
+
+    DO NOT Use:
+    - Media generation tasks (e.g., image generation, video generation, audio generation, etc.)
 
   `;
   static readonly alias = 'scrape';

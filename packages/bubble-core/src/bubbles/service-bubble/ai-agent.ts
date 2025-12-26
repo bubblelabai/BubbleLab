@@ -1,9 +1,10 @@
-import { z } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import {
   CredentialType,
   BUBBLE_CREDENTIAL_OPTIONS,
+  RECOMMENDED_MODELS,
 } from '@bubblelab/shared-schemas';
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph';
 import { ChatOpenAI } from '@langchain/openai';
@@ -33,6 +34,10 @@ import {
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 import { SafeGeminiChat } from '../../utils/safe-gemini-chat.js';
+import {
+  zodSchemaToJsonString,
+  buildJsonSchemaInstruction,
+} from '../../utils/zod-schema.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -50,6 +55,20 @@ export type ToolHookAfter = (
 export type ToolHookBefore = (
   context: ToolHookContext
 ) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
+
+// Context for afterLLMCall hook - provides access to messages and the last AI response
+export type AfterLLMCallContext = {
+  messages: BaseMessage[];
+  lastAIMessage: AIMessage | AIMessageChunk;
+  hasToolCalls: boolean;
+};
+
+// Hook that runs after LLM responds but before routing decision
+// Can modify messages and force continuation back to LLM instead of ending
+export type AfterLLMCallHook = (context: AfterLLMCallContext) => Promise<{
+  messages: BaseMessage[];
+  continueToAgent?: boolean; // If true, routes back to agent instead of ending
+}>;
 
 // Type for streaming callback function
 export type StreamingCallback = (event: StreamingEvent) => Promise<void> | void;
@@ -93,7 +112,7 @@ const BackupModelConfigSchema = z.object({
 
 // Define model configuration
 const ModelConfigSchema = z.object({
-  model: AvailableModels.default('google/gemini-2.5-flash').describe(
+  model: AvailableModels.describe(
     'AI model to use (format: provider/model-name).'
   ),
   temperature: z
@@ -134,9 +153,11 @@ const ModelConfigSchema = z.object({
   jsonMode: z
     .boolean()
     .default(false)
-    .describe('When true, returns clean JSON response'),
+    .describe(
+      'When true, returns clean JSON response, you must provide the exact JSON schema in the system prompt'
+    ),
   backupModel: BackupModelConfigSchema.default({
-    model: 'openai/gpt-5-mini',
+    model: RECOMMENDED_MODELS.FAST,
   })
     .optional()
     .describe('Backup model configuration to use if the primary model fails.'),
@@ -221,6 +242,12 @@ const ImageInputSchema = z.discriminatedUnion('type', [
   UrlImageSchema,
 ]);
 
+// Schema for the expected JSON output structure - accepts either a Zod schema or a JSON schema string
+const ExpectedOutputSchema = z.union([
+  z.custom<ZodTypeAny>((val) => val?._def !== undefined),
+  z.string(),
+]);
+
 /** Type for conversation history messages - enables KV cache optimization */
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 
@@ -254,13 +281,13 @@ const AIAgentParamsSchema = z.object({
     .optional()
     .describe('A friendly name for the AI agent'),
   model: ModelConfigSchema.default({
-    model: 'google/gemini-2.5-flash',
-    temperature: 0.7,
+    model: RECOMMENDED_MODELS.FAST,
+    temperature: 1,
     maxTokens: 50000,
     maxRetries: 3,
     jsonMode: false,
   }).describe(
-    'AI model configuration including provider, temperature, and tokens. For model unless otherwise specified, use google/gemini-2.5-flash as default. Use google/gemini-2.5-flash-image-preview to edit and generate images.'
+    'AI model configuration including provider, temperature, and tokens, retries, and json mode. Always include this.'
   ),
   tools: z
     .array(ToolConfigSchema)
@@ -278,10 +305,10 @@ const AIAgentParamsSchema = z.object({
   maxIterations: z
     .number()
     .positive()
-    .min(2)
-    .default(10)
+    .min(4)
+    .default(40)
     .describe(
-      'Maximum number of iterations for the agent workflow, 2 iterations per turn of conversation'
+      'Maximum number of iterations for the agent workflow, 5 iterations per turn of conversation'
     ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
@@ -295,6 +322,9 @@ const AIAgentParamsSchema = z.object({
     .describe(
       'Enable real-time streaming of tokens, tool calls, and iteration progress'
     ),
+  expectedOutputSchema: ExpectedOutputSchema.optional().describe(
+    'Zod schema or JSON schema string that defines the expected structure of the AI response. When provided, automatically enables JSON mode and instructs the AI to output in the exact format. Example: z.object({ summary: z.string(), items: z.array(z.object({ name: z.string(), score: z.number() })) })'
+  ),
   // Note: beforeToolCall and afterToolCall are function hooks added via TypeScript interface
   // They cannot be part of the Zod schema but are available in the params
 });
@@ -328,11 +358,14 @@ type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   // Optional hooks for intercepting tool calls
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  // Hook that runs after LLM responds but before routing (can force retry)
+  afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
 type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
+  afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
 
@@ -363,13 +396,16 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  private afterLLMCallHook: AfterLLMCallHook | undefined;
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
+  private shouldContinueToAgent = false;
 
   constructor(
     params: AIAgentParams = {
       message: 'Hello, how are you?',
       systemPrompt: 'You are a helpful AI assistant',
+      model: { model: RECOMMENDED_MODELS.FAST },
     },
     context?: BubbleContext,
     instanceId?: string
@@ -377,6 +413,7 @@ export class AIAgentBubble extends ServiceBubble<
     super(params, context, instanceId);
     this.beforeToolCallHook = params.beforeToolCall;
     this.afterToolCallHook = params.afterToolCall;
+    this.afterLLMCallHook = params.afterLLMCall;
     this.streamingCallback = params.streamingCallback;
     this.factory = new BubbleFactory();
   }
@@ -450,15 +487,33 @@ export class AIAgentBubble extends ServiceBubble<
     );
   }
 
+  /**
+   * Modify params before execution - centralizes all param transformations
+   */
+  private beforeAction(): void {
+    // Auto-enable JSON mode when expectedOutputSchema is provided
+    if (this.params.expectedOutputSchema) {
+      this.params.model.jsonMode = true;
+
+      // Enhance system prompt with JSON schema instructions
+      const schemaString = zodSchemaToJsonString(
+        this.params.expectedOutputSchema
+      );
+      this.params.systemPrompt = `${this.params.systemPrompt}\n\n${buildJsonSchemaInstruction(schemaString)}`;
+    }
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-    const { model } = this.params;
+
+    // Apply param transformations before execution
+    this.beforeAction();
 
     try {
-      return await this.executeWithModel(model);
+      return await this.executeWithModel(this.params.model);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -585,20 +640,23 @@ export class AIAgentBubble extends ServiceBubble<
           streaming: enableStreaming,
           maxRetries: retries,
         });
-      case 'google':
+      case 'google': {
+        const thinkingConfig = reasoningEffort
+          ? {
+              includeThoughts: reasoningEffort ? true : false,
+              thinkingBudget:
+                reasoningEffort === 'low'
+                  ? 1025
+                  : reasoningEffort === 'medium'
+                    ? 5000
+                    : 10000,
+            }
+          : undefined;
         return new SafeGeminiChat({
           model: modelName,
           temperature,
           maxOutputTokens: maxTokens,
-          thinkingConfig: {
-            includeThoughts: reasoningEffort ? true : false,
-            thinkingBudget:
-              reasoningEffort === 'low'
-                ? 1025
-                : reasoningEffort === 'medium'
-                  ? 5000
-                  : 10000,
-          },
+          ...(thinkingConfig && { thinkingConfig }),
           apiKey,
           // 3.0 pro preview does breaks with streaming, disabled temporarily until fixed
           streaming: false,
@@ -624,6 +682,7 @@ export class AIAgentBubble extends ServiceBubble<
             },
           ],
         });
+      }
       case 'anthropic': {
         // Configure Anthropic "thinking" only when reasoning is enabled.
         // Anthropic's API does not allow `budget_tokens` when thinking is disabled.
@@ -955,6 +1014,12 @@ export class AIAgentBubble extends ServiceBubble<
     // Return the updated messages
     // If hooks modified messages, use those; otherwise use the original messages + tool messages
     if (currentMessages.length !== messages.length + toolMessages.length) {
+      console.error(
+        '[AIAgent] Current messages length does not match expected length',
+        currentMessages.length,
+        messages.length,
+        toolMessages.length
+      );
       return { messages: currentMessages };
     }
 
@@ -968,8 +1033,7 @@ export class AIAgentBubble extends ServiceBubble<
   ) {
     // Define the agent node
     const agentNode = async ({ messages }: typeof MessagesAnnotation.State) => {
-      // Enhance system prompt for JSON mode
-
+      // systemPrompt is already enhanced by beforeAction() if expectedOutputSchema was provided
       const systemMessage = new HumanMessage(systemPrompt);
       const allMessages = [systemMessage, ...messages];
 
@@ -1129,14 +1193,74 @@ export class AIAgentBubble extends ServiceBubble<
       }
     };
 
-    // Define conditional edge function
-    const shouldContinue = ({ messages }: typeof MessagesAnnotation.State) => {
+    // Node that runs after agent to check afterLLMCall hook before routing
+    const afterLLMCheckNode = async ({
+      messages,
+    }: typeof MessagesAnnotation.State) => {
+      // Reset the flag at the start
+      this.shouldContinueToAgent = false;
+
+      // Get the last AI message
       const lastMessage = messages[messages.length - 1] as
         | AIMessage
         | AIMessageChunk;
 
-      // Check if the last message has tool calls
-      if (lastMessage.tool_calls && lastMessage.tool_calls.length > 0) {
+      const hasToolCalls = !!(
+        lastMessage.tool_calls && lastMessage.tool_calls.length > 0
+      );
+
+      // Only call hook if we're about to end (no tool calls) and hook is provided
+      if (!hasToolCalls && this.afterLLMCallHook) {
+        console.log(
+          '[AIAgent] No tool calls detected, calling afterLLMCall hook'
+        );
+
+        const hookResult = await this.afterLLMCallHook({
+          messages,
+          lastAIMessage: lastMessage,
+          hasToolCalls,
+        });
+
+        // If hook wants to continue to agent, set flag and return modified messages
+        if (hookResult.continueToAgent) {
+          console.log('[AIAgent] afterLLMCall hook requested retry to agent');
+          this.shouldContinueToAgent = true;
+          // Return the modified messages from the hook
+          // We need to return only the new messages to append
+          const newMessages = hookResult.messages.slice(messages.length);
+          return { messages: newMessages };
+        }
+      }
+
+      // No modifications needed
+      return { messages: [] };
+    };
+
+    // Define conditional edge function after LLM check
+    const shouldContinueAfterLLMCheck = ({
+      messages,
+    }: typeof MessagesAnnotation.State) => {
+      // First check if afterLLMCall hook requested continuing to agent
+      if (this.shouldContinueToAgent) {
+        return 'agent';
+      }
+
+      // Find the last AI message (could be followed by human messages from hook)
+      const aiMessages: (AIMessage | AIMessageChunk)[] = [];
+      for (const msg of messages) {
+        if (isAIMessage(msg)) {
+          aiMessages.push(msg);
+        } else if (
+          'tool_calls' in msg &&
+          (msg as AIMessageChunk).constructor?.name === 'AIMessageChunk'
+        ) {
+          aiMessages.push(msg as AIMessageChunk);
+        }
+      }
+      const lastAIMessage = aiMessages[aiMessages.length - 1];
+
+      // Check if the last AI message has tool calls
+      if (lastAIMessage?.tool_calls && lastAIMessage.tool_calls.length > 0) {
         return 'tools';
       }
       return '__end__';
@@ -1166,11 +1290,18 @@ export class AIAgentBubble extends ServiceBubble<
 
       graph
         .addNode('tools', toolNode)
+        .addNode('afterLLMCheck', afterLLMCheckNode)
         .addEdge('__start__', 'agent')
-        .addConditionalEdges('agent', shouldContinue)
+        .addEdge('agent', 'afterLLMCheck')
+        .addConditionalEdges('afterLLMCheck', shouldContinueAfterLLMCheck)
         .addConditionalEdges('tools', shouldContinueAfterTools);
     } else {
-      graph.addEdge('__start__', 'agent').addEdge('agent', '__end__');
+      // Even without tools, add the afterLLMCheck node for hook support
+      graph
+        .addNode('afterLLMCheck', afterLLMCheckNode)
+        .addEdge('__start__', 'agent')
+        .addEdge('agent', 'afterLLMCheck')
+        .addConditionalEdges('afterLLMCheck', shouldContinueAfterLLMCheck);
     }
 
     return graph.compile();

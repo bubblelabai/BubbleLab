@@ -20,8 +20,20 @@ export interface Output {
 }
 
 export interface CustomCronPayload extends CronEvent {
+  /**
+   * Email address where the database analysis report will be sent.
+   * @canBeFile false
+   */
   email: string;
+  /**
+   * Natural language question about your database (e.g., "Show me user signups by month").
+   * @canBeFile false
+   */
   query: string;
+  /**
+   * Title for the email report (default: "Daily Flows Report").
+   * @canBeFile false
+   */
   reportTitle?: string;
 }
 

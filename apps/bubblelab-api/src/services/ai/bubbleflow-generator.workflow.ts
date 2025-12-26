@@ -28,7 +28,9 @@ import {
   type ToolHookContext,
   type ToolHookBefore,
   type ToolHookAfter,
+  type AfterLLMCallHook,
   type AvailableTool,
+  HumanMessage,
 } from '@bubblelab/bubble-core';
 import {
   validateAndExtract,
@@ -475,6 +477,40 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
         return { messages: context.messages };
       };
 
+      // Hook that runs after entire agent completes - retry if no tool was called
+      let afterLLMCallRetryCount = 0;
+      const maxAfterLLMCallRetries = 3;
+
+      const afterLLMCall: AfterLLMCallHook = async (context) => {
+        // If we already have code (tool was called), no need to retry
+        if (currentCode) {
+          return { messages: context.messages };
+        }
+
+        // Check if we've exceeded retry limit
+        if (afterLLMCallRetryCount >= maxAfterLLMCallRetries) {
+          console.log(
+            '[BubbleFlowGenerator] Max afterLLMCall retries reached, stopping'
+          );
+          return { messages: context.messages };
+        }
+
+        afterLLMCallRetryCount++;
+        console.log(
+          `[BubbleFlowGenerator] No tool called, requesting retry (attempt ${afterLLMCallRetryCount}/${maxAfterLLMCallRetries})`
+        );
+
+        // Append a message telling the agent to call the tool
+        const retryMessage = new HumanMessage(
+          `You MUST call the createWorkflow tool to generate the BubbleFlow code. Do not just provide text responses - you must use the createWorkflow tool with your complete TypeScript code. Please call createWorkflow now with the full BubbleFlow implementation.`
+        );
+
+        return {
+          messages: [...context.messages, retryMessage],
+          continueToAgent: true,
+        };
+      };
+
       // Create AI agent with custom tools
       console.log(
         '[BubbleFlowGenerator] Creating AI agent with custom tools...'
@@ -491,7 +527,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
 
           model: {
             reasoningEffort: 'medium',
-            model: 'google/gemini-3-pro-preview',
+            model: 'google/gemini-3-flash-preview',
             temperature: 0.3,
             backupModel: {
               model: 'anthropic/claude-sonnet-4-5',
@@ -612,6 +648,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
           credentials: this.params.credentials,
           beforeToolCall,
           afterToolCall,
+          afterLLMCall,
           streamingCallback: this.streamingCallback,
         },
         this.context,

@@ -13,23 +13,25 @@ import { AvailableModel } from './ai-models.js';
 // Model constants for AI agent instructions
 export const RECOMMENDED_MODELS = {
   BEST: 'google/gemini-3-pro-preview',
-  PRO: 'google/gemini-2.5-pro',
+  BEST_ALT: 'openai/gpt-5.2',
+  PRO: 'google/gemini-3-flash-preview',
   PRO_ALT: 'anthropic/claude-sonnet-4-5',
-  FAST: 'google/gemini-2.5-flash',
+  FAST: 'google/gemini-3-flash-preview',
   FAST_ALT: 'anthropic/claude-haiku-4-5',
   LITE: 'google/gemini-2.5-flash-lite',
-  IMAGE: 'google/gemini-2.5-flash-image-preview',
+  IMAGE: 'google/gemini-3-pro-image-preview',
 } as Record<string, AvailableModel>;
 
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
-2. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
-3. BEFORE writing any code, identify which bubbles you plan to use from the available list, prioritize choosing tools over services unless the user specifically requests a service. 
-4. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
+2. CRITICAL: Only ONE class extending BubbleFlow is allowed per file. Do NOT create multiple BubbleFlow classes (e.g., a webhook flow and a cron flow).
+3. Properly type the payload import and output interface based on the user's request, create typescript interfaces for them
+4. BEFORE writing any code, identify which bubbles you plan to use from the available list, prioritize choosing tools over services unless the user specifically requests a service. 
+5. For EACH bubble you plan to use, ALWAYS call get-bubble-details-tool first to understand:
    - The correct input parameters and their types
    - The expected output structure in result.data
    - How to properly handle success/error cases
-5. IMPLEMENTATION ARCHITECTURE (CRITICAL):
+6. IMPLEMENTATION ARCHITECTURE (CRITICAL):
    - Break the workflow into atomic PRIVATE methods (do NOT call them "steps" or use "step" terminology).
    - Types of methods:
      a) Transformation Methods: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
@@ -48,23 +50,28 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      private transformData(input: string): string { ... }
 
      // Sends cleaned input to AI for natural language processing
-     // Condition: Only runs when input length is greater than 3 characters
+     // Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
-
-6. Use the exact parameter structures shown in the bubble details
-7. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
-8. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
-9. Return meaningful data from the handle method
-10. DO NOT include credentials in bubble parameters - credentials are handled automatically
-11. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
-12. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
-13. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
+7. Use the exact parameter structures shown in the bubble details
+8. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
+9. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
+10. Return meaningful data from the handle method, this is the data that will be shown to the user.
+11. DO NOT include credentials in bubble parameters - credentials are handled automatically
+12. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
+13. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
+14. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
 15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
 16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
 17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
 20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. ALL user-specific or environment-specific values MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). If a value needs to be configured by the user, it belongs in the payload interface, NOT in a constant.
+21. NEVER use the 'any' type. TypeScript's type inference is powerful - let it work for you:
+    - For bubble results: DO NOT annotate the type. Just write \`const result = await new GmailBubble({...}).readEmail()\` and TypeScript will infer the correct type automatically.
+    - For function return types: Omit return type annotations when the return value is obvious from the implementation. TypeScript infers them correctly.
+    - When you MUST annotate: Use the specific type (e.g., \`BubbleResult<GmailReadEmailData>\`), generic parameters, or \`unknown\` if truly unknown.
+    - WRONG: \`const result: any = await bubble.action()\` or \`function transform(data: any)\`
+    - RIGHT: \`const result = await bubble.action()\` (let TypeScript infer) or \`function transform(data: EmailData)\` (use specific type)
 
 CRITICAL: You MUST use get-bubble-details-tool for every bubble before using it in your code!`;
 
@@ -150,6 +157,50 @@ CRITICAL: EVERY input field MUST have a helpful, user-friendly comment that expl
 Write comments in plain, conversational language as if explaining to a non-technical user.
 DO NOT include example values in comments - example values should ONLY be provided as default values in the destructuring assignment using the = operator.
 
+FILE UPLOAD CONTROL (@canBeFile):
+For each string field, decide if it makes sense to upload file content. Use the @canBeFile JSDoc tag to control whether the file upload icon appears in the UI.
+
+ALLOW file uploads (@canBeFile true or omit the tag - default behavior) for:
+- Fields that hold document/media CONTENT (body, text, document, attachment, content, data, fileContent)
+- Fields where pasting large text content would be cumbersome
+- Fields that semantically represent file data to be processed
+
+DISABLE file uploads (@canBeFile false) for:
+- Identifiers and references (IDs, names, paths, URLs, emails, usernames)
+- Configuration values (settings, options, formats, modes)
+- Short user inputs (prompts, queries, search terms, titles)
+- Credential-like values (API keys, tokens, secrets)
+
+Example usage:
+\`\`\`typescript
+export interface DocumentProcessorPayload extends WebhookEvent {
+  /**
+   * Email address where the results should be sent.
+   * @canBeFile false
+   */
+  email: string;
+  
+  /**
+   * The document content to process. Paste text or upload a file.
+   * @canBeFile true
+   */
+  documentContent: string;
+  
+  /**
+   * Google Drive folder ID where files will be saved.
+   * @canBeFile false
+   */
+  folderId: string;
+  
+  /**
+   * File to attach to the email. Upload any document, image, or file.
+   */
+  attachment?: string;  // @canBeFile defaults to true, so no need to specify
+}
+\`\`\`
+
+Use your judgment based on what the field semantically represents, not just its name.
+
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 
 // The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
@@ -193,7 +244,10 @@ Examples of BAD comments (DO NOT USE):
 For example, for a workflow that processes user data and sends notifications:
   
 export interface UserNotificationPayload extends WebhookEvent {
-  /** Email address where notifications should be sent. */
+  /**
+   * Email address where notifications should be sent.
+   * @canBeFile false
+   */
   email: string;
   /** Custom message content to include in the notification. */
   message?: string;
@@ -201,7 +255,10 @@ export interface UserNotificationPayload extends WebhookEvent {
   priority?: 'low' | 'medium' | 'high';
   /** Whether to send SMS in addition to email. Set to true to enable SMS notifications, false to only send email. */
   includeSMS?: boolean;
-  /** The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL. */
+  /**
+   * The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
+   * @canBeFile false
+   */
   spreadsheetId: string;
 }
 
@@ -237,12 +294,17 @@ export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
 You should carefully observe the data flow and the context to understand what happened.
 
+Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
+Regarding errors reading gmail emails, remind the user to recreate a new credential and check the "allow access to all your email", since by default bubble lab only can only send emails to the user's own email address.
 Regarding JSON parsing for ai-agent, if JSON mode is enabled in ai-agent, the response should be a valid JSON object unless the user's request cannot be fulfilled, then the response should be a text output explaining why it can't perform the task and make it unable to be parsed as JSON.
+Regarding variables not found errors, it is because the system does not yet support complex syntaxes like mapping multiple arrow functions inside loops, etc. Tell the user why and attempt to fix the issue by simplifying the code.
 `;
 
 export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 1. When using the storage bubble, always use the bubble-lab-bucket bucket name, unless the user has their own s3/cloudflare bucket setup.
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+3. When using the ai-agent bubble, always include the model parameter object with the model name and relevant configurations. Set temperature, maxTokens, and other parameters that users might want to adjust for their specific workflow needs.
+4. When using custom apify bubble, always discover the actor and its schema first using the apify bubble, DO NOT use any actor that are not discovered as it could be rented actor and not available to run.
 
 BUBBLE COMMENT REQUIREMENTS:
 Place a descriptive comment directly above each bubble instantiation (the \`new BubbleName({...})\` line).

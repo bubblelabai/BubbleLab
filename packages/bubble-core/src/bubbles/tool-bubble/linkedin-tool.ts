@@ -95,12 +95,42 @@ const LinkedInPostSchema = z.object({
     .describe('Original post that was reshared'),
 });
 
+const LinkedInJobSchema = z.object({
+  id: z.string().nullable().describe('Job ID'),
+  title: z.string().nullable().describe('Job title'),
+  company: z
+    .object({
+      name: z.string().nullable(),
+      url: z.string().nullable(),
+      logo: z.string().nullable(),
+    })
+    .nullable()
+    .describe('Company info'),
+  location: z.string().nullable().describe('Job location'),
+  description: z.string().nullable().describe('Job description'),
+  employmentType: z.string().nullable().describe('Employment type'),
+  seniorityLevel: z.string().nullable().describe('Seniority level'),
+  postedAt: z.string().nullable().describe('Posted date'),
+  url: z.string().nullable().describe('Job URL'),
+  applyUrl: z.string().nullable().describe('Apply URL'),
+  salary: z
+    .object({
+      from: z.number().nullable(),
+      to: z.number().nullable(),
+      currency: z.string().nullable(),
+      period: z.string().nullable(),
+    })
+    .nullable()
+    .describe('Salary info'),
+  skills: z.array(z.string()).nullable().describe('Required skills'),
+});
+
 // Gemini-compatible single object schema with optional fields
 const LinkedInToolParamsSchema = z.object({
   operation: z
-    .enum(['scrapePosts', 'searchPosts'])
+    .enum(['scrapePosts', 'searchPosts', 'scrapeJobs'])
     .describe(
-      'Operation to perform: scrapePosts for user profiles, searchPosts for keyword search'
+      'Operation to perform: scrapePosts (profiles), searchPosts (keywords), or scrapeJobs'
     ),
 
   // Profile scraping fields (optional)
@@ -116,8 +146,41 @@ const LinkedInToolParamsSchema = z.object({
     .string()
     .optional()
     .describe(
-      'Keyword or phrase to search for (for searchPosts operation). Examples: "AI", "hiring", "n8n"'
+      'Keyword or phrase to search for (for searchPosts/scrapeJobs). Examples: "AI", "hiring", "Software Engineer"'
     ),
+
+  location: z
+    .string()
+    .optional()
+    .describe(
+      'Location for job search (e.g. "San Francisco", "Remote") (scrapeJobs only)'
+    ),
+
+  jobType: z
+    .array(
+      z.enum(['full-time', 'part-time', 'contract', 'temporary', 'internship'])
+    )
+    .optional()
+    .describe('Filter by job type (scrapeJobs only)'),
+
+  workplaceType: z
+    .array(z.enum(['on-site', 'remote', 'hybrid']))
+    .optional()
+    .describe('Filter by workplace type (scrapeJobs only)'),
+
+  experienceLevel: z
+    .array(
+      z.enum([
+        'internship',
+        'entry-level',
+        'associate',
+        'mid-senior',
+        'director',
+        'executive',
+      ])
+    )
+    .optional()
+    .describe('Filter by experience level (scrapeJobs only)'),
 
   sortBy: z
     .enum(['relevance', 'date_posted'])
@@ -132,19 +195,16 @@ const LinkedInToolParamsSchema = z.object({
     .default('')
     .optional()
     .describe(
-      'Filter posts by date range (for searchPosts operation, default: no filter)'
+      'Filter posts/jobs by date range (searchPosts/scrapeJobs). Options: past-24h, past-week, past-month'
     ),
 
   // Common fields
   limit: z
     .number()
-    .min(1)
-    .max(100)
+    .max(1000)
     .default(50)
     .optional()
-    .describe(
-      'Maximum number of posts to fetch (default: 50 for search, 100 for profiles)'
-    ),
+    .describe('Maximum number of items to fetch (default: 50)'),
 
   pageNumber: z
     .number()
@@ -162,8 +222,14 @@ const LinkedInToolParamsSchema = z.object({
 // Gemini-compatible single result schema
 const LinkedInToolResultSchema = z.object({
   operation: z
-    .enum(['scrapePosts', 'searchPosts'])
+    .enum(['scrapePosts', 'searchPosts', 'scrapeJobs'])
     .describe('Operation that was performed'),
+
+  // Jobs data (only for scrapeJobs)
+  jobs: z
+    .array(LinkedInJobSchema)
+    .optional()
+    .describe('Array of LinkedIn jobs'),
 
   // Posts data (always present)
   posts: z.array(LinkedInPostSchema).describe('Array of LinkedIn posts'),
@@ -215,6 +281,7 @@ type LinkedInToolParams = z.output<typeof LinkedInToolParamsSchema>;
 type LinkedInToolResult = z.output<typeof LinkedInToolResultSchema>;
 type LinkedInToolParamsInput = z.input<typeof LinkedInToolParamsSchema>;
 export type LinkedInPost = z.output<typeof LinkedInPostSchema>;
+export type LinkedInJob = z.output<typeof LinkedInJobSchema>;
 export type LinkedInAuthor = z.output<typeof LinkedInAuthorSchema>;
 export type LinkedInStats = z.output<typeof LinkedInStatsSchema>;
 
@@ -266,6 +333,7 @@ export class LinkedInTool extends ToolBubble<
     - **Competitive intelligence** - monitor competitor LinkedIn presence
     - **Lead generation** - identify active LinkedIn users in your space
     - **Social listening** - track discussions and trends on LinkedIn
+    - **Job Market Analysis** - scrape job postings and salary data
     
     **DO NOT USE research-agent-tool or web-scrape-tool for LinkedIn** - This tool is specifically optimized for LinkedIn and provides:
     - Clean, structured post data ready for analysis
@@ -297,8 +365,9 @@ export class LinkedInTool extends ToolBubble<
     - Brand monitoring and reputation management
     - Recruitment and talent sourcing
     - Partnership and collaboration discovery
-    
-    The tool uses Apify's LinkedIn scraper behind the scenes while maintaining a clean, consistent interface.
+    - Job market research and salary analysis
+
+    The tool uses Apify's LinkedIn scrapers behind the scenes while maintaining a clean, consistent interface.
   `;
   static readonly alias = 'li';
   static readonly type = 'tool';
@@ -325,6 +394,14 @@ export class LinkedInTool extends ToolBubble<
     try {
       const { operation } = this.params;
 
+      if (
+        operation === 'scrapeJobs' &&
+        this.params?.limit &&
+        this.params.limit < 100
+      ) {
+        this.params!.limit = 100;
+      }
+
       // Validate required fields based on operation
       if (
         operation === 'scrapePosts' &&
@@ -350,6 +427,8 @@ export class LinkedInTool extends ToolBubble<
             return await this.handleScrapePosts(this.params);
           case 'searchPosts':
             return await this.handleSearchPosts(this.params);
+          case 'scrapeJobs':
+            return await this.handleScrapeJobs(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -379,6 +458,7 @@ export class LinkedInTool extends ToolBubble<
         operation === 'searchPosts' ? this.params.keyword || '' : undefined,
       totalResults: operation === 'searchPosts' ? null : undefined,
       hasNextPage: operation === 'searchPosts' ? null : undefined,
+      jobs: [],
       totalPosts: 0,
       success: false,
       error: errorMessage,
@@ -738,5 +818,184 @@ export class LinkedInTool extends ToolBubble<
     if (!reactions || !reactions.length) return null;
     const reaction = reactions.find((r) => r.type === type);
     return reaction ? reaction.count || null : null;
+  }
+
+  /**
+   * Handle scrapeJobs operation
+   */
+  private async handleScrapeJobs(
+    params: LinkedInToolParams
+  ): Promise<LinkedInToolResult> {
+    if (!params.keyword) {
+      return this.createErrorResult('Keyword is required for scrapeJobs');
+    }
+
+    // Construct LinkedIn jobs search URL
+    const searchParams = new URLSearchParams();
+    searchParams.set('keywords', params.keyword);
+    if (params.location) {
+      searchParams.set('location', params.location);
+    }
+    if (params.dateFilter) {
+      // Map dateFilter to LinkedIn's format
+      const dateMap: Record<string, string> = {
+        'past-24h': 'r86400',
+        'past-week': 'r604800',
+        'past-month': 'r2592000',
+      };
+      if (dateMap[params.dateFilter]) {
+        searchParams.set('f_TPR', dateMap[params.dateFilter]);
+      }
+    }
+    if (params.experienceLevel && params.experienceLevel.length > 0) {
+      const experienceMap: Record<string, string> = {
+        internship: '1',
+        'entry-level': '2',
+        associate: '3',
+        'mid-senior': '4',
+        director: '6',
+        executive: '7',
+      };
+      const experienceValues = params.experienceLevel
+        .map((level) => experienceMap[level])
+        .filter((v): v is string => v !== undefined);
+      if (experienceValues.length > 0) {
+        searchParams.set('f_E', experienceValues.join(','));
+      }
+    }
+    if (params.jobType && params.jobType.length > 0) {
+      const jobTypeMap: Record<string, string> = {
+        'full-time': 'F',
+        'part-time': 'P',
+        contract: 'C',
+        temporary: 'T',
+        internship: 'I',
+      };
+      const jobTypeValues = params.jobType
+        .map((type) => jobTypeMap[type])
+        .filter((v): v is string => v !== undefined);
+      if (jobTypeValues.length > 0) {
+        searchParams.set('f_JT', jobTypeValues.join(','));
+      }
+    }
+    if (params.workplaceType && params.workplaceType.length > 0) {
+      const workplaceMap: Record<string, string> = {
+        remote: '2',
+        'on-site': '1',
+        hybrid: '3',
+      };
+      const workplaceValues = params.workplaceType
+        .map((type) => workplaceMap[type])
+        .filter((v): v is string => v !== undefined);
+      if (workplaceValues.length > 0) {
+        searchParams.set('f_WT', workplaceValues.join(','));
+      }
+    }
+    searchParams.set('sort_by', 'date_posted');
+
+    const searchUrl = `https://www.linkedin.com/jobs/search?${searchParams.toString()}`;
+
+    const jobScraper = new ApifyBubble<'curious_coder/linkedin-jobs-scraper'>(
+      {
+        actorId: 'curious_coder/linkedin-jobs-scraper',
+        input: {
+          urls: [searchUrl],
+          count: params.limit || 50,
+          scrapeCompany: true,
+        },
+        waitForFinish: true,
+        timeout: 240000,
+        credentials: params.credentials,
+      },
+      this.context,
+      'jobScraper'
+    );
+
+    const apifyResult = await jobScraper.action();
+
+    if (!apifyResult.data.success) {
+      return {
+        operation: 'scrapeJobs',
+        posts: [],
+        jobs: [],
+        totalPosts: 0,
+        success: false,
+        error: apifyResult.data.error || 'Failed to scrape LinkedIn jobs',
+      };
+    }
+
+    const items = apifyResult.data.items || [];
+    const jobs = this.transformJobs(items);
+
+    return {
+      operation: 'scrapeJobs',
+      posts: [],
+      jobs,
+      totalPosts: 0,
+      success: true,
+      error: '',
+    };
+  }
+
+  private transformJobs(
+    items: ActorOutput<'curious_coder/linkedin-jobs-scraper'>[]
+  ): LinkedInJob[] {
+    return items.map((item) => {
+      // Parse salary from salaryInfo array (e.g., ["$105,910.00", "$178,000.00"])
+      let salary: {
+        from: number | null;
+        to: number | null;
+        currency: string | null;
+        period: string | null;
+      } | null = null;
+      if (item.salaryInfo && item.salaryInfo.length > 0) {
+        const salaryValues = item.salaryInfo
+          .map((s) => {
+            // Extract numeric value and currency from strings like "$105,910.00"
+            const match = s.match(/^([$€£¥]?)([\d,]+\.?\d*)/);
+            if (match) {
+              const currency = match[1] || 'USD';
+              const value = parseFloat(match[2].replace(/,/g, ''));
+              return { currency, value };
+            }
+            return null;
+          })
+          .filter((v): v is { currency: string; value: number } => v !== null);
+
+        if (salaryValues.length > 0) {
+          const from = salaryValues[0]?.value || null;
+          const to = salaryValues.length > 1 ? salaryValues[1]?.value : from;
+          const currency = salaryValues[0]?.currency || null;
+          salary = {
+            from,
+            to,
+            currency,
+            period: null, // Period not available in salaryInfo
+          };
+        }
+      }
+
+      return {
+        id: item.id || null,
+        title: item.title || null,
+        company:
+          item.companyName || item.companyLinkedinUrl || item.companyLogo
+            ? {
+                name: item.companyName || null,
+                url: item.companyLinkedinUrl || null,
+                logo: item.companyLogo || null,
+              }
+            : null,
+        location: item.location || null,
+        description: item.descriptionText || item.descriptionHtml || null,
+        employmentType: item.employmentType || null,
+        seniorityLevel: item.seniorityLevel || null,
+        postedAt: item.postedAt || null,
+        url: item.link || null,
+        applyUrl: item.applyUrl || null,
+        salary,
+        skills: null, // Skills not available in actual actor output
+      };
+    });
   }
 }

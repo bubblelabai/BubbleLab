@@ -924,6 +924,91 @@ function findMethodCallsInNode(
 }
 
 /**
+ * Lint rule that prevents usage of 'any' type
+ * Using 'any' bypasses TypeScript's type checking and should be avoided
+ */
+export const noAnyTypeRule: LintRule = {
+  name: 'no-any-type',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    const visit = (node: ts.Node) => {
+      // Check for 'any' keyword in type nodes
+      if (node.kind === ts.SyntaxKind.AnyKeyword) {
+        const { line, character } =
+          context.sourceFile.getLineAndCharacterOfPosition(
+            node.getStart(context.sourceFile)
+          );
+        errors.push({
+          line: line + 1,
+          column: character + 1,
+          message:
+            "Type 'any' is not allowed. Use a specific type, 'unknown', or a generic type parameter instead.",
+        });
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
+ * Lint rule that prevents multiple BubbleFlow classes in a single file
+ * Only one class extending BubbleFlow is allowed per file for proper runtime instrumentation
+ */
+export const singleBubbleFlowClassRule: LintRule = {
+  name: 'single-bubbleflow-class',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+    const bubbleFlowClasses: { name: string; line: number }[] = [];
+
+    // Traverse the entire source file to find all BubbleFlow class declarations
+    const visit = (node: ts.Node) => {
+      if (ts.isClassDeclaration(node)) {
+        if (node.heritageClauses) {
+          for (const clause of node.heritageClauses) {
+            if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+              for (const type of clause.types) {
+                if (ts.isIdentifier(type.expression)) {
+                  if (type.expression.text === 'BubbleFlow') {
+                    const { line } =
+                      context.sourceFile.getLineAndCharacterOfPosition(
+                        node.getStart(context.sourceFile)
+                      );
+                    const className = node.name?.text || 'Anonymous';
+                    bubbleFlowClasses.push({ name: className, line: line + 1 });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+
+    // If more than one BubbleFlow class found, report errors for all except the first
+    if (bubbleFlowClasses.length > 1) {
+      for (let i = 1; i < bubbleFlowClasses.length; i++) {
+        const cls = bubbleFlowClasses[i];
+        errors.push({
+          line: cls.line,
+          message: `Multiple BubbleFlow classes are not allowed. Found '${cls.name}' but '${bubbleFlowClasses[0].name}' already extends BubbleFlow. Remove the additional class or combine the flows into a single class.`,
+        });
+      }
+    }
+
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -934,3 +1019,5 @@ defaultLintRuleRegistry.register(noMethodInvocationInComplexExpressionRule);
 defaultLintRuleRegistry.register(noProcessEnvRule);
 defaultLintRuleRegistry.register(noMethodCallingMethodRule);
 defaultLintRuleRegistry.register(noTryCatchInHandleRule);
+defaultLintRuleRegistry.register(noAnyTypeRule);
+defaultLintRuleRegistry.register(singleBubbleFlowClassRule);

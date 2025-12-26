@@ -32,12 +32,29 @@ import {
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
+/**
+ * Information about a custom tool's func property for tracking bubble containment
+ */
+interface CustomToolFuncInfo {
+  toolName: string;
+  description?: string;
+  isAsync: boolean;
+  startLine: number;
+  endLine: number;
+  startCol: number;
+  endCol: number;
+  /** The ai-agent bubble's variableId that contains this custom tool */
+  parentBubbleVariableId: number;
+}
+
 export class BubbleParser {
   private bubbleScript: string;
   private cachedAST: TSESTree.Program | null = null;
   private methodInvocationOrdinalMap: Map<string, number> = new Map();
   private invocationBubbleCloneCache: Map<string, ParsedBubbleWithInfo> =
     new Map();
+  /** Custom tool func ranges for marking bubbles inside custom tools */
+  private customToolFuncs: CustomToolFuncInfo[] = [];
 
   constructor(bubbleScript: string) {
     this.bubbleScript = bubbleScript;
@@ -104,6 +121,9 @@ export class BubbleParser {
       }
     }
 
+    // Clear custom tool func tracking from previous runs
+    this.customToolFuncs = [];
+
     // Visit AST nodes to find bubble instantiations
     this.visitNode(ast, nodes, classNameToInfo, scopeManager);
 
@@ -112,6 +132,12 @@ export class BubbleParser {
         `Failed to trace bubble dependencies: ${errors.join(', ')}`
       );
     }
+
+    // Find custom tools in ai-agent bubbles and populate customToolFuncs
+    this.findCustomToolsInAIAgentBubbles(ast, nodes, classNameToInfo);
+
+    // Mark bubbles that are inside custom tool funcs
+    this.markBubblesInsideCustomTools(nodes);
 
     // Build a set of used variable IDs to ensure uniqueness for any synthetic IDs we allocate
     const usedVariableIds = new Set<number>();
@@ -162,6 +188,68 @@ export class BubbleParser {
         true, // suppress adding self segment for root
         bubble.variableName
       );
+
+      // Add functionCallChildren for ai-agent bubbles with custom tools
+      if (
+        bubble.bubbleName === 'ai-agent' &&
+        bubble.dependencyGraph &&
+        this.customToolFuncs.length > 0
+      ) {
+        const toolsForThisBubble = this.customToolFuncs.filter(
+          (t) => t.parentBubbleVariableId === bubble.variableId
+        );
+
+        if (toolsForThisBubble.length > 0) {
+          const functionCallChildren: FunctionCallWorkflowNode[] = [];
+
+          for (const toolFunc of toolsForThisBubble) {
+            // Find all bubbles that are inside this custom tool func
+            const childBubbleNodes: WorkflowNode[] = [];
+            for (const [, bubbleInfo] of Object.entries(nodes)) {
+              if (
+                bubbleInfo.containingCustomToolId ===
+                `${toolFunc.parentBubbleVariableId}.${toolFunc.toolName}`
+              ) {
+                childBubbleNodes.push({
+                  type: 'bubble',
+                  variableId: bubbleInfo.variableId,
+                });
+              }
+            }
+
+            // Create FunctionCallWorkflowNode for this custom tool
+            const funcCallNode: FunctionCallWorkflowNode = {
+              type: 'function_call',
+              functionName: toolFunc.toolName,
+              description: toolFunc.description,
+              isMethodCall: false,
+              code: `customTool:${toolFunc.toolName}`,
+              variableId: hashToVariableId(
+                `${bubble.variableId}.customTool.${toolFunc.toolName}`
+              ),
+              location: {
+                startLine: toolFunc.startLine,
+                startCol: toolFunc.startCol,
+                endLine: toolFunc.endLine,
+                endCol: toolFunc.endCol,
+              },
+              methodDefinition: {
+                location: {
+                  startLine: toolFunc.startLine,
+                  endLine: toolFunc.endLine,
+                },
+                isAsync: toolFunc.isAsync,
+                parameters: ['input'], // Custom tools always have 'input' parameter
+              },
+              children: childBubbleNodes,
+            };
+
+            functionCallChildren.push(funcCallNode);
+          }
+
+          bubble.dependencyGraph.functionCallChildren = functionCallChildren;
+        }
+      }
     }
 
     // Store AST for method definition lookup
@@ -800,10 +888,14 @@ export class BubbleParser {
         ? this.tsTypeToJsonSchema(m.typeAnnotation.typeAnnotation, ast) || {}
         : {};
 
-      // Extract comment/description for this property
-      const description = this.extractCommentForNode(m);
-      if (description) {
-        propSchema.description = description;
+      // Extract comment/description and JSDoc tags for this property
+      const jsDocInfo = this.extractJSDocForNode(m);
+      if (jsDocInfo.description) {
+        propSchema.description = jsDocInfo.description;
+      }
+      // Add canBeFile flag to schema if explicitly specified in JSDoc
+      if (jsDocInfo.canBeFile !== undefined) {
+        propSchema.canBeFile = jsDocInfo.canBeFile;
       }
 
       properties[keyName] = propSchema;
@@ -1118,7 +1210,8 @@ export class BubbleParser {
               | 'assignment'
               | 'return'
               | 'simple'
-              | 'condition_expression' = 'simple';
+              | 'condition_expression'
+              | 'nested_call_expression' = 'simple';
             let variableName: string | undefined;
             let variableType: 'const' | 'let' | 'var' | undefined;
             let destructuringPattern: string | undefined;
@@ -1203,6 +1296,41 @@ export class BubbleParser {
 
               if (parentIsPromiseAllElement) {
                 invocationContext = 'promise_all_element';
+              }
+
+              // Check if we're nested inside another CallExpression (e.g., arr.push(this.method()))
+              // This needs special handling similar to condition_expression - extract call before
+              // the statement and replace the call text inline
+              if (
+                currentParent.type === 'CallExpression' &&
+                currentParent !== node
+              ) {
+                // This is a nested call - the tracked method is an argument to another call
+                // Find the containing ExpressionStatement line
+                let stmtParent: TSESTree.Node | undefined = currentParent;
+                while (
+                  stmtParent &&
+                  stmtParent.type !== 'ExpressionStatement'
+                ) {
+                  stmtParent = parentMap.get(stmtParent);
+                }
+                if (stmtParent?.type === 'ExpressionStatement') {
+                  statementType = 'nested_call_expression';
+                  containingStatementLine = stmtParent.loc?.start.line;
+                  // Capture the call range - include await if present
+                  const callNode = hasAwait ? parent : node;
+                  if (callNode?.range) {
+                    callRange = {
+                      start: callNode.range[0],
+                      end: callNode.range[1],
+                    };
+                    callText = this.bubbleScript.substring(
+                      callRange.start,
+                      callRange.end
+                    );
+                  }
+                  break;
+                }
               }
 
               if (currentParent.type === 'VariableDeclarator') {
@@ -1374,7 +1502,7 @@ export class BubbleParser {
     nodes: Record<number, ParsedBubbleWithInfo>,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >,
     scopeManager: ScopeManager
   ): void {
@@ -1687,7 +1815,7 @@ export class BubbleParser {
     expr: TSESTree.Expression,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >
   ): ParsedBubbleWithInfo | null {
     // await new X(...)
@@ -1735,7 +1863,7 @@ export class BubbleParser {
     newExpr: TSESTree.NewExpression,
     classNameLookup: Map<
       string,
-      { bubbleName: string; className: string; nodeType: BubbleNodeType }
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
     >
   ): ParsedBubbleWithInfo | null {
     if (!newExpr.callee || newExpr.callee.type !== 'Identifier') return null;
@@ -1936,6 +2064,194 @@ export class BubbleParser {
   }
 
   /**
+   * Find custom tools in ai-agent bubbles and populate customToolFuncs.
+   * This scans the AST for ai-agent instantiations and extracts custom tool func locations.
+   */
+  private findCustomToolsInAIAgentBubbles(
+    ast: TSESTree.Program,
+    nodes: Record<number, ParsedBubbleWithInfo>,
+    classNameLookup: Map<
+      string,
+      { bubbleName: BubbleName; className: string; nodeType: BubbleNodeType }
+    >
+  ): void {
+    // Get all ai-agent bubbles from nodes
+    const aiAgentBubbles = Object.values(nodes).filter(
+      (n) => n.bubbleName === 'ai-agent'
+    );
+
+    if (aiAgentBubbles.length === 0) return;
+
+    // Helper to find NewExpression nodes in the AST
+    const findNewExpressions = (
+      node: TSESTree.Node,
+      results: TSESTree.NewExpression[]
+    ): void => {
+      if (node.type === 'NewExpression') {
+        results.push(node);
+      }
+      for (const key of Object.keys(node)) {
+        if (key === 'parent' || key === 'range' || key === 'loc') continue;
+        const child = (node as unknown as Record<string, unknown>)[key];
+        if (Array.isArray(child)) {
+          for (const item of child) {
+            if (item && typeof item === 'object' && 'type' in item) {
+              findNewExpressions(item as TSESTree.Node, results);
+            }
+          }
+        } else if (child && typeof child === 'object' && 'type' in child) {
+          findNewExpressions(child as TSESTree.Node, results);
+        }
+      }
+    };
+
+    const allNewExprs: TSESTree.NewExpression[] = [];
+    findNewExpressions(ast, allNewExprs);
+
+    // Find NewExpressions that are AIAgentBubble instantiations
+    for (const newExpr of allNewExprs) {
+      if (
+        newExpr.callee.type !== 'Identifier' ||
+        !classNameLookup.has(newExpr.callee.name)
+      ) {
+        continue;
+      }
+
+      const info = classNameLookup.get(newExpr.callee.name);
+      if (!info || info.bubbleName !== 'ai-agent') continue;
+
+      // Find the corresponding parsed bubble by location
+      const matchingBubble = aiAgentBubbles.find(
+        (b) =>
+          b.location.startLine === (newExpr.loc?.start.line ?? 0) &&
+          b.location.startCol === (newExpr.loc?.start.column ?? 0)
+      );
+
+      if (!matchingBubble) continue;
+
+      // Find the customTools property in the first argument
+      if (
+        !newExpr.arguments ||
+        newExpr.arguments.length === 0 ||
+        newExpr.arguments[0].type !== 'ObjectExpression'
+      ) {
+        continue;
+      }
+
+      const firstArg = newExpr.arguments[0] as TSESTree.ObjectExpression;
+      const customToolsProp = firstArg.properties.find(
+        (p): p is TSESTree.Property =>
+          p.type === 'Property' &&
+          p.key.type === 'Identifier' &&
+          p.key.name === 'customTools'
+      );
+
+      if (
+        !customToolsProp ||
+        customToolsProp.value.type !== 'ArrayExpression'
+      ) {
+        continue;
+      }
+
+      const customToolsArray =
+        customToolsProp.value as TSESTree.ArrayExpression;
+
+      // Process each custom tool object
+      for (const element of customToolsArray.elements) {
+        if (!element || element.type !== 'ObjectExpression') continue;
+
+        const toolObj = element as TSESTree.ObjectExpression;
+
+        // Find name property
+        const nameProp = toolObj.properties.find(
+          (p): p is TSESTree.Property =>
+            p.type === 'Property' &&
+            p.key.type === 'Identifier' &&
+            p.key.name === 'name'
+        );
+        const toolName =
+          nameProp?.value.type === 'Literal' &&
+          typeof nameProp.value.value === 'string'
+            ? nameProp.value.value
+            : undefined;
+
+        if (!toolName) continue;
+
+        // Find description property
+        const descProp = toolObj.properties.find(
+          (p): p is TSESTree.Property =>
+            p.type === 'Property' &&
+            p.key.type === 'Identifier' &&
+            p.key.name === 'description'
+        );
+        const description =
+          descProp?.value.type === 'Literal' &&
+          typeof descProp.value.value === 'string'
+            ? descProp.value.value
+            : undefined;
+
+        // Find func property
+        const funcProp = toolObj.properties.find(
+          (p): p is TSESTree.Property =>
+            p.type === 'Property' &&
+            p.key.type === 'Identifier' &&
+            p.key.name === 'func'
+        );
+
+        if (!funcProp) continue;
+
+        const funcValue = funcProp.value;
+        if (
+          funcValue.type !== 'ArrowFunctionExpression' &&
+          funcValue.type !== 'FunctionExpression'
+        ) {
+          continue;
+        }
+
+        const funcExpr = funcValue as
+          | TSESTree.ArrowFunctionExpression
+          | TSESTree.FunctionExpression;
+
+        // Store the custom tool func info
+        this.customToolFuncs.push({
+          toolName,
+          description,
+          isAsync: funcExpr.async,
+          startLine: funcExpr.loc?.start.line ?? 0,
+          endLine: funcExpr.loc?.end.line ?? 0,
+          startCol: funcExpr.loc?.start.column ?? 0,
+          endCol: funcExpr.loc?.end.column ?? 0,
+          parentBubbleVariableId: matchingBubble.variableId,
+        });
+      }
+    }
+  }
+
+  /**
+   * Mark bubbles that are inside custom tool funcs with isInsideCustomTool flag.
+   */
+  private markBubblesInsideCustomTools(
+    nodes: Record<number, ParsedBubbleWithInfo>
+  ): void {
+    for (const bubble of Object.values(nodes)) {
+      // Skip ai-agent bubbles themselves
+      if (bubble.bubbleName === 'ai-agent') continue;
+
+      // Check if this bubble's location falls inside any custom tool func
+      for (const toolFunc of this.customToolFuncs) {
+        if (
+          bubble.location.startLine >= toolFunc.startLine &&
+          bubble.location.endLine <= toolFunc.endLine
+        ) {
+          bubble.isInsideCustomTool = true;
+          bubble.containingCustomToolId = `${toolFunc.parentBubbleVariableId}.${toolFunc.toolName}`;
+          break;
+        }
+      }
+    }
+  }
+
+  /**
    * Extract comment/description for a node by looking at preceding comments
    **/
   private extractCommentForNode(node: TSESTree.Node): string | undefined {
@@ -2034,6 +2350,104 @@ export class BubbleParser {
     }
 
     return cleaned || undefined;
+  }
+
+  /**
+   * Extract JSDoc info including description and @canBeFile tag from a node's preceding comments.
+   * The @canBeFile tag controls whether file upload is enabled for string fields in the UI.
+   */
+  private extractJSDocForNode(node: TSESTree.Node): {
+    description?: string;
+    canBeFile?: boolean;
+  } {
+    // Get the line number where this node starts
+    const nodeLine = node.loc?.start.line;
+    if (!nodeLine) return {};
+
+    // Split the script into lines to find comments
+    const lines = this.bubbleScript.split('\n');
+
+    // Look backwards from the node line to find comments
+    const commentLines: string[] = [];
+    let currentLine = nodeLine - 1;
+    let isBlockComment = false;
+
+    // Scan backwards to collect comment lines
+    while (currentLine > 0) {
+      const line = lines[currentLine - 1]?.trim();
+
+      if (!line) {
+        if (commentLines.length > 0) break;
+        currentLine--;
+        continue;
+      }
+
+      if (line.startsWith('//')) {
+        commentLines.unshift(line);
+        currentLine--;
+        continue;
+      }
+
+      if (
+        line.startsWith('*') ||
+        line.startsWith('/**') ||
+        line.startsWith('/*')
+      ) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        continue;
+      }
+
+      if (line.endsWith('*/')) {
+        commentLines.unshift(line);
+        isBlockComment = true;
+        currentLine--;
+        continue;
+      }
+
+      if (commentLines.length > 0) {
+        break;
+      }
+
+      break;
+    }
+
+    if (commentLines.length === 0) return {};
+
+    const fullComment = commentLines.join('\n');
+    let canBeFile: boolean | undefined;
+
+    // Parse @canBeFile tag from the raw comment
+    const canBeFileMatch = fullComment.match(/@canBeFile\s+(true|false)/i);
+    if (canBeFileMatch) {
+      canBeFile = canBeFileMatch[1].toLowerCase() === 'true';
+    }
+
+    let description: string | undefined;
+
+    if (isBlockComment) {
+      description = fullComment
+        .replace(/^\/\*\*?\s*/, '')
+        .replace(/\s*\*\/\s*$/, '')
+        .split('\n')
+        .map((line) => line.replace(/^\s*\*\s?/, '').trim())
+        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .join(' ')
+        .trim();
+    } else {
+      description = fullComment
+        .split('\n')
+        .map((line) => line.replace(/^\/\/\s?/, '').trim())
+        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .join(' ')
+        .trim();
+    }
+
+    return {
+      description: description || undefined,
+      canBeFile,
+    };
   }
 
   /**
@@ -3681,14 +4095,19 @@ export class BubbleParser {
     if (!sourceBubble) {
       return originalId;
     }
-    const clonedId = this.cloneBubbleForInvocation(sourceBubble, callSiteKey);
+    const clonedId = this.cloneBubbleForInvocation(
+      sourceBubble,
+      callSiteKey,
+      bubbleSourceMap
+    );
     localCloneMap.set(originalId, clonedId);
     return clonedId;
   }
 
   private cloneBubbleForInvocation(
     bubble: ParsedBubbleWithInfo,
-    callSiteKey: string
+    callSiteKey: string,
+    bubbleSourceMap: Map<number, ParsedBubbleWithInfo>
   ): number {
     const cacheKey = `${bubble.variableId}:${callSiteKey}`;
     const existing = this.invocationBubbleCloneCache.get(cacheKey);
@@ -3709,6 +4128,75 @@ export class BubbleParser {
           )
         : undefined,
     };
+
+    /**
+     * Also clone any bubbles that are referenced inside this bubble's
+     * dependencyGraph.functionCallChildren (e.g. bubbles instantiated
+     * inside AI agent customTools).
+     *
+     * This ensures that nested bubbles inside custom tools participate
+     * in per-invocation cloning just like top-level workflow bubbles:
+     * - They get their own cloned ParsedBubbleWithInfo entry
+     * - clonedFromVariableId points back to the original id
+     * - invocationCallSiteKey is set
+     * - Their dependencyGraph is cloned with per-invocation uniqueId/variableId
+     *
+     * We then rewrite the functionCallChildren children variableIds in the
+     * cloned dependencyGraph to point at the cloned bubble ids so that
+     * __bubbleInvocationDependencyGraphs[callSiteKey][originalId] contains
+     * a fully self-consistent graph for this invocation.
+     */
+    if (
+      bubble.dependencyGraph &&
+      bubble.dependencyGraph.functionCallChildren &&
+      Array.isArray(bubble.dependencyGraph.functionCallChildren)
+    ) {
+      const clonedDepGraph = clonedBubble.dependencyGraph;
+
+      if (
+        clonedDepGraph &&
+        Array.isArray(clonedDepGraph.functionCallChildren)
+      ) {
+        clonedDepGraph.functionCallChildren =
+          clonedDepGraph.functionCallChildren.map((funcCallNode) => {
+            if (!Array.isArray(funcCallNode.children)) {
+              return funcCallNode;
+            }
+
+            const clonedChildren = funcCallNode.children.map((child) => {
+              if (
+                !child ||
+                child.type !== 'bubble' ||
+                typeof child.variableId !== 'number'
+              ) {
+                return child;
+              }
+
+              const originalChildId = child.variableId;
+              const sourceChild = bubbleSourceMap.get(originalChildId);
+              if (!sourceChild) {
+                return child;
+              }
+
+              const clonedChildId = this.cloneBubbleForInvocation(
+                sourceChild,
+                callSiteKey,
+                bubbleSourceMap
+              );
+
+              return {
+                ...child,
+                variableId: clonedChildId,
+              };
+            });
+
+            return {
+              ...funcCallNode,
+              children: clonedChildren,
+            };
+          });
+      }
+    }
 
     this.invocationBubbleCloneCache.set(cacheKey, clonedBubble);
     return clonedBubble.variableId;

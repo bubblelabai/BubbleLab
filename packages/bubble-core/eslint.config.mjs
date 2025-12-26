@@ -35,6 +35,12 @@ export default [
     },
   },
   {
+    files: ['**/*.integration.flow.ts'],
+    rules: {
+      'bubble-core/require-instance-id': 'off',
+    },
+  },
+  {
     ignores: [
       'dist/**',
       'node_modules/**',

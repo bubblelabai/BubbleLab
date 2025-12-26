@@ -57,6 +57,17 @@ export const fixtures = {
   'linkedin-gen-step-flow': '',
   'for-and-promises-flow': '',
   'github-pr-sequential': '',
+  'nested-condition-hanlde': '',
+  'mapping-function-call': '',
+  'multiple-bubble-class-flow': '',
+  'bracket-less-control-flow': '',
+  'agent-with-custom-tool-flow': '',
+  'calendar-booking-flow': '',
+  'malicious-process-env': '',
+  'malicious-process-env-bracket': '',
+  'malicious-process-env-standalone': '',
+  'malicious-process-bracket-env': '',
+  'legitimate-process-env-string': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
