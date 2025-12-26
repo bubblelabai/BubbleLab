@@ -46,6 +46,8 @@ type ParsedBubble = ParsedBubbleWithInfo;
 interface FlowVisualizerProps {
   flowId: number;
   onValidate?: () => void;
+  bubbleToFocus?: string | null;
+  onFocusComplete?: () => void;
 }
 
 const nodeTypes = {
@@ -91,7 +93,12 @@ function generateDependencyNodeId(
 }
 
 // Inner component that has access to ReactFlow instance
-function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
+function FlowVisualizerInner({
+  flowId,
+  onValidate,
+  bubbleToFocus,
+  onFocusComplete,
+}: FlowVisualizerProps) {
   const { setCenter, getNode } = useReactFlow();
 
   // Get all data from global stores
@@ -2123,6 +2130,58 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       zoom,
     });
   }, [isExecuting, runningBubbles, bubbleEntries, getNode, setCenter]);
+
+  // Navigate to bubble with missing credential
+  useEffect(() => {
+    if (!bubbleToFocus) return;
+
+    const node = getNode(bubbleToFocus);
+    if (!node) {
+      console.warn(
+        `[FlowVisualizer] Cannot find node with ID: ${bubbleToFocus}`
+      );
+      onFocusComplete?.();
+      return;
+    }
+
+    // Calculate absolute position (account for parent if node is inside a step container)
+    let absoluteX = node.position.x;
+    let absoluteY = node.position.y;
+
+    if (node.parentId) {
+      // Node is inside a step container - get parent and calculate absolute position
+      const parentNode = getNode(node.parentId);
+      if (parentNode) {
+        absoluteX = parentNode.position.x + node.position.x;
+        absoluteY = parentNode.position.y + node.position.y;
+      }
+    }
+
+    // Navigate to the bubble with animation
+    const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
+    const viewportWidth = window.innerWidth;
+    const horizontalShift =
+      (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) / zoom;
+
+    setCenter(absoluteX + horizontalShift, absoluteY, {
+      duration: FLOW_LAYOUT.VIEWPORT.CENTER_DURATION,
+      zoom,
+    });
+
+    // Highlight the bubble temporarily
+    const executionStore = getExecutionStore(currentFlow?.id || flowId);
+    executionStore.highlightBubble(bubbleToFocus);
+
+    // Clear highlight after 3 seconds
+    const highlightTimer = setTimeout(() => {
+      executionStore.highlightBubble(null);
+    }, 3000);
+
+    // Clear the focus state
+    onFocusComplete?.();
+
+    return () => clearTimeout(highlightTimer);
+  }, [bubbleToFocus, getNode, setCenter, onFocusComplete, currentFlow, flowId]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {

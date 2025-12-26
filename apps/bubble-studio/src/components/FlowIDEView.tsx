@@ -66,7 +66,11 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
 
   // ============= React Query Hooks =============
   const { data: currentFlow, error, refetch } = useBubbleFlow(flowId);
-  const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
+  const { runFlow, isRunning, canExecute } = useRunExecution(flowId, {
+    onFocusBubble: (bubbleVariableId) => {
+      setBubbleToFocus(bubbleVariableId);
+    },
+  });
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
     limit: 10,
@@ -95,6 +99,9 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   // ============= Mobile Menu State =============
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // ============= Bubble Focus State =============
+  const [bubbleToFocus, setBubbleToFocus] = useState<string | null>(null);
 
   // Detect desktop view
   useEffect(() => {
@@ -657,6 +664,8 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                               {flowId ? (
                                 <FlowVisualizer
                                   flowId={flowId}
+                                  bubbleToFocus={bubbleToFocus}
+                                  onFocusComplete={() => setBubbleToFocus(null)}
                                   onValidate={() =>
                                     validateCodeMutation.mutateAsync({
                                       code: editor.getCode(),

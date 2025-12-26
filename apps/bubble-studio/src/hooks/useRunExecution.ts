@@ -46,6 +46,7 @@ interface UseRunExecutionOptions {
   onBubbleExecution?: (event: StreamingLogEvent) => void;
   onBubbleExecutionComplete?: (event: StreamingLogEvent) => void;
   onBubbleParametersUpdate?: () => void;
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 /**
@@ -365,7 +366,7 @@ export function useRunExecution(
   );
 
   const runFlow = useCallback(
-    async (options: RunExecutionOptions = {}) => {
+    async (runFlowOptions: RunExecutionOptions = {}) => {
       if (!flowId || !currentFlow) {
         console.error('Cannot execute: No flow ID or flow data');
         return;
@@ -375,7 +376,7 @@ export function useRunExecution(
         validateCode = true,
         updateCredentials = true,
         inputs = {},
-      } = options;
+      } = runFlowOptions;
 
       // Start execution
       getExecutionStore(flowId).startExecution();
@@ -433,6 +434,12 @@ export function useRunExecution(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
           );
           getExecutionStore(flowId).stopExecution();
+
+          // Navigate to the bubble with missing credential
+          if (credentialValidation.bubbleVariableId && options.onFocusBubble) {
+            options.onFocusBubble(credentialValidation.bubbleVariableId);
+          }
+
           return;
         }
 
@@ -484,6 +491,7 @@ export function useRunExecution(
       queryClient,
       refetchSubscriptionStatus,
       editor,
+      options,
     ]
   );
 
@@ -526,10 +534,11 @@ export function useRunExecution(
 
   const validateCredentials = (currentFlow: BubbleFlowDetailsResponse) => {
     const reasons: string[] = [];
+    let bubbleVariableId: string | null = null;
 
     if (!currentFlow || !flowId) {
       reasons.push('No flow selected');
-      return { isValid: false, reasons };
+      return { isValid: false, reasons, bubbleVariableId };
     }
 
     const required = currentFlow.requiredCredentials || {};
@@ -547,11 +556,29 @@ export function useRunExecution(
 
         if (selectedId === undefined || selectedId === null) {
           reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
+
+          // Find the bubble with missing credential by matching bubbleName
+          if (!bubbleVariableId && currentFlow.bubbleParameters) {
+            const bubbleEntry = Object.entries(
+              currentFlow.bubbleParameters
+            ).find(([, bubbleData]) => {
+              const bubble = bubbleData as { bubbleName?: string };
+              return bubble.bubbleName === bubbleKey;
+            });
+
+            if (bubbleEntry) {
+              const [key, bubbleData] = bubbleEntry;
+              const bubble = bubbleData as { variableId?: number };
+              bubbleVariableId = bubble.variableId
+                ? String(bubble.variableId)
+                : String(key);
+            }
+          }
         }
       }
     }
 
-    return { isValid: reasons.length === 0, reasons };
+    return { isValid: reasons.length === 0, reasons, bubbleVariableId };
   };
 
   const canExecute = () => {
