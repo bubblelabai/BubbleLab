@@ -48,6 +48,7 @@ interface FlowVisualizerProps {
   onValidate?: () => void;
   bubbleToFocus?: string | null;
   onFocusComplete?: () => void;
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 const nodeTypes = {
@@ -98,8 +99,9 @@ function FlowVisualizerInner({
   onValidate,
   bubbleToFocus,
   onFocusComplete,
+  onFocusBubble,
 }: FlowVisualizerProps) {
-  const { setCenter, getNode } = useReactFlow();
+  const { setCenter, getNode, getNodes } = useReactFlow();
 
   // Get all data from global stores
   // Poll every 10 seconds when flow is in pending/generating state (code is empty and no error)
@@ -948,6 +950,7 @@ function FlowVisualizerInner({
             cronSchedule: currentFlow?.cron || '0 0 * * *',
             isActive: currentFlow?.cronActive || false,
             inputSchema: currentFlow?.inputSchema || {},
+            onFocusBubble: onFocusBubble,
           },
         };
         nodes.push(cronScheduleNode);
@@ -968,6 +971,7 @@ function FlowVisualizerInner({
             flowId: currentFlow?.id || flowId,
             flowName: flowName,
             schemaFields: parsedFields,
+            onFocusBubble: onFocusBubble,
           },
         };
         nodes.push(inputSchemaNode);
@@ -2131,57 +2135,176 @@ function FlowVisualizerInner({
     });
   }, [isExecuting, runningBubbles, bubbleEntries, getNode, setCenter]);
 
-  // Navigate to bubble with missing credential
+  // Navigate to bubble with missing credential (with auto-expand for collapsed/hidden bubbles)
   useEffect(() => {
-    if (!bubbleToFocus) return;
+    console.log(
+      '🎬 [FlowVisualizer] useEffect triggered! bubbleToFocus:',
+      bubbleToFocus
+    );
 
-    const node = getNode(bubbleToFocus);
-    if (!node) {
-      console.warn(
-        `[FlowVisualizer] Cannot find node with ID: ${bubbleToFocus}`
+    if (!bubbleToFocus) {
+      console.log(
+        '⏭️ [FlowVisualizer] bubbleToFocus is null, skipping navigation'
       );
-      onFocusComplete?.();
       return;
     }
 
-    // Calculate absolute position (account for parent if node is inside a step container)
-    let absoluteX = node.position.x;
-    let absoluteY = node.position.y;
+    console.log('[FlowVisualizer] 🔍 Request to focus bubble:', bubbleToFocus);
 
-    if (node.parentId) {
-      // Node is inside a step container - get parent and calculate absolute position
-      const parentNode = getNode(node.parentId);
-      if (parentNode) {
-        absoluteX = parentNode.position.x + node.position.x;
-        absoluteY = parentNode.position.y + node.position.y;
+    let attempts = 0;
+    const maxAttempts = 5; // Ty repeatedly for ~500ms
+    let highlightTimer: NodeJS.Timeout | null = null;
+    let retryTimer: NodeJS.Timeout | null = null;
+
+    const tryNavigate = () => {
+      console.log(
+        `🔄 [FlowVisualizer] Attempt ${attempts + 1}/${maxAttempts} to find bubble`
+      );
+
+      // 1. Try to find the node directly by ID
+      let node = getNode(bubbleToFocus);
+      console.log(
+        '🔍 [FlowVisualizer] Direct getNode result:',
+        node ? 'Found' : 'Not found'
+      );
+
+      // 2. If not found by direct ID, search by variable ID (robust fallback)
+      if (!node) {
+        const nodes = getNodes();
+        node = nodes.find((n) => {
+          const data = n.data as any; // Type assertion to access bubble data
+          // Check variable ID (handle number vs string mismatch)
+          if (
+            data?.bubble?.variableId !== undefined &&
+            String(data.bubble.variableId) === String(bubbleToFocus)
+          ) {
+            return true;
+          }
+          // Fallback to checking bubbleKey
+          if (
+            data?.bubbleKey !== undefined &&
+            String(data.bubbleKey) === String(bubbleToFocus)
+          ) {
+            return true;
+          }
+          return false;
+        });
       }
-    }
 
-    // Navigate to the bubble with animation
-    const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
-    const viewportWidth = window.innerWidth;
-    const horizontalShift =
-      (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) / zoom;
+      if (node) {
+        // Found it! Proceed with navigation
 
-    setCenter(absoluteX + horizontalShift, absoluteY, {
-      duration: FLOW_LAYOUT.VIEWPORT.CENTER_DURATION,
-      zoom,
-    });
+        // Calculate absolute position (account for parent if node is inside a step container)
+        let absoluteX = node.position.x;
+        let absoluteY = node.position.y;
 
-    // Highlight the bubble temporarily
-    const executionStore = getExecutionStore(currentFlow?.id || flowId);
-    executionStore.highlightBubble(bubbleToFocus);
+        if (node.parentId) {
+          const parentNode = getNode(node.parentId);
+          if (parentNode) {
+            absoluteX = parentNode.position.x + node.position.x;
+            absoluteY = parentNode.position.y + node.position.y;
+          }
+        }
 
-    // Clear highlight after 3 seconds
-    const highlightTimer = setTimeout(() => {
-      executionStore.highlightBubble(null);
-    }, 3000);
+        // Navigate to the bubble
+        const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
+        const viewportWidth = window.innerWidth;
+        const horizontalShift =
+          (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) /
+          zoom;
 
-    // Clear the focus state
-    onFocusComplete?.();
+        setCenter(absoluteX + horizontalShift, absoluteY, {
+          duration: FLOW_LAYOUT.VIEWPORT.CENTER_DURATION,
+          zoom,
+        });
 
-    return () => clearTimeout(highlightTimer);
-  }, [bubbleToFocus, getNode, setCenter, onFocusComplete, currentFlow, flowId]);
+        // Highlight the bubble
+        const executionStore = getExecutionStore(currentFlow?.id || flowId);
+        executionStore.highlightBubble(bubbleToFocus);
+
+        // Clear highlight after 3 seconds
+        if (highlightTimer) clearTimeout(highlightTimer);
+        highlightTimer = setTimeout(() => {
+          executionStore.highlightBubble(null);
+        }, 3000);
+
+        // Success - clear focus state
+        onFocusComplete?.();
+        return;
+      }
+
+      // 3. Node not found - it might be inside a collapsed group
+      // Only do deep search on the first attempt to avoid repeated state updates
+      if (attempts === 0) {
+        let currentId: string | null = bubbleToFocus;
+        // Map might have it under canonical ID
+        if (dependencyCanonicalIdMap.has(currentId)) {
+          currentId = dependencyCanonicalIdMap.get(currentId)!;
+        }
+
+        // Trace up to find the root parent
+        const hierarchy: string[] = [];
+        let rootKey: string | null = null;
+        const visited = new Set<string>();
+
+        while (currentId && !visited.has(currentId)) {
+          visited.add(currentId);
+          hierarchy.push(currentId);
+          const parent = dependencyParentMap.get(currentId);
+          if (!parent) {
+            rootKey = currentId;
+            break;
+          }
+          currentId = dependencyCanonicalIdMap.get(parent) || parent;
+        }
+
+        // If we found a root, ensure it's expanded
+        if (rootKey) {
+          const executionStore = getExecutionStore(currentFlow?.id || flowId);
+          const rootIdNum = parseInt(rootKey, 10);
+
+          if (
+            !isNaN(rootIdNum) &&
+            !executionStore.expandedRootIds.includes(rootIdNum)
+          ) {
+            executionStore.setExpandedRootIds([
+              ...executionStore.expandedRootIds,
+              rootIdNum,
+            ]);
+            // Also ensure it's not suppressed
+            if (executionStore.suppressedRootIds.includes(rootIdNum)) {
+              executionStore.toggleRootExpansion(rootIdNum); // Toggle handles suppression cleanup
+            }
+          }
+        }
+      }
+
+      // 4. Retry logic
+      attempts++;
+      if (attempts < maxAttempts) {
+        retryTimer = setTimeout(tryNavigate, 100);
+      } else {
+        onFocusComplete?.();
+      }
+    };
+
+    // Start attempts
+    tryNavigate();
+
+    return () => {
+      if (highlightTimer) clearTimeout(highlightTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [
+    bubbleToFocus,
+    getNode,
+    setCenter,
+    onFocusComplete,
+    currentFlow,
+    flowId,
+    dependencyParentMap,
+    dependencyCanonicalIdMap,
+  ]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {

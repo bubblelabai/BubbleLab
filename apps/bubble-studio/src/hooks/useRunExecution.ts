@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { getExecutionStore } from '@/stores/executionStore';
@@ -62,6 +62,10 @@ export function useRunExecution(
   flowId: number | null,
   options: UseRunExecutionOptions = {}
 ): RunExecutionResult {
+  // Use ref to capture latest options without causing re-renders
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const queryClient = useQueryClient();
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
@@ -164,7 +168,7 @@ export function useRunExecution(
                   // Keep highlighting until manually deselected
                 }
               }
-              options.onBubbleExecution?.(eventData);
+              optionsRef.current.onBubbleExecution?.(eventData);
             }
 
             if (eventData.type === 'bubble_execution_complete') {
@@ -245,14 +249,14 @@ export function useRunExecution(
               eventData.bubbleParameters
             ) {
               getExecutionStore(flowId).clearHighlighting();
-              options.onBubbleParametersUpdate?.();
+              optionsRef.current.onBubbleParametersUpdate?.();
             }
 
             if (eventData.type === 'execution_complete') {
               getExecutionStore(flowId).stopExecution();
               // Switch to Results tab and scroll to bottom
               selectResultsInConsole();
-              options.onComplete?.();
+              optionsRef.current.onComplete?.();
               return true;
             }
 
@@ -260,7 +264,7 @@ export function useRunExecution(
               getExecutionStore(flowId).stopExecution();
               // Switch to Results tab and scroll to bottom
               selectResultsInConsole();
-              options.onComplete?.();
+              optionsRef.current.onComplete?.();
               return true;
             }
 
@@ -288,14 +292,18 @@ export function useRunExecution(
                 }
               }
 
-              options.onError?.(eventData.message, true, eventData.variableId);
+              optionsRef.current.onError?.(
+                eventData.message,
+                true,
+                eventData.variableId
+              );
               return true;
             }
 
             // Handle non-fatal errors
             if (eventData.type === 'error') {
               getExecutionStore(flowId).setError(eventData.message);
-              options.onError?.(eventData.message, false);
+              optionsRef.current.onError?.(eventData.message, false);
               return false;
             }
           } catch (parseError) {
@@ -346,7 +354,7 @@ export function useRunExecution(
             error instanceof Error ? error.message : 'Unknown error';
           getExecutionStore(flowId).setError(errorMessage);
           getExecutionStore(flowId).stopExecution();
-          options.onError?.(errorMessage, true);
+          optionsRef.current.onError?.(errorMessage, true);
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -357,7 +365,6 @@ export function useRunExecution(
     [
       flowId,
       currentFlow,
-      options,
       queryClient,
       setExecutionHighlight,
       selectBubbleInConsole,
@@ -435,9 +442,14 @@ export function useRunExecution(
           );
           getExecutionStore(flowId).stopExecution();
 
-          // Navigate to the bubble with missing credential
-          if (credentialValidation.bubbleVariableId && options.onFocusBubble) {
-            options.onFocusBubble(credentialValidation.bubbleVariableId);
+          // Navigate to the bubble with missing credential (using ref to get latest callback)
+          if (
+            credentialValidation.bubbleVariableId &&
+            optionsRef.current.onFocusBubble
+          ) {
+            optionsRef.current.onFocusBubble(
+              credentialValidation.bubbleVariableId
+            );
           }
 
           return;
@@ -491,7 +503,6 @@ export function useRunExecution(
       queryClient,
       refetchSubscriptionStatus,
       editor,
-      options,
     ]
   );
 
@@ -557,22 +568,9 @@ export function useRunExecution(
         if (selectedId === undefined || selectedId === null) {
           reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
 
-          // Find the bubble with missing credential by matching bubbleName
-          if (!bubbleVariableId && currentFlow.bubbleParameters) {
-            const bubbleEntry = Object.entries(
-              currentFlow.bubbleParameters
-            ).find(([, bubbleData]) => {
-              const bubble = bubbleData as { bubbleName?: string };
-              return bubble.bubbleName === bubbleKey;
-            });
-
-            if (bubbleEntry) {
-              const [key, bubbleData] = bubbleEntry;
-              const bubble = bubbleData as { variableId?: number };
-              bubbleVariableId = bubble.variableId
-                ? String(bubble.variableId)
-                : String(key);
-            }
+          // Capture the first bubble with missing credentials for navigation
+          if (!bubbleVariableId) {
+            bubbleVariableId = bubbleKey;
           }
         }
       }
