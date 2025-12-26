@@ -461,7 +461,11 @@ export function useRunExecution(
         }
 
         // 2. Validate inputs against the UPDATED schema (after code sync)
-        const inputValidation = validateInputs(flowId, flowToValidate);
+        const inputValidation = validateInputs(
+          flowId,
+          flowToValidate,
+          inputs || getExecutionStore(flowId).executionInputs
+        );
         if (!inputValidation.isValid) {
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
@@ -473,7 +477,8 @@ export function useRunExecution(
         // 3. Validate credentials
         const credentialValidation = validateCredentials(
           flowId,
-          flowToValidate
+          flowToValidate,
+          getExecutionStore(flowId).pendingCredentials
         );
         if (!credentialValidation.isValid) {
           toast.error(
@@ -553,79 +558,6 @@ export function useRunExecution(
     ]
   );
 
-  const validateInputs = (
-    currentFlow: BubbleFlowDetailsResponse | undefined
-  ) => {
-    if (!flowId) {
-      return { isValid: false, reasons: ['No flow selected'] };
-    }
-    const reasons: string[] = [];
-
-    if (!currentFlow) {
-      reasons.push('No flow selected');
-      return { isValid: false, reasons };
-    }
-    try {
-      let schema = currentFlow.inputSchema;
-      if (typeof schema === 'string') {
-        schema = JSON.parse(schema);
-      }
-      const requiredFields: string[] = Array.isArray(schema?.required)
-        ? schema.required
-        : [];
-
-      requiredFields.forEach((fieldName: string) => {
-        if (
-          getExecutionStore(flowId).executionInputs[fieldName] === undefined ||
-          getExecutionStore(flowId).executionInputs[fieldName] === ''
-        ) {
-          reasons.push(`Missing required input: ${fieldName}`);
-        }
-      });
-    } catch {
-      // If schema parsing fails, assume valid
-      return { isValid: true, reasons: [] };
-    }
-
-    return { isValid: reasons.length === 0, reasons };
-  };
-
-  const validateCredentials = (currentFlow: BubbleFlowDetailsResponse) => {
-    const reasons: string[] = [];
-    let bubbleVariableId: string | null = null;
-
-    if (!currentFlow || !flowId) {
-      reasons.push('No flow selected');
-      return { isValid: false, reasons, bubbleVariableId };
-    }
-
-    const required = currentFlow.requiredCredentials || {};
-    const requiredEntries = Object.entries(required) as Array<
-      [string, string[]]
-    >;
-
-    for (const [bubbleKey, credTypes] of requiredEntries) {
-      for (const credType of credTypes) {
-        if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
-
-        const selectedForBubble =
-          getExecutionStore(flowId).pendingCredentials[bubbleKey] || {};
-        const selectedId = selectedForBubble[credType];
-
-        if (selectedId === undefined || selectedId === null) {
-          reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
-
-          // Capture the first bubble with missing credentials for navigation
-          if (!bubbleVariableId) {
-            bubbleVariableId = bubbleKey;
-          }
-        }
-      }
-    }
-
-    return { isValid: reasons.length === 0, reasons, bubbleVariableId };
-  };
-
   const canExecute = () => {
     return validateFlow(flowId, currentFlow, {
       checkRunning: true,
@@ -634,7 +566,7 @@ export function useRunExecution(
   };
 
   const executionStatus = () => {
-    if (!currentFlow) {
+    if (!currentFlow || !flowId) {
       return {
         isFormValid: false,
         isCredentialsValid: false,
@@ -642,8 +574,16 @@ export function useRunExecution(
       };
     }
 
-    const inputValidation = validateInputs(flowId, currentFlow);
-    const credentialValidation = validateCredentials(flowId, currentFlow);
+    const inputValidation = validateInputs(
+      flowId,
+      currentFlow,
+      getExecutionStore(flowId).executionInputs
+    );
+    const credentialValidation = validateCredentials(
+      flowId,
+      currentFlow,
+      getExecutionStore(flowId).pendingCredentials
+    );
     const canExecuteResult = canExecute();
 
     return {
