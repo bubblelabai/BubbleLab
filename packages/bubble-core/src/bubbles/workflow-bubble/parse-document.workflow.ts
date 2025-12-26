@@ -631,7 +631,7 @@ export class ParseDocumentWorkflow extends WorkflowBubble<
             },
             credentials: this.params.credentials,
             tools: [],
-            maxIterations: 3,
+            maxIterations: 6,
           },
           this.context
         );

@@ -604,7 +604,7 @@ Return only the JSON array, no additional text or formatting.`,
           },
           credentials: this.params.credentials,
           tools: [], // No tools needed for this analysis
-          maxIterations: 3,
+          maxIterations: 6,
         },
         this.context
       );

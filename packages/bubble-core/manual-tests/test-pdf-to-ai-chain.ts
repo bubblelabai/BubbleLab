@@ -87,7 +87,7 @@ async function testPDFToAIChain() {
         [CredentialType.GOOGLE_GEMINI_CRED]: process.env.GOOGLE_API_KEY,
       },
       tools: [], // No additional tools needed for this analysis
-      maxIterations: 3,
+      maxIterations: 6,
     }).action();
 
     console.log('✅ AI Agent result:', result?.data?.response);
