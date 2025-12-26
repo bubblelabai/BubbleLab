@@ -66,10 +66,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
   const setInput = useExecutionStore(flowId, (s) => s.setInput);
 
   // Get runFlow function with callback
-  const { runFlow } = useRunExecution(
-    flowId,
-    onFocusBubble ? { onFocusBubble } : {}
-  );
+  const { runFlow } = useRunExecution(flowId, { onFocusBubble });
 
   // Handle input changes
   const handleInputChange = (fieldName: string, value: unknown) => {

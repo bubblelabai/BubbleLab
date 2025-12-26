@@ -112,10 +112,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const { editor, updateCronSchedule } = useEditor(flowId);
 
   // Get runFlow function with callback
-  const { runFlow } = useRunExecution(
-    flowId,
-    onFocusBubble ? { onFocusBubble } : {}
-  );
+  const { runFlow } = useRunExecution(flowId, { onFocusBubble });
 
   // Local state for input values (before saving)
   const [inputValues, setInputValues] = useState<Record<string, unknown>>(
