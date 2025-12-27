@@ -51,6 +51,7 @@ export function useAnalyticsIdentity(): void {
       identifiedRef.current = true;
     } else if (!DISABLE_AUTH && isSignedIn && user && !identifiedRef.current) {
       // Cloud mode: identify with Clerk user
+
       const email =
         'primaryEmailAddress' in user
           ? user.primaryEmailAddress?.emailAddress
@@ -58,6 +59,7 @@ export function useAnalyticsIdentity(): void {
       const username = 'username' in user ? user.username : user.fullName;
 
       analytics.identify(user.id, {
+        distinct_id: user.id, // Explicitly track Clerk ID for easier filtering
         email,
         firstName: user.firstName,
         lastName: user.lastName,

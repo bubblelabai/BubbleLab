@@ -1,6 +1,7 @@
 import { useAuth } from '../hooks/useAuth';
 import { type ReactNode } from 'react';
 import { useClerkTokenSync } from '../hooks/useClerkTokenSync';
+import { useAnalyticsIdentity } from '../hooks/useAnalytics';
 
 interface AuthWrapperProps {
   children: ReactNode;
@@ -11,6 +12,9 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   // Initialize token sync as early as possible
   useClerkTokenSync();
+
+  // Sync user identity with PostHog analytics
+  useAnalyticsIdentity();
 
   // Don't render children until Clerk is loaded and token sync is initialized
   if (!isLoaded) {
