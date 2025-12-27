@@ -50,6 +50,9 @@ type ParsedBubble = ParsedBubbleWithInfo;
 interface FlowVisualizerProps {
   flowId: number;
   onValidate?: () => void;
+  bubbleToFocus?: string | null;
+  onFocusComplete?: () => void;
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 const nodeTypes = {
@@ -95,8 +98,14 @@ function generateDependencyNodeId(
 }
 
 // Inner component that has access to ReactFlow instance
-function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
-  const { setCenter, getNode } = useReactFlow();
+function FlowVisualizerInner({
+  flowId,
+  onValidate,
+  bubbleToFocus,
+  onFocusComplete,
+  onFocusBubble,
+}: FlowVisualizerProps) {
+  const { setCenter, getNode, getNodes } = useReactFlow();
 
   // Get all data from global stores
   // Poll every 10 seconds when flow is in pending/generating state (code is empty and no error)
@@ -962,6 +971,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             cronSchedule: currentFlow?.cron || '0 0 * * *',
             isActive: currentFlow?.cronActive || false,
             inputSchema: currentFlow?.inputSchema || {},
+            onFocusBubble: onFocusBubble,
           },
         };
         nodes.push(cronScheduleNode);
@@ -982,6 +992,7 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
             flowId: currentFlow?.id || flowId,
             flowName: flowName,
             schemaFields: parsedFields,
+            onFocusBubble: onFocusBubble,
           },
         };
         nodes.push(inputSchemaNode);
@@ -2319,6 +2330,80 @@ function FlowVisualizerInner({ flowId, onValidate }: FlowVisualizerProps) {
       zoom,
     });
   }, [isExecuting, runningBubbles, bubbleEntries, getNode, setCenter]);
+
+  // Navigate to bubble with missing credential
+  useEffect(() => {
+    if (!bubbleToFocus) return;
+
+    // Find the node
+    let node = getNode(bubbleToFocus);
+
+    // Fallback: search by variable ID or bubbleKey
+    if (!node) {
+      const nodes = getNodes();
+      node = nodes.find((n) => {
+        const data = n.data as {
+          bubble?: { variableId?: number };
+          bubbleKey?: string;
+        };
+        return (
+          String(data?.bubble?.variableId) === String(bubbleToFocus) ||
+          String(data?.bubbleKey) === String(bubbleToFocus)
+        );
+      });
+    }
+
+    if (!node) {
+      onFocusComplete?.();
+      return;
+    }
+
+    // Calculate absolute position (account for parent containers)
+    let absoluteX = node.position.x;
+    let absoluteY = node.position.y;
+
+    if (node.parentId) {
+      const parentNode = getNode(node.parentId);
+      if (parentNode) {
+        absoluteX = parentNode.position.x + node.position.x;
+        absoluteY = parentNode.position.y + node.position.y;
+      }
+    }
+
+    // Navigate to the bubble
+    const zoom = FLOW_LAYOUT.VIEWPORT.EXECUTION_ZOOM;
+    const viewportWidth = window.innerWidth;
+    const horizontalShift =
+      (viewportWidth * FLOW_LAYOUT.VIEWPORT.EXECUTION_LEFT_OFFSET_RATIO) / zoom;
+
+    setCenter(absoluteX + horizontalShift, absoluteY, {
+      duration: FLOW_LAYOUT.VIEWPORT.CENTER_DURATION,
+      zoom,
+    });
+
+    // Highlight the bubble
+    const executionStore = getExecutionStore(currentFlow?.id || flowId);
+    executionStore.highlightBubble(bubbleToFocus);
+
+    // Clear highlight after 3 seconds
+    const highlightTimer = setTimeout(() => {
+      executionStore.highlightBubble(null);
+    }, 3000);
+
+    onFocusComplete?.();
+
+    return () => {
+      clearTimeout(highlightTimer);
+    };
+  }, [
+    bubbleToFocus,
+    getNode,
+    getNodes,
+    setCenter,
+    onFocusComplete,
+    currentFlow,
+    flowId,
+  ]);
 
   // 🔍 BUBBLE DEBUG: Log bubble state changes (after flowNodes is defined)
   // useEffect(() => {

@@ -6,6 +6,7 @@ import { getExecutionStore } from '../stores/executionStore';
 export interface ValidationResult {
   isValid: boolean;
   reasons: string[];
+  bubbleVariableId?: string;
 }
 
 /**
@@ -59,6 +60,7 @@ export function validateCredentials(
   pendingCredentials?: Record<string, Record<string, number>>
 ): ValidationResult {
   const reasons: string[] = [];
+  let bubbleVariableId: string | undefined = undefined;
 
   if (!currentFlow || !flowId) {
     reasons.push('No flow selected');
@@ -80,11 +82,16 @@ export function validateCredentials(
 
       if (selectedId === undefined || selectedId === null) {
         reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
+
+        // Capture the first bubble with missing credentials for navigation
+        if (!bubbleVariableId) {
+          bubbleVariableId = bubbleKey;
+        }
       }
     }
   }
 
-  return { isValid: reasons.length === 0, reasons };
+  return { isValid: reasons.length === 0, reasons, bubbleVariableId };
 }
 
 /**
