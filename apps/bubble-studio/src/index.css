@@ -25,7 +25,9 @@
 .monaco-editor *:not(.codicon),
 .monaco-editor-container,
 .monaco-editor-container *:not(.codicon) {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+  font-family:
+    'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace',
+    'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
 }
 
 /* Ensure codicon icons use the correct font - MUST come after Monaco editor rules */
@@ -49,7 +51,9 @@
 /* JSON output code font */
 .json-output,
 .json-output * {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace', 'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
+  font-family:
+    'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'ui-monospace',
+    'SFMono-Regular', 'SF Mono', 'Liberation Mono', 'Menlo', monospace !important;
 }
 
 body {
@@ -198,7 +202,8 @@ body {
 }
 
 @keyframes border-flash {
-  0%, 100% {
+  0%,
+  100% {
     border-color: rgb(71, 85, 105);
   }
   50% {
@@ -208,7 +213,9 @@ body {
 
 /* Toast customizations for dark theme */
 .Toastify__toast-container {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo,
+    monospace;
 }
 
 .Toastify__toast {
@@ -245,4 +252,56 @@ body {
 
 .Toastify__close-button:hover {
   color: #e6edf3 !important;
+}
+
+/* Custom Animations */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px) rotate(-1deg);
+  }
+  75% {
+    transform: translateX(1px) rotate(1deg);
+  }
+}
+
+.group:hover .group-hover\:shake {
+  animation: shake 0.15s ease-in-out 3;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation-duration: 0.2s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.zoom-in {
+  animation-name: zoom-in;
 }
