@@ -52,7 +52,9 @@ export function validateInputs(
 }
 
 /**
- * Validates that all required credentials are configured
+ * Validates that all required credentials are configured.
+ * Iterates over bubbleParameters to find clones (bubbles with invocationCallSiteKey)
+ * and validates their credentials. Returns the clone's variableId for navigation.
  */
 export function validateCredentials(
   flowId: number | null,
@@ -68,24 +70,45 @@ export function validateCredentials(
   }
 
   const required = currentFlow.requiredCredentials || {};
-  const requiredEntries = Object.entries(required) as Array<[string, string[]]>;
-
+  const bubbleParameters = currentFlow.bubbleParameters || {};
   const credentials =
     pendingCredentials ?? getExecutionStore(flowId).pendingCredentials;
 
-  for (const [bubbleKey, credTypes] of requiredEntries) {
+  // Find clones (bubbles that were cloned from design-time bubbles)
+  // Design-time bubbles that have clones should be skipped
+  const clonedFromSet = new Set(
+    Object.values(bubbleParameters)
+      .map((b) => b.clonedFromVariableId)
+      .filter((id): id is number => typeof id === 'number')
+  );
+
+  for (const bubble of Object.values(bubbleParameters)) {
+    // Skip design-time bubbles that have clones (only validate clones)
+    if (!bubble.invocationCallSiteKey && clonedFromSet.has(bubble.variableId)) {
+      continue;
+    }
+
+    const variableIdKey = String(bubble.variableId);
+    // requiredCredentials is keyed by variableId (as string)
+    const credTypes = required[variableIdKey] || [];
+
     for (const credType of credTypes) {
       if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
 
-      const selectedForBubble = credentials[bubbleKey] || {};
+      // pendingCredentials is keyed by variableId (as string)
+      const selectedForBubble = credentials[variableIdKey] || {};
       const selectedId = selectedForBubble[credType];
 
       if (selectedId === undefined || selectedId === null) {
-        reasons.push(`Missing credential for ${bubbleKey}: ${credType}`);
+        // Include invocationCallSiteKey in message for clones
+        const context = bubble.invocationCallSiteKey
+          ? ` (${bubble.invocationCallSiteKey})`
+          : '';
+        reasons.push(`Missing ${credType} for ${bubble.bubbleName}${context}`);
 
-        // Capture the first bubble with missing credentials for navigation
+        // Capture the first clone's variableId for navigation
         if (!bubbleVariableId) {
-          bubbleVariableId = bubbleKey;
+          bubbleVariableId = String(bubble.variableId);
         }
       }
     }
