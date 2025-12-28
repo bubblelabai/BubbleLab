@@ -22,6 +22,25 @@ import {
   validateFlow,
 } from '@/utils/flowValidation';
 
+/**
+ * Cutoff date for forcing revalidation of flows.
+ * Flows last updated before this date will be revalidated on run
+ * to ensure bubble parameters are properly parsed with latest backend changes.
+ */
+const REVALIDATION_CUTOFF_DATE = new Date('2025-12-28T17:00:00Z');
+
+/**
+ * Check if a flow needs revalidation based on its updatedAt date.
+ * Returns true if the flow was last updated before the cutoff date.
+ */
+function needsRevalidationByDate(
+  flow: BubbleFlowDetailsResponse | undefined
+): boolean {
+  if (!flow?.updatedAt) return false;
+  const flowUpdatedAt = new Date(flow.updatedAt);
+  return flowUpdatedAt < REVALIDATION_CUTOFF_DATE;
+}
+
 interface RunExecutionOptions {
   validateCode?: boolean;
   updateCredentials?: boolean;
@@ -417,10 +436,13 @@ export function useRunExecution(
       getExecutionStore(flowId).startExecution();
 
       try {
-        // 1. Validate code FIRST if it has changed (this syncs the schema)
+        // 1. Validate code FIRST if it has changed OR flow needs revalidation (this syncs the schema)
         // This ensures we validate inputs against the UPDATED schema
+        // Also revalidate flows that haven't been updated since backend parsing changes
         let flowToValidate = currentFlow;
-        if (validateCode && editor.getCode() !== currentFlow?.code) {
+        const codeChanged = editor.getCode() !== currentFlow?.code;
+        const needsDateRevalidation = needsRevalidationByDate(currentFlow);
+        if (validateCode && (codeChanged || needsDateRevalidation)) {
           try {
             const validationResult = await validateCodeMutation.mutateAsync({
               code: editor.getCode(),

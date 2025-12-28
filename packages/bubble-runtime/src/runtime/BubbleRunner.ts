@@ -459,6 +459,9 @@ export class BubbleRunner {
       try {
         module = await import(moduleUrl);
       } catch (importErr) {
+        this.bubbleScript.parsingErrors.push(
+          `Dynamic import failed: ${importErr instanceof Error ? importErr.message : String(importErr)}`
+        );
         console.error('[BubbleRunner] Dynamic import failed:', importErr);
         // Optionally dump first 300 chars of script to help debug syntax errors
         const preview = (scriptToExecute ?? '').slice(0, 300);

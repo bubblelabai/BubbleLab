@@ -2,6 +2,7 @@ import { BubbleError } from '../types/bubble-errors';
 import type { ExecutionSummary, ServiceUsage } from '@bubblelab/shared-schemas';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
+const SHOULD_ENABLE_TOKEN_USAGE_LOGGING_IN_CONSOLE = false;
 export enum LogLevel {
   TRACE = 0,
   DEBUG = 1,
@@ -351,7 +352,6 @@ export class BubbleLogger {
       message ||
       `Service usage (${this.getServiceUsageKey(serviceUsage)}): ${serviceUsage.usage} units`;
 
-    console.log('logging!!!', serviceUsage);
     // Add token usage to cumulative tracking per model and variable ID
     this.addServiceUsage(serviceUsage, metadata?.variableId);
     // Convert Map to object for logging (flattened for backward compatibility)
@@ -372,17 +372,20 @@ export class BubbleLogger {
         unit: Array.from(varIdMap.values())[0]?.unit,
       };
     }
-    this.info(logMessage, {
-      ...metadata,
-      serviceUsage,
-      operationType: metadata?.operationType || 'bubble_execution',
-      additionalData: {
-        ...metadata?.additionalData,
+
+    if (SHOULD_ENABLE_TOKEN_USAGE_LOGGING_IN_CONSOLE) {
+      this.info(logMessage, {
+        ...metadata,
         serviceUsage,
-        variableId: metadata?.variableId,
-        cumulativeServiceUsageByService: serviceUsageByService, // Per-service breakdown
-      },
-    });
+        operationType: metadata?.operationType || 'bubble_execution',
+        additionalData: {
+          ...metadata?.additionalData,
+          serviceUsage,
+          variableId: metadata?.variableId,
+          cumulativeServiceUsageByService: serviceUsageByService, // Per-service breakdown
+        },
+      });
+    }
 
     return logMessage;
   }

@@ -54,9 +54,14 @@ export function sanitizeScript(code: string): string {
   );
 
   // Step 3: Restore the protected strings and comments
+  // Note: Use a function as the replacement to avoid $ being treated as a special
+  // replacement pattern character (e.g., $& inserts matched substring, $$ inserts literal $)
   let result = protectedCode;
   for (let i = 0; i < placeholders.length; i++) {
-    result = result.replace(`${PLACEHOLDER_PREFIX}${i}__`, placeholders[i]);
+    result = result.replace(
+      `${PLACEHOLDER_PREFIX}${i}__`,
+      () => placeholders[i]
+    );
   }
 
   return result;

@@ -420,6 +420,7 @@ export class LoggerInjector {
           resultVar,
           variableId,
           callSiteKeyLiteral,
+          callText,
         }
       );
       return;
@@ -654,6 +655,7 @@ export class LoggerInjector {
       resultVar: string;
       variableId: number;
       callSiteKeyLiteral: string;
+      callText?: string;
     }
   ): void {
     const {
@@ -666,13 +668,41 @@ export class LoggerInjector {
       resultVar,
       variableId,
       callSiteKeyLiteral,
+      callText,
     } = details;
 
+    const innerIndent = `${indentation}  `;
+    const prevInvocationVar = `__promiseAllPrevInvocationCallSiteKey_${variableId}`;
+
+    // Build the async IIFE that wraps the method call with logging
+    const asyncIIFE = [
+      `(async () => {`,
+      `${innerIndent}const __functionCallStart_${variableId} = Date.now();`,
+      `${innerIndent}const ${argsVar} = ${argsArray};`,
+      `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallStart(${variableId}, '${methodName}', ${argsVar}, ${lineNumber});`,
+      `${innerIndent}const ${prevInvocationVar} = __bubbleFlowSelf?.__setInvocationCallSiteKey?.(${callSiteKeyLiteral});`,
+      `${innerIndent}const ${resultVar} = await this.${methodName}(${args});`,
+      `${innerIndent}const ${durationVar} = Date.now() - __functionCallStart_${variableId};`,
+      `${innerIndent}__bubbleFlowSelf.logger?.logFunctionCallComplete(${variableId}, '${methodName}', ${resultVar}, ${durationVar}, ${lineNumber});`,
+      `${innerIndent}__bubbleFlowSelf?.__restoreInvocationCallSiteKey?.(${prevInvocationVar});`,
+      `${innerIndent}return ${resultVar};`,
+      `${indentation}})()`,
+    ].join('\n');
+
+    // If callText is provided, do inline replacement (for arrow function expression bodies)
+    if (callText) {
+      const originalLines = lines.slice(lineIndex, lineIndex + linesToRemove);
+      const joinedOriginal = originalLines.join('\n');
+      const replaced = joinedOriginal.replace(callText, asyncIIFE);
+      const replacedLines = replaced.split('\n');
+      lines.splice(lineIndex, linesToRemove, ...replacedLines);
+      return;
+    }
+
+    // Original behavior: replace entire lines (for Promise.all array elements)
     const originalLines = lines.slice(lineIndex, lineIndex + linesToRemove);
     const lastOriginalLine = originalLines[originalLines.length - 1] || '';
     const trailingComma = lastOriginalLine.trimEnd().endsWith(',');
-    const innerIndent = `${indentation}  `;
-    const prevInvocationVar = `__promiseAllPrevInvocationCallSiteKey_${variableId}`;
     const wrappedLines = [
       `${indentation}(async () => {`,
       `${innerIndent}const __functionCallStart_${variableId} = Date.now();`,

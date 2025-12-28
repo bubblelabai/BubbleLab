@@ -12,6 +12,10 @@ async function expectValidScript(
   runner: BubbleRunner,
   logOnError = false
 ): Promise<void> {
+  if (runner.bubbleScript.parsingErrors.length > 0) {
+    console.log('=== Parsing Errors ===');
+    console.log(runner.bubbleScript.parsingErrors);
+  }
   expect(runner.bubbleScript.parsingErrors.length).toBe(0);
 
   const parseResult = await validateBubbleFlow(
@@ -516,7 +520,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         expect(result).toBeDefined();
       });
     });
-    it.skip('should execute with mapping function call', async () => {
+    it('should execute with mapping function call', async () => {
       const testScript = getFixture('mapping-function-call');
       const runner = new BubbleRunner(testScript, bubbleFactory, {
         pricingTable: {},
@@ -533,6 +537,24 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
 
+      await expectValidScript(runner, true);
+      expect(result).toBeDefined();
+    });
+    it('should execute promise all map flow', async () => {
+      const testScript = getFixture('promises-all-map');
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
+      const result = await runner.runAll();
+      await expectValidScript(runner, true);
+      expect(result).toBeDefined();
+    });
+    it('should execute string literal complex flow', async () => {
+      const testScript = getFixture('string-literal-complex');
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
+      const result = await runner.runAll();
       await expectValidScript(runner, true);
       expect(result).toBeDefined();
     });

@@ -19,6 +19,7 @@ interface UseBubbleFlowResult {
   updateCronSchedule: (cronSchedule: string) => void;
   updateEventType: (eventType: string) => void;
   updateCode: (code: string) => void;
+  updateUpdatedAt: (updatedAt: string) => void;
   updateRequiredCredentials: (
     requiredCredentials: BubbleFlowDetailsResponse['requiredCredentials']
   ) => void;
@@ -243,6 +244,45 @@ export function useBubbleFlow(
     [queryClient, flowId]
   );
 
+  const updateUpdatedAt = useCallback(
+    (updatedAt: string) => {
+      if (!flowId) return;
+
+      queryClient.setQueryData(
+        ['bubbleFlow', flowId],
+        (currentData: BubbleFlowDetailsResponse | undefined) => {
+          if (!currentData) return currentData;
+
+          return {
+            ...currentData,
+            updatedAt,
+          };
+        }
+      );
+
+      // Update flow list data
+      queryClient.setQueryData(
+        ['bubbleFlowList'],
+        (currentData: BubbleFlowListResponse | undefined) => {
+          if (!currentData) return currentData;
+          return {
+            ...currentData,
+            bubbleFlows: currentData.bubbleFlows.map((flow) => {
+              if (flow.id === flowId) {
+                return {
+                  ...flow,
+                  updatedAt,
+                };
+              }
+              return flow;
+            }),
+          };
+        }
+      );
+    },
+    [queryClient, flowId]
+  );
+
   const updateRequiredCredentials = useCallback(
     (requiredCredentials: BubbleFlowDetailsResponse['requiredCredentials']) => {
       if (!flowId) return;
@@ -321,6 +361,7 @@ export function useBubbleFlow(
     updateWorkflow,
     updateEventType,
     updateCode,
+    updateUpdatedAt,
     updateRequiredCredentials,
     syncWithBackend,
   };

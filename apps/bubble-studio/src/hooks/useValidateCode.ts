@@ -36,6 +36,7 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
     updateDefaultInputs,
     updateCronSchedule,
     updateEventType,
+    updateUpdatedAt,
   } = useBubbleFlow(flowId);
 
   return useMutation({
@@ -88,6 +89,11 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         updateRequiredCredentials(
           result.requiredCredentials as Record<string, CredentialType[]>
         );
+
+        // Update updatedAt when syncing with flow to prevent repeated revalidation
+        if (variables.syncInputsWithFlow) {
+          updateUpdatedAt(new Date().toISOString());
+        }
 
         // Clear execution state when bubble structure changes (sync happened)
         // This ensures old bubble IDs don't interfere with new execution
