@@ -53,6 +53,14 @@ export class BubbleParser {
   private methodInvocationOrdinalMap: Map<string, number> = new Map();
   private invocationBubbleCloneCache: Map<string, ParsedBubbleWithInfo> =
     new Map();
+  /**
+   * Track which call expressions have been assigned an invocation index.
+   * Key: `methodName:startOffset` (using AST range start position)
+   * Value: the assigned invocation index
+   * This prevents double-counting when the same call site is processed multiple times
+   * (e.g., once in .map() callback processing, again in Promise.all resolution)
+   */
+  private processedCallSiteIndexes: Map<string, number> = new Map();
   /** Custom tool func ranges for marking bubbles inside custom tools */
   private customToolFuncs: CustomToolFuncInfo[] = [];
 
@@ -256,6 +264,7 @@ export class BubbleParser {
     this.cachedAST = ast;
     this.methodInvocationOrdinalMap.clear();
     this.invocationBubbleCloneCache.clear();
+    this.processedCallSiteIndexes.clear();
     // Build hierarchical workflow structure
     const workflow = this.buildWorkflowTree(ast, nodes, scopeManager);
 
@@ -1254,6 +1263,30 @@ export class BubbleParser {
               ) {
                 isInComplexExpression = true;
                 break;
+              }
+
+              // Check if we're inside an arrow function expression body (no braces)
+              // e.g., arr.map((x) => this.method(x)) - the body is just an expression
+              // These need to be wrapped in an async IIFE, similar to promise_all_element
+              if (
+                currentParent.type === 'ArrowFunctionExpression' &&
+                currentChild === currentParent.body &&
+                currentParent.body.type !== 'BlockStatement'
+              ) {
+                invocationContext = 'promise_all_element';
+                // Capture call text for proper replacement
+                const callNode = hasAwait ? parent : node;
+                if (callNode?.range) {
+                  callRange = {
+                    start: callNode.range[0],
+                    end: callNode.range[1],
+                  };
+                  callText = this.bubbleScript.substring(
+                    callRange.start,
+                    callRange.end
+                  );
+                }
+                // Don't break - continue to find the outer statement for line info
               }
 
               // Check if we're inside the condition/test part of a control flow statement
@@ -3637,8 +3670,11 @@ export class BubbleParser {
     }
 
     const shouldTrackInvocation = callInfo.isMethodCall && !!methodDefinition;
+    // Pass the call expression's start offset to deduplicate when the same call
+    // is processed multiple times (e.g., .map() callback processing vs Promise.all resolution)
+    const callExprStartOffset = callInfo.callExpr.range?.[0];
     const invocationIndex = shouldTrackInvocation
-      ? this.getNextInvocationIndex(callInfo.functionName)
+      ? this.getNextInvocationIndex(callInfo.functionName, callExprStartOffset)
       : 0;
     const callSiteKey =
       shouldTrackInvocation && invocationIndex > 0
@@ -4159,7 +4195,36 @@ export class BubbleParser {
     };
   }
 
-  private getNextInvocationIndex(methodName: string): number {
+  /**
+   * Get the invocation index for a method call.
+   * If the same call expression (identified by its AST range) has been processed before,
+   * return the same index to avoid double-counting.
+   *
+   * @param methodName - The name of the method being called
+   * @param callExprStartOffset - Optional start offset of the CallExpression in the source.
+   *                              Used to deduplicate when the same call is processed multiple times
+   *                              (e.g., .map() callback processing vs Promise.all resolution)
+   */
+  private getNextInvocationIndex(
+    methodName: string,
+    callExprStartOffset?: number
+  ): number {
+    // Check if this specific call site has already been indexed
+    if (callExprStartOffset !== undefined) {
+      const callSiteId = `${methodName}:${callExprStartOffset}`;
+      const existingIndex = this.processedCallSiteIndexes.get(callSiteId);
+      if (existingIndex !== undefined) {
+        return existingIndex;
+      }
+
+      // New call site - assign next index and cache it
+      const next = (this.methodInvocationOrdinalMap.get(methodName) ?? 0) + 1;
+      this.methodInvocationOrdinalMap.set(methodName, next);
+      this.processedCallSiteIndexes.set(callSiteId, next);
+      return next;
+    }
+
+    // Fallback: no offset provided, just increment (legacy behavior)
     const next = (this.methodInvocationOrdinalMap.get(methodName) ?? 0) + 1;
     this.methodInvocationOrdinalMap.set(methodName, next);
     return next;
