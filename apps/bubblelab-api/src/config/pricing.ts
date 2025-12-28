@@ -151,6 +151,14 @@ export const PRICING_TABLE: PricingTable = {
     unit: 'per_result',
     unitCost: 0.00735, // $0.00735 per result ($7.00 for 1000 results with 1.05x markup)
   },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
+    'misceres/indeed-scraper',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.00525, // $0.00525 per result ($5 for 1000 results with 1.05x markup)
+  },
 
   // AI Services - Google Gemini with subServices and Input/Output tokens
   // Note: Prices are per 1M tokens, but we store per token (divide by 1,000,000)
