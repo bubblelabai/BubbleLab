@@ -69,6 +69,8 @@ export const fixtures = {
   'malicious-process-bracket-env': '',
   'legitimate-process-env-string': '',
   'promise-all-patterns': '',
+  'string-literal-complex': '',
+  'promises-all-map': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
