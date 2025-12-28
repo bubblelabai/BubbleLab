@@ -35,6 +35,7 @@ interface CronScheduleNodeData {
   cronSchedule: string;
   isActive?: boolean;
   inputSchema?: Record<string, unknown>;
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 interface CronScheduleNodeProps {
@@ -87,6 +88,7 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
     cronSchedule,
     isActive = true,
     inputSchema = {},
+    onFocusBubble,
   } = data;
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -109,8 +111,8 @@ function CronScheduleNode({ data }: CronScheduleNodeProps) {
   const validateCodeMutation = useValidateCode({ flowId });
   const { editor, updateCronSchedule } = useEditor(flowId);
 
-  // Get runFlow function
-  const { runFlow } = useRunExecution(flowId);
+  // Get runFlow function with callback
+  const { runFlow } = useRunExecution(flowId, { onFocusBubble });
 
   // Local state for input values (before saving)
   const [inputValues, setInputValues] = useState<Record<string, unknown>>(

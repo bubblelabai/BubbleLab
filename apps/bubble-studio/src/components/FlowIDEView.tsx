@@ -64,9 +64,16 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
     shallow
   );
 
+  // ============= Bubble Focus State =============
+  const [bubbleToFocus, setBubbleToFocus] = useState<string | null>(null);
+
   // ============= React Query Hooks =============
   const { data: currentFlow, error, refetch } = useBubbleFlow(flowId);
-  const { runFlow, isRunning, canExecute } = useRunExecution(flowId);
+  const { runFlow, isRunning, canExecute } = useRunExecution(flowId, {
+    onFocusBubble: (bubbleVariableId) => {
+      setBubbleToFocus(bubbleVariableId);
+    },
+  });
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: executionHistory } = useExecutionHistory(flowId, {
     limit: 10,
@@ -138,7 +145,6 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
   // Sync flow code to editor when flow changes
   useEffect(() => {
     selectFlow(flowId);
-    console.log('🚀 [useEffect] currentFlow changed:', currentFlow);
     if (currentFlow) {
       editor.setCode(currentFlow.code);
       const extractedCredentials: Record<string, Record<string, number>> = {};
@@ -663,6 +669,11 @@ export function FlowIDEView({ flowId }: FlowIDEViewProps) {
                               {flowId ? (
                                 <FlowVisualizer
                                   flowId={flowId}
+                                  bubbleToFocus={bubbleToFocus}
+                                  onFocusComplete={() => setBubbleToFocus(null)}
+                                  onFocusBubble={(bubbleVariableId) =>
+                                    setBubbleToFocus(bubbleVariableId)
+                                  }
                                   onValidate={() =>
                                     validateCodeMutation.mutateAsync({
                                       code: editor.getCode(),

@@ -44,6 +44,7 @@ interface InputSchemaNodeData {
   flowId: number;
   flowName: string;
   schemaFields: SchemaField[];
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 interface InputSchemaNodeProps {
@@ -51,7 +52,7 @@ interface InputSchemaNodeProps {
 }
 
 function InputSchemaNode({ data }: InputSchemaNodeProps) {
-  const { flowId, schemaFields } = data;
+  const { flowId, schemaFields, onFocusBubble } = data;
 
   // Subscribe to execution store (using selectors to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
@@ -64,8 +65,8 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
   // Get actions from store
   const setInput = useExecutionStore(flowId, (s) => s.setInput);
 
-  // Get runFlow function
-  const { runFlow } = useRunExecution(flowId);
+  // Get runFlow function with callback
+  const { runFlow } = useRunExecution(flowId, { onFocusBubble });
 
   // Handle input changes
   const handleInputChange = (fieldName: string, value: unknown) => {

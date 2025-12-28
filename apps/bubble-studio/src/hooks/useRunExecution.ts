@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { getExecutionStore } from '@/stores/executionStore';
@@ -68,6 +68,7 @@ interface UseRunExecutionOptions {
   onBubbleExecution?: (event: StreamingLogEvent) => void;
   onBubbleExecutionComplete?: (event: StreamingLogEvent) => void;
   onBubbleParametersUpdate?: () => void;
+  onFocusBubble?: (bubbleVariableId: string) => void;
 }
 
 /**
@@ -83,6 +84,10 @@ export function useRunExecution(
   flowId: number | null,
   options: UseRunExecutionOptions = {}
 ): RunExecutionResult {
+  // Use ref to capture latest options without causing re-renders
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
   const queryClient = useQueryClient();
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
@@ -194,7 +199,7 @@ export function useRunExecution(
                   // Keep highlighting until manually deselected
                 }
               }
-              options.onBubbleExecution?.(eventData);
+              optionsRef.current.onBubbleExecution?.(eventData);
             }
 
             if (eventData.type === 'bubble_execution_complete') {
@@ -299,14 +304,14 @@ export function useRunExecution(
               eventData.bubbleParameters
             ) {
               getExecutionStore(flowId).clearHighlighting();
-              options.onBubbleParametersUpdate?.();
+              optionsRef.current.onBubbleParametersUpdate?.();
             }
 
             if (eventData.type === 'execution_complete') {
               getExecutionStore(flowId).stopExecution();
               // Switch to Results tab and scroll to bottom
               selectResultsInConsole();
-              options.onComplete?.();
+              optionsRef.current.onComplete?.();
               return true;
             }
 
@@ -314,7 +319,7 @@ export function useRunExecution(
               getExecutionStore(flowId).stopExecution();
               // Switch to Results tab and scroll to bottom
               selectResultsInConsole();
-              options.onComplete?.();
+              optionsRef.current.onComplete?.();
               return true;
             }
 
@@ -342,14 +347,18 @@ export function useRunExecution(
                 }
               }
 
-              options.onError?.(eventData.message, true, eventData.variableId);
+              optionsRef.current.onError?.(
+                eventData.message,
+                true,
+                eventData.variableId
+              );
               return true;
             }
 
             // Handle non-fatal errors
             if (eventData.type === 'error') {
               getExecutionStore(flowId).setError(eventData.message);
-              options.onError?.(eventData.message, false);
+              optionsRef.current.onError?.(eventData.message, false);
               return false;
             }
           } catch (parseError) {
@@ -400,7 +409,7 @@ export function useRunExecution(
             error instanceof Error ? error.message : 'Unknown error';
           getExecutionStore(flowId).setError(errorMessage);
           getExecutionStore(flowId).stopExecution();
-          options.onError?.(errorMessage, true);
+          optionsRef.current.onError?.(errorMessage, true);
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -411,7 +420,6 @@ export function useRunExecution(
     [
       flowId,
       currentFlow,
-      options,
       queryClient,
       setExecutionHighlight,
       selectBubbleInConsole,
@@ -420,7 +428,7 @@ export function useRunExecution(
   );
 
   const runFlow = useCallback(
-    async (options: RunExecutionOptions = {}) => {
+    async (runFlowOptions: RunExecutionOptions = {}) => {
       if (!flowId || !currentFlow) {
         console.error('Cannot execute: No flow ID or flow data');
         return;
@@ -430,7 +438,7 @@ export function useRunExecution(
         validateCode = true,
         updateCredentials = true,
         inputs = {},
-      } = options;
+      } = runFlowOptions;
 
       // Start execution
       getExecutionStore(flowId).startExecution();
@@ -475,7 +483,11 @@ export function useRunExecution(
         }
 
         // 2. Validate inputs against the UPDATED schema (after code sync)
-        const inputValidation = validateInputs(flowId, flowToValidate);
+        const inputValidation = validateInputs(
+          flowId,
+          flowToValidate,
+          inputs || getExecutionStore(flowId).executionInputs
+        );
         if (!inputValidation.isValid) {
           toast.error(
             `Please fill all required inputs: ${inputValidation.reasons.join(', ')}`
@@ -487,13 +499,25 @@ export function useRunExecution(
         // 3. Validate credentials
         const credentialValidation = validateCredentials(
           flowId,
-          flowToValidate
+          flowToValidate,
+          getExecutionStore(flowId).pendingCredentials
         );
         if (!credentialValidation.isValid) {
           toast.error(
             `Please select all required credentials: ${credentialValidation.reasons.join(', ')}`
           );
           getExecutionStore(flowId).stopExecution();
+
+          // Navigate to the bubble with missing credential (using ref to get latest callback)
+          if (
+            credentialValidation.bubbleVariableId &&
+            optionsRef.current.onFocusBubble
+          ) {
+            optionsRef.current.onFocusBubble(
+              credentialValidation.bubbleVariableId
+            );
+          }
+
           return;
         }
 
@@ -564,7 +588,7 @@ export function useRunExecution(
   };
 
   const executionStatus = () => {
-    if (!currentFlow) {
+    if (!currentFlow || !flowId) {
       return {
         isFormValid: false,
         isCredentialsValid: false,
@@ -572,8 +596,16 @@ export function useRunExecution(
       };
     }
 
-    const inputValidation = validateInputs(flowId, currentFlow);
-    const credentialValidation = validateCredentials(flowId, currentFlow);
+    const inputValidation = validateInputs(
+      flowId,
+      currentFlow,
+      getExecutionStore(flowId).executionInputs
+    );
+    const credentialValidation = validateCredentials(
+      flowId,
+      currentFlow,
+      getExecutionStore(flowId).pendingCredentials
+    );
     const canExecuteResult = canExecute();
 
     return {
