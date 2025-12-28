@@ -83,6 +83,11 @@ export function validateCredentials(
   );
 
   for (const bubble of Object.values(bubbleParameters)) {
+    // Guard against missing variableId (malformed data)
+    if (bubble.variableId === undefined || bubble.variableId === null) {
+      continue;
+    }
+
     // Skip design-time bubbles that have clones (only validate clones)
     if (!bubble.invocationCallSiteKey && clonedFromSet.has(bubble.variableId)) {
       continue;
