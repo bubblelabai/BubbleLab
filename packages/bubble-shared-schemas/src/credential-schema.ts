@@ -323,7 +323,12 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.GOOGLE_GEMINI_CRED,
     CredentialType.OPENROUTER_CRED,
   ],
-  'pdf-form-operations': [],
+  'pdf-form-operations': [
+    CredentialType.GOOGLE_GEMINI_CRED,
+    CredentialType.OPENAI_CRED,
+    CredentialType.ANTHROPIC_CRED,
+    CredentialType.OPENROUTER_CRED,
+  ],
   'pdf-ocr-workflow': [
     CredentialType.GOOGLE_GEMINI_CRED,
     CredentialType.OPENAI_CRED,

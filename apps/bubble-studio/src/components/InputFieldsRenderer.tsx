@@ -1,12 +1,18 @@
 import { memo, useState } from 'react';
 import { Plus, Minus, Paperclip, X } from 'lucide-react';
 import {
-  MAX_BYTES,
+  MAX_FILE_SIZE_BYTES,
   bytesToMB,
   isAllowedType,
   isTextLike,
+  isImageFile,
+  isPdfFile,
   readTextFile,
+  readFileAsBase64,
   compressImageToBase64,
+  FILE_INPUT_ACCEPT,
+  TEXT_FILE_INPUT_ACCEPT,
+  ALLOWED_FILE_TYPES_DISPLAY,
 } from '../utils/fileUtils';
 import AutoResizeTextarea from './AutoResizeTextarea';
 
@@ -79,34 +85,59 @@ function InputFieldsRenderer({
     if (!isAllowedType(file)) {
       setError(
         fieldName,
-        'Unsupported file type. Allowed: html, csv, txt, png, jpg'
+        `Unsupported file type. Allowed: ${ALLOWED_FILE_TYPES_DISPLAY}`
       );
       return;
     }
 
     try {
       if (isTextLike(file)) {
-        if (file.size > MAX_BYTES) {
+        // Text files: read as text
+        if (file.size > MAX_FILE_SIZE_BYTES) {
           setError(
             fieldName,
-            `File too large. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            `File too large. Max ${bytesToMB(MAX_FILE_SIZE_BYTES).toFixed(1)} MB`
           );
           return;
         }
         const text = await readTextFile(file);
         onInputChange(fieldName, text);
         setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
-      } else {
-        // Image path: compress client-side, convert to base64 (no data URL prefix)
-        const base64 = await compressImageToBase64(file);
-        const approxBytes = Math.floor((base64.length * 3) / 4);
-        if (approxBytes > MAX_BYTES) {
+      } else if (isPdfFile(file)) {
+        // PDF files: read as base64 (no compression)
+        if (file.size > MAX_FILE_SIZE_BYTES) {
           setError(
             fieldName,
-            `Image too large after compression. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+            `File too large. Max ${bytesToMB(MAX_FILE_SIZE_BYTES).toFixed(1)} MB`
           );
           return;
         }
+        const base64 = await readFileAsBase64(file);
+        onInputChange(fieldName, base64);
+        setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
+      } else if (isImageFile(file)) {
+        // Image files: compress client-side, convert to base64 (no data URL prefix)
+        const base64 = await compressImageToBase64(file);
+        const approxBytes = Math.floor((base64.length * 3) / 4);
+        if (approxBytes > MAX_FILE_SIZE_BYTES) {
+          setError(
+            fieldName,
+            `Image too large after compression. Max ${bytesToMB(MAX_FILE_SIZE_BYTES).toFixed(1)} MB`
+          );
+          return;
+        }
+        onInputChange(fieldName, base64);
+        setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
+      } else {
+        // Fallback: read as base64
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          setError(
+            fieldName,
+            `File too large. Max ${bytesToMB(MAX_FILE_SIZE_BYTES).toFixed(1)} MB`
+          );
+          return;
+        }
+        const base64 = await readFileAsBase64(file);
         onInputChange(fieldName, base64);
         setUploadedFileNames((prev) => ({ ...prev, [fieldName]: file.name }));
       }
@@ -137,7 +168,7 @@ function InputFieldsRenderer({
     if (!isTextLike(file)) {
       setError(
         `${fieldName}[${index}]`,
-        'Only text files allowed (`.html`, `.csv`, `.txt`)'
+        `Only text files allowed (${TEXT_FILE_INPUT_ACCEPT})`
       );
       return;
     }
@@ -145,16 +176,16 @@ function InputFieldsRenderer({
     if (!isAllowedType(file)) {
       setError(
         `${fieldName}[${index}]`,
-        'Unsupported file type. Allowed: html, csv, txt'
+        `Unsupported file type. Allowed: ${TEXT_FILE_INPUT_ACCEPT}`
       );
       return;
     }
 
     try {
-      if (file.size > MAX_BYTES) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
         setError(
           `${fieldName}[${index}]`,
-          `File too large. Max ${bytesToMB(MAX_BYTES).toFixed(1)} MB`
+          `File too large. Max ${bytesToMB(MAX_FILE_SIZE_BYTES).toFixed(1)} MB`
         );
         return;
       }
@@ -409,7 +440,7 @@ function InputFieldsRenderer({
                                         <input
                                           type="file"
                                           className="hidden"
-                                          accept=".html,.csv,.txt"
+                                          accept={TEXT_FILE_INPUT_ACCEPT}
                                           disabled={isExecuting}
                                           aria-label={`Upload file for entry ${index + 1}`}
                                           onChange={(e) => {
@@ -1041,12 +1072,12 @@ function InputFieldsRenderer({
                         ) : (
                           <label
                             className="cursor-pointer group"
-                            title="Upload file (txt, csv, html, png, jpg)"
+                            title={`Upload file (${ALLOWED_FILE_TYPES_DISPLAY})`}
                           >
                             <input
                               type="file"
                               className="hidden"
-                              accept=".html,.csv,.txt,image/png,image/jpeg,.jpg,.jpeg"
+                              accept={FILE_INPUT_ACCEPT}
                               disabled={isExecuting}
                               aria-label={`Upload file for ${field.name}`}
                               onChange={(e) => {

@@ -2,6 +2,7 @@
   "name": "bubblelab",
   "private": true,
   "scripts": {
+    "clean": "rm -rf node_modules/.cache .turbo packages/*/dist packages/*/.turbo packages/*/*.tsbuildinfo apps/*/dist apps/*/.turbo apps/*/*.tsbuildinfo",
     "build": "pnpm build:core && turbo build --filter=\"!@bubblelab/bubble-core\" --filter=\"!@bubblelab/shared-schemas\"",
     "build:all": "pnpm build:core && turbo build --filter=\"!@bubblelab/bubble-core\" --filter=\"!@bubblelab/shared-schemas\"",
     "build:core": "turbo build --filter=\"@bubblelab/shared-schemas\" --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\"",

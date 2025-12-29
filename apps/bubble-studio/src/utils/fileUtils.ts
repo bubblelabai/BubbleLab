@@ -1,5 +1,101 @@
 import imageCompression from 'browser-image-compression';
-export const MAX_BYTES = 10 * 1024 * 1024; // 10MB
+
+// ============================================================================
+// FILE UPLOAD CONFIGURATION
+// ============================================================================
+
+/** Maximum file size in bytes (10MB) */
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** @deprecated Use MAX_FILE_SIZE_BYTES instead */
+export const MAX_BYTES = MAX_FILE_SIZE_BYTES;
+
+/** Allowed text file extensions (without dot) */
+export const TEXT_FILE_EXTENSIONS = [
+  'html',
+  'htm',
+  'csv',
+  'txt',
+  'md',
+] as const;
+
+/** Allowed image file extensions (without dot) */
+export const IMAGE_FILE_EXTENSIONS = [
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+] as const;
+
+/** Allowed document file extensions (without dot) - files that are read as base64 */
+export const DOCUMENT_FILE_EXTENSIONS = ['pdf'] as const;
+
+/** All allowed file extensions */
+export const ALLOWED_FILE_EXTENSIONS = [
+  ...TEXT_FILE_EXTENSIONS,
+  ...IMAGE_FILE_EXTENSIONS,
+  ...DOCUMENT_FILE_EXTENSIONS,
+] as const;
+
+/** Allowed text MIME types */
+export const TEXT_MIME_TYPES = [
+  'text/plain',
+  'text/html',
+  'text/csv',
+  'text/markdown',
+] as const;
+
+/** Allowed image MIME types */
+export const IMAGE_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/gif',
+  'image/webp',
+] as const;
+
+/** Allowed document MIME types */
+export const DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
+
+/** All allowed MIME types */
+export const ALLOWED_MIME_TYPES = [
+  ...TEXT_MIME_TYPES,
+  ...IMAGE_MIME_TYPES,
+  ...DOCUMENT_MIME_TYPES,
+] as const;
+
+/**
+ * File input accept string for HTML file inputs
+ * Includes text files, images, and documents (PDF)
+ */
+export const FILE_INPUT_ACCEPT = [
+  ...TEXT_FILE_EXTENSIONS.map((ext) => `.${ext}`),
+  ...IMAGE_FILE_EXTENSIONS.map((ext) => `.${ext}`),
+  ...DOCUMENT_FILE_EXTENSIONS.map((ext) => `.${ext}`),
+  ...IMAGE_MIME_TYPES,
+  ...DOCUMENT_MIME_TYPES,
+].join(',');
+
+/**
+ * File input accept string for array entries (text files only)
+ */
+export const TEXT_FILE_INPUT_ACCEPT = TEXT_FILE_EXTENSIONS.map(
+  (ext) => `.${ext}`
+).join(',');
+
+/**
+ * Human-readable list of allowed file types for error messages
+ */
+export const ALLOWED_FILE_TYPES_DISPLAY = [
+  ...TEXT_FILE_EXTENSIONS,
+  ...IMAGE_FILE_EXTENSIONS,
+  ...DOCUMENT_FILE_EXTENSIONS,
+].join(', ');
+
+// ============================================================================
+// FILE TYPE DETECTION UTILITIES
+// ============================================================================
 
 export function bytesToMB(bytes: number): number {
   return bytes / (1024 * 1024);
@@ -8,49 +104,53 @@ export function bytesToMB(bytes: number): number {
 export function isAllowedType(file: File): boolean {
   const name = file.name.toLowerCase();
   const mime = file.type.toLowerCase();
-  if (name.endsWith('.html') || name.endsWith('.htm')) return true;
-  if (name.endsWith('.csv')) return true;
-  if (name.endsWith('.txt')) return true;
-  if (name.endsWith('.md')) return true;
-  if (mime === 'image/png' || name.endsWith('.png')) return true;
-  if (
-    mime === 'image/jpeg' ||
-    mime === 'image/jpg' ||
-    name.endsWith('.jpg') ||
-    name.endsWith('.jpeg')
-  )
-    return true;
-  if (mime === 'image/gif' || name.endsWith('.gif')) return true;
-  if (mime === 'image/webp' || name.endsWith('.webp')) return true;
+
+  // Check by extension
+  const hasAllowedExtension = ALLOWED_FILE_EXTENSIONS.some((ext) =>
+    name.endsWith(`.${ext}`)
+  );
+  if (hasAllowedExtension) return true;
+
+  // Check by MIME type
+  const hasAllowedMime = ALLOWED_MIME_TYPES.some(
+    (allowedMime) => mime === allowedMime
+  );
+  if (hasAllowedMime) return true;
+
+  // Also accept generic text MIME types
+  if (mime.startsWith('text/')) return true;
+
   return false;
 }
 
 export function isTextLike(file: File): boolean {
   const name = file.name.toLowerCase();
   const mime = file.type.toLowerCase();
+
+  // Check by MIME type
   if (mime.startsWith('text/')) return true;
-  if (name.endsWith('.html') || name.endsWith('.htm')) return true;
-  if (name.endsWith('.csv')) return true;
-  if (name.endsWith('.txt')) return true;
-  if (name.endsWith('.md')) return true;
-  return false;
+
+  // Check by extension
+  return TEXT_FILE_EXTENSIONS.some((ext) => name.endsWith(`.${ext}`));
 }
 
 export function isImageFile(file: File): boolean {
   const name = file.name.toLowerCase();
   const mime = file.type.toLowerCase();
-  return (
-    mime === 'image/png' ||
-    name.endsWith('.png') ||
-    mime === 'image/jpeg' ||
-    mime === 'image/jpg' ||
-    name.endsWith('.jpg') ||
-    name.endsWith('.jpeg') ||
-    mime === 'image/gif' ||
-    name.endsWith('.gif') ||
-    mime === 'image/webp' ||
-    name.endsWith('.webp')
-  );
+
+  // Check by MIME type
+  const hasImageMime = IMAGE_MIME_TYPES.some((imageMime) => mime === imageMime);
+  if (hasImageMime) return true;
+
+  // Check by extension
+  return IMAGE_FILE_EXTENSIONS.some((ext) => name.endsWith(`.${ext}`));
+}
+
+export function isPdfFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  const mime = file.type.toLowerCase();
+
+  return mime === 'application/pdf' || name.endsWith('.pdf');
 }
 
 export async function readTextFile(file: File): Promise<string> {
@@ -59,6 +159,29 @@ export async function readTextFile(file: File): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.onload = () => resolve(String(reader.result ?? ''));
     reader.readAsText(file);
+  });
+}
+
+/**
+ * Read a file as base64 string (without the data URL prefix).
+ * Use this for binary files like PDFs that should be uploaded as base64.
+ */
+export async function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? '');
+      // Extract base64 content from data URL (remove "data:mime/type;base64," prefix)
+      const prefix = 'base64,';
+      const idx = dataUrl.indexOf(prefix);
+      if (idx === -1) {
+        resolve(dataUrl);
+      } else {
+        resolve(dataUrl.slice(idx + prefix.length));
+      }
+    };
+    reader.readAsDataURL(file);
   });
 }
 

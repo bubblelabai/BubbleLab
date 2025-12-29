@@ -14,7 +14,7 @@
 import { z } from 'zod';
 import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import { CredentialType, RECOMMENDED_MODELS } from '@bubblelab/shared-schemas';
 import { spawn } from 'child_process';
 import path from 'path';
 import { writeFileSync, unlinkSync, mkdtempSync } from 'fs';
@@ -1088,7 +1088,7 @@ Example: **[25]** for field ID 25, or [x] **[42]** for a checked checkbox with I
         }
 
         try {
-          const aiAgent = new AIAgentBubble(
+          const pdf_analysis_agent = new AIAgentBubble(
             {
               message: prompt,
               images: [
@@ -1102,7 +1102,7 @@ Example: **[25]** for field ID 25, or [x] **[42]** for a checked checkbox with I
               systemPrompt:
                 'You are an expert at analyzing PDF documents and converting them to clean, well-structured markdown format.',
               model: {
-                model: 'google/gemini-2.5-pro',
+                model: RECOMMENDED_MODELS.FAST,
                 temperature: 0.3,
                 jsonMode: false,
               },
@@ -1111,7 +1111,7 @@ Example: **[25]** for field ID 25, or [x] **[42]** for a checked checkbox with I
             this.context
           );
 
-          const aiResult = await aiAgent.action();
+          const aiResult = await pdf_analysis_agent.action();
 
           if (!aiResult.success) {
             throw new Error(`AI analysis failed: ${aiResult.error}`);
