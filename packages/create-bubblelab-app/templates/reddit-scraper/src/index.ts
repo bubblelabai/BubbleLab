@@ -1,5 +1,5 @@
 import { BubbleRunner } from '@bubblelab/bubble-runtime';
-import { BubbleFactory } from '@bubblelab/bubble-core';
+import { BubbleFactory, LogLevel } from '@bubblelab/bubble-core';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -22,7 +22,14 @@ async function main() {
   );
 
   // Step 3: Create a BubbleRunner with your flow code
-  const runner = new BubbleRunner(flowCode, bubbleFactory);
+  const runner = new BubbleRunner(flowCode, bubbleFactory, {
+    pricingTable: {},
+    useWebhookLogger: true,
+    logLevel: LogLevel.INFO,
+    streamCallback: (event) => {
+      console.log('🔥 Streaming log event:', event);
+    },
+  });
   // Step 4: (Optional) Modify bubble parameters dynamically
   const subreddit = 'worldnews';
   const limit = 10;

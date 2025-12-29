@@ -710,8 +710,11 @@ export class BubbleLogger {
       additionalData: log.metadata.additionalData,
     }));
 
-    // If pricing table is empty print a warning
-    if (Object.keys(this.config.pricingTable).length === 0) {
+    // If pricing table is empty or undefined, print a warning
+    if (
+      !this.config.pricingTable ||
+      Object.keys(this.config.pricingTable).length === 0
+    ) {
       console.warn(
         'Pricing table is empty, no pricing data will be available. To track cost tracking, please set the pricing table in the logger config.'
       );
