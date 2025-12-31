@@ -127,7 +127,7 @@ const ModelConfigSchema = z.object({
     .number()
     .positive()
     .optional()
-    .default(12800)
+    .default(64000)
     .describe(
       'Maximum number of tokens to generate in response, keep at default of 40000 unless the response is expected to be certain length'
     ),
@@ -283,7 +283,7 @@ const AIAgentParamsSchema = z.object({
   model: ModelConfigSchema.default({
     model: RECOMMENDED_MODELS.FAST,
     temperature: 1,
-    maxTokens: 50000,
+    maxTokens: 65536,
     maxRetries: 3,
     jsonMode: false,
   }).describe(
@@ -704,7 +704,7 @@ export class AIAgentBubble extends ServiceBubble<
           temperature,
           anthropicApiKey: apiKey,
           maxTokens,
-          streaming: enableStreaming,
+          streaming: true,
           apiKey,
           ...(thinkingConfig && { thinking: thinkingConfig }),
           maxRetries: retries,
