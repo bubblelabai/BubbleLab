@@ -4089,7 +4089,15 @@ export class BubbleParser {
   }
 
   /**
-   * Build a parallel execution node from Promise.all()
+   * Build a parallel execution node from Promise.all().
+   * Handles both direct array literals and variable references to arrays
+   * built via .push() or .map() patterns.
+   *
+   * @param promiseAllInfo - Information about the Promise.all call expression
+   * @param stmt - The statement containing the Promise.all call
+   * @param bubbleMap - Map of variable IDs to parsed bubble info
+   * @param scopeManager - Scope manager for variable resolution
+   * @returns A ParallelExecutionWorkflowNode or null if parsing fails
    */
   private buildParallelExecutionNode(
     promiseAllInfo: {
