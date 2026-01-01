@@ -4106,6 +4106,31 @@ export class BubbleParser {
     const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
     const children: WorkflowNode[] = [];
 
+    let variableDeclaration:
+      | {
+        variableNames: string[];
+        variableType: 'const' | 'let' | 'var';
+      }
+      | undefined;
+
+    if (
+      stmt.type === 'VariableDeclaration' &&
+      stmt.declarations.length > 0 &&
+      stmt.declarations[0].id.type === 'ArrayPattern'
+    ) {
+      const arrayPattern = stmt.declarations[0].id;
+      const variableNames: string[] = [];
+      for (const element of arrayPattern.elements) {
+        if (element && element.type === 'Identifier') {
+          variableNames.push(element.name);
+        }
+      }
+      variableDeclaration = {
+        variableNames,
+        variableType: stmt.kind as 'const' | 'let' | 'var',
+      };
+    }
+
     // Handle variable reference (e.g., Promise.all(exampleScrapers))
     if (promiseAllInfo.arrayExpr.type === 'Identifier' && this.cachedAST) {
       const arrayVarName = promiseAllInfo.arrayExpr.name;
@@ -4183,32 +4208,6 @@ export class BubbleParser {
           if (funcCallNode) children.push(funcCallNode);
         }
       }
-    }
-
-    // Extract variable declaration info if this is part of a variable declaration
-    let variableDeclaration:
-      | {
-        variableNames: string[];
-        variableType: 'const' | 'let' | 'var';
-      }
-      | undefined;
-
-    if (
-      stmt.type === 'VariableDeclaration' &&
-      stmt.declarations.length > 0 &&
-      stmt.declarations[0].id.type === 'ArrayPattern'
-    ) {
-      const arrayPattern = stmt.declarations[0].id;
-      const variableNames: string[] = [];
-      for (const element of arrayPattern.elements) {
-        if (element && element.type === 'Identifier') {
-          variableNames.push(element.name);
-        }
-      }
-      variableDeclaration = {
-        variableNames,
-        variableType: stmt.kind as 'const' | 'let' | 'var',
-      };
     }
 
     return {
