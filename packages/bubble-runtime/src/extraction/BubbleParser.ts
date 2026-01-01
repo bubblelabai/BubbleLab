@@ -4123,6 +4123,12 @@ export class BubbleParser {
       for (const element of arrayPattern.elements) {
         if (element && element.type === 'Identifier') {
           variableNames.push(element.name);
+        } else if (
+          element &&
+          element.type === 'RestElement' &&
+          element.argument.type === 'Identifier'
+        ) {
+          variableNames.push(element.argument.name);
         }
       }
       variableDeclaration = {
