@@ -319,11 +319,11 @@ export class BubbleParser {
 
       const metadata = bubbleFactory.getMetadata(name) as
         | (ReturnType<BubbleFactory['getMetadata']> & {
-            bubbleDependenciesDetailed?: {
-              name: BubbleName;
-              tools?: BubbleName[];
-            }[];
-          })
+          bubbleDependenciesDetailed?: {
+            name: BubbleName;
+            tools?: BubbleName[];
+          }[];
+        })
         | undefined;
 
       const detailed = metadata?.bubbleDependenciesDetailed || [];
@@ -541,8 +541,8 @@ export class BubbleParser {
 
     const params: TSESTree.Parameter[] =
       handleNode.type === 'FunctionDeclaration' ||
-      handleNode.type === 'FunctionExpression' ||
-      handleNode.type === 'ArrowFunctionExpression'
+        handleNode.type === 'FunctionExpression' ||
+        handleNode.type === 'ArrowFunctionExpression'
         ? handleNode.params
         : [];
 
@@ -1925,11 +1925,11 @@ export class BubbleParser {
               const valueExpr = prop.value as TSESTree.Expression;
               const location = valueExpr.loc
                 ? {
-                    startLine: valueExpr.loc.start.line,
-                    startCol: valueExpr.loc.start.column,
-                    endLine: valueExpr.loc.end.line,
-                    endCol: valueExpr.loc.end.column,
-                  }
+                  startLine: valueExpr.loc.start.line,
+                  startCol: valueExpr.loc.start.column,
+                  endLine: valueExpr.loc.end.line,
+                  endCol: valueExpr.loc.end.column,
+                }
                 : undefined;
 
               parameters.push({
@@ -1946,11 +1946,11 @@ export class BubbleParser {
 
             const location = spreadArg.loc
               ? {
-                  startLine: spreadArg.loc.start.line,
-                  startCol: spreadArg.loc.start.column,
-                  endLine: spreadArg.loc.end.line,
-                  endCol: spreadArg.loc.end.column,
-                }
+                startLine: spreadArg.loc.start.line,
+                startCol: spreadArg.loc.start.column,
+                endLine: spreadArg.loc.end.line,
+                endCol: spreadArg.loc.end.column,
+              }
               : undefined;
 
             // If the spread is an identifier, use its name as the parameter name; otherwise use a generic name
@@ -1971,11 +1971,11 @@ export class BubbleParser {
         const value = this.extractParameterValue(expr);
         const location = expr.loc
           ? {
-              startLine: expr.loc.start.line,
-              startCol: expr.loc.start.column,
-              endLine: expr.loc.end.line,
-              endCol: expr.loc.end.column,
-            }
+            startLine: expr.loc.start.line,
+            startCol: expr.loc.start.column,
+            endLine: expr.loc.end.line,
+            endCol: expr.loc.end.column,
+          }
           : undefined;
 
         const argName = expr.type === 'Identifier' ? expr.name : 'arg0';
@@ -2204,7 +2204,7 @@ export class BubbleParser {
         );
         const toolName =
           nameProp?.value.type === 'Literal' &&
-          typeof nameProp.value.value === 'string'
+            typeof nameProp.value.value === 'string'
             ? nameProp.value.value
             : undefined;
 
@@ -2219,7 +2219,7 @@ export class BubbleParser {
         );
         const description =
           descProp?.value.type === 'Literal' &&
-          typeof descProp.value.value === 'string'
+            typeof descProp.value.value === 'string'
             ? descProp.value.value
             : undefined;
 
@@ -3019,37 +3019,37 @@ export class BubbleParser {
 
     const elseBranch: WorkflowNode[] | undefined = stmt.alternate
       ? (() => {
-          if (stmt.alternate.type === 'BlockStatement') {
-            const nodes: WorkflowNode[] = [];
-            for (const childStmt of stmt.alternate.body) {
-              const node = this.buildWorkflowNodeFromStatement(
-                childStmt,
-                bubbleMap,
-                scopeManager
-              );
-              if (node) {
-                nodes.push(node);
-              }
-            }
-            return nodes;
-          } else if (stmt.alternate.type === 'IfStatement') {
-            // else if - treat as nested if
-            const node = this.buildIfNode(
-              stmt.alternate,
-              bubbleMap,
-              scopeManager
-            );
-            return [node];
-          } else {
-            // Single statement else
+        if (stmt.alternate.type === 'BlockStatement') {
+          const nodes: WorkflowNode[] = [];
+          for (const childStmt of stmt.alternate.body) {
             const node = this.buildWorkflowNodeFromStatement(
-              stmt.alternate as TSESTree.Statement,
+              childStmt,
               bubbleMap,
               scopeManager
             );
-            return node ? [node] : [];
+            if (node) {
+              nodes.push(node);
+            }
           }
-        })()
+          return nodes;
+        } else if (stmt.alternate.type === 'IfStatement') {
+          // else if - treat as nested if
+          const node = this.buildIfNode(
+            stmt.alternate,
+            bubbleMap,
+            scopeManager
+          );
+          return [node];
+        } else {
+          // Single statement else
+          const node = this.buildWorkflowNodeFromStatement(
+            stmt.alternate as TSESTree.Statement,
+            bubbleMap,
+            scopeManager
+          );
+          return node ? [node] : [];
+        }
+      })()
       : undefined;
 
     // Check if branches terminate (contain return/throw)
@@ -3092,9 +3092,9 @@ export class BubbleParser {
         : '';
       const update = stmt.update
         ? this.bubbleScript.substring(
-            stmt.update.range![0],
-            stmt.update.range![1]
-          )
+          stmt.update.range![0],
+          stmt.update.range![1]
+        )
         : '';
       condition = `${init}; ${test}; ${update}`.trim();
     } else if (stmt.type === 'ForInStatement') {
@@ -3220,22 +3220,22 @@ export class BubbleParser {
 
     const catchBlock: WorkflowNode[] | undefined = stmt.handler
       ? (() => {
-          if (stmt.handler.body.type === 'BlockStatement') {
-            const nodes: WorkflowNode[] = [];
-            for (const childStmt of stmt.handler.body.body) {
-              const node = this.buildWorkflowNodeFromStatement(
-                childStmt,
-                bubbleMap,
-                scopeManager
-              );
-              if (node) {
-                nodes.push(node);
-              }
+        if (stmt.handler.body.type === 'BlockStatement') {
+          const nodes: WorkflowNode[] = [];
+          for (const childStmt of stmt.handler.body.body) {
+            const node = this.buildWorkflowNodeFromStatement(
+              childStmt,
+              bubbleMap,
+              scopeManager
+            );
+            if (node) {
+              nodes.push(node);
             }
-            return nodes;
           }
-          return [];
-        })()
+          return nodes;
+        }
+        return [];
+      })()
       : undefined;
 
     return {
@@ -3391,9 +3391,9 @@ export class BubbleParser {
     const code = this.bubbleScript.substring(stmt.range![0], stmt.range![1]);
     const value = stmt.argument
       ? this.bubbleScript.substring(
-          stmt.argument.range![0],
-          stmt.argument.range![1]
-        )
+        stmt.argument.range![0],
+        stmt.argument.range![1]
+      )
       : undefined;
 
     return {
@@ -3612,10 +3612,10 @@ export class BubbleParser {
     // Try to find method definition if it's a method call
     let methodDefinition:
       | {
-          location: { startLine: number; endLine: number };
-          isAsync: boolean;
-          parameters: string[];
-        }
+        location: { startLine: number; endLine: number };
+        isAsync: boolean;
+        parameters: string[];
+      }
       | undefined = undefined;
 
     const methodChildren: WorkflowNode[] = [];
@@ -3886,14 +3886,21 @@ export class BubbleParser {
     ast: TSESTree.Program,
     contextLine: number,
     scopeManager: ScopeManager
-  ): TSESTree.Expression[] {
+  ): {
+    elements: TSESTree.Expression[];
+    isDynamic: boolean;
+    sourceArray?: string;
+  } {
     const elements: TSESTree.Expression[] = [];
+    let isDynamic = false;
+    let sourceArrayName: string | undefined;
+
     const varId = this.findVariableIdByName(
       arrayVarName,
       contextLine,
       scopeManager
     );
-    if (varId === undefined) return elements;
+    if (varId === undefined) return { elements, isDynamic: false };
 
     const walk = (node: TSESTree.Node) => {
       // Handle .push() calls: array.push(item1, item2, ...)
@@ -3941,6 +3948,12 @@ export class BubbleParser {
                 const callbackExpr = this.extractCallbackExpression(callback);
                 if (callbackExpr) {
                   const sourceArray = decl.init.callee.object;
+
+                  if (sourceArray.type === 'Identifier') {
+                    sourceArrayName = sourceArray.name;
+                    isDynamic = true;
+                  }
+
                   const sourceElements = this.getSourceArrayElements(
                     sourceArray,
                     ast,
@@ -3966,7 +3979,7 @@ export class BubbleParser {
       }
     };
     walk(ast);
-    return elements;
+    return { elements, isDynamic, sourceArray: sourceArrayName };
   }
 
   /**
@@ -4098,14 +4111,14 @@ export class BubbleParser {
       const arrayVarName = promiseAllInfo.arrayExpr.name;
       const contextLine = promiseAllInfo.arrayExpr.loc?.start.line || 0;
 
-      const pushedArgs = this.findArrayElements(
+      const arrayInfo = this.findArrayElements(
         arrayVarName,
         this.cachedAST,
         contextLine,
         scopeManager
       );
 
-      for (const arg of pushedArgs) {
+      for (const arg of arrayInfo.elements) {
         const methodCall = this.detectFunctionCall(arg);
         if (methodCall) {
           const syntheticStmt: TSESTree.ExpressionStatement = {
@@ -4128,6 +4141,18 @@ export class BubbleParser {
             children.push({ type: 'bubble', variableId: bubble.variableId });
           }
         }
+      }
+
+      if (arrayInfo.isDynamic) {
+        return {
+          type: 'parallel_execution',
+          location,
+          code,
+          variableDeclaration,
+          children,
+          isDynamic: true,
+          sourceArray: arrayInfo.sourceArray,
+        };
       }
     } else if (promiseAllInfo.arrayExpr.type === 'ArrayExpression') {
       // Handle direct array literal (existing logic)
@@ -4163,9 +4188,9 @@ export class BubbleParser {
     // Extract variable declaration info if this is part of a variable declaration
     let variableDeclaration:
       | {
-          variableNames: string[];
-          variableType: 'const' | 'let' | 'var';
-        }
+        variableNames: string[];
+        variableType: 'const' | 'let' | 'var';
+      }
       | undefined;
 
     if (
@@ -4342,9 +4367,9 @@ export class BubbleParser {
       parameters: JSON.parse(JSON.stringify(bubble.parameters)),
       dependencyGraph: bubble.dependencyGraph
         ? this.cloneDependencyGraphNodeForInvocation(
-            bubble.dependencyGraph,
-            callSiteKey
-          )
+          bubble.dependencyGraph,
+          callSiteKey
+        )
         : undefined,
     };
 
