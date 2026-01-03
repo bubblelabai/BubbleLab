@@ -31,6 +31,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
   [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
+  [CredentialType.STRIPE_SECRET_KEY]: 'STRIPE_SECRET_KEY',
 };
 
 /** Used by bubblelab studio */

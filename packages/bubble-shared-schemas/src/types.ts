@@ -45,6 +45,9 @@ export enum CredentialType {
   // InsForge Credentials
   INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
   INSFORGE_API_KEY = 'INSFORGE_API_KEY',
+
+  // Stripe
+  STRIPE_SECRET_KEY = 'STRIPE_SECRET_KEY',
 }
 
 // Define all bubble names as a union type for type safety
