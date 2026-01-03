@@ -73,7 +73,6 @@ export class BubbleScript {
   private bubbleFactory: BubbleFactory;
   public currentBubbleScript: string;
   public trigger: BubbleTrigger;
-
   /**
    * Reparse the AST and bubbles after the script has been modified
    * This is necessary when the script text changes but we need updated bubble locations
@@ -111,14 +110,78 @@ export class BubbleScript {
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
   }
 
+  /**
+   * Find the matching original bubble for a given bubble.
+   * Used to restore original locations for user-facing data.
+   */
+  private findOriginalBubble(
+    bubble: ParsedBubbleWithInfo,
+    originalBubblesByKey: Map<string, ParsedBubbleWithInfo[]>
+  ): ParsedBubbleWithInfo | undefined {
+    const key = `${bubble.bubbleName}:${bubble.variableName}`;
+    const candidates = originalBubblesByKey.get(key) || [];
+
+    // First try: exact variableId match
+    let originalBubble = candidates.find(
+      (c) => c.variableId === bubble.variableId
+    );
+
+    // Second try: clonedFromVariableId
+    if (!originalBubble && bubble.clonedFromVariableId !== undefined) {
+      originalBubble = this.originalParsedBubbles[bubble.clonedFromVariableId];
+    }
+
+    // Third try: match by parameter names
+    if (!originalBubble && candidates.length > 0) {
+      const bubbleParamNames = new Set(bubble.parameters.map((p) => p.name));
+      let bestMatch: ParsedBubbleWithInfo | undefined;
+      let bestMatchCount = 0;
+      for (const candidate of candidates) {
+        const matchCount = candidate.parameters.filter((p) =>
+          bubbleParamNames.has(p.name)
+        ).length;
+        if (matchCount > bestMatchCount) {
+          bestMatchCount = matchCount;
+          bestMatch = candidate;
+        }
+      }
+      originalBubble = bestMatch;
+    }
+
+    return originalBubble;
+  }
+
   constructor(bubbleScript: string, bubbleFactory: BubbleFactory) {
     // Reset ID generator to ensure deterministic variable IDs
+    resetIds();
+
+    // First, parse the ORIGINAL script to get correct line numbers for originalParsedBubbles
+    // This ensures user-facing locations match what they see in their IDE
+    const originalAst = parse(bubbleScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const originalScopeManager = analyze(originalAst, {
+      sourceType: 'module',
+    });
+    const originalBubbleParser = new BubbleParser(bubbleScript);
+    const originalParseResult = originalBubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      originalAst,
+      originalScopeManager
+    );
+    // Store original bubbles with correct locations from original script
+    this.originalParsedBubbles = originalParseResult.bubbles;
+
+    // Reset IDs again before parsing normalized script to ensure consistent IDs
     resetIds();
 
     // Normalize braceless control flow statements to prevent injection issues
     const normalizedScript = normalizeBracelessControlFlow(bubbleScript);
 
-    // Parse the bubble script into AST
+    // Parse the normalized bubble script into AST for working bubbles
     this.bubbleScript = normalizedScript;
     this.currentBubbleScript = normalizedScript;
     this.bubbleFactory = bubbleFactory;
@@ -147,7 +210,6 @@ export class BubbleScript {
     );
 
     this.parsedBubbles = parseResult.bubbles;
-    this.originalParsedBubbles = parseResult.bubbles;
     this.workflow = parseResult.workflow;
     this.instanceMethodsLocation = parseResult.instanceMethodsLocation;
     this.trigger = this.getBubbleTriggerEventType() ?? { type: 'webhook/http' };
@@ -544,10 +606,59 @@ export class BubbleScript {
   }
 
   /**
-   * Get the parsed bubbles found in the script
+   * Get the parsed bubbles with NORMALIZED locations (for internal use like injection).
+   * These locations match the normalized script, not the original user script.
+   */
+  getParsedBubblesRaw(): Record<number, ParsedBubbleWithInfo> {
+    return this.parsedBubbles;
+  }
+
+  /**
+   * Get the parsed bubbles with original line numbers restored.
+   * This returns a COPY of current bubbles (with clones, workflow updates, etc.)
+   * with locations matching the original script that users see in their IDE.
+   * Use this for frontend/user-facing data.
    */
   getParsedBubbles(): Record<number, ParsedBubbleWithInfo> {
-    return this.parsedBubbles;
+    // Deep copy to avoid modifying internal state needed for injection
+    const bubblesCopy = JSON.parse(
+      JSON.stringify(this.parsedBubbles)
+    ) as Record<number, ParsedBubbleWithInfo>;
+
+    // Build lookup map for matching bubbles
+    const originalBubblesByKey = new Map<string, ParsedBubbleWithInfo[]>();
+    for (const bubble of Object.values(this.originalParsedBubbles)) {
+      const key = `${bubble.bubbleName}:${bubble.variableName}`;
+      const existing = originalBubblesByKey.get(key) || [];
+      existing.push(bubble);
+      originalBubblesByKey.set(key, existing);
+    }
+
+    // Restore original locations for each bubble
+    for (const bubble of Object.values(bubblesCopy)) {
+      const originalBubble = this.findOriginalBubble(
+        bubble,
+        originalBubblesByKey
+      );
+      if (!originalBubble) continue;
+
+      // Restore bubble's own location
+      if (originalBubble.location) {
+        bubble.location = { ...originalBubble.location };
+      }
+
+      // Restore parameter locations
+      for (const param of bubble.parameters) {
+        const originalParam = originalBubble.parameters.find(
+          (p) => p.name === param.name
+        );
+        if (originalParam?.location) {
+          param.location = { ...originalParam.location };
+        }
+      }
+    }
+
+    return bubblesCopy;
   }
 
   /**
