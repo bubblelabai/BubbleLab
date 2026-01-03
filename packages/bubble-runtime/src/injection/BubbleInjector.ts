@@ -57,7 +57,7 @@ export class BubbleInjector {
 
     // Iterate through each bubble and check its credential requirements
     for (const [, bubble] of Object.entries(
-      this.bubbleScript.getParsedBubbles()
+      this.bubbleScript.getParsedBubblesRaw()
     )) {
       const allCredentialTypes = new Set<CredentialType>();
 
@@ -322,7 +322,7 @@ export class BubbleInjector {
     systemCredentials: Partial<Record<CredentialType, string>> = {}
   ): CredentialInjectionResult {
     try {
-      const modifiedBubbles = { ...this.bubbleScript.getParsedBubbles() };
+      const modifiedBubbles = { ...this.bubbleScript.getParsedBubblesRaw() };
       const injectedCredentials: Record<
         number,
         {
@@ -424,7 +424,7 @@ export class BubbleInjector {
       return {
         success: errors.length === 0,
         code: finalScript,
-        parsedBubbles: this.bubbleScript.getParsedBubbles(),
+        parsedBubbles: this.bubbleScript.getParsedBubblesRaw(),
         errors: errors.length > 0 ? errors : undefined,
         injectedCredentials,
       };
@@ -505,7 +505,7 @@ export class BubbleInjector {
   }
 
   private getBubble(bubbleId: number) {
-    const bubbleClass = this.bubbleScript.getParsedBubbles()[bubbleId];
+    const bubbleClass = this.bubbleScript.getParsedBubblesRaw()[bubbleId];
     if (!bubbleClass) {
       throw new Error(`Bubble with id ${bubbleId} not found`);
     }
@@ -518,9 +518,9 @@ export class BubbleInjector {
    * tracks line shifts to adjust subsequent bubble locations.
    */
   private reapplyBubbleInstantiations(): string {
-    const bubbles = Object.values(this.bubbleScript.getParsedBubbles()).filter(
-      (bubble) => !bubble.invocationCallSiteKey
-    );
+    const bubbles = Object.values(
+      this.bubbleScript.getParsedBubblesRaw()
+    ).filter((bubble) => !bubble.invocationCallSiteKey);
     const lines = this.bubbleScript.currentBubbleScript.split('\n');
 
     // Sort bubbles by start line
@@ -680,7 +680,9 @@ export class BubbleInjector {
 
   private buildInvocationDependencyGraphLiteral(): string {
     const callSiteMap: Record<string, Record<string, unknown>> = {};
-    for (const bubble of Object.values(this.bubbleScript.getParsedBubbles())) {
+    for (const bubble of Object.values(
+      this.bubbleScript.getParsedBubblesRaw()
+    )) {
       if (
         !bubble.invocationCallSiteKey ||
         typeof bubble.clonedFromVariableId !== 'number' ||
