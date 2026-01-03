@@ -116,39 +116,43 @@ export class BubbleScript {
    */
   private findOriginalBubble(
     bubble: ParsedBubbleWithInfo,
-    originalBubblesByKey: Map<string, ParsedBubbleWithInfo[]>
+    originalBubblesByKey: Map<string, ParsedBubbleWithInfo[]>,
+    normalizedBubblesByKey: Map<string, ParsedBubbleWithInfo[]>
   ): ParsedBubbleWithInfo | undefined {
-    const key = `${bubble.bubbleName}:${bubble.variableName}`;
-    const candidates = originalBubblesByKey.get(key) || [];
+    // For cloned bubbles, look up by clonedFromVariableId
+    if (bubble.clonedFromVariableId !== undefined) {
+      return this.originalParsedBubbles[bubble.clonedFromVariableId];
+    }
 
-    // First try: exact variableId match
-    let originalBubble = candidates.find(
+    const key = `${bubble.bubbleName}:${bubble.variableName}`;
+    const originalCandidates = originalBubblesByKey.get(key) || [];
+
+    // Single candidate: use it directly
+    if (originalCandidates.length === 1) {
+      return originalCandidates[0];
+    }
+
+    // Multiple candidates: try exact variableId match first
+    const match = originalCandidates.find(
       (c) => c.variableId === bubble.variableId
     );
+    if (match) return match;
 
-    // Second try: clonedFromVariableId
-    if (!originalBubble && bubble.clonedFromVariableId !== undefined) {
-      originalBubble = this.originalParsedBubbles[bubble.clonedFromVariableId];
+    // Fallback: match by declaration order (index within same-named bubbles)
+    // Normalization preserves declaration order, so the Nth bubble with this name
+    // in normalized should correspond to the Nth bubble in original
+    const normalizedCandidates = normalizedBubblesByKey.get(key) || [];
+    const indexInNormalized = normalizedCandidates.findIndex(
+      (c) => c.variableId === bubble.variableId
+    );
+    if (
+      indexInNormalized >= 0 &&
+      indexInNormalized < originalCandidates.length
+    ) {
+      return originalCandidates[indexInNormalized];
     }
 
-    // Third try: match by parameter names
-    if (!originalBubble && candidates.length > 0) {
-      const bubbleParamNames = new Set(bubble.parameters.map((p) => p.name));
-      let bestMatch: ParsedBubbleWithInfo | undefined;
-      let bestMatchCount = 0;
-      for (const candidate of candidates) {
-        const matchCount = candidate.parameters.filter((p) =>
-          bubbleParamNames.has(p.name)
-        ).length;
-        if (matchCount > bestMatchCount) {
-          bestMatchCount = matchCount;
-          bestMatch = candidate;
-        }
-      }
-      originalBubble = bestMatch;
-    }
-
-    return originalBubble;
+    return undefined;
   }
 
   constructor(bubbleScript: string, bubbleFactory: BubbleFactory) {
@@ -625,7 +629,7 @@ export class BubbleScript {
       JSON.stringify(this.parsedBubbles)
     ) as Record<number, ParsedBubbleWithInfo>;
 
-    // Build lookup map for matching bubbles
+    // Build lookup maps for matching bubbles
     const originalBubblesByKey = new Map<string, ParsedBubbleWithInfo[]>();
     for (const bubble of Object.values(this.originalParsedBubbles)) {
       const key = `${bubble.bubbleName}:${bubble.variableName}`;
@@ -634,11 +638,20 @@ export class BubbleScript {
       originalBubblesByKey.set(key, existing);
     }
 
+    const normalizedBubblesByKey = new Map<string, ParsedBubbleWithInfo[]>();
+    for (const bubble of Object.values(this.parsedBubbles)) {
+      const key = `${bubble.bubbleName}:${bubble.variableName}`;
+      const existing = normalizedBubblesByKey.get(key) || [];
+      existing.push(bubble);
+      normalizedBubblesByKey.set(key, existing);
+    }
+
     // Restore original locations for each bubble
     for (const bubble of Object.values(bubblesCopy)) {
       const originalBubble = this.findOriginalBubble(
         bubble,
-        originalBubblesByKey
+        originalBubblesByKey,
+        normalizedBubblesByKey
       );
       if (!originalBubble) continue;
 
