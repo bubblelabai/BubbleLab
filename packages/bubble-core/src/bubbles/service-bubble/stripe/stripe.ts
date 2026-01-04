@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { custom, z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { BubbleContext } from '../../../types/bubble.js';
@@ -14,6 +14,46 @@ const StripeParamsSchema = z.discriminatedUnion('operation', [
     description: z.string().optional(),
     credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
   }),
+  z.object({
+    operation: z.literal('create_subscription'),
+    customerId: z.string().describe('The ID of the customer to subscribe.'),
+    credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
+    items: z.array(
+      z.object({
+        price: z
+          .string()
+          .describe('The ID of the price to subscribe the customer to.'),
+        quantity: z
+          .number()
+          .optional()
+          .describe('The quantity of the price to subscribe the customer to.'),
+      })
+    ),
+    collection_method: z
+      .enum(['charge_automatically', 'send_invoide'])
+      .describe(
+        "How to collect payment. 'charge_automatically' will try to bill the default payment method. 'send_invoice' will email an invoice."
+      )
+      .optional(),
+    days_until_due: z
+      .number()
+      .optional()
+      .describe(
+        'Number of days before an invoice is due. Required if Collection Method is Send Invoice.'
+      ),
+    trial_period_days: z
+      .number()
+      .optional()
+      .describe(
+        'Integer representing the number of trial days the customer receives before the subscription bills for the first time.'
+      ),
+    default_payment_method: z
+      .string()
+      .optional()
+      .describe(
+        'ID of the default payment method for the subscription (e.g., `pm_...`).'
+      ),
+  }),
 ]);
 
 const CustomerResultSchema = z.object({
@@ -28,6 +68,45 @@ const CustomerResultSchema = z.object({
   created: z.number().describe('Timestamp when the customer was created.'),
 });
 
+const SubscriptionResultSchema = z
+  .object({
+    id: z.string(),
+    object: z.literal('subscription'),
+    status: z.enum([
+      'active',
+      'past_due',
+      'unpaid',
+      'canceled',
+      'incomplete',
+      'incomplete_expired',
+      'trialing',
+      'paused',
+    ]),
+    customer: z.string(),
+    collection_method: z.enum(['charge_automatically', 'send_invoice']),
+    livemode: z.boolean(),
+    created: z.number(),
+    latest_invoice: z.string().nullable(),
+    items: z.object({
+      object: z.literal('list'),
+      data: z.array(
+        z.object({
+          id: z.string(),
+          price: z.object({ id: z.string() }),
+          quantity: z.number(),
+          current_period_start: z.number(),
+          current_period_end: z.number(),
+        })
+      ),
+      has_more: z.boolean(),
+    }),
+    // Optional extras for common needs
+    cancel_at: z.number().nullable().optional(),
+    trial_end: z.number().nullable().optional(),
+    metadata: z.record(z.string()).nullable().optional(),
+  })
+  .passthrough();
+
 const StripeResultSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
@@ -38,6 +117,16 @@ const StripeResultSchema = z.discriminatedUnion('operation', [
       .boolean()
       .describe('Indicates whether the operation was successful.'),
     data: CustomerResultSchema.optional(),
+  }),
+  z.object({
+    operation: z
+      .literal('create_subscription')
+      .describe('Creates a new subscription for a customer in Stripe.'),
+    error: z.string().describe('Error message if the operation failed.'),
+    success: z
+      .boolean()
+      .describe('Indicates whether the operation was successful.'),
+    data: SubscriptionResultSchema.optional(),
   }),
 ]);
 
@@ -110,7 +199,8 @@ export class StripeBubble<
         switch (operation) {
           case 'create_customer':
             return await this.createCustomer(this.params);
-
+          case 'create_subscription':
+            return await this.createSubscription(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -134,7 +224,7 @@ export class StripeBubble<
   private async makeStripeApiCall(
     httpMethod: 'GET' | 'POST' | 'DELETE' | 'PUT',
     endpoint: string,
-    body?: Record<string, string>
+    body?: Record<string, unknown>
   ): Promise<{
     success: boolean;
     data?: unknown;
@@ -222,6 +312,50 @@ export class StripeBubble<
           : undefined,
       error: response.success ? '' : response.error || 'Unknown error',
       success: response.success,
+    };
+  }
+
+  private async createSubscription(
+    params: Extract<StripeParams, { operation: 'create_subscription' }>
+  ): Promise<Extract<StripeResult, { operation: 'create_subscription' }>> {
+    const {
+      customerId,
+      items,
+      collection_method,
+      days_until_due,
+      trial_period_days,
+      default_payment_method,
+    } = params;
+    const body: Record<string, unknown> = {
+      customer: customerId,
+    };
+    body.items = items;
+    if (collection_method) {
+      body.collection_method = collection_method;
+    }
+    if (days_until_due) {
+      body.days_until_due = days_until_due;
+    }
+    if (trial_period_days) {
+      body.trial_period_days = trial_period_days;
+    }
+    if (default_payment_method) {
+      body.default_payment_method = default_payment_method;
+    }
+    const response = await this.makeStripeApiCall(
+      'POST',
+      '/subscriptions',
+      body
+    );
+
+    return {
+      operation: 'create_subscription',
+      error: response.success ? '' : response.error || 'Unknown Error',
+      success: response.success,
+      data:
+        response.success && response.data
+          ? SubscriptionResultSchema.parse(response.data)
+          : undefined,
     };
   }
 }
