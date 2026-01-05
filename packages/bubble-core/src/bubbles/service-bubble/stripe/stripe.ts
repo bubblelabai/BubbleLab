@@ -354,14 +354,12 @@ export class StripeBubble<
     const body: Record<string, string> = {
       customer: customerId,
     };
-    if (items && Array.isArray(items)) {
-      items?.forEach((item, index) => {
-        body[`items[${index}][price]`] = item.price;
-        if (item.quantity) {
-          body[`items[${index}][quantity]`] = String(item.quantity);
-        }
-      });
-    }
+    items.forEach((item, index) => {
+      body[`items[${index}][price]`] = item.price;
+      if (item.quantity) {
+        body[`items[${index}][quantity]`] = String(item.quantity);
+      }
+    });
     if (collection_method) {
       body.collection_method = collection_method;
     }
