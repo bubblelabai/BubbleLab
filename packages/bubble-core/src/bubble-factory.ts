@@ -107,7 +107,6 @@ export class BubbleFactory {
     context?: BubbleContext
   ): T {
     const BubbleClass = this.registry.get(name as BubbleName);
-    console.log('Creating bubble:', name, BubbleClass);
     if (!BubbleClass) {
       throw new Error(`Bubble '${name}' not found in factory registry`);
     }
