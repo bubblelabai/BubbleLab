@@ -99,5 +99,6 @@ export type BubbleName =
   | 'telegram'
   | 'airtable'
   | 'notion'
+  | 'stripe'
   | 'firecrawl'
   | 'insforge-db';

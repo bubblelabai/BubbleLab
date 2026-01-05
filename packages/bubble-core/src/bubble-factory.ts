@@ -107,6 +107,7 @@ export class BubbleFactory {
     context?: BubbleContext
   ): T {
     const BubbleClass = this.registry.get(name as BubbleName);
+    console.log('Creating bubble:', name, BubbleClass);
     if (!BubbleClass) {
       throw new Error(`Bubble '${name}' not found in factory registry`);
     }
@@ -157,6 +158,7 @@ export class BubbleFactory {
       'agi-inc',
       'airtable',
       'notion',
+      'stripe',
       'firecrawl',
       'insforge-db',
     ];
@@ -202,6 +204,9 @@ export class BubbleFactory {
     );
     const { NotionBubble } = await import(
       './bubbles/service-bubble/notion/notion.js'
+    );
+    const { StripeBubble } = await import(
+      './bubbles/service-bubble/stripe/stripe.js'
     );
     const { DatabaseAnalyzerWorkflowBubble } = await import(
       './bubbles/workflow-bubble/database-analyzer.workflow.js'
@@ -322,6 +327,7 @@ export class BubbleFactory {
       FollowUpBossBubble as BubbleClassWithMetadata
     );
     this.register('notion', NotionBubble as BubbleClassWithMetadata);
+    this.register('stripe', StripeBubble as BubbleClassWithMetadata);
     this.register(
       'database-analyzer',
       DatabaseAnalyzerWorkflowBubble as BubbleClassWithMetadata
@@ -735,7 +741,7 @@ export class ${className} extends BubbleFlow<'webhook/http'> {
   // Condition: Only runs when transformedInput is not null and has more than 3 characters
   private async processWithAI(input: string) {
     const agent = new AIAgentBubble({
-      model: { model: 'google/gemini-2.5-flash' },
+      model: { model: 'google/gemini-1.5-flash' },
       systemPrompt: 'You are a helpful assistant.',
       message: \`Process this input: \${input}\`
     });

@@ -373,6 +373,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED],
   notion: [CredentialType.NOTION_OAUTH_TOKEN],
+  stripe: [CredentialType.STRIPE_SECRET_KEY],
   firecrawl: [CredentialType.FIRECRAWL_API_KEY],
   'insforge-db': [
     CredentialType.INSFORGE_BASE_URL,

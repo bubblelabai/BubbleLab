@@ -52,11 +52,13 @@ export class CredentialValidator {
       // Create bubble instance with minimal parameters for testing
       const testParams = this.createTestParameters(credentialType);
 
+      console.log('  Validating credential for bubble fietssssssss:');
       // Pass undefined to let the bubble use its default constructor parameters
       const bubbleInstance = factory.createBubble(
         bubbleName,
         Object.keys(testParams).length > 0 ? testParams : undefined
       );
+      console.log(bubbleInstance, '  Validating credential for bubble :');
 
       const serviceBubble = bubbleInstance as IServiceBubble;
       // Apply configurations if provided
@@ -192,6 +194,9 @@ export class CredentialValidator {
         break;
       case CredentialType.NOTION_OAUTH_TOKEN:
         baseParams.operation = 'list_users';
+        break;
+      case CredentialType.STRIPE_SECRET_KEY:
+        baseParams.operation = 'create_customer';
         break;
       default:
         break;
