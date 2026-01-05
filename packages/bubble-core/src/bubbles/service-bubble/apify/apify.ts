@@ -295,7 +295,14 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
       }
 
       // Start the actor run
-      const runResponse = await this.startActorRun(apiToken, actorId, input);
+      const runResponse = await this.startActorRun(
+        apiToken,
+        actorId,
+        input,
+        limit,
+        waitForFinish,
+        timeout
+      );
 
       if (!runResponse.data?.id) {
         return {
@@ -396,13 +403,30 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
   private async startActorRun(
     apiToken: string,
     actorId: string,
-    input: Record<string, unknown>
+    input: Record<string, unknown>,
+    limit?: number,
+    waitForFinish?: boolean,
+    timeout?: number
   ): Promise<ApifyRunResponse> {
     // Replace '/' with '~' in actor ID for API endpoint
     const apiActorId = actorId.replace('/', '~');
-    const url = `https://api.apify.com/v2/acts/${apiActorId}/runs`;
+    const url = new URL(`https://api.apify.com/v2/acts/${apiActorId}/runs`);
 
-    const response = await fetch(url, {
+    // Add query parameters for cost control
+    if (limit !== undefined) {
+      url.searchParams.set('maxItems', String(limit));
+    }
+    // Always set max charge to $5
+    url.searchParams.set('maxTotalChargeUsd', '5');
+
+    // Add waitForFinish query parameter (in seconds)
+    if (waitForFinish && timeout !== undefined) {
+      // Convert timeout from milliseconds to seconds
+      const waitSeconds = Math.floor(timeout / 1000);
+      url.searchParams.set('waitForFinish', String(waitSeconds));
+    }
+
+    const response = await fetch(url.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

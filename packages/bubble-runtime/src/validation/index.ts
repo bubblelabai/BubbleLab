@@ -133,6 +133,7 @@ export async function validateAndExtract(
         errors: triggerEventErrors,
       };
     }
+    // Get current bubbles (with clones, workflow, etc.) with original line numbers restored
     const bubbleParameters = script.getParsedBubbles();
 
     // Extract required credentials from bubble parameters
