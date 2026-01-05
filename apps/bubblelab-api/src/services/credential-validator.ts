@@ -52,7 +52,6 @@ export class CredentialValidator {
       // Create bubble instance with minimal parameters for testing
       const testParams = this.createTestParameters(credentialType);
 
-      console.log('  Validating credential for bubble fietssssssss:');
       // Pass undefined to let the bubble use its default constructor parameters
       const bubbleInstance = factory.createBubble(
         bubbleName,
