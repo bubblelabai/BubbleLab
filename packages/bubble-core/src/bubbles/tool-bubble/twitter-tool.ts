@@ -425,6 +425,7 @@ export class TwitterTool extends ToolBubble<
         input,
         waitForFinish: true,
         timeout: 180000, // 3 minutes
+        limit: maxItems,
         credentials,
       },
       this.context,
@@ -489,6 +490,7 @@ export class TwitterTool extends ToolBubble<
         input,
         waitForFinish: true,
         timeout: 180000, // 3 minutes
+        limit: maxItems,
         credentials,
       },
       this.context,
@@ -549,6 +551,7 @@ export class TwitterTool extends ToolBubble<
         input,
         waitForFinish: true,
         timeout: 180000, // 3 minutes
+        limit: maxItems,
         credentials,
       },
       this.context,

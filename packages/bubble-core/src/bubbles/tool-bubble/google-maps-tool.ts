@@ -186,6 +186,7 @@ export class GoogleMapsTool extends ToolBubble<
         input,
         waitForFinish: true,
         timeout: 240000, // 4 minutes, maps can be slow
+        limit: limit,
         credentials: this.params.credentials,
       },
       this.context,

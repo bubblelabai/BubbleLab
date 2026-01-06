@@ -413,9 +413,8 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     const url = new URL(`https://api.apify.com/v2/acts/${apiActorId}/runs`);
 
     // Add query parameters for cost control
-    if (limit !== undefined) {
-      url.searchParams.set('maxItems', String(limit));
-    }
+    url.searchParams.set('maxItems', String(limit));
+
     // Always set max charge to $5
     url.searchParams.set('maxTotalChargeUsd', '5');
 
@@ -426,13 +425,16 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
       url.searchParams.set('waitForFinish', String(waitSeconds));
     }
 
-    const response = await fetch(url.toString(), {
+    const bodyJson = JSON.stringify(input);
+    const requestUrl = url.toString();
+
+    const response = await fetch(requestUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiToken}`,
       },
-      body: JSON.stringify(input),
+      body: bodyJson,
     });
 
     if (!response.ok) {
@@ -531,7 +533,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
       if (query) {
         searchUrl.searchParams.set('search', query);
       }
-      searchUrl.searchParams.set('limit', String(Math.min(limit, 100))); // Cap at 100
+      searchUrl.searchParams.set('limit', limit.toString()); // Cap at 100
 
       const searchResponse = await fetch(searchUrl.toString(), {
         headers: {

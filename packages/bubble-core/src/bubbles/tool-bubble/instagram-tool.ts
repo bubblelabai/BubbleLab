@@ -360,6 +360,7 @@ export class InstagramTool extends ToolBubble<
           waitForFinish: true,
           timeout: 180000, // 3 minutes
           credentials,
+          limit: limit,
         },
         this.context,
         'scrape_hashtag_apify'
@@ -464,6 +465,7 @@ export class InstagramTool extends ToolBubble<
           resultsLimit: limit,
         },
         waitForFinish: true,
+        limit: limit,
         timeout: 180000, // 3 minutes
         credentials: this.params.credentials,
       },
