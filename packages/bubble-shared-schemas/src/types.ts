@@ -21,6 +21,7 @@ export enum CredentialType {
   CLOUDFLARE_R2_ACCOUNT_ID = 'CLOUDFLARE_R2_ACCOUNT_ID',
   // Scraping Credentials
   APIFY_CRED = 'APIFY_CRED',
+  OLOSTEP_API_KEY = 'OLOSTEP_API_KEY',
 
   // Voice Credentials
   ELEVENLABS_API_KEY = 'ELEVENLABS_API_KEY',
@@ -97,4 +98,5 @@ export type BubbleName =
   | 'airtable'
   | 'notion'
   | 'firecrawl'
-  | 'insforge-db';
+  | 'insforge-db'
+  | 'olostep';

@@ -249,6 +249,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My InsForge API Key',
     credentialConfigurations: {},
   },
+  [CredentialType.OLOSTEP_API_KEY]: {
+    label: 'Olostep',
+    description: 'API key for Olostep web scraping and AI content extraction',
+    placeholder: 'ols_...',
+    namePlaceholder: 'My Olostep API Key',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -299,6 +306,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
+    [CredentialType.OLOSTEP_API_KEY]: 'Olostep',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
