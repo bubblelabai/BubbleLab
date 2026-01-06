@@ -51,6 +51,8 @@ export enum CredentialType {
 
   // Browser Session Credentials (BrowserBase-powered)
   AMAZON_CRED = 'AMAZON_CRED',
+  // Crustdata Credentials
+  CRUSTDATA_API_KEY = 'CRUSTDATA_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -106,4 +108,6 @@ export type BubbleName =
   | 'firecrawl'
   | 'insforge-db'
   | 'browserbase'
-  | 'amazon-shopping-tool';
+  | 'amazon-shopping-tool'
+  | 'crustdata'
+  | 'company-enrichment-tool';

@@ -160,8 +160,9 @@ export class BubbleFactory {
       'notion',
       'firecrawl',
       'insforge-db',
-
       'amazon-shopping-tool',
+      'crustdata',
+      'company-enrichment-tool',
     ];
   }
 
@@ -304,6 +305,12 @@ export class BubbleFactory {
     const { AmazonShoppingTool } = await import(
       './bubbles/tool-bubble/amazon-shopping-tool/index.js'
     );
+    const { CrustdataBubble } = await import(
+      './bubbles/service-bubble/crustdata/index.js'
+    );
+    const { CompanyEnrichmentTool } = await import(
+      './bubbles/tool-bubble/company-enrichment-tool.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -421,6 +428,11 @@ export class BubbleFactory {
     this.register(
       'amazon-shopping-tool',
       AmazonShoppingTool as BubbleClassWithMetadata
+    );
+    this.register('crustdata', CrustdataBubble as BubbleClassWithMetadata);
+    this.register(
+      'company-enrichment-tool',
+      CompanyEnrichmentTool as BubbleClassWithMetadata
     );
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
