@@ -282,6 +282,7 @@ export class YouTubeTool extends ToolBubble<
         },
         waitForFinish: true,
         timeout: 180000,
+        limit: this.params.maxResults || 20,
         credentials: this.params.credentials,
       },
       this.context,
@@ -321,6 +322,7 @@ export class YouTubeTool extends ToolBubble<
           },
           waitForFinish: true,
           timeout: 120000,
+          limit: 1, // Transcript scraper processes a single video
           credentials: this.params.credentials,
         },
         this.context,
@@ -379,6 +381,7 @@ export class YouTubeTool extends ToolBubble<
         },
         waitForFinish: true,
         timeout: 180000,
+        limit: this.params.maxResults || 20,
         credentials: this.params.credentials,
       },
       this.context,

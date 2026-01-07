@@ -482,6 +482,7 @@ export class LinkedInTool extends ToolBubble<
             page_number: params.pageNumber || 1,
           },
           waitForFinish: true,
+          limit: params.limit || 100,
           timeout: 180000, // 3 minutes
           credentials: params.credentials,
         },
@@ -686,6 +687,7 @@ export class LinkedInTool extends ToolBubble<
             limit: params.limit || 50,
           },
           waitForFinish: true,
+          limit: params.limit || 50,
           timeout: 180000,
           credentials: params.credentials,
         },
@@ -900,10 +902,11 @@ export class LinkedInTool extends ToolBubble<
         actorId: 'curious_coder/linkedin-jobs-scraper',
         input: {
           urls: [searchUrl],
-          count: params.limit || 50,
+          count: params.limit || 100,
           scrapeCompany: true,
         },
         waitForFinish: true,
+        limit: params.limit || 100,
         timeout: 240000,
         credentials: params.credentials,
       },
