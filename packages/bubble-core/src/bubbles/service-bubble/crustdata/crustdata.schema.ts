@@ -62,13 +62,13 @@ export const PersonProfileSchema = z
 export const CompanyInfoSchema = z
   .object({
     name: z.string().nullable().optional(),
-    linkedin_id: z.number().nullable().optional(),
+    linkedin_id: z.string().nullable().optional(), // API returns string
     linkedin_profile_url: z.string().nullable().optional(),
     company_website_domain: z.string().nullable().optional(),
     company_website: z.string().nullable().optional(),
     hq_country: z.string().nullable().optional(),
     hq_city: z.string().nullable().optional(),
-    year_founded: z.number().nullable().optional(),
+    year_founded: z.string().nullable().optional(), // API returns string
     headcount: z.number().nullable().optional(),
     linkedin_headcount: z.number().nullable().optional(),
     linkedin_followers: z.number().nullable().optional(),

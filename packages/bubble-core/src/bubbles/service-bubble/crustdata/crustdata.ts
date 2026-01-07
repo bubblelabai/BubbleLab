@@ -7,6 +7,7 @@ import {
   type CrustdataParams,
   type CrustdataParamsInput,
   type CrustdataResult,
+  type PersonProfile,
 } from './crustdata.schema.js';
 
 const CRUSTDATA_BASE_URL = 'https://api.crustdata.com';
@@ -172,6 +173,16 @@ export class CrustdataBubble<
       body: JSON.stringify(body),
     });
 
+    // Handle 404 as empty results (company not found)
+    if (response.status === 404) {
+      return {
+        operation: 'identify',
+        success: true,
+        results: [],
+        error: '',
+      };
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
@@ -255,15 +266,22 @@ export class CrustdataBubble<
 
     const data = await response.json();
 
-    console.log(data);
+    // API returns an array of company objects
+    // Each company object contains the enriched data directly (not nested under 'company')
+    const companies = Array.isArray(data) ? data : [data];
+    const firstCompany = companies[0] as Record<string, unknown> | undefined;
 
     return {
       operation: 'enrich',
       success: true,
-      company: data.company || null,
-      decision_makers: data.decision_makers || null,
-      cxos: data.cxos || null,
-      founders: data.founders || null,
+      company: firstCompany || null,
+      decision_makers:
+        (firstCompany?.decision_makers as PersonProfile[] | null) || null,
+      cxos: (firstCompany?.cxos as PersonProfile[] | null) || null,
+      founders:
+        (firstCompany?.founders as {
+          profiles?: PersonProfile[] | null;
+        } | null) || null,
       error: '',
     };
   }
