@@ -11,6 +11,7 @@ import {
   CogIcon,
   ChevronDownIcon,
   KeyIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import {
   CredentialType,
@@ -908,6 +909,74 @@ function EditCredentialModal({
   );
 }
 
+interface DeleteConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  isLoading: boolean;
+}
+
+function DeleteConfirmationModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  isLoading,
+}: DeleteConfirmationModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      <div className="relative bg-[#1c1c1c] rounded-2xl shadow-2xl max-w-sm w-full border border-red-500/20 overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+              <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">{title}</h3>
+              <p className="text-sm text-gray-400 mt-1">{message}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 mt-8">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 bg-[#252525] hover:bg-[#2d2d2d] text-gray-300 rounded-xl text-sm font-semibold transition-all border border-white/5"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>Delete</span>
+                  <TrashIcon className="h-4 w-4 group-hover:shake" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CredentialCard({
   credential,
   onEdit,
@@ -918,7 +987,7 @@ function CredentialCard({
 }: {
   credential: CredentialResponse;
   onEdit: (credential: CredentialResponse) => void;
-  onDelete: (id: number) => void;
+  onDelete: (credential: CredentialResponse) => void;
   isDeleting: boolean;
   onRefreshOAuth?: (credential: CredentialResponse) => void;
   isRefreshing?: boolean;
@@ -926,9 +995,7 @@ function CredentialCard({
   const [logoError, setLogoError] = useState(false);
 
   const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete "${credential.name}"?`)) {
-      onDelete(credential.id);
-    }
+    onDelete(credential);
   };
 
   const isOAuthCredentialType = isOAuthCredential(
@@ -1068,7 +1135,10 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingCredential, setEditingCredential] =
+    useState<CredentialResponse | null>(null);
+  const [credentialToDelete, setCredentialToDelete] =
     useState<CredentialResponse | null>(null);
 
   // Convert React Query error to string
@@ -1098,10 +1168,17 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
     setEditingCredential(null);
   };
 
-  const handleDeleteCredential = async (id: number) => {
+  const handleDeleteClick = (credential: CredentialResponse) => {
+    setCredentialToDelete(credential);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!credentialToDelete) return;
     try {
-      await deleteCredentialMutation.mutateAsync(id);
-      // Cache will be invalidated automatically
+      await deleteCredentialMutation.mutateAsync(credentialToDelete.id);
+      setShowDeleteModal(false);
+      setCredentialToDelete(null);
     } catch (error) {
       console.error('Failed to delete credential:', error);
     }
@@ -1190,8 +1267,11 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
                   key={credential.id}
                   credential={credential}
                   onEdit={handleEditCredential}
-                  onDelete={handleDeleteCredential}
-                  isDeleting={deleteCredentialMutation.isPending}
+                  onDelete={handleDeleteClick}
+                  isDeleting={
+                    deleteCredentialMutation.isPending &&
+                    credentialToDelete?.id === credential.id
+                  }
                   onRefreshOAuth={handleRefreshOAuth}
                   isRefreshing={
                     refreshOAuthMutation.isPending &&
@@ -1221,6 +1301,18 @@ export function CredentialsPage({ apiBaseUrl }: CredentialsPageProps) {
         onSubmit={handleUpdateCredential}
         credential={editingCredential}
         isLoading={updateCredentialMutation.isPending}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setCredentialToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Credential"
+        message={`Are you sure you want to delete "${credentialToDelete?.name}"? This action cannot be undone.`}
+        isLoading={deleteCredentialMutation.isPending}
       />
     </div>
   );
