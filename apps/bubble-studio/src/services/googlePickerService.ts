@@ -45,9 +45,11 @@ export interface GooglePickerConfig {
 }
 
 /**
- * Get the appropriate Google Picker View ID based on file type
+ * Get the appropriate Google Picker View based on file type
+ * For folders, returns a configured DocsView with folder selection enabled
+ * For other types, returns the ViewId
  */
-export const getPickerViewId = (fileType: GooglePickerFileType): unknown => {
+export const getPickerView = (fileType: GooglePickerFileType): unknown => {
   if (!window.google?.picker) return null;
 
   const picker = window.google.picker as {
@@ -57,6 +59,15 @@ export const getPickerViewId = (fileType: GooglePickerFileType): unknown => {
       FOLDERS: unknown;
       DOCS: unknown;
     };
+    DocsView: new (viewId?: unknown) => {
+      setIncludeFolders: (include: boolean) => DocsViewInstance;
+      setSelectFolderEnabled: (enabled: boolean) => DocsViewInstance;
+    };
+  };
+
+  type DocsViewInstance = {
+    setIncludeFolders: (include: boolean) => DocsViewInstance;
+    setSelectFolderEnabled: (enabled: boolean) => DocsViewInstance;
   };
 
   switch (fileType) {
@@ -65,7 +76,10 @@ export const getPickerViewId = (fileType: GooglePickerFileType): unknown => {
     case 'document':
       return picker.ViewId.DOCUMENTS;
     case 'folder':
-      return picker.ViewId.FOLDERS;
+      // For folders, create a DocsView with folder selection enabled
+      return new picker.DocsView(picker.ViewId.FOLDERS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true);
     default:
       return picker.ViewId.DOCS;
   }
@@ -149,8 +163,8 @@ export const showPicker = (
   const { fileType, onSelect, onLoadingChange } = config;
 
   try {
-    const viewId = getPickerViewId(fileType);
-    if (!viewId) {
+    const view = getPickerView(fileType);
+    if (!view) {
       throw new Error('Invalid file type');
     }
 
@@ -186,7 +200,7 @@ export const showPicker = (
       .setOAuthToken(accessToken)
       .setDeveloperKey(GOOGLE_API_KEY!)
       .setAppId(projectNumber!)
-      .addView(viewId)
+      .addView(view)
       .setCallback(
         (data: {
           action: string;

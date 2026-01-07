@@ -226,6 +226,16 @@ export interface DocumentProcessorPayload extends WebhookEvent {
 
 Use your judgment based on what the field semantically represents, not just its name.
 
+GOOGLE DRIVE INTEGRATION:
+When a field represents a Google Drive folder or file ID, use these naming patterns to automatically enable the Google Picker UI:
+- folder_id or folderId: For Google Drive folder IDs (enables folder picker with selection)
+- spreadsheet_id or spreadsheetId: For Google Sheets IDs (enables spreadsheet picker)
+- document_id or documentId: For Google Docs IDs (enables document picker)
+- file_id or fileId: For generic Drive file IDs (enables file picker)
+
+Always add @canBeFile false to these ID fields since they are identifiers, not content.
+The naming pattern is flexible - folder2_id, source_folder_id, output_folder_id all work.
+
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 
 // The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
@@ -239,6 +249,9 @@ recipientEmail: string;
 
 // Folder path using forward slashes to separate directories.
 outputFolderPath: string;
+
+// Google Drive folder ID where files will be saved. Open Google Drive, navigate to the folder, and copy the ID from the URL (the part after /folders/).
+folder_id: string;
 
 // API key from Dashboard > Settings > API Keys. Generate new key and copy the full string (32-64 chars).
 apiKey: string;
@@ -285,6 +298,11 @@ export interface UserNotificationPayload extends WebhookEvent {
    * @canBeFile false
    */
   spreadsheetId: string;
+  /**
+   * Google Drive folder ID where the report will be saved. Open Google Drive, navigate to the folder, and copy the ID from the URL (the part after /folders/).
+   * @canBeFile false
+   */
+  folder_id?: string;
 }
 
 const { 
