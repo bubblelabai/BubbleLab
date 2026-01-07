@@ -824,10 +824,121 @@ export type {ServiceName}Params = z.output<typeof {ServiceName}ParamsSchema>;
 - Test schema parsing with various inputs
 - Test error cases and edge conditions
 
-#### Integration Tests (Optional)
+#### Integration Tests
 
 - Test against real service APIs
 - Include environment variable checks for skipping
+
+---
+
+## 🧪 Integration Testing Guide
+
+When creating a new bubble, you must provide comprehensive integration tests. This section covers the two main testing patterns.
+
+### 1. Integration Flow Tests (`.integration.flow.ts`)
+
+Integration flow tests are complete `BubbleFlow` workflows that exercise all bubble operations end-to-end in realistic scenarios.
+
+**Requirements:**
+
+- ✅ Exercise **all or most operations** of your bubble
+- ✅ Include **edge cases** (special characters, spaces in names, unicode)
+- ✅ Test **null/undefined handling** in data
+- ✅ Return **structured results** tracking each operation's success/failure
+- ✅ Use **realistic data** and scenarios
+
+**File naming:** `{service-name}.integration.flow.ts`
+
+**Example structure:**
+
+```typescript
+import {
+  BubbleFlow,
+  YourServiceBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output {
+  resourceId: string;
+  testResults: {
+    operation: string;
+    success: boolean;
+    details?: string;
+  }[];
+}
+
+export interface TestPayload extends WebhookEvent {
+  testName?: string;
+}
+
+export class YourServiceIntegrationTest extends BubbleFlow<'webhook/http'> {
+  async handle(payload: TestPayload): Promise<Output> {
+    const results: Output['testResults'] = [];
+
+    // 1. Test create operation
+    const createResult = await new YourServiceBubble({
+      operation: 'create',
+      name: 'Test With Spaces', // Edge case: spaces in name
+      data: [null, undefined, 'valid'], // Edge case: null/undefined
+    }).action();
+
+    results.push({
+      operation: 'create',
+      success: createResult.success,
+      details: createResult.success
+        ? `Created: ${createResult.data?.id}`
+        : createResult.error,
+    });
+
+    // 2. Test read operation
+    const readResult = await new YourServiceBubble({
+      operation: 'read',
+      id: createResult.data?.id,
+    }).action();
+
+    results.push({
+      operation: 'read',
+      success: readResult.success,
+      details: `Read ${readResult.data?.items?.length || 0} items`,
+    });
+
+    // 3. Continue testing other operations...
+
+    return {
+      resourceId: createResult.data?.id || '',
+      testResults: results,
+    };
+  }
+}
+```
+
+📍 **Reference:** See `src/bubbles/service-bubble/google-sheets/google-sheets.integration.flow.ts` for a complete implementation that tests create, read, write, append, clear, and delete operations with edge cases.
+
+---
+
+### 2. Schema Comparison Utility (`compareMultipleWithSchema`)
+
+For bubbles returning arrays of data from APIs, use this utility to validate responses against expected schemas.
+
+```typescript
+// In: src/bubbles/service-bubble/your-service/your-service.integration.test.ts
+import { compareMultipleWithSchema } from '../../../utils/schema-comparison.js';
+import { YourServiceResultSchema } from './your-service.schema.js';
+
+// Expected schema (from bubble's schema file)
+const expectedSchema = YourServiceResultSchema;
+
+// Actual data from API
+const actualItems = result.data.items;
+
+// Compare expected vs actual
+const comparison = compareMultipleWithSchema(expectedSchema, actualItems);
+expect(comparison.status).toBe('PASS');
+```
+
+📍 **Reference:** See `src/bubbles/service-bubble/apify/apify.integration.test.ts` for a complete example.
+
+---
 
 ## Common Patterns
 
@@ -873,7 +984,8 @@ Before submitting a new bubble, ensure:
 - [ ] Validation tests verify schema behavior
 - [ ] Error handling is consistent and informative
 - [ ] Documentation follows established patterns
-- [ ] Integration tests exist (if applicable)
+- [ ] **Integration flow test** (`.integration.flow.ts`) exercises all operations end-to-end
+- [ ] **Schema comparison** used for bubbles returning array data from APIs
 
 ## File Templates
 
