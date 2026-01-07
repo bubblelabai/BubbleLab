@@ -514,12 +514,18 @@ export async function runMilkTea(
     let agentOutput: MilkTeaAgentOutput;
     try {
       const responseText = result.data?.response || '';
-      agentOutput = MilkTeaAgentOutputSchema.parse(JSON.parse(responseText));
+      // Use parseJsonWithFallbacks to handle markdown code blocks (e.g., ```json ... ```)
+      const parseResult = parseJsonWithFallbacks(responseText);
+      if (!parseResult.success || !parseResult.parsed) {
+        throw new Error(parseResult.error || 'Failed to parse JSON response');
+      }
+      agentOutput = MilkTeaAgentOutputSchema.parse(parseResult.parsed);
     } catch (error) {
       console.error('[MilkTea] Failed to parse agent output:', error);
       return {
         type: 'reject',
-        message: 'Failed to parse agent response',
+        message:
+          'Failed to process your request. Please try rephrasing your question.',
         success: false,
         error: error instanceof Error ? error.message : 'Unknown parsing error',
       };
