@@ -31,6 +31,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
   [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
+  [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
 };
 
 /** Used by bubblelab studio */
@@ -299,7 +300,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.ANTHROPIC_CRED,
   ],
   'hello-world': [],
-  http: [],
+  http: [CredentialType.CUSTOM_AUTH_KEY],
   'get-bubble-details-tool': [],
   'list-bubbles-tool': [],
   'sql-query-tool': [CredentialType.DATABASE_CRED],

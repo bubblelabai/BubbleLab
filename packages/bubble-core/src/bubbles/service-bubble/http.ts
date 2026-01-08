@@ -41,6 +41,18 @@ const HttpParamsSchema = z.object({
     .boolean()
     .default(true)
     .describe('Whether to follow HTTP redirects (default: true)'),
+  authType: z
+    .enum(['none', 'bearer', 'basic', 'api-key', 'api-key-header', 'custom'])
+    .default('none')
+    .describe(
+      'Authentication type: none (default), bearer (Authorization: Bearer), basic (Authorization: Basic), api-key (X-API-Key), api-key-header (Api-Key), custom (user-specified header)'
+    ),
+  authHeader: z
+    .string()
+    .optional()
+    .describe(
+      'Custom header name when authType is "custom" (e.g., "X-Custom-Auth")'
+    ),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
@@ -69,7 +81,7 @@ type HttpResult = z.output<typeof HttpResultSchema>;
 
 export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
   static readonly service = 'nodex-core';
-  static readonly authType = 'none' as const;
+  static readonly authType = 'apikey' as const;
   static readonly bubbleName: BubbleName = 'http';
   static readonly type = 'service' as const;
   static readonly schema = HttpParamsSchema;
@@ -108,8 +120,11 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
   }
 
   protected chooseCredential(): string | undefined {
-    // HTTP bubble can work without credentials for public APIs
-    return undefined;
+    const credentials = this.params.credentials;
+    if (!credentials || typeof credentials !== 'object') {
+      return undefined;
+    }
+    return credentials[CredentialType.CUSTOM_AUTH_KEY];
   }
 
   public async testCredential(): Promise<boolean> {
@@ -121,8 +136,16 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
   protected async performAction(context?: BubbleContext): Promise<HttpResult> {
     void context; // Context available but not currently used
 
-    const { url, method, headers, body, timeout, followRedirects } =
-      this.params;
+    const {
+      url,
+      method,
+      headers,
+      body,
+      timeout,
+      followRedirects,
+      authType,
+      authHeader,
+    } = this.params;
     const startTime = Date.now();
 
     try {
@@ -134,11 +157,37 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
         abortController.abort();
       }, timeout);
 
+      // Build auth headers based on authType
+      const authHeaders: Record<string, string> = {};
+      const credential = this.chooseCredential();
+      if (credential && authType !== 'none') {
+        switch (authType) {
+          case 'bearer':
+            authHeaders['Authorization'] = `Bearer ${credential}`;
+            break;
+          case 'basic':
+            authHeaders['Authorization'] = `Basic ${credential}`;
+            break;
+          case 'api-key':
+            authHeaders['X-API-Key'] = credential;
+            break;
+          case 'api-key-header':
+            authHeaders['Api-Key'] = credential;
+            break;
+          case 'custom':
+            if (authHeader) {
+              authHeaders[authHeader] = credential;
+            }
+            break;
+        }
+      }
+
       // Prepare request options
       const requestOptions: RequestInit = {
         method,
         headers: {
           'User-Agent': 'NodeX-HttpBubble/1.0',
+          ...authHeaders,
           ...headers,
         },
         redirect: followRedirects ? 'follow' : 'manual',
