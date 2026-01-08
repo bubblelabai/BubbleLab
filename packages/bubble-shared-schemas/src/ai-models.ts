@@ -10,6 +10,7 @@ export const AvailableModels = z.enum([
   // Google Gemini models
   'google/gemini-2.5-pro',
   'google/gemini-2.5-flash',
+  'google/gemini-1.5-flash',
   'google/gemini-2.5-flash-lite',
   'google/gemini-2.5-flash-image-preview',
   'google/gemini-3-pro-preview',

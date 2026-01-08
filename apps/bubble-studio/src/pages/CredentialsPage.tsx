@@ -197,6 +197,13 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Notion Connection',
     credentialConfigurations: {},
   },
+  [CredentialType.STRIPE_SECRET_KEY]: {
+    label: 'Stripe',
+    description: 'Secret key for Stripe API access',
+    placeholder: 'sk_live_...',
+    namePlaceholder: 'My Stripe Secret Key',
+    credentialConfigurations: {},
+  },
   [CredentialType.GITHUB_TOKEN]: {
     label: 'GitHub',
     description:
@@ -299,6 +306,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
+    [CredentialType.STRIPE_SECRET_KEY]: 'Stripe',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

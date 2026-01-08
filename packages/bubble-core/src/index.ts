@@ -47,6 +47,7 @@ export { FollowUpBossBubble } from './bubbles/service-bubble/followupboss.js';
 export { TwitterTool } from './bubbles/tool-bubble/twitter-tool.js';
 export { TikTokTool } from './bubbles/tool-bubble/tiktok-tool.js';
 export { GoogleMapsTool } from './bubbles/tool-bubble/google-maps-tool.js';
+export { StripeBubble } from './bubbles/service-bubble/stripe/stripe.js';
 export type {
   ApifyParamsInput,
   ApifyActorInput,
@@ -112,7 +113,10 @@ export type {
   YouTubeVideo,
   YouTubeTranscriptSegment,
 } from './bubbles/tool-bubble/youtube-tool.js';
-
+export type {
+  StripeParams,
+  StripeResult,
+} from './bubbles/service-bubble/stripe/stripe.js';
 // Export factory (this is the main way to access bubbles)
 export {
   BubbleFactory,

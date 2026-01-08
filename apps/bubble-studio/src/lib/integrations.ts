@@ -11,6 +11,7 @@ export interface IntegrationLogo {
 export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   // Integrations
   Slack: '/integrations/slack.svg',
+  Stripe: '/integrations/stripe.svg',
   Postgres: '/integrations/postgres.svg',
   Gmail: '/integrations/gmail.svg',
   'Google Calendar': '/integrations/google-calendar.svg',
@@ -61,6 +62,7 @@ export const TOOL_LOGOS: Readonly<Record<string, string>> = Object.freeze({
 // Expose curated lists for UI sections
 export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Slack', file: SERVICE_LOGOS['Slack'] },
+  { name: 'Stripe', file: SERVICE_LOGOS['Stripe'] },
   { name: 'Postgres', file: SERVICE_LOGOS['Postgres'] },
   { name: 'Gmail', file: SERVICE_LOGOS['Gmail'] },
   { name: 'Google Calendar', file: SERVICE_LOGOS['Google Calendar'] },
