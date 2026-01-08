@@ -25,12 +25,6 @@ export interface StripeIntegrationTestPayload extends WebhookEvent {
    * @canBeFile false
    */
   testPriceId: string;
-
-  /**
-   * Optional second price ID for multi-item subscription tests
-   * @canBeFile false
-   */
-  testPriceId2?: string;
 }
 
 export class StripeStressTest extends BubbleFlow<'webhook/http'> {
