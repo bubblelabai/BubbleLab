@@ -12,6 +12,7 @@
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Refactor
+- [ ] New Bubble Integration
 - [ ] Other (please describe):
 
 ## Checklist
@@ -21,11 +22,19 @@
 - [ ] I have run `pnpm check` and all tests pass
 - [ ] I have tested my changes locally
 - [ ] I have linked relevant issues
-- [ ] I have added screenshots for UI changes (if applicable)
 
-## Screenshots (if applicable)
+## Screenshots (Required)
 
-<!-- Add before/after screenshots or GIFs here -->
+<!-- Add screenshots showing the full result in BubbleLab. This is mandatory for all PRs. -->
+
+## For New Bubble Integrations
+
+> 📋 **Integration Flow Tests:** When creating a new bubble, you must write an integration flow test that exercises all operations end-to-end in realistic scenarios—including edge cases. This flow should be runnable in bubble studio and return structured results tracking each operation's success/failure with details. See `packages/bubble-core/src/bubbles/service-bubble/google-sheets/google-sheets.integration.flow.ts` for a complete reference implementation.
+>
+> ⚠️ If your integration requires API credits for testing, please reach out to the team for test credentials.
+
+- [ ] Integration flow test (`.integration.flow.ts`) covers all operations
+- [ ] Screenshots showing full test results in Bubble Studio attached above
 
 ## Additional Context
 

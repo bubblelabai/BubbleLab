@@ -7,9 +7,14 @@ import { validateBubbleFlow } from '../validation/index';
 /**
  * Utility function to validate that a BubbleRunner's script is valid after execution.
  * This should be called after runAll() to ensure the injected code didn't break the script.
+ *
+ * @param runner - The BubbleRunner instance after execution
+ * @param originalScript - The original script before any injections (for parameter line validation)
+ * @param logOnError - Whether to log details when validation fails
  */
 async function expectValidScript(
   runner: BubbleRunner,
+  originalScript: string,
   logOnError = false
 ): Promise<void> {
   if (runner.bubbleScript.parsingErrors.length > 0) {
@@ -31,6 +36,91 @@ async function expectValidScript(
   }
 
   expect(parseResult.valid).toBe(true);
+
+  // Validate that bubble and parameter line numbers match the original script
+  const originalLines = originalScript.split('\n');
+  const bubbles = runner.bubbleScript.getParsedBubbles();
+
+  for (const [variableId, bubble] of Object.entries(bubbles)) {
+    // Skip cloned bubbles - their locations are synthetic
+    if (bubble.clonedFromVariableId !== undefined) continue;
+
+    // Check bubble's own location
+    if (bubble.location) {
+      const bubbleStartIndex = bubble.location.startLine - 1;
+      const bubbleEndIndex = bubble.location.endLine - 1;
+
+      if (bubbleStartIndex < 0 || bubbleEndIndex >= originalLines.length) {
+        if (logOnError) {
+          console.log(
+            `=== Bubble Location Mismatch for ${bubble.bubbleName} (variableId: ${variableId}) ===`
+          );
+          console.log(
+            `Bubble has lines ${bubble.location.startLine}-${bubble.location.endLine} but script has ${originalLines.length} lines`
+          );
+        }
+        expect(bubbleStartIndex).toBeGreaterThanOrEqual(0);
+        expect(bubbleEndIndex).toBeLessThan(originalLines.length);
+      } else {
+        const bubbleLinesInRange = originalLines
+          .slice(bubbleStartIndex, bubbleEndIndex + 1)
+          .join('\n');
+        const bubbleNameExists = bubbleLinesInRange.includes(
+          bubble.variableName
+        );
+        if (!bubbleNameExists && logOnError) {
+          console.log(
+            `=== Bubble Location Mismatch for ${bubble.bubbleName} (variableId: ${variableId}) ===`
+          );
+          console.log(
+            `Bubble "${bubble.variableName}" (lines ${bubble.location.startLine}-${bubble.location.endLine}) not found`
+          );
+          console.log(`Lines searched:\n${bubbleLinesInRange}`);
+        }
+        expect(bubbleNameExists).toBe(true);
+      }
+    }
+
+    // Check each parameter's location
+    for (const param of bubble.parameters) {
+      if (!param.location) continue;
+
+      const startLineIndex = param.location.startLine - 1;
+      const endLineIndex = param.location.endLine - 1;
+
+      if (startLineIndex < 0 || endLineIndex >= originalLines.length) {
+        if (logOnError) {
+          console.log(
+            `=== Parameter Line Mismatch for bubble ${bubble.bubbleName} (variableId: ${variableId}) ===`
+          );
+          console.log(
+            `Parameter "${param.name}" has lines ${param.location.startLine}-${param.location.endLine} but script has ${originalLines.length} lines`
+          );
+        }
+        expect(startLineIndex).toBeGreaterThanOrEqual(0);
+        expect(endLineIndex).toBeLessThan(originalLines.length);
+        continue;
+      }
+
+      // Include one line before for multi-line params where name is on previous line
+      const expandedStartIndex = Math.max(0, startLineIndex - 1);
+      const linesInRange = originalLines
+        .slice(expandedStartIndex, endLineIndex + 1)
+        .join('\n');
+
+      const paramNameExists = linesInRange.includes(param.name);
+      if (!paramNameExists && logOnError) {
+        console.log(
+          `=== Parameter Line Mismatch for bubble ${bubble.bubbleName} (variableId: ${variableId}) ===`
+        );
+        console.log(
+          `Parameter "${param.name}" (lines ${param.location.startLine}-${param.location.endLine}) not found`
+        );
+        console.log(`Lines searched:\n${linesInRange}`);
+      }
+      expect(paramNameExists).toBe(true);
+    }
+  }
 }
 
 describe('BubbleRunner correctly runs and plans', () => {
@@ -95,8 +185,8 @@ describe('BubbleRunner correctly runs and plans', () => {
         pricingTable: {},
       });
 
-      // Test parameter modification
-      const bubbles = runner.getParsedBubbles();
+      // Test parameter modification - use getParsedBubblesRaw() for internal testing
+      const bubbles = runner.bubbleScript.getParsedBubblesRaw();
       const bubbleIds = Object.keys(bubbles).map(Number);
       expect(bubbleIds.length).toBeGreaterThan(0);
       // print original script
@@ -107,7 +197,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         'message',
         'Modified Hello Message!'
       );
-      // Check that the bubble parameters have been modified
+      // Check that the bubble parameters have been modified (check internal state)
       expect(bubbles[bubbleIds[0]].parameters[0].value).toBe(
         'Modified Hello Message!'
       );
@@ -432,7 +522,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
         expect(
           result.success || result.error?.includes('credential')
@@ -445,7 +535,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
       });
       it('should execute a flow with a for and promises flow', async () => {
@@ -469,7 +559,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
       });
       it('should correctly inject logging for method calls inside if-body (not condition)', async () => {
@@ -479,7 +569,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
       });
       it('should execute a flow with a nested condition handle', async () => {
@@ -494,7 +584,7 @@ describe('BubbleRunner correctly runs and plans', () => {
           limit: 5,
         });
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
         // Expect saveToSheet to be called
         expect(runner.bubbleScript.bubblescript).toContain('rowsToSave.push');
@@ -506,7 +596,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
       });
       it.skip('should execute a flow with a batch process loop', async () => {
@@ -516,7 +606,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         const result = await runner.runAll();
 
-        await expectValidScript(runner, true);
+        await expectValidScript(runner, testScript, true);
         expect(result).toBeDefined();
       });
     });
@@ -527,7 +617,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
 
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, testScript, true);
       expect(result).toBeDefined();
     });
     it('should execute a flow with a custom tool', async () => {
@@ -537,7 +627,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
 
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, testScript, true);
       expect(result).toBeDefined();
     });
     it('should execute promise all map flow', async () => {
@@ -546,7 +636,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         pricingTable: {},
       });
       const result = await runner.runAll();
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, testScript, true);
       expect(result).toBeDefined();
     });
     it('should execute string literal complex flow', async () => {
@@ -555,7 +645,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         pricingTable: {},
       });
       const result = await runner.runAll();
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, testScript, true);
       expect(result).toBeDefined();
     });
 
@@ -598,7 +688,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
 
       // First validate the script is syntactically valid after injection
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, maliciousProcessEnvScript, true);
 
       const result = await runner.runAll();
 
@@ -621,7 +711,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
 
       // First validate the script is syntactically valid after injection
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, maliciousProcessEnvBracketScript, true);
 
       const result = await runner.runAll();
 
@@ -644,7 +734,11 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
 
       // First validate the script is syntactically valid after injection
-      await expectValidScript(runner, true);
+      await expectValidScript(
+        runner,
+        maliciousProcessEnvStandaloneScript,
+        true
+      );
 
       const result = await runner.runAll();
 
@@ -667,7 +761,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
 
       // First validate the script is syntactically valid after injection
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, maliciousProcessBracketEnvScript, true);
 
       const result = await runner.runAll();
 
@@ -690,7 +784,7 @@ describe('BubbleRunner correctly runs and plans', () => {
       );
 
       // Validate the script is syntactically valid after injection
-      await expectValidScript(runner, true);
+      await expectValidScript(runner, legitimateProcessEnvStringScript, true);
 
       const result = await runner.runAll();
 
