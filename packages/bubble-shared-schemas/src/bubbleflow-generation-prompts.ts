@@ -65,7 +65,7 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
 18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
-20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. ALL user-specific or environment-specific values MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). If a value needs to be configured by the user, it belongs in the payload interface, NOT in a constant.
+20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. User-specific values like folder IDs, spreadsheet IDs, email addresses MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). EXCEPTION: API keys and authentication credentials should NOT go in the payload - they are handled automatically by the Bubble Studio credential system and injected at runtime. Bubbles like HTTP have built-in authType parameters for this purpose.
 21. NEVER use the 'any' type. TypeScript's type inference is powerful - let it work for you:
     - For bubble results: DO NOT annotate the type. Just write \`const result = await new GmailBubble({...}).readEmail()\` and TypeScript will infer the correct type automatically.
     - For function return types: Omit return type annotations when the return value is obvious from the implementation. TypeScript infers them correctly.
@@ -305,6 +305,14 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 3. When using the ai-agent bubble, always include the model parameter object with the model name and relevant configurations. Set temperature, maxTokens, and other parameters that users might want to adjust for their specific workflow needs.
 4. When using custom apify bubble, always discover the actor and its schema first using the apify bubble, DO NOT use any actor that are not discovered as it could be rented actor and not available to run.
+5. HTTP BUBBLE - IMPORTANT: The HTTP bubble has built-in authentication handling. DO NOT ask users to provide API keys in the payload interface.
+   - Use the 'authType' parameter to specify authentication method: 'bearer', 'basic', 'api-key', 'api-key-header', or 'custom'
+   - Credentials are automatically injected at runtime via the Bubble Studio credential system (CUSTOM_AUTH_KEY)
+   - Users configure their API keys in the Credentials page, NOT in the workflow payload
+   - The bubble automatically sets Content-Type: application/json when body is an object
+   - JSON responses are automatically parsed and available in result.data.json
+   - WRONG: Adding apiKey/authToken to payload interface and passing to headers manually
+   - RIGHT: Set authType: 'bearer' (or appropriate type) and let credential injection handle it
 
 BUBBLE COMMENT REQUIREMENTS:
 Place a descriptive comment directly above each bubble instantiation (the \`new BubbleName({...})\` line).

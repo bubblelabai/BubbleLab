@@ -249,6 +249,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My InsForge API Key',
     credentialConfigurations: {},
   },
+  [CredentialType.CUSTOM_AUTH_KEY]: {
+    label: 'Custom Authentication Key',
+    description:
+      'Custom API key or authentication token for HTTP requests (Bearer, Basic, X-API-Key, etc.)',
+    placeholder: 'Enter your API key or token...',
+    namePlaceholder: 'My Custom Auth Key',
+    credentialConfigurations: {},
+  },
 } as const satisfies Record<CredentialType, CredentialConfig>;
 
 // Helper to extract error message from API error
@@ -299,6 +307,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
+    [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

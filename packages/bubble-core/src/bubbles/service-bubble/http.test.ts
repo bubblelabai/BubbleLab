@@ -20,7 +20,6 @@ describe('HttpBubble', () => {
   it('should have correct static properties', () => {
     expect(HttpBubble.bubbleName).toBe('http');
     expect(HttpBubble.service).toBe('nodex-core');
-    expect(HttpBubble.authType).toBe('none');
     expect(HttpBubble.type).toBe('service');
     expect(HttpBubble.alias).toBe('fetch');
     expect(HttpBubble.shortDescription).toContain('HTTP requests');

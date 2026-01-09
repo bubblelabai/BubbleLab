@@ -45,6 +45,9 @@ export enum CredentialType {
   // InsForge Credentials
   INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
   INSFORGE_API_KEY = 'INSFORGE_API_KEY',
+
+  // Custom Authentication Credentials
+  CUSTOM_AUTH_KEY = 'CUSTOM_AUTH_KEY',
 }
 
 // Define all bubble names as a union type for type safety
