@@ -1002,18 +1002,24 @@ export function PearlChat() {
                         </div>
                       )}
                       {message.code && (
-                        <CodeDiffView
-                          originalCode={editor.getCode() || ''}
-                          modifiedCode={message.code}
-                          isAccepted={updatedMessageIds.has(message.id)}
-                          onAccept={() =>
-                            handleReplace(
-                              message.code!,
-                              message.id,
-                              message.bubbleParameters
-                            )
-                          }
-                        />
+                        <>
+                          <CodeDiffView
+                            originalCode={editor.getCode() || ''}
+                            modifiedCode={message.code}
+                            isAccepted={updatedMessageIds.has(message.id)}
+                            onAccept={() =>
+                              handleReplace(
+                                message.code!,
+                                message.id,
+                                message.bubbleParameters
+                              )
+                            }
+                          />
+                          <p className="text-[11px] text-gray-500 text-center mt-2">
+                            You can always restore previous versions of your run
+                            in the History tab
+                          </p>
+                        </>
                       )}
                     </>
                   ) : (
@@ -1100,7 +1106,7 @@ export function PearlChat() {
             value={pearl.prompt}
             onChange={pearl.setPrompt}
             onSubmit={handleGenerate}
-            placeholder="Get help modifying, debugging, or understanding your workflow..."
+            placeholder="Ask Pearl to modify, debug, or understand your workflow..."
             className="bg-transparent text-gray-100 text-sm w-full placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0"
             disabled={pearl.isPending || isGenerating || isVoiceBusy}
             flowId={selectedFlowId}

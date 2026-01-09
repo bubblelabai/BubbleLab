@@ -258,18 +258,22 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                       </div>
                     </div>
                     {execution.code && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePreviewVersion(execution.code, execution.id);
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
-                        title="Preview and apply code from this execution"
-                      >
-                        <ArrowPathIcon className="w-3.5 h-3.5" />
-                        Use Version
-                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreviewVersion(execution.code, execution.id);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
+                        >
+                          <ArrowPathIcon className="w-3.5 h-3.5" />
+                          Use Version
+                        </button>
+                        <span className="text-[10px] text-gray-500">
+                          Preview changes before applying
+                        </span>
+                      </div>
                     )}
                   </div>
 
