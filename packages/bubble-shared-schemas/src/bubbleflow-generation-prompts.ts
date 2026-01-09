@@ -305,14 +305,9 @@ export const BUBBLE_SPECIFIC_INSTRUCTIONS = `BUBBLE SPECIFIC INSTRUCTIONS:
 2. When using the resend bubble, DO NOT set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
 3. When using the ai-agent bubble, always include the model parameter object with the model name and relevant configurations. Set temperature, maxTokens, and other parameters that users might want to adjust for their specific workflow needs.
 4. When using custom apify bubble, always discover the actor and its schema first using the apify bubble, DO NOT use any actor that are not discovered as it could be rented actor and not available to run.
-5. HTTP BUBBLE - IMPORTANT: The HTTP bubble has built-in authentication handling. DO NOT ask users to provide API keys in the payload interface.
+5. HTTP BUBBLE - IMPORTANT: The HTTP bubble has built-in authentication handling. DO NOT ask users to provide API keys in the payload interface unless the user requests a dynamic authentication method.
    - Use the 'authType' parameter to specify authentication method: 'bearer', 'basic', 'api-key', 'api-key-header', or 'custom'
    - Credentials are automatically injected at runtime via the Bubble Studio credential system (CUSTOM_AUTH_KEY)
-   - Users configure their API keys in the Credentials page, NOT in the workflow payload
-   - The bubble automatically sets Content-Type: application/json when body is an object
-   - JSON responses are automatically parsed and available in result.data.json
-   - WRONG: Adding apiKey/authToken to payload interface and passing to headers manually
-   - RIGHT: Set authType: 'bearer' (or appropriate type) and let credential injection handle it
 
 BUBBLE COMMENT REQUIREMENTS:
 Place a descriptive comment directly above each bubble instantiation (the \`new BubbleName({...})\` line).

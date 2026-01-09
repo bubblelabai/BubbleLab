@@ -11,7 +11,10 @@ import type { BubbleParameter } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { findLogoForBubble, findDocsUrlForBubble } from '@/lib/integrations';
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
+import {
+  SYSTEM_CREDENTIALS,
+  OPTIONAL_CREDENTIALS,
+} from '@bubblelab/shared-schemas';
 import type { ParsedBubbleWithInfo } from '@bubblelab/shared-schemas';
 import BubbleExecutionBadge from '@/components/flow_visualizer/BubbleExecutionBadge';
 import BubbleDetailsOverlay from '@/components/flow_visualizer/BubbleDetailsOverlay';
@@ -436,9 +439,10 @@ function BubbleNode({ data }: BubbleNodeProps) {
     return Object.keys(credValue);
   }, [propRequiredCredentialTypes, bubble.parameters]);
 
-  // Check if credentials are missing
+  // Check if credentials are missing (exclude system and optional credentials)
   const hasMissingRequirements = requiredCredentialTypes.some((credType) => {
     if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) return false;
+    if (OPTIONAL_CREDENTIALS.has(credType as CredentialType)) return false;
     const selectedId = selectedBubbleCredentials[credType];
     return selectedId === undefined || selectedId === null;
   });
@@ -865,8 +869,12 @@ function BubbleNode({ data }: BubbleNodeProps) {
                   const systemCred = isSystemCredential(
                     credType as CredentialType
                   );
+                  const optionalCred = OPTIONAL_CREDENTIALS.has(
+                    credType as CredentialType
+                  );
                   const isMissingSelection =
                     !systemCred &&
+                    !optionalCred &&
                     (selectedBubbleCredentials[credType] === undefined ||
                       selectedBubbleCredentials[credType] === null);
 
@@ -879,9 +887,11 @@ function BubbleNode({ data }: BubbleNodeProps) {
                           System Managed
                         </span>
                       )} */}
-                        {!systemCred && availableForType.length > 0 && (
-                          <span className="text-red-400 ml-1">*</span>
-                        )}
+                        {!systemCred &&
+                          !optionalCred &&
+                          availableForType.length > 0 && (
+                            <span className="text-red-400 ml-1">*</span>
+                          )}
                       </label>
                       <select
                         title={`${bubble.bubbleName} ${credType}`}

@@ -9,6 +9,7 @@ import type {
 } from '@bubblelab/shared-schemas';
 import {
   SYSTEM_CREDENTIALS,
+  OPTIONAL_CREDENTIALS,
   AvailableModels,
   BubbleParameterType,
 } from '@bubblelab/shared-schemas';
@@ -126,6 +127,9 @@ export function BubbleDetailsOverlay({
     const isSystemCredential = SYSTEM_CREDENTIALS.has(
       credType as CredentialType
     );
+    const isOptionalCredential = OPTIONAL_CREDENTIALS.has(
+      credType as CredentialType
+    );
     const selectedValue = selectedBubbleCredentials[credType];
 
     return (
@@ -142,9 +146,11 @@ export function BubbleDetailsOverlay({
               </p>
             )}
           </div>
-          {!isSystemCredential && availableForType.length > 0 && (
-            <span className="text-xs font-medium text-red-300">Required</span>
-          )}
+          {!isSystemCredential &&
+            !isOptionalCredential &&
+            availableForType.length > 0 && (
+              <span className="text-xs font-medium text-red-300">Required</span>
+            )}
         </div>
         <select
           title={`${bubble.bubbleName} ${credType}`}

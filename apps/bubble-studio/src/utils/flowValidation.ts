@@ -1,4 +1,7 @@
-import { SYSTEM_CREDENTIALS } from '@bubblelab/shared-schemas';
+import {
+  SYSTEM_CREDENTIALS,
+  OPTIONAL_CREDENTIALS,
+} from '@bubblelab/shared-schemas';
 import type { CredentialType } from '@bubblelab/shared-schemas';
 import type { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 import { getExecutionStore } from '../stores/executionStore';
@@ -99,6 +102,7 @@ export function validateCredentials(
 
     for (const credType of credTypes) {
       if (SYSTEM_CREDENTIALS.has(credType as CredentialType)) continue;
+      if (OPTIONAL_CREDENTIALS.has(credType as CredentialType)) continue;
 
       // pendingCredentials is keyed by variableId (as string)
       const selectedForBubble = credentials[variableIdKey] || {};

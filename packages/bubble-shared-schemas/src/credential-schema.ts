@@ -51,6 +51,14 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 ]);
 
 /**
+ * Credentials that are optional (not required) for their associated bubbles.
+ * These will not show as "missing" in the UI when not selected.
+ */
+export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
+  CredentialType.CUSTOM_AUTH_KEY,
+]);
+
+/**
  * OAuth provider names - type-safe provider identifiers
  */
 export type OAuthProvider = 'google' | 'followupboss' | 'notion';
