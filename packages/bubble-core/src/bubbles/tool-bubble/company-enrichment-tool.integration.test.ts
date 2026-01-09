@@ -8,6 +8,7 @@
 
 import { CrustdataBubble } from '../service-bubble/crustdata/index.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { compareMultipleWithSchema } from '../../utils/schema-comparison.js';
 
 // Skip tests if API key is not available
 const CRUSTDATA_API_KEY = process.env.CRUSTDATA_API_KEY;
@@ -38,6 +39,15 @@ describeIfApiKey('CompanyEnrichmentTool Integration Tests', () => {
       const company = result.data.results![0];
       expect(company.company_id).toBeDefined();
       expect(company.company_name).toBeTruthy();
+
+      // Use schema validation util to check matching schema
+      const validationResult = compareMultipleWithSchema(
+        CrustdataBubble.resultSchema,
+        result.data.results!
+      );
+      console.log(validationResult.summary);
+      expect(validationResult.itemCount).toBe(1);
+      expect(validationResult.status).toBe('PASS');
     }, 30000);
 
     it('should identify a company by name', async () => {
@@ -55,6 +65,15 @@ describeIfApiKey('CompanyEnrichmentTool Integration Tests', () => {
       expect(result.data.success).toBe(true);
       expect(result.data.results).toBeDefined();
       expect(result.data.results!.length).toBeGreaterThan(0);
+
+      // Use schema validation util to check matching schema
+      const validationResult = compareMultipleWithSchema(
+        CrustdataBubble.resultSchema,
+        result.data.results!
+      );
+      console.log(validationResult.summary);
+      expect(validationResult.itemCount).toBe(1);
+      expect(validationResult.status).toBe('PASS');
     }, 30000);
 
     it('should enrich a company by domain', async () => {
@@ -81,6 +100,15 @@ describeIfApiKey('CompanyEnrichmentTool Integration Tests', () => {
       console.log(result.data);
 
       expect(hasCxos || hasDecisionMakers || hasFounders).toBe(true);
+
+      // Use schema validation util to check matching schema
+      const validationResult = compareMultipleWithSchema(
+        CrustdataBubble.resultSchema,
+        [result.data]
+      );
+      console.log(validationResult.summary);
+      expect(validationResult.itemCount).toBe(1);
+      expect(validationResult.status).toBe('PASS');
     }, 60000);
 
     it('should handle invalid company gracefully', async () => {

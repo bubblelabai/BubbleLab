@@ -450,7 +450,7 @@ export class CompanyEnrichmentTool extends ToolBubble<
       headcount: company.headcount || company.linkedin_headcount || null,
       hqCity: company.hq_city || null,
       hqCountry: company.hq_country || null,
-      yearFounded: company.year_founded || null,
+      yearFounded: company.year_founded ? parseInt(company.year_founded) : null,
       fundingStage: company.funding_stage || null,
       totalFunding: company.total_funding || null,
     };
