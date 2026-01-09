@@ -274,9 +274,9 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       setShowSignInModal(false);
       setGenerationPrompt(savedPrompt);
 
-      // If this was a template click, restore the preset and trigger generation
+      // If this was a template click, trigger generation with prompt (not preset code)
       if (savedPresetIndex !== -1) {
-        setSelectedPreset(savedPresetIndex);
+        setSelectedPreset(-1); // Use AI generation, not template code
         setPendingGeneration(true);
 
         // Track template click
@@ -317,11 +317,11 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
   // Handle pending generation after state is updated
   useEffect(() => {
-    if (pendingGeneration && selectedPreset !== -1 && generationPrompt.trim()) {
+    if (pendingGeneration && generationPrompt.trim()) {
       setPendingGeneration(false);
       onGenerateCode();
     }
-  }, [pendingGeneration, selectedPreset, generationPrompt, onGenerateCode]);
+  }, [pendingGeneration, generationPrompt, onGenerateCode]);
 
   // Handle pending JSON import after prompt is updated with system message
   useEffect(() => {
@@ -782,8 +782,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                         });
                       }
 
-                      // Set the preset and prompt, then trigger generation
-                      setSelectedPreset(originalIndex);
+                      // Set the prompt and trigger generation (without preset to use AI generation)
+                      setSelectedPreset(-1);
                       setGenerationPrompt(preset.prompt);
                       setPendingGeneration(true);
                       // Scroll to top to see prompt
