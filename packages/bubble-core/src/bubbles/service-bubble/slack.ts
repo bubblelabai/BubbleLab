@@ -470,6 +470,25 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       ),
   }),
 
+  // Join channel operation
+  z.object({
+    operation: z
+      .literal('join_channel')
+      .describe('Join a public Slack channel'),
+    channel: z
+      .string()
+      .min(1, 'Channel ID or name is required')
+      .describe(
+        'Channel ID (e.g., C1234567890) or channel name (e.g., general or #general) to join'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
   // Upload file operation
   z.object({
     operation: z
@@ -952,6 +971,22 @@ const SlackResultSchema = z.discriminatedUnion('operation', [
 
   z.object({
     operation: z
+      .literal('join_channel')
+      .describe('Join a public Slack channel'),
+    ok: z.boolean().describe('Whether the Slack API call was successful'),
+    channel: SlackChannelSchema.optional().describe(
+      'Channel information object after joining'
+    ),
+    already_in_channel: z
+      .boolean()
+      .optional()
+      .describe('Whether the bot was already a member of the channel'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  z.object({
+    operation: z
       .literal('upload_file')
       .describe('Upload a file to a Slack channel'),
     ok: z.boolean().describe('Whether the Slack API call was successful'),
@@ -1163,6 +1198,8 @@ export class SlackBubble<
             return await this.removeReaction(this.params);
           case 'upload_file':
             return await this.uploadFile(this.params);
+          case 'join_channel':
+            return await this.joinChannel(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1801,6 +1838,35 @@ export class SlackBubble<
         success: false,
       };
     }
+  }
+
+  private async joinChannel(
+    params: Extract<SlackParams, { operation: 'join_channel' }>
+  ): Promise<Extract<SlackResult, { operation: 'join_channel' }>> {
+    const { channel } = params;
+
+    // Resolve channel name to ID if needed
+    const resolvedChannel = await this.resolveChannelId(channel);
+
+    const body: Record<string, unknown> = {
+      channel: resolvedChannel,
+    };
+
+    const response = await this.makeSlackApiCall('conversations.join', body);
+
+    return {
+      operation: 'join_channel',
+      ok: response.ok,
+      channel:
+        response.ok && response.channel
+          ? SlackChannelSchema.parse(response.channel)
+          : undefined,
+      already_in_channel: response.ok
+        ? (response.already_in_channel as boolean)
+        : undefined,
+      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      success: response.ok,
+    };
   }
 
   protected chooseCredential(): string | undefined {
