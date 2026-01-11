@@ -700,6 +700,34 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     </svg>
                     Import JSON from n8n
                   </button>
+                  {/* Start from empty bubble flow button */}
+                  <button
+                    type="button"
+                    onClick={handleBuildFromScratch}
+                    disabled={isStreaming || isCreatingFromScratch}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg ${
+                      isStreaming || isCreatingFromScratch
+                        ? 'text-gray-600 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    {isCreatingFromScratch
+                      ? 'Creating...'
+                      : 'Start from scratch'}
+                  </button>
                 </div>
               )}
 
