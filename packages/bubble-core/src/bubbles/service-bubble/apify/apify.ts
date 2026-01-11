@@ -33,7 +33,7 @@ const ApifyParamsSchema = z.object({
   limit: z
     .number()
     .min(1)
-    .max(100)
+    .max(1000)
     .optional()
     .default(20)
     .describe(
@@ -203,7 +203,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
 
     Discovery Mode:
     - Provide a "search" parameter to discover available actors
-    - Optionally set "limit" to control the number of results (default: 20, max: 100)
+    - Optionally set "limit" to control the number of results (default: 20, max: 1000)
     - Returns actor information including input schemas, descriptions, and metadata
     - This mode is specifically designed for discovering available actors and their capabilities
     - Example: { search: "google flights prices", limit: 10 } to find Google flights related actors
