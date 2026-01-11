@@ -234,6 +234,14 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
     namePlaceholder: 'My Airtable Token',
     credentialConfigurations: {},
   },
+  [CredentialType.FAL_AI_API_KEY]: {
+    label: 'Fal AI',
+    description:
+      'API key for Fal AI media generation services (text-to-image, image-to-image)',
+    placeholder: 'your-fal-ai-api-key',
+    namePlaceholder: 'My Fal AI Key',
+    credentialConfigurations: {},
+  },
   [CredentialType.INSFORGE_BASE_URL]: {
     label: 'InsForge Base URL',
     description:
@@ -305,6 +313,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
+    [CredentialType.FAL_AI_API_KEY]: 'Fal AI',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',

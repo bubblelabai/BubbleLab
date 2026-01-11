@@ -44,6 +44,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.GITHUB_TOKEN]: {},
   [CredentialType.AIRTABLE_CRED]: {},
   [CredentialType.NOTION_OAUTH_TOKEN]: {},
+  [CredentialType.FAL_AI_API_KEY]: {},
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},

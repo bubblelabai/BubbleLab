@@ -157,6 +157,7 @@ export class BubbleFactory {
       'agi-inc',
       'airtable',
       'notion',
+      'fal-ai',
       'firecrawl',
       'insforge-db',
     ];
@@ -286,6 +287,9 @@ export class BubbleFactory {
     const { AirtableBubble } = await import(
       './bubbles/service-bubble/airtable.js'
     );
+    const { FalAiBubble } = await import(
+      './bubbles/service-bubble/fal-ai.js'
+    );
     const { FirecrawlBubble } = await import(
       './bubbles/service-bubble/firecrawl.js'
     );
@@ -399,6 +403,7 @@ export class BubbleFactory {
     this.register('eleven-labs', ElevenLabsBubble as BubbleClassWithMetadata);
     this.register('agi-inc', AGIIncBubble as BubbleClassWithMetadata);
     this.register('airtable', AirtableBubble as BubbleClassWithMetadata);
+    this.register('fal-ai', FalAiBubble as BubbleClassWithMetadata);
     this.register('firecrawl', FirecrawlBubble as BubbleClassWithMetadata);
     this.register('insforge-db', InsForgeDbBubble as BubbleClassWithMetadata);
 
@@ -690,6 +695,7 @@ import {
   ApifyBubble, // bubble name: 'apify'
   ElevenLabsBubble, // bubble name: 'eleven-labs'
   FollowUpBossBubble, // bubble name: 'followupboss'
+  FalAiBubble, // bubble name: 'fal-ai'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

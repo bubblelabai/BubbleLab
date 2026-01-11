@@ -42,6 +42,8 @@ export enum CredentialType {
   // Database/Storage Credentials
   AIRTABLE_CRED = 'AIRTABLE_CRED',
 
+  // Media Generation Credentials
+  FAL_AI_API_KEY = 'FAL_AI_API_KEY',
   // InsForge Credentials
   INSFORGE_BASE_URL = 'INSFORGE_BASE_URL',
   INSFORGE_API_KEY = 'INSFORGE_API_KEY',
@@ -99,5 +101,6 @@ export type BubbleName =
   | 'telegram'
   | 'airtable'
   | 'notion'
+  | 'fal-ai'
   | 'firecrawl'
   | 'insforge-db';
