@@ -63,42 +63,9 @@ export interface TemplateDefinition {
 }
 
 export const TEMPLATES: TemplateDefinition[] = [
-  {
-    id: 'daily-news',
-    name: 'Daily News Digest (Research Agent, Email, Reddit)',
-    prompt:
-      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
-    code: dailyNewsTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: true,
-  },
-  {
-    id: 'github-pr-commenter',
-    name: 'GitHub PR Commenter (GitHub, AI Agent)',
-    prompt:
-      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
-    code: githubPRCommenterTemplate.templateCode,
-    category: 'Engineering & Project Management',
-    isPopular: true,
-  },
-  {
-    id: 'telegram-bot',
-    name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
-    prompt:
-      'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
-    code: telegramBotTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: false,
-  },
-  {
-    id: 'product-image-transformer',
-    name: 'AI Product Photo Generator (AI Agent, Google Drive)',
-    prompt:
-      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
-    code: productImageTransformerTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: false,
-  },
+  // ============================================================================
+  // Lead Generation
+  // ============================================================================
   {
     id: 'startup-idea-generator',
     name: 'Startup Idea Generator (Research Agent, Reddit, Email)',
@@ -126,30 +93,23 @@ export const TEMPLATES: TemplateDefinition[] = [
     isPopular: true,
   },
   {
-    id: 'content-creation',
-    name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
-    prompt:
-      'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
-    code: contentCreationTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: true,
-  },
-
-  {
-    id: 'video-script-generator',
-    name: 'Video Script Generator (YouTube, Email)',
-    prompt:
-      'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
-    code: videoScriptTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: false,
-  },
-  {
     id: 'reddit-lead-gen',
     name: 'Reddit Lead Generation (Google Sheets, Reddit)',
     prompt: `Find qualified prospects from relevant Reddit threads and log them to a sheet with personalized outreach messages`,
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
+    isPopular: true,
+  },
+  // ============================================================================
+  // Engineering & Project Management
+  // ============================================================================
+  {
+    id: 'github-pr-commenter',
+    name: 'GitHub PR Commenter (GitHub, AI Agent)',
+    prompt:
+      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
+    code: githubPRCommenterTemplate.templateCode,
+    category: 'Engineering & Project Management',
     isPopular: true,
   },
   {
@@ -169,6 +129,27 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Engineering & Project Management',
     isPopular: true,
   },
+  // ============================================================================
+  // Personal Assistant
+  // ============================================================================
+  {
+    id: 'daily-news',
+    name: 'Daily News Digest (Research Agent, Email, Reddit)',
+    prompt:
+      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
+    code: dailyNewsTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: true,
+  },
+  {
+    id: 'telegram-bot',
+    name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
+    prompt:
+      'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
+    code: telegramBotTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: false,
+  },
   {
     id: 'daily-briefing',
     name: 'Daily Briefing (Google Calendar, Email)',
@@ -184,6 +165,36 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Fetch real-time prices and recent news for stock tickers, assess sentiment/risks/opportunities, and email a report',
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
+  },
+  // ============================================================================
+  // Marketing
+  // ============================================================================
+  {
+    id: 'product-image-transformer',
+    name: 'AI Product Photo Generator (AI Agent, Google Drive)',
+    prompt:
+      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
+    code: productImageTransformerTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: false,
+  },
+  {
+    id: 'content-creation',
+    name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
+    prompt:
+      'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
+    code: contentCreationTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: true,
+  },
+  {
+    id: 'video-script-generator',
+    name: 'Video Script Generator (YouTube, Email)',
+    prompt:
+      'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
+    code: videoScriptTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: false,
   },
   // {
   //   id: 'github-contributor',
