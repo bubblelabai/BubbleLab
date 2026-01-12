@@ -111,7 +111,10 @@ export function EvaluationIssuePopup({
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#0f1115]/70" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-[#0f1115]/70"
+        onClick={isFixingWithPearl ? undefined : onClose}
+      />
 
       {/* Modal */}
       <div className="relative bg-[#161b22] rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden border border-[#30363d]">

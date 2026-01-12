@@ -95,8 +95,6 @@ export default function AllEventsView({
 
   const contentScrollRef = useRef<HTMLDivElement>(null);
 
-  console.log('evaluationResult', evaluationResult);
-
   // State for expanded bubbles (bubbles with sub-bubbles can be expanded)
   const [expandedBubbles, setExpandedBubbles] = useState<Set<string>>(
     new Set()
