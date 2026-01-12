@@ -188,7 +188,9 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
       });
 
       if (!executionDetail.executionLogs) {
-        toast.warning('No execution logs available for this execution');
+        toast.warning(
+          'Execution logs not available for older executions. New executions will have detailed logs.'
+        );
         return;
       }
 
