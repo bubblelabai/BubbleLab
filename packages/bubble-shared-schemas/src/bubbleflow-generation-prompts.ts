@@ -7,7 +7,10 @@
  * Critical instructions for AI agents generating BubbleFlow code
  * These instructions ensure consistent, correct code generation
  */
-import { SYSTEM_CREDENTIALS } from './credential-schema.js';
+import {
+  SYSTEM_CREDENTIALS,
+  generateCredentialsSummary,
+} from './credential-schema.js';
 import { AvailableModel } from './ai-models.js';
 
 // Model constants for AI agent instructions
@@ -88,14 +91,18 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
   System credentials are (WARNING: DO NOT use these credentials in the code, they are intended to be used by bubble studio and not accessible in side the workflow code! If a flow needs additional credential keys to run properly (for example calling HTTP endpoints with an integration that bubble lab doesn't yet support), ask user to provide in the payload.):
   ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
 
+  **${generateCredentialsSummary()}**
+
+  Users can add credentials on the Credentials page. OAuth credentials (Google Drive, Gmail, Google Sheets, Google Calendar, Notion, Follow Up Boss) require users to connect via OAuth flow. API key credentials can be entered directly.
+
 - Panels:
   - Sidebar (left): app navigation and account controls.
   - Flow (Monaco Editor): the main editor for the current flow. With a trigger node at the left. And other bubbles nodes that follow the trigger node consisting of the flow graph in the visualizer.
   - Consolidated Panel (right): tabs
     - Pearl: AI assistant for coding and explanations.
     - Code: Monaco editor for the current flow.
-    - Console: live execution logs and stats during runs.
-    - History: recent executions for this flow.
+    - Console: live execution logs and stats during runs. 
+    - History: recent executions for this flow. User can restore previous workflow versions or view the detailed execution logs.
 
 - (Trigger nodes) Input Schema & Cron nodes in the visualizer:
   - Input Schema node (default entry): clearly labeled node that represents the flow's input schema.

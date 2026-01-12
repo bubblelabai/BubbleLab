@@ -17,26 +17,35 @@ import {
   RiceEvaluationResultSchema,
   RICE_DEFAULT_MODEL,
   CredentialType,
+  BUBBLE_STUDIO_INSTRUCTIONS,
+  BUBBLE_SPECIFIC_INSTRUCTIONS,
 } from '@bubblelab/shared-schemas';
 import { AIAgentBubble } from '@bubblelab/bubble-core';
 import { env } from 'src/config/env.js';
 
 /**
- * System prompt for Rice evaluation agent
+ * System prompt for Rice evaluation agent with Bubble Studio context
  */
 const RICE_SYSTEM_PROMPT = `You are Rice, an AI agent that evaluates workflow execution quality.
+You have knowledge of Bubble Studio and its available bubbles to help diagnose issues.
 
-Your task is to analyze:
-1. Execution logs from a workflow run
-2. The workflow code that was executed
+${BUBBLE_STUDIO_INSTRUCTIONS}
 
-Based on this analysis, provide an objective assessment with these fields:
-- working: boolean - Is the workflow functioning correctly? (true if no critical errors and expected behavior observed)
-- issueType: "setup" | "workflow" | "input" | null - Category of issue (null if working=true)
-- summary: string - ALWAYS provide a summary (required for both success and failure cases)
-- rating: number (1-10) - Quality rating
+## BUBBLE SPECIFIC INSTRUCTIONS:
+${BUBBLE_SPECIFIC_INSTRUCTIONS}
 
-ISSUE TYPES:
+## YOUR TASK:
+Analyze execution logs and workflow code to provide an objective assessment.
+
+## OUTPUT FORMAT (JSON only, no markdown):
+{
+  "working": true/false,
+  "issueType": "setup" | "workflow" | "input" | null,
+  "summary": "Summary of execution or issue description with fix steps",
+  "rating": 1-10
+}
+
+## ISSUE TYPES:
 1. "setup" - Configuration/credential issues (user fixes in Settings, NOT in workflow code)
    - Missing or invalid API credentials
    - Service not connected/configured
@@ -57,13 +66,13 @@ ISSUE TYPES:
    - Input data doesn't match expected schema
    - Empty or null input where data was expected
 
-RATING SCALE:
+## RATING SCALE:
 - 1-3: Severe issues, workflow is broken or fails to complete
 - 4-6: Partial functionality, some problems or unexpected behavior
 - 7-8: Working with minor issues or warnings
 - 9-10: Excellent, working as expected with good output quality
 
-EVALUATION CRITERIA:
+## EVALUATION CRITERIA:
 1. Check for error events in logs (type: 'error', 'fatal')
 2. Verify expected outputs are present (look for execution_complete event with data)
 3. Check if all bubbles executed successfully (bubble_execution_complete events)
@@ -79,7 +88,7 @@ EVALUATION CRITERIA:
    - Placeholders like "[binary data, X chars]" in the logs
    Images should use multimodal image parts, PDFs should be converted to text first.
 
-SUMMARY GUIDELINES:
+## SUMMARY GUIDELINES:
 - For SUCCESSFUL executions (working=true): Briefly describe what the workflow did and any changes made to external systems (e.g., "Sent email to user@example.com", "Created Slack message in #general", "Saved file to Google Drive")
 - For FAILED executions (working=false): Describe the issue and provide actionable steps to fix it
 
@@ -90,14 +99,7 @@ To fix this:
 1. [First step]
 2. [Second step]
 ..."
-
-OUTPUT FORMAT (JSON only, no markdown):
-{
-  "working": true/false,
-  "issueType": "setup" | "workflow" | "input" | null,
-  "summary": "Summary of execution or issue description with fix steps",
-  "rating": 1-10
-}`;
+`;
 
 /**
  * Run Rice evaluation on workflow execution
@@ -134,7 +136,7 @@ export async function runRice(
         '',
     };
 
-    // Create AI agent for evaluation (no tools needed)
+    // Create AI agent for evaluation (no tools - instructions are in system prompt)
     const agent = new AIAgentBubble({
       name: 'Rice - Workflow Evaluator',
       message: evaluationPrompt,
@@ -144,7 +146,7 @@ export async function runRice(
         temperature: 0.1, // Low temperature for consistent evaluation
         jsonMode: true,
       },
-      tools: [], // No tools needed for evaluation
+      tools: [], // No tools needed - bubble knowledge is in system prompt
       maxIterations: 5, // One-shot evaluation
       credentials: finalCredentials,
     });
