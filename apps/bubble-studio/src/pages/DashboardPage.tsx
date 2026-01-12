@@ -420,7 +420,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 What do you want to automate?
               </h1>
               <p className="text-base md:text-lg text-gray-400 mt-1 animate-fade-in-up delay-150">
-                Make agentic workflows you can observe and export
+                Build once. Automate forever.
               </p>
             </div>
           </div>
