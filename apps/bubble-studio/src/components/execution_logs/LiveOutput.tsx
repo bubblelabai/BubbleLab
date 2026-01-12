@@ -13,6 +13,7 @@ import { usePearlChatStore } from '../../hooks/usePearlChatStore';
 import { useUIStore } from '../../stores/uiStore';
 import AllEventsView from './AllEventsView';
 import { EvaluationIssuePopup } from './EvaluationIssuePopup';
+import { EvaluationLoadingPopup } from './EvaluationLoadingPopup';
 
 interface LiveOutputProps {
   events?: StreamingLogEvent[];
@@ -44,8 +45,12 @@ export default function LiveOutput({
 
   // Get evaluation state from execution store (popup state is global in store)
   const executionState = useExecutionStore(flowId);
-  const { evaluationResult, showEvaluationPopup, dismissEvaluationPopup } =
-    executionState;
+  const {
+    evaluationResult,
+    showEvaluationPopup,
+    dismissEvaluationPopup,
+    isEvaluating,
+  } = executionState;
 
   // Pearl chat for fixing issues
   const pearl = usePearlChatStore(flowId);
@@ -95,6 +100,9 @@ export default function LiveOutput({
           />
         )}
       </div>
+
+      {/* Evaluation Loading Popup - non-dismissable while evaluating */}
+      <EvaluationLoadingPopup isEvaluating={isEvaluating} />
 
       {/* Evaluation Issue Popup - uses global store state */}
       {evaluationResult && (

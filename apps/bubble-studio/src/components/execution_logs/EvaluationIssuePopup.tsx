@@ -25,7 +25,7 @@ interface EvaluationIssuePopupProps {
 }
 
 /**
- * Popup dialog that appears when workflow evaluation completes.
+ * Popup dialog that appears when workflow check completes.
  * Shows summary for successful executions, or issue details with fix options for failures.
  * For setup issues, only shows setup instructions (no "Fix with Pearl" button).
  */
@@ -96,7 +96,7 @@ export function EvaluationIssuePopup({
   };
 
   const handleFixWithPearl = () => {
-    const issueContext = `The workflow evaluation found the following issue:\n\n${evaluationResult.summary}\n\nPlease help me fix this issue.`;
+    const issueContext = `The workflow check found the following issue:\n\n${evaluationResult.summary}\n\nPlease help me fix this issue.`;
     onFixWithPearl(issueContext);
   };
 
@@ -142,12 +142,12 @@ export function EvaluationIssuePopup({
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-100">
-                  {isSuccess ? 'Execution Summary' : 'Evaluation Issues Found'}
+                  {isSuccess ? 'Execution Summary' : 'Issues Found'}
                 </h2>
                 <p className="text-sm text-gray-400">
                   {isSuccess
                     ? 'Your workflow completed successfully'
-                    : 'The evaluation detected potential problems'}
+                    : 'The check detected potential problems'}
                 </p>
               </div>
             </div>
@@ -212,7 +212,7 @@ export function EvaluationIssuePopup({
                 ? 'Please update your settings or credentials to resolve this issue.'
                 : evaluationResult.issueType === 'input'
                   ? 'Please provide valid input data and try again.'
-                  : 'Pearl can analyze the evaluation results and suggest fixes for your workflow.'}
+                  : 'Pearl can analyze the results and suggest fixes for your workflow.'}
             </p>
           )}
         </div>

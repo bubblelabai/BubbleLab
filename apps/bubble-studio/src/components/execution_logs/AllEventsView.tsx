@@ -262,7 +262,7 @@ export default function AllEventsView({
 
     // Use specific issue details if provided, otherwise use generic message
     const prompt = issueDetails
-      ? `The workflow evaluation found the following issue:\n\n${issueDetails}\n\nPlease help me fix this issue in my workflow.`
+      ? `The workflow check found the following issue:\n\n${issueDetails}\n\nPlease help me fix this issue in my workflow.`
       : `I'm seeing error(s) in my workflow execution. Can you tell me what I can do address these errors / fix any issues in the workflow as you see fit?`;
 
     // Trigger Pearl generation (component doesn't subscribe to Pearl state)
@@ -598,7 +598,7 @@ export default function AllEventsView({
                   );
                 })}
 
-          {/* Evaluation Step - Show when evaluating or evaluation is complete */}
+          {/* Workflow Check - Show when checking or check is complete */}
           {(isEvaluating || evaluationResult) && (
             <div className="mt-2 pt-2 border-t border-[#21262d]">
               <button
@@ -610,7 +610,7 @@ export default function AllEventsView({
                     : 'hover:bg-[#161b22]'
                 }`}
               >
-                {/* Evaluation icon/status */}
+                {/* Check icon/status */}
                 <div className="flex-shrink-0">
                   {isEvaluating ? (
                     <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
@@ -628,7 +628,7 @@ export default function AllEventsView({
                       : 'text-gray-400 group-hover:text-gray-300'
                   }`}
                 >
-                  {isEvaluating ? 'Evaluating...' : 'Evaluation'}
+                  {isEvaluating ? 'Checking...' : 'Check Results'}
                 </span>
                 {/* Rating badge when complete */}
                 {evaluationResult && !isEvaluating && (
@@ -985,26 +985,26 @@ export default function AllEventsView({
             );
           }
 
-          // Handle Evaluation tab
+          // Handle Check Results tab
           if (selectedTab.kind === 'evaluation') {
-            // Show loading state while evaluating
+            // Show loading state while checking
             if (isEvaluating) {
               return (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-400 animate-spin" />
                     <p className="text-lg text-gray-300 mb-2">
-                      Evaluating Workflow
+                      Checking your workflow
                     </p>
                     <p className="text-sm text-gray-500">
-                      Analyzing execution logs and code quality...
+                      This one-time check helps ensure smooth execution
                     </p>
                   </div>
                 </div>
               );
             }
 
-            // Show evaluation results
+            // Show check results
             if (evaluationResult) {
               const getRatingColor = (rating: number) => {
                 if (rating >= 7)
@@ -1047,13 +1047,13 @@ export default function AllEventsView({
                           }`}
                         >
                           {evaluationResult.working
-                            ? 'Workflow Passed Evaluation'
+                            ? 'Workflow Check Passed'
                             : 'Issues Detected'}
                         </h3>
                         <p className="text-sm text-gray-400">
                           {evaluationResult.working
                             ? 'The workflow executed as expected with no critical issues.'
-                            : 'The evaluation found problems that may need attention.'}
+                            : 'The check found problems that may need attention.'}
                         </p>
                       </div>
                     </div>
@@ -1110,7 +1110,7 @@ export default function AllEventsView({
                               Need help fixing these issues?
                             </h4>
                             <p className="text-xs text-gray-400">
-                              Pearl can analyze the evaluation and suggest fixes
+                              Pearl can analyze the results and suggest fixes
                             </p>
                           </div>
                           <button
@@ -1145,12 +1145,12 @@ export default function AllEventsView({
               );
             }
 
-            // No evaluation result yet
+            // No check result yet
             return (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-gray-600">
                   <Circle className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No evaluation available</p>
+                  <p className="text-sm">No check results available</p>
                 </div>
               </div>
             );
