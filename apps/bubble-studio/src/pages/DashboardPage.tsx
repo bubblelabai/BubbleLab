@@ -128,6 +128,10 @@ export interface Output {
 }
 
 export interface CustomWebhookPayload extends WebhookEvent {
+  /**
+   * The question or prompt to send to the AI agent.
+   * @canBeFile false
+   */
   query?: string;
 }
 
@@ -135,7 +139,13 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
   async handle(payload: CustomWebhookPayload): Promise<Output> {
     const { query = 'What is the top news headline?' } = payload;
 
-    // Simple AI agent that responds to user queries with web search
+    const response = await this.askAIAgent(query);
+
+    return { response };
+  }
+
+  // Sends the user query to an AI agent with web search capability and returns the response
+  private async askAIAgent(query: string) {
     const agent = new AIAgentBubble({
       message: query,
       systemPrompt: 'You are a helpful assistant.',
@@ -155,9 +165,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       throw new Error(\`AI Agent failed: \${result.error}\`);
     }
 
-    return {
-      response: result.data.response,
-    };
+    return result.data.response;
   }
 }
 `;
