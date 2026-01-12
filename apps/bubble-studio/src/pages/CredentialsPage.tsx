@@ -87,7 +87,7 @@ const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> = {
   [CredentialType.SLACK_CRED]: {
     label: 'Slack',
     description: 'OAuth token for Slack workspace integration',
-    placeholder: 'xoxb-...',
+    placeholder: 'xoxb-... or xoxp-...',
     namePlaceholder: 'My Slack Bot Token',
     credentialConfigurations: {
       ignoreSSL: false,

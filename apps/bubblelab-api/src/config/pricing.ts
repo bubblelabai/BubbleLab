@@ -81,6 +81,14 @@ export const PRICING_TABLE: PricingTable = {
   },
   [getPricingKey(
     CredentialType.APIFY_CRED,
+    'apimaestro/linkedin-profile-detail',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.00525, // $0.00525 per result ($5 for 1000 results with 1.05x markup)
+  },
+  [getPricingKey(
+    CredentialType.APIFY_CRED,
     'apify/instagram-scraper',
     'per_result'
   )]: {

@@ -292,7 +292,9 @@ REMEMBER: Users should be able to fill out inputs without asking questions or lo
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
-You should carefully observe the data flow and the context to understand what happened.
+You should carefully observe the data flow and the context to understand what happened. 
+If external setup is required on an external service, give user step by step instructions to set it up or point them to the correct documentation to set it up.
+
 
 Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
 Regarding errors reading gmail emails, remind the user to recreate a new credential and check the "allow access to all your email", since by default bubble lab only can only send emails to the user's own email address.
