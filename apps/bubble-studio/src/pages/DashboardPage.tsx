@@ -10,16 +10,13 @@ import {
   INTEGRATIONS,
   SCRAPING_SERVICES,
   AI_MODELS,
-  resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
 import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
-  PRESET_PROMPTS,
-  getTemplateCategories,
-  isTemplateHidden,
   getTemplateByIndex,
+  getTemplatesByCategory,
   type TemplateCategory,
 } from '../components/templates/templateLoader';
 import { trackTemplate } from '../services/analytics';
@@ -70,8 +67,6 @@ export function DashboardPage({
     useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
-  const [selectedCategory, setSelectedCategory] =
-    useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
   const [displayedPlaceholder, setDisplayedPlaceholder] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -102,6 +97,8 @@ export function DashboardPage({
   const [isCreatingFromScratch, setIsCreatingFromScratch] =
     useState<boolean>(false);
   const [isVoiceBusy, setIsVoiceBusy] = useState(false);
+  const [activePromptCategory, setActivePromptCategory] =
+    useState<TemplateCategory | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const isGenerateDisabled = useMemo(
     () => isStreaming || !generationPrompt?.trim() || isVoiceBusy,
@@ -195,19 +192,18 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
 
   // no-op
 
-  // Filter templates based on selected category
-  const filteredTemplates = useMemo(() => {
-    // Always show all templates when no category is selected or when Import JSON is selected
-    if (!selectedCategory || selectedCategory === 'Import JSON')
-      return PRESET_PROMPTS.filter((_, index) => !isTemplateHidden(index));
+  // Get prompts for the active dropdown category
+  const activePromptCategoryTemplates = useMemo(() => {
+    if (!activePromptCategory) return [];
+    return getTemplatesByCategory(activePromptCategory);
+  }, [activePromptCategory]);
 
-    // Filter by category for other categories
-    return PRESET_PROMPTS.filter((_, index) => {
-      if (isTemplateHidden(index)) return false;
-      const categories = getTemplateCategories(index);
-      return categories.includes(selectedCategory);
-    });
-  }, [selectedCategory]);
+  // Categories to show in the prompt suggestions (excluding Prompt and Import JSON)
+  const promptSuggestionCategories = useMemo(() => {
+    return TEMPLATE_CATEGORIES.filter(
+      (cat) => cat !== 'Prompt' && cat !== 'Import JSON'
+    );
+  }, []);
 
   // Auto-resize the prompt textarea up to a max height, then show scrollbar
   const autoResize = (el: HTMLTextAreaElement) => {
@@ -307,14 +303,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     setSelectedPreset,
   ]);
 
-  // Clear generation prompt when "Import JSON" category is selected
-  useEffect(() => {
-    if (selectedCategory === 'Import JSON' && generationPrompt.trim()) {
-      setGenerationPrompt('');
-      setSelectedPreset(-1);
-    }
-  }, [selectedCategory, setGenerationPrompt, setSelectedPreset]);
-
   // Handle pending generation after state is updated
   useEffect(() => {
     if (pendingGeneration && generationPrompt.trim()) {
@@ -403,14 +391,52 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight pb-2 animate-fade-in-up delay-100 drop-shadow-sm">
                 What do you want to automate?
               </h1>
-              <p className="text-base md:text-lg text-gray-400 mt-1 animate-fade-in-up delay-150">
-                Make agentic workflows you can observe and export
-              </p>
+              {/* Community Link */}
+              <a
+                href="https://bubblelab.ai/community"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 mt-3 px-4 py-2 text-sm font-medium text-purple-400 hover:text-purple-300 transition-all duration-200 animate-fade-in-up delay-150"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+                See what the community is building
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
             </div>
           </div>
 
-          {/* Prompt Options */}
-          <div className="flex flex-wrap gap-2 justify-center animate-fade-in-up delay-200">
+          {/* Prompt Options - Commented out for new UI */}
+          {/* <div className="flex flex-wrap gap-2 justify-center animate-fade-in-up delay-200">
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
@@ -461,7 +487,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             >
               Start from empty Bubble flow
             </button>
-          </div>
+          </div> */}
 
           {/* HERO PROMPT SECTION */}
           <div className="w-full max-w-3xl mx-auto animate-fade-in-up delay-200 relative z-20 -mt-4">
@@ -469,11 +495,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               <textarea
                 ref={promptRef}
                 disabled={isVoiceBusy}
-                placeholder={
-                  selectedCategory === 'Import JSON'
-                    ? 'Paste in your existing JSON workflow to be converted into a Bubble flow...'
-                    : displayedPlaceholder
-                }
+                placeholder={displayedPlaceholder}
                 value={generationPrompt}
                 onChange={(e) => {
                   setGenerationPrompt(e.target.value);
@@ -491,16 +513,10 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   }
                 }}
                 onInput={(e) => autoResize(e.currentTarget)}
-                className={`bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar ${
-                  selectedCategory === 'Import JSON' ? 'font-mono' : ''
-                }`}
+                className="bg-transparent text-gray-100 text-sm w-full min-h-[8rem] max-h-[18rem] placeholder-gray-400 resize-none focus:outline-none focus:ring-0 p-0 overflow-y-auto thin-scrollbar"
                 onKeyDown={(e) => {
                   // Tab key: autocomplete the current placeholder
-                  if (
-                    e.key === 'Tab' &&
-                    !generationPrompt.trim() &&
-                    selectedCategory !== 'Import JSON'
-                  ) {
+                  if (e.key === 'Tab' && !generationPrompt.trim()) {
                     e.preventDefault();
                     const fullMessage =
                       PLACEHOLDER_MESSAGES[currentPlaceholderIndex];
@@ -524,16 +540,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                       setShowSignInModal(true);
                       return;
                     }
-                    // Handle JSON import
-                    if (selectedCategory === 'Import JSON') {
-                      const jsonContent = generationPrompt.trim();
-                      setGenerationPrompt(
-                        `Convert the following JSON file to a workflow:\n\n${jsonContent}`
-                      );
-                      setPendingJsonImport(true);
-                    } else {
-                      onGenerateCode();
-                    }
+                    onGenerateCode();
                   }
                 }}
               />
@@ -561,16 +568,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                         setShowSignInModal(true);
                         return;
                       }
-                      // Handle JSON import
-                      if (selectedCategory === 'Import JSON') {
-                        const jsonContent = generationPrompt.trim();
-                        setGenerationPrompt(
-                          `Convert the following JSON file to a workflow:\n\n${jsonContent}`
-                        );
-                        setPendingJsonImport(true);
-                      } else {
-                        onGenerateCode();
-                      }
+                      onGenerateCode();
                     }}
                     disabled={isGenerateDisabled}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
@@ -583,6 +581,232 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Prompt Suggestions - Zapier-style category tabs */}
+            <div className="mt-4">
+              {/* Show category tabs when no dropdown is open */}
+              {!activePromptCategory && (
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {promptSuggestionCategories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setActivePromptCategory(category)}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg text-gray-400 hover:text-gray-200"
+                    >
+                      {/* Category Icons */}
+                      {category === 'Popular' && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                          />
+                        </svg>
+                      )}
+                      {category === 'Lead Generation' && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
+                      )}
+                      {category === 'Engineering & Project Management' && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                          />
+                        </svg>
+                      )}
+                      {category === 'Personal Assistant' && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                      )}
+                      {category === 'Marketing' && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                          />
+                        </svg>
+                      )}
+                      {category}
+                    </button>
+                  ))}
+                  {/* Import JSON button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const importPrefix =
+                        'Convert this JSON workflow to a BubbleLab workflow:\n\n [Paste your JSON here]';
+                      setGenerationPrompt(importPrefix);
+                      setSelectedPreset(-1);
+                      // Focus textarea and place cursor at end
+                      setTimeout(() => {
+                        if (promptRef.current) {
+                          promptRef.current.focus();
+                          promptRef.current.setSelectionRange(
+                            importPrefix.length,
+                            importPrefix.length
+                          );
+                        }
+                      }, 0);
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg text-gray-400 hover:text-gray-200"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                      />
+                    </svg>
+                    Import JSON from n8n
+                  </button>
+                  {/* Start from empty bubble flow button */}
+                  <button
+                    type="button"
+                    onClick={handleBuildFromScratch}
+                    disabled={isStreaming || isCreatingFromScratch}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all duration-200 rounded-lg ${
+                      isStreaming || isCreatingFromScratch
+                        ? 'text-gray-600 cursor-not-allowed'
+                        : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    {isCreatingFromScratch
+                      ? 'Creating...'
+                      : 'Start from scratch'}
+                  </button>
+                </div>
+              )}
+
+              {/* Dropdown Panel - replaces category tabs when open */}
+              {activePromptCategory &&
+                activePromptCategoryTemplates.length > 0 && (
+                  <div className="bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                      <span className="text-sm font-medium text-gray-300">
+                        {activePromptCategory} prompts
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActivePromptCategory(null)}
+                        className="inline-flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                      >
+                        Close
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Prompts List */}
+                    <div className="py-2 max-h-64 overflow-y-auto thin-scrollbar">
+                      {activePromptCategoryTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => {
+                            setGenerationPrompt(template.prompt);
+                            setActivePromptCategory(null);
+                            setSelectedPreset(-1);
+                            // Focus the textarea
+                            promptRef.current?.focus();
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-white/5 transition-colors duration-150 flex items-start gap-3 group"
+                        >
+                          <svg
+                            className="w-4 h-4 mt-0.5 text-gray-500 group-hover:text-purple-400 flex-shrink-0 transition-colors"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 6h16M4 12h16M4 18h7"
+                            />
+                          </svg>
+                          <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                            {template.prompt}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
 
@@ -661,12 +885,11 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
             </div>
           </div>
 
-          {/* Templates Section Container */}
-          <div
+          {/* Templates Section Container - Commented out for new UI */}
+          {/* <div
             id="templates-section"
             className="mt-16 p-6 bg-[#0d1117] border border-[#30363d] rounded-xl animate-fade-in-up delay-300"
           >
-            {/* Templates Header */}
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
               <h2 className="text-xl font-bold text-white">Templates</h2>
               <a
@@ -693,10 +916,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 </svg>
               </a>
             </div>
-
-            {/* Category Filter Buttons */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {/* All Templates - First button */}
               <button
                 type="button"
                 onClick={() => setSelectedCategory(null)}
@@ -708,7 +928,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
               >
                 All Templates
               </button>
-              {/* Rest of the categories (excluding Prompt and Import JSON) */}
               {TEMPLATE_CATEGORIES.filter(
                 (cat) => cat !== 'Prompt' && cat !== 'Import JSON'
               ).map((category) => (
@@ -725,7 +944,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                   {category}
                 </button>
               ))}
-              {/* Submit Template Button */}
               <button
                 type="button"
                 onClick={() => setShowSubmitTemplateModal(true)}
@@ -734,11 +952,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 Submit Template
               </button>
             </div>
-
-            {/* Templates Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 items-start">
               {filteredTemplates.map((preset) => {
-                // Find the original index in PRESET_PROMPTS to maintain correct mapping
                 const originalIndex = PRESET_PROMPTS.findIndex(
                   (p) => p === preset
                 );
@@ -756,7 +971,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                     key={originalIndex}
                     type="button"
                     onClick={() => {
-                      // Check authentication first
                       if (!isSignedIn) {
                         if (preset.prompt.trim()) {
                           setSavedPrompt(preset.prompt);
@@ -770,8 +984,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                         setShowSignInModal(true);
                         return;
                       }
-
-                      // Track template click
                       const template = getTemplateByIndex(originalIndex);
                       if (template) {
                         trackTemplate({
@@ -781,12 +993,9 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                           templateCategory: template.category,
                         });
                       }
-
-                      // Set the prompt and trigger generation (without preset to use AI generation)
                       setSelectedPreset(-1);
                       setGenerationPrompt(preset.prompt);
                       setPendingGeneration(true);
-                      // Scroll to top to see prompt
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                     disabled={isStreaming}
@@ -821,7 +1030,7 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
                 );
               })}
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 

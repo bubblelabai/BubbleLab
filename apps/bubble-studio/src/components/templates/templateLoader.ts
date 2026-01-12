@@ -63,47 +63,22 @@ export interface TemplateDefinition {
 }
 
 export const TEMPLATES: TemplateDefinition[] = [
+  // ============================================================================
+  // Lead Generation
+  // ============================================================================
   {
-    id: 'daily-news',
-    name: 'Daily News Digest (Research Agent, Email, Reddit)',
+    id: 'startup-idea-generator',
+    name: 'Startup Idea Generator (Research Agent, Reddit, Email)',
     prompt:
-      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
-    code: dailyNewsTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: true,
-  },
-  {
-    id: 'github-pr-commenter',
-    name: 'GitHub PR Commenter (GitHub, AI Agent)',
-    prompt:
-      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
-    code: githubPRCommenterTemplate.templateCode,
-    category: 'Engineering & Project Management',
-    isPopular: true,
-  },
-  {
-    id: 'telegram-bot',
-    name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
-    prompt:
-      'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
-    code: telegramBotTemplate.templateCode,
-    category: 'Personal Assistant',
-    isPopular: true,
-  },
-  {
-    id: 'product-image-transformer',
-    name: 'AI Product Photo Generator (AI Agent, Google Drive)',
-    prompt:
-      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
-    code: productImageTransformerTemplate.templateCode,
-    category: 'Marketing',
+      'Research subreddits for complaints about recurring pain points, and email a report of 5 viable startup ideas',
+    code: redditTemplate.templateCode,
+    category: 'Lead Generation',
     isPopular: true,
   },
   {
     id: 'notion-approval-monitor',
     name: 'Lead Approval & Auto-Email System (Notion, Resend)',
-    prompt:
-      'Automated lead qualification workflow: monitor Notion approval database, auto-send personalized emails when approved, generate daily leads',
+    prompt: 'Generate daily leads and log them into my Notion database',
     code: notionApprovalMonitorTemplate.templateCode,
     category: 'Lead Generation',
   },
@@ -117,36 +92,30 @@ export const TEMPLATES: TemplateDefinition[] = [
     isPopular: true,
   },
   {
-    id: 'content-creation',
-    name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
-    prompt:
-      'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
-    code: contentCreationTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: true,
-  },
-  {
-    id: 'video-script-generator',
-    name: 'Video Script Generator (YouTube, Email)',
-    prompt:
-      'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
-    code: videoScriptTemplate.templateCode,
-    category: 'Marketing',
-    isPopular: true,
-  },
-  {
     id: 'reddit-lead-gen',
     name: 'Reddit Lead Generation (Google Sheets, Reddit)',
     prompt: `Find qualified prospects from relevant Reddit threads and log them to a sheet with personalized outreach messages`,
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
+    isPopular: false,
+  },
+  // ============================================================================
+  // Engineering & Project Management
+  // ============================================================================
+  {
+    id: 'github-pr-commenter',
+    name: 'GitHub PR Commenter (GitHub, AI Agent)',
+    prompt:
+      'When a pull request is opened, analyze the commit guidelines and post intelligent suggestions based on COMMIT.md file',
+    code: githubPRCommenterTemplate.templateCode,
+    category: 'Engineering & Project Management',
     isPopular: true,
   },
   {
     id: 'chat-with-database',
     name: 'Chat With Your Database (Postgres, Gmail)',
     prompt:
-      'Ask questions about your database and get AI-powered insights and reports via email',
+      'Ask questions about my Postgres database and get AI-powered insights and reports via email',
     code: databaseTemplate.templateCode,
     category: 'Engineering & Project Management',
   },
@@ -159,21 +128,71 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Engineering & Project Management',
     isPopular: true,
   },
+  // ============================================================================
+  // Personal Assistant
+  // ============================================================================
+  {
+    id: 'daily-news',
+    name: 'Daily News Digest (Research Agent, Email, Reddit)',
+    prompt:
+      'Curate top tech news headlines from Reddit and major news sites, and email a daily digest',
+    code: dailyNewsTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: true,
+  },
+  {
+    id: 'telegram-bot',
+    name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
+    prompt:
+      'Check for new messages every 5 min, respond with text and contextual images',
+    code: telegramBotTemplate.templateCode,
+    category: 'Personal Assistant',
+    isPopular: false,
+  },
   {
     id: 'daily-briefing',
     name: 'Daily Briefing (Google Calendar, Email)',
-    prompt:
-      'Read in my google calendar and summarize my upcoming events and reminders',
+    prompt: 'Summarize my upcoming google calendar events and email me report',
     code: personalTemplate.templateCode,
     category: 'Personal Assistant',
   },
   {
     id: 'financial-advisor',
-    name: 'Financial Portfolio Advisor (Research Agent, Email)',
+    name: 'Financial Portfolio Watchdog (Research Agent, Email)',
     prompt:
-      'Fetch prices and news for stock tickers, assess sentiment/risks/opportunities, and email a report',
+      'Fetch real-time prices and recent news for stock tickers, assess sentiment/risks/opportunities, and email a report',
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
+  },
+  // ============================================================================
+  // Marketing
+  // ============================================================================
+  {
+    id: 'product-image-transformer',
+    name: 'AI Product Photo Generator (AI Agent, Google Drive)',
+    prompt:
+      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into marketing images with professional backgrounds and studio lighting. Save to Google Drive.',
+    code: productImageTransformerTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: false,
+  },
+  {
+    id: 'content-creation',
+    name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
+    prompt:
+      'Generate viral content ideas for my brand using news and trending content across the web',
+    code: contentCreationTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: true,
+  },
+  {
+    id: 'video-script-generator',
+    name: 'Video Script Generator (YouTube, Email)',
+    prompt:
+      'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
+    code: videoScriptTemplate.templateCode,
+    category: 'Marketing',
+    isPopular: false,
   },
   // {
   //   id: 'github-contributor',
