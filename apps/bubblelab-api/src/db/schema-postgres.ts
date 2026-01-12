@@ -89,6 +89,7 @@ export const bubbleFlowExecutions = pgTable('bubble_flow_executions', {
   status: text('status').notNull(),
   error: text('error'),
   code: text('code'), // Store the original code at execution time
+  executionLogs: jsonb('execution_logs'), // StreamingLogEvent[] from execution
   startedAt: timestamp('started_at', { mode: 'date' }).notNull().defaultNow(),
   completedAt: timestamp('completed_at', { mode: 'date' }),
 });
@@ -103,10 +104,9 @@ export const bubbleFlowEvaluations = pgTable('bubble_flow_evaluations', {
     .references(() => bubbleFlows.id, { onDelete: 'cascade' }),
   // Evaluation result from Rice agent
   working: boolean('working').notNull(), // Whether the workflow is functioning correctly
-  issue: text('issue'), // Description of the issue if working=false
+  issueType: text('issue_type'), // 'setup' | 'workflow' | 'input' | null
+  summary: text('summary').notNull(), // Brief summary of execution or issue description
   rating: integer('rating').notNull(), // Quality rating 1-10
-  // Detailed execution logs for analysis
-  executionLogs: jsonb('execution_logs'), // LogEntry[] from execution
   // Metadata
   modelUsed: text('model_used').notNull(), // Model used for evaluation (e.g., RECOMMENDED_MODELS.FAST)
   evaluatedAt: timestamp('evaluated_at', { mode: 'date' })

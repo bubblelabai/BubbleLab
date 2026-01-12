@@ -73,7 +73,8 @@ export interface StreamingLogEvent {
   // For evaluation events (start_evaluating, end_evaluating)
   evaluationResult?: {
     working: boolean;
-    issue?: string;
+    issueType: 'setup' | 'workflow' | 'input' | null;
+    summary: string;
     rating: number;
   };
 }

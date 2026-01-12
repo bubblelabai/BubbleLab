@@ -69,10 +69,12 @@ export async function shouldEvaluateExecution(
 /**
  * Stores an evaluation result in the database
  *
+ * Note: Execution logs are now stored in the bubbleFlowExecutions table,
+ * so they can be accessed via the execution relation.
+ *
  * @param executionId - The ID of the execution being evaluated
  * @param bubbleFlowId - The ID of the BubbleFlow
  * @param evaluation - The evaluation result from Rice
- * @param executionLogs - The execution logs that were analyzed
  * @param modelUsed - The model used for evaluation
  * @returns The ID of the created evaluation record
  */
@@ -80,7 +82,6 @@ export async function storeEvaluation(
   executionId: number,
   bubbleFlowId: number,
   evaluation: RiceEvaluationResult,
-  executionLogs: unknown[],
   modelUsed: string
 ): Promise<number> {
   const [inserted] = await db
@@ -89,9 +90,9 @@ export async function storeEvaluation(
       executionId,
       bubbleFlowId,
       working: evaluation.working,
-      issue: evaluation.issue || null,
+      issueType: evaluation.issueType || null,
+      summary: evaluation.summary,
       rating: evaluation.rating,
-      executionLogs: executionLogs,
       modelUsed,
     })
     .returning({ id: bubbleFlowEvaluations.id });

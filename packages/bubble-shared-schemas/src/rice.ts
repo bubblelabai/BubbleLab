@@ -6,6 +6,19 @@ import { RECOMMENDED_MODELS } from './bubbleflow-generation-prompts.js';
 export const RICE_DEFAULT_MODEL: AvailableModel = RECOMMENDED_MODELS.FAST;
 
 /**
+ * Issue type categories for Rice evaluation
+ * - setup: Configuration/credential issues (user can fix in settings, not workflow code)
+ * - workflow: Logic/code issues in the workflow itself (fixable with Pearl)
+ * - input: Issues with input data (user needs to provide different input)
+ * - null: No issues (working=true)
+ */
+export const RiceIssueTypeSchema = z
+  .enum(['setup', 'workflow', 'input'])
+  .nullable();
+
+export type RiceIssueType = z.infer<typeof RiceIssueTypeSchema>;
+
+/**
  * Evaluation result schema from Rice agent
  * This represents the AI's assessment of workflow execution quality
  */
@@ -16,11 +29,14 @@ export const RiceEvaluationResultSchema = z.object({
       'Whether the workflow is functioning correctly (true if no errors and expected behavior)'
     ),
 
-  issue: z
+  issueType: RiceIssueTypeSchema.describe(
+    'Category of issue: "setup" (config/credentials), "workflow" (code logic), "input" (bad input data), or null if working'
+  ),
+
+  summary: z
     .string()
-    .optional()
     .describe(
-      'Description of the issue if working=false (1-2 paragraph explanation)'
+      'Brief summary of the execution. If working: what happened and any external changes made. If not working: description of the issue.'
     ),
 
   rating: z

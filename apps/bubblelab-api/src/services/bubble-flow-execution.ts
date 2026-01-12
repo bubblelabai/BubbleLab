@@ -167,7 +167,7 @@ export async function executeBubbleFlowWithTracking(
       );
     }
 
-    // Update execution record
+    // Update execution record with result and collected logs
     await db
       .update(bubbleFlowExecutions)
       .set({
@@ -177,6 +177,7 @@ export async function executeBubbleFlowWithTracking(
         }),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
+        executionLogs: collectedEvents.length > 0 ? collectedEvents : null,
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
@@ -201,7 +202,7 @@ export async function executeBubbleFlowWithTracking(
       error: result.error,
     };
   } catch (error) {
-    // Update execution record with error
+    // Update execution record with error and collected logs
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     await db
@@ -210,6 +211,7 @@ export async function executeBubbleFlowWithTracking(
         result: null,
         error: errorMessage,
         status: 'error',
+        executionLogs: collectedEvents.length > 0 ? collectedEvents : null,
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
@@ -266,12 +268,11 @@ async function runEvaluationIfNeeded(
     console.log('[Evaluation] Rice result:', riceResult);
 
     if (riceResult.success && riceResult.evaluation) {
-      // Store evaluation result
+      // Store evaluation result (execution logs are stored in the execution record)
       await storeEvaluation(
         executionId,
         bubbleFlowId,
         riceResult.evaluation,
-        executionLogs,
         getRiceModelUsed(riceRequest)
       );
 

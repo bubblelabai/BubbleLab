@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4fdf86c7-cefe-442a-83fa-425e90ce51f7",
+  "id": "c9f3358e-5e10-4963-b9b6-42e299494d02",
   "prevId": "4ce3636a-ea18-47e2-8af9-beab0fd8aaa6",
   "tables": {
     "bubble_flow_evaluations": {
@@ -35,11 +35,18 @@
           "notNull": true,
           "autoincrement": false
         },
-        "issue": {
-          "name": "issue",
+        "issue_type": {
+          "name": "issue_type",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
+          "autoincrement": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         },
         "rating": {
@@ -47,13 +54,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "execution_logs": {
-          "name": "execution_logs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         },
         "model_used": {
@@ -143,6 +143,13 @@
         },
         "code": {
           "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "execution_logs": {
+          "name": "execution_logs",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

@@ -30,14 +30,38 @@ Your task is to analyze:
 1. Execution logs from a workflow run
 2. The workflow code that was executed
 
-Based on this analysis, provide an objective assessment:
+Based on this analysis, provide an objective assessment with these fields:
 - working: boolean - Is the workflow functioning correctly? (true if no critical errors and expected behavior observed)
-- issue: string (optional) - If working is false, describe the issue concisely (1-2 paragraphs)
-- rating: number (1-10) - Quality rating where:
-  - 1-3: Severe issues, workflow is broken or fails to complete
-  - 4-6: Partial functionality, some problems or unexpected behavior
-  - 7-8: Working with minor issues or warnings
-  - 9-10: Excellent, working as expected with good output quality
+- issueType: "setup" | "workflow" | "input" | null - Category of issue (null if working=true)
+- summary: string - ALWAYS provide a summary (required for both success and failure cases)
+- rating: number (1-10) - Quality rating
+
+ISSUE TYPES:
+1. "setup" - Configuration/credential issues (user fixes in Settings, NOT in workflow code)
+   - Missing or invalid API credentials
+   - Service not connected/configured
+   - Rate limiting or quota exceeded
+   - Permission denied errors
+   - Environment/network issues
+
+2. "workflow" - Logic/code issues in the workflow itself (fixable by editing workflow)
+   - Bug in the workflow logic
+   - Incorrect data transformations
+   - Wrong API parameters
+   - Missing error handling
+   - Binary data passed to AI agents instead of text
+
+3. "input" - Issues with the input data provided (user needs different input)
+   - Invalid input format
+   - Missing required fields
+   - Input data doesn't match expected schema
+   - Empty or null input where data was expected
+
+RATING SCALE:
+- 1-3: Severe issues, workflow is broken or fails to complete
+- 4-6: Partial functionality, some problems or unexpected behavior
+- 7-8: Working with minor issues or warnings
+- 9-10: Excellent, working as expected with good output quality
 
 EVALUATION CRITERIA:
 1. Check for error events in logs (type: 'error', 'fatal')
@@ -47,18 +71,31 @@ EVALUATION CRITERIA:
 5. Check for credential/authentication failures
 6. Verify data transformations worked correctly (no null/undefined where values expected)
 7. Consider warnings - they may indicate potential issues
+8. **CRITICAL: Check for binary data in AI agent messages** - AI agents should ONLY receive text data.
+   If you see any of these in agent messages, it indicates a DATA CONVERSION FAILURE (issueType: "workflow"):
+   - Base64 encoded data (long strings of alphanumeric characters ending in = or ==)
+   - Data URLs (data:image/..., data:application/pdf...)
+   - Binary file content markers like "%PDF-", "PNG", etc.
+   - Placeholders like "[binary data, X chars]" in the logs
+   Images should use multimodal image parts, PDFs should be converted to text first.
 
-IMPORTANT:
-- Be objective and specific in your assessment
-- If execution completed successfully with no errors, rate highly (8-10)
-- If there are warnings but no errors, consider 7-8
-- Only rate low (1-3) if there are critical failures
-- The 'issue' field should provide actionable information about what went wrong
+SUMMARY GUIDELINES:
+- For SUCCESSFUL executions (working=true): Briefly describe what the workflow did and any changes made to external systems (e.g., "Sent email to user@example.com", "Created Slack message in #general", "Saved file to Google Drive")
+- For FAILED executions (working=false): Describe the issue and provide actionable steps to fix it
+
+For SETUP issues, format the summary with clear steps:
+"[Brief description of the setup issue]
+
+To fix this:
+1. [First step]
+2. [Second step]
+..."
 
 OUTPUT FORMAT (JSON only, no markdown):
 {
   "working": true/false,
-  "issue": "Description of the issue" (only include if working is false),
+  "issueType": "setup" | "workflow" | "input" | null,
+  "summary": "Summary of execution or issue description with fix steps",
   "rating": 1-10
 }`;
 

@@ -124,7 +124,8 @@ export interface FlowExecutionState {
    */
   evaluationResult: {
     working: boolean;
-    issue?: string;
+    issueType: 'setup' | 'workflow' | 'input' | null;
+    summary: string;
     rating: number;
   } | null;
 
@@ -276,7 +277,12 @@ export interface FlowExecutionState {
    * Set evaluation result
    */
   setEvaluationResult: (
-    result: { working: boolean; issue?: string; rating: number } | null
+    result: {
+      working: boolean;
+      issueType: 'setup' | 'workflow' | 'input' | null;
+      summary: string;
+      rating: number;
+    } | null
   ) => void;
 
   /**
@@ -509,8 +515,8 @@ function createExecutionStore(flowId: number) {
         set({
           evaluationResult: result,
           isEvaluating: false,
-          // Show popup only if evaluation found issues (working === false)
-          showEvaluationPopup: result?.working === false,
+          // Always show popup when evaluation completes (shows summary for both success and failure)
+          showEvaluationPopup: result !== null,
         }),
 
       dismissEvaluationPopup: () => set({ showEvaluationPopup: false }),

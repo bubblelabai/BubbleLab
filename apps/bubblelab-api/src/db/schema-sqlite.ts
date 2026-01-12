@@ -81,6 +81,7 @@ export const bubbleFlowExecutions = sqliteTable('bubble_flow_executions', {
   status: text('status').notNull(),
   error: text('error'),
   code: text('code'), // Store the original code at execution time
+  executionLogs: text('execution_logs', { mode: 'json' }), // StreamingLogEvent[] from execution
   startedAt: int('started_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -97,10 +98,9 @@ export const bubbleFlowEvaluations = sqliteTable('bubble_flow_evaluations', {
     .references(() => bubbleFlows.id, { onDelete: 'cascade' }),
   // Evaluation result from Rice agent
   working: int('working', { mode: 'boolean' }).notNull(), // Whether the workflow is functioning correctly
-  issue: text('issue'), // Description of the issue if working=false
+  issueType: text('issue_type'), // 'setup' | 'workflow' | 'input' | null
+  summary: text('summary').notNull(), // Brief summary of execution or issue description
   rating: int('rating').notNull(), // Quality rating 1-10
-  // Detailed execution logs for analysis
-  executionLogs: text('execution_logs', { mode: 'json' }), // LogEntry[] from execution
   // Metadata
   modelUsed: text('model_used').notNull(), // Model used for evaluation (e.g., RECOMMENDED_MODELS.FAST)
   evaluatedAt: int('evaluated_at', { mode: 'timestamp' })

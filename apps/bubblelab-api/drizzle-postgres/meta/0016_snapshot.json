@@ -1,5 +1,5 @@
 {
-  "id": "d5b3ebc5-9059-47ab-b450-36d8e456c73b",
+  "id": "2d8475da-8322-454f-9bd0-501dd9a26651",
   "prevId": "98fa4c12-cf06-4827-9e37-a6f83f59e2ad",
   "version": "7",
   "dialect": "postgresql",
@@ -32,23 +32,23 @@
           "primaryKey": false,
           "notNull": true
         },
-        "issue": {
-          "name": "issue",
+        "issue_type": {
+          "name": "issue_type",
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "rating": {
           "name": "rating",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "execution_logs": {
-          "name": "execution_logs",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         },
         "model_used": {
           "name": "model_used",
@@ -133,6 +133,12 @@
         "code": {
           "name": "code",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "execution_logs": {
+          "name": "execution_logs",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

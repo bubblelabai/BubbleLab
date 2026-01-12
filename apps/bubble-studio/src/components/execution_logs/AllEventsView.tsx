@@ -1088,44 +1088,59 @@ export default function AllEventsView({
                     </div>
                   </div>
 
-                  {/* Issue Details */}
-                  {evaluationResult.issue && (
+                  {/* Summary */}
+                  {evaluationResult.summary && (
                     <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
                       <h4 className="text-sm font-medium text-gray-300 mb-3">
-                        Issue Details
+                        {evaluationResult.working ? 'Summary' : 'Issue Details'}
                       </h4>
                       <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">
-                        {evaluationResult.issue}
+                        {evaluationResult.summary}
                       </p>
                     </div>
                   )}
 
-                  {/* Fix with Pearl CTA - Show if issues found */}
-                  {!evaluationResult.working && (
-                    <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-200 mb-1">
-                            Need help fixing these issues?
-                          </h4>
-                          <p className="text-xs text-gray-400">
-                            Pearl can analyze the evaluation and suggest fixes
-                          </p>
+                  {/* Fix with Pearl CTA - Only show for workflow issues (not setup or input) */}
+                  {!evaluationResult.working &&
+                    evaluationResult.issueType === 'workflow' && (
+                      <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-200 mb-1">
+                              Need help fixing these issues?
+                            </h4>
+                            <p className="text-xs text-gray-400">
+                              Pearl can analyze the evaluation and suggest fixes
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleFixWithPearl(evaluationResult.summary)
+                            }
+                            disabled={pearl.isPending}
+                            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            {pearl.isPending
+                              ? 'Analyzing...'
+                              : 'Fix with Pearl'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleFixWithPearl(evaluationResult.issue)
-                          }
-                          disabled={pearl.isPending}
-                          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
-                        </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                  {/* Help text for setup/input issues */}
+                  {!evaluationResult.working &&
+                    evaluationResult.issueType !== 'workflow' && (
+                      <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+                        <p className="text-sm text-gray-400">
+                          {evaluationResult.issueType === 'setup'
+                            ? 'This is a setup issue. Please update your settings or credentials to resolve it.'
+                            : 'This is an input issue. Please provide valid input data and try again.'}
+                        </p>
+                      </div>
+                    )}
                 </div>
               );
             }
