@@ -10,15 +10,11 @@ import {
   INTEGRATIONS,
   SCRAPING_SERVICES,
   AI_MODELS,
-  resolveLogoByName,
 } from '../lib/integrations';
 import { SignInModal } from '../components/SignInModal';
 import { OnboardingQuestionnaire } from '../components/OnboardingQuestionnaire';
 import {
   TEMPLATE_CATEGORIES,
-  PRESET_PROMPTS,
-  getTemplateCategories,
-  isTemplateHidden,
   getTemplateByIndex,
   getTemplatesByCategory,
   type TemplateCategory,
@@ -71,8 +67,6 @@ export function DashboardPage({
     useState(false);
   const [showSubmitTemplateModal, setShowSubmitTemplateModal] = useState(false);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
-  const [selectedCategory, setSelectedCategory] =
-    useState<TemplateCategory | null>(null);
   const [currentPlaceholderIndex, setCurrentPlaceholderIndex] = useState(0);
   const [displayedPlaceholder, setDisplayedPlaceholder] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -211,20 +205,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     );
   }, []);
 
-  // Filter templates based on selected category
-  const filteredTemplates = useMemo(() => {
-    // Always show all templates when no category is selected or when Import JSON is selected
-    if (!selectedCategory || selectedCategory === 'Import JSON')
-      return PRESET_PROMPTS.filter((_, index) => !isTemplateHidden(index));
-
-    // Filter by category for other categories
-    return PRESET_PROMPTS.filter((_, index) => {
-      if (isTemplateHidden(index)) return false;
-      const categories = getTemplateCategories(index);
-      return categories.includes(selectedCategory);
-    });
-  }, [selectedCategory]);
-
   // Auto-resize the prompt textarea up to a max height, then show scrollbar
   const autoResize = (el: HTMLTextAreaElement) => {
     const maxHeightPx = 288; // 18rem
@@ -322,14 +302,6 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
     setGenerationPrompt,
     setSelectedPreset,
   ]);
-
-  // Clear generation prompt when "Import JSON" category is selected
-  useEffect(() => {
-    if (selectedCategory === 'Import JSON' && generationPrompt.trim()) {
-      setGenerationPrompt('');
-      setSelectedPreset(-1);
-    }
-  }, [selectedCategory, setGenerationPrompt, setSelectedPreset]);
 
   // Handle pending generation after state is updated
   useEffect(() => {
