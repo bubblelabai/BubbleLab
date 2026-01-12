@@ -41,6 +41,7 @@ import {
   deactivateBubbleFlowRoute,
   deleteBubbleFlowRoute,
   listBubbleFlowExecutionsRoute,
+  getBubbleFlowExecutionDetailRoute,
   validateBubbleFlowCodeRoute,
   generateBubbleFlowCodeRoute,
   runContextFlowRoute,
@@ -430,6 +431,8 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
   const userPayload = c.req.valid('json') ?? {}; // Handle empty payloads gracefully
   const userId = getUserId(c);
   const appType = getAppType(c);
+  // Check for evalPerformance query param
+  const evalPerformance = c.req.query('evalPerformance') === 'true';
 
   try {
     const triggerEvent = {
@@ -446,6 +449,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
         await executeBubbleFlowWithTracking(id, triggerEvent, {
           userId,
           appType,
+          evalPerformance,
           streamCallback: async (event) => {
             await stream.writeSSE({
               data: JSON.stringify(event),
@@ -944,6 +948,75 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
     webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
     code: execution.code || undefined,
   }));
+
+  return c.json(response, 200);
+});
+
+// GET /bubble-flow/:id/executions/:executionId - Get single execution with logs
+app.openapi(getBubbleFlowExecutionDetailRoute, async (c) => {
+  const userId = getUserId(c);
+  const id = parseInt(c.req.param('id'));
+  const executionId = parseInt(c.req.param('executionId'));
+
+  if (isNaN(id) || isNaN(executionId)) {
+    return c.json(
+      {
+        error: 'Invalid ID format',
+      },
+      400
+    );
+  }
+
+  // Check if BubbleFlow exists and belongs to the user
+  const flow = await db.query.bubbleFlows.findFirst({
+    where: and(eq(bubbleFlows.id, id), eq(bubbleFlows.userId, userId)),
+    with: {
+      webhooks: {
+        columns: {
+          path: true,
+        },
+      },
+    },
+  });
+
+  if (!flow) {
+    return c.json(
+      {
+        error: 'BubbleFlow not found',
+      },
+      404
+    );
+  }
+
+  // Get the specific execution
+  const execution = await db.query.bubbleFlowExecutions.findFirst({
+    where: and(
+      eq(bubbleFlowExecutions.id, executionId),
+      eq(bubbleFlowExecutions.bubbleFlowId, id)
+    ),
+  });
+
+  if (!execution) {
+    return c.json(
+      {
+        error: 'Execution not found',
+      },
+      404
+    );
+  }
+
+  const response = {
+    id: execution.id,
+    status: execution.status as 'running' | 'success' | 'error',
+    payload: execution.payload as Record<string, unknown>,
+    result: execution.result,
+    error: execution.error || undefined,
+    startedAt: execution.startedAt.toISOString(),
+    completedAt: execution.completedAt?.toISOString(),
+    webhook_url: getWebhookUrl(userId, flow.webhooks[0]?.path || ''),
+    code: execution.code || undefined,
+    executionLogs: execution.executionLogs || undefined,
+  };
 
   return c.json(response, 200);
 });

@@ -7,7 +7,10 @@
  * Critical instructions for AI agents generating BubbleFlow code
  * These instructions ensure consistent, correct code generation
  */
-import { SYSTEM_CREDENTIALS } from './credential-schema.js';
+import {
+  SYSTEM_CREDENTIALS,
+  generateCredentialsSummary,
+} from './credential-schema.js';
 import { AvailableModel } from './ai-models.js';
 
 // Model constants for AI agent instructions
@@ -84,9 +87,31 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
   - Flow editor: visualize graph, edit code, validate/run, see Console and History; use AI (Pearl) and Bubble Side Panel to add bubbles.
   - Credentials: add/update API keys required by flows
 
-  **Important**: There are a set of system credentials that automatically used to run flow if no user credentials are provided, they are handled by bubble studio they are optional to run a flow.
-  System credentials are (WARNING: DO NOT use these credentials in the code, they are intended to be used by bubble studio and not accessible in side the workflow code! If a flow needs additional credential keys to run properly (for example calling HTTP endpoints with an integration that bubble lab doesn't yet support), ask user to provide in the payload.):
-  ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
+  **Important - System Credentials vs User Credentials**:
+
+  SYSTEM CREDENTIALS (auto-injected, NOT visible on Credentials page):
+  - Bubble Lab provides default system credentials that are automatically injected at runtime
+  - These are NOT shown on the Credentials page - users cannot view or edit them there
+  - System credentials work out-of-the-box for basic usage (e.g., sending emails via Resend with Bubble Lab's domain)
+  - Available system credentials: ${JSON.stringify(Array.from(SYSTEM_CREDENTIALS), null, 2)}
+  - ${generateCredentialsSummary()}
+
+  TO OVERRIDE A SYSTEM CREDENTIAL WITH USER'S OWN:
+  - Click on the specific bubble node in the Flow Visualizer
+  - In the bubble's detail panel (right side), find the credential dropdown
+  - Select or add the user's own credential to replace the system default
+  - This is required when: using custom domains (Resend), accessing user's own accounts, or when system credentials hit rate limits
+
+  USER CREDENTIALS (visible on Credentials page):
+  - The Credentials page only shows credentials that the USER has added
+  - OAuth credentials (Google Drive, Gmail, Google Sheets, Google Calendar, Notion, Follow Up Boss) require users to connect via OAuth flow
+  - API key credentials can be entered directly on this page
+  - Once added, these credentials appear in the dropdown when configuring bubbles in the flow visualizer
+
+  WHEN DEBUGGING CREDENTIAL ERRORS:
+  - If a system credential fails (e.g., 'API key is invalid' for Resend), it likely means the system credential is unavailable or rate-limited
+  - Guide users to add their OWN credential by clicking the bubble in the flow visualizer and selecting their credential from the detail panel
+  - Do NOT tell users to "check the Credentials page" for system credentials - they won't find them there
 
 - Panels:
   - Sidebar (left): app navigation and account controls.
@@ -94,8 +119,8 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
   - Consolidated Panel (right): tabs
     - Pearl: AI assistant for coding and explanations.
     - Code: Monaco editor for the current flow.
-    - Console: live execution logs and stats during runs.
-    - History: recent executions for this flow.
+    - Console: live execution logs and stats during runs. 
+    - History: recent executions for this flow. User can restore previous workflow versions or view the detailed execution logs.
 
 - (Trigger nodes) Input Schema & Cron nodes in the visualizer:
   - Input Schema node (default entry): clearly labeled node that represents the flow's input schema.
@@ -292,9 +317,14 @@ REMEMBER: Users should be able to fill out inputs without asking questions or lo
 
 export const COMMON_DEBUGGING_INSTRUCTIONS = `
 When an error occurs, the issue is most likely with misconfiguration, using the wrong task / model / technique.
-You should carefully observe the data flow and the context to understand what happened. 
+You should carefully observe the data flow and the context to understand what happened.
 If external setup is required on an external service, give user step by step instructions to set it up or point them to the correct documentation to set it up.
 
+CREDENTIAL ERRORS (e.g., 'API key is invalid', 'authentication failed'):
+- System credentials are auto-injected by Bubble Lab and are NOT visible on the Credentials page
+- If a system credential fails, do NOT tell users to "navigate to the Credentials page" to fix it - they won't find it there
+- Instead, guide users to: (1) Click on the specific bubble node in the Flow Visualizer, (2) In the bubble's detail panel, find the credential dropdown, (3) Add their own credential to override the system default
+- For Resend specifically: if using a custom sender domain, users MUST provide their own Resend API key with verified domain
 
 Regarding 404 error for google drive files, remind the user to recreate a new credential and check the "allow all files permission", since by default bubble lab only allows access to files that the user has created on bubble lab.
 Regarding errors reading gmail emails, remind the user to recreate a new credential and check the "allow access to all your email", since by default bubble lab only can only send emails to the user's own email address.

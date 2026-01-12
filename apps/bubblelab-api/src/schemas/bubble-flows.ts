@@ -13,6 +13,7 @@ import {
   bubbleFlowListResponseSchema,
   activateBubbleFlowResponseSchema,
   listBubbleFlowExecutionsResponseSchema,
+  bubbleFlowExecutionDetailSchema,
   successMessageResponseSchema,
   validateBubbleFlowCodeSchema,
   generateBubbleFlowCodeSchema,
@@ -651,6 +652,65 @@ export const listBubbleFlowExecutionsRoute = createRoute({
         },
       },
       description: 'BubbleFlow not found',
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Internal server error',
+    },
+  },
+  tags: ['BubbleFlow'],
+});
+
+// GET /bubble-flow/:id/executions/:executionId - Get single execution with logs
+export const getBubbleFlowExecutionDetailRoute = createRoute({
+  method: 'get',
+  path: '/{id}/executions/{executionId}',
+  request: {
+    params: z.object({
+      id: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .openapi({
+          description: 'BubbleFlow ID',
+          example: '123',
+        }),
+      executionId: z
+        .string()
+        .regex(/^[0-9]+$/)
+        .openapi({
+          description: 'Execution ID',
+          example: '456',
+        }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: bubbleFlowExecutionDetailSchema,
+        },
+      },
+      description: 'Execution detail with logs retrieved successfully',
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'Invalid ID format',
+    },
+    404: {
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+      description: 'BubbleFlow or execution not found',
     },
     500: {
       content: {

@@ -200,13 +200,10 @@ export const bubbleFlowExecutionSchema = z.object({
     .string()
     .optional()
     .openapi({ description: 'Execution completion timestamp' }),
-  code: z
-    .string()
-    .optional()
-    .openapi({
-      description:
-        'The code that was executed (snapshot of the code at execution time)',
-    }),
+  code: z.string().optional().openapi({
+    description:
+      'The code that was executed (snapshot of the code at execution time)',
+  }),
 });
 
 // GET /bubble-flow/:id/executions - List BubbleFlow executions response
@@ -216,6 +213,22 @@ export const listBubbleFlowExecutionsResponseSchema = z
 
 export type ListBubbleFlowExecutionsResponse = z.infer<
   typeof listBubbleFlowExecutionsResponseSchema
+>;
+
+// GET /bubble-flow/:id/executions/:executionId - Single execution with logs
+export const bubbleFlowExecutionDetailSchema = bubbleFlowExecutionSchema.extend(
+  {
+    executionLogs: z
+      .array(z.any())
+      .optional()
+      .openapi({
+        description: 'Array of streaming log events from the execution',
+      }),
+  }
+);
+
+export type BubbleFlowExecutionDetail = z.infer<
+  typeof bubbleFlowExecutionDetailSchema
 >;
 
 export const executeBubbleFlowResponseSchema = z

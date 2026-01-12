@@ -3,6 +3,262 @@ import { z } from '@hono/zod-openapi';
 import { databaseMetadataSchema } from './database-definition-schema.js';
 
 /**
+ * Configuration for a credential type displayed in the UI
+ */
+export interface CredentialConfig {
+  label: string;
+  description: string;
+  placeholder: string;
+  namePlaceholder: string;
+  credentialConfigurations: Record<string, unknown>;
+}
+
+/**
+ * Configuration for all credential types - used by Credentials page and AI agents
+ */
+export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
+  {
+    [CredentialType.OPENAI_CRED]: {
+      label: 'OpenAI',
+      description: 'API key for OpenAI services (GPT models, embeddings, etc.)',
+      placeholder: 'sk-...',
+      namePlaceholder: 'My OpenAI API Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.GOOGLE_GEMINI_CRED]: {
+      label: 'Google Gemini',
+      description: 'API key for Google Gemini AI models',
+      placeholder: 'AIza...',
+      namePlaceholder: 'My Google Gemini Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.ANTHROPIC_CRED]: {
+      label: 'Anthropic',
+      description: 'API key for Anthropic Claude models',
+      placeholder: 'sk-ant-...',
+      namePlaceholder: 'My Anthropic API Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.DATABASE_CRED]: {
+      label: 'Database (PostgreSQL)',
+      description: 'Database connection string for PostgreSQL',
+      placeholder: 'postgresql://user:pass@host:port/dbname',
+      namePlaceholder: 'My PostgreSQL Database',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.FIRECRAWL_API_KEY]: {
+      label: 'Firecrawl',
+      description: 'API key for Firecrawl web scraping and search services',
+      placeholder: 'fc-...',
+      namePlaceholder: 'My Firecrawl API Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.SLACK_CRED]: {
+      label: 'Slack',
+      description: `Slack bot token for Slack integration.
+      Setup Instructions:
+      1. Create a Slack app at https://api.slack.com/apps
+      2. Configure OAuth & Permissions with required bot scopes (e.g., chat:write, app_mentions:read)
+      3. Install the app to your workspace to get the xoxb- bot token
+      4. Store the token securely as an environment variable
+      
+      For detailed setup guide, see: https://docs.slack.dev/quickstart/`,
+      placeholder: 'xoxb-... or xoxp-...',
+      namePlaceholder: 'My Slack Bot Token',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.RESEND_CRED]: {
+      label: 'Resend',
+      description: 'Your Resend API key for email services',
+      placeholder: 're_...',
+      namePlaceholder: 'My Resend API Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.OPENROUTER_CRED]: {
+      label: 'OpenRouter',
+      description: 'API key for OpenRouter services',
+      placeholder: 'sk-or-...',
+      namePlaceholder: 'My OpenRouter API Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {
+      label: 'Cloudflare R2 Access Key',
+      description: 'Access key for Cloudflare R2 storage',
+      placeholder: 'Enter your access key',
+      namePlaceholder: 'My R2 Access Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.CLOUDFLARE_R2_SECRET_KEY]: {
+      label: 'Cloudflare R2 Secret Key',
+      description: 'Secret key for Cloudflare R2 storage',
+      placeholder: 'Enter your secret key',
+      namePlaceholder: 'My R2 Secret Key',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.CLOUDFLARE_R2_ACCOUNT_ID]: {
+      label: 'Cloudflare R2 Account ID',
+      description: 'Account ID for Cloudflare R2 storage',
+      placeholder: 'Enter your account ID',
+      namePlaceholder: 'My R2 Account ID',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.APIFY_CRED]: {
+      label: 'Apify',
+      description: 'API token for Apify platform (web scraping, automation)',
+      placeholder: 'apify_api_...',
+      namePlaceholder: 'My Apify API Token',
+      credentialConfigurations: {},
+    },
+    [CredentialType.GOOGLE_DRIVE_CRED]: {
+      label: 'Google Drive',
+      description: 'OAuth connection to Google Drive for file access',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Google Drive Connection',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.GMAIL_CRED]: {
+      label: 'Gmail',
+      description: 'OAuth connection to Gmail for email management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Gmail Connection',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.GOOGLE_SHEETS_CRED]: {
+      label: 'Google Sheets',
+      description:
+        'OAuth connection to Google Sheets for spreadsheet management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Google Sheets Connection',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.GOOGLE_CALENDAR_CRED]: {
+      label: 'Google Calendar',
+      description:
+        'OAuth connection to Google Calendar for events and schedules',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Google Calendar Connection',
+      credentialConfigurations: {
+        ignoreSSL: false,
+      },
+    },
+    [CredentialType.FUB_CRED]: {
+      label: 'Follow Up Boss',
+      description:
+        'OAuth connection to Follow Up Boss CRM for contacts, tasks, and deals',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Follow Up Boss Connection',
+      credentialConfigurations: {},
+    },
+    [CredentialType.NOTION_OAUTH_TOKEN]: {
+      label: 'Notion',
+      description:
+        'OAuth connection to your Notion workspace (pages, databases, search)',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Notion Connection',
+      credentialConfigurations: {},
+    },
+    [CredentialType.GITHUB_TOKEN]: {
+      label: 'GitHub',
+      description:
+        'Personal Access Token for GitHub API (read repos, PRs, issues)',
+      placeholder: 'github_pat...',
+      namePlaceholder: 'My GitHub Token',
+      credentialConfigurations: {},
+    },
+    [CredentialType.ELEVENLABS_API_KEY]: {
+      label: 'Eleven Labs API Key',
+      description: 'Your API key from Eleven Labs',
+      placeholder: 'agent_...',
+      namePlaceholder: 'My Eleven Labs Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.AGI_API_KEY]: {
+      label: 'AGI Inc API Key',
+      description: 'Your API key from AGI Inc',
+      placeholder: 'api_...',
+      namePlaceholder: 'My AGI Inc Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.TELEGRAM_BOT_TOKEN]: {
+      label: 'Telegram Bot Token',
+      description: 'Your Telegram bot token',
+      placeholder: 'bot_...',
+      namePlaceholder: 'My Telegram Bot Token',
+      credentialConfigurations: {},
+    },
+    [CredentialType.AIRTABLE_CRED]: {
+      label: 'Airtable',
+      description:
+        'Personal Access Token for Airtable API (manage bases, tables, records)',
+      placeholder: 'pat...',
+      namePlaceholder: 'My Airtable Token',
+      credentialConfigurations: {},
+    },
+    [CredentialType.INSFORGE_BASE_URL]: {
+      label: 'InsForge Base URL',
+      description:
+        'Base URL for your InsForge backend (e.g., https://your-app.region.insforge.app)',
+      placeholder: 'https://your-app.region.insforge.app',
+      namePlaceholder: 'My InsForge Backend URL',
+      credentialConfigurations: {},
+    },
+    [CredentialType.INSFORGE_API_KEY]: {
+      label: 'InsForge API Key',
+      description: 'API key for your InsForge backend',
+      placeholder: 'ik_...',
+      namePlaceholder: 'My InsForge API Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.CUSTOM_AUTH_KEY]: {
+      label: 'Custom Authentication Key',
+      description:
+        'Custom API key or authentication token for HTTP requests (Bearer, Basic, X-API-Key, etc.)',
+      placeholder: 'Enter your API key or token...',
+      namePlaceholder: 'My Custom Auth Key',
+      credentialConfigurations: {},
+    },
+  } as const satisfies Record<CredentialType, CredentialConfig>;
+
+/**
+ * Generate a human-readable summary of available credentials for AI agents
+ */
+export function generateCredentialsSummary(): string {
+  const lines: string[] = ['Available credentials that users can configure:'];
+
+  for (const [credType, config] of Object.entries(CREDENTIAL_TYPE_CONFIG)) {
+    lines.push(`- ${config.label} (${credType}): ${config.description}`);
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Maps credential types to their environment variable names (for backend only!!!!)
  */
 export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {

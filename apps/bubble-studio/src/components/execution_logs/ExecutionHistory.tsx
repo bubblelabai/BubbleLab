@@ -6,17 +6,23 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ArrowPathIcon,
+  EyeIcon,
 } from '@heroicons/react/24/solid';
 import { toast } from 'react-toastify';
 import { useExecutionHistory } from '../../hooks/useExecutionHistory';
-import { useExecutionStore } from '../../stores/executionStore';
+import { useFetchExecutionDetail } from '../../hooks/useExecutionDetail';
+import {
+  useExecutionStore,
+  getExecutionStore,
+} from '../../stores/executionStore';
+import { useUIStore } from '../../stores/uiStore';
 import { JsonRenderer } from './JsonRenderer';
 import { formatTimestamp } from '../../utils/executionLogsFormatUtils';
 import { useEditor } from '../../hooks/useEditor';
 import { useValidateCode } from '../../hooks/useValidateCode';
-import { getExecutionStore } from '../../stores/executionStore';
 import { CodeRestoreModal } from './CodeRestoreModal';
 import { useBubbleFlow } from '../../hooks/useBubbleFlow';
+import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 
 interface ExecutionHistoryProps {
   flowId: number | null;
@@ -31,10 +37,16 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
     code: string;
     executionId: number;
   }>({ isOpen: false, code: '', executionId: 0 });
+  const [selectedExecutionId, setSelectedExecutionId] = useState<number | null>(
+    null
+  );
   const prevExecutingRef = useRef<boolean>(false);
   const { editor } = useEditor(flowId || undefined);
   const validateCodeMutation = useValidateCode({ flowId });
   const { data: currentFlow } = useBubbleFlow(flowId);
+
+  // Mutation for fetching execution detail
+  const fetchExecutionDetailMutation = useFetchExecutionDetail();
 
   // Get execution state from store
   const isCurrentlyExecuting = useExecutionStore(
@@ -153,6 +165,58 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
     }
   };
 
+  /**
+   * Handle clicking on an execution to view its logs.
+   * Fetches execution detail and restores to store.
+   */
+  const handleViewExecutionLogs = async (executionId: number) => {
+    if (!flowId) {
+      toast.error('Cannot view execution: No flow selected');
+      return;
+    }
+
+    // Don't reload if already selected
+    if (selectedExecutionId === executionId) {
+      useUIStore.getState().setConsolidatedPanelTab('output');
+      return;
+    }
+
+    try {
+      const executionDetail = await fetchExecutionDetailMutation.mutateAsync({
+        flowId,
+        executionId,
+      });
+
+      if (!executionDetail.executionLogs) {
+        toast.warning(
+          'Execution logs not available for older executions. New executions will have detailed logs.'
+        );
+        return;
+      }
+
+      // Restore the execution state from history
+      getExecutionStore(flowId).restoreFromHistory(
+        executionDetail.executionLogs as StreamingLogEvent[],
+        currentFlow?.bubbleParameters
+      );
+
+      setSelectedExecutionId(executionId);
+      useUIStore.getState().setConsolidatedPanelTab('output');
+      toast.success(`Viewing execution #${executionId}`, { autoClose: 2000 });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to load execution logs: ${errorMessage}`);
+    }
+  };
+
+  // Clear selected execution when a new execution starts
+  useEffect(() => {
+    if (isCurrentlyExecuting && selectedExecutionId !== null) {
+      setSelectedExecutionId(null);
+    }
+  }, [isCurrentlyExecuting, selectedExecutionId]);
+
   return (
     <div className="h-full flex flex-col bg-[#0f1115]">
       {/* Header */}
@@ -207,119 +271,114 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              {executionHistory.map((execution) => (
-                <div
-                  key={execution.id}
-                  className="rounded-lg border border-[#30363d] bg-[#21262d] p-4"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0">
-                        {isCurrentlyExecuting ? (
-                          <div className="h-5 w-5 bg-amber-500 rounded-full animate-pulse"></div>
-                        ) : execution.status === 'success' ? (
-                          <CheckCircleIcon className="h-5 w-5 text-green-400" />
-                        ) : execution.status === 'error' ? (
-                          <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
-                        ) : (
-                          <div className="h-5 w-5 bg-yellow-400 rounded-full animate-pulse"></div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm text-gray-400">
-                            #{execution.id}
-                          </span>
-                          <span
-                            className={`px-2 py-0.5 text-xs font-medium rounded ${
-                              isCurrentlyExecuting
-                                ? 'bg-amber-900/30 text-amber-300'
-                                : execution.status === 'success'
+              {executionHistory.map((execution) => {
+                const isSelected = selectedExecutionId === execution.id;
+                const isLoading =
+                  fetchExecutionDetailMutation.isPending &&
+                  fetchExecutionDetailMutation.variables?.executionId ===
+                    execution.id;
+                const canViewLogs = execution.status !== 'running';
+
+                return (
+                  <div
+                    key={execution.id}
+                    onClick={() =>
+                      canViewLogs && handleViewExecutionLogs(execution.id)
+                    }
+                    className={`rounded-lg border p-4 transition-colors ${
+                      isSelected
+                        ? 'border-blue-500 bg-[#21262d] ring-1 ring-blue-500/50'
+                        : 'border-[#30363d] bg-[#21262d] hover:border-[#444c56]'
+                    } ${canViewLogs ? 'cursor-pointer' : ''}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0">
+                          {execution.status === 'success' ? (
+                            <CheckCircleIcon className="h-5 w-5 text-green-400" />
+                          ) : execution.status === 'error' ? (
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-400" />
+                          ) : (
+                            <div className="h-5 w-5 bg-amber-500 rounded-full animate-pulse"></div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm text-gray-400">
+                              #{execution.id}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                execution.status === 'success'
                                   ? 'bg-green-900/30 text-green-300'
                                   : execution.status === 'error'
                                     ? 'bg-red-900/30 text-red-300'
-                                    : 'bg-yellow-900/30 text-yellow-300'
-                            }`}
+                                    : 'bg-amber-900/30 text-amber-300'
+                              }`}
+                            >
+                              {execution.status === 'running'
+                                ? 'executing'
+                                : execution.status}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Started: {formatTimestamp(execution.startedAt)}
+                            {execution.completedAt && (
+                              <span className="ml-2">
+                                • Completed:{' '}
+                                {formatTimestamp(execution.completedAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {execution.code && (
+                        <div className="flex flex-col items-end gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePreviewVersion(
+                                execution.code,
+                                execution.id
+                              );
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
                           >
-                            {isCurrentlyExecuting
-                              ? 'executing'
-                              : execution.status}
+                            <ArrowPathIcon className="w-3.5 h-3.5" />
+                            Use Version
+                          </button>
+                          <span className="text-[10px] text-gray-500">
+                            Preview changes before applying
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Started: {formatTimestamp(execution.startedAt)}
-                          {execution.completedAt && (
-                            <span className="ml-2">
-                              • Completed:{' '}
-                              {formatTimestamp(execution.completedAt)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                    {execution.code && (
-                      <div className="flex flex-col items-end gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePreviewVersion(execution.code, execution.id);
-                          }}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-900/20 hover:bg-blue-900/30 border border-blue-700/30 hover:border-blue-600/40 rounded transition-colors"
-                        >
-                          <ArrowPathIcon className="w-3.5 h-3.5" />
-                          Use Version
-                        </button>
-                        <span className="text-[10px] text-gray-500">
-                          Preview changes before applying
-                        </span>
+
+                    {/* Execution Details */}
+                    {execution.error && (
+                      <div className="mb-3 p-3 bg-red-900/20 border border-red-700/30 rounded">
+                        <p className="text-sm text-red-300 font-medium mb-1">
+                          Error:
+                        </p>
+                        <p className="text-sm text-red-200">
+                          {execution.error}
+                        </p>
                       </div>
                     )}
-                  </div>
 
-                  {/* Execution Details */}
-                  {execution.error && (
-                    <div className="mb-3 p-3 bg-red-900/20 border border-red-700/30 rounded">
-                      <p className="text-sm text-red-300 font-medium mb-1">
-                        Error:
-                      </p>
-                      <p className="text-sm text-red-200">{execution.error}</p>
-                    </div>
-                  )}
-
-                  {/* Result */}
-                  {execution.result && (
-                    <details className="mb-3">
-                      <summary
-                        className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Execution Result
-                      </summary>
-                      <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
-                        <JsonRenderer
-                          data={execution.result}
-                          flowId={flowId}
-                          executionId={execution.id}
-                          timestamp={execution.startedAt}
-                        />
-                      </pre>
-                    </details>
-                  )}
-
-                  {/* Payload */}
-                  {execution.payload &&
-                    Object.keys(execution.payload).length > 0 && (
+                    {/* Result */}
+                    {execution.result && (
                       <details className="mb-3">
                         <summary
                           className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Execution Payload
+                          Execution Result
                         </summary>
-                        <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                        <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md overflow-x-auto whitespace-pre leading-relaxed">
                           <JsonRenderer
-                            data={execution.payload}
+                            data={execution.result}
                             flowId={flowId}
                             executionId={execution.id}
                             timestamp={execution.startedAt}
@@ -327,8 +386,46 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
                         </pre>
                       </details>
                     )}
-                </div>
-              ))}
+
+                    {/* Payload */}
+                    {execution.payload &&
+                      Object.keys(execution.payload).length > 0 && (
+                        <details className="mb-3">
+                          <summary
+                            className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 font-medium mb-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Execution Payload
+                          </summary>
+                          <pre className="json-output text-xs p-3 bg-[#0d0f13] border border-[#30363d] rounded-md whitespace-pre-wrap break-words leading-relaxed">
+                            <JsonRenderer
+                              data={execution.payload}
+                              flowId={flowId}
+                              executionId={execution.id}
+                              timestamp={execution.startedAt}
+                            />
+                          </pre>
+                        </details>
+                      )}
+
+                    {/* View Logs indicator */}
+                    {canViewLogs && (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#30363d]">
+                        <span className="text-xs text-gray-500">
+                          {isSelected
+                            ? 'Currently viewing'
+                            : 'Click to view execution logs'}
+                        </span>
+                        {isLoading ? (
+                          <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+                        ) : isSelected ? (
+                          <EyeIcon className="w-4 h-4 text-blue-400" />
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

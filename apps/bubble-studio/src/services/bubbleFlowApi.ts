@@ -2,6 +2,7 @@ import { api } from '../lib/api';
 import type {
   UpdateBubbleFlowParametersRequest,
   ListBubbleFlowExecutionsResponse,
+  BubbleFlowExecutionDetail,
 } from '@bubblelab/shared-schemas';
 
 export const bubbleFlowApi = {
@@ -59,5 +60,18 @@ export const bubbleFlowApi = {
     const url = `/bubble-flow/${flowId}/executions${queryString ? `?${queryString}` : ''}`;
 
     return api.get<ListBubbleFlowExecutionsResponse>(url);
+  },
+
+  /**
+   * Get a single execution with full logs
+   * Uses the shared schema: GET /bubble-flow/:id/executions/:executionId
+   */
+  getBubbleFlowExecutionDetail: async (
+    flowId: number,
+    executionId: number
+  ): Promise<BubbleFlowExecutionDetail> => {
+    return api.get<BubbleFlowExecutionDetail>(
+      `/bubble-flow/${flowId}/executions/${executionId}`
+    );
   },
 };

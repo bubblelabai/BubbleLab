@@ -1,13 +1,15 @@
 import { db } from '../db/index.js';
 import { bubbleFlowExecutions, bubbleFlows, users } from '../db/schema.js';
 import {
-  runBubbleFlow,
   runBubbleFlowWithStreaming,
   type StreamingExecutionOptions,
 } from './execution.js';
 import {
   ParsedBubbleWithInfo,
   cleanUpObjectForDisplayAndStorage,
+  type StreamingLogEvent,
+  type StreamCallback,
+  CredentialType,
 } from '@bubblelab/shared-schemas';
 import type { ExecutionResult } from '@bubblelab/shared-schemas';
 
@@ -15,6 +17,12 @@ import { eq, and, sql } from 'drizzle-orm';
 import type { BubbleTriggerEventRegistry } from '@bubblelab/bubble-core';
 import { AppType } from '../config/clerk-apps.js';
 import { getPricingTable } from '../config/pricing.js';
+import {
+  shouldEvaluateExecution,
+  storeEvaluation,
+} from './evaluation-trigger.js';
+import { runRice, getRiceModelUsed } from './ai/rice.js';
+import { env } from '../config/env.js';
 
 export interface ExecutionPayload {
   type: keyof BubbleTriggerEventRegistry;
@@ -74,6 +82,7 @@ export async function executeBubbleFlowViaWebhook(
 /**
  * Executes a BubbleFlow and handles the database operations.
  * Supports both streaming and non-streaming execution.
+ * Optionally runs Rice evaluation after execution if evalPerformance is enabled.
  */
 export async function executeBubbleFlowWithTracking(
   bubbleFlowId: number,
@@ -116,36 +125,40 @@ export async function executeBubbleFlowWithTracking(
     })
     .returning();
 
-  try {
-    // Execute the flow - use streaming if callback provided, otherwise standard execution
-    let result: ExecutionResult;
-    if (options.streamCallback) {
-      result = await runBubbleFlowWithStreaming(
-        flow.originalCode!, // Use original TypeScript code
-        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-        payload,
-        {
-          userId: options.userId,
-          streamCallback: options.streamCallback,
-          useWebhookLogger: options.useWebhookLogger,
-          pricingTable: getPricingTable(),
-          appType: appType,
-        }
-      );
-    } else {
-      result = await runBubbleFlow(
-        flow.originalCode!, // Use original TypeScript code
-        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-        payload,
-        {
-          userId: options.userId,
-          appType: appType,
-          pricingTable: getPricingTable(),
-        }
-      );
-    }
+  // Always collect streaming events for storage in executionLogs
+  // This ensures logs are available for history replay regardless of streaming
+  const collectedEvents: StreamingLogEvent[] = [];
+  const originalCallback = options.streamCallback;
 
-    // Update execution record
+  // Create a collection callback that always captures events
+  // If streaming is enabled, also forward to the original callback
+  const collectionCallback: StreamCallback = async (
+    event: StreamingLogEvent
+  ) => {
+    collectedEvents.push(event);
+    if (originalCallback) {
+      await originalCallback(event);
+    }
+  };
+
+  try {
+    // Always use streaming execution to capture logs
+    // The collectionCallback will collect events regardless of whether
+    // we're streaming to a client (webhook, cron, manual all get logged)
+    const result = await runBubbleFlowWithStreaming(
+      flow.originalCode!, // Use original TypeScript code
+      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
+      payload,
+      {
+        userId: options.userId,
+        streamCallback: collectionCallback,
+        useWebhookLogger: options.useWebhookLogger,
+        pricingTable: getPricingTable(),
+        appType: appType,
+      }
+    );
+
+    // Update execution record with result and collected logs
     await db
       .update(bubbleFlowExecutions)
       .set({
@@ -155,20 +168,32 @@ export async function executeBubbleFlowWithTracking(
         }),
         error: result.success ? null : result.error,
         status: result.success ? 'success' : 'error',
+        executionLogs: collectedEvents.length > 0 ? collectedEvents : null,
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
 
+    // Run Rice evaluation if enabled and conditions are met
+    if (originalCallback && options.evalPerformance) {
+      await runEvaluationIfNeeded(
+        execResult[0].id,
+        bubbleFlowId,
+        flow.originalCode!,
+        collectedEvents,
+        originalCallback
+      );
+    }
+
     return {
       executionId: execResult[0].id,
       success: result.success,
-      data: options.streamCallback
+      data: originalCallback
         ? result.summary || 'Execution completed without logging'
         : result.data,
       error: result.error,
     };
   } catch (error) {
-    // Update execution record with error
+    // Update execution record with error and collected logs
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     await db
@@ -177,6 +202,7 @@ export async function executeBubbleFlowWithTracking(
         result: null,
         error: errorMessage,
         status: 'error',
+        executionLogs: collectedEvents.length > 0 ? collectedEvents : null,
         completedAt: new Date(),
       })
       .where(eq(bubbleFlowExecutions.id, execResult[0].id));
@@ -186,5 +212,86 @@ export async function executeBubbleFlowWithTracking(
       success: false,
       error: errorMessage,
     };
+  }
+}
+
+/**
+ * Run Rice evaluation if conditions are met
+ */
+async function runEvaluationIfNeeded(
+  executionId: number,
+  bubbleFlowId: number,
+  workflowCode: string,
+  executionLogs: StreamingLogEvent[],
+  streamCallback: StreamCallback
+): Promise<void> {
+  try {
+    // Check if we should evaluate
+    const evalTrigger = await shouldEvaluateExecution(bubbleFlowId, true);
+    console.log('[Evaluation] Trigger result:', evalTrigger);
+
+    if (!evalTrigger.shouldEvaluate) {
+      console.log('[Evaluation] Skipping evaluation:', evalTrigger.reason);
+      return;
+    }
+
+    // Stream start_evaluating event
+    await streamCallback({
+      type: 'start_evaluating',
+      timestamp: new Date().toISOString(),
+      message: 'Evaluating workflow execution quality...',
+    });
+
+    // Build Rice request
+    const riceRequest = {
+      executionLogs,
+      workflowCode,
+      executionId,
+      bubbleFlowId,
+    };
+
+    // Run Rice evaluation
+    const riceResult = await runRice(riceRequest, {
+      [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY || '',
+      [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY || '',
+    });
+
+    console.log('[Evaluation] Rice result:', riceResult);
+
+    if (riceResult.success && riceResult.evaluation) {
+      // Store evaluation result (execution logs are stored in the execution record)
+      await storeEvaluation(
+        executionId,
+        bubbleFlowId,
+        riceResult.evaluation,
+        getRiceModelUsed(riceRequest)
+      );
+
+      // Stream end_evaluating event with result
+      await streamCallback({
+        type: 'end_evaluating',
+        timestamp: new Date().toISOString(),
+        message: riceResult.evaluation.working
+          ? 'Workflow evaluation passed'
+          : 'Workflow evaluation found issues',
+        evaluationResult: riceResult.evaluation,
+      });
+    } else {
+      // Evaluation failed - stream error but don't fail the execution
+      console.error('[Evaluation] Rice evaluation failed:', riceResult.error);
+      await streamCallback({
+        type: 'end_evaluating',
+        timestamp: new Date().toISOString(),
+        message: `Evaluation failed: ${riceResult.error}`,
+      });
+    }
+  } catch (error) {
+    // Non-blocking: log error but don't fail the execution
+    console.error('[Evaluation] Error during evaluation:', error);
+    await streamCallback({
+      type: 'end_evaluating',
+      timestamp: new Date().toISOString(),
+      message: `Evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    });
   }
 }

@@ -1,6 +1,37 @@
 import { createWithEqualityFn } from 'zustand/traditional';
 import { shallow } from 'zustand/shallow';
-import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
+import type {
+  StreamingLogEvent,
+  ParsedBubbleWithInfo,
+} from '@bubblelab/shared-schemas';
+
+/**
+ * Result of processing an execution event.
+ * Contains information the caller can use for UI updates.
+ */
+export interface ProcessEventResult {
+  /** The bubble ID (variableId as string) affected by this event, if any */
+  bubbleId?: string;
+  /** Whether this event signals execution should stop */
+  shouldStop?: boolean;
+  /** Whether this event signals execution is complete (but may still have evaluation) */
+  isComplete?: boolean;
+  /** Event type for caller to handle UI-specific logic */
+  eventType: StreamingLogEvent['type'];
+}
+
+/**
+ * Helper to find a bubble by its variableId in the bubbleParameters record
+ */
+function findBubbleByVariableId(
+  bubbleParameters: Record<string, ParsedBubbleWithInfo> | undefined,
+  variableId: number
+): ParsedBubbleWithInfo | undefined {
+  if (!bubbleParameters) return undefined;
+  return Object.values(bubbleParameters).find(
+    (bubble) => bubble.variableId === variableId
+  );
+}
 
 /**
  * Execution Store - Per-Flow Execution State
@@ -111,6 +142,28 @@ export interface FlowExecutionState {
    * AbortController for stopping execution
    */
   abortController: AbortController | null;
+
+  // ============= Evaluation State =============
+
+  /**
+   * Whether evaluation is currently running
+   */
+  isEvaluating: boolean;
+
+  /**
+   * Evaluation result from Rice agent
+   */
+  evaluationResult: {
+    working: boolean;
+    issueType: 'setup' | 'workflow' | 'input' | null;
+    summary: string;
+    rating: number;
+  } | null;
+
+  /**
+   * Whether to show the evaluation issue popup (only shown once per evaluation)
+   */
+  showEvaluationPopup: boolean;
 
   // ============= Actions - Execution Control =============
 
@@ -244,6 +297,59 @@ export interface FlowExecutionState {
    */
   clearEvents: () => void;
 
+  // ============= Actions - Evaluation =============
+
+  /**
+   * Set evaluation running state
+   */
+  setEvaluating: (evaluating: boolean) => void;
+
+  /**
+   * Set evaluation result
+   */
+  setEvaluationResult: (
+    result: {
+      working: boolean;
+      issueType: 'setup' | 'workflow' | 'input' | null;
+      summary: string;
+      rating: number;
+    } | null
+  ) => void;
+
+  /**
+   * Dismiss the evaluation popup (won't show again for this evaluation)
+   */
+  dismissEvaluationPopup: () => void;
+
+  // ============= Actions - Event Processing =============
+
+  /**
+   * Process a single streaming event and update store state.
+   * This is the shared event processor used by both:
+   * - Live streaming (useRunExecution.ts)
+   * - Historical replay (restoreFromHistory)
+   *
+   * @param event - The streaming log event to process
+   * @param bubbleParameters - Optional bubble parameters for looking up bubble info by variableId
+   * @returns ProcessEventResult with info for UI-specific handling
+   */
+  processEvent: (
+    event: StreamingLogEvent,
+    bubbleParameters?: Record<string, ParsedBubbleWithInfo>
+  ) => ProcessEventResult;
+
+  /**
+   * Restore execution state from historical execution logs.
+   * Replays all events through processEvent to rebuild derived state.
+   *
+   * @param events - Array of historical streaming log events
+   * @param bubbleParameters - Bubble parameters for looking up bubble info
+   */
+  restoreFromHistory: (
+    events: StreamingLogEvent[],
+    bubbleParameters?: Record<string, ParsedBubbleWithInfo>
+  ) => void;
+
   // ============= Actions - Reset =============
 
   /**
@@ -302,6 +408,9 @@ function createExecutionStore(flowId: number) {
       events: [],
       currentLine: null,
       abortController: null,
+      isEvaluating: false,
+      evaluationResult: null,
+      showEvaluationPopup: false,
 
       // Execution control
       startExecution: () =>
@@ -459,6 +568,188 @@ function createExecutionStore(flowId: number) {
 
       clearEvents: () => set({ events: [], error: null }),
 
+      // Evaluation state
+      setEvaluating: (evaluating) => set({ isEvaluating: evaluating }),
+
+      setEvaluationResult: (result) =>
+        set({
+          evaluationResult: result,
+          isEvaluating: false,
+          // Always show popup when evaluation completes (shows summary for both success and failure)
+          showEvaluationPopup: result !== null,
+        }),
+
+      dismissEvaluationPopup: () => set({ showEvaluationPopup: false }),
+
+      // Event Processing - Shared logic for live streaming and historical replay
+      processEvent: (event, bubbleParameters) => {
+        const state = get();
+        const result: ProcessEventResult = { eventType: event.type };
+
+        // Add the event to the events array
+        set((s) => ({ events: [...s.events, event] }));
+
+        // Update current line
+        if (event.lineNumber !== undefined) {
+          set({ currentLine: event.lineNumber });
+        }
+
+        // Handle different event types
+        switch (event.type) {
+          case 'bubble_execution': {
+            if (event.variableId) {
+              const bubble = findBubbleByVariableId(
+                bubbleParameters,
+                event.variableId
+              );
+              const bubbleId = bubble
+                ? String(bubble.variableId)
+                : String(event.variableId);
+
+              result.bubbleId = bubbleId;
+              state.setLastExecutingBubble(bubbleId);
+              state.setBubbleRunning(bubbleId);
+            }
+            break;
+          }
+
+          case 'bubble_execution_complete': {
+            if (event.variableId) {
+              const bubble = findBubbleByVariableId(
+                bubbleParameters,
+                event.variableId
+              );
+              const bubbleId = bubble
+                ? String(bubble.variableId)
+                : String(event.variableId);
+
+              result.bubbleId = bubbleId;
+              state.setLastExecutingBubble(bubbleId);
+
+              // Mark bubble as completed with execution time
+              const executionTimeMs = event.executionTime ?? 0;
+              state.setBubbleCompleted(bubbleId, executionTimeMs);
+
+              // Check if the bubble execution failed (result.success === false)
+              const eventResult = event.additionalData?.result as
+                | { success?: boolean }
+                | undefined;
+              const success = eventResult?.success !== false;
+
+              // Update bubble result status
+              state.setBubbleResult(bubbleId, success);
+
+              // If failed, also mark it in bubbleWithError
+              if (!success) {
+                state.setBubbleError(bubbleId);
+              }
+            }
+            break;
+          }
+
+          case 'function_call_start': {
+            if (event.variableId && event.functionName) {
+              const functionId = String(event.variableId);
+              result.bubbleId = functionId;
+              state.setLastExecutingBubble(functionId);
+              state.setBubbleRunning(functionId);
+            }
+            break;
+          }
+
+          case 'function_call_complete': {
+            if (event.variableId && event.functionName) {
+              const functionId = String(event.variableId);
+              result.bubbleId = functionId;
+              state.setLastExecutingBubble(functionId);
+
+              // Mark function call as completed with execution time
+              const executionTimeMs =
+                event.functionDuration ?? event.executionTime ?? 0;
+              state.setBubbleCompleted(functionId, executionTimeMs);
+
+              // For now, assume success unless explicitly marked as error
+              state.setBubbleResult(functionId, true);
+            }
+            break;
+          }
+
+          case 'bubble_parameters_update': {
+            state.clearHighlighting();
+            break;
+          }
+
+          case 'start_evaluating': {
+            state.setEvaluating(true);
+            break;
+          }
+
+          case 'end_evaluating': {
+            state.setEvaluating(false);
+            if (event.evaluationResult) {
+              state.setEvaluationResult(event.evaluationResult);
+            }
+            break;
+          }
+
+          case 'execution_complete': {
+            result.isComplete = true;
+            break;
+          }
+
+          case 'stream_complete': {
+            result.shouldStop = true;
+            break;
+          }
+
+          case 'fatal': {
+            state.setError(event.message);
+
+            // First try to use the variableId from the error event
+            if (event.variableId !== undefined) {
+              const bubbleId = String(event.variableId);
+              result.bubbleId = bubbleId;
+              state.setBubbleError(bubbleId);
+            } else {
+              // Fallback to last executing bubble
+              const lastExecutingBubble = get().lastExecutingBubble;
+              if (lastExecutingBubble) {
+                result.bubbleId = lastExecutingBubble;
+                state.setBubbleError(lastExecutingBubble);
+              }
+            }
+            break;
+          }
+
+          case 'error': {
+            state.setError(event.message);
+            break;
+          }
+        }
+
+        return result;
+      },
+
+      restoreFromHistory: (events, bubbleParameters) => {
+        const state = get();
+
+        // Reset execution state but keep inputs/credentials
+        state.resetExecution();
+
+        // Process all historical events to rebuild derived state
+        for (const event of events) {
+          state.processEvent(event, bubbleParameters);
+        }
+
+        // After replay, execution is complete (not running)
+        set({
+          isRunning: false,
+          isConnected: false,
+          // Don't show evaluation popup for historical data
+          showEvaluationPopup: false,
+        });
+      },
+
       // Reset
       reset: () =>
         set({
@@ -477,6 +768,9 @@ function createExecutionStore(flowId: number) {
           events: [],
           currentLine: null,
           abortController: null,
+          isEvaluating: false,
+          evaluationResult: null,
+          showEvaluationPopup: false,
         }),
 
       resetExecution: () =>
@@ -492,6 +786,9 @@ function createExecutionStore(flowId: number) {
           events: [],
           currentLine: null,
           abortController: null,
+          isEvaluating: false,
+          evaluationResult: null,
+          showEvaluationPopup: false,
         }),
 
       // Sub-bubble visibility
@@ -583,6 +880,9 @@ const emptyState: FlowExecutionState = {
   events: [],
   currentLine: null,
   abortController: null,
+  isEvaluating: false,
+  evaluationResult: null,
+  showEvaluationPopup: false,
   startExecution: () => {},
   stopExecution: () => {},
   startValidation: () => {},
@@ -606,6 +906,11 @@ const emptyState: FlowExecutionState = {
   setConnected: () => {},
   setError: () => {},
   clearEvents: () => {},
+  setEvaluating: () => {},
+  setEvaluationResult: () => {},
+  dismissEvaluationPopup: () => {},
+  processEvent: () => ({ eventType: 'info' }),
+  restoreFromHistory: () => {},
   reset: () => {},
   resetExecution: () => {},
   toggleRootExpansion: () => {},
