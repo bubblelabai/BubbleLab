@@ -70,7 +70,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'startup-idea-generator',
     name: 'Startup Idea Generator (Research Agent, Reddit, Email)',
     prompt:
-      'Research subreddits for posts where people complain about recurring pain points, and email a report of 5 viable startup ideas',
+      'Research subreddits for complaints about recurring pain points, and email a report of 5 viable startup ideas',
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
     isPopular: true,
@@ -78,8 +78,7 @@ export const TEMPLATES: TemplateDefinition[] = [
   {
     id: 'notion-approval-monitor',
     name: 'Lead Approval & Auto-Email System (Notion, Resend)',
-    prompt:
-      'Automated lead qualification workflow: monitor Notion approval database, auto-send personalized emails when approved, generate daily leads',
+    prompt: 'Generate daily leads and log them into my Notion database',
     code: notionApprovalMonitorTemplate.templateCode,
     category: 'Lead Generation',
   },
@@ -98,7 +97,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     prompt: `Find qualified prospects from relevant Reddit threads and log them to a sheet with personalized outreach messages`,
     code: redditTemplate.templateCode,
     category: 'Lead Generation',
-    isPopular: true,
+    isPopular: false,
   },
   // ============================================================================
   // Engineering & Project Management
@@ -107,7 +106,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'github-pr-commenter',
     name: 'GitHub PR Commenter (GitHub, AI Agent)',
     prompt:
-      'When a pull request is opened, analyze the commit guidelines and post intelligent title/body suggestions based on COMMIT.md file',
+      'When a pull request is opened, analyze the commit guidelines and post intelligent suggestions based on COMMIT.md file',
     code: githubPRCommenterTemplate.templateCode,
     category: 'Engineering & Project Management',
     isPopular: true,
@@ -116,7 +115,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'chat-with-database',
     name: 'Chat With Your Database (Postgres, Gmail)',
     prompt:
-      'Ask questions about your database and get AI-powered insights and reports via email',
+      'Ask questions about my Postgres database and get AI-powered insights and reports via email',
     code: databaseTemplate.templateCode,
     category: 'Engineering & Project Management',
   },
@@ -136,7 +135,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'daily-news',
     name: 'Daily News Digest (Research Agent, Email, Reddit)',
     prompt:
-      'Curate top tech news headlines from Reddit and major news sites, summarize by category, and email an HTML digest',
+      'Curate top tech news headlines from Reddit and major news sites, and email a daily digest',
     code: dailyNewsTemplate.templateCode,
     category: 'Personal Assistant',
     isPopular: true,
@@ -145,7 +144,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'telegram-bot',
     name: 'Telegram AI Responder Bot (Telegram, AI Agent, Storage)',
     prompt:
-      'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
+      'Check for new messages every 5 min, respond with text and contextual images',
     code: telegramBotTemplate.templateCode,
     category: 'Personal Assistant',
     isPopular: false,
@@ -153,8 +152,7 @@ export const TEMPLATES: TemplateDefinition[] = [
   {
     id: 'daily-briefing',
     name: 'Daily Briefing (Google Calendar, Email)',
-    prompt:
-      'Read in my google calendar and summarize my upcoming events and reminders',
+    prompt: 'Summarize my upcoming google calendar events and email me report',
     code: personalTemplate.templateCode,
     category: 'Personal Assistant',
   },
@@ -173,7 +171,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'product-image-transformer',
     name: 'AI Product Photo Generator (AI Agent, Google Drive)',
     prompt:
-      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
+      'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into marketing images with professional backgrounds and studio lighting. Save to Google Drive.',
     code: productImageTransformerTemplate.templateCode,
     category: 'Marketing',
     isPopular: false,
@@ -182,7 +180,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     id: 'content-creation',
     name: 'Content Creation Ideas (Research Agent, Youtube, Reddit, Email)',
     prompt:
-      'Research news and trending content across YouTube/Reddit/websites, generate 10+ tailored content ideas with metrics, and email a summary',
+      'Generate viral content ideas for my brand using news and trending content across the web',
     code: contentCreationTemplate.templateCode,
     category: 'Marketing',
     isPopular: true,
