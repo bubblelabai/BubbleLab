@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { getExecutionStore } from '@/stores/executionStore';
+import { getExecutionStore, ProcessEventResult } from '@/stores/executionStore';
 import { useValidateCode } from '@/hooks/useValidateCode';
 import { useUpdateBubbleFlow } from '@/hooks/useUpdateBubbleFlow';
 import { useBubbleFlow } from '@/hooks/useBubbleFlow';
@@ -10,7 +10,6 @@ import { cleanupFlattenedKeys } from '@/utils/codeParser';
 import { filterEmptyInputs } from '@/utils/inputUtils';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '@/lib/api';
-import { findBubbleByVariableId } from '@/utils/bubbleUtils';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
 import { useUIStore } from '@/stores/uiStore';
@@ -149,46 +148,36 @@ export function useRunExecution(
           try {
             const eventData: StreamingLogEvent = JSON.parse(dataStr);
 
-            // Update store with event
-            getExecutionStore(flowId).addEvent(eventData);
-            getExecutionStore(flowId).setCurrentLine(
-              eventData.lineNumber || null
-            );
-
             console.log('[useRunExecution] received event', eventData.type);
 
-            // Handle different event types with the logic from App.tsx
-            if (eventData.type === 'bubble_execution') {
-              if (eventData.variableId) {
-                // Always use latest flow from React Query cache to avoid stale closure data
-                // This is critical after validation updates bubbleParameters
-                const latestFlow =
-                  queryClient.getQueryData<BubbleFlowDetailsResponse>([
-                    'bubbleFlow',
-                    flowId,
-                  ]);
+            // Always use latest flow from React Query cache to avoid stale closure data
+            // This is critical after validation updates bubbleParameters
+            const latestFlow =
+              queryClient.getQueryData<BubbleFlowDetailsResponse>([
+                'bubbleFlow',
+                flowId,
+              ]);
 
-                const bubble = findBubbleByVariableId(
-                  latestFlow?.bubbleParameters ||
-                    currentFlow?.bubbleParameters ||
-                    {},
-                  eventData.variableId
-                );
+            const bubbleParameters =
+              latestFlow?.bubbleParameters || currentFlow?.bubbleParameters;
 
-                if (bubble) {
-                  const bubbleId = String(bubble.variableId);
+            // Use shared event processor from store
+            const result: ProcessEventResult = getExecutionStore(
+              flowId
+            ).processEvent(eventData, bubbleParameters);
 
-                  // Track this as the last executing bubble in the store
-                  getExecutionStore(flowId).setLastExecutingBubble(bubbleId);
-
-                  // Mark bubble as running
-                  getExecutionStore(flowId).setBubbleRunning(bubbleId);
-                  // Note: We intentionally don't call selectBubbleInConsole here
-                  // to avoid jumping the tab on every bubble execution.
-                  // Users can watch output stream in without jarring tab switches.
-
-                  // Highlight the line range in the editor (validate line numbers)
+            // Handle UI-specific actions based on event type
+            switch (eventData.type) {
+              case 'bubble_execution': {
+                // Highlight the line range in the editor
+                if (result.bubbleId && eventData.variableId) {
+                  const bubble = bubbleParameters
+                    ? Object.values(bubbleParameters).find(
+                        (b) => b.variableId === eventData.variableId
+                      )
+                    : undefined;
                   if (
+                    bubble &&
                     bubble.location.startLine > 0 &&
                     bubble.location.endLine > 0
                   ) {
@@ -197,188 +186,71 @@ export function useRunExecution(
                       endLine: bubble.location.endLine,
                     });
                   }
-
-                  // Keep highlighting until manually deselected
                 }
+                optionsRef.current.onBubbleExecution?.(eventData);
+                break;
               }
-              optionsRef.current.onBubbleExecution?.(eventData);
-            }
 
-            if (eventData.type === 'bubble_execution_complete') {
-              if (eventData.variableId) {
-                // Always use latest flow from React Query cache to avoid stale closure data
-                const latestFlow =
-                  queryClient.getQueryData<BubbleFlowDetailsResponse>([
-                    'bubbleFlow',
-                    flowId,
-                  ]);
-
-                const bubble = findBubbleByVariableId(
-                  latestFlow?.bubbleParameters ||
-                    currentFlow?.bubbleParameters ||
-                    {},
-                  eventData.variableId
-                );
-
-                if (bubble) {
-                  const bubbleId = String(bubble.variableId);
-                  getExecutionStore(flowId).setLastExecutingBubble(bubbleId);
-
-                  // Mark bubble as completed with execution time
-                  const executionTimeMs = eventData.executionTime ?? 0;
-                  getExecutionStore(flowId).setBubbleCompleted(
-                    bubbleId,
-                    executionTimeMs
-                  );
-
-                  // Check if the bubble execution failed (result.success === false)
-                  const result = eventData.additionalData?.result as
-                    | { success?: boolean }
-                    | undefined;
-                  const success = result?.success !== false; // Default to true if not specified
-
-                  // Update bubble result status in store
-                  getExecutionStore(flowId).setBubbleResult(bubbleId, success);
-
-                  // If failed, also mark it in bubbleWithError for error highlighting
-                  if (!success) {
-                    getExecutionStore(flowId).setBubbleError(bubbleId);
-                  }
-
-                  // Jump to this bubble's tab on completion (not on start)
-                  // This shows users the output when it's ready, for maximum adrenaline
-                  selectBubbleInConsole(bubbleId);
+              case 'bubble_execution_complete': {
+                // Jump to this bubble's tab on completion
+                if (result.bubbleId) {
+                  selectBubbleInConsole(result.bubbleId);
                 }
+                break;
               }
-            }
 
-            // Handle function call start events
-            if (eventData.type === 'function_call_start') {
-              if (eventData.variableId && eventData.functionName) {
-                const functionId = String(eventData.variableId);
-
-                // Track this as the last executing bubble in the store
-                getExecutionStore(flowId).setLastExecutingBubble(functionId);
-
-                // Mark function call as running
-                getExecutionStore(flowId).setBubbleRunning(functionId);
-                // Note: We intentionally don't call selectBubbleInConsole here
-                // to avoid jumping the tab on every function call.
-                // Users can watch output stream in without jarring tab switches.
-
-                // Highlight the line range in the editor if line number is available
+              case 'function_call_start': {
+                // Highlight the line in the editor
                 if (eventData.lineNumber && eventData.lineNumber > 0) {
                   setExecutionHighlight({
                     startLine: eventData.lineNumber,
                     endLine: eventData.lineNumber,
                   });
                 }
+                break;
               }
-            }
 
-            // Handle function call complete events
-            if (eventData.type === 'function_call_complete') {
-              if (eventData.variableId && eventData.functionName) {
-                const functionId = String(eventData.variableId);
-                getExecutionStore(flowId).setLastExecutingBubble(functionId);
-
-                // Mark function call as completed with execution time
-                const executionTimeMs =
-                  eventData.functionDuration ?? eventData.executionTime ?? 0;
-                getExecutionStore(flowId).setBubbleCompleted(
-                  functionId,
-                  executionTimeMs
-                );
-
-                // Check if there was an error (functionOutput might contain error info)
-                // For now, we'll assume success unless explicitly marked as error
-                // This could be enhanced to check functionOutput for error indicators
-                getExecutionStore(flowId).setBubbleResult(functionId, true);
-
-                // Jump to this function's tab on completion (not on start)
-                // This shows users the output when it's ready, for maximum adrenaline
-                selectBubbleInConsole(functionId);
-              }
-            }
-
-            if (
-              eventData.type === 'bubble_parameters_update' &&
-              eventData.bubbleParameters
-            ) {
-              getExecutionStore(flowId).clearHighlighting();
-              optionsRef.current.onBubbleParametersUpdate?.();
-            }
-
-            // Handle evaluation events
-            if (eventData.type === 'start_evaluating') {
-              getExecutionStore(flowId).setEvaluating(true);
-            }
-
-            if (eventData.type === 'end_evaluating') {
-              getExecutionStore(flowId).setEvaluating(false);
-              if (eventData.evaluationResult) {
-                console.log(
-                  'eventData.evaluationResult',
-                  eventData.evaluationResult
-                );
-                getExecutionStore(flowId).setEvaluationResult(
-                  eventData.evaluationResult
-                );
-              }
-            }
-
-            if (eventData.type === 'execution_complete') {
-              // Don't stop execution here - evaluation may still come
-              // Just switch to Results tab for now
-              selectResultsInConsole();
-              // Don't return true - keep listening for evaluation events
-            }
-
-            if (eventData.type === 'stream_complete') {
-              // This is the final event - now we can stop
-              getExecutionStore(flowId).stopExecution();
-              selectResultsInConsole();
-              optionsRef.current.onComplete?.();
-              return true;
-            }
-
-            // Handle fatal errors - don't stop stream, wait for stream_complete
-            if (eventData.type === 'fatal') {
-              getExecutionStore(flowId).setError(eventData.message);
-              // Don't stop execution here - evaluation may still come
-              selectResultsInConsole();
-
-              // First try to use the variableId from the error event
-              if (eventData.variableId !== undefined) {
-                const bubbleId = String(eventData.variableId);
-                getExecutionStore(flowId).setBubbleError(bubbleId);
-              } else {
-                // Fallback to last executing bubble from store
-                const storeState = getExecutionStore(flowId);
-                const lastExecutingBubble = storeState.lastExecutingBubble;
-
-                if (lastExecutingBubble) {
-                  getExecutionStore(flowId).setBubbleError(lastExecutingBubble);
-                } else {
-                  console.warn(
-                    '❌ Fatal error occurred but no bubble ID available'
-                  );
+              case 'function_call_complete': {
+                // Jump to this function's tab on completion
+                if (result.bubbleId) {
+                  selectBubbleInConsole(result.bubbleId);
                 }
+                break;
               }
 
-              optionsRef.current.onError?.(
-                eventData.message,
-                true,
-                eventData.variableId
-              );
-              // Don't return true - keep listening for evaluation and stream_complete
-            }
+              case 'bubble_parameters_update': {
+                optionsRef.current.onBubbleParametersUpdate?.();
+                break;
+              }
 
-            // Handle non-fatal errors
-            if (eventData.type === 'error') {
-              getExecutionStore(flowId).setError(eventData.message);
-              optionsRef.current.onError?.(eventData.message, false);
-              return false;
+              case 'execution_complete': {
+                // Switch to Results tab
+                selectResultsInConsole();
+                break;
+              }
+
+              case 'stream_complete': {
+                // This is the final event - stop execution
+                getExecutionStore(flowId).stopExecution();
+                selectResultsInConsole();
+                optionsRef.current.onComplete?.();
+                return true;
+              }
+
+              case 'fatal': {
+                selectResultsInConsole();
+                optionsRef.current.onError?.(
+                  eventData.message,
+                  true,
+                  eventData.variableId
+                );
+                break;
+              }
+
+              case 'error': {
+                optionsRef.current.onError?.(eventData.message, false);
+                break;
+              }
             }
           } catch (parseError) {
             console.error('Failed to parse SSE data:', parseError, dataStr);

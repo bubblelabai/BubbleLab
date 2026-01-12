@@ -1,7 +1,6 @@
 import { db } from '../db/index.js';
 import { bubbleFlowExecutions, bubbleFlows, users } from '../db/schema.js';
 import {
-  runBubbleFlow,
   runBubbleFlowWithStreaming,
   type StreamingExecutionOptions,
 } from './execution.js';
@@ -126,46 +125,38 @@ export async function executeBubbleFlowWithTracking(
     })
     .returning();
 
-  // Collect streaming events for evaluation
+  // Always collect streaming events for storage in executionLogs
+  // This ensures logs are available for history replay regardless of streaming
   const collectedEvents: StreamingLogEvent[] = [];
   const originalCallback = options.streamCallback;
 
-  // Wrap the callback to collect events
-  const wrappedCallback: StreamCallback | undefined = originalCallback
-    ? async (event: StreamingLogEvent) => {
-        collectedEvents.push(event);
-        await originalCallback(event);
-      }
-    : undefined;
+  // Create a collection callback that always captures events
+  // If streaming is enabled, also forward to the original callback
+  const collectionCallback: StreamCallback = async (
+    event: StreamingLogEvent
+  ) => {
+    collectedEvents.push(event);
+    if (originalCallback) {
+      await originalCallback(event);
+    }
+  };
 
   try {
-    // Execute the flow - use streaming if callback provided, otherwise standard execution
-    let result: ExecutionResult;
-    if (wrappedCallback) {
-      result = await runBubbleFlowWithStreaming(
-        flow.originalCode!, // Use original TypeScript code
-        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-        payload,
-        {
-          userId: options.userId,
-          streamCallback: wrappedCallback,
-          useWebhookLogger: options.useWebhookLogger,
-          pricingTable: getPricingTable(),
-          appType: appType,
-        }
-      );
-    } else {
-      result = await runBubbleFlow(
-        flow.originalCode!, // Use original TypeScript code
-        flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
-        payload,
-        {
-          userId: options.userId,
-          appType: appType,
-          pricingTable: getPricingTable(),
-        }
-      );
-    }
+    // Always use streaming execution to capture logs
+    // The collectionCallback will collect events regardless of whether
+    // we're streaming to a client (webhook, cron, manual all get logged)
+    const result = await runBubbleFlowWithStreaming(
+      flow.originalCode!, // Use original TypeScript code
+      flow.bubbleParameters as Record<string, ParsedBubbleWithInfo>,
+      payload,
+      {
+        userId: options.userId,
+        streamCallback: collectionCallback,
+        useWebhookLogger: options.useWebhookLogger,
+        pricingTable: getPricingTable(),
+        appType: appType,
+      }
+    );
 
     // Update execution record with result and collected logs
     await db
