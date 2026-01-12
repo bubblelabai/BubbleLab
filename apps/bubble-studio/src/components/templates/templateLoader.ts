@@ -88,7 +88,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Automatically respond to Telegram messages with AI-generated responses and contextual images. Runs on a cron schedule to check for new messages every 5 minutes.',
     code: telegramBotTemplate.templateCode,
     category: 'Personal Assistant',
-    isPopular: true,
+    isPopular: false,
   },
   {
     id: 'product-image-transformer',
@@ -97,6 +97,15 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Use Nanobanana (Gemini 2.5 Flash Image) to transform plain product photos into stunning marketing images with professional backgrounds, studio lighting, and AI-generated models. Saves to Google Drive.',
     code: productImageTransformerTemplate.templateCode,
     category: 'Marketing',
+    isPopular: false,
+  },
+  {
+    id: 'startup-idea-generator',
+    name: 'Startup Idea Generator (Research Agent, Reddit, Email)',
+    prompt:
+      'Research subreddits for posts where people complain about recurring pain points, and email a report of 5 viable startup ideas',
+    code: redditTemplate.templateCode,
+    category: 'Lead Generation',
     isPopular: true,
   },
   {
@@ -125,6 +134,7 @@ export const TEMPLATES: TemplateDefinition[] = [
     category: 'Marketing',
     isPopular: true,
   },
+
   {
     id: 'video-script-generator',
     name: 'Video Script Generator (YouTube, Email)',
@@ -132,7 +142,7 @@ export const TEMPLATES: TemplateDefinition[] = [
       'Analyze top YouTube videos on a topic and generate 4 complete script variations with hooks, timing, and CTAs',
     code: videoScriptTemplate.templateCode,
     category: 'Marketing',
-    isPopular: true,
+    isPopular: false,
   },
   {
     id: 'reddit-lead-gen',
@@ -169,9 +179,9 @@ export const TEMPLATES: TemplateDefinition[] = [
   },
   {
     id: 'financial-advisor',
-    name: 'Financial Portfolio Advisor (Research Agent, Email)',
+    name: 'Financial Portfolio Watchdog (Research Agent, Email)',
     prompt:
-      'Fetch prices and news for stock tickers, assess sentiment/risks/opportunities, and email a report',
+      'Fetch real-time prices and recent news for stock tickers, assess sentiment/risks/opportunities, and email a report',
     code: financialTemplate.templateCode,
     category: 'Personal Assistant',
   },
