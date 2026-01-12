@@ -430,6 +430,8 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
   const userPayload = c.req.valid('json') ?? {}; // Handle empty payloads gracefully
   const userId = getUserId(c);
   const appType = getAppType(c);
+  // Check for evalPerformance query param
+  const evalPerformance = c.req.query('evalPerformance') === 'true';
 
   try {
     const triggerEvent = {
@@ -446,6 +448,7 @@ app.openapi(executeBubbleFlowStreamRoute, async (c) => {
         await executeBubbleFlowWithTracking(id, triggerEvent, {
           userId,
           appType,
+          evalPerformance,
           streamCallback: async (event) => {
             await stream.writeSSE({
               data: JSON.stringify(event),

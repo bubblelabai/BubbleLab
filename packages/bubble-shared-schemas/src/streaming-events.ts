@@ -29,7 +29,9 @@ export interface StreamingLogEvent {
     | 'tool_call_start' // New event for AI agent tool call start
     | 'tool_call_complete' // New event for AI agent tool call completion
     | 'function_call_start' // New event for transformation function call start
-    | 'function_call_complete'; // New event for transformation function call completion
+    | 'function_call_complete' // New event for transformation function call completion
+    | 'start_evaluating' // Evaluation by Rice agent started
+    | 'end_evaluating'; // Evaluation by Rice agent complete with result
   timestamp: string;
   lineNumber?: number;
   variableId?: number;
@@ -67,6 +69,12 @@ export interface StreamingLogEvent {
     inputTokens: number;
     outputTokens: number;
     totalTokens: number;
+  };
+  // For evaluation events (start_evaluating, end_evaluating)
+  evaluationResult?: {
+    working: boolean;
+    issue?: string;
+    rating: number;
   };
 }
 // Define streaming event types for real-time AI agent feedback

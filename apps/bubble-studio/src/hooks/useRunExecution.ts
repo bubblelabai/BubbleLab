@@ -121,7 +121,7 @@ export function useRunExecution(
 
       try {
         const response = await api.postStream(
-          `/bubble-flow/${flowId}/execute-stream`,
+          `/bubble-flow/${flowId}/execute-stream?evalPerformance=true`,
           payload
         );
 
@@ -154,6 +154,8 @@ export function useRunExecution(
             getExecutionStore(flowId).setCurrentLine(
               eventData.lineNumber || null
             );
+
+            console.log('[useRunExecution] received event', eventData.type);
 
             // Handle different event types with the logic from App.tsx
             if (eventData.type === 'bubble_execution') {
@@ -307,26 +309,43 @@ export function useRunExecution(
               optionsRef.current.onBubbleParametersUpdate?.();
             }
 
+            // Handle evaluation events
+            if (eventData.type === 'start_evaluating') {
+              getExecutionStore(flowId).setEvaluating(true);
+            }
+
+            if (eventData.type === 'end_evaluating') {
+              getExecutionStore(flowId).setEvaluating(false);
+              if (eventData.evaluationResult) {
+                console.log(
+                  'eventData.evaluationResult',
+                  eventData.evaluationResult
+                );
+                getExecutionStore(flowId).setEvaluationResult(
+                  eventData.evaluationResult
+                );
+              }
+            }
+
             if (eventData.type === 'execution_complete') {
-              getExecutionStore(flowId).stopExecution();
-              // Switch to Results tab and scroll to bottom
+              // Don't stop execution here - evaluation may still come
+              // Just switch to Results tab for now
               selectResultsInConsole();
-              optionsRef.current.onComplete?.();
-              return true;
+              // Don't return true - keep listening for evaluation events
             }
 
             if (eventData.type === 'stream_complete') {
+              // This is the final event - now we can stop
               getExecutionStore(flowId).stopExecution();
-              // Switch to Results tab and scroll to bottom
               selectResultsInConsole();
               optionsRef.current.onComplete?.();
               return true;
             }
 
-            // Handle fatal errors
+            // Handle fatal errors - don't stop stream, wait for stream_complete
             if (eventData.type === 'fatal') {
               getExecutionStore(flowId).setError(eventData.message);
-              getExecutionStore(flowId).stopExecution();
+              // Don't stop execution here - evaluation may still come
               selectResultsInConsole();
 
               // First try to use the variableId from the error event
@@ -352,7 +371,7 @@ export function useRunExecution(
                 true,
                 eventData.variableId
               );
-              return true;
+              // Don't return true - keep listening for evaluation and stream_complete
             }
 
             // Handle non-fatal errors

@@ -112,6 +112,27 @@ export interface FlowExecutionState {
    */
   abortController: AbortController | null;
 
+  // ============= Evaluation State =============
+
+  /**
+   * Whether evaluation is currently running
+   */
+  isEvaluating: boolean;
+
+  /**
+   * Evaluation result from Rice agent
+   */
+  evaluationResult: {
+    working: boolean;
+    issue?: string;
+    rating: number;
+  } | null;
+
+  /**
+   * Whether to show the evaluation issue popup (only shown once per evaluation)
+   */
+  showEvaluationPopup: boolean;
+
   // ============= Actions - Execution Control =============
 
   /**
@@ -244,6 +265,25 @@ export interface FlowExecutionState {
    */
   clearEvents: () => void;
 
+  // ============= Actions - Evaluation =============
+
+  /**
+   * Set evaluation running state
+   */
+  setEvaluating: (evaluating: boolean) => void;
+
+  /**
+   * Set evaluation result
+   */
+  setEvaluationResult: (
+    result: { working: boolean; issue?: string; rating: number } | null
+  ) => void;
+
+  /**
+   * Dismiss the evaluation popup (won't show again for this evaluation)
+   */
+  dismissEvaluationPopup: () => void;
+
   // ============= Actions - Reset =============
 
   /**
@@ -302,6 +342,9 @@ function createExecutionStore(flowId: number) {
       events: [],
       currentLine: null,
       abortController: null,
+      isEvaluating: false,
+      evaluationResult: null,
+      showEvaluationPopup: false,
 
       // Execution control
       startExecution: () =>
@@ -459,6 +502,19 @@ function createExecutionStore(flowId: number) {
 
       clearEvents: () => set({ events: [], error: null }),
 
+      // Evaluation state
+      setEvaluating: (evaluating) => set({ isEvaluating: evaluating }),
+
+      setEvaluationResult: (result) =>
+        set({
+          evaluationResult: result,
+          isEvaluating: false,
+          // Show popup only if evaluation found issues (working === false)
+          showEvaluationPopup: result?.working === false,
+        }),
+
+      dismissEvaluationPopup: () => set({ showEvaluationPopup: false }),
+
       // Reset
       reset: () =>
         set({
@@ -477,6 +533,9 @@ function createExecutionStore(flowId: number) {
           events: [],
           currentLine: null,
           abortController: null,
+          isEvaluating: false,
+          evaluationResult: null,
+          showEvaluationPopup: false,
         }),
 
       resetExecution: () =>
@@ -492,6 +551,9 @@ function createExecutionStore(flowId: number) {
           events: [],
           currentLine: null,
           abortController: null,
+          isEvaluating: false,
+          evaluationResult: null,
+          showEvaluationPopup: false,
         }),
 
       // Sub-bubble visibility
@@ -583,6 +645,9 @@ const emptyState: FlowExecutionState = {
   events: [],
   currentLine: null,
   abortController: null,
+  isEvaluating: false,
+  evaluationResult: null,
+  showEvaluationPopup: false,
   startExecution: () => {},
   stopExecution: () => {},
   startValidation: () => {},
@@ -606,6 +671,9 @@ const emptyState: FlowExecutionState = {
   setConnected: () => {},
   setError: () => {},
   clearEvents: () => {},
+  setEvaluating: () => {},
+  setEvaluationResult: () => {},
+  dismissEvaluationPopup: () => {},
   reset: () => {},
   resetExecution: () => {},
   toggleRootExpansion: () => {},

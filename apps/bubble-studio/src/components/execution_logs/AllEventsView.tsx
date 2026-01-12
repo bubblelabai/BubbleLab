@@ -81,12 +81,21 @@ export default function AllEventsView({
 
   // Get execution state for bubble status
   const executionState = useExecutionStore(flowId);
-  const { runningBubbles, completedBubbles, bubbleWithError, bubbleResults } =
-    executionState;
+  const {
+    runningBubbles,
+    completedBubbles,
+    bubbleWithError,
+    bubbleResults,
+    isEvaluating,
+    evaluationResult,
+  } = executionState;
 
   const eventsEndRef = useRef<HTMLDivElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+
   const contentScrollRef = useRef<HTMLDivElement>(null);
+
+  console.log('evaluationResult', evaluationResult);
 
   // State for expanded bubbles (bubbles with sub-bubbles can be expanded)
   const [expandedBubbles, setExpandedBubbles] = useState<Set<string>>(
@@ -248,9 +257,13 @@ export default function AllEventsView({
   };
 
   // Handler for "Fix with Pearl" CTA - used in both Results tab and individual bubble views
-  const handleFixWithPearl = () => {
+  const handleFixWithPearl = (issueDetails?: string) => {
     if (!flowId) return;
-    const prompt = `I'm seeing error(s) in my workflow execution. Can you tell me what I can do address these errors / fix any issues in the workflow as you see fit?`;
+
+    // Use specific issue details if provided, otherwise use generic message
+    const prompt = issueDetails
+      ? `The workflow evaluation found the following issue:\n\n${issueDetails}\n\nPlease help me fix this issue in my workflow.`
+      : `I'm seeing error(s) in my workflow execution. Can you tell me what I can do address these errors / fix any issues in the workflow as you see fit?`;
 
     // Trigger Pearl generation (component doesn't subscribe to Pearl state)
     pearl.startGeneration(prompt);
@@ -585,9 +598,61 @@ export default function AllEventsView({
                   );
                 })}
 
+          {/* Evaluation Step - Show when evaluating or evaluation is complete */}
+          {(isEvaluating || evaluationResult) && (
+            <div className="mt-2 pt-2 border-t border-[#21262d]">
+              <button
+                type="button"
+                onClick={() => setSelectedTab({ kind: 'evaluation' })}
+                className={`relative w-full flex items-center gap-2 px-3 py-2 transition-all group ${
+                  selectedTab.kind === 'evaluation'
+                    ? 'bg-[#1f6feb]/10'
+                    : 'hover:bg-[#161b22]'
+                }`}
+              >
+                {/* Evaluation icon/status */}
+                <div className="flex-shrink-0">
+                  {isEvaluating ? (
+                    <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                  ) : evaluationResult?.working ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-400" />
+                  )}
+                </div>
+                {/* Label */}
+                <span
+                  className={`text-[11px] font-medium flex-1 text-left ${
+                    selectedTab.kind === 'evaluation'
+                      ? 'text-[#58a6ff]'
+                      : 'text-gray-400 group-hover:text-gray-300'
+                  }`}
+                >
+                  {isEvaluating ? 'Evaluating...' : 'Evaluation'}
+                </span>
+                {/* Rating badge when complete */}
+                {evaluationResult && !isEvaluating && (
+                  <span
+                    className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                      evaluationResult.rating >= 7
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : evaluationResult.rating >= 4
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'bg-red-500/20 text-red-400'
+                    }`}
+                  >
+                    {evaluationResult.rating}/10
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Results Tab - Always at the end */}
           {!isRunning && (
-            <div className="mt-2 pt-2 border-t border-[#21262d]">
+            <div
+              className={`${isEvaluating || evaluationResult ? '' : 'mt-2 pt-2 border-t border-[#21262d]'}`}
+            >
               <button
                 type="button"
                 onClick={() => setSelectedTab({ kind: 'results' })}
@@ -758,7 +823,8 @@ export default function AllEventsView({
                           </p>
                         </div>
                         <button
-                          onClick={handleFixWithPearl}
+                          type="button"
+                          onClick={() => handleFixWithPearl()}
                           disabled={pearl.isPending}
                           className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors shadow-sm"
                         >
@@ -919,6 +985,162 @@ export default function AllEventsView({
             );
           }
 
+          // Handle Evaluation tab
+          if (selectedTab.kind === 'evaluation') {
+            // Show loading state while evaluating
+            if (isEvaluating) {
+              return (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-400 animate-spin" />
+                    <p className="text-lg text-gray-300 mb-2">
+                      Evaluating Workflow
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Analyzing execution logs and code quality...
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            // Show evaluation results
+            if (evaluationResult) {
+              const getRatingColor = (rating: number) => {
+                if (rating >= 7)
+                  return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+                if (rating >= 4)
+                  return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+                return 'text-red-400 bg-red-500/20 border-red-500/30';
+              };
+
+              const getRatingLabel = (rating: number) => {
+                if (rating >= 9) return 'Excellent';
+                if (rating >= 7) return 'Good';
+                if (rating >= 5) return 'Fair';
+                if (rating >= 3) return 'Poor';
+                return 'Critical';
+              };
+
+              return (
+                <div className="p-4 space-y-4">
+                  {/* Status Header */}
+                  <div
+                    className={`p-4 rounded-lg border ${
+                      evaluationResult.working
+                        ? 'bg-emerald-500/10 border-emerald-500/30'
+                        : 'bg-red-500/10 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {evaluationResult.working ? (
+                        <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                      ) : (
+                        <XCircle className="w-6 h-6 text-red-400" />
+                      )}
+                      <div>
+                        <h3
+                          className={`text-lg font-semibold ${
+                            evaluationResult.working
+                              ? 'text-emerald-400'
+                              : 'text-red-400'
+                          }`}
+                        >
+                          {evaluationResult.working
+                            ? 'Workflow Passed Evaluation'
+                            : 'Issues Detected'}
+                        </h3>
+                        <p className="text-sm text-gray-400">
+                          {evaluationResult.working
+                            ? 'The workflow executed as expected with no critical issues.'
+                            : 'The evaluation found problems that may need attention.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quality Score */}
+                  <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+                    <h4 className="text-sm font-medium text-gray-300 mb-3">
+                      Quality Score
+                    </h4>
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`text-4xl font-bold px-4 py-2 rounded-lg border ${getRatingColor(evaluationResult.rating)}`}
+                      >
+                        {evaluationResult.rating}
+                        <span className="text-lg opacity-60">/10</span>
+                      </div>
+                      <div>
+                        <p
+                          className={`text-lg font-medium ${getRatingColor(evaluationResult.rating).split(' ')[0]}`}
+                        >
+                          {getRatingLabel(evaluationResult.rating)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {evaluationResult.rating >= 7
+                            ? 'Working well with minor or no issues'
+                            : evaluationResult.rating >= 4
+                              ? 'Partially functional, some problems detected'
+                              : 'Significant issues need attention'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Issue Details */}
+                  {evaluationResult.issue && (
+                    <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+                      <h4 className="text-sm font-medium text-gray-300 mb-3">
+                        Issue Details
+                      </h4>
+                      <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">
+                        {evaluationResult.issue}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Fix with Pearl CTA - Show if issues found */}
+                  {!evaluationResult.working && (
+                    <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-200 mb-1">
+                            Need help fixing these issues?
+                          </h4>
+                          <p className="text-xs text-gray-400">
+                            Pearl can analyze the evaluation and suggest fixes
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleFixWithPearl(evaluationResult.issue)
+                          }
+                          disabled={pearl.isPending}
+                          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // No evaluation result yet
+            return (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-gray-600">
+                  <Circle className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No evaluation available</p>
+                </div>
+              </div>
+            );
+          }
+
           // Handle item-based tabs (bubble groups and global events)
           if (selectedTab.kind === 'item') {
             const item = orderedItems[selectedTab.index];
@@ -1033,7 +1255,8 @@ export default function AllEventsView({
                             </p>
                           </div>
                           <button
-                            onClick={handleFixWithPearl}
+                            type="button"
+                            onClick={() => handleFixWithPearl()}
                             disabled={pearl.isPending}
                             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-colors shadow-sm"
                           >

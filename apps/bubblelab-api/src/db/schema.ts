@@ -23,11 +23,13 @@ export const {
   bubbleFlows,
   webhooks,
   bubbleFlowExecutions,
+  bubbleFlowEvaluations,
   userCredentials,
   userServiceUsage,
   waitlistedUsers,
   bubbleFlowsRelations,
   webhooksRelations,
   bubbleFlowExecutionsRelations,
+  bubbleFlowEvaluationsRelations,
   users,
 } = schema;

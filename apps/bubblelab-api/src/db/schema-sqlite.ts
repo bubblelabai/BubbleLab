@@ -87,6 +87,27 @@ export const bubbleFlowExecutions = sqliteTable('bubble_flow_executions', {
   completedAt: int('completed_at', { mode: 'timestamp' }),
 });
 
+export const bubbleFlowEvaluations = sqliteTable('bubble_flow_evaluations', {
+  id: int().primaryKey({ autoIncrement: true }),
+  executionId: int('execution_id')
+    .notNull()
+    .references(() => bubbleFlowExecutions.id, { onDelete: 'cascade' }),
+  bubbleFlowId: int('bubble_flow_id')
+    .notNull()
+    .references(() => bubbleFlows.id, { onDelete: 'cascade' }),
+  // Evaluation result from Rice agent
+  working: int('working', { mode: 'boolean' }).notNull(), // Whether the workflow is functioning correctly
+  issue: text('issue'), // Description of the issue if working=false
+  rating: int('rating').notNull(), // Quality rating 1-10
+  // Detailed execution logs for analysis
+  executionLogs: text('execution_logs', { mode: 'json' }), // LogEntry[] from execution
+  // Metadata
+  modelUsed: text('model_used').notNull(), // Model used for evaluation (e.g., RECOMMENDED_MODELS.FAST)
+  evaluatedAt: int('evaluated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const userCredentials = sqliteTable('user_credentials', {
   id: int().primaryKey({ autoIncrement: true }),
   userId: text('user_id')
@@ -166,6 +187,7 @@ export const waitlistedUsers = sqliteTable('waitlisted_users', {
 export const bubbleFlowsRelations = relations(bubbleFlows, ({ many }) => ({
   executions: many(bubbleFlowExecutions),
   webhooks: many(webhooks),
+  evaluations: many(bubbleFlowEvaluations),
 }));
 
 export const webhooksRelations = relations(webhooks, ({ one }) => ({
@@ -177,9 +199,24 @@ export const webhooksRelations = relations(webhooks, ({ one }) => ({
 
 export const bubbleFlowExecutionsRelations = relations(
   bubbleFlowExecutions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     bubbleFlow: one(bubbleFlows, {
       fields: [bubbleFlowExecutions.bubbleFlowId],
+      references: [bubbleFlows.id],
+    }),
+    evaluations: many(bubbleFlowEvaluations),
+  })
+);
+
+export const bubbleFlowEvaluationsRelations = relations(
+  bubbleFlowEvaluations,
+  ({ one }) => ({
+    execution: one(bubbleFlowExecutions, {
+      fields: [bubbleFlowEvaluations.executionId],
+      references: [bubbleFlowExecutions.id],
+    }),
+    bubbleFlow: one(bubbleFlows, {
+      fields: [bubbleFlowEvaluations.bubbleFlowId],
       references: [bubbleFlows.id],
     }),
   })

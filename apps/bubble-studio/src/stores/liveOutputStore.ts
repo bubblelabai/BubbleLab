@@ -22,8 +22,12 @@ export type OrderedItem =
  * Discriminated union type for tab selection in LiveOutput
  * - results: Show all global events (info, warnings, errors) chronologically
  * - item: Show a specific bubble group or global event by index
+ * - evaluation: Show the evaluation results from Rice agent
  */
-export type TabType = { kind: 'results' } | { kind: 'item'; index: number };
+export type TabType =
+  | { kind: 'results' }
+  | { kind: 'item'; index: number }
+  | { kind: 'evaluation' };
 
 /**
  * Bubble group metadata for tab generation

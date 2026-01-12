@@ -8,7 +8,11 @@ import {
   formatEventMessage,
 } from '../../utils/executionLogsFormatUtils';
 import { useLiveOutput } from '../../hooks/useLiveOutput';
+import { useExecutionStore } from '../../stores/executionStore';
+import { usePearlChatStore } from '../../hooks/usePearlChatStore';
+import { useUIStore } from '../../stores/uiStore';
 import AllEventsView from './AllEventsView';
+import { EvaluationIssuePopup } from './EvaluationIssuePopup';
 
 interface LiveOutputProps {
   events?: StreamingLogEvent[];
@@ -37,6 +41,23 @@ export default function LiveOutput({
   // Use LiveOutput hook for state management and computed values
   const { getOrderedItems, getWarningLogs, getErrorLogs } =
     useLiveOutput(flowId);
+
+  // Get evaluation state from execution store (popup state is global in store)
+  const executionState = useExecutionStore(flowId);
+  const { evaluationResult, showEvaluationPopup, dismissEvaluationPopup } =
+    executionState;
+
+  // Pearl chat for fixing issues
+  const pearl = usePearlChatStore(flowId);
+  const { openConsolidatedPanelWith } = useUIStore();
+
+  // Handle fix with Pearl from popup
+  const handleFixWithPearl = (issueDescription: string) => {
+    if (!flowId) return;
+    pearl.startGeneration(issueDescription);
+    openConsolidatedPanelWith('pearl');
+    dismissEvaluationPopup();
+  };
 
   // Get computed values using non-reactive getters (no re-renders)
   const orderedItems = getOrderedItems();
@@ -74,6 +95,17 @@ export default function LiveOutput({
           />
         )}
       </div>
+
+      {/* Evaluation Issue Popup - uses global store state */}
+      {evaluationResult && (
+        <EvaluationIssuePopup
+          isOpen={showEvaluationPopup}
+          onClose={dismissEvaluationPopup}
+          evaluationResult={evaluationResult}
+          onFixWithPearl={handleFixWithPearl}
+          isFixingWithPearl={pearl.isPending}
+        />
+      )}
     </div>
   );
 }

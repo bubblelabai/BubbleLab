@@ -93,6 +93,27 @@ export const bubbleFlowExecutions = pgTable('bubble_flow_executions', {
   completedAt: timestamp('completed_at', { mode: 'date' }),
 });
 
+export const bubbleFlowEvaluations = pgTable('bubble_flow_evaluations', {
+  id: serial().primaryKey(),
+  executionId: integer('execution_id')
+    .notNull()
+    .references(() => bubbleFlowExecutions.id, { onDelete: 'cascade' }),
+  bubbleFlowId: integer('bubble_flow_id')
+    .notNull()
+    .references(() => bubbleFlows.id, { onDelete: 'cascade' }),
+  // Evaluation result from Rice agent
+  working: boolean('working').notNull(), // Whether the workflow is functioning correctly
+  issue: text('issue'), // Description of the issue if working=false
+  rating: integer('rating').notNull(), // Quality rating 1-10
+  // Detailed execution logs for analysis
+  executionLogs: jsonb('execution_logs'), // LogEntry[] from execution
+  // Metadata
+  modelUsed: text('model_used').notNull(), // Model used for evaluation (e.g., RECOMMENDED_MODELS.FAST)
+  evaluatedAt: timestamp('evaluated_at', { mode: 'date' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 export const userCredentials = pgTable('user_credentials', {
   id: serial().primaryKey(),
   userId: text('user_id')
@@ -172,6 +193,7 @@ export const waitlistedUsers = pgTable('waitlisted_users', {
 export const bubbleFlowsRelations = relations(bubbleFlows, ({ many }) => ({
   executions: many(bubbleFlowExecutions),
   webhooks: many(webhooks),
+  evaluations: many(bubbleFlowEvaluations),
 }));
 
 export const webhooksRelations = relations(webhooks, ({ one }) => ({
@@ -183,9 +205,24 @@ export const webhooksRelations = relations(webhooks, ({ one }) => ({
 
 export const bubbleFlowExecutionsRelations = relations(
   bubbleFlowExecutions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     bubbleFlow: one(bubbleFlows, {
       fields: [bubbleFlowExecutions.bubbleFlowId],
+      references: [bubbleFlows.id],
+    }),
+    evaluations: many(bubbleFlowEvaluations),
+  })
+);
+
+export const bubbleFlowEvaluationsRelations = relations(
+  bubbleFlowEvaluations,
+  ({ one }) => ({
+    execution: one(bubbleFlowExecutions, {
+      fields: [bubbleFlowEvaluations.executionId],
+      references: [bubbleFlowExecutions.id],
+    }),
+    bubbleFlow: one(bubbleFlows, {
+      fields: [bubbleFlowEvaluations.bubbleFlowId],
       references: [bubbleFlows.id],
     }),
   })
