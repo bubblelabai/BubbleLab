@@ -226,15 +226,44 @@ export interface DocumentProcessorPayload extends WebhookEvent {
 
 Use your judgment based on what the field semantically represents, not just its name.
 
-GOOGLE DRIVE INTEGRATION:
-When a field represents a Google Drive folder or file ID, use these naming patterns to automatically enable the Google Picker UI:
-- folder_id or folderId: For Google Drive folder IDs (enables folder picker with selection)
-- spreadsheet_id or spreadsheetId: For Google Sheets IDs (enables spreadsheet picker)
-- document_id or documentId: For Google Docs IDs (enables document picker)
-- file_id or fileId: For generic Drive file IDs (enables file picker)
+GOOGLE DRIVE PICKER CONTROL (@canBeGoogleFile):
+For fields that represent Google Drive file or folder IDs, add @canBeGoogleFile true to enable the Google Picker UI.
+This allows users to visually select files/folders from their Google Drive instead of manually copying IDs.
 
-Always add @canBeFile false to these ID fields since they are identifiers, not content.
-The naming pattern is flexible - folder2_id, source_folder_id, output_folder_id all work.
+ALWAYS add @canBeGoogleFile true for:
+- Any field that holds a Google Drive file ID (spreadsheet, document, SRT, video, or any file)
+- Any field that holds a Google Drive folder ID
+- Fields where users will select from their Google Drive
+
+Also add @canBeFile false since these are identifiers, not content.
+
+Example:
+\`\`\`typescript
+export interface VideoProcessorPayload extends WebhookEvent {
+  /**
+   * Google Drive file ID of the SRT file. Click the Google Drive icon to browse and select your file.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  srt_file_id: string;
+  
+  /**
+   * Google Sheets spreadsheet ID to read data from.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  spreadsheetId: string;
+  
+  /**
+   * Google Drive folder ID where output files will be saved.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  outputFolderId: string;
+}
+\`\`\`
+
+This is semantic - based on what the field represents, not its name. If it's a Google Drive file/folder ID, add @canBeGoogleFile true.
 
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 

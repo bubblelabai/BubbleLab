@@ -930,6 +930,7 @@ function FlowVisualizerInner({
               description: valObj.description,
               default: valObj.default,
               canBeFile: valObj.canBeFile,
+              canBeGoogleFile: valObj.canBeGoogleFile,
               properties: processProperties(valObj.properties),
               requiredProperties: objectRequired,
             };
@@ -943,6 +944,9 @@ function FlowVisualizerInner({
             default: (valObj as { default?: unknown } | undefined)?.default,
             canBeFile: (valObj as { canBeFile?: boolean } | undefined)
               ?.canBeFile,
+            canBeGoogleFile: (
+              valObj as { canBeGoogleFile?: boolean } | undefined
+            )?.canBeGoogleFile,
           };
         });
       } catch {

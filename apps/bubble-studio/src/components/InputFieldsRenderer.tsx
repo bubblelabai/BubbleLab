@@ -25,6 +25,8 @@ interface SchemaField {
   default?: unknown;
   /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
   canBeFile?: boolean;
+  /** Controls whether Google Picker UI is enabled for this field. If true, shows Google Drive picker button. */
+  canBeGoogleFile?: boolean;
   properties?: Record<
     string,
     {
@@ -33,6 +35,7 @@ interface SchemaField {
       default?: unknown;
       required?: boolean;
       canBeFile?: boolean;
+      canBeGoogleFile?: boolean;
       properties?: Record<
         string,
         {
@@ -304,11 +307,19 @@ function InputFieldsRenderer({
   };
 
   // Helper function to detect if a field is a Google file ID field
-  const isGoogleFileField = (fieldName: string): boolean => {
+  // Checks explicit canBeGoogleFile first, then falls back to regex pattern matching
+  const isGoogleFileField = (field: SchemaField): boolean => {
+    // If explicitly set via @canBeGoogleFile JSDoc tag, use that
+    if (field.canBeGoogleFile === true) {
+      return true;
+    }
+    if (field.canBeGoogleFile === false) {
+      return false;
+    }
+    // Otherwise, use regex pattern matching as fallback for backwards compatibility
     // Match common Google-related file ID field names while avoiding false positives
-    // such as "driver_id" or "profile_id".
     return /\b(google[_\s-]*)?(spreadsheet|sheet|document|doc|drive|folder|file)[_\s-]*id\b/i.test(
-      fieldName
+      field.name
     );
   };
 
@@ -1133,7 +1144,7 @@ function InputFieldsRenderer({
                       )}
                   </div>
                   {/* Google File Picker Button */}
-                  {isGoogleFileField(field.name) && (
+                  {isGoogleFileField(field) && (
                     <div className="w-10">
                       <GoogleFilePicker
                         fileType={getGoogleFileType(field.name)}
