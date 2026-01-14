@@ -24,7 +24,7 @@ const FirecrawlDocumentMetadataSchema = z
       .describe('Robots meta tag content'),
     ogTitle: z.string().optional().describe('Open Graph title'),
     ogDescription: z.string().optional().describe('Open Graph description'),
-    ogUrl: z.string().url().optional().describe('Open Graph URL'),
+    ogUrl: z.string().optional().describe('Open Graph URL'),
     ogImage: z.string().optional().describe('Open Graph image URL'),
     ogAudio: z.string().optional().describe('Open Graph audio URL'),
     ogDeterminer: z.string().optional().describe('Open Graph determiner'),
