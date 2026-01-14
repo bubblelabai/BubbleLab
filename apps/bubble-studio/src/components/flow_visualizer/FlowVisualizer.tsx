@@ -793,6 +793,7 @@ function FlowVisualizerInner({
       description?: string;
       default?: unknown;
       canBeFile?: boolean;
+      canBeGoogleFile?: boolean;
       properties?: Record<
         string,
         {
@@ -801,6 +802,7 @@ function FlowVisualizerInner({
           default?: unknown;
           required?: boolean;
           canBeFile?: boolean;
+          canBeGoogleFile?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -820,6 +822,7 @@ function FlowVisualizerInner({
                 description?: string;
                 default?: unknown;
                 canBeFile?: boolean;
+                canBeGoogleFile?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -827,6 +830,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     canBeFile?: boolean;
+                    canBeGoogleFile?: boolean;
                   }
                 >;
                 required?: string[];
@@ -850,6 +854,7 @@ function FlowVisualizerInner({
                 default?: unknown;
                 required?: boolean;
                 canBeFile?: boolean;
+                canBeGoogleFile?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -858,6 +863,7 @@ function FlowVisualizerInner({
                     default?: unknown;
                     required?: boolean;
                     canBeFile?: boolean;
+                    canBeGoogleFile?: boolean;
                   }
                 >;
                 requiredProperties?: string[];
@@ -870,6 +876,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     canBeFile?: boolean;
+                    canBeGoogleFile?: boolean;
                     properties?: Record<string, unknown>;
                     required?: string[];
                   };
@@ -885,6 +892,7 @@ function FlowVisualizerInner({
                       default: propSchema.default,
                       required: objectRequired.includes(propName),
                       canBeFile: propSchema.canBeFile,
+                      canBeGoogleFile: propSchema.canBeGoogleFile,
                       properties: processProperties(propSchema.properties),
                       requiredProperties: nestedRequired,
                     };
@@ -895,6 +903,7 @@ function FlowVisualizerInner({
                       default: propSchema?.default,
                       required: objectRequired.includes(propName),
                       canBeFile: propSchema?.canBeFile,
+                      canBeGoogleFile: propSchema?.canBeGoogleFile,
                     };
                   }
                   return acc;
@@ -907,6 +916,7 @@ function FlowVisualizerInner({
                     default?: unknown;
                     required?: boolean;
                     canBeFile?: boolean;
+                    canBeGoogleFile?: boolean;
                     properties?: Record<
                       string,
                       {
@@ -915,6 +925,7 @@ function FlowVisualizerInner({
                         default?: unknown;
                         required?: boolean;
                         canBeFile?: boolean;
+                        canBeGoogleFile?: boolean;
                       }
                     >;
                     requiredProperties?: string[];
