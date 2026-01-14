@@ -11,7 +11,11 @@ import {
   oauthCallbackPostRoute,
   oauthTokenRefreshRoute,
   oauthRevokeRoute,
+  oauthPickerTokenRoute,
 } from '../schemas/oauth.js';
+import { db } from '../db/index.js';
+import { userCredentials } from '../db/schema-postgres.js';
+import { eq, and } from 'drizzle-orm';
 import { type OAuthProvider } from '@bubblelab/shared-schemas';
 
 const app = new OpenAPIHono({
@@ -154,6 +158,51 @@ app.openapi(oauthTokenRefreshRoute, async (c) => {
     return c.json(
       {
         error: error instanceof Error ? error.message : 'Token refresh failed',
+      },
+      400
+    );
+  }
+});
+
+// OAuth picker token route - GET /oauth/google/picker-token
+app.openapi(oauthPickerTokenRoute, async (c) => {
+  const userId = getUserId(c);
+  const { credentialId } = c.req.valid('query');
+
+  try {
+    // Verify the credential belongs to the user
+    const credential = await db.query.userCredentials.findFirst({
+      where: and(
+        eq(userCredentials.id, credentialId),
+        eq(userCredentials.userId, userId)
+      ),
+    });
+
+    if (!credential) {
+      return c.json({ error: 'Credential not found' }, 404);
+    }
+
+    if (!credential.isOauth || credential.oauthProvider !== 'google') {
+      return c.json(
+        { error: 'Invalid credential type for Google Picker' },
+        400
+      );
+    }
+
+    // Get a valid (refreshed if needed) access token
+    const accessToken = await oauthService.getValidToken(credentialId);
+
+    if (!accessToken) {
+      return c.json({ error: 'Failed to retrieve access token' }, 400);
+    }
+
+    return c.json({ accessToken }, 200);
+  } catch (error) {
+    console.error('Failed to get picker token:', error);
+    return c.json(
+      {
+        error:
+          error instanceof Error ? error.message : 'Failed to get picker token',
       },
       400
     );

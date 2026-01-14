@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { Plus, Minus, Paperclip, X } from 'lucide-react';
 import {
   MAX_FILE_SIZE_BYTES,
@@ -15,6 +15,11 @@ import {
   ALLOWED_FILE_TYPES_DISPLAY,
 } from '../utils/fileUtils';
 import AutoResizeTextarea from './AutoResizeTextarea';
+import { SERVICE_LOGOS } from '../lib/integrations';
+import {
+  useGooglePicker,
+  type GooglePickerFile,
+} from '../hooks/useGooglePicker';
 
 interface SchemaField {
   name: string;
@@ -24,6 +29,8 @@ interface SchemaField {
   default?: unknown;
   /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
   canBeFile?: boolean;
+  /** Controls whether Google Drive picker is enabled for this field. */
+  canBeGoogleDrive?: boolean;
   properties?: Record<
     string,
     {
@@ -54,6 +61,8 @@ interface InputFieldsRendererProps {
   onInputChange: (fieldName: string, value: unknown) => void;
   isExecuting?: boolean;
   className?: string;
+  /** Google Drive credential ID for enabling the Drive picker. Pass null if not connected. */
+  googleDriveCredentialId?: number | null;
 }
 
 function InputFieldsRenderer({
@@ -62,6 +71,7 @@ function InputFieldsRenderer({
   onInputChange,
   isExecuting = false,
   className = '',
+  googleDriveCredentialId,
 }: InputFieldsRendererProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>(
     {}
@@ -73,6 +83,74 @@ function InputFieldsRenderer({
   const [arrayEntryFileNames, setArrayEntryFileNames] = useState<
     Record<string, Record<number, string>>
   >({});
+  // Track Google Drive file selections: fieldName -> file info
+  const [driveFiles, setDriveFiles] = useState<
+    Record<string, GooglePickerFile>
+  >({});
+  // Track which field is currently being picked for Google Drive
+  const [activePickerField, setActivePickerField] = useState<string | null>(
+    null
+  );
+
+  // Handle Google Drive file selection
+  const handleDriveFilePicked = useCallback(
+    (file: GooglePickerFile) => {
+      if (activePickerField) {
+        // Store Drive file metadata for display
+        setDriveFiles((prev) => ({ ...prev, [activePickerField]: file }));
+        // Clear any local upload for this field
+        setUploadedFileNames((prev) => {
+          const next = { ...prev };
+          delete next[activePickerField];
+          return next;
+        });
+        // Update input value with file ID
+        onInputChange(activePickerField, file.id);
+        setActivePickerField(null);
+      }
+    },
+    [activePickerField, onInputChange]
+  );
+
+  // Initialize Google Picker hook
+  const { openPicker, isLoading: isPickerLoading } = useGooglePicker({
+    credentialId: googleDriveCredentialId ?? null,
+    onFilePicked: handleDriveFilePicked,
+    onError: (error) => {
+      console.error('Google Picker error:', error);
+      if (activePickerField) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          [activePickerField]: error.message,
+        }));
+        setActivePickerField(null);
+      }
+    },
+  });
+
+  // Open Google Picker for a specific field
+  const handleOpenGooglePicker = useCallback(
+    (fieldName: string) => {
+      setActivePickerField(fieldName);
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: null }));
+      openPicker();
+    },
+    [openPicker]
+  );
+
+  // Delete a Google Drive file selection
+  const handleDeleteDriveFile = useCallback(
+    (fieldName: string) => {
+      setDriveFiles((prev) => {
+        const next = { ...prev };
+        delete next[fieldName];
+        return next;
+      });
+      onInputChange(fieldName, '');
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: null }));
+    },
+    [onInputChange]
+  );
 
   const setError = (fieldName: string, msg: string | null) => {
     setFieldErrors((prev) => ({ ...prev, [fieldName]: msg }));
@@ -1009,14 +1087,21 @@ function InputFieldsRenderer({
                 <div className="relative">
                   <AutoResizeTextarea
                     value={
-                      uploadedFileNames[field.name] &&
+                      // Show Drive file name if selected
+                      driveFiles[field.name] &&
                       (field.type === undefined || field.type === 'string') &&
                       field.canBeFile !== false
-                        ? uploadedFileNames[field.name]
-                        : typeof currentValue === 'string' ||
-                            typeof currentValue === 'number'
-                          ? String(currentValue)
-                          : ''
+                        ? driveFiles[field.name].name
+                        : // Show local file name if uploaded
+                          uploadedFileNames[field.name] &&
+                            (field.type === undefined ||
+                              field.type === 'string') &&
+                            field.canBeFile !== false
+                          ? uploadedFileNames[field.name]
+                          : typeof currentValue === 'string' ||
+                              typeof currentValue === 'number'
+                            ? String(currentValue)
+                            : ''
                     }
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                       onInputChange(field.name, e.target.value);
@@ -1030,7 +1115,10 @@ function InputFieldsRenderer({
                       isExecuting ||
                       ((field.type === undefined || field.type === 'string') &&
                       field.canBeFile !== false
-                        ? !!uploadedFileNames[field.name]
+                        ? !!(
+                            uploadedFileNames[field.name] ||
+                            driveFiles[field.name]
+                          )
                         : false)
                     }
                     className={`w-full px-2 py-1.5 text-xs bg-neutral-900 border ${
@@ -1042,21 +1130,79 @@ function InputFieldsRenderer({
                         ? 'focus:ring-amber-500/50'
                         : 'focus:ring-blue-500/50'
                     } disabled:opacity-50 disabled:cursor-not-allowed transition-all resize-none ${
-                      (field.type === undefined || field.type === 'string') &&
-                      field.canBeFile !== false &&
-                      uploadedFileNames[field.name]
-                        ? 'pr-14'
-                        : (field.type === undefined ||
-                              field.type === 'string') &&
-                            field.canBeFile !== false
-                          ? 'pr-7'
-                          : ''
+                      // Calculate right padding based on which buttons will show
+                      (() => {
+                        const isStringField =
+                          field.type === undefined || field.type === 'string';
+                        const hasFileSelected =
+                          uploadedFileNames[field.name] ||
+                          driveFiles[field.name];
+                        const showFileUpload =
+                          isStringField && field.canBeFile !== false;
+                        const showGoogleDrive =
+                          isStringField &&
+                          googleDriveCredentialId &&
+                          field.canBeGoogleDrive;
+
+                        if (hasFileSelected) {
+                          return showGoogleDrive && showFileUpload
+                            ? 'pr-20'
+                            : 'pr-14';
+                        }
+                        if (showGoogleDrive && showFileUpload) return 'pr-14';
+                        if (showGoogleDrive || showFileUpload) return 'pr-7';
+                        return '';
+                      })()
                     }`}
                   />
+                  {/* Button container for Google Drive and/or file upload */}
                   {(field.type === undefined || field.type === 'string') &&
-                    field.canBeFile !== false && (
+                    ((googleDriveCredentialId && field.canBeGoogleDrive) ||
+                      field.canBeFile !== false) && (
                       <div className="absolute right-2 top-2 flex items-center gap-1">
-                        {uploadedFileNames[field.name] ? (
+                        {/* Google Drive picker button - shows when credential exists */}
+                        {googleDriveCredentialId &&
+                          field.canBeGoogleDrive &&
+                          !uploadedFileNames[field.name] &&
+                          !driveFiles[field.name] && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGooglePicker(field.name)}
+                              disabled={isExecuting || isPickerLoading}
+                              className="cursor-pointer group p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Select from Google Drive"
+                            >
+                              <img
+                                src={SERVICE_LOGOS['Google Drive']}
+                                alt="Google Drive"
+                                className={`w-4 h-4 transition-transform ${
+                                  isExecuting || isPickerLoading
+                                    ? 'opacity-50'
+                                    : 'group-hover:scale-110'
+                                }`}
+                              />
+                            </button>
+                          )}
+                        {/* Show Drive file with delete button */}
+                        {driveFiles[field.name] ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDriveFile(field.name)}
+                              disabled={isExecuting}
+                              className="p-0.5 hover:bg-neutral-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              aria-label={`Remove Google Drive file for ${field.name}`}
+                            >
+                              <X className="w-3 h-3 text-neutral-400 hover:text-neutral-200" />
+                            </button>
+                            <img
+                              src={SERVICE_LOGOS['Google Drive']}
+                              alt="Google Drive"
+                              className="w-3 h-3"
+                              title={`Google Drive: ${driveFiles[field.name].name}`}
+                            />
+                          </>
+                        ) : uploadedFileNames[field.name] ? (
                           <>
                             <button
                               type="button"
@@ -1069,7 +1215,8 @@ function InputFieldsRenderer({
                             </button>
                             <Paperclip className="w-3 h-3 text-neutral-300" />
                           </>
-                        ) : (
+                        ) : field.canBeFile !== false ? (
+                          /* Local file upload - only when canBeFile is not false */
                           <label
                             className="cursor-pointer group"
                             title={`Upload file (${ALLOWED_FILE_TYPES_DISPLAY})`}
@@ -1095,7 +1242,7 @@ function InputFieldsRenderer({
                               }`}
                             />
                           </label>
-                        )}
+                        ) : null}
                       </div>
                     )}
                 </div>

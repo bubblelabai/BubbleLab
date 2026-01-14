@@ -793,6 +793,7 @@ function FlowVisualizerInner({
       description?: string;
       default?: unknown;
       canBeFile?: boolean;
+      canBeGoogleDrive?: boolean;
       properties?: Record<
         string,
         {
@@ -801,6 +802,7 @@ function FlowVisualizerInner({
           default?: unknown;
           required?: boolean;
           canBeFile?: boolean;
+          canBeGoogleDrive?: boolean;
         }
       >;
       requiredProperties?: string[];
@@ -820,6 +822,7 @@ function FlowVisualizerInner({
                 description?: string;
                 default?: unknown;
                 canBeFile?: boolean;
+                canBeGoogleDrive?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -827,6 +830,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     canBeFile?: boolean;
+                    canBeGoogleDrive?: boolean;
                   }
                 >;
                 required?: string[];
@@ -850,6 +854,7 @@ function FlowVisualizerInner({
                 default?: unknown;
                 required?: boolean;
                 canBeFile?: boolean;
+                canBeGoogleDrive?: boolean;
                 properties?: Record<
                   string,
                   {
@@ -858,6 +863,7 @@ function FlowVisualizerInner({
                     default?: unknown;
                     required?: boolean;
                     canBeFile?: boolean;
+                    canBeGoogleDrive?: boolean;
                   }
                 >;
                 requiredProperties?: string[];
@@ -870,6 +876,7 @@ function FlowVisualizerInner({
                     description?: string;
                     default?: unknown;
                     canBeFile?: boolean;
+                    canBeGoogleDrive?: boolean;
                     properties?: Record<string, unknown>;
                     required?: string[];
                   };
@@ -885,6 +892,7 @@ function FlowVisualizerInner({
                       default: propSchema.default,
                       required: objectRequired.includes(propName),
                       canBeFile: propSchema.canBeFile,
+                      canBeGoogleDrive: propSchema.canBeGoogleDrive,
                       properties: processProperties(propSchema.properties),
                       requiredProperties: nestedRequired,
                     };
@@ -895,6 +903,7 @@ function FlowVisualizerInner({
                       default: propSchema?.default,
                       required: objectRequired.includes(propName),
                       canBeFile: propSchema?.canBeFile,
+                      canBeGoogleDrive: propSchema?.canBeGoogleDrive,
                     };
                   }
                   return acc;
@@ -907,6 +916,7 @@ function FlowVisualizerInner({
                     default?: unknown;
                     required?: boolean;
                     canBeFile?: boolean;
+                    canBeGoogleDrive?: boolean;
                     properties?: Record<
                       string,
                       {
@@ -915,6 +925,7 @@ function FlowVisualizerInner({
                         default?: unknown;
                         required?: boolean;
                         canBeFile?: boolean;
+                        canBeGoogleDrive?: boolean;
                       }
                     >;
                     requiredProperties?: string[];
@@ -930,6 +941,7 @@ function FlowVisualizerInner({
               description: valObj.description,
               default: valObj.default,
               canBeFile: valObj.canBeFile,
+              canBeGoogleDrive: valObj.canBeGoogleDrive,
               properties: processProperties(valObj.properties),
               requiredProperties: objectRequired,
             };
@@ -943,6 +955,9 @@ function FlowVisualizerInner({
             default: (valObj as { default?: unknown } | undefined)?.default,
             canBeFile: (valObj as { canBeFile?: boolean } | undefined)
               ?.canBeFile,
+            canBeGoogleDrive: (
+              valObj as { canBeGoogleDrive?: boolean } | undefined
+            )?.canBeGoogleDrive,
           };
         });
       } catch {
@@ -993,6 +1008,11 @@ function FlowVisualizerInner({
             flowName: flowName,
             schemaFields: parsedFields,
             onFocusBubble: onFocusBubble,
+            // Pass Google Drive credential ID from the flow's bubbles (if any)
+            googleDriveCredentialId:
+              Object.values(savedCredentials)
+                .map((creds) => creds['GOOGLE_DRIVE_CRED'])
+                .find((id) => id !== undefined) ?? null,
           },
         };
         nodes.push(inputSchemaNode);

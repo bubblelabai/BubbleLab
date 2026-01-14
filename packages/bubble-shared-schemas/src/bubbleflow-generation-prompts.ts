@@ -226,6 +226,40 @@ export interface DocumentProcessorPayload extends WebhookEvent {
 
 Use your judgment based on what the field semantically represents, not just its name.
 
+GOOGLE DRIVE PICKER CONTROL (@canBeGoogleDrive):
+For fields that represent Google Drive file IDs, use the @canBeGoogleDrive JSDoc tag to enable a native Google Drive file picker in the UI.
+
+ENABLE Google Drive picker (@canBeGoogleDrive true) for:
+- Fields that represent a Google Drive file ID (fileId, documentId, spreadsheetId when used with Google Drive)
+- Fields where the user needs to select a file from their Google Drive
+- Fields that will be used with Google Drive operations (download, read, copy, etc.)
+
+DO NOT use @canBeGoogleDrive for:
+- Fields that are not Google Drive file IDs
+- Folder IDs (use @canBeFile false instead)
+- URLs or other identifiers
+- Fields in workflows that don't involve Google Drive
+
+Example usage:
+\`\`\`typescript
+export interface GoogleDriveProcessorPayload extends WebhookEvent {
+  /**
+   * Google Drive file ID to process. Select a file from your Google Drive.
+   * @canBeGoogleDrive true
+   * @canBeFile false
+   */
+  fileId: string;
+
+  /**
+   * Google Drive folder ID where output will be saved.
+   * @canBeFile false
+   */
+  folderId: string;
+}
+\`\`\`
+
+Note: When using @canBeGoogleDrive true, also use @canBeFile false since file uploads don't make sense for file ID fields.
+
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 
 // The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.

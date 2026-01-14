@@ -6,6 +6,8 @@ interface SchemaField {
   default?: unknown;
   /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
   canBeFile?: boolean;
+  /** Controls whether Google Drive picker is enabled for this field. */
+  canBeGoogleDrive?: boolean;
   minItems?: number;
   maxItems?: number;
   items?: {
@@ -99,6 +101,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
         description?: string;
         default?: unknown;
         canBeFile?: boolean;
+        canBeGoogleDrive?: boolean;
         minItems?: number;
         maxItems?: number;
         items?: {
@@ -128,6 +131,7 @@ export const parseJSONSchema = (schemaString: string): SchemaField[] => {
             description: value.description,
             default: value.default,
             canBeFile: value.canBeFile,
+            canBeGoogleDrive: value.canBeGoogleDrive,
             minItems: value.minItems,
             maxItems: value.maxItems,
             items: value.items,

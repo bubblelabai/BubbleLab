@@ -45,6 +45,8 @@ interface InputSchemaNodeData {
   flowName: string;
   schemaFields: SchemaField[];
   onFocusBubble?: (bubbleVariableId: string) => void;
+  /** Google Drive credential ID from the flow's Google Drive bubble (if any) */
+  googleDriveCredentialId?: number | null;
 }
 
 interface InputSchemaNodeProps {
@@ -52,7 +54,7 @@ interface InputSchemaNodeProps {
 }
 
 function InputSchemaNode({ data }: InputSchemaNodeProps) {
-  const { flowId, schemaFields, onFocusBubble } = data;
+  const { flowId, schemaFields, onFocusBubble, googleDriveCredentialId } = data;
 
   // Subscribe to execution store (using selectors to avoid re-renders from events)
   const executionInputs = useExecutionStore(flowId, (s) => s.executionInputs);
@@ -234,6 +236,7 @@ function InputSchemaNode({ data }: InputSchemaNodeProps) {
           inputValues={executionInputs}
           onInputChange={handleInputChange}
           isExecuting={isExecuting}
+          googleDriveCredentialId={googleDriveCredentialId ?? null}
         />
       </div>
 

@@ -35,6 +35,14 @@ export const credentialsApi = {
     });
   },
 
+  getPickerToken: async (
+    credentialId: number
+  ): Promise<{ accessToken: string }> => {
+    return api.get<{ accessToken: string }>(
+      `/oauth/google/picker-token?credentialId=${credentialId}`
+    );
+  },
+
   createCredential: async (
     data: CreateCredentialRequest
   ): Promise<CredentialResponse> => {

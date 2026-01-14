@@ -163,6 +163,48 @@ export const oauthTokenRefreshRoute = createRoute({
   tags: ['OAuth'],
 });
 
+// OAuth picker token route - GET /oauth/google/picker-token
+export const oauthPickerTokenRoute = createRoute({
+  method: 'get',
+  path: '/google/picker-token',
+  summary: 'Get access token for Google Picker',
+  description: 'Get a valid OAuth access token for use with Google Picker API',
+  request: {
+    query: z.object({
+      credentialId: z.coerce.number().openapi({ example: 123 }),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Access token retrieved successfully',
+      content: {
+        'application/json': {
+          schema: z.object({
+            accessToken: z.string(),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Bad request',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Credential not found',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+  tags: ['OAuth'],
+});
+
 // OAuth revoke route - DELETE /oauth/:provider/revoke/:credentialId
 export const oauthRevokeRoute = createRoute({
   method: 'delete',

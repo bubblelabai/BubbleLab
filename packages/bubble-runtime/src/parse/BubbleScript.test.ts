@@ -646,6 +646,58 @@ export class CalendarEmailFlow extends BubbleFlow {
         required: ['email', 'documentContent'],
       });
     });
+
+    it('should parse @canBeGoogleDrive JSDoc tag correctly', () => {
+      const codeWithCanBeGoogleDrive = `
+import { BubbleFlow, type WebhookEvent } from '@bubblelab/bubble-core';
+
+export interface GoogleDrivePayload extends WebhookEvent {
+  /**
+   * The Google Drive file ID to process.
+   * @canBeGoogleDrive true
+   * @canBeFile false
+   */
+  fileId: string;
+
+  /**
+   * Folder ID where output will be saved.
+   * @canBeFile false
+   */
+  folderId: string;
+}
+
+export class GoogleDriveFlow extends BubbleFlow {
+  async handle(payload: GoogleDrivePayload) {
+    const { fileId, folderId } = payload;
+    return { success: true };
+  }
+}
+`;
+      const analyzer = new BubbleScript(
+        codeWithCanBeGoogleDrive,
+        bubbleFactory
+      );
+      const inputSchema = analyzer.getPayloadJsonSchema();
+      console.log(JSON.stringify(inputSchema, null, 2));
+      expect(inputSchema).toBeDefined();
+      expect(inputSchema).toEqual({
+        type: 'object',
+        properties: {
+          fileId: {
+            type: 'string',
+            description: 'The Google Drive file ID to process.',
+            canBeGoogleDrive: true,
+            canBeFile: false,
+          },
+          folderId: {
+            type: 'string',
+            description: 'Folder ID where output will be saved.',
+            canBeFile: false,
+          },
+        },
+        required: ['fileId', 'folderId'],
+      });
+    });
   });
 });
 
