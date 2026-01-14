@@ -16,6 +16,8 @@ interface SchemaField {
   default?: unknown;
   /** Controls whether file upload is enabled for this field. Defaults to true for string fields. */
   canBeFile?: boolean;
+  /** Controls whether Google Picker UI is enabled for this field. If true, shows Google Drive picker button. */
+  canBeGoogleFile?: boolean;
   properties?: Record<
     string,
     {
@@ -24,6 +26,7 @@ interface SchemaField {
       default?: unknown;
       required?: boolean;
       canBeFile?: boolean;
+      canBeGoogleFile?: boolean;
       properties?: Record<
         string,
         {

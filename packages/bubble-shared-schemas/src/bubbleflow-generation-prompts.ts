@@ -226,6 +226,45 @@ export interface DocumentProcessorPayload extends WebhookEvent {
 
 Use your judgment based on what the field semantically represents, not just its name.
 
+GOOGLE DRIVE PICKER CONTROL (@canBeGoogleFile):
+For fields that represent Google Drive file or folder IDs, add @canBeGoogleFile true to enable the Google Picker UI.
+This allows users to visually select files/folders from their Google Drive instead of manually copying IDs.
+
+ALWAYS add @canBeGoogleFile true for:
+- Any field that holds a Google Drive file ID (spreadsheet, document, SRT, video, or any file)
+- Any field that holds a Google Drive folder ID
+- Fields where users will select from their Google Drive
+
+Also add @canBeFile false since these are identifiers, not content.
+
+Example:
+\`\`\`typescript
+export interface VideoProcessorPayload extends WebhookEvent {
+  /**
+   * Google Drive file ID of the SRT file. Click the Google Drive icon to browse and select your file.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  srt_file_id: string;
+  
+  /**
+   * Google Sheets spreadsheet ID to read data from.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  spreadsheetId: string;
+  
+  /**
+   * Google Drive folder ID where output files will be saved.
+   * @canBeGoogleFile true
+   * @canBeFile false
+   */
+  outputFolderId: string;
+}
+\`\`\`
+
+This is semantic - based on what the field represents, not its name. If it's a Google Drive file/folder ID, add @canBeGoogleFile true.
+
 Examples of EXCELLENT field comments (note: example values go in destructuring, not in comments):
 
 // The spreadsheet ID is the long string in the URL right after /d/ and before the next / in the URL.
@@ -239,6 +278,9 @@ recipientEmail: string;
 
 // Folder path using forward slashes to separate directories.
 outputFolderPath: string;
+
+// Google Drive folder ID where files will be saved. Open Google Drive, navigate to the folder, and copy the ID from the URL (the part after /folders/).
+folder_id: string;
 
 // API key from Dashboard > Settings > API Keys. Generate new key and copy the full string (32-64 chars).
 apiKey: string;
@@ -285,6 +327,11 @@ export interface UserNotificationPayload extends WebhookEvent {
    * @canBeFile false
    */
   spreadsheetId: string;
+  /**
+   * Google Drive folder ID where the report will be saved. Open Google Drive, navigate to the folder, and copy the ID from the URL (the part after /folders/).
+   * @canBeFile false
+   */
+  folder_id?: string;
 }
 
 const { 

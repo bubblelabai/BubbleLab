@@ -113,6 +113,8 @@ ${CRITICAL_INSTRUCTIONS}
 - Questions should be actionable and help determine the implementation
 - Set "allowMultiple": true when the user can reasonably select multiple options (e.g., "Which fields to include?", "Which integrations to connect?")
 - Set "allowMultiple": false (or omit) when only one option should be selected (e.g., "Which database type?", "What trigger type?")
+- For Google Drive file ID options: always highlight selecting files visually (with a file picker) as an option to providing the fileID (e.g., "I will select the file using the Google Drive picker or paste ID")--these are the same input method but visual is easier.
+
 - Focus on:
   - Data sources (where does the data come from?)
   - Output destinations (where should results go?)

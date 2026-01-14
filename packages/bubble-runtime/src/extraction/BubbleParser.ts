@@ -906,6 +906,10 @@ export class BubbleParser {
       if (jsDocInfo.canBeFile !== undefined) {
         propSchema.canBeFile = jsDocInfo.canBeFile;
       }
+      // Add canBeGoogleFile flag to schema if explicitly specified in JSDoc
+      if (jsDocInfo.canBeGoogleFile !== undefined) {
+        propSchema.canBeGoogleFile = jsDocInfo.canBeGoogleFile;
+      }
 
       properties[keyName] = propSchema;
       if (!m.optional) required.push(keyName);
@@ -2386,12 +2390,14 @@ export class BubbleParser {
   }
 
   /**
-   * Extract JSDoc info including description and @canBeFile tag from a node's preceding comments.
+   * Extract JSDoc info including description, @canBeFile, and @canBeGoogleFile tags from a node's preceding comments.
    * The @canBeFile tag controls whether file upload is enabled for string fields in the UI.
+   * The @canBeGoogleFile tag enables Google Picker UI for Google Drive file/folder ID fields.
    */
   private extractJSDocForNode(node: TSESTree.Node): {
     description?: string;
     canBeFile?: boolean;
+    canBeGoogleFile?: boolean;
   } {
     // Get the line number where this node starts
     const nodeLine = node.loc?.start.line;
@@ -2450,11 +2456,20 @@ export class BubbleParser {
 
     const fullComment = commentLines.join('\n');
     let canBeFile: boolean | undefined;
+    let canBeGoogleFile: boolean | undefined;
 
     // Parse @canBeFile tag from the raw comment
     const canBeFileMatch = fullComment.match(/@canBeFile\s+(true|false)/i);
     if (canBeFileMatch) {
       canBeFile = canBeFileMatch[1].toLowerCase() === 'true';
+    }
+
+    // Parse @canBeGoogleFile tag from the raw comment
+    const canBeGoogleFileMatch = fullComment.match(
+      /@canBeGoogleFile\s+(true|false)/i
+    );
+    if (canBeGoogleFileMatch) {
+      canBeGoogleFile = canBeGoogleFileMatch[1].toLowerCase() === 'true';
     }
 
     let description: string | undefined;
@@ -2465,14 +2480,24 @@ export class BubbleParser {
         .replace(/\s*\*\/\s*$/, '')
         .split('\n')
         .map((line) => line.replace(/^\s*\*\s?/, '').trim())
-        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .filter(
+          (line) =>
+            line.length > 0 &&
+            !line.startsWith('@canBeFile') &&
+            !line.startsWith('@canBeGoogleFile')
+        )
         .join(' ')
         .trim();
     } else {
       description = fullComment
         .split('\n')
         .map((line) => line.replace(/^\/\/\s?/, '').trim())
-        .filter((line) => line.length > 0 && !line.startsWith('@canBeFile'))
+        .filter(
+          (line) =>
+            line.length > 0 &&
+            !line.startsWith('@canBeFile') &&
+            !line.startsWith('@canBeGoogleFile')
+        )
         .join(' ')
         .trim();
     }
@@ -2480,6 +2505,7 @@ export class BubbleParser {
     return {
       description: description || undefined,
       canBeFile,
+      canBeGoogleFile,
     };
   }
 
