@@ -105,12 +105,14 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('send_message')
-      .describe('Send a message to a Slack channel or DM'),
+      .describe(
+        'Send a message to a Slack channel or DM. Required scopes: chat:write (add chat:write.public for public channels bot has not joined, add im:write to send DMs to users)'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
       .describe(
-        'Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or user ID for DM'
+        'Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or user ID for DM (e.g., U1234567890 - requires im:write scope)'
       ),
     text: z
       .string()
@@ -168,7 +170,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('list_channels')
-      .describe('List all channels in the Slack workspace'),
+      .describe(
+        'List all channels in the Slack workspace. Required scopes: channels:read (public), groups:read (private), im:read (DMs), mpim:read (group DMs)'
+      ),
     types: z
       .array(ChannelTypes)
       .optional()
@@ -202,7 +206,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('get_channel_info')
-      .describe('Get detailed information about a specific channel'),
+      .describe(
+        'Get detailed information about a specific channel. Required scopes: channels:read (public), groups:read (private), im:read (DMs), mpim:read (group DMs)'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -226,7 +232,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('get_user_info')
-      .describe('Get detailed information about a specific user'),
+      .describe(
+        'Get detailed information about a specific user. Required scopes: users:read (add users:read.email to access email field)'
+      ),
     user: z
       .string()
       .min(1, 'User ID is required')
@@ -248,7 +256,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('list_users')
-      .describe('List all users in the Slack workspace'),
+      .describe(
+        'List all users in the Slack workspace. Required scopes: users:read (add users:read.email to access email field)'
+      ),
     limit: z
       .number()
       .min(1)
@@ -277,7 +287,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('get_conversation_history')
-      .describe('Retrieve message history from a channel or direct message'),
+      .describe(
+        'Retrieve message history from a channel or direct message. Required scopes: channels:history (public), groups:history (private), im:history (DMs), mpim:history (group DMs)'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -320,7 +332,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('get_thread_replies')
-      .describe('Retrieve all replies to a thread in a channel'),
+      .describe(
+        'Retrieve all replies to a thread in a channel. Required scopes: channels:history (public), groups:history (private), im:history (DMs), mpim:history (group DMs)'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID is required')
@@ -365,7 +379,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('update_message')
-      .describe('Update an existing message in a channel'),
+      .describe(
+        'Update an existing message in a channel. Required scopes: chat:write'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -397,7 +413,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('delete_message')
-      .describe('Delete a message from a channel'),
+      .describe(
+        'Delete a message from a channel. Required scopes: chat:write. Note: Bot tokens can only delete messages posted by the bot; user tokens can delete any message the user has permission to delete'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -420,7 +438,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('add_reaction')
-      .describe('Add an emoji reaction to a message'),
+      .describe(
+        'Add an emoji reaction to a message. Required scopes: reactions:write'
+      ),
     name: z
       .string()
       .min(1, 'Emoji name is required')
@@ -447,7 +467,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('remove_reaction')
-      .describe('Remove an emoji reaction from a message'),
+      .describe(
+        'Remove an emoji reaction from a message. Required scopes: reactions:write'
+      ),
     name: z
       .string()
       .min(1, 'Emoji name is required')
@@ -474,7 +496,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('join_channel')
-      .describe('Join a public Slack channel'),
+      .describe(
+        'Join a public Slack channel. Required scopes: channels:join (bot token) or channels:write (user token)'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -493,7 +517,9 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('upload_file')
-      .describe('Upload a file to a Slack channel'),
+      .describe(
+        'Upload a file to a Slack channel. Required scopes: files:write'
+      ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
@@ -517,6 +543,56 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Timestamp of parent message to upload file in thread'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Schedule message operation
+  z.object({
+    operation: z
+      .literal('schedule_message')
+      .describe(
+        'Schedule a message to be sent at a future time. Required scopes: chat:write. Max 120 days in advance.'
+      ),
+    channel: z
+      .string()
+      .min(1, 'Channel ID or name is required')
+      .describe(
+        'Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or user ID for DM'
+      ),
+    text: z
+      .string()
+      .min(1, 'Message text is required')
+      .describe('Message text content'),
+    post_at: z
+      .number()
+      .int()
+      .positive()
+      .describe(
+        'Unix timestamp (seconds) for when to send the message. Must be within 120 days from now.'
+      ),
+    thread_ts: z
+      .string()
+      .optional()
+      .describe('Timestamp of parent message to reply in thread'),
+    blocks: z
+      .array(BlockElementSchema)
+      .optional()
+      .describe('Block Kit structured message blocks'),
+    unfurl_links: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe('Enable automatic link unfurling'),
+    unfurl_media: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe('Enable automatic media unfurling'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -1086,6 +1162,28 @@ const SlackResultSchema = z.discriminatedUnion('operation', [
     error: z.string().describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
+
+  // Schedule message result
+  z.object({
+    operation: z
+      .literal('schedule_message')
+      .describe('Schedule a message to be sent at a future time'),
+    ok: z.boolean().describe('Whether the Slack API call was successful'),
+    channel: z
+      .string()
+      .optional()
+      .describe('Channel ID where message will be posted'),
+    scheduled_message_id: z
+      .string()
+      .optional()
+      .describe('Unique identifier for the scheduled message'),
+    post_at: z
+      .number()
+      .optional()
+      .describe('Unix timestamp when message will be posted'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
 ]);
 
 type SlackResult = z.output<typeof SlackResultSchema>;
@@ -1137,19 +1235,141 @@ export class SlackBubble<
   static readonly shortDescription =
     'Slack integration for messaging and workspace management';
   static readonly longDescription = `
-    Comprehensive Slack integration bubble for managing messages, channels, and users.
-    Use cases:
-    - Send messages to channels or direct messages
-    - Retrieve channel information and list channels
-    - Get user information and list workspace members
-    - Manage conversation history and message operations
-    - Add/remove reactions and manage message interactions
-    
-    Security Features:
-    - Token-based authentication
-    - Parameter validation and sanitization
-    - Rate limiting awareness
-    - Comprehensive error handling
+Comprehensive Slack integration for messaging and workspace management.
+Supports both Bot tokens (xoxb-) and User tokens (xoxp-).
+
+## Token Types: Bot vs User
+
+| Aspect | Bot Token (xoxb-) | User Token (xoxp-) |
+|--------|-------------------|-------------------|
+| Identity | Acts as the bot | Acts as the authorizing user |
+| Channel access | Only channels bot is added to | All channels user can access |
+| Message deletion | Can only delete bot's own messages | Can delete any message user has permission for |
+| Message posting | Messages appear from the bot | Messages appear from the user |
+| Scope location | "Bot Token Scopes" section | "User Token Scopes" section |
+
+Choose **Bot token** for: Automations, notifications, bots that act independently
+Choose **User token** for: Acting on behalf of a user, accessing user's private channels
+
+## Required OAuth Scopes by Operation
+
+Configure in your Slack App: OAuth & Permissions page
+Official docs: https://docs.slack.dev/reference/scopes/
+
+### Messaging Operations
+| Operation        | Bot Token Scope | User Token Scope |
+|------------------|-----------------|------------------|
+| send_message     | chat:write (+ chat:write.public for any public channel) | chat:write |
+| send_message (to user DM) | chat:write + im:write | chat:write + im:write |
+| schedule_message | chat:write | chat:write |
+| update_message   | chat:write | chat:write |
+| delete_message   | chat:write (own messages only) | chat:write (any deletable) |
+
+**Note on DMs**: When you pass a user ID (e.g., U12345678) as the channel, SlackBubble automatically opens a DM conversation with that user. This requires the \`im:write\` scope in addition to \`chat:write\`.
+
+### Channel & Conversation Operations
+| Operation                | Bot Token Scope | User Token Scope |
+|--------------------------|-----------------|------------------|
+| list_channels            | channels:read, groups:read | channels:read, groups:read |
+| get_channel_info         | channels:read OR groups:read | channels:read OR groups:read |
+| join_channel             | channels:join | channels:write |
+| get_conversation_history | channels:history, groups:history | channels:history, groups:history |
+| get_thread_replies       | channels:history, groups:history | channels:history, groups:history |
+
+### User Operations
+| Operation     | Bot Token Scope | User Token Scope |
+|---------------|-----------------|------------------|
+| list_users    | users:read | users:read |
+| get_user_info | users:read | users:read |
+| (email field) | + users:read.email | + users:read.email |
+
+### Reaction & File Operations
+| Operation       | Bot Token Scope | User Token Scope |
+|-----------------|-----------------|------------------|
+| add_reaction    | reactions:write | reactions:write |
+| remove_reaction | reactions:write | reactions:write |
+| upload_file     | files:write | files:write |
+
+### Direct Message (DM) Scopes
+For operations on DMs and group DMs, add these additional scopes:
+| Scope | Purpose |
+|-------|---------|
+| im:read | Access direct message channel info |
+| im:write | Start direct message conversations |
+| im:history | Read direct message history |
+| mpim:read | Access group DM channel info |
+| mpim:write | Start group DM conversations |
+| mpim:history | Read group DM history |
+
+## Quick Setup Guide
+
+### For Bot Tokens (xoxb-)
+1. Go to https://api.slack.com/apps → select your app
+2. Navigate to "OAuth & Permissions"
+3. Scroll to "Bot Token Scopes" section → add required scopes
+4. Click "Install to Workspace" (or "Reinstall" if updating)
+5. Copy "Bot User OAuth Token" (starts with xoxb-)
+
+### For User Tokens (xoxp-)
+1. Go to https://api.slack.com/apps → select your app
+2. Navigate to "OAuth & Permissions"
+3. Scroll to "User Token Scopes" section → add required scopes
+4. Click "Install to Workspace" (or "Reinstall" if updating)
+5. Copy "User OAuth Token" (starts with xoxp-)
+
+## Minimum Recommended Scopes
+For Bot Token: chat:write, channels:read, groups:read, users:read, channels:history
+For User Token: chat:write, channels:read, groups:read, users:read, channels:history, channels:write
+
+## Setting Up Slack Triggers (Event Subscriptions)
+
+To trigger BubbleFlow workflows from Slack events (like @mentions), you need to configure Event Subscriptions.
+Official docs: https://docs.slack.dev/apis/events-api/
+
+### Supported Trigger Events
+| Trigger Type | Slack Event | Required Scope |
+|--------------|-------------|----------------|
+| slack/bot_mentioned | app_mention | app_mentions:read |
+
+### Step-by-Step Event Subscriptions Setup
+
+**Step 1: Get your webhook URL from Bubble Lab**
+- In Bubble Lab, create a flow with a Slack trigger (e.g., slack/bot_mentioned)
+- Copy the webhook URL provided (format: https://api.bubblelab.ai/webhook/{userId}/{path})
+
+**Step 2: Enable Event Subscriptions in Slack**
+1. Go to https://api.slack.com/apps → select your app
+2. Click "Event Subscriptions" in the left sidebar
+3. Toggle "Enable Events" to ON
+
+**Step 3: Configure Request URL**
+1. Paste your Bubble Lab webhook URL in the "Request URL" field
+2. Slack will send a verification challenge to your URL
+3. Wait for the green "Verified" checkmark (Bubble Lab handles verification automatically)
+4. If verification fails, click "Retry" (your server may need a moment to respond)
+
+**Step 4: Subscribe to Bot Events**
+1. Scroll down to "Subscribe to bot events"
+2. Click "Add Bot User Event"
+3. Add the events you need:
+   - For @mentions: add "app_mention"
+4. Click "Save Changes"
+
+**Step 5: Add Required OAuth Scopes**
+1. Go to "OAuth & Permissions" in the sidebar
+2. Under "Bot Token Scopes", add:
+   - app_mentions:read (for app_mention events)
+3. Click "Save"
+
+**Step 6: Reinstall Your App**
+1. Go to "Install App" in the sidebar
+2. Click "Reinstall to Workspace"
+3. Authorize the new permissions
+
+### Troubleshooting Event Subscriptions
+- **Verification failed**: Ensure your webhook URL is correct and accessible
+- **Not receiving events**: Check that you added the correct scopes AND reinstalled the app
+- **Bot not responding**: Make sure the bot is invited to the channel where it's mentioned
   `;
   static readonly alias = 'slack';
 
@@ -1200,6 +1420,8 @@ export class SlackBubble<
             return await this.uploadFile(this.params);
           case 'join_channel':
             return await this.joinChannel(this.params);
+          case 'schedule_message':
+            return await this.scheduleMessage(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1230,6 +1452,13 @@ export class SlackBubble<
     // Check if input is already a channel ID (starts with C, G, D, etc.)
     if (/^[CGD][A-Z0-9]+$/i.test(channelInput)) {
       return channelInput;
+    }
+
+    // Check if input is a user ID (starts with U or W for enterprise users)
+    // If so, open a DM conversation with them to get the DM channel ID
+    if (/^[UW][A-Z0-9]+$/i.test(channelInput)) {
+      const dmChannel = await this.openDmConversation(channelInput);
+      return dmChannel;
     }
 
     // Remove # prefix if present
@@ -1867,6 +2096,78 @@ export class SlackBubble<
       error: !response.ok ? JSON.stringify(response, null, 2) : '',
       success: response.ok,
     };
+  }
+
+  private async scheduleMessage(
+    params: Extract<SlackParams, { operation: 'schedule_message' }>
+  ): Promise<Extract<SlackResult, { operation: 'schedule_message' }>> {
+    const {
+      channel,
+      text,
+      post_at,
+      thread_ts,
+      blocks,
+      unfurl_links,
+      unfurl_media,
+    } = params;
+
+    // Resolve channel name to ID if needed
+    const resolvedChannel = await this.resolveChannelId(channel);
+
+    const body: Record<string, unknown> = {
+      channel: resolvedChannel,
+      text,
+      post_at,
+    };
+
+    if (thread_ts) body.thread_ts = thread_ts;
+    if (blocks) body.blocks = JSON.stringify(blocks);
+    if (unfurl_links !== undefined) body.unfurl_links = unfurl_links;
+    if (unfurl_media !== undefined) body.unfurl_media = unfurl_media;
+
+    const response = await this.makeSlackApiCall('chat.scheduleMessage', body);
+
+    return {
+      operation: 'schedule_message',
+      ok: response.ok,
+      channel: response.ok
+        ? (response.channel as string | undefined)
+        : undefined,
+      scheduled_message_id: response.ok
+        ? (response.scheduled_message_id as string | undefined)
+        : undefined,
+      post_at: response.ok
+        ? (response.post_at as number | undefined)
+        : undefined,
+      error: !response.ok ? JSON.stringify(response, null, 2) : '',
+      success: response.ok,
+    };
+  }
+
+  /**
+   * Opens a DM conversation with a user and returns the DM channel ID.
+   * Required scope: im:write (for bot tokens) or im:write (for user tokens)
+   */
+  private async openDmConversation(userId: string): Promise<string> {
+    const response = await this.makeSlackApiCall('conversations.open', {
+      users: userId,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to open DM with user ${userId}: ${response.error}. ` +
+          `Make sure you have the 'im:write' scope enabled in your Slack app.`
+      );
+    }
+
+    const channel = response.channel as { id: string } | undefined;
+    if (!channel?.id) {
+      throw new Error(
+        `Failed to get DM channel ID for user ${userId}. Unexpected API response.`
+      );
+    }
+
+    return channel.id;
   }
 
   protected chooseCredential(): string | undefined {

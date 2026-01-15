@@ -99,6 +99,74 @@ describe('Slack Bubble Result Schema Validation', () => {
       }).toThrow();
     });
 
+    test('should validate schedule_message result', () => {
+      const mockScheduleMessageResult = {
+        operation: 'schedule_message',
+        ok: true,
+        success: true,
+        error: '',
+        channel: 'C1234567890',
+        scheduled_message_id: 'Q1234567890',
+        post_at: 1234567890,
+      };
+
+      const parsed = SlackBubble.resultSchema?.parse(mockScheduleMessageResult);
+      console.log('✅ schedule_message validation passed:', parsed);
+      expect(parsed).toBeDefined();
+      expect(parsed.operation).toBe('schedule_message');
+    });
+
+    test('should validate schedule_message input params', () => {
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+      const scheduleBubble = new SlackBubble({
+        operation: 'schedule_message' as const,
+        channel: 'C1234567890',
+        text: 'Scheduled message text',
+        post_at: futureTimestamp,
+      });
+
+      expect(scheduleBubble.currentParams.operation).toBe('schedule_message');
+      expect(scheduleBubble.currentParams.channel).toBe('C1234567890');
+      expect(scheduleBubble.currentParams.text).toBe('Scheduled message text');
+      expect(scheduleBubble.currentParams.post_at).toBe(futureTimestamp);
+    });
+
+    test('should reject schedule_message with missing required fields', () => {
+      expect(() => {
+        new SlackBubble({
+          operation: 'schedule_message' as const,
+          channel: 'C1234567890',
+          // Missing 'text' and 'post_at'
+        } as Parameters<typeof SlackBubble>[0]);
+      }).toThrow();
+    });
+
+    test('should accept schedule_message with optional thread_ts', () => {
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 3600;
+      const scheduleBubble = new SlackBubble({
+        operation: 'schedule_message' as const,
+        channel: 'C1234567890',
+        text: 'Threaded scheduled message',
+        post_at: futureTimestamp,
+        thread_ts: '1234567890.123456',
+      });
+
+      expect(scheduleBubble.currentParams.thread_ts).toBe('1234567890.123456');
+    });
+
+    test('should accept user ID as channel for DM (validation only)', () => {
+      // This tests that user IDs are accepted as valid channel input
+      // The actual DM resolution happens at runtime via conversations.open
+      const dmBubble = new SlackBubble({
+        operation: 'send_message' as const,
+        channel: 'U1234567890', // User ID for DM
+        text: 'Hello via DM!',
+      });
+
+      expect(dmBubble.currentParams.channel).toBe('U1234567890');
+      expect(dmBubble.currentParams.text).toBe('Hello via DM!');
+    });
+
     test('should validate get_user_info result', () => {
       const mockUserResult = {
         operation: 'get_user_info',
@@ -204,6 +272,7 @@ describe('Slack Bubble Result Schema Validation', () => {
         'delete_message',
         'add_reaction',
         'remove_reaction',
+        'schedule_message',
       ];
 
       operations.forEach((op) => {
@@ -230,6 +299,11 @@ describe('Slack Bubble Result Schema Validation', () => {
           ...(op === 'delete_message' && { channel: 'C123', ts: '123.456' }),
           ...(op === 'add_reaction' && {}),
           ...(op === 'remove_reaction' && {}),
+          ...(op === 'schedule_message' && {
+            channel: 'C123',
+            scheduled_message_id: 'Q123',
+            post_at: 1234567890,
+          }),
         };
 
         expect(() => {
