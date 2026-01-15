@@ -32,6 +32,8 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Airtable: '/integrations/airtable.png',
   Notion: '/integrations/notion.svg',
   InsForge: '/integrations/insforge.svg',
+  Amazon: '/integrations/amazon.png',
+  Browserbase: '/integrations/browserbase.png',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -77,6 +79,8 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Airtable', file: SERVICE_LOGOS['Airtable'] },
   { name: 'Notion', file: SERVICE_LOGOS['Notion'] },
   { name: 'InsForge', file: SERVICE_LOGOS['InsForge'] },
+  { name: 'Amazon', file: SERVICE_LOGOS['Amazon'] },
+  { name: 'Browserbase', file: SERVICE_LOGOS['Browserbase'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -147,6 +151,9 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   notion: 'Notion',
   insforge: 'InsForge',
   'insforge-db': 'InsForge',
+  amazon: 'Amazon',
+  'amazon-shopping-tool': 'Amazon',
+  browserbase: 'Browserbase',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -279,6 +286,8 @@ export function findLogoForBubble(
     [/\bweb\s*search\b|\bweb-search\b/, 'Web Search'],
     [/\bweb\s*scrape\b|\bweb-scrape\b/, 'Web Scrape'],
     [/\bweb\s*crawl\b|\bweb-crawl\b/, 'Web Crawl'],
+    [/\bamazon\b|\bamazon-shopping\b/, 'Amazon'],
+    [/\bbrowserbase\b/, 'Browserbase'],
   ];
 
   const allLogos = { ...SERVICE_LOGOS, ...TOOL_LOGOS };

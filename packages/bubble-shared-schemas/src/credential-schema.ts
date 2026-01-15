@@ -719,7 +719,8 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.INSFORGE_BASE_URL,
     CredentialType.INSFORGE_API_KEY,
   ],
-  amazon: [CredentialType.AMAZON_CRED],
+  browserbase: [CredentialType.AMAZON_CRED],
+  'amazon-shopping-tool': [CredentialType.AMAZON_CRED],
 };
 
 // POST /credentials - Create credential schema

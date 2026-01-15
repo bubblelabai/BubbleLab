@@ -1,0 +1,1184 @@
+import { ToolBubble } from '../../../types/tool-bubble-class.js';
+import type { BubbleContext } from '../../../types/bubble.js';
+import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
+import {
+  BrowserBaseBubble,
+  BrowserSessionDataSchema,
+  type CDPCookie,
+} from '../../service-bubble/browserbase/index.js';
+import {
+  AmazonShoppingToolParamsSchema,
+  AmazonShoppingToolResultSchema,
+  type AmazonShoppingToolParams,
+  type AmazonShoppingToolParamsInput,
+  type AmazonShoppingToolResult,
+  type CartItem,
+  type SearchResult,
+  type ProductDetails,
+} from './amazon-shopping-tool.schema.js';
+
+/**
+ * Amazon Shopping Tool
+ *
+ * A tool bubble for automating Amazon shopping operations including
+ * adding items to cart, viewing cart, and completing checkout.
+ *
+ * This tool uses the BrowserBase service bubble internally to
+ * manage browser sessions with authenticated Amazon credentials.
+ *
+ * Features:
+ * - Add products to cart by URL or ASIN
+ * - View current cart contents and totals
+ * - Complete checkout with saved payment methods
+ * - Search for products
+ * - Get detailed product information
+ *
+ * Required Credentials:
+ * - AMAZON_CRED: Browser session credential with Amazon cookies
+ *
+ * Security:
+ * - Uses BrowserBase cloud browsers (isolated)
+ * - Credentials are encrypted at rest
+ * - Session data is not persisted beyond operation
+ */
+export class AmazonShoppingTool<
+  T extends AmazonShoppingToolParamsInput = AmazonShoppingToolParamsInput,
+> extends ToolBubble<
+  T,
+  Extract<AmazonShoppingToolResult, { operation: T['operation'] }>
+> {
+  static readonly bubbleName: BubbleName = 'amazon-shopping-tool';
+  static readonly schema = AmazonShoppingToolParamsSchema;
+  static readonly resultSchema = AmazonShoppingToolResultSchema;
+  static readonly shortDescription =
+    'Amazon shopping automation - add to cart, view cart, checkout, search products';
+  static readonly longDescription = `
+    Amazon Shopping Tool for automating shopping operations.
+
+    Features:
+    - Add products to cart by URL or ASIN
+    - View current cart contents and totals
+    - Complete checkout with saved payment methods
+    - Search for products on Amazon
+    - Get detailed product information
+
+    Required Credentials:
+    - AMAZON_CRED: Browser session credential (authenticate via browser session)
+
+    Note: Checkout requires saved payment and shipping information in Amazon account.
+    The tool operates using authenticated browser sessions to ensure security.
+  `;
+  static readonly alias = 'amazon';
+  static readonly type = 'tool';
+
+  private sessionId: string | null = null;
+  private contextId: string | null = null;
+  private cookies: CDPCookie[] | null = null;
+
+  constructor(
+    params: T = { operation: 'get_cart' } as T,
+    context?: BubbleContext
+  ) {
+    super(params, context);
+  }
+
+  /**
+   * Choose the credential to use for Amazon operations
+   * Returns AMAZON_CRED which contains contextId and cookies
+   */
+  protected chooseCredential(): string | undefined {
+    const { credentials } = this.params as {
+      credentials?: Record<string, string>;
+    };
+
+    if (!credentials || typeof credentials !== 'object') {
+      return undefined;
+    }
+
+    return credentials[CredentialType.AMAZON_CRED];
+  }
+
+  /**
+   * Parse the AMAZON_CRED to extract contextId and cookies
+   * Credential is base64-encoded JSON to avoid escaping issues
+   */
+  private parseBrowserSessionData(): {
+    contextId: string;
+    cookies: CDPCookie[];
+  } | null {
+    const credential = this.chooseCredential();
+    if (!credential) {
+      return null;
+    }
+
+    try {
+      // Credential is base64-encoded JSON
+      const jsonString = Buffer.from(credential, 'base64').toString('utf-8');
+      const parsed = JSON.parse(jsonString);
+      const validated = BrowserSessionDataSchema.safeParse(parsed);
+      if (validated.success) {
+        return validated.data;
+      }
+      console.error(
+        '[AmazonShoppingTool] Invalid credential format:',
+        validated.error
+      );
+      return null;
+    } catch (error) {
+      console.error('[AmazonShoppingTool] Failed to parse credential:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract ASIN from Amazon URL or return as-is if already an ASIN
+   */
+  private extractAsin(productUrlOrAsin: string): string {
+    // If it's already an ASIN (10 characters, alphanumeric)
+    if (/^[A-Z0-9]{10}$/i.test(productUrlOrAsin)) {
+      return productUrlOrAsin.toUpperCase();
+    }
+
+    // Try to extract ASIN from URL patterns
+    // Pattern 1: /dp/ASIN
+    const dpMatch = productUrlOrAsin.match(/\/dp\/([A-Z0-9]{10})/i);
+    if (dpMatch) return dpMatch[1].toUpperCase();
+
+    // Pattern 2: /gp/product/ASIN
+    const gpMatch = productUrlOrAsin.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+    if (gpMatch) return gpMatch[1].toUpperCase();
+
+    // Pattern 3: ASIN in query string
+    const asinMatch = productUrlOrAsin.match(/[?&]ASIN=([A-Z0-9]{10})/i);
+    if (asinMatch) return asinMatch[1].toUpperCase();
+
+    // If we can't extract, return the original (might fail later)
+    return productUrlOrAsin;
+  }
+
+  /**
+   * Build Amazon product URL from ASIN
+   */
+  private buildProductUrl(asin: string): string {
+    return `https://www.amazon.com/dp/${asin}`;
+  }
+
+  /**
+   * Start a browser session using BrowserBase
+   * Extracts contextId and cookies from AMAZON_CRED and passes them explicitly
+   */
+  private async startBrowserSession(): Promise<string> {
+    console.log('[AmazonShoppingTool] Starting browser session');
+    console.log('[AmazonShoppingTool] Session ID:', this.sessionId);
+    if (this.sessionId) {
+      return this.sessionId;
+    }
+
+    // Parse credential to get contextId and cookies
+    const sessionData = this.parseBrowserSessionData();
+    if (sessionData) {
+      this.contextId = sessionData.contextId;
+      this.cookies = sessionData.cookies;
+      console.log(
+        `[AmazonShoppingTool] Loaded session data: contextId=${this.contextId}, cookies=${this.cookies.length}`
+      );
+    } else {
+      console.log(
+        '[AmazonShoppingTool] No AMAZON_CRED found, creating new context'
+      );
+    }
+
+    // Create BrowserBaseBubble with explicit context_id and cookies
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'start_session' as const,
+        context_id: this.contextId || undefined,
+        cookies: this.cookies || undefined,
+        credentials: this.params.credentials,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+
+    if (!result.data.success || !result.data.session_id) {
+      throw new Error(result.data.error || 'Failed to start browser session');
+    }
+
+    this.sessionId = result.data.session_id;
+    // Store the contextId from the result in case a new one was created
+    if (result.data.context_id) {
+      this.contextId = result.data.context_id;
+    }
+    console.log(
+      `[AmazonShoppingTool] Browser session started: ${this.sessionId}, context: ${this.contextId}`
+    );
+
+    return this.sessionId;
+  }
+
+  /**
+   * End the browser session
+   */
+  private async endBrowserSession(): Promise<void> {
+    if (!this.sessionId) return;
+
+    try {
+      const browserBase = new BrowserBaseBubble(
+        {
+          operation: 'end_session' as const,
+          session_id: this.sessionId,
+        },
+        this.context
+      );
+
+      await browserBase.action();
+      console.log(
+        `[AmazonShoppingTool] Browser session ended: ${this.sessionId}`
+      );
+    } catch (error) {
+      console.error('[AmazonShoppingTool] Error ending session:', error);
+    } finally {
+      this.sessionId = null;
+    }
+  }
+
+  /**
+   * Navigate to a URL
+   */
+  private async navigateTo(url: string): Promise<void> {
+    if (!this.sessionId) {
+      throw new Error('No active browser session');
+    }
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'navigate' as const,
+        session_id: this.sessionId,
+        url,
+        wait_until: 'domcontentloaded',
+        timeout: 30000,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+    if (!result.data.success) {
+      throw new Error(result.data.error || 'Navigation failed');
+    }
+  }
+
+  /**
+   * Click an element
+   */
+  private async clickElement(
+    selector: string,
+    waitForNav = false
+  ): Promise<boolean> {
+    if (!this.sessionId) {
+      throw new Error('No active browser session');
+    }
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'click' as const,
+        session_id: this.sessionId,
+        selector,
+        wait_for_navigation: waitForNav,
+        timeout: 5000,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+    return result.data.success;
+  }
+
+  /**
+   * Evaluate JavaScript in page
+   */
+  private async evaluate(script: string): Promise<unknown> {
+    if (!this.sessionId) {
+      throw new Error('No active browser session');
+    }
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'evaluate' as const,
+        session_id: this.sessionId,
+        script,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+    if (!result.data.success) {
+      throw new Error(result.data.error || 'Script evaluation failed');
+    }
+
+    return result.data.result;
+  }
+
+  /**
+   * Wait for selector
+   */
+  private async waitForSelector(
+    selector: string,
+    timeout = 5000
+  ): Promise<boolean> {
+    if (!this.sessionId) {
+      throw new Error('No active browser session');
+    }
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'wait' as const,
+        session_id: this.sessionId,
+        wait_type: 'selector',
+        selector,
+        timeout,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+    return result.data.success;
+  }
+
+  /**
+   * Wait for navigation to complete
+   */
+  private async waitForNavigation(timeout = 30000): Promise<boolean> {
+    if (!this.sessionId) {
+      throw new Error('No active browser session');
+    }
+
+    const browserBase = new BrowserBaseBubble(
+      {
+        operation: 'wait' as const,
+        session_id: this.sessionId,
+        wait_type: 'navigation',
+        timeout,
+      },
+      this.context
+    );
+
+    const result = await browserBase.action();
+    return result.data.success;
+  }
+
+  async performAction(): Promise<
+    Extract<AmazonShoppingToolResult, { operation: T['operation'] }>
+  > {
+    const { operation } = this.params;
+    // Cast to output type since base class already parsed input through Zod
+    const parsedParams = this.params as AmazonShoppingToolParams;
+
+    try {
+      // Start browser session
+      await this.startBrowserSession();
+
+      const result = await (async (): Promise<AmazonShoppingToolResult> => {
+        switch (operation) {
+          case 'add_to_cart':
+            return await this.addToCart(
+              parsedParams as Extract<
+                AmazonShoppingToolParams,
+                { operation: 'add_to_cart' }
+              >
+            );
+          case 'get_cart':
+            return (await this.getCart()) as Extract<
+              AmazonShoppingToolResult,
+              { operation: 'get_cart' }
+            >;
+          case 'checkout':
+            return (await this.checkout()) as Extract<
+              AmazonShoppingToolResult,
+              { operation: 'checkout' }
+            >;
+          case 'search':
+            return await this.searchProducts(
+              parsedParams as Extract<
+                AmazonShoppingToolParams,
+                { operation: 'search' }
+              >
+            );
+          case 'get_product':
+            return await this.getProduct(
+              parsedParams as Extract<
+                AmazonShoppingToolParams,
+                { operation: 'get_product' }
+              >
+            );
+          default:
+            throw new Error(`Unknown operation: ${operation}`);
+        }
+      })();
+
+      return result as Extract<
+        AmazonShoppingToolResult,
+        { operation: T['operation'] }
+      >;
+    } catch (error) {
+      console.error('[AmazonShoppingTool] Error:', error);
+      return {
+        operation,
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      } as Extract<AmazonShoppingToolResult, { operation: T['operation'] }>;
+    } finally {
+      // Always clean up the session
+      await this.endBrowserSession();
+    }
+  }
+
+  /**
+   * Add a product to cart
+   */
+  private async addToCart(
+    params: Extract<AmazonShoppingToolParams, { operation: 'add_to_cart' }>
+  ): Promise<Extract<AmazonShoppingToolResult, { operation: 'add_to_cart' }>> {
+    const asin = this.extractAsin(params.product_url);
+    const productUrl = this.buildProductUrl(asin);
+
+    console.log(`[AmazonShoppingTool] Adding to cart: ${asin}`);
+
+    // Navigate to product page
+    await this.navigateTo(productUrl);
+
+    // Wait for and click Add to Cart button
+    const addToCartSelectors = [
+      '#add-to-cart-button',
+      '#add-to-cart-button-ubb',
+      'input[name="submit.add-to-cart"]',
+      '#submit\\.add-to-cart',
+    ];
+
+    let clicked = false;
+    for (const selector of addToCartSelectors) {
+      const exists = await this.waitForSelector(selector, 2000);
+      if (exists) {
+        clicked = await this.clickElement(selector, true);
+        if (clicked) break;
+      }
+    }
+
+    if (!clicked) {
+      return {
+        operation: 'add_to_cart',
+        success: false,
+        error: 'Could not find Add to Cart button. Product may be unavailable.',
+      };
+    }
+
+    // Wait a moment for cart to update
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Try to get cart count
+    let cartCount: number | undefined;
+    try {
+      const countResult = (await this.evaluate(`
+        (() => {
+          const cartEl = document.querySelector('#nav-cart-count');
+          if (cartEl) {
+            const count = parseInt(cartEl.textContent || '0', 10);
+            return isNaN(count) ? 0 : count;
+          }
+          return 0;
+        })()
+      `)) as number;
+      cartCount = countResult;
+    } catch {
+      // Cart count is optional
+    }
+
+    return {
+      operation: 'add_to_cart',
+      success: true,
+      message: `Added ${asin} to cart`,
+      cart_count: cartCount,
+      error: '',
+    };
+  }
+
+  /**
+   * Get cart contents
+   */
+  private async getCart(): Promise<
+    Extract<AmazonShoppingToolResult, { operation: 'get_cart' }>
+  > {
+    console.log('[AmazonShoppingTool] Getting cart contents');
+
+    // Navigate to cart page
+    await this.navigateTo('https://www.amazon.com/gp/cart/view.html');
+
+    // Wait for cart to load
+    await this.waitForSelector('#sc-active-cart', 5000);
+
+    // Extract cart items using JavaScript
+    const cartData = (await this.evaluate(`
+      (() => {
+        const items = [];
+        const cartItems = document.querySelectorAll('[data-asin]');
+
+        cartItems.forEach(item => {
+          const asin = item.getAttribute('data-asin');
+          if (!asin) return;
+
+          const titleEl = item.querySelector('.sc-product-title, .a-truncate-cut');
+          const priceEl = item.querySelector('.sc-product-price, .sc-price');
+          const quantityEl = item.querySelector('select[name*="quantity"], .sc-quantity-textfield');
+          const imageEl = item.querySelector('img.sc-product-image, img[data-a-hires]');
+
+          items.push({
+            asin,
+            title: titleEl?.textContent?.trim() || 'Unknown Product',
+            price: priceEl?.textContent?.trim() || '',
+            quantity: quantityEl ? parseInt(quantityEl.value || '1', 10) : 1,
+            image: imageEl?.src || '',
+            url: 'https://www.amazon.com/dp/' + asin,
+          });
+        });
+
+        // Get subtotal
+        const subtotalEl = document.querySelector('#sc-subtotal-amount-activecart, .sc-subtotal-amount-activecart');
+        const subtotal = subtotalEl?.textContent?.trim() || '';
+
+        return { items, subtotal, totalItems: items.reduce((sum, i) => sum + i.quantity, 0) };
+      })()
+    `)) as { items: CartItem[]; subtotal: string; totalItems: number };
+
+    return {
+      operation: 'get_cart',
+      success: true,
+      items: cartData.items,
+      subtotal: cartData.subtotal,
+      total_items: cartData.totalItems,
+      error: '',
+    };
+  }
+
+  /**
+   * Get current page URL
+   */
+  private async getCurrentUrl(): Promise<string> {
+    const result = (await this.evaluate(`window.location.href`)) as string;
+    return result;
+  }
+
+  /**
+   * Complete checkout - uses same heuristics as amazon-cart-browserbase.ts
+   */
+  private async checkout(): Promise<
+    Extract<AmazonShoppingToolResult, { operation: 'checkout' }>
+  > {
+    console.log('[AmazonShoppingTool] Starting checkout');
+
+    // Step 1: Go to cart
+    console.log('[AmazonShoppingTool] Step 1: Loading cart...');
+    await this.navigateTo('https://www.amazon.com/gp/cart/view.html');
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Check cart has items
+    const cartItemCount = (await this.evaluate(`
+      document.querySelectorAll('[data-asin]:not([data-asin=""])').length
+    `)) as number;
+    console.log(`[AmazonShoppingTool] Found ${cartItemCount} items in cart`);
+
+    if (cartItemCount === 0) {
+      return {
+        operation: 'checkout',
+        success: false,
+        error: 'Cart is empty',
+      };
+    }
+
+    // Step 2: Click proceed to checkout
+    console.log('[AmazonShoppingTool] Step 2: Looking for checkout button...');
+    const checkoutClickResult = (await this.evaluate(`
+      (() => {
+        // Prioritize input/button over span/a - input.value is the actual clickable form element
+        const priorityOrder = ['input', 'button', 'a', 'span'];
+        for (const tagName of priorityOrder) {
+          const elements = document.querySelectorAll(tagName);
+          for (const el of elements) {
+            const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+            if (text === 'proceed to checkout' || text === 'proceed to retail checkout') {
+              el.click();
+              return { clicked: true, tag: el.tagName, className: el.className, text: text };
+            }
+          }
+        }
+        return { clicked: false };
+      })()
+    `)) as {
+      clicked: boolean;
+      tag?: string;
+      className?: string;
+      text?: string;
+    };
+
+    if (!checkoutClickResult.clicked) {
+      return {
+        operation: 'checkout',
+        success: false,
+        error: 'Could not find checkout button',
+      };
+    }
+    console.log(
+      `[AmazonShoppingTool] Clicked Proceed to checkout: <${checkoutClickResult.tag} class="${checkoutClickResult.className}">${checkoutClickResult.text}`
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    let currentUrl = await this.getCurrentUrl();
+    console.log(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
+
+    // Check for sign-in redirect
+    if (currentUrl.includes('/ap/signin')) {
+      return {
+        operation: 'checkout',
+        success: false,
+        error: 'Password re-authentication required',
+      };
+    }
+
+    // Step 2.5: Handle "Continue to checkout" intermediate screen (BYG page)
+    console.log(
+      '[AmazonShoppingTool] Step 2.5: Checking for Continue to checkout screen...'
+    );
+
+    const continueClickResult = (await this.evaluate(`
+      (() => {
+        const priorityOrder = ['input', 'button', 'a', 'span'];
+        for (const tagName of priorityOrder) {
+          const elements = document.querySelectorAll(tagName);
+          for (const el of elements) {
+            const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+            if (text === 'continue to checkout') {
+              el.click();
+              return { clicked: true, tag: el.tagName, className: el.className, text: text };
+            }
+          }
+        }
+        return { clicked: false };
+      })()
+    `)) as {
+      clicked: boolean;
+      tag?: string;
+      className?: string;
+      text?: string;
+    };
+
+    if (continueClickResult.clicked) {
+      console.log(
+        `[AmazonShoppingTool] Clicked Continue to checkout: <${continueClickResult.tag} class="${continueClickResult.className}">${continueClickResult.text}`
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      currentUrl = await this.getCurrentUrl();
+      console.log(
+        `[AmazonShoppingTool] After Continue to checkout URL: ${currentUrl}`
+      );
+    } else {
+      console.log(
+        '[AmazonShoppingTool] No Continue to checkout button found, continuing...'
+      );
+    }
+
+    // Check for sign-in redirect again
+    if (currentUrl.includes('/ap/signin')) {
+      return {
+        operation: 'checkout',
+        success: false,
+        error: 'Password re-authentication required',
+      };
+    }
+
+    // Step 3: Navigate through checkout steps (up to 5 pages: address, payment, review, etc.)
+    console.log('[AmazonShoppingTool] Step 3: Navigating checkout steps...');
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      currentUrl = await this.getCurrentUrl();
+      console.log(
+        `[AmazonShoppingTool] Step 3.${attempt}: URL = ${currentUrl}`
+      );
+
+      // Check for sign-in redirect
+      if (currentUrl.includes('/ap/signin')) {
+        return {
+          operation: 'checkout',
+          success: false,
+          error: 'Password re-authentication required',
+        };
+      }
+
+      // Try to click "Place your order" button
+      const placeOrderResult = (await this.evaluate(`
+        (() => {
+          const priorityOrder = ['input', 'button', 'a', 'span'];
+          for (const tagName of priorityOrder) {
+            const elements = document.querySelectorAll(tagName);
+            for (const el of elements) {
+              const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+              if (text === 'place your order' || text === 'place order') {
+                el.click();
+                return { clicked: true, tag: el.tagName, className: el.className, text: text };
+              }
+            }
+          }
+          return { clicked: false };
+        })()
+      `)) as {
+        clicked: boolean;
+        tag?: string;
+        className?: string;
+        text?: string;
+      };
+
+      if (placeOrderResult.clicked) {
+        console.log(
+          `[AmazonShoppingTool] Clicked Place Order: <${placeOrderResult.tag} class="${placeOrderResult.className}">${placeOrderResult.text}`
+        );
+        // Wait for navigation to confirmation page
+        console.log('[AmazonShoppingTool] Waiting for navigation...');
+        try {
+          await this.waitForNavigation(15000);
+          console.log('[AmazonShoppingTool] Navigation complete');
+        } catch {
+          console.log(
+            '[AmazonShoppingTool] Navigation wait timed out, continuing...'
+          );
+        }
+        break; // Order placed, exit loop
+      }
+
+      // Try to click "Continue" button to advance to next checkout page
+      const continueResult = (await this.evaluate(`
+        (() => {
+          const priorityOrder = ['input', 'button', 'a', 'span'];
+          for (const tagName of priorityOrder) {
+            const elements = document.querySelectorAll(tagName);
+            for (const el of elements) {
+              const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+              if (text === 'continue' || text === 'continue to checkout') {
+                el.click();
+                return { clicked: true, tag: el.tagName, className: el.className, text: text };
+              }
+            }
+          }
+          return { clicked: false };
+        })()
+      `)) as {
+        clicked: boolean;
+        tag?: string;
+        className?: string;
+        text?: string;
+      };
+
+      if (continueResult.clicked) {
+        console.log(
+          `[AmazonShoppingTool] Clicked Continue: <${continueResult.tag} class="${continueResult.className}">${continueResult.text}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+      } else {
+        console.log(
+          '[AmazonShoppingTool] No actionable button found, moving to confirmation check...'
+        );
+        break;
+      }
+    }
+
+    // Step 4: Handle duplicate order warning
+    console.log('[AmazonShoppingTool] Step 4: Checking page state...');
+    currentUrl = await this.getCurrentUrl();
+    console.log(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
+
+    if (currentUrl.includes('duplicateOrder')) {
+      console.log(
+        '[AmazonShoppingTool] Detected duplicate order warning - clicking Place Order again...'
+      );
+      const duplicateResult = (await this.evaluate(`
+        (() => {
+          const priorityOrder = ['input', 'button', 'a', 'span'];
+          for (const tagName of priorityOrder) {
+            const elements = document.querySelectorAll(tagName);
+            for (const el of elements) {
+              const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+              if (text === 'place your order' || text === 'place order') {
+                el.click();
+                return { clicked: true, tag: el.tagName, className: el.className, text: text };
+              }
+            }
+          }
+          return { clicked: false };
+        })()
+      `)) as {
+        clicked: boolean;
+        tag?: string;
+        className?: string;
+        text?: string;
+      };
+
+      if (duplicateResult.clicked) {
+        console.log(
+          `[AmazonShoppingTool] Clicked Place Order to confirm duplicate: <${duplicateResult.tag} class="${duplicateResult.className}">${duplicateResult.text}`
+        );
+        console.log('[AmazonShoppingTool] Waiting for navigation...');
+        try {
+          await this.waitForNavigation(15000);
+          console.log('[AmazonShoppingTool] Navigation complete');
+        } catch {
+          console.log(
+            '[AmazonShoppingTool] Navigation wait timed out, continuing...'
+          );
+        }
+      }
+    }
+
+    // Step 5: Check for confirmation
+    console.log(
+      '[AmazonShoppingTool] Step 5: Checking for order confirmation...'
+    );
+    let finalUrl = await this.getCurrentUrl();
+    console.log(`[AmazonShoppingTool] Current URL: ${finalUrl}`);
+
+    // If on intermediate page (payment verification, etc.), wait for another navigation
+    if (finalUrl.includes('/cpe/') || finalUrl.includes('executions')) {
+      console.log(
+        '[AmazonShoppingTool] On intermediate page, waiting for redirect...'
+      );
+      try {
+        await this.waitForNavigation(30000);
+        finalUrl = await this.getCurrentUrl();
+        console.log(`[AmazonShoppingTool] After redirect URL: ${finalUrl}`);
+      } catch {
+        console.log('[AmazonShoppingTool] No further redirect, continuing...');
+      }
+    }
+
+    console.log(`[AmazonShoppingTool] Final URL: ${finalUrl}`);
+
+    // Extract order number from URL if available (purchaseId parameter)
+    const urlOrderMatch = finalUrl.match(/purchaseId=(\d{3}-\d{7}-\d{7})/);
+    const orderNumberFromUrl = urlOrderMatch?.[1];
+    if (orderNumberFromUrl) {
+      console.log(
+        `[AmazonShoppingTool] Order number from URL: ${orderNumberFromUrl}`
+      );
+    }
+
+    const isConfirmationUrl =
+      finalUrl.includes('thankyou') ||
+      finalUrl.includes('confirmation') ||
+      finalUrl.includes('order-details') ||
+      finalUrl.includes('your-orders') ||
+      finalUrl.includes('gp/buy/thankyou');
+    console.log(
+      `[AmazonShoppingTool] URL indicates confirmation: ${isConfirmationUrl}`
+    );
+
+    // Extract confirmation info
+    const confirmInfo = (await this.evaluate(`
+      ((urlIsConfirmation) => {
+        const fullText = document.body.innerText;
+
+        // Skip navigation text - find where main content starts
+        const mainContentStart = fullText.indexOf('Order placed') !== -1 ? fullText.indexOf('Order placed') :
+                                 fullText.indexOf('Thank you') !== -1 ? fullText.indexOf('Thank you') :
+                                 fullText.indexOf('Arriving') !== -1 ? fullText.indexOf('Arriving') :
+                                 fullText.indexOf('Delivery') !== -1 ? fullText.indexOf('Delivery') :
+                                 0;
+        const text = fullText.substring(mainContentStart);
+
+        // Check for various success indicators
+        const hasOrderPlaced = text.toLowerCase().includes("order placed");
+        const hasThankYou = text.toLowerCase().includes("thank you");
+        const hasConfirmed = text.toLowerCase().includes("order confirmed");
+        const hasOnItsWay = text.toLowerCase().includes("on its way");
+        const hasOrderNumber = /\\d{3}-\\d{7}-\\d{7}/.test(text);
+
+        const hasSuccess = hasOrderPlaced || hasThankYou || hasConfirmed || hasOnItsWay || hasOrderNumber;
+
+        // Extract order details
+        const orderMatch = text.match(/(\\d{3}-\\d{7}-\\d{7})/);
+
+        // Delivery date - look for day of week + date pattern
+        const dayDateMatch = text.match(/((?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[.\\s]*\\d{1,2})/i);
+        const tomorrowMatch = text.match(/(Tomorrow,?\\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?[.\\s]*\\d{0,2})/i);
+        const arrivingMatch = text.match(/Arriving\\s+([\\w\\s,]+\\d{1,2})/i);
+        const deliveryMatch = dayDateMatch || tomorrowMatch || arrivingMatch;
+
+        // Order total - look near beginning, not in recommendations
+        // Note: Amazon's thank you page often doesn't show detailed pricing - that's on the order details page
+        const firstPart = text.substring(0, 1500);
+        const totalMatch = firstPart.match(/Order total[:\\s]*\\$([\\d,.]+)/i) ||
+                          firstPart.match(/Grand total[:\\s]*\\$([\\d,.]+)/i);
+
+        // Subtotal, shipping, tax - must be specifically labeled (avoid Prime savings messages)
+        const subtotalMatch = firstPart.match(/(?:^|\\n)\\s*Subtotal[:\\s]*\\$([\\d,.]+)/im) ||
+                              firstPart.match(/Items?\\s*\\(\\d+\\)[:\\s]*\\$([\\d,.]+)/i);
+        // Shipping cost - must be "Shipping:" or "Shipping cost" not "shipping fees" (which is Prime savings)
+        const shippingMatch = firstPart.match(/(?:Shipping cost|Shipping & handling)[:\\s]*\\$([\\d,.]+)/i) ||
+                              firstPart.match(/(?:^|\\n)\\s*Shipping[:\\s]*\\$([\\d,.]+)/im);
+        const taxMatch = firstPart.match(/(?:^|\\n)\\s*(?:Estimated )?[Tt]ax[:\\s]*\\$([\\d,.]+)/m);
+
+        // Shipping address - look for address after "Shipping to" but before any price or newline
+        const addressMatch = text.match(/(?:Shipping to|Delivering to|Ship to)[:\\s]*([A-Z][^\\n\\$]{10,150})/i);
+
+        // Payment method - look for card info
+        const paymentMatch = text.match(/(Visa|Mastercard|Amex|American Express|Discover)[^\\n]*ending in (\\d{4})/i) ||
+                             text.match(/Payment method[:\\s]*([^\\n]{5,40})/i);
+
+        // Items - look for product titles (be more conservative to avoid promotional content)
+        const items = [];
+
+        return {
+          isSuccess: hasSuccess || urlIsConfirmation,
+          hasOrderPlaced,
+          hasThankYou,
+          hasConfirmed,
+          hasOnItsWay,
+          hasOrderNumber,
+          orderNumber: orderMatch?.[1],
+          deliveryDate: deliveryMatch?.[1]?.trim(),
+          total: totalMatch ? '$' + totalMatch[1] : undefined,
+          subtotal: subtotalMatch ? '$' + subtotalMatch[1] : undefined,
+          shippingCost: shippingMatch ? '$' + shippingMatch[1] : undefined,
+          tax: taxMatch ? '$' + taxMatch[1] : undefined,
+          address: addressMatch?.[1]?.trim(),
+          paymentMethod: paymentMatch?.[0]?.trim(),
+          items: items.length > 0 ? items : undefined,
+        };
+      })(${isConfirmationUrl})
+    `)) as {
+      isSuccess: boolean;
+      hasOrderPlaced: boolean;
+      hasThankYou: boolean;
+      hasConfirmed: boolean;
+      hasOnItsWay: boolean;
+      hasOrderNumber: boolean;
+      orderNumber?: string;
+      deliveryDate?: string;
+      total?: string;
+      subtotal?: string;
+      shippingCost?: string;
+      tax?: string;
+      address?: string;
+      paymentMethod?: string;
+      items?: Array<{ title: string; price: string; quantity?: number }>;
+    };
+
+    console.log(
+      `[AmazonShoppingTool] Success indicators: orderPlaced=${confirmInfo.hasOrderPlaced}, thankYou=${confirmInfo.hasThankYou}, confirmed=${confirmInfo.hasConfirmed}, onItsWay=${confirmInfo.hasOnItsWay}, hasOrderNumber=${confirmInfo.hasOrderNumber}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Order number: ${confirmInfo.orderNumber || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Delivery: ${confirmInfo.deliveryDate || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Total: ${confirmInfo.total || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Subtotal: ${confirmInfo.subtotal || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Shipping: ${confirmInfo.shippingCost || 'not found'}`
+    );
+    console.log(`[AmazonShoppingTool] Tax: ${confirmInfo.tax || 'not found'}`);
+    console.log(
+      `[AmazonShoppingTool] Address: ${confirmInfo.address || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Payment: ${confirmInfo.paymentMethod || 'not found'}`
+    );
+    console.log(
+      `[AmazonShoppingTool] Items: ${confirmInfo.items?.length || 0} found`
+    );
+
+    // Save debug state before returning
+    await this.saveDebugState('checkout-final');
+
+    // If URL indicates success OR text indicates success, consider it successful
+    if (!confirmInfo.isSuccess && !isConfirmationUrl) {
+      console.log('[AmazonShoppingTool] ERROR: No success indicators found');
+      return {
+        operation: 'checkout',
+        success: false,
+        error: 'Order may not have been placed',
+      };
+    }
+
+    console.log('[AmazonShoppingTool] SUCCESS: Order confirmed!');
+    return {
+      operation: 'checkout',
+      success: true,
+      order_number: confirmInfo.orderNumber || orderNumberFromUrl,
+      estimated_delivery: confirmInfo.deliveryDate,
+      total: confirmInfo.total,
+      subtotal: confirmInfo.subtotal,
+      shipping_cost: confirmInfo.shippingCost,
+      tax: confirmInfo.tax,
+      shipping_address: confirmInfo.address,
+      payment_method: confirmInfo.paymentMethod,
+      items: confirmInfo.items,
+      error: '',
+    };
+  }
+
+  /**
+   * Save current DOM state to file for debugging
+   */
+  private async saveDebugState(label: string): Promise<string | null> {
+    try {
+      const fs = await import('fs/promises');
+      const htmlContent = (await this.evaluate(
+        `document.documentElement.outerHTML`
+      )) as string;
+      const currentUrl = await this.getCurrentUrl();
+      const timestamp = Date.now();
+      const debugPath = `/tmp/amazon-debug-${label}-${timestamp}.html`;
+
+      // Add URL as comment at top of file
+      const contentWithUrl = `<!-- URL: ${currentUrl} -->\n${htmlContent}`;
+      await fs.writeFile(debugPath, contentWithUrl);
+      console.log(`[AmazonShoppingTool] Saved debug DOM to: ${debugPath}`);
+      return debugPath;
+    } catch (e) {
+      console.error('[AmazonShoppingTool] Failed to save debug state:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Search for products
+   */
+  private async searchProducts(
+    params: Extract<AmazonShoppingToolParams, { operation: 'search' }>
+  ): Promise<Extract<AmazonShoppingToolResult, { operation: 'search' }>> {
+    console.log(`[AmazonShoppingTool] Searching for: ${params.query}`);
+
+    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(params.query)}`;
+    await this.navigateTo(searchUrl);
+
+    // Wait for results
+    await this.waitForSelector('[data-component-type="s-search-result"]', 5000);
+
+    const maxResults = params.max_results || 5;
+
+    // Extract search results
+    const searchData = (await this.evaluate(`
+      (() => {
+        const results = [];
+        const items = document.querySelectorAll('[data-component-type="s-search-result"]');
+        const maxResults = ${maxResults};
+
+        for (let i = 0; i < Math.min(items.length, maxResults); i++) {
+          const item = items[i];
+          const asin = item.getAttribute('data-asin');
+          if (!asin) continue;
+
+          const titleEl = item.querySelector('h2 a span, .a-size-medium');
+          const priceEl = item.querySelector('.a-price .a-offscreen');
+          const ratingEl = item.querySelector('.a-icon-alt');
+          const reviewsEl = item.querySelector('.a-size-small .a-link-normal');
+          const imageEl = item.querySelector('.s-image');
+          const primeEl = item.querySelector('.s-prime, .aok-relative');
+
+          results.push({
+            asin,
+            title: titleEl?.textContent?.trim() || 'Unknown Product',
+            price: priceEl?.textContent?.trim() || '',
+            rating: ratingEl?.textContent?.match(/[0-9.]+/)?.[0] || '',
+            reviews_count: reviewsEl?.textContent?.match(/[0-9,]+/)?.[0] || '',
+            url: 'https://www.amazon.com/dp/' + asin,
+            image: imageEl?.src || '',
+            prime: !!primeEl,
+          });
+        }
+
+        const totalEl = document.querySelector('.s-breadcrumb .a-color-state');
+        const totalMatch = totalEl?.textContent?.match(/([0-9,]+)/);
+
+        return {
+          results,
+          totalResults: totalMatch ? parseInt(totalMatch[1].replace(/,/g, ''), 10) : results.length
+        };
+      })()
+    `)) as { results: SearchResult[]; totalResults: number };
+
+    return {
+      operation: 'search',
+      success: true,
+      results: searchData.results,
+      total_results: searchData.totalResults,
+      error: '',
+    };
+  }
+
+  /**
+   * Get product details
+   */
+  private async getProduct(
+    params: Extract<AmazonShoppingToolParams, { operation: 'get_product' }>
+  ): Promise<Extract<AmazonShoppingToolResult, { operation: 'get_product' }>> {
+    const asin = this.extractAsin(params.product_url);
+    const productUrl = this.buildProductUrl(asin);
+
+    console.log(`[AmazonShoppingTool] Getting product details: ${asin}`);
+
+    await this.navigateTo(productUrl);
+
+    // Wait for product page
+    await this.waitForSelector('#productTitle', 5000);
+
+    // Extract product details
+    const productData = (await this.evaluate(`
+      (() => {
+        const titleEl = document.querySelector('#productTitle');
+        const priceEl = document.querySelector('.a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice');
+        const ratingEl = document.querySelector('#acrPopover .a-icon-alt');
+        const reviewsEl = document.querySelector('#acrCustomerReviewText');
+        const descEl = document.querySelector('#productDescription p, #feature-bullets');
+        const availEl = document.querySelector('#availability span');
+
+        // Get feature bullets
+        const features = [];
+        document.querySelectorAll('#feature-bullets li span').forEach(el => {
+          const text = el.textContent?.trim();
+          if (text) features.push(text);
+        });
+
+        // Get images
+        const images = [];
+        document.querySelectorAll('#altImages img').forEach(img => {
+          const src = img.src?.replace(/\._[^.]+_\./, '._AC_SL1500_.');
+          if (src && !src.includes('play-button')) images.push(src);
+        });
+
+        return {
+          asin: '${asin}',
+          title: titleEl?.textContent?.trim() || 'Unknown Product',
+          price: priceEl?.textContent?.trim() || '',
+          rating: ratingEl?.textContent?.match(/[0-9.]+/)?.[0] || '',
+          reviews_count: reviewsEl?.textContent?.match(/[0-9,]+/)?.[0] || '',
+          description: descEl?.textContent?.trim() || '',
+          features,
+          availability: availEl?.textContent?.trim() || '',
+          url: '${productUrl}',
+          images,
+        };
+      })()
+    `)) as ProductDetails;
+
+    return {
+      operation: 'get_product',
+      success: true,
+      product: productData,
+      error: '',
+    };
+  }
+}

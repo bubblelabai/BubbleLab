@@ -104,4 +104,5 @@ export type BubbleName =
   | 'notion'
   | 'firecrawl'
   | 'insforge-db'
-  | 'amazon';
+  | 'browserbase'
+  | 'amazon-shopping-tool';

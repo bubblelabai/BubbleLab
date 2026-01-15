@@ -51,6 +51,7 @@ interface StateData {
 
 /**
  * Browser session credential data returned for injection
+ * Can be either structured (for internal use) or base64-encoded (for injection)
  */
 export interface BrowserSessionCredentialData {
   contextId: string;
@@ -438,6 +439,24 @@ export class BrowserbaseService {
       console.error('[BrowserbaseService] Failed to decrypt cookies:', error);
       return null;
     }
+  }
+
+  /**
+   * Get credential data as base64-encoded string for safe injection
+   * This avoids JSON escaping issues when injecting into generated code
+   */
+  async getCredentialDataBase64(credentialId: number): Promise<string | null> {
+    const data = await this.getCredentialData(credentialId);
+    if (!data) {
+      return null;
+    }
+
+    const jsonPayload = JSON.stringify({
+      contextId: data.contextId,
+      cookies: data.cookies,
+    });
+
+    return Buffer.from(jsonPayload).toString('base64');
   }
 
   /**

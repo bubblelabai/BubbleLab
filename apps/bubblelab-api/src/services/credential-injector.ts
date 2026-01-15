@@ -170,23 +170,20 @@ export async function injectCredentials(
               );
             }
           } else if (isBrowserSessionCredential(userCredType)) {
-            // Browser session credential - get context ID and cookies
+            // Browser session credential - get base64-encoded context ID and cookies
             try {
               console.log(
                 `🔍 [CredentialInjector] Getting browser session data for ${userCredType}, credential ID: ${userCred.credentialId}`
               );
 
-              const sessionData = await browserbaseService.getCredentialData(
-                userCred.credentialId!
-              );
+              // Get base64-encoded credential data (avoids JSON escaping issues)
+              const base64Payload =
+                await browserbaseService.getCredentialDataBase64(
+                  userCred.credentialId!
+                );
 
-              if (sessionData) {
-                // Inject as JSON string containing both contextId and cookies
-                const sessionPayload = JSON.stringify({
-                  contextId: sessionData.contextId,
-                  cookies: sessionData.cookies,
-                });
-                credentialMapping[userCredType] = escapeString(sessionPayload);
+              if (base64Payload) {
+                credentialMapping[userCredType] = base64Payload;
 
                 // Update sources
                 const sourceIndex = credentialSources.findIndex((s) =>
@@ -200,7 +197,7 @@ export async function injectCredentials(
                 }
 
                 console.log(
-                  `[CredentialInjector] Successfully injected browser session data for ${userCredType} (${sessionData.cookies.length} cookies)`
+                  `[CredentialInjector] Successfully injected browser session data for ${userCredType}`
                 );
               } else {
                 console.error(

@@ -307,7 +307,6 @@ export class BubbleInjector {
 
   /**
    * Injects credentials into bubble parameters
-   * @param bubbleParameters - Parsed bubble parameters with info
    * @param userCredentials - User-provided credentials
    * @param systemCredentials - System-provided credentials (environment variables)
    * @returns Result of credential injection
