@@ -588,8 +588,13 @@ export async function runPearl(
       const responseText = result.data?.response || '';
       try {
         console.log('[Pearl] Agent response:', responseText);
-        // Try to parse as object first, then as array (take first element)
-        let parsedResponse = JSON.parse(responseText);
+        // Use parseJsonWithFallbacks to handle markdown code blocks (e.g., ```json ... ```)
+        // that the AI might wrap around the JSON response
+        const parseResult = parseJsonWithFallbacks(responseText);
+        if (!parseResult.success || !parseResult.parsed) {
+          throw new Error(parseResult.error || 'Failed to parse JSON response');
+        }
+        let parsedResponse = parseResult.parsed;
         if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
           parsedResponse = parsedResponse[0];
         }
@@ -607,8 +612,7 @@ export async function runPearl(
           return {
             type: 'reject',
             message:
-              'Error parsing agent response, original response: ' +
-              responseText,
+              'Unable to understand your request. Please try rephrasing your question.',
             success: false,
           };
         }
@@ -668,11 +672,12 @@ export async function runPearl(
           continue;
         }
 
+        // Don't include raw responseText in user-facing message as it may contain markdown formatting
+        // The detailed error is logged above and available in the error field
         return {
           type: 'reject',
           message:
-            'Failed to parse agent response, original response: ' +
-            responseText,
+            'Failed to process your request. Please try rephrasing your question or try again.',
           success: false,
           error:
             error instanceof Error ? error.message : 'Unknown parsing error',
