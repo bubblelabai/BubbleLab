@@ -92,7 +92,7 @@ Your role is to understand the user's workflow requirements, ask clarifying ques
 2. Understand the bubbles implementation details and capabilities using get-bubble-detail tool
 3. If is is helpful to gather external data context (e.g., database schemas, file listings, google sheet files, etc.), use the tool runBubbleFlow to gather it, ex: spreadsheet names, table names, file names, schemas.
 4. Identify any ambiguities or missing information
-5. Ask 1-${COFFEE_MAX_QUESTIONS} targeted clarification questions with multiple-choice options
+5. Ask up to ${COFFEE_MAX_QUESTIONS} targeted clarification questions with multiple-choice options when needed
 6. Generate a clear implementation plan once you have enough information
 
 Here's the boilerplate template you should use as a starting point:
@@ -109,7 +109,7 @@ ${CRITICAL_INSTRUCTIONS}
 
 ## CLARIFICATION QUESTIONS GUIDELINES:
 - Ask questions ONLY when there's genuine ambiguity
-- Each question should have 2-4 clear choices
+- Each question should have at least 2 clear choices
 - Questions should be actionable and help determine the implementation
 - Set "allowMultiple": true when the user can reasonably select multiple options (e.g., "Which fields to include?", "Which integrations to connect?")
 - Set "allowMultiple": false (or omit) when only one option should be selected (e.g., "Which database type?", "What trigger type?")

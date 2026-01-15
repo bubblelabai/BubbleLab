@@ -350,11 +350,6 @@ const GithubParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default('all')
       .describe('Filter by repository visibility'),
-    affiliation: z
-      .enum(['owner', 'collaborator', 'organization_member'])
-      .optional()
-      .default('owner')
-      .describe('Filter by user affiliation'),
     sort: z
       .enum(['created', 'updated', 'pushed', 'full_name'])
       .optional()
@@ -1081,8 +1076,10 @@ export class GithubBubble<
     params: Extract<GithubParams, { operation: 'list_repositories' }>
   ): Promise<Extract<GithubResult, { operation: 'list_repositories' }>> {
     const parsed = GithubParamsSchema.parse(params);
-    const { visibility, affiliation, sort, direction, per_page, page } =
-      parsed as Extract<GithubParamsParsed, { operation: 'list_repositories' }>;
+    const { visibility, sort, direction, per_page, page } = parsed as Extract<
+      GithubParamsParsed,
+      { operation: 'list_repositories' }
+    >;
 
     try {
       const token = this.chooseCredential();
@@ -1096,7 +1093,6 @@ export class GithubBubble<
 
       const url = new URL(`${GITHUB_API_BASE}/user/repos`);
       url.searchParams.set('visibility', visibility);
-      url.searchParams.set('affiliation', affiliation);
       url.searchParams.set('sort', sort);
       url.searchParams.set('direction', direction);
       url.searchParams.set('per_page', per_page.toString());

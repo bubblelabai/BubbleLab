@@ -266,7 +266,7 @@ export function ClarificationWidget({
       </div>
 
       {/* Questions */}
-      <div className="px-4 py-3 space-y-4">
+      <div className="px-4 py-3 max-h-[500px] overflow-y-auto space-y-4">
         {questions.map((question, index) => (
           <div
             key={question.id}

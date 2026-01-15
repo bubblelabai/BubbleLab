@@ -9,7 +9,7 @@ import { CredentialType } from './types.js';
 
 // Constants
 export const COFFEE_MAX_ITERATIONS = 30;
-export const COFFEE_MAX_QUESTIONS = 3;
+export const COFFEE_MAX_QUESTIONS = 5;
 export const COFFEE_DEFAULT_MODEL = 'google/gemini-3-pro-preview' as const;
 
 // ============================================================================
@@ -33,8 +33,7 @@ export const ClarificationQuestionSchema = z.object({
   choices: z
     .array(ClarificationChoiceSchema)
     .min(2)
-    .max(4)
-    .describe('Available choices for the user (2-4 options)'),
+    .describe('Available choices for the user (minimum 2 options)'),
   context: z
     .string()
     .optional()
@@ -54,7 +53,7 @@ export const CoffeeClarificationEventSchema = z.object({
     .array(ClarificationQuestionSchema)
     .min(1)
     .max(COFFEE_MAX_QUESTIONS)
-    .describe('List of clarification questions (1-3)'),
+    .describe(`List of clarification questions (1-${COFFEE_MAX_QUESTIONS})`),
 });
 
 // ============================================================================
