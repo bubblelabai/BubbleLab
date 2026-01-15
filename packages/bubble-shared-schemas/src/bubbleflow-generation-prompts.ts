@@ -108,6 +108,25 @@ Bubble Studio is the frontend dashboard for Bubble Lab. It is the main UI for us
   - API key credentials can be entered directly on this page
   - Once added, these credentials appear in the dropdown when configuring bubbles in the flow visualizer
 
+  BROWSER SESSION AUTHENTICATION (for services like Amazon):
+  - Some services (e.g., Amazon) don't have APIs and require browser-based authentication
+  - Browser session credentials work by capturing cookies from a real browser login session
+  - How it works:
+    1. User clicks "Connect" on the Credentials page for a browser session credential (e.g., Amazon)
+    2. A cloud browser (BrowserBase) opens in a new window with the target site's login page
+    3. User logs into their account normally in this browser window
+    4. After successful login, user clicks "Complete" to capture the authenticated session
+    5. The system captures cookies and browser context, encrypts them, and stores as a credential
+    6. Tools (like Amazon Shopping Tool) use these stored cookies to perform authenticated actions
+  - Browser session credentials are used by:
+    - Amazon Shopping Tool (AMAZON_CRED): Add to cart, checkout, search products, get cart
+    - Future browser-based integrations that require login
+  - Important notes:
+    - Sessions may expire if the service invalidates cookies (user will need to re-authenticate)
+    - The browser session runs in an isolated cloud environment for security
+    - Credentials are encrypted at rest and only decrypted during workflow execution
+  - To set up: Go to Credentials page → Click "Add Credential" → Select browser session type (e.g., Amazon) → Follow the browser login flow
+
   WHEN DEBUGGING CREDENTIAL ERRORS:
   - If a system credential fails (e.g., 'API key is invalid' for Resend), it likely means the system credential is unavailable or rate-limited
   - Guide users to add their OWN credential by clicking the bubble in the flow visualizer and selecting their credential from the detail panel

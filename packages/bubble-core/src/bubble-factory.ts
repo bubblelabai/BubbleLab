@@ -159,7 +159,6 @@ export class BubbleFactory {
       'notion',
       'firecrawl',
       'insforge-db',
-      'browserbase',
       'amazon-shopping-tool',
     ];
   }
