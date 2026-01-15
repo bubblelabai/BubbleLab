@@ -1319,15 +1319,7 @@ export class AIAgentBubble extends ServiceBubble<
     const toolCalls: AIAgentResult['toolCalls'] = [];
     let iterations = 0;
 
-    console.log(
-      '[AIAgent] Starting execution with message:',
-      message.substring(0, 100) + '...'
-    );
-    console.log('[AIAgent] Max iterations:', maxIterations);
-
     try {
-      console.log('[AIAgent] Invoking graph...');
-
       // Build messages array starting with conversation history (for KV cache optimization)
       const initialMessages: BaseMessage[] = [];
 

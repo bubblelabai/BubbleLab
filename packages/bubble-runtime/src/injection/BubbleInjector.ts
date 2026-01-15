@@ -113,10 +113,6 @@ export class BubbleInjector {
   private extractModelCredentialType(
     bubble: ParsedBubbleWithInfo
   ): CredentialType[] | null {
-    console.log(
-      '[BubbleInjector] Extracting model credential type for bubble:',
-      bubble.bubbleName
-    );
     if (bubble.bubbleName !== 'ai-agent') {
       return null;
     }
@@ -126,7 +122,6 @@ export class BubbleInjector {
       (param) => param.name === 'model'
     );
     if (!modelParam) {
-      console.log('[BubbleInjector] No model parameter found');
       // No model parameter, use default (google) or return null to include all
       return [CredentialType.GOOGLE_GEMINI_CRED];
     }
@@ -417,10 +412,6 @@ export class BubbleInjector {
 
       // Apply the modified bubbles back to the script
       const finalScript = this.reapplyBubbleInstantiations();
-      console.log(
-        'Final script:',
-        this.bubbleScript.showScript('[BubbleInjector] Final script')
-      );
       return {
         success: errors.length === 0,
         code: finalScript,

@@ -58,11 +58,6 @@ async function runBubbleFlowCommon(
   const injector: BubbleInjector = new BubbleInjector(bubbleScriptInstance);
   const requiredCredentials = injector.findCredentials();
 
-  console.log(
-    '[runBubbleFlowCommon] Required credentials:',
-    requiredCredentials
-  );
-
   // Get user credentials when needed
   const userCredentials: UserCredentialWithId[] = [];
   // Map variable IDs to the credential types they use (for zero-cost pricing)

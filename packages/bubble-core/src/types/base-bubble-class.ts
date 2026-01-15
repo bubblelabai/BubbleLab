@@ -73,15 +73,6 @@ export abstract class BaseBubble<
       ) {
         const next = this.computeChildContext(normalizedContext);
         this.context = next;
-        console.debug(
-          '[BaseBubble] Computed child context unique id:',
-          this.context?.currentUniqueId
-        );
-        //Prnt the var id of the computed child context
-        console.debug(
-          '[BaseBubble] Computed child context variable id:',
-          this.context?.variableId
-        );
       } else {
         this.context = normalizedContext;
       }
@@ -124,9 +115,6 @@ export abstract class BaseBubble<
       return null;
     };
 
-    console.log('Current ID:', this.name);
-    console.log('Current varid:', this.context?.variableId);
-    console.log('Finding parent node by uniqueId:', currentId);
     const parentNode = currentId ? findByUniqueId(graph, currentId) : graph;
 
     // If the current bubble matches the node at currentUniqueId, don't advance; keep IDs from that node
@@ -169,18 +157,10 @@ export abstract class BaseBubble<
     let matchingChild = children.find(
       (c) => c.variableName === this.instanceId
     );
-    console.log(
-      `[BaseBubble] ${this.name}.computeChildContext: Matching child by variableName:`,
-      matchingChild
-    );
     // if no match is found fallback to || c.uniqueId === childUniqueId || c.name === this.name
     if (!matchingChild) {
       matchingChild = children.find(
         (c) => c.uniqueId === childUniqueId || c.name === this.name
-      );
-      console.log(
-        `[BaseBubble] ${this.name}.computeChildContext: Matching child by uniqueId:`,
-        matchingChild
       );
     }
     const childVariableId =

@@ -62,7 +62,7 @@ export class CronScheduler {
     const baseDelay = this.tickIntervalMs - msIntoInterval;
     const delay = baseDelay + (this.jitterMs || 0);
     const nextAt = new Date(now.getTime() + delay);
-    this.logger.debug?.(
+    this.logger.log(
       `[cron] Scheduling next tick in ${delay}ms at ${nextAt.toISOString()}`
     );
     this.timer = setTimeout(() => this.tick(), delay);
@@ -70,7 +70,7 @@ export class CronScheduler {
 
   private async tick(): Promise<void> {
     const now = new Date();
-    this.logger.debug?.(`[cron] Tick at ${now.toISOString()}`);
+    this.logger.log(`[cron] Tick at ${now.toISOString()}`);
     try {
       await this.runDueCronFlows(now);
     } catch (e) {
@@ -81,7 +81,7 @@ export class CronScheduler {
   }
 
   private async runDueCronFlows(now: Date): Promise<void> {
-    this.logger.debug?.('[cron] Scanning active cron flows...');
+    this.logger.log('[cron] Scanning active cron flows...');
     // Fetch active cron flows (filter null cron in JS for portability)
     const flows = await db.query.bubbleFlows.findMany({
       where: eq(bubbleFlows.cronActive, true),
@@ -93,30 +93,32 @@ export class CronScheduler {
         name: true,
       },
     });
-    this.logger.debug?.(`[cron] Active cron flows: ${flows.length}`);
+    this.logger.log(`[cron] Found ${flows.length} active cron flows`);
 
     for (const f of flows) {
-      this.logger.debug?.(
-        `[cron] Evaluating flow ${f.id} with name ${f.name} cron='${f.cron ?? ''}'`
+      this.logger.log(
+        `[cron] Evaluating flow ${f.id} (${f.name}) with cron='${f.cron ?? ''}'`
       );
       if (!f.cron) {
-        this.logger.debug?.(`[cron] Flow ${f.id} skipped: cron is null`);
+        this.logger.log(`[cron] Flow ${f.id} skipped: cron is null`);
         continue;
       }
       if (!validateCronExpression(f.cron).valid) {
-        this.logger.debug?.(`[cron] Flow ${f.id} skipped: invalid cron`);
+        this.logger.log(
+          `[cron] Flow ${f.id} skipped: invalid cron expression '${f.cron}'`
+        );
         continue;
       }
       const due = this.isCronDue(f.cron, now);
-      this.logger.debug?.(`[cron] Flow ${f.id} due now? ${due}`);
+      this.logger.log(`[cron] Flow ${f.id} due now? ${due}`);
       if (!due) continue;
       if (this.running.has(f.id)) {
-        this.logger.debug?.(`[cron] Flow ${f.id} skipped: already running`);
+        this.logger.log(`[cron] Flow ${f.id} skipped: already running`);
         continue; // avoid overlap per flow
       }
       if (this.maxConcurrency && this.inFlight >= this.maxConcurrency) {
         // Respect concurrency; leave remaining for next tick
-        this.logger.debug?.(
+        this.logger.log(
           `[cron] Max concurrency reached (${this.inFlight}/${this.maxConcurrency}), deferring remaining flows`
         );
         break;
@@ -124,7 +126,7 @@ export class CronScheduler {
 
       this.running.add(f.id);
       this.inFlight++;
-      this.logger.debug?.(
+      this.logger.log(
         `[cron] Executing flow ${f.id} (inFlight=${this.inFlight}/${this.maxConcurrency})`
       );
       // Transform the payload using the same logic as webhooks
@@ -139,17 +141,19 @@ export class CronScheduler {
         {}
       );
 
-      this.logger.debug?.(`[cron] transformedPayload`, transformedPayload);
+      this.logger.log(`[cron] transformedPayload`, transformedPayload);
       executeBubbleFlowWithTracking(f.id, transformedPayload, {
         userId: f.userId,
         appType: AppType.BUBBLE_LAB,
         pricingTable: getPricingTable(),
       })
-        .catch((err) => this.logger.error('[cron] exec error', f.id, err))
+        .catch((err) => {
+          this.logger.error('[cron] exec error', f.id, err);
+        })
         .finally(() => {
           this.running.delete(f.id);
           this.inFlight--;
-          this.logger.debug?.(`[cron] Finished flow ${f.id}`);
+          this.logger.log(`[cron] Finished flow ${f.id}`);
         });
     }
   }
@@ -168,7 +172,7 @@ export class CronScheduler {
     // Set seconds and milliseconds to 0 for clean minute boundary
     rounded.setUTCSeconds(0, 0);
 
-    this.logger.debug?.(`[cron] rounded`, rounded.toISOString());
+    this.logger.log(`[cron] rounded`, rounded.toISOString());
     const { minute, hour, dayOfMonth, month, dayOfWeek } =
       parseCronExpression(expr);
     // Use UTC methods to ensure cron expressions are evaluated in UTC timezone

@@ -414,7 +414,6 @@ export class BubbleRunner {
       // Ensure temp directory exists
       try {
         await fs.mkdir(tempDir, { recursive: true });
-        console.log('[BubbleRunner] Ensured tempDir exists');
       } catch (error: unknown) {
         // Directory might already exist, that's okay
         console.warn('[BubbleRunner] mkdir tempDir warning:', error);
@@ -427,13 +426,7 @@ export class BubbleRunner {
       scriptToExecute = sanitizeScript(scriptToExecute);
       // Write the script code to the temporary file
       try {
-        console.log(
-          '[BubbleRunner] About to write script to temp file. Script length:',
-          scriptToExecute?.length
-        );
         await fs.writeFile(tempFilePath, scriptToExecute);
-        const stat = await fs.stat(tempFilePath);
-        console.log('[BubbleRunner] Wrote temp file. Size:', stat.size);
       } catch (writeErr) {
         console.error('[BubbleRunner] Failed to write temp file:', writeErr);
         throw writeErr;
@@ -441,20 +434,13 @@ export class BubbleRunner {
 
       // Convert to file URL for dynamic import
       const moduleUrl = pathToFileURL(tempFilePath).href;
-      console.log('[BubbleRunner] moduleUrl:', moduleUrl);
       try {
-        const exists = await fs
-          .access(tempFilePath)
-          .then(() => true)
-          .catch(() => false);
-        console.log('[BubbleRunner] temp file exists before import:', exists);
+        await fs.access(tempFilePath);
       } catch (accessErr) {
         console.warn('[BubbleRunner] access check failed:', accessErr);
       }
 
       // Dynamically import the module
-
-      console.log('[BubbleRunner] Importing module', moduleUrl);
       let module: Record<string, unknown>;
       try {
         module = await import(moduleUrl);
@@ -471,8 +457,6 @@ export class BubbleRunner {
         );
         throw importErr;
       }
-
-      console.log('[BubbleRunner] Done importing module');
 
       // Find the BubbleFlow class in the module exports
       const FlowClass = this.findBubbleFlowClass(module);
