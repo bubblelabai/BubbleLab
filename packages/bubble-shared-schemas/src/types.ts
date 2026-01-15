@@ -48,6 +48,9 @@ export enum CredentialType {
 
   // Custom Authentication Credentials
   CUSTOM_AUTH_KEY = 'CUSTOM_AUTH_KEY',
+
+  // Browser Session Credentials (BrowserBase-powered)
+  AMAZON_CRED = 'AMAZON_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -100,4 +103,5 @@ export type BubbleName =
   | 'airtable'
   | 'notion'
   | 'firecrawl'
-  | 'insforge-db';
+  | 'insforge-db'
+  | 'amazon';

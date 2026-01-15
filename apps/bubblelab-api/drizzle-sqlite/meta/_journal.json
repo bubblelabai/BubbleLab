@@ -120,6 +120,13 @@
       "when": 1768205864941,
       "tag": "0016_add-evaluations-and-execution-logs",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1768466662102,
+      "tag": "0017_panoramic_masque",
+      "breakpoints": true
     }
   ]
 }

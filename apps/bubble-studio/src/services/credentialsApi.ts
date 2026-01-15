@@ -3,6 +3,9 @@ import type {
   CredentialResponse,
   CreateCredentialRequest,
   UpdateCredentialRequest,
+  BrowserbaseSessionCreateResponse,
+  BrowserbaseSessionCompleteResponse,
+  BrowserbaseSessionReopenResponse,
 } from '@bubblelab/shared-schemas';
 
 export const credentialsApi = {
@@ -50,5 +53,44 @@ export const credentialsApi = {
 
   deleteCredential: async (_apiBaseUrl: string, id: number): Promise<void> => {
     return api.delete<void>(`/credentials/${id}`);
+  },
+
+  // BrowserBase session methods
+  createBrowserbaseSession: async (
+    credentialType: string,
+    name?: string
+  ): Promise<BrowserbaseSessionCreateResponse> => {
+    return api.post<BrowserbaseSessionCreateResponse>(
+      '/browserbase/session/create',
+      { credentialType, name }
+    );
+  },
+
+  completeBrowserbaseSession: async (
+    sessionId: string,
+    state: string,
+    name?: string
+  ): Promise<BrowserbaseSessionCompleteResponse> => {
+    return api.post<BrowserbaseSessionCompleteResponse>(
+      '/browserbase/session/complete',
+      { sessionId, state, name }
+    );
+  },
+
+  reopenBrowserbaseSession: async (
+    credentialId: number
+  ): Promise<BrowserbaseSessionReopenResponse> => {
+    return api.post<BrowserbaseSessionReopenResponse>(
+      '/browserbase/session/reopen',
+      { credentialId }
+    );
+  },
+
+  closeBrowserbaseSession: async (
+    sessionId: string
+  ): Promise<{ message: string }> => {
+    return api.post<{ message: string }>('/browserbase/session/close', {
+      sessionId,
+    });
   },
 };

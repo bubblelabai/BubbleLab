@@ -47,6 +47,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},
+  [CredentialType.AMAZON_CRED]: {},
 };
 
 // Fixed list of bubble names that need context injection

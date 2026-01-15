@@ -2,6 +2,7 @@ import {
   BUBBLE_CREDENTIAL_OPTIONS,
   CREDENTIAL_ENV_MAP,
   isOAuthCredential,
+  isBrowserSessionCredential,
 } from '@bubblelab/shared-schemas';
 import {
   CredentialType,
@@ -16,6 +17,7 @@ import {
   extractToolCredentials,
 } from './bubble-flow-parser.js';
 import { oauthService } from './oauth-service.js';
+import { browserbaseService } from './browserbase-service.js';
 
 export interface SystemCredential {
   bubbleName: string;
@@ -164,6 +166,50 @@ export async function injectCredentials(
             } catch (error) {
               console.error(
                 `[CredentialInjector] OAuth token error for ${userCredType}:`,
+                error
+              );
+            }
+          } else if (isBrowserSessionCredential(userCredType)) {
+            // Browser session credential - get context ID and cookies
+            try {
+              console.log(
+                `🔍 [CredentialInjector] Getting browser session data for ${userCredType}, credential ID: ${userCred.credentialId}`
+              );
+
+              const sessionData = await browserbaseService.getCredentialData(
+                userCred.credentialId!
+              );
+
+              if (sessionData) {
+                // Inject as JSON string containing both contextId and cookies
+                const sessionPayload = JSON.stringify({
+                  contextId: sessionData.contextId,
+                  cookies: sessionData.cookies,
+                });
+                credentialMapping[userCredType] = escapeString(sessionPayload);
+
+                // Update sources
+                const sourceIndex = credentialSources.findIndex((s) =>
+                  s.startsWith(`${userCredType}:`)
+                );
+                if (sourceIndex >= 0) {
+                  credentialSources[sourceIndex] =
+                    `${userCredType}:browser-session`;
+                } else {
+                  credentialSources.push(`${userCredType}:browser-session`);
+                }
+
+                console.log(
+                  `[CredentialInjector] Successfully injected browser session data for ${userCredType} (${sessionData.cookies.length} cookies)`
+                );
+              } else {
+                console.error(
+                  `[CredentialInjector] Failed to get browser session data for ${userCredType}`
+                );
+              }
+            } catch (error) {
+              console.error(
+                `[CredentialInjector] Browser session error for ${userCredType}:`,
                 error
               );
             }

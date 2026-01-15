@@ -127,6 +127,20 @@ export const userCredentials = sqliteTable('user_credentials', {
   oauthProvider: text('oauth_provider'), // Provider name (google, slack, github, etc.)
   isOauth: int('is_oauth', { mode: 'boolean' }).default(false), // Flag to identify OAuth vs API key credentials
 
+  // Browser session-specific fields (for BrowserBase-based authentication)
+  isBrowserSession: int('is_browser_session', { mode: 'boolean' }).default(
+    false
+  ), // Flag for browser session credentials
+  browserbaseContextId: text('browserbase_context_id'), // BrowserBase context ID for session persistence
+  browserbaseCookies: text('browserbase_cookies'), // Encrypted captured cookies JSON
+  browserbaseSessionData: text('browserbase_session_data', {
+    mode: 'json',
+  }).$type<{
+    capturedAt: string;
+    cookieCount: number;
+    domain: string;
+  }>(),
+
   createdAt: int('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
