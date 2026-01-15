@@ -344,6 +344,24 @@ function InputFieldsRenderer({
     console.log(`Selected ${fileName} with ID: ${fileId}`);
   };
 
+  // Handler for Google Picker selection for array entries
+  const handleArrayGoogleFileSelect = (
+    fieldName: string,
+    index: number,
+    fileId: string,
+    fileName: string
+  ) => {
+    const currentArray = Array.isArray(inputValues[fieldName])
+      ? (inputValues[fieldName] as string[])
+      : [];
+    const newArray = [...currentArray];
+    newArray[index] = fileId;
+    onInputChange(fieldName, newArray);
+    console.log(
+      `Selected ${fileName} with ID: ${fileId} for ${fieldName}[${index}]`
+    );
+  };
+
   if (schemaFields.length === 0) {
     return (
       <div
@@ -417,8 +435,8 @@ function InputFieldsRenderer({
                       const entryError = fieldErrors[`${field.name}[${index}]`];
                       return (
                         <div key={index} className="space-y-0.5">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-neutral-500 w-6 flex-shrink-0">
+                          <div className="flex items-start gap-1">
+                            <span className="text-[10px] text-neutral-500 w-6 flex-shrink-0 mt-2">
                               {index + 1}.
                             </span>
                             <div className="relative flex-1">
@@ -520,6 +538,24 @@ function InputFieldsRenderer({
                                 </button>
                               </div>
                             </div>
+                            {/* Google File Picker Button for array entries */}
+                            {isGoogleFileField(field) && (
+                              <div className="w-10 h-9 flex-shrink-0">
+                                <GoogleFilePicker
+                                  fileType={getGoogleFileType(field.name)}
+                                  onSelect={(fileId, fileName) =>
+                                    handleArrayGoogleFileSelect(
+                                      field.name,
+                                      index,
+                                      fileId,
+                                      fileName
+                                    )
+                                  }
+                                  disabled={isExecuting}
+                                  className="h-full"
+                                />
+                              </div>
+                            )}
                           </div>
                           {entryFileName && (
                             <div className="ml-7 text-[10px] text-neutral-400">

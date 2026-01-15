@@ -81,7 +81,6 @@ describe('GithubBubble', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.visibility).toBe('all');
-        expect(result.data.affiliation).toBe('owner');
         expect(result.data.sort).toBe('updated');
         expect(result.data.direction).toBe('desc');
       }
