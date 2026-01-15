@@ -63,16 +63,10 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
     },
     [CredentialType.SLACK_CRED]: {
       label: 'Slack',
-      description: `Slack bot token for Slack integration.
-      Setup Instructions:
-      1. Create a Slack app at https://api.slack.com/apps
-      2. Configure OAuth & Permissions with required bot scopes (e.g., chat:write, app_mentions:read)
-      3. Install the app to your workspace to get the xoxb- bot token
-      4. Store the token securely as an environment variable
-      
-      For detailed setup guide, see: https://docs.slack.dev/quickstart/`,
+      description:
+        'Slack Bot token (xoxb-) or User token (xoxp-) from api.slack.com/apps. Configure scopes in OAuth & Permissions.',
       placeholder: 'xoxb-... or xoxp-...',
-      namePlaceholder: 'My Slack Bot Token',
+      namePlaceholder: 'My Slack Token',
       credentialConfigurations: {
         ignoreSSL: false,
       },
