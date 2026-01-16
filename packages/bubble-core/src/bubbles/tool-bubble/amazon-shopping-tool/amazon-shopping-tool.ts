@@ -1491,31 +1491,62 @@ export class AmazonShoppingTool<
             continue;
           }
 
-          // Try multiple title selectors in order of specificity
-          // Priority: h2 span.a-text-normal > h2 a span > h2 span > .a-size-base-plus > .a-size-medium
-          const titleSelectors = [
-            'h2 span.a-text-normal',
-            'h2.a-size-mini span.a-text-normal',
-            'h2 a.a-link-normal span',
-            'h2 a span',
-            'h2 span',
-            '.a-size-base-plus.a-color-base',
-            '.a-size-medium.a-color-base.a-text-normal',
-            '.a-size-medium'
-          ];
-
-          let titleEl = null;
+          // Extract title - Amazon has TWO h2 elements:
+          // 1. First h2: Brand name only (e.g., "Amazon Basics")
+          // 2. Second h2: Full title with aria-label (inside anchor element)
+          // We need to get the SECOND h2 which has the full title
+          let title = 'Unknown Product';
           let titleSelectorUsed = '';
-          for (const selector of titleSelectors) {
-            titleEl = item.querySelector(selector);
-            if (titleEl && titleEl.textContent?.trim()) {
-              titleSelectorUsed = selector;
-              break;
+
+          // Approach 1: Look for h2 with aria-label attribute (contains full title)
+          const h2WithAriaLabel = item.querySelector('h2[aria-label]');
+          if (h2WithAriaLabel) {
+            const ariaLabel = h2WithAriaLabel.getAttribute('aria-label');
+            if (ariaLabel && ariaLabel.length > 10) {
+              // Remove "Sponsored Ad - " prefix if present
+              title = ariaLabel.replace(/^Sponsored Ad - /i, '').trim();
+              titleSelectorUsed = 'h2[aria-label]';
             }
           }
 
-          const title = titleEl?.textContent?.trim() || 'Unknown Product';
-          console.log('[AmazonSearch Debug] Item ' + i + ' ASIN=' + asin + ' title="' + title.substring(0, 50) + '..." selector=' + titleSelectorUsed);
+          // Approach 2: Look for anchor > h2 (full title h2 is inside anchor)
+          if (titleSelectorUsed === '') {
+            const anchorWithH2 = item.querySelector('a > h2, a h2.a-text-normal');
+            if (anchorWithH2) {
+              const h2Text = anchorWithH2.textContent?.trim();
+              if (h2Text && h2Text.length > 10) {
+                title = h2Text;
+                titleSelectorUsed = 'a > h2';
+              }
+            }
+          }
+
+          // Approach 3: Look for [data-cy="title-recipe"] anchor text
+          if (titleSelectorUsed === '') {
+            const titleRecipe = item.querySelector('[data-cy="title-recipe"] a.a-text-normal, [data-cy="title-recipe"] a.s-link-style');
+            if (titleRecipe) {
+              const linkText = titleRecipe.textContent?.trim();
+              if (linkText && linkText.length > 10) {
+                title = linkText;
+                titleSelectorUsed = '[data-cy="title-recipe"] a';
+              }
+            }
+          }
+
+          // Approach 4: Fallback to image alt text (usually has full product name)
+          if (titleSelectorUsed === '' || title.length < 20) {
+            const imgEl = item.querySelector('.s-image');
+            if (imgEl) {
+              const altText = imgEl.getAttribute('alt');
+              if (altText && altText.length > (title?.length || 0)) {
+                // Remove "Sponsored Ad - " prefix if present
+                title = altText.replace(/^Sponsored Ad - /i, '').trim();
+                titleSelectorUsed = 'img[alt]';
+              }
+            }
+          }
+
+          console.log('[AmazonSearch Debug] Item ' + i + ' ASIN=' + asin + ' title="' + title.substring(0, 100) + '" selector=' + titleSelectorUsed);
 
           const priceEl = item.querySelector('.a-price .a-offscreen');
           const ratingEl = item.querySelector('.a-icon-alt');
