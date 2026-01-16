@@ -191,11 +191,10 @@ const LinkedInToolParamsSchema = z.object({
     ),
 
   dateFilter: z
-    .enum(['', 'past-24h', 'past-week', 'past-month'])
-    .default('')
+    .enum(['past-24h', 'past-week', 'past-month'])
     .optional()
     .describe(
-      'Filter posts/jobs by date range (searchPosts/scrapeJobs). Options: past-24h, past-week, past-month'
+      'Filter posts/jobs by date range (searchPosts/scrapeJobs). Options: past-24h, past-week, past-month. Leave empty for no date filter.'
     ),
 
   // Common fields
