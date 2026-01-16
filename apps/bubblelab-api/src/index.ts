@@ -23,17 +23,7 @@ import {
 
 // Memory monitoring function
 function logMemoryUsage() {
-  const usage = process.memoryUsage();
-  const formatBytes = (bytes: number) =>
-    (bytes / 1024 / 1024).toFixed(2) + ' MB';
-
-  console.log('=== Memory Usage ===');
-  console.log(`RSS (Resident Set Size): ${formatBytes(usage.rss)}`);
-  console.log(`Heap Used: ${formatBytes(usage.heapUsed)}`);
-  console.log(`Heap Total: ${formatBytes(usage.heapTotal)}`);
-  console.log(`External: ${formatBytes(usage.external)}`);
-  console.log(`Array Buffers: ${formatBytes(usage.arrayBuffers)}`);
-  console.log('==================');
+  // Memory logging disabled - can be re-enabled for debugging
 }
 
 // Import route modules
@@ -88,11 +78,9 @@ app.get('/', (c) => {
 });
 
 // Mount route modules
-console.log('[DEBUG] Mounting routes...');
 app.route('/bubble-flow', bubbleFlowRoutes);
 app.route('/bubbleflow-template', bubbleFlowTemplateRoutes);
 app.route('/credentials', credentialRoutes);
-console.log('[DEBUG] Mounting OAuth routes...');
 app.route('/oauth', oauthRoutes);
 app.route('/webhook', webhookRoutes);
 app.route('/auth', authRoutes);
@@ -101,7 +89,6 @@ app.route('/join-waitlist', joinWaitlistRoutes);
 app.route('/ai', aiRoutes);
 app.route('/template-submission', templateSubmissionRoutes);
 app.route('/browserbase', browserbaseRoutes);
-console.log('[DEBUG] All routes mounted.');
 
 // OpenAPI documentation endpoint
 app.doc('/doc', {

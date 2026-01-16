@@ -20,7 +20,8 @@ import { useUIStore } from '../../stores/uiStore';
 import { useExecutionStore } from '../../stores/executionStore';
 import type { TabType } from '../../stores/liveOutputStore';
 import { extractStepGraph, type StepData } from '../../utils/workflowToSteps';
-import { BubbleExecutionCard, pairBubbleEvents } from './BubbleExecutionCard';
+import { BubbleExecutionCard } from './BubbleExecutionCard';
+import { pairBubbleEvents } from './pairBubbleEvents';
 
 interface AllEventsViewProps {
   orderedItems: Array<

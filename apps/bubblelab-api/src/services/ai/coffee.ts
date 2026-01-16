@@ -409,8 +409,6 @@ export async function runCoffee(
     // Create afterToolCall hook to stop agent after runBubbleFlow is validated
     const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
       if (context.toolName === ('runBubbleFlow' as unknown)) {
-        console.log('[Coffee] Post-hook: runBubbleFlow completed');
-
         // Check if the tool returned AWAITING_USER_INPUT status
         const toolOutput = context.toolOutput?.data as {
           status?: string;
@@ -418,9 +416,6 @@ export async function runCoffee(
         };
 
         if (toolOutput?.status === 'AWAITING_USER_INPUT') {
-          console.log(
-            '[Coffee] Post-hook: Context request validated, stopping agent execution'
-          );
           // Stop the agent - we need user input before continuing
           return { messages: context.messages, shouldStop: true };
         }
@@ -438,9 +433,6 @@ export async function runCoffee(
     while (parseAttempt <= COFFEE_MAX_PARSE_RETRIES) {
       // If this is a retry, append the parse error as feedback
       if (parseAttempt > 0 && lastParseError) {
-        console.log(
-          `[Coffee] Parse retry attempt ${parseAttempt}/${COFFEE_MAX_PARSE_RETRIES}`
-        );
         retryMessages.push({
           role: 'user',
           content: `[System]: Your previous response failed to parse. Error: ${lastParseError}\n\nPlease try again and ensure your response is valid JSON matching the expected schema.`,
@@ -502,11 +494,6 @@ export async function runCoffee(
                 ),
             }),
             func: async (input: Record<string, unknown>) => {
-              console.log('[Coffee] runBubbleFlow called:', {
-                purpose: input.purpose,
-                flowDescription: input.flowDescription,
-              });
-
               const flowCode = input.flowCode as string;
               const flowDescription = input.flowDescription as string;
 
@@ -586,10 +573,6 @@ export async function runCoffee(
       // Check if context request was triggered during tool execution
       // If so, return the context request response (the event was already sent)
       if (coffeeState.contextRequest) {
-        console.log(
-          '[Coffee] Context request triggered, awaiting user input:',
-          coffeeState.contextRequest.flowId
-        );
         return {
           type: 'context_request',
           contextRequest: coffeeState.contextRequest,
@@ -608,7 +591,6 @@ export async function runCoffee(
 
       // Parse the agent's JSON response
       const responseText = result.data.response;
-      console.log('[Coffee] Agent response:', responseText);
       // Handle array responses - take the last element if it's an array
       let finalResponseText = responseText;
       try {
@@ -621,10 +603,6 @@ export async function runCoffee(
             lastElement.text
           ) {
             finalResponseText = lastElement.text;
-            console.log(
-              '[Coffee] Extracted text from array response:',
-              finalResponseText
-            );
           }
         }
       } catch (e) {

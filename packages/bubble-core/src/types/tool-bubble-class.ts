@@ -57,16 +57,75 @@ export abstract class ToolBubble<
       );
     }
 
-    // Remove credentials from schema for agent use
-    // Remove config from schema for agent use
-    let agentSchema: z.ZodObject<any> = schema;
-    if (schema.shape?.credentials) {
-      agentSchema = schema.omit({ credentials: true });
+    // Remove credentials and config from schema for agent use
+    // Handle both ZodObject and ZodDiscriminatedUnion schemas
+    // For Gemini compatibility, convert discriminated unions to flat objects with enum
+    let agentSchema: z.ZodSchema;
+
+    if (schema instanceof z.ZodDiscriminatedUnion) {
+      // For discriminated unions, convert to a flat object for Gemini compatibility
+      // Discriminated unions produce "const" in JSON Schema which Gemini doesn't support
+      const discriminator = schema.discriminator;
+      const options = schema.options as z.ZodObject<z.ZodRawShape>[];
+
+      // Collect all discriminator values and merge all fields
+      const discriminatorValues: string[] = [];
+      const mergedShape: z.ZodRawShape = {};
+      const descriptions: Record<string, string> = {};
+
+      for (const option of options) {
+        const shape = option.shape;
+
+        // Extract discriminator literal value
+        const discriminatorField = shape[discriminator];
+        if (discriminatorField instanceof z.ZodLiteral) {
+          discriminatorValues.push(discriminatorField.value as string);
+        }
+
+        // Merge all other fields (make them optional since they're operation-specific)
+        for (const [key, fieldSchema] of Object.entries(shape)) {
+          if (
+            key === discriminator ||
+            key === 'credentials' ||
+            key === 'config'
+          )
+            continue;
+          if (!mergedShape[key]) {
+            // Make the field optional since it's only required for certain operations
+            const zodField = fieldSchema as z.ZodTypeAny;
+            mergedShape[key] = zodField.isOptional()
+              ? zodField
+              : zodField.optional();
+            // Preserve description if available
+            if (zodField.description) {
+              descriptions[key] = zodField.description;
+            }
+          }
+        }
+      }
+
+      // Build the flat schema with enum for discriminator
+      const flatShape: z.ZodRawShape = {
+        [discriminator]: z
+          .enum(discriminatorValues as [string, ...string[]])
+          .describe(
+            `Operation to perform. One of: ${discriminatorValues.join(', ')}`
+          ),
+        ...mergedShape,
+      };
+
+      agentSchema = z.object(flatShape).passthrough();
+    } else {
+      // For regular ZodObject schemas
+      let objectSchema = schema as z.ZodObject<z.ZodRawShape>;
+      if (objectSchema.shape?.credentials) {
+        objectSchema = objectSchema.omit({ credentials: true });
+      }
+      if (objectSchema.shape?.config) {
+        objectSchema = objectSchema.omit({ config: true });
+      }
+      agentSchema = objectSchema.passthrough();
     }
-    if (agentSchema.shape?.config) {
-      agentSchema = agentSchema.omit({ config: true });
-    }
-    agentSchema = agentSchema.passthrough();
 
     return {
       name: bubbleName,

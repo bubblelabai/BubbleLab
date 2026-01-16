@@ -339,8 +339,6 @@ export async function runPearl(
 
       const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
         if (context.toolName === ('editWorkflow' as AvailableTool)) {
-          console.log('[Pearl] Post-hook: editWorkflow result');
-
           try {
             const editResult = context.toolOutput?.data as {
               mergedCode?: string;
@@ -442,10 +440,6 @@ export async function runPearl(
 
             console.debug(
               '[Pearl] Edit applied, validation failed, will retry'
-            );
-            console.log(
-              '[Pearl] Validation errors:',
-              editResult.validationResult?.errors
             );
           } catch (error) {
             console.warn('[Pearl] Failed to parse edit result:', error);
@@ -587,7 +581,6 @@ export async function runPearl(
       let agentOutput: PearlAgentOutput;
       const responseText = result.data?.response || '';
       try {
-        console.log('[Pearl] Agent response:', responseText);
         // Try to parse as object first, then as array (take first element)
         let parsedResponse = JSON.parse(responseText);
         if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {

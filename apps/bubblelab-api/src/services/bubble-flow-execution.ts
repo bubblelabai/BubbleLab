@@ -228,10 +228,8 @@ async function runEvaluationIfNeeded(
   try {
     // Check if we should evaluate
     const evalTrigger = await shouldEvaluateExecution(bubbleFlowId, true);
-    console.log('[Evaluation] Trigger result:', evalTrigger);
 
     if (!evalTrigger.shouldEvaluate) {
-      console.log('[Evaluation] Skipping evaluation:', evalTrigger.reason);
       return;
     }
 
@@ -255,8 +253,6 @@ async function runEvaluationIfNeeded(
       [CredentialType.GOOGLE_GEMINI_CRED]: env.GOOGLE_API_KEY || '',
       [CredentialType.OPENROUTER_CRED]: env.OPENROUTER_API_KEY || '',
     });
-
-    console.log('[Evaluation] Rice result:', riceResult);
 
     if (riceResult.success && riceResult.evaluation) {
       // Store evaluation result (execution logs are stored in the execution record)

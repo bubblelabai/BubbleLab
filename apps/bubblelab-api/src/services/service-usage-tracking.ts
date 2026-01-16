@@ -27,12 +27,7 @@ export async function getTotalServiceCostForUser(
   const monthYear = userCreatedAt
     ? getCurrentMonthYearBillingCycle(userCreatedAt.createdAt)
     : getCurrentMonthYear();
-  console.log(
-    '[getTotalServiceUsageForUser] Month year:',
-    monthYear,
-    ' user created at:',
-    userCreatedAt.createdAt
-  );
+
   const whereConditions = [
     eq(userServiceUsage.userId, userId),
     eq(userServiceUsage.monthYear, monthYear),

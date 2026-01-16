@@ -53,8 +53,6 @@ app.openapi(webhookRoute, async (c) => {
   // Check if this is a Slack URL verification request
   const urlVerification = slackUrlVerificationSchema.safeParse(requestBody);
   if (urlVerification.success) {
-    console.log(`🔗 Slack URL verification for webhook: ${userId}/${path}`);
-
     // Activate the webhook if it exists but isn't active
     const webhookForActivation = await db.query.webhooks.findFirst({
       where: (webhooks, { eq, and }) =>
@@ -62,7 +60,6 @@ app.openapi(webhookRoute, async (c) => {
     });
 
     if (webhookForActivation && !webhookForActivation.isActive) {
-      console.log(`🟢 Activating webhook: ${userId}/${path}`);
       await db
         .update(webhooks)
         .set({ isActive: true })
@@ -114,18 +111,6 @@ app.openapi(webhookRoute, async (c) => {
     c.req.header()
   );
 
-  console.log(
-    `🔗 Webhook triggered: ${userId}/${path} -> BubbleFlow ID ${webhook.bubbleFlowId}`
-  );
-  console.log(`📦 Event type: ${webhook.bubbleFlow.eventType}`);
-  console.log(`📦 Original body keys: ${Object.keys(requestBody).join(', ')}`);
-  console.log(
-    `📦 Transformed payload keys: ${Object.keys(webhookPayload).join(', ')}`
-  );
-  console.log(
-    `📦 Transformed payload: ${JSON.stringify(webhookPayload, null, 2)}`
-  );
-
   // For Slack events, return 200 immediately and process asynchronously
   const isSlackEvent = webhook.bubbleFlow.eventType.startsWith('slack/');
 
@@ -135,11 +120,8 @@ app.openapi(webhookRoute, async (c) => {
       userId,
       pricingTable: getPricingTable(),
     })
-      .then((result) => {
-        console.log(
-          `✅ Slack event processed asynchronously for ${userId}/${path}:`,
-          result.success ? 'Success' : `Failed - ${result.error}`
-        );
+      .then(() => {
+        // Slack event processed asynchronously
       })
       .catch((error) => {
         console.error(
