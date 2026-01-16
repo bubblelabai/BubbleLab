@@ -512,7 +512,10 @@ export class BrowserBaseBubble<
 
     if (params.wait_for_navigation) {
       await Promise.all([
-        session.page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        session.page.waitForNavigation({
+          waitUntil: 'domcontentloaded',
+          timeout: params.timeout,
+        }),
         session.page.click(params.selector),
       ]);
     } else {

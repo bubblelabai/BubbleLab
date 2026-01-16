@@ -18,6 +18,16 @@ import {
   type ProductDetails,
 } from './amazon-shopping-tool.schema.js';
 
+// Debug logging helper - only logs when ENABLE_DEBUG_LOGS env var is set
+const DEBUG =
+  process.env.ENABLE_DEBUG_LOGS === 'true' ||
+  process.env.ENABLE_DEBUG_LOGS === '1';
+function debugLog(...args: unknown[]): void {
+  if (DEBUG) {
+    console.log(...args);
+  }
+}
+
 /**
  * Amazon Shopping Tool
  *
@@ -169,8 +179,8 @@ export class AmazonShoppingTool<
    * Extracts contextId and cookies from AMAZON_CRED and passes them explicitly
    */
   private async startBrowserSession(): Promise<string> {
-    console.log('[AmazonShoppingTool] Starting browser session');
-    console.log('[AmazonShoppingTool] Session ID:', this.sessionId);
+    debugLog('[AmazonShoppingTool] Starting browser session');
+    debugLog('[AmazonShoppingTool] Session ID:', this.sessionId);
     if (this.sessionId) {
       return this.sessionId;
     }
@@ -180,11 +190,11 @@ export class AmazonShoppingTool<
     if (sessionData) {
       this.contextId = sessionData.contextId;
       this.cookies = sessionData.cookies;
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Loaded session data: contextId=${this.contextId}, cookies=${this.cookies.length}`
       );
     } else {
-      console.log(
+      debugLog(
         '[AmazonShoppingTool] No AMAZON_CRED found, creating new context'
       );
     }
@@ -212,7 +222,7 @@ export class AmazonShoppingTool<
     if (result.data.context_id) {
       this.contextId = result.data.context_id;
     }
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Browser session started: ${this.sessionId}, context: ${this.contextId}`
     );
 
@@ -247,9 +257,7 @@ export class AmazonShoppingTool<
       );
 
       await browserBase.action();
-      console.log(
-        `[AmazonShoppingTool] Browser session ended: ${sessionIdToEnd}`
-      );
+      debugLog(`[AmazonShoppingTool] Browser session ended: ${sessionIdToEnd}`);
     } catch (error) {
       console.error('[AmazonShoppingTool] Error ending session:', error);
     } finally {
@@ -402,7 +410,7 @@ export class AmazonShoppingTool<
     }
 
     try {
-      console.log(`[AmazonShoppingTool] Taking screenshot: ${label}`);
+      debugLog(`[AmazonShoppingTool] Taking screenshot: ${label}`);
 
       // Take screenshot using BrowserBase
       const browserBase = new BrowserBaseBubble(
@@ -426,7 +434,7 @@ export class AmazonShoppingTool<
       }
 
       const base64Data = screenshotResult.data.data;
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Screenshot captured, size: ${base64Data.length} chars`
       );
 
@@ -455,7 +463,7 @@ export class AmazonShoppingTool<
         return null;
       }
 
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Screenshot uploaded: ${uploadResult.data.fileName}`
       );
 
@@ -480,7 +488,7 @@ export class AmazonShoppingTool<
         return null;
       }
 
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Screenshot URL generated: ${fileResult.data.downloadUrl.substring(0, 80)}...`
       );
       return fileResult.data.downloadUrl;
@@ -573,17 +581,16 @@ export class AmazonShoppingTool<
     const asin = this.extractAsin(params.product_url);
     const productUrl = this.buildProductUrl(asin);
 
-    console.log(`[AmazonShoppingTool] Adding to cart: ${asin}`);
+    debugLog(`[AmazonShoppingTool] Adding to cart: ${asin}`);
 
     // Navigate to product page
     await this.navigateTo(productUrl);
 
     // Wait for and click Add to Cart button
     const addToCartSelectors = [
-      '#add-to-cart-button',
-      '#add-to-cart-button-ubb',
-      'input[name="submit.add-to-cart"]',
       '#submit\\.add-to-cart',
+      '#add-to-cart-button',
+      'input[name="submit.add-to-cart"]',
     ];
 
     let clicked = false;
@@ -591,22 +598,169 @@ export class AmazonShoppingTool<
       const exists = await this.waitForSelector(selector, 2000);
       if (exists) {
         clicked = await this.clickElement(selector, true);
-        if (clicked) break;
+        break;
       }
     }
 
-    if (!clicked) {
-      return {
-        operation: 'add_to_cart',
-        success: false,
-        error: 'Could not find Add to Cart button. Product may be unavailable.',
-      };
-    }
-
-    // Wait a moment for cart to update
+    // Wait a moment for any modal/popup to appear
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // Try to get cart count
+    // Handle protection plan modal - click "No thanks" if it appears
+    // This modal asks "Add to your order" with protection plan options
+    // Try multiple times as modal may take time to fully render
+    debugLog('[AmazonShoppingTool] Checking for protection plan modal...');
+
+    // First, try to click using BrowserBase click operation with selector
+    // This handles Amazon's dynamically rendered modals better
+    // The attachSiNoCoverage button is in the side sheet (NOT in a-popover-preload)
+    const noThanksSelectors = [
+      '#attachSiNoCoverage',
+      '#attachSiNoCoverage input',
+      '#attachSiNoCoverage-ld',
+      '#attachSiNoCoverage-ld input',
+      '#attachSiNoCoverage-eu-enhanced',
+      '#attachSiNoCoverage-eu-enhanced input',
+      '.a-popover-wrapper .mbb__no button',
+      '.a-sheet-content .mbb__no button',
+    ];
+
+    for (const selector of noThanksSelectors) {
+      try {
+        const selectorClicked = await this.clickElement(selector, false);
+        if (selectorClicked) {
+          debugLog(
+            `[AmazonShoppingTool] Clicked No Thanks via selector: ${selector}`
+          );
+          clicked = true;
+          // Wait for navigation after dismissing modal
+          debugLog(
+            '[AmazonShoppingTool] Waiting for navigation after No Thanks click...'
+          );
+          try {
+            await this.waitForNavigation(5000);
+            debugLog(
+              '[AmazonShoppingTool] Navigation complete after No Thanks'
+            );
+          } catch {
+            debugLog(
+              '[AmazonShoppingTool] Navigation wait completed or timed out'
+            );
+          }
+          break;
+        }
+      } catch (err) {
+        // Selector not found or error during click, continue
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        if (errorMsg.includes('navigation') || errorMsg.includes('context')) {
+          // Navigation happened, which means click succeeded
+          debugLog('[AmazonShoppingTool] Click caused navigation (success)');
+          clicked = true;
+          break;
+        }
+      }
+    }
+
+    // If selector-based click didn't work, try evaluate-based approach
+    if (!clicked) {
+      const noThanksResult = (await this.evaluate(`
+      (() => {
+        // Helper function to check if element is truly visible (not in preload/hidden containers)
+        function isElementVisible(el) {
+          // Check if inside a-popover-preload (hidden preload content)
+          if (el.closest('.a-popover-preload')) {
+            return false;
+          }
+          // Check computed style
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+            return false;
+          }
+          // Check bounding rect
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }
+
+        // First try: Look for attachSiNoCoverage buttons (the visible side sheet buttons)
+        const attachSiButtons = ['#attachSiNoCoverage', '#attachSiNoCoverage-ld', '#attachSiNoCoverage-eu-enhanced'];
+        for (const id of attachSiButtons) {
+          const btn = document.querySelector(id);
+          if (btn && isElementVisible(btn)) {
+            console.log('[Debug] Clicking attachSi button:', id);
+            btn.click();
+            return { clicked: true, text: 'No thanks', method: 'attachSi' };
+          }
+        }
+
+        // Second try: Look for visible mbb__no buttons (not in preload)
+        const mbbNoButtons = document.querySelectorAll('.mbb__no button, span.mbb__no');
+        console.log('[Debug] Found mbb__no elements:', mbbNoButtons.length);
+        for (const btn of mbbNoButtons) {
+          if (isElementVisible(btn)) {
+            console.log('[Debug] Clicking visible mbb__no button:', btn.textContent?.trim());
+            btn.click();
+            return { clicked: true, text: btn.textContent?.trim() || 'mbb__no', method: 'mbb__no' };
+          }
+        }
+
+        // Third try: Look for visible "No thanks" text buttons (not in preload)
+        const allButtons = document.querySelectorAll('button, input[type="submit"], a, span[role="button"]');
+        for (const btn of allButtons) {
+          const text = (btn.value || btn.innerText || btn.textContent || '').trim().toLowerCase();
+          if (text === 'no thanks' || text === 'no, thanks') {
+            if (isElementVisible(btn)) {
+              console.log('[Debug] Clicking visible no thanks button:', text);
+              btn.click();
+              return { clicked: true, text: text, method: 'text-match' };
+            }
+          }
+        }
+
+        // Log debug info about what we found
+        const preloadCount = document.querySelectorAll('.a-popover-preload .mbb__no').length;
+        const attachSiExists = document.querySelector('#attachSiNoCoverage') ? 'yes' : 'no';
+        console.log('[Debug] attachSiNoCoverage exists:', attachSiExists);
+        console.log('[Debug] mbb__no in preload (hidden):', preloadCount);
+        console.log('[Debug] No visible No Thanks button found');
+        return { clicked: false };
+      })()
+    `)) as { clicked: boolean; text?: string; method?: string };
+
+      if (noThanksResult.clicked) {
+        clicked = true;
+        debugLog(
+          `[AmazonShoppingTool] Dismissed protection plan modal by clicking "${noThanksResult.text}" (method: ${noThanksResult.method})`
+        );
+        // Wait for navigation after dismissing modal
+        debugLog('[AmazonShoppingTool] Waiting for navigation...');
+        try {
+          await this.waitForNavigation(4000);
+          debugLog('[AmazonShoppingTool] Navigation complete after No thanks');
+        } catch {
+          debugLog(
+            '[AmazonShoppingTool] Navigation wait timed out, continuing...'
+          );
+        }
+      } else {
+        debugLog(
+          '[AmazonShoppingTool] No protection plan modal detected (via evaluate)'
+        );
+      }
+    } // Close if (!clicked) block
+
+    // Debug: Save current page state for inspection (may fail after navigation)
+    try {
+      const currentUrl = await this.getCurrentUrl();
+      debugLog(
+        `[AmazonShoppingTool] Current URL after add to cart: ${currentUrl}`
+      );
+      await this.saveDebugState('add-to-cart-after');
+    } catch (err) {
+      debugLog(
+        '[AmazonShoppingTool] Could not save debug state (page may have navigated)'
+      );
+    }
+
+    // Try to get cart count (may fail after navigation)
     let cartCount: number | undefined;
     try {
       const countResult = (await this.evaluate(`
@@ -621,7 +775,18 @@ export class AmazonShoppingTool<
       `)) as number;
       cartCount = countResult;
     } catch {
-      // Cart count is optional
+      // Cart count is optional, may fail if page navigated
+      debugLog(
+        '[AmazonShoppingTool] Could not get cart count (page may have navigated)'
+      );
+    }
+
+    if (!clicked) {
+      return {
+        operation: 'add_to_cart',
+        success: false,
+        error: 'Could not find Add to Cart button. Product may be unavailable.',
+      };
     }
 
     return {
@@ -639,7 +804,7 @@ export class AmazonShoppingTool<
   private async getCart(): Promise<
     Extract<AmazonShoppingToolResult, { operation: 'get_cart' }>
   > {
-    console.log('[AmazonShoppingTool] Getting cart contents');
+    debugLog('[AmazonShoppingTool] Getting cart contents');
 
     // Navigate to cart page
     await this.navigateTo('https://www.amazon.com/gp/cart/view.html');
@@ -708,10 +873,10 @@ export class AmazonShoppingTool<
   private async checkout(): Promise<
     Extract<AmazonShoppingToolResult, { operation: 'checkout' }>
   > {
-    console.log('[AmazonShoppingTool] Starting checkout');
+    debugLog('[AmazonShoppingTool] Starting checkout');
 
     // Step 1: Go to cart
-    console.log('[AmazonShoppingTool] Step 1: Loading cart...');
+    debugLog('[AmazonShoppingTool] Step 1: Loading cart...');
     await this.navigateTo('https://www.amazon.com/gp/cart/view.html');
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -719,7 +884,7 @@ export class AmazonShoppingTool<
     const cartItemCount = (await this.evaluate(`
       document.querySelectorAll('[data-asin]:not([data-asin=""])').length
     `)) as number;
-    console.log(`[AmazonShoppingTool] Found ${cartItemCount} items in cart`);
+    debugLog(`[AmazonShoppingTool] Found ${cartItemCount} items in cart`);
 
     if (cartItemCount === 0) {
       return {
@@ -730,7 +895,7 @@ export class AmazonShoppingTool<
     }
 
     // Step 2: Click proceed to checkout
-    console.log('[AmazonShoppingTool] Step 2: Looking for checkout button...');
+    debugLog('[AmazonShoppingTool] Step 2: Looking for checkout button...');
     const checkoutClickResult = (await this.evaluate(`
       (() => {
         // Prioritize input/button over span/a - input.value is the actual clickable form element
@@ -761,13 +926,13 @@ export class AmazonShoppingTool<
         error: 'Could not find checkout button',
       };
     }
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Clicked Proceed to checkout: <${checkoutClickResult.tag} class="${checkoutClickResult.className}">${checkoutClickResult.text}`
     );
 
     await new Promise((resolve) => setTimeout(resolve, 5000));
     let currentUrl = await this.getCurrentUrl();
-    console.log(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
+    debugLog(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
 
     // Check for sign-in redirect
     if (currentUrl.includes('/ap/signin')) {
@@ -779,7 +944,7 @@ export class AmazonShoppingTool<
     }
 
     // Step 2.5: Handle "Continue to checkout" intermediate screen (BYG page)
-    console.log(
+    debugLog(
       '[AmazonShoppingTool] Step 2.5: Checking for Continue to checkout screen...'
     );
 
@@ -806,16 +971,16 @@ export class AmazonShoppingTool<
     };
 
     if (continueClickResult.clicked) {
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Clicked Continue to checkout: <${continueClickResult.tag} class="${continueClickResult.className}">${continueClickResult.text}`
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
       currentUrl = await this.getCurrentUrl();
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] After Continue to checkout URL: ${currentUrl}`
       );
     } else {
-      console.log(
+      debugLog(
         '[AmazonShoppingTool] No Continue to checkout button found, continuing...'
       );
     }
@@ -830,13 +995,11 @@ export class AmazonShoppingTool<
     }
 
     // Step 3: Navigate through checkout steps (up to 5 pages: address, payment, review, etc.)
-    console.log('[AmazonShoppingTool] Step 3: Navigating checkout steps...');
+    debugLog('[AmazonShoppingTool] Step 3: Navigating checkout steps...');
 
     for (let attempt = 1; attempt <= 5; attempt++) {
       currentUrl = await this.getCurrentUrl();
-      console.log(
-        `[AmazonShoppingTool] Step 3.${attempt}: URL = ${currentUrl}`
-      );
+      debugLog(`[AmazonShoppingTool] Step 3.${attempt}: URL = ${currentUrl}`);
 
       // Check for sign-in redirect
       if (currentUrl.includes('/ap/signin')) {
@@ -871,16 +1034,16 @@ export class AmazonShoppingTool<
       };
 
       if (placeOrderResult.clicked) {
-        console.log(
+        debugLog(
           `[AmazonShoppingTool] Clicked Place Order: <${placeOrderResult.tag} class="${placeOrderResult.className}">${placeOrderResult.text}`
         );
         // Wait for navigation to confirmation page
-        console.log('[AmazonShoppingTool] Waiting for navigation...');
+        debugLog('[AmazonShoppingTool] Waiting for navigation...');
         try {
           await this.waitForNavigation(15000);
-          console.log('[AmazonShoppingTool] Navigation complete');
+          debugLog('[AmazonShoppingTool] Navigation complete');
         } catch {
-          console.log(
+          debugLog(
             '[AmazonShoppingTool] Navigation wait timed out, continuing...'
           );
         }
@@ -911,12 +1074,12 @@ export class AmazonShoppingTool<
       };
 
       if (continueResult.clicked) {
-        console.log(
+        debugLog(
           `[AmazonShoppingTool] Clicked Continue: <${continueResult.tag} class="${continueResult.className}">${continueResult.text}`
         );
         await new Promise((resolve) => setTimeout(resolve, 4000));
       } else {
-        console.log(
+        debugLog(
           '[AmazonShoppingTool] No actionable button found, moving to confirmation check...'
         );
         break;
@@ -924,12 +1087,12 @@ export class AmazonShoppingTool<
     }
 
     // Step 4: Handle duplicate order warning
-    console.log('[AmazonShoppingTool] Step 4: Checking page state...');
+    debugLog('[AmazonShoppingTool] Step 4: Checking page state...');
     currentUrl = await this.getCurrentUrl();
-    console.log(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
+    debugLog(`[AmazonShoppingTool] Current URL: ${currentUrl}`);
 
     if (currentUrl.includes('duplicateOrder')) {
-      console.log(
+      debugLog(
         '[AmazonShoppingTool] Detected duplicate order warning - clicking Place Order again...'
       );
       const duplicateResult = (await this.evaluate(`
@@ -955,15 +1118,15 @@ export class AmazonShoppingTool<
       };
 
       if (duplicateResult.clicked) {
-        console.log(
+        debugLog(
           `[AmazonShoppingTool] Clicked Place Order to confirm duplicate: <${duplicateResult.tag} class="${duplicateResult.className}">${duplicateResult.text}`
         );
-        console.log('[AmazonShoppingTool] Waiting for navigation...');
+        debugLog('[AmazonShoppingTool] Waiting for navigation...');
         try {
           await this.waitForNavigation(15000);
-          console.log('[AmazonShoppingTool] Navigation complete');
+          debugLog('[AmazonShoppingTool] Navigation complete');
         } catch {
-          console.log(
+          debugLog(
             '[AmazonShoppingTool] Navigation wait timed out, continuing...'
           );
         }
@@ -971,33 +1134,31 @@ export class AmazonShoppingTool<
     }
 
     // Step 5: Check for confirmation
-    console.log(
-      '[AmazonShoppingTool] Step 5: Checking for order confirmation...'
-    );
+    debugLog('[AmazonShoppingTool] Step 5: Checking for order confirmation...');
     let finalUrl = await this.getCurrentUrl();
-    console.log(`[AmazonShoppingTool] Current URL: ${finalUrl}`);
+    debugLog(`[AmazonShoppingTool] Current URL: ${finalUrl}`);
 
     // If on intermediate page (payment verification, etc.), wait for another navigation
     if (finalUrl.includes('/cpe/') || finalUrl.includes('executions')) {
-      console.log(
+      debugLog(
         '[AmazonShoppingTool] On intermediate page, waiting for redirect...'
       );
       try {
         await this.waitForNavigation(30000);
         finalUrl = await this.getCurrentUrl();
-        console.log(`[AmazonShoppingTool] After redirect URL: ${finalUrl}`);
+        debugLog(`[AmazonShoppingTool] After redirect URL: ${finalUrl}`);
       } catch {
-        console.log('[AmazonShoppingTool] No further redirect, continuing...');
+        debugLog('[AmazonShoppingTool] No further redirect, continuing...');
       }
     }
 
-    console.log(`[AmazonShoppingTool] Final URL: ${finalUrl}`);
+    debugLog(`[AmazonShoppingTool] Final URL: ${finalUrl}`);
 
     // Extract order number from URL if available (purchaseId parameter)
     const urlOrderMatch = finalUrl.match(/purchaseId=(\d{3}-\d{7}-\d{7})/);
     const orderNumberFromUrl = urlOrderMatch?.[1];
     if (orderNumberFromUrl) {
-      console.log(
+      debugLog(
         `[AmazonShoppingTool] Order number from URL: ${orderNumberFromUrl}`
       );
     }
@@ -1008,7 +1169,7 @@ export class AmazonShoppingTool<
       finalUrl.includes('order-details') ||
       finalUrl.includes('your-orders') ||
       finalUrl.includes('gp/buy/thankyou');
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] URL indicates confirmation: ${isConfirmationUrl}`
     );
 
@@ -1103,32 +1264,30 @@ export class AmazonShoppingTool<
       items?: Array<{ title: string; price: string; quantity?: number }>;
     };
 
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Success indicators: orderPlaced=${confirmInfo.hasOrderPlaced}, thankYou=${confirmInfo.hasThankYou}, confirmed=${confirmInfo.hasConfirmed}, onItsWay=${confirmInfo.hasOnItsWay}, hasOrderNumber=${confirmInfo.hasOrderNumber}`
     );
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Order number: ${confirmInfo.orderNumber || 'not found'}`
     );
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Delivery: ${confirmInfo.deliveryDate || 'not found'}`
     );
-    console.log(
-      `[AmazonShoppingTool] Total: ${confirmInfo.total || 'not found'}`
-    );
-    console.log(
+    debugLog(`[AmazonShoppingTool] Total: ${confirmInfo.total || 'not found'}`);
+    debugLog(
       `[AmazonShoppingTool] Subtotal: ${confirmInfo.subtotal || 'not found'}`
     );
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Shipping: ${confirmInfo.shippingCost || 'not found'}`
     );
-    console.log(`[AmazonShoppingTool] Tax: ${confirmInfo.tax || 'not found'}`);
-    console.log(
+    debugLog(`[AmazonShoppingTool] Tax: ${confirmInfo.tax || 'not found'}`);
+    debugLog(
       `[AmazonShoppingTool] Address: ${confirmInfo.address || 'not found'}`
     );
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Payment: ${confirmInfo.paymentMethod || 'not found'}`
     );
-    console.log(
+    debugLog(
       `[AmazonShoppingTool] Items: ${confirmInfo.items?.length || 0} found`
     );
 
@@ -1137,7 +1296,7 @@ export class AmazonShoppingTool<
 
     // If URL indicates success OR text indicates success, consider it successful
     if (!confirmInfo.isSuccess && !isConfirmationUrl) {
-      console.log('[AmazonShoppingTool] ERROR: No success indicators found');
+      debugLog('[AmazonShoppingTool] ERROR: No success indicators found');
       return {
         operation: 'checkout',
         success: false,
@@ -1145,7 +1304,7 @@ export class AmazonShoppingTool<
       };
     }
 
-    console.log('[AmazonShoppingTool] SUCCESS: Order confirmed!');
+    debugLog('[AmazonShoppingTool] SUCCESS: Order confirmed!');
 
     // Take confirmation screenshot of the order
     const screenshotUrl = await this.takeScreenshotAndUpload(
@@ -1172,8 +1331,14 @@ export class AmazonShoppingTool<
 
   /**
    * Save current DOM state to file for debugging
+   * Only saves when DEBUG env var is set
    */
   private async saveDebugState(label: string): Promise<string | null> {
+    // Skip saving if DEBUG is not enabled
+    if (!DEBUG) {
+      return null;
+    }
+
     try {
       const fs = await import('fs/promises');
       const htmlContent = (await this.evaluate(
@@ -1186,7 +1351,7 @@ export class AmazonShoppingTool<
       // Add URL as comment at top of file
       const contentWithUrl = `<!-- URL: ${currentUrl} -->\n${htmlContent}`;
       await fs.writeFile(debugPath, contentWithUrl);
-      console.log(`[AmazonShoppingTool] Saved debug DOM to: ${debugPath}`);
+      debugLog(`[AmazonShoppingTool] Saved debug DOM to: ${debugPath}`);
       return debugPath;
     } catch (e) {
       console.error('[AmazonShoppingTool] Failed to save debug state:', e);
@@ -1200,13 +1365,13 @@ export class AmazonShoppingTool<
   private async searchProducts(
     params: Extract<AmazonShoppingToolParams, { operation: 'search' }>
   ): Promise<Extract<AmazonShoppingToolResult, { operation: 'search' }>> {
-    console.log(`[AmazonShoppingTool] Searching for: ${params.query}`);
+    debugLog(`[AmazonShoppingTool] Searching for: ${params.query}`);
 
     const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(params.query)}`;
     await this.navigateTo(searchUrl);
 
     // Wait for results
-    await this.waitForSelector('[data-component-type="s-search-result"]', 5000);
+    await this.waitForSelector('[data-component-type="s-search-result"]', 7000);
 
     const maxResults = params.max_results || 5;
 
@@ -1269,7 +1434,7 @@ export class AmazonShoppingTool<
     const asin = this.extractAsin(params.product_url);
     const productUrl = this.buildProductUrl(asin);
 
-    console.log(`[AmazonShoppingTool] Getting product details: ${asin}`);
+    debugLog(`[AmazonShoppingTool] Getting product details: ${asin}`);
 
     await this.navigateTo(productUrl);
 
@@ -1329,11 +1494,11 @@ export class AmazonShoppingTool<
   private async takeScreenshot(
     params: Extract<AmazonShoppingToolParams, { operation: 'screenshot' }>
   ): Promise<Extract<AmazonShoppingToolResult, { operation: 'screenshot' }>> {
-    console.log('[AmazonShoppingTool] Screenshot operation');
+    debugLog('[AmazonShoppingTool] Screenshot operation');
 
     // Navigate to URL if provided
     if (params.url) {
-      console.log(`[AmazonShoppingTool] Navigating to: ${params.url}`);
+      debugLog(`[AmazonShoppingTool] Navigating to: ${params.url}`);
       await this.navigateTo(params.url);
       // Wait for page to load
       await new Promise((resolve) => setTimeout(resolve, 2000));
