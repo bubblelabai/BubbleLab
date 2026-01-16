@@ -100,6 +100,31 @@ export class CredentialHelper {
               // Ignore and let it fall through to skip
             }
           }
+        } else if (encryptedCred.isBrowserSession) {
+          // Browser session credential - build base64-encoded JSON with contextId and decrypted cookies
+          // Base64 encoding avoids JSON escaping issues when injecting into generated code
+          if (encryptedCred.browserbaseContextId) {
+            let cookies: unknown[] = [];
+            if (encryptedCred.browserbaseCookies) {
+              try {
+                const decryptedCookies = await CredentialEncryption.decrypt(
+                  encryptedCred.browserbaseCookies
+                );
+                cookies = JSON.parse(decryptedCookies);
+              } catch (e) {
+                console.warn(
+                  `Failed to decrypt cookies for credential ${encryptedCred.id}:`,
+                  e
+                );
+              }
+            }
+            // Build the session data payload as base64-encoded JSON
+            const jsonPayload = JSON.stringify({
+              contextId: encryptedCred.browserbaseContextId,
+              cookies,
+            });
+            resolvedSecret = Buffer.from(jsonPayload).toString('base64');
+          }
         } else if (encryptedCred.encryptedValue) {
           resolvedSecret = await CredentialEncryption.decrypt(
             encryptedCred.encryptedValue

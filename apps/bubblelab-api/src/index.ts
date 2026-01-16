@@ -48,6 +48,7 @@ import joinWaitlistRoutes from './routes/join-waitlist.js';
 import { startCronScheduler } from './services/cron-scheduler.js';
 import aiRoutes from './routes/ai.js';
 import templateSubmissionRoutes from './routes/template-submission.js';
+import browserbaseRoutes from './routes/browserbase.js';
 import { getBubbleFactory } from './services/bubble-factory-instance.js';
 
 const app = new OpenAPIHono({
@@ -72,6 +73,7 @@ app.use('/oauth/:provider/revoke/*', authMiddleware);
 app.use('/auth/*', authMiddleware);
 app.use('/execute-bubble-flow/*', authMiddleware);
 app.use('/ai/*', authMiddleware);
+app.use('/browserbase/*', authMiddleware);
 
 // Note: webhook and execute-bubble-flow routes will handle verification internally
 // They don't need auth middleware since they use their own authentication
@@ -98,6 +100,7 @@ app.route('/subscription', subscriptionRoutes);
 app.route('/join-waitlist', joinWaitlistRoutes);
 app.route('/ai', aiRoutes);
 app.route('/template-submission', templateSubmissionRoutes);
+app.route('/browserbase', browserbaseRoutes);
 console.log('[DEBUG] All routes mounted.');
 
 // OpenAPI documentation endpoint

@@ -74,6 +74,16 @@ export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';
 export type { InsForgeDbParamsInput } from './bubbles/service-bubble/insforge-db.js';
+export {
+  BrowserBaseBubble,
+  BrowserBaseParamsSchema,
+  BrowserBaseResultSchema,
+  type BrowserBaseParams,
+  type BrowserBaseParamsInput,
+  type BrowserBaseResult,
+  type CDPCookie,
+  type BrowserSessionData,
+} from './bubbles/service-bubble/browserbase/index.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
@@ -112,6 +122,17 @@ export type {
   YouTubeVideo,
   YouTubeTranscriptSegment,
 } from './bubbles/tool-bubble/youtube-tool.js';
+export {
+  AmazonShoppingTool,
+  AmazonShoppingToolParamsSchema,
+  AmazonShoppingToolResultSchema,
+  type AmazonShoppingToolParams,
+  type AmazonShoppingToolParamsInput,
+  type AmazonShoppingToolResult,
+  type CartItem,
+  type SearchResult,
+  type ProductDetails,
+} from './bubbles/tool-bubble/amazon-shopping-tool/index.js';
 
 // Export factory (this is the main way to access bubbles)
 export {

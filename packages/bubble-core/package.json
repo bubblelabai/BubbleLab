@@ -54,6 +54,7 @@
     "chart.js": "^4.5.0",
     "chartjs-node-canvas": "^5.0.0",
     "pg": "^8.16.3",
+    "puppeteer-core": "^24.10.0",
     "resend": "^4.8.0",
     "zod": "^3.24.1",
     "zod-to-json-schema": "^3.24.6"

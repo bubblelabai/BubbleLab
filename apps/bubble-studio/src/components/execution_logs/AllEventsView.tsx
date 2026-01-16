@@ -8,6 +8,7 @@ import {
   Circle,
   ChevronDown,
   ChevronRight,
+  Workflow,
 } from 'lucide-react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
@@ -19,6 +20,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { useExecutionStore } from '../../stores/executionStore';
 import type { TabType } from '../../stores/liveOutputStore';
 import { extractStepGraph, type StepData } from '../../utils/workflowToSteps';
+import { BubbleExecutionCard, pairBubbleEvents } from './BubbleExecutionCard';
 
 interface AllEventsViewProps {
   orderedItems: Array<
@@ -88,6 +90,7 @@ export default function AllEventsView({
     bubbleResults,
     isEvaluating,
     evaluationResult,
+    activeBrowserSession,
   } = executionState;
 
   const eventsEndRef = useRef<HTMLDivElement>(null);
@@ -99,6 +102,14 @@ export default function AllEventsView({
   const [expandedBubbles, setExpandedBubbles] = useState<Set<string>>(
     new Set()
   );
+
+  // View mode: 'unified' shows input/output together, 'timeline' shows original slider view
+  const [viewMode, setViewMode] = useState<'unified' | 'timeline'>('unified');
+
+  // Memoized paired executions for unified view
+  const pairedExecutions = useMemo(() => {
+    return pairBubbleEvents(events, bubbleParameters);
+  }, [events, bubbleParameters]);
 
   const toggleBubbleExpansion = (bubbleId: string) => {
     setExpandedBubbles((prev) => {
@@ -687,7 +698,7 @@ export default function AllEventsView({
         className="flex-1 overflow-y-auto thin-scrollbar"
       >
         {(() => {
-          // Handle Results tab - show ALL global events chronologically
+          // Handle Results tab - show ALL executions as unified cards + global events
           if (selectedTab.kind === 'results') {
             // Filter for all global events (info, warn, error, fatal, debug, trace)
             const globalEvents = events.filter((e) => {
@@ -702,7 +713,7 @@ export default function AllEventsView({
               );
             });
 
-            if (globalEvents.length === 0) {
+            if (globalEvents.length === 0 && pairedExecutions.length === 0) {
               return (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-gray-600">
@@ -745,240 +756,344 @@ export default function AllEventsView({
                   new Date(b.timestamp).getTime()
               );
 
-            return (
-              <div className="py-3 space-y-6">
-                {/* Execution Output - Prominent */}
-                {executionCompleteEvents.length > 0 && (
-                  <div className="px-4">
-                    <h3 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      Execution Output
-                    </h3>
-                    <div className="space-y-3">
-                      {executionCompleteEvents.map((event, idx) => (
-                        <div
-                          key={idx}
-                          className="border border-blue-500/30 rounded-lg bg-blue-500/5 p-4"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {getEventIcon(event)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-sm text-gray-200 break-words flex-1 min-w-0 font-medium">
-                                  {makeLinksClickable(
-                                    formatEventMessage(event)
-                                  )}
-                                </p>
-                                <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
-                                  {formatTimestamp(event.timestamp)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {event.additionalData &&
-                            Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-3 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                                <JsonRenderer
-                                  data={event.additionalData}
-                                  flowId={flowId}
-                                  timestamp={event.timestamp}
-                                />
-                              </pre>
-                            )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            // Extract execution summary from execution_complete event
+            const completionEvent = executionCompleteEvents[0];
+            const executionMessage = completionEvent
+              ? formatEventMessage(completionEvent)
+              : null;
+            const hasErrors = errorEvents.length > 0;
+            const hasWarnings = warningEvents.length > 0;
 
-                {/* Errors - If any */}
-                {errorEvents.length > 0 && (
-                  <div className="px-4">
-                    {/* Prominent Fix with Pearl Banner */}
-                    <div className="mb-4 p-4 bg-[#161b22] border border-[#30363d] rounded-lg">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-200 mb-1">
-                            Need help fixing these errors?
-                          </h4>
-                          <p className="text-xs text-gray-400">
-                            Pearl can analyze your errors and suggest fixes
-                            automatically
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleFixWithPearl()}
-                          disabled={pearl.isPending}
-                          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors shadow-sm"
+            return (
+              <div className="flex flex-col h-full">
+                {/* ═══════════════════════════════════════════════════════════════
+                    SUMMARY HEADER - Prominent execution status bar
+                    ═══════════════════════════════════════════════════════════════ */}
+                {executionMessage && (
+                  <div
+                    className={`
+                    flex-shrink-0 px-4 py-3 border-b
+                    ${
+                      hasErrors
+                        ? 'bg-gradient-to-r from-red-950/40 via-red-950/20 to-transparent border-red-500/20'
+                        : hasWarnings
+                          ? 'bg-gradient-to-r from-yellow-950/30 via-yellow-950/10 to-transparent border-yellow-500/20'
+                          : 'bg-gradient-to-r from-emerald-950/40 via-emerald-950/20 to-transparent border-emerald-500/20'
+                    }
+                  `}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Status Icon */}
+                      <div
+                        className={`
+                        flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center
+                        ${
+                          hasErrors
+                            ? 'bg-red-500/20 ring-1 ring-red-500/30'
+                            : hasWarnings
+                              ? 'bg-yellow-500/20 ring-1 ring-yellow-500/30'
+                              : 'bg-emerald-500/20 ring-1 ring-emerald-500/30'
+                        }
+                      `}
+                      >
+                        {hasErrors ? (
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        ) : hasWarnings ? (
+                          <svg
+                            className="w-4 h-4 text-yellow-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        )}
+                      </div>
+
+                      {/* Summary Text */}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`
+                          text-sm font-medium font-mono tracking-tight
+                          ${hasErrors ? 'text-red-300' : hasWarnings ? 'text-yellow-300' : 'text-emerald-300'}
+                        `}
                         >
-                          <Sparkles className="w-4 h-4" />
-                          {pearl.isPending ? 'Analyzing...' : 'Fix with Pearl'}
-                        </button>
+                          {executionMessage}
+                        </p>
+                      </div>
+
+                      {/* Quick Stats Badges */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {errorEvents.length > 0 && (
+                          <span className="px-2 py-0.5 text-[10px] font-medium bg-red-500/20 text-red-400 rounded border border-red-500/30">
+                            {errorEvents.length} error
+                            {errorEvents.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                        {warningEvents.length > 0 && (
+                          <span className="px-2 py-0.5 text-[10px] font-medium bg-yellow-500/20 text-yellow-400 rounded border border-yellow-500/30">
+                            {warningEvents.length} warning
+                            {warningEvents.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    {/* Errors List */}
-                    <h3 className="text-xs font-medium text-red-400 mb-2 uppercase tracking-wide">
-                      Errors ({errorEvents.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {errorEvents.map((event, idx) => (
-                        <div
-                          key={idx}
-                          className="px-3 py-2 rounded border-l-2 border-red-500/50"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {getEventIcon(event)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
-                                  {makeLinksClickable(
-                                    formatEventMessage(event)
-                                  )}
-                                </p>
-                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                                  {formatTimestamp(event.timestamp)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {event.additionalData &&
-                            Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                                <JsonRenderer
-                                  data={event.additionalData}
-                                  flowId={flowId}
-                                  timestamp={event.timestamp}
-                                />
-                              </pre>
-                            )}
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 )}
 
-                {/* Warnings - If any */}
-                {warningEvents.length > 0 && (
-                  <div className="px-4">
-                    <h3 className="text-xs font-medium text-yellow-400 mb-2 uppercase tracking-wide">
-                      Warnings ({warningEvents.length})
-                    </h3>
-                    <div className="space-y-2">
-                      {warningEvents.map((event, idx) => (
-                        <div
-                          key={idx}
-                          className="px-3 py-2 rounded border-l-2 border-yellow-500/50"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {getEventIcon(event)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-3 min-w-0">
-                                <p className="text-xs text-gray-300 break-words flex-1 min-w-0">
-                                  {makeLinksClickable(
-                                    formatEventMessage(event)
-                                  )}
-                                </p>
-                                <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                                  {formatTimestamp(event.timestamp)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          {event.additionalData &&
-                            Object.keys(event.additionalData).length > 0 && (
-                              <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                                <JsonRenderer
-                                  data={event.additionalData}
-                                  flowId={flowId}
-                                  timestamp={event.timestamp}
-                                />
-                              </pre>
-                            )}
+                {/* ═══════════════════════════════════════════════════════════════
+                    SCROLLABLE CONTENT
+                    ═══════════════════════════════════════════════════════════════ */}
+                <div className="flex-1 overflow-y-auto thin-scrollbar">
+                  <div className="py-4 space-y-5">
+                    {/* ─────────────────────────────────────────────────────────────
+                        FINAL OUTPUT SECTION
+                        ───────────────────────────────────────────────────────────── */}
+                    {executionCompleteEvents.length > 0 && (
+                      <div className="px-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-1 h-4 bg-blue-500 rounded-full" />
+                          <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                            Final Output
+                          </h3>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        <div className="space-y-3">
+                          {executionCompleteEvents.map((event, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-lg border border-[#30363d] bg-[#161b22] overflow-hidden"
+                            >
+                              {event.additionalData &&
+                                Object.keys(event.additionalData).length >
+                                  0 && (
+                                  <pre className="json-output text-xs p-4 bg-[#0d1117]/50 whitespace-pre-wrap break-words leading-relaxed overflow-x-auto max-h-[50vh]">
+                                    <JsonRenderer
+                                      data={event.additionalData}
+                                      flowId={flowId}
+                                      timestamp={event.timestamp}
+                                    />
+                                  </pre>
+                                )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                {/* Info/Debug - Collapsed by default */}
-                {infoEvents.length > 0 && (
-                  <div className="px-4">
-                    <details className="group">
-                      <summary className="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide cursor-pointer hover:text-gray-400 flex items-center gap-2">
-                        <svg
-                          className="w-3 h-3 transition-transform group-open:rotate-90"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                        Diagnostic Logs ({infoEvents.length})
-                      </summary>
-                      <div className="space-y-2 mt-2">
-                        {infoEvents.map((event, idx) => (
-                          <div
-                            key={idx}
-                            className="px-3 py-2 rounded border-l-2 border-transparent"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5">
-                                {getEventIcon(event)}
+                    {/* ─────────────────────────────────────────────────────────────
+                        ERRORS SECTION
+                        ───────────────────────────────────────────────────────────── */}
+                    {errorEvents.length > 0 && (
+                      <div className="px-4">
+                        {/* Fix with Pearl Banner */}
+                        <div className="mb-4 p-3 bg-gradient-to-r from-orange-950/30 to-transparent border border-orange-500/20 rounded-lg">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                                <Sparkles className="w-4 h-4 text-orange-400" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-3 min-w-0">
-                                  <p className="text-xs text-gray-400 break-words flex-1 min-w-0">
+                              <div>
+                                <h4 className="text-xs font-medium text-gray-200">
+                                  Need help fixing these errors?
+                                </h4>
+                                <p className="text-[10px] text-gray-500">
+                                  Pearl can analyze and suggest fixes
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleFixWithPearl()}
+                              disabled={pearl.isPending}
+                              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:bg-orange-600/50 disabled:cursor-not-allowed text-white text-xs font-medium rounded-md transition-all shadow-lg shadow-orange-900/20"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              {pearl.isPending
+                                ? 'Analyzing...'
+                                : 'Fix with Pearl'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Errors Header */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-1 h-4 bg-red-500 rounded-full" />
+                          <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                            Errors
+                          </h3>
+                          <span className="text-[10px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">
+                            {errorEvents.length}
+                          </span>
+                        </div>
+
+                        {/* Errors List */}
+                        <div className="space-y-2 rounded-lg border border-red-500/20 bg-red-950/10 p-2">
+                          {errorEvents.map((event, idx) => (
+                            <div
+                              key={idx}
+                              className="px-3 py-2 rounded-md bg-[#0d1117]/60 border-l-2 border-red-500/60"
+                            >
+                              <div className="flex items-start gap-2">
+                                <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-gray-300 break-words">
                                     {makeLinksClickable(
                                       formatEventMessage(event)
                                     )}
                                   </p>
-                                  <span className="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                  <span className="text-[9px] text-gray-600 font-mono">
                                     {formatTimestamp(event.timestamp)}
                                   </span>
                                 </div>
                               </div>
+                              {event.additionalData &&
+                                Object.keys(event.additionalData).length >
+                                  0 && (
+                                  <pre className="json-output text-[11px] mt-2 p-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                    <JsonRenderer
+                                      data={event.additionalData}
+                                      flowId={flowId}
+                                      timestamp={event.timestamp}
+                                    />
+                                  </pre>
+                                )}
                             </div>
-                            {event.additionalData &&
-                              Object.keys(event.additionalData).length > 0 && (
-                                <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                                  <JsonRenderer
-                                    data={event.additionalData}
-                                    flowId={flowId}
-                                    timestamp={event.timestamp}
-                                  />
-                                </pre>
-                              )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </details>
+                    )}
+
+                    {/* ─────────────────────────────────────────────────────────────
+                        WARNINGS SECTION (Collapsible)
+                        ───────────────────────────────────────────────────────────── */}
+                    {warningEvents.length > 0 && (
+                      <div className="px-4">
+                        <details
+                          className="group"
+                          open={warningEvents.length <= 3}
+                        >
+                          <summary className="flex items-center gap-2 mb-2 cursor-pointer select-none hover:opacity-80 transition-opacity">
+                            <ChevronRight className="w-3 h-3 text-gray-500 transition-transform group-open:rotate-90" />
+                            <div className="w-1 h-4 bg-yellow-500 rounded-full" />
+                            <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                              Warnings
+                            </h3>
+                            <span className="text-[10px] text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded">
+                              {warningEvents.length}
+                            </span>
+                          </summary>
+                          <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-950/10 p-2 mt-2">
+                            {warningEvents.map((event, idx) => (
+                              <div
+                                key={idx}
+                                className="px-3 py-2 rounded-md bg-[#0d1117]/60 border-l-2 border-yellow-500/60"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <svg
+                                    className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    />
+                                  </svg>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-300 break-words">
+                                      {makeLinksClickable(
+                                        formatEventMessage(event)
+                                      )}
+                                    </p>
+                                    <span className="text-[9px] text-gray-600 font-mono">
+                                      {formatTimestamp(event.timestamp)}
+                                    </span>
+                                  </div>
+                                </div>
+                                {event.additionalData &&
+                                  Object.keys(event.additionalData).length >
+                                    0 && (
+                                    <pre className="json-output text-[11px] mt-2 p-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                      <JsonRenderer
+                                        data={event.additionalData}
+                                        flowId={flowId}
+                                        timestamp={event.timestamp}
+                                      />
+                                    </pre>
+                                  )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
+
+                    {/* ─────────────────────────────────────────────────────────────
+                        DIAGNOSTIC LOGS (Collapsed by default)
+                        ───────────────────────────────────────────────────────────── */}
+                    {infoEvents.length > 0 && (
+                      <div className="px-4">
+                        <details className="group">
+                          <summary className="flex items-center gap-2 mb-2 cursor-pointer select-none hover:opacity-80 transition-opacity">
+                            <ChevronRight className="w-3 h-3 text-gray-500 transition-transform group-open:rotate-90" />
+                            <div className="w-1 h-4 bg-gray-500 rounded-full" />
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                              Diagnostic Logs
+                            </h3>
+                            <span className="text-[10px] text-gray-500 bg-gray-500/10 px-1.5 py-0.5 rounded">
+                              {infoEvents.length}
+                            </span>
+                          </summary>
+                          <div className="space-y-1.5 rounded-lg border border-[#30363d] bg-[#161b22]/50 p-2 mt-2">
+                            {infoEvents.map((event, idx) => (
+                              <div
+                                key={idx}
+                                className="px-3 py-1.5 rounded bg-[#0d1117]/40"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <InformationCircleIcon className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="text-[11px] text-gray-400 break-words flex-1">
+                                        {makeLinksClickable(
+                                          formatEventMessage(event)
+                                        )}
+                                      </p>
+                                      <span className="text-[9px] text-gray-600 font-mono whitespace-nowrap">
+                                        {formatTimestamp(event.timestamp)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                {event.additionalData &&
+                                  Object.keys(event.additionalData).length >
+                                    0 && (
+                                    <pre className="json-output text-[10px] mt-1.5 p-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                      <JsonRenderer
+                                        data={event.additionalData}
+                                        flowId={flowId}
+                                        timestamp={event.timestamp}
+                                      />
+                                    </pre>
+                                  )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             );
           }
@@ -1208,7 +1323,7 @@ export default function AllEventsView({
                 </div>
               );
             } else {
-              // Bubble group
+              // Bubble group - show unified input/output view
               const varId = item.name;
               const evs = item.events;
               const selectedIndex = Math.min(
@@ -1216,6 +1331,11 @@ export default function AllEventsView({
                 evs.length - 1
               );
               const selectedEvent = evs[selectedIndex];
+
+              // Find the paired execution for this bubble
+              const pairedExecution = pairedExecutions.find(
+                (pe) => pe.variableId === varId
+              );
 
               // Check if this bubble has any errors
               const hasErrorInBubble = evs.some((e) => {
@@ -1233,24 +1353,38 @@ export default function AllEventsView({
 
               return (
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center gap-3 px-4 py-2.5 bg-[#161b22] border-b border-[#21262d]">
-                    <span className="text-xs text-gray-500 font-medium">
-                      Logs
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={Math.max(0, evs.length - 1)}
-                      value={selectedIndex}
-                      onChange={(e) =>
-                        setSelectedEventIndex(varId, Number(e.target.value))
-                      }
-                      className="flex-1 max-w-xs"
-                      aria-label={`Select output for variable ${varId}`}
-                    />
-                    <span className="text-xs text-gray-500 font-mono tabular-nums">
-                      {selectedIndex + 1}/{evs.length}
-                    </span>
+                  {/* View Mode Toggle Header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#161b22] border-b border-[#21262d]">
+                    <div className="flex items-center gap-3">
+                      <Workflow className="w-4 h-4 text-gray-500" />
+                      <span className="text-xs text-gray-400 font-medium">
+                        Execution Details
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#0d1117] rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('unified')}
+                        className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
+                          viewMode === 'unified'
+                            ? 'bg-[#21262d] text-gray-200'
+                            : 'text-gray-500 hover:text-gray-400'
+                        }`}
+                      >
+                        Unified
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('timeline')}
+                        className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
+                          viewMode === 'timeline'
+                            ? 'bg-[#21262d] text-gray-200'
+                            : 'text-gray-500 hover:text-gray-400'
+                        }`}
+                      >
+                        Timeline
+                      </button>
+                    </div>
                   </div>
 
                   {/* Fix with Pearl Banner - Show if bubble has errors */}
@@ -1283,49 +1417,94 @@ export default function AllEventsView({
                     </div>
                   )}
 
-                  {selectedEvent ? (
-                    <div className="flex-1 py-2 overflow-y-auto">
-                      <div
-                        className={`px-3 py-2 rounded border-l-2 ${
-                          selectedEvent.lineNumber === currentLine
-                            ? 'border-yellow-500'
-                            : 'border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5">
-                            {getEventIcon(selectedEvent)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-3 min-w-0">
-                              <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
-                                {makeLinksClickable(
-                                  formatEventMessage(selectedEvent)
-                                )}
-                              </p>
-                              <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
-                                {formatTimestamp(selectedEvent.timestamp)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        {selectedEvent.additionalData &&
-                          Object.keys(selectedEvent.additionalData).length >
-                            0 && (
-                            <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
-                              <JsonRenderer
-                                data={selectedEvent.additionalData}
-                                flowId={flowId}
-                                timestamp={selectedEvent.timestamp}
-                              />
-                            </pre>
-                          )}
+                  {/* UNIFIED VIEW - Shows input/output together */}
+                  {viewMode === 'unified' && pairedExecution ? (
+                    <div className="flex-1 p-4 overflow-y-auto thin-scrollbar">
+                      <BubbleExecutionCard
+                        key={pairedExecution.variableId}
+                        execution={pairedExecution}
+                        renderJson={JsonRenderer}
+                        flowId={flowId}
+                        activeBrowserSession={activeBrowserSession}
+                      />
+                    </div>
+                  ) : viewMode === 'unified' && !pairedExecution ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center text-gray-600">
+                        <Workflow className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Loading execution data...</p>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-sm text-gray-600">No event selected</p>
-                    </div>
+                    /* TIMELINE VIEW - Original slider-based view */
+                    <>
+                      <div className="flex items-center gap-3 px-4 py-2.5 bg-[#0d1117] border-b border-[#21262d]">
+                        <span className="text-xs text-gray-500 font-medium">
+                          Event
+                        </span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(0, evs.length - 1)}
+                          value={selectedIndex}
+                          onChange={(e) =>
+                            setSelectedEventIndex(varId, Number(e.target.value))
+                          }
+                          className="flex-1 max-w-xs"
+                          aria-label={`Select output for variable ${varId}`}
+                        />
+                        <span className="text-xs text-gray-500 font-mono tabular-nums">
+                          {selectedIndex + 1}/{evs.length}
+                        </span>
+                      </div>
+
+                      {selectedEvent ? (
+                        <div className="flex-1 py-2 overflow-y-auto">
+                          <div
+                            className={`px-3 py-2 rounded border-l-2 ${
+                              selectedEvent.lineNumber === currentLine
+                                ? 'border-yellow-500'
+                                : 'border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                {getEventIcon(selectedEvent)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3 min-w-0">
+                                  <p className="text-sm text-gray-300 break-words flex-1 min-w-0">
+                                    {makeLinksClickable(
+                                      formatEventMessage(selectedEvent)
+                                    )}
+                                  </p>
+                                  <span className="text-[10px] text-gray-600 whitespace-nowrap flex-shrink-0">
+                                    {formatTimestamp(selectedEvent.timestamp)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            {selectedEvent.additionalData &&
+                              Object.keys(selectedEvent.additionalData).length >
+                                0 && (
+                                <pre className="json-output text-xs mt-2 bg-[#0d1117] border border-[#21262d] rounded whitespace-pre-wrap break-words leading-relaxed overflow-x-auto">
+                                  <JsonRenderer
+                                    data={selectedEvent.additionalData}
+                                    flowId={flowId}
+                                    timestamp={selectedEvent.timestamp}
+                                  />
+                                </pre>
+                              )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center">
+                          <p className="text-sm text-gray-600">
+                            No event selected
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );

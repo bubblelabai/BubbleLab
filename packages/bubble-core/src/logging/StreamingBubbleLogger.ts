@@ -544,4 +544,39 @@ export class StreamingBubbleLogger extends BubbleLogger {
     }
     return 0;
   }
+
+  /**
+   * Override to emit browser session start event for live viewing
+   */
+  override logBrowserSessionStart(
+    sessionId: string,
+    sessionUrl: string,
+    variableId?: number
+  ): void {
+    this.emitStreamEvent({
+      type: 'browser_session_start',
+      timestamp: new Date().toISOString(),
+      message: `Browser session started: ${sessionId}`,
+      variableId,
+      browserSessionId: sessionId,
+      browserSessionUrl: sessionUrl,
+      executionTime: this.getCurrentExecutionTime(),
+      memoryUsage: this.getCurrentMemoryUsage(),
+    });
+  }
+
+  /**
+   * Override to emit browser session end event
+   */
+  override logBrowserSessionEnd(sessionId: string, variableId?: number): void {
+    this.emitStreamEvent({
+      type: 'browser_session_end',
+      timestamp: new Date().toISOString(),
+      message: `Browser session ended: ${sessionId}`,
+      variableId,
+      browserSessionId: sessionId,
+      executionTime: this.getCurrentExecutionTime(),
+      memoryUsage: this.getCurrentMemoryUsage(),
+    });
+  }
 }

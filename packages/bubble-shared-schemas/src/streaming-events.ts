@@ -31,7 +31,9 @@ export interface StreamingLogEvent {
     | 'function_call_start' // New event for transformation function call start
     | 'function_call_complete' // New event for transformation function call completion
     | 'start_evaluating' // Evaluation by Rice agent started
-    | 'end_evaluating'; // Evaluation by Rice agent complete with result
+    | 'end_evaluating' // Evaluation by Rice agent complete with result
+    | 'browser_session_start' // BrowserBase session started with live debug URL
+    | 'browser_session_end'; // BrowserBase session ended
   timestamp: string;
   lineNumber?: number;
   variableId?: number;
@@ -77,6 +79,9 @@ export interface StreamingLogEvent {
     summary: string;
     rating: number;
   };
+  // For browser_session_start and browser_session_end events
+  browserSessionUrl?: string; // The debug URL for live browser viewing
+  browserSessionId?: string; // The BrowserBase session ID
 }
 // Define streaming event types for real-time AI agent feedback
 export type StreamingEvent =

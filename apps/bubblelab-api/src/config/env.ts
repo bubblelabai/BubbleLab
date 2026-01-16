@@ -89,6 +89,9 @@ export const env = {
   POSTHOG_ENABLED: process.env.POSTHOG_ENABLED === 'true',
   WISPR_API_KEY: process.env.WISPR_API_KEY,
   HACKATHON_COUPON_CODES: process.env.HACKATHON_COUPON_CODES || '',
+  // BrowserBase credentials (system-level)
+  BROWSERBASE_API_KEY: process.env.BROWSERBASE_API_KEY,
+  BROWSERBASE_PROJECT_ID: process.env.BROWSERBASE_PROJECT_ID,
   isDev:
     process.env.BUBBLE_ENV?.toLowerCase() === 'dev' ||
     process.env.BUBBLE_ENV?.toLowerCase() === 'test',
@@ -134,4 +137,6 @@ console.log('🔧 Environment variables loaded:', {
   HACKATHON_COUPON_CODES: env.HACKATHON_COUPON_CODES
     ? '✅ Set'
     : '❌ Not configured',
+  BROWSERBASE_API_KEY: env.BROWSERBASE_API_KEY ? '✅ Set' : '❌ Missing',
+  BROWSERBASE_PROJECT_ID: env.BROWSERBASE_PROJECT_ID ? '✅ Set' : '❌ Missing',
 });

@@ -237,6 +237,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Custom Auth Key',
       credentialConfigurations: {},
     },
+    [CredentialType.AMAZON_CRED]: {
+      label: 'Amazon',
+      description:
+        'Browser session authentication for Amazon shopping (cart, orders, purchases). Authenticate by logging into your Amazon account in a secure browser session.',
+      placeholder: '', // Not used for browser session auth
+      namePlaceholder: 'My Amazon Account',
+      credentialConfigurations: {},
+    },
   } as const satisfies Record<CredentialType, CredentialConfig>;
 
 /**
@@ -282,6 +290,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
+  [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
 };
 
 /** Used by bubblelab studio */
@@ -519,6 +528,80 @@ export function getScopeDescriptions(
 }
 
 /**
+ * Browser session provider name - for BrowserBase-powered authentication
+ */
+export type BrowserSessionProvider = 'browserbase';
+
+/**
+ * Browser session credential type configuration
+ */
+export interface BrowserSessionCredentialConfig {
+  displayName: string;
+  description: string;
+  targetUrl: string; // URL to navigate to for authentication
+  cookieDomain: string; // Domain filter for captured cookies
+}
+
+/**
+ * Browser session provider configuration
+ */
+export interface BrowserSessionProviderConfig {
+  name: BrowserSessionProvider;
+  displayName: string;
+  credentialTypes: Partial<
+    Record<CredentialType, BrowserSessionCredentialConfig>
+  >;
+}
+
+/**
+ * Browser session provider configurations - for credentials that use BrowserBase
+ * browser sessions instead of OAuth or API keys
+ */
+export const BROWSER_SESSION_PROVIDERS: Record<
+  BrowserSessionProvider,
+  BrowserSessionProviderConfig
+> = {
+  browserbase: {
+    name: 'browserbase',
+    displayName: 'BrowserBase',
+    credentialTypes: {
+      [CredentialType.AMAZON_CRED]: {
+        displayName: 'Amazon Account',
+        description:
+          'Log into Amazon to enable cart, order, and purchase automation',
+        targetUrl: 'https://www.amazon.com',
+        cookieDomain: 'amazon',
+      },
+    },
+  },
+};
+
+/**
+ * Get the browser session provider for a specific credential type
+ */
+export function getBrowserSessionProvider(
+  credentialType: CredentialType
+): BrowserSessionProvider | null {
+  for (const [providerName, config] of Object.entries(
+    BROWSER_SESSION_PROVIDERS
+  )) {
+    if (config.credentialTypes[credentialType]) {
+      return providerName as BrowserSessionProvider;
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a credential type uses browser session authentication (BrowserBase)
+ */
+export function isBrowserSessionCredential(
+  credentialType: CredentialType
+): boolean {
+  return getBrowserSessionProvider(credentialType) !== null;
+}
+
+/**
  * Maps bubble names to their accepted credential types
  */
 export type CredentialOptions = Partial<Record<CredentialType, string>>;
@@ -635,6 +718,18 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'insforge-db': [
     CredentialType.INSFORGE_BASE_URL,
     CredentialType.INSFORGE_API_KEY,
+  ],
+  browserbase: [
+    CredentialType.AMAZON_CRED,
+    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
+    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
+    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+  ],
+  'amazon-shopping-tool': [
+    CredentialType.AMAZON_CRED,
+    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
+    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
+    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   ],
 };
 
@@ -763,6 +858,20 @@ export const credentialResponseSchema = z
       .enum(['active', 'expired', 'needs_refresh'])
       .optional()
       .openapi({ description: 'OAuth token status' }),
+
+    // Browser session-specific fields
+    isBrowserSession: z
+      .boolean()
+      .optional()
+      .openapi({ description: 'Whether this is a browser session credential' }),
+    browserbaseSessionData: z
+      .object({
+        capturedAt: z.string(),
+        cookieCount: z.number(),
+        domain: z.string(),
+      })
+      .optional()
+      .openapi({ description: 'Browser session metadata' }),
   })
   .openapi('CredentialResponse');
 
@@ -789,6 +898,81 @@ export const successMessageResponseSchema = z
   })
   .openapi('SuccessMessageResponse');
 
+// BrowserBase session schemas
+export const browserbaseSessionCreateRequestSchema = z
+  .object({
+    credentialType: z.nativeEnum(CredentialType).openapi({
+      description: 'Type of credential requiring browser authentication',
+      example: CredentialType.AMAZON_CRED,
+    }),
+    name: z.string().optional().openapi({
+      description: 'User-friendly name for the credential',
+      example: 'My Amazon Account',
+    }),
+  })
+  .openapi('BrowserbaseSessionCreateRequest');
+
+export const browserbaseSessionCreateResponseSchema = z
+  .object({
+    sessionId: z.string().openapi({
+      description: 'BrowserBase session ID',
+    }),
+    debugUrl: z.string().openapi({
+      description: 'URL to open for manual browser interaction',
+    }),
+    contextId: z.string().openapi({
+      description: 'BrowserBase context ID for session persistence',
+    }),
+    state: z.string().openapi({
+      description: 'State token for CSRF protection',
+    }),
+  })
+  .openapi('BrowserbaseSessionCreateResponse');
+
+export const browserbaseSessionCompleteRequestSchema = z
+  .object({
+    sessionId: z.string().openapi({
+      description: 'BrowserBase session ID to complete',
+    }),
+    state: z.string().openapi({
+      description: 'State token for verification',
+    }),
+    name: z.string().optional().openapi({
+      description: 'User-friendly name for the credential',
+    }),
+  })
+  .openapi('BrowserbaseSessionCompleteRequest');
+
+export const browserbaseSessionCompleteResponseSchema = z
+  .object({
+    id: z.number().openapi({
+      description: 'Created credential ID',
+    }),
+    message: z.string().openapi({
+      description: 'Success message',
+    }),
+  })
+  .openapi('BrowserbaseSessionCompleteResponse');
+
+export const browserbaseSessionReopenRequestSchema = z
+  .object({
+    credentialId: z.number().openapi({
+      description: 'ID of the credential to reopen session for',
+    }),
+  })
+  .openapi('BrowserbaseSessionReopenRequest');
+
+export const browserbaseSessionReopenResponseSchema = z
+  .object({
+    sessionId: z.string().openapi({
+      description: 'BrowserBase session ID',
+    }),
+    debugUrl: z.string().openapi({
+      description: 'URL to open for manual browser interaction',
+    }),
+  })
+  .openapi('BrowserbaseSessionReopenResponse');
+
 export type CreateCredentialRequest = z.infer<typeof createCredentialSchema>;
 export type UpdateCredentialRequest = z.infer<typeof updateCredentialSchema>;
 export type CredentialResponse = z.infer<typeof credentialResponseSchema>;
@@ -797,4 +981,22 @@ export type CreateCredentialResponse = z.infer<
 >;
 export type UpdateCredentialResponse = z.infer<
   typeof updateCredentialResponseSchema
+>;
+export type BrowserbaseSessionCreateRequest = z.infer<
+  typeof browserbaseSessionCreateRequestSchema
+>;
+export type BrowserbaseSessionCreateResponse = z.infer<
+  typeof browserbaseSessionCreateResponseSchema
+>;
+export type BrowserbaseSessionCompleteRequest = z.infer<
+  typeof browserbaseSessionCompleteRequestSchema
+>;
+export type BrowserbaseSessionCompleteResponse = z.infer<
+  typeof browserbaseSessionCompleteResponseSchema
+>;
+export type BrowserbaseSessionReopenRequest = z.infer<
+  typeof browserbaseSessionReopenRequestSchema
+>;
+export type BrowserbaseSessionReopenResponse = z.infer<
+  typeof browserbaseSessionReopenResponseSchema
 >;

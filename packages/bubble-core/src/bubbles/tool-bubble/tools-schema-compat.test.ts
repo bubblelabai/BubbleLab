@@ -6,14 +6,11 @@ describe('Tool agent schemas are Gemini-compatible', () => {
   it('should not contain const or anyOf in JSON schema', async () => {
     const factory = new BubbleFactory();
     await factory.registerDefaults();
-
     const allBubbles = factory.getAll();
     const toolClasses = allBubbles.filter(
       (BubbleClass) => BubbleClass.type === 'tool'
     );
-
     expect(toolClasses.length).toBeGreaterThan(0);
-
     for (const ToolClass of toolClasses) {
       if (!ToolClass.toolAgent) {
         throw new Error(

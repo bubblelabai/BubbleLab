@@ -133,6 +133,16 @@ export const userCredentials = pgTable('user_credentials', {
   oauthProvider: text('oauth_provider'), // Provider name (google, slack, github, etc.)
   isOauth: boolean('is_oauth').default(false), // Flag to identify OAuth vs API key credentials
 
+  // BrowserBase session credential fields
+  isBrowserSession: boolean('is_browser_session').default(false), // Flag for browser session credentials
+  browserbaseContextId: text('browserbase_context_id'), // Context ID for session persistence
+  browserbaseCookies: text('browserbase_cookies'), // Encrypted JSON cookies array
+  browserbaseSessionData: jsonb('browserbase_session_data').$type<{
+    capturedAt: string;
+    cookieCount: number;
+    domain: string;
+  }>(), // Session metadata
+
   createdAt: timestamp('created_at', { mode: 'date' })
     .notNull()
     .$defaultFn(() => new Date()),
