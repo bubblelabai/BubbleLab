@@ -1010,6 +1010,63 @@ export class AmazonShoppingTool<
         };
       }
 
+      // Try to click "Use this payment method" button if visible (before Place your order)
+      const usePaymentMethodResult = (await this.evaluate(`
+        (() => {
+          // First try by specific IDs (most reliable)
+          const primaryBtn = document.querySelector('#checkout-primary-continue-button-id');
+          const secondaryBtn = document.querySelector('#checkout-secondary-continue-button-id');
+
+          // Check if either button contains "use this payment method" text (case-insensitive)
+          for (const btn of [primaryBtn, secondaryBtn]) {
+            if (btn) {
+              const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+              if (text.includes('use this payment method')) {
+                // Find the clickable input inside the button span
+                const input = btn.querySelector('input.a-button-input');
+                if (input) {
+                  input.click();
+                  return { clicked: true, tag: 'input', className: input.className, text: text, method: 'input-click' };
+                }
+                // Fallback to clicking the button span itself
+                btn.click();
+                return { clicked: true, tag: btn.tagName, className: btn.className, text: text, method: 'span-click' };
+              }
+            }
+          }
+
+          // Fallback: search all elements for "use this payment method" text (case-insensitive)
+          const priorityOrder = ['input', 'button', 'a', 'span'];
+          for (const tagName of priorityOrder) {
+            const elements = document.querySelectorAll(tagName);
+            for (const el of elements) {
+              const text = (el.value || el.innerText || el.textContent || '').trim().toLowerCase();
+              if (text.includes('use this payment method')) {
+                el.click();
+                return { clicked: true, tag: el.tagName, className: el.className, text: text, method: 'fallback' };
+              }
+            }
+          }
+          return { clicked: false };
+        })()
+      `)) as {
+        clicked: boolean;
+        tag?: string;
+        className?: string;
+        text?: string;
+        method?: string;
+      };
+
+      if (usePaymentMethodResult.clicked) {
+        debugLog(
+          `[AmazonShoppingTool] Clicked "Use this payment method": <${usePaymentMethodResult.tag} class="${usePaymentMethodResult.className}"> via ${usePaymentMethodResult.method}`
+        );
+        // Wait for the page to process the payment method selection
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+        // Continue to next iteration to check for Place your order button
+        continue;
+      }
+
       // Try to click "Place your order" button
       const placeOrderResult = (await this.evaluate(`
         (() => {
