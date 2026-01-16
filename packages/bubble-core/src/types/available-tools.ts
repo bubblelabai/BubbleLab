@@ -19,6 +19,12 @@ export const AvailableTools = z.enum([
   'bubbleflow-validation-tool',
   'code-edit-tool',
   'chart-js-tool',
+  'amazon-shopping-tool',
+  'linkedin-tool',
+  'tiktok-tool',
+  'twitter-tool',
+  'google-maps-tool',
+  'youtube-tool',
   'sql-query-tool',
 ] as const satisfies readonly BubbleName[]);
 

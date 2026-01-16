@@ -183,6 +183,11 @@ export class ResearchAgentTool extends ToolBubble<
             { name: 'web-search-tool' },
             { name: 'web-scrape-tool' },
             { name: 'web-crawl-tool' },
+            { name: 'linkedin-tool' },
+            { name: 'twitter-tool' },
+            { name: 'youtube-tool' },
+            { name: 'google-maps-tool' },
+            { name: 'instagram-tool' },
             // { name: 'web-extract-tool' },
             { name: 'reddit-scrape-tool' },
           ],
@@ -308,12 +313,12 @@ Required Output Format (JSON Schema): ${expectedResultSchema}
 Instructions:
 1. Use web-search-tool to find relevant sources
 2. Analyze the sources and choose the right tool:
-   - If you need structured data extraction (images, prices, specific fields) → use web-extract-tool with a detailed prompt and schema
    - If multiple sources come from the same website → use web-crawl-tool for that site
    - If you're certain all needed info is on one specific page → use web-scrape-tool for that page
    - If scraping doesn't give complete results → use web-crawl-tool instead of more scraping
 3. Never scrape multiple pages individually - always crawl the site instead
 4. Return the final JSON result matching the expected schema
+5. When doing lead generation or finding specific information about a person or company, use specific tools for the platform you are researching for example linkedin-tool, twitter-tool, youtube-tool, instagram-tool, google-maps-tool, reddit-scrape-tool. Only use web-search-tool for general web content or fallback.
 
 SPECIAL INSTRUCTIONS FOR IMAGE URL EXTRACTION:
 - When extracting image URLs, look for the LARGEST, HIGHEST QUALITY product images
