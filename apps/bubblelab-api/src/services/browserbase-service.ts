@@ -122,7 +122,6 @@ export class BrowserbaseService {
       projectId: this.projectId,
     });
     const contextId = context.id;
-    console.log(`[BrowserbaseService] Created new context: ${contextId}`);
 
     // Create session with context
     const session = await this.bb.sessions.create({
@@ -132,7 +131,6 @@ export class BrowserbaseService {
       },
     });
     const sessionId = session.id;
-    console.log(`[BrowserbaseService] Session started: ${sessionId}`);
 
     // Connect via Puppeteer CDP
     const browser = await puppeteer.connect({
@@ -148,9 +146,6 @@ export class BrowserbaseService {
       waitUntil: 'domcontentloaded',
       timeout: 60000,
     });
-    console.log(
-      `[BrowserbaseService] Navigated to ${providerConfig.targetUrl}`
-    );
 
     // Get debug URL
     const debug = await this.bb.sessions.debug(sessionId);
@@ -215,7 +210,6 @@ export class BrowserbaseService {
         activeSession.page,
         activeSession.credentialType
       );
-      console.log(`[BrowserbaseService] Captured ${cookies.length} cookies`);
 
       if (cookies.length === 0) {
         throw new Error(
@@ -288,9 +282,6 @@ export class BrowserbaseService {
       },
     });
     const sessionId = session.id;
-    console.log(
-      `[BrowserbaseService] Reopened session ${sessionId} with context ${contextId}`
-    );
 
     // Get debug URL
     const debug = await this.bb.sessions.debug(sessionId);
@@ -332,7 +323,6 @@ export class BrowserbaseService {
         projectId: this.projectId,
         status: 'REQUEST_RELEASE',
       });
-      console.log(`[BrowserbaseService] Session ${sessionId} closed`);
     } catch (error) {
       console.error('[BrowserbaseService] Error closing session:', error);
       throw error;
@@ -401,9 +391,6 @@ export class BrowserbaseService {
       })
       .returning({ id: userCredentials.id });
 
-    console.log(
-      `[BrowserbaseService] Stored credential ${result.id} with ${cookies.length} cookies`
-    );
     return result.id;
   }
 
@@ -477,7 +464,6 @@ export class BrowserbaseService {
           status: 'REQUEST_RELEASE',
         });
       }
-      console.log(`[BrowserbaseService] Session ${session.sessionId} closed`);
     } catch (e) {
       console.error('[BrowserbaseService] Error closing session:', e);
     } finally {
@@ -501,12 +487,6 @@ export class BrowserbaseService {
 
     for (const state of expiredStates) {
       this.endSession(state);
-    }
-
-    if (expiredStates.length > 0) {
-      console.info(
-        `[BrowserbaseService] Cleaned up ${expiredStates.length} expired sessions`
-      );
     }
   }
 }

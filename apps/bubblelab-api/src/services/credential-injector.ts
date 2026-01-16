@@ -65,29 +65,10 @@ export async function injectCredentials(
       const toolCredentialOptions =
         bubble.bubbleName === 'ai-agent' ? extractToolCredentials(bubble) : [];
 
-      // Debug logging
-      if (
-        bubble.bubbleName === 'ai-agent' &&
-        toolCredentialOptions.length > 0
-      ) {
-        console.log(
-          `🔍 [CredentialInjector] AI agent ${varName} tool credentials:`,
-          toolCredentialOptions
-        );
-      }
-
       // Combine bubble and tool credentials
       const allCredentialOptions = [
         ...new Set([...bubbleCredentialOptions, ...toolCredentialOptions]),
       ];
-
-      // Debug logging
-      if (allCredentialOptions.length > 0) {
-        console.log(
-          `🔍 [CredentialInjector] ${varName} needs credentials:`,
-          allCredentialOptions
-        );
-      }
 
       if (allCredentialOptions.length === 0) {
         continue;
@@ -115,14 +96,6 @@ export async function injectCredentials(
         (uc) => uc.bubbleVarName === varName
       );
 
-      console.log(
-        `🔍 [CredentialInjector] Filtered user credentials for ${varName}:`,
-        userCreds.map((uc) => ({
-          bubbleVarName: uc.bubbleVarName,
-          credentialType: uc.credentialType,
-        }))
-      );
-
       for (const userCred of userCreds) {
         // Check if this bubble accepts the credential type the user is providing
         const userCredType = userCred.credentialType as CredentialType;
@@ -131,9 +104,6 @@ export async function injectCredentials(
           // Check if this is an OAuth credential
           if (isOAuthCredential(userCredType)) {
             try {
-              console.log(
-                `🔍 [CredentialInjector] Getting OAuth token for ${userCredType}, credential ID: ${userCred.credentialId}`
-              );
               // Get valid OAuth token (automatically refreshes if needed)
               const oauthToken = await oauthService.getValidToken(
                 userCred.credentialId!
@@ -154,10 +124,6 @@ export async function injectCredentials(
                     `${userCredType}:oauth:auto-refreshed`
                   );
                 }
-
-                console.log(
-                  `[CredentialInjector] Successfully injected OAuth token for ${userCredType}`
-                );
               } else {
                 console.error(
                   `[CredentialInjector] Failed to get OAuth token for ${userCredType}`
@@ -172,10 +138,6 @@ export async function injectCredentials(
           } else if (isBrowserSessionCredential(userCredType)) {
             // Browser session credential - get base64-encoded context ID and cookies
             try {
-              console.log(
-                `🔍 [CredentialInjector] Getting browser session data for ${userCredType}, credential ID: ${userCred.credentialId}`
-              );
-
               // Get base64-encoded credential data (avoids JSON escaping issues)
               const base64Payload =
                 await browserbaseService.getCredentialDataBase64(
@@ -195,10 +157,6 @@ export async function injectCredentials(
                 } else {
                   credentialSources.push(`${userCredType}:browser-session`);
                 }
-
-                console.log(
-                  `[CredentialInjector] Successfully injected browser session data for ${userCredType}`
-                );
               } else {
                 console.error(
                   `[CredentialInjector] Failed to get browser session data for ${userCredType}`
@@ -270,10 +228,6 @@ export async function injectCredentials(
         );
 
         if (dbUserCred && dbUserCred.metadata) {
-          console.log(
-            `[CredentialInjector] Injecting database metadata for ${varName} from credential ID: ${dbUserCred.credentialId}`
-          );
-
           // Prepare the injected metadata
           const injectedMetadata = {
             tables: dbUserCred.metadata.tables || {},

@@ -120,12 +120,6 @@ export async function getMonthlyLimitForPlan(userId: string): Promise<{
   try {
     // Get effective subscription (tries context first, falls back to Clerk)
     const subscription = await getEffectiveUserSubscription(userId);
-    console.log(
-      '[getMonthlyLimitForPlan] Using subscription:',
-      subscription.plan,
-      'source:',
-      subscription.source
-    );
 
     // Get current usage and limit for webhooks (active webhooks + active crons)
     const webhookUsage = await getCurrentWebhookUsage(userId);

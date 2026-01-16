@@ -114,8 +114,6 @@ export async function runRice(
 ): Promise<RiceResponse> {
   const model = request.model || RICE_DEFAULT_MODEL;
 
-  console.log('[Rice] Starting evaluation for execution:', request.executionId);
-
   try {
     // Build the evaluation prompt
     const evaluationPrompt = buildEvaluationPrompt(
@@ -151,11 +149,7 @@ export async function runRice(
       credentials: finalCredentials,
     });
 
-    console.log('[Rice] Executing evaluation agent...');
     const result = await agent.action();
-
-    console.log('[Rice] Agent execution completed');
-    console.log('[Rice] Success:', result.success);
 
     if (!result.success) {
       return {
@@ -166,7 +160,6 @@ export async function runRice(
 
     // Parse the agent's JSON response
     const responseText = result.data?.response || '';
-    console.log('[Rice] Raw response:', responseText);
 
     let parsed: RiceEvaluationResult;
     try {
@@ -193,8 +186,6 @@ export async function runRice(
         error: `Invalid evaluation response structure: ${validationResult.error.message}`,
       };
     }
-
-    console.log('[Rice] Evaluation result:', validationResult.data);
 
     return {
       success: true,

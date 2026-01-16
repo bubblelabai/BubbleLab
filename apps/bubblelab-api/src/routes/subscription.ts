@@ -146,10 +146,6 @@ app.openapi(redeemCouponRoute, async (c) => {
       },
     });
 
-    console.log(
-      `[subscription/redeem] User ${userId} redeemed coupon ${normalizedCode}, expires at ${expiresAt.toISOString()}`
-    );
-
     return c.json({
       success: true,
       message: `Coupon redeemed successfully! You now have Pro Plus access until ${formatExpirationDate(expiresAt)}.`,

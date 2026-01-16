@@ -765,7 +765,6 @@ app.openapi(activateBubbleFlowRoute, async (c) => {
   if (!webhook.isActive) {
     // Check webhook limit before activating
     const webhookUsage = await getCurrentWebhookUsage(userId);
-    console.log('[activateBubbleFlowRoute] Webhook usage:', webhookUsage);
     if (webhookUsage.currentUsage >= webhookUsage.limit) {
       return c.json(
         {
@@ -1335,8 +1334,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
       try {
         // PLANNING PHASE: Run Coffee agent for clarification and plan generation
         if (phase === 'planning') {
-          console.log('[API] Running Coffee agent (planning phase)');
-
           const coffeeResult = await runCoffee(
             {
               prompt,
@@ -1378,10 +1375,6 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
                     eq(bubbleFlows.userId, userId)
                   )
                 );
-
-              console.log(
-                `[API] Saved ${messages.length} conversation messages to flow ${flowId} metadata (planning phase)`
-              );
             } catch (saveError) {
               console.error(
                 `[API] Error saving conversation messages to flow ${flowId}:`,
@@ -1693,8 +1686,6 @@ app.openapi(runContextFlowRoute, async (c) => {
   try {
     const { flowCode, credentials } = c.req.valid('json');
 
-    console.log('[API] Running context-gathering flow for user:', userId);
-
     // Validate the flow code
     const bubbleFactory = await getBubbleFactory();
     const validationResult = await validateAndExtract(
@@ -1730,11 +1721,6 @@ app.openapi(runContextFlowRoute, async (c) => {
       credentials
     );
 
-    console.log(
-      '[API] Bubble parameters with credentials:',
-      JSON.stringify(bubbleParametersWithCreds, null, 2)
-    );
-
     // Execute the flow using the standard execution path
     const executionResult = await runBubbleFlow(
       flowCode,
@@ -1751,11 +1737,6 @@ app.openapi(runContextFlowRoute, async (c) => {
         userId,
         pricingTable: PRICING_TABLE,
       }
-    );
-
-    console.log(
-      '[API] Context flow executed successfully with result:',
-      executionResult.data
     );
 
     return c.json(

@@ -199,17 +199,18 @@ export class AmazonShoppingTool<
 
     // Create BrowserBaseBubble with explicit context_id and cookies
 
-    const browserBase = new BrowserBaseBubble(
+    const startsession_browserbase = new BrowserBaseBubble(
       {
         operation: 'start_session' as const,
         context_id: this.contextId || undefined,
         cookies: this.cookies || undefined,
         credentials: this.params.credentials,
       },
-      this.context
+      this.context,
+      'startsession_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await startsession_browserbase.action();
 
     if (!result.data.success || !result.data.session_id) {
       throw new Error(result.data.error || 'Failed to start browser session');
@@ -246,15 +247,16 @@ export class AmazonShoppingTool<
     const sessionIdToEnd = this.sessionId;
 
     try {
-      const browserBase = new BrowserBaseBubble(
+      const endsession_browserbase = new BrowserBaseBubble(
         {
           operation: 'end_session' as const,
           session_id: sessionIdToEnd,
         },
-        this.context
+        this.context,
+        'endsession_browserbase'
       );
 
-      await browserBase.action();
+      await endsession_browserbase.action();
       debugLog(`[AmazonShoppingTool] Browser session ended: ${sessionIdToEnd}`);
     } catch (error) {
       console.error('[AmazonShoppingTool] Error ending session:', error);
@@ -278,7 +280,7 @@ export class AmazonShoppingTool<
       throw new Error('No active browser session');
     }
 
-    const browserBase = new BrowserBaseBubble(
+    const navigate_browserbase = new BrowserBaseBubble(
       {
         operation: 'navigate' as const,
         session_id: this.sessionId,
@@ -286,10 +288,11 @@ export class AmazonShoppingTool<
         wait_until: 'domcontentloaded',
         timeout: 30000,
       },
-      this.context
+      this.context,
+      'navigate_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await navigate_browserbase.action();
     if (!result.data.success) {
       throw new Error(result.data.error || 'Navigation failed');
     }
@@ -306,7 +309,7 @@ export class AmazonShoppingTool<
       throw new Error('No active browser session');
     }
 
-    const browserBase = new BrowserBaseBubble(
+    const click_browserbase = new BrowserBaseBubble(
       {
         operation: 'click' as const,
         session_id: this.sessionId,
@@ -314,10 +317,11 @@ export class AmazonShoppingTool<
         wait_for_navigation: waitForNav,
         timeout: 5000,
       },
-      this.context
+      this.context,
+      'click_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await click_browserbase.action();
     return result.data.success;
   }
 
@@ -329,16 +333,17 @@ export class AmazonShoppingTool<
       throw new Error('No active browser session');
     }
 
-    const browserBase = new BrowserBaseBubble(
+    const evaluate_browserbase = new BrowserBaseBubble(
       {
         operation: 'evaluate' as const,
         session_id: this.sessionId,
         script,
       },
-      this.context
+      this.context,
+      'evaluate_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await evaluate_browserbase.action();
     if (!result.data.success) {
       throw new Error(result.data.error || 'Script evaluation failed');
     }
@@ -357,7 +362,7 @@ export class AmazonShoppingTool<
       throw new Error('No active browser session');
     }
 
-    const browserBase = new BrowserBaseBubble(
+    const waitselector_browserbase = new BrowserBaseBubble(
       {
         operation: 'wait' as const,
         session_id: this.sessionId,
@@ -365,10 +370,11 @@ export class AmazonShoppingTool<
         selector,
         timeout,
       },
-      this.context
+      this.context,
+      'waitselector_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await waitselector_browserbase.action();
     return result.data.success;
   }
 
@@ -380,17 +386,18 @@ export class AmazonShoppingTool<
       throw new Error('No active browser session');
     }
 
-    const browserBase = new BrowserBaseBubble(
+    const waitnavigation_browserbase = new BrowserBaseBubble(
       {
         operation: 'wait' as const,
         session_id: this.sessionId,
         wait_type: 'navigation',
         timeout,
       },
-      this.context
+      this.context,
+      'waitnavigation_browserbase'
     );
 
-    const result = await browserBase.action();
+    const result = await waitnavigation_browserbase.action();
     return result.data.success;
   }
 
@@ -411,7 +418,7 @@ export class AmazonShoppingTool<
       debugLog(`[AmazonShoppingTool] Taking screenshot: ${label}`);
 
       // Take screenshot using BrowserBase
-      const browserBase = new BrowserBaseBubble(
+      const screenshot_browserbase = new BrowserBaseBubble(
         {
           operation: 'screenshot' as const,
           session_id: this.sessionId,
@@ -419,10 +426,11 @@ export class AmazonShoppingTool<
           format: 'png',
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'screenshot_browserbase'
       );
 
-      const screenshotResult = await browserBase.action();
+      const screenshotResult = await screenshot_browserbase.action();
       if (!screenshotResult.data.success || !screenshotResult.data.data) {
         console.error(
           '[AmazonShoppingTool] Screenshot failed:',
@@ -440,7 +448,7 @@ export class AmazonShoppingTool<
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `amazon-${label}-${timestamp}.png`;
 
-      const storageBubble = new StorageBubble(
+      const updatefile_storagebubble = new StorageBubble(
         {
           operation: 'updateFile' as const,
           bucketName: 'bubble-lab-bucket',
@@ -449,10 +457,11 @@ export class AmazonShoppingTool<
           contentType: 'image/png',
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'updatefile_storagebubble'
       );
 
-      const uploadResult = await storageBubble.action();
+      const uploadResult = await updatefile_storagebubble.action();
       if (!uploadResult.data.success || !uploadResult.data.fileName) {
         console.error(
           '[AmazonShoppingTool] Upload failed:',
@@ -466,7 +475,7 @@ export class AmazonShoppingTool<
       );
 
       // Get the download URL for the uploaded file
-      const getFileBubble = new StorageBubble(
+      const getfile_storagebubble = new StorageBubble(
         {
           operation: 'getFile' as const,
           bucketName: 'bubble-lab-bucket',
@@ -474,10 +483,11 @@ export class AmazonShoppingTool<
           expirationMinutes: 60 * 24 * 7, // 7 days expiry
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'getfile_storagebubble'
       );
 
-      const fileResult = await getFileBubble.action();
+      const fileResult = await getfile_storagebubble.action();
       if (!fileResult.data.success || !fileResult.data.downloadUrl) {
         console.error(
           '[AmazonShoppingTool] Failed to get download URL:',
@@ -786,7 +796,7 @@ export class AmazonShoppingTool<
         `[AmazonShoppingTool] Current URL after add to cart: ${currentUrl}`
       );
       await this.saveDebugState('add-to-cart-after');
-    } catch (err) {
+    } catch {
       debugLog(
         '[AmazonShoppingTool] Could not save debug state (page may have navigated)'
       );
@@ -1632,7 +1642,7 @@ export class AmazonShoppingTool<
         // Get images
         const images = [];
         document.querySelectorAll('#altImages img').forEach(img => {
-          const src = img.src?.replace(/\._[^.]+_\./, '._AC_SL1500_.');
+          const src = img.src?.replace(/._[^.]+_./, '._AC_SL1500_.');
           if (src && !src.includes('play-button')) images.push(src);
         });
 

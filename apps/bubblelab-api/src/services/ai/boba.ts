@@ -337,7 +337,5 @@ export async function runBoba(
     bubbleParameters: validationResult.bubbleParameters,
   };
 
-  console.log('[Boba] Generation result:', generationResult);
-
   return generationResult;
 }

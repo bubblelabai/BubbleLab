@@ -85,13 +85,17 @@ export function useRunExecution(
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
+  // Track if we've already jumped to the first bubble in this execution
+  const hasJumpedToFirstBubbleRef = useRef(false);
+
   const queryClient = useQueryClient();
   const validateCodeMutation = useValidateCode({ flowId });
   const updateBubbleFlowMutation = useUpdateBubbleFlow(flowId);
   const { data: currentFlow, updateDefaultInputs } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
-  const { selectBubbleInConsole } = useLiveOutput(flowId);
+  const { selectBubbleInConsole, selectResultsInConsole } =
+    useLiveOutput(flowId);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -103,6 +107,9 @@ export function useRunExecution(
 
       // Start execution in store
       getExecutionStore(flowId).startExecution();
+
+      // Reset the flag for jumping to first bubble
+      hasJumpedToFirstBubbleRef.current = false;
 
       const abortController = new AbortController();
       getExecutionStore(flowId).setAbortController(abortController);
@@ -175,6 +182,13 @@ export function useRunExecution(
                       endLine: bubble.location.endLine,
                     });
                   }
+
+                  // Auto-jump to first bubble when execution starts
+                  // This switches to console tab and selects the bubble
+                  if (!hasJumpedToFirstBubbleRef.current) {
+                    hasJumpedToFirstBubbleRef.current = true;
+                    selectBubbleInConsole(result.bubbleId);
+                  }
                 }
                 optionsRef.current.onBubbleExecution?.(eventData);
                 break;
@@ -228,6 +242,8 @@ export function useRunExecution(
               case 'stream_complete': {
                 // This is the final event - stop execution
                 getExecutionStore(flowId).stopExecution();
+                // Auto-jump to Results tab when streaming completes
+                selectResultsInConsole();
                 optionsRef.current.onComplete?.();
                 return true;
               }
@@ -308,6 +324,7 @@ export function useRunExecution(
       queryClient,
       setExecutionHighlight,
       selectBubbleInConsole,
+      selectResultsInConsole,
     ]
   );
 

@@ -205,9 +205,6 @@ export async function runMilkTea(
   request: MilkTeaRequest,
   credentials?: Partial<Record<CredentialType, string>>
 ): Promise<MilkTeaResponse> {
-  console.log('[MilkTea] Starting agent for bubble:', request.bubbleName);
-  console.log('[MilkTea] User request:', request.userRequest);
-
   try {
     const bubbleFactory = new BubbleFactory();
     await bubbleFactory.registerDefaults();
@@ -229,7 +226,6 @@ export async function runMilkTea(
     // Create hooks for validation tool
     const beforeToolCall: ToolHookBefore = async (context: ToolHookContext) => {
       if (context.toolName === 'bubbleflow-validation-tool') {
-        console.log('[MilkTea] Pre-hook: Intercepting validation tool call');
         // Extract snippet from tool input (where agent puts the code to validate)
         const snippet = (context.toolInput as { code?: string })?.code;
 
@@ -241,11 +237,8 @@ export async function runMilkTea(
           };
         }
 
-        console.log('[MilkTea] Extracted snippet from tool input:', snippet);
-
         // Save original snippet for restoration in afterToolCall
         savedOriginalSnippet = snippet;
-        console.log('[MilkTea] Saved original snippet for restoration');
 
         // Insert snippet into full code
         const fullCode = insertSnippetAtLocation(
@@ -253,8 +246,6 @@ export async function runMilkTea(
           snippet,
           request.insertLocation
         );
-
-        console.log('[MilkTea] Generated full code for validation', fullCode);
 
         // Modify tool input to validate full code
         return {
@@ -272,12 +263,8 @@ export async function runMilkTea(
     const afterToolCall: ToolHookAfter = async (context: ToolHookContext) => {
       const reasoningContent = '';
       if (context.toolName === 'bubbleflow-validation-tool') {
-        console.log('[MilkTea] Post-hook: Checking validation result');
-
         // Restore original snippet in both tool message AND AIMessage tool_calls
         if (savedOriginalSnippet) {
-          console.log('[MilkTea] Restoring original snippet in messages');
-
           // Find the last AIMessage with tool calls
           const lastAIMessageIndex = [...context.messages]
             .reverse()
@@ -300,9 +287,6 @@ export async function runMilkTea(
               if (toolCall.args && typeof toolCall.args === 'object') {
                 toolCall.args = { code: savedOriginalSnippet };
               }
-              console.log(
-                '[MilkTea] Restored original snippet in AIMessage tool_calls'
-              );
             }
 
             // Also preserve reasoning/thinking content if present
@@ -367,8 +351,6 @@ export async function runMilkTea(
               _note:
                 'Validation was performed on full code with snippet inserted',
             });
-
-            console.log('[MilkTea] Updated tool message with restored context');
           }
         }
 
@@ -376,8 +358,6 @@ export async function runMilkTea(
           const validationResult: BubbleResult<ValidationToolResult> =
             context.toolOutput as BubbleResult<ValidationToolResult>;
           if (validationResult.data?.valid === true) {
-            console.log('[MilkTea] Validation passed! Signaling completion.');
-
             // Use the saved original snippet (not the full code from toolInput)
             const snippet = savedOriginalSnippet || '';
 
@@ -441,9 +421,6 @@ export async function runMilkTea(
 
               // Inject the response into the AI message
               lastAIMessage.content = JSON.stringify(response);
-              console.log(
-                '[MilkTea] Injected JSON response with original snippet into AI message'
-              );
             }
 
             console.debug(
@@ -459,8 +436,6 @@ export async function runMilkTea(
               shouldStop: true,
             };
           }
-          console.log('[MilkTea] Validation failed, agent will retry');
-          console.log('[MilkTea] Errors:', validationResult.data?.errors);
         } catch (error) {
           console.warn('[MilkTea] Failed to parse validation result:', error);
         }
@@ -495,11 +470,7 @@ export async function runMilkTea(
       afterToolCall,
     });
 
-    console.log('[MilkTea] Executing agent...');
     const result = await agent.action();
-
-    console.log('[MilkTea] Agent execution completed');
-    console.log('[MilkTea] Success:', result.success);
 
     if (!result.success) {
       return {
@@ -524,8 +495,6 @@ export async function runMilkTea(
         error: error instanceof Error ? error.message : 'Unknown parsing error',
       };
     }
-
-    console.log('[MilkTea] Agent output type:', agentOutput.type);
 
     // Handle different response types
     if (agentOutput.type === 'question' || agentOutput.type === 'reject') {

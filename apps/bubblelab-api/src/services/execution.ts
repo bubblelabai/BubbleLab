@@ -115,7 +115,6 @@ async function runBubbleFlowCommon(
     userCredentialMapping,
   });
   const usageCheck = await getMonthlyLimitForPlan(options.userId);
-  console.log('[runBubbleFlowCommon] Usage check:', usageCheck);
 
   if (usageCheck.executions.currentUsage >= usageCheck.executions.limit) {
     const errorMessage = `Monthly executions exceeded. You have used ${usageCheck.executions.currentUsage} out of ${usageCheck.executions.limit} monthly executions. Please upgrade your plan for continued use.`;
@@ -391,10 +390,6 @@ export async function executeBubbleFlow(
       ) {
         // Now we need to process the credential-injected code
         finalCode = processUserCode(injectionResult.code!);
-      } else {
-        console.log(
-          '[DEBUG] No credentials injected, using original processed code'
-        );
       }
     }
 

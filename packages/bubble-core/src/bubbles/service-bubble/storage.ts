@@ -306,9 +306,10 @@ export class StorageBubble<
       bucketName: 'my-bucket',
       fileName: 'example.txt',
     } as T,
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
   }
 
   protected chooseCredential(): string | undefined {
