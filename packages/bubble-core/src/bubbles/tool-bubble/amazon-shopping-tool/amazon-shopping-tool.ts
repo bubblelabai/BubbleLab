@@ -605,9 +605,43 @@ export class AmazonShoppingTool<
     // Wait a moment for any modal/popup to appear
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    // Check if we've already navigated away from product page (to cart confirmation)
+    // If so, skip the "No thanks" check entirely - we're done
+    let currentUrlAfterAdd: string;
+    try {
+      currentUrlAfterAdd = await this.getCurrentUrl();
+      debugLog(
+        `[AmazonShoppingTool] URL after Add to Cart click: ${currentUrlAfterAdd}`
+      );
+
+      // If we've navigated to cart or confirmation page, we're done - skip No Thanks check
+      if (
+        currentUrlAfterAdd.includes('/cart') ||
+        currentUrlAfterAdd.includes('/gp/aw/d/') ||
+        currentUrlAfterAdd.includes('sw_pt=') ||
+        currentUrlAfterAdd.includes('/gp/product/handle-buy-box')
+      ) {
+        debugLog(
+          '[AmazonShoppingTool] Already navigated to cart/confirmation - skipping No Thanks check'
+        );
+        return {
+          operation: 'add_to_cart',
+          success: true,
+          message: `Added ${asin} to cart`,
+          cart_count: undefined,
+          error: '',
+        };
+      }
+    } catch {
+      debugLog(
+        '[AmazonShoppingTool] Could not get URL (navigation may have occurred)'
+      );
+    }
+
     // Handle protection plan modal - click "No thanks" if it appears
     // This modal asks "Add to your order" with protection plan options
     // Try multiple times as modal may take time to fully render
+    // NOTE: If "No thanks" is not found, we just skip and proceed - it's optional
     debugLog('[AmazonShoppingTool] Checking for protection plan modal...');
 
     // First, try to click using BrowserBase click operation with selector
