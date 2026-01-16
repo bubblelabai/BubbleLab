@@ -19,9 +19,7 @@ import {
 } from './amazon-shopping-tool.schema.js';
 
 // Debug logging helper - only logs when ENABLE_DEBUG_LOGS env var is set
-const DEBUG =
-  process.env.ENABLE_DEBUG_LOGS === 'true' ||
-  process.env.ENABLE_DEBUG_LOGS === '1';
+const DEBUG = process.env.ENABLE_DEBUG_LOGS;
 function debugLog(...args: unknown[]): void {
   if (DEBUG) {
     console.log(...args);
@@ -1466,19 +1464,59 @@ export class AmazonShoppingTool<
 
     const maxResults = params.max_results || 5;
 
-    // Extract search results
+    // Debug: Save page state before extracting results
+    debugLog(
+      '[AmazonShoppingTool] Saving debug state before search extraction...'
+    );
+    await this.saveDebugState('search-before-extract');
+
+    // Debug: Log current URL and page title
+    const currentSearchUrl = await this.getCurrentUrl();
+    debugLog(`[AmazonShoppingTool] Search URL: ${currentSearchUrl}`);
+
+    // Extract search results with enhanced debugging
     const searchData = (await this.evaluate(`
       (() => {
         const results = [];
         const items = document.querySelectorAll('[data-component-type="s-search-result"]');
         const maxResults = ${maxResults};
 
+        console.log('[AmazonSearch Debug] Found ' + items.length + ' search result items');
+
         for (let i = 0; i < Math.min(items.length, maxResults); i++) {
           const item = items[i];
           const asin = item.getAttribute('data-asin');
-          if (!asin) continue;
+          if (!asin) {
+            console.log('[AmazonSearch Debug] Item ' + i + ' has no ASIN, skipping');
+            continue;
+          }
 
-          const titleEl = item.querySelector('h2 a span, .a-size-medium');
+          // Try multiple title selectors in order of specificity
+          // Priority: h2 span.a-text-normal > h2 a span > h2 span > .a-size-base-plus > .a-size-medium
+          const titleSelectors = [
+            'h2 span.a-text-normal',
+            'h2.a-size-mini span.a-text-normal',
+            'h2 a.a-link-normal span',
+            'h2 a span',
+            'h2 span',
+            '.a-size-base-plus.a-color-base',
+            '.a-size-medium.a-color-base.a-text-normal',
+            '.a-size-medium'
+          ];
+
+          let titleEl = null;
+          let titleSelectorUsed = '';
+          for (const selector of titleSelectors) {
+            titleEl = item.querySelector(selector);
+            if (titleEl && titleEl.textContent?.trim()) {
+              titleSelectorUsed = selector;
+              break;
+            }
+          }
+
+          const title = titleEl?.textContent?.trim() || 'Unknown Product';
+          console.log('[AmazonSearch Debug] Item ' + i + ' ASIN=' + asin + ' title="' + title.substring(0, 50) + '..." selector=' + titleSelectorUsed);
+
           const priceEl = item.querySelector('.a-price .a-offscreen');
           const ratingEl = item.querySelector('.a-icon-alt');
           const reviewsEl = item.querySelector('.a-size-small .a-link-normal');
@@ -1487,13 +1525,14 @@ export class AmazonShoppingTool<
 
           results.push({
             asin,
-            title: titleEl?.textContent?.trim() || 'Unknown Product',
+            title,
             price: priceEl?.textContent?.trim() || '',
             rating: ratingEl?.textContent?.match(/[0-9.]+/)?.[0] || '',
             reviews_count: reviewsEl?.textContent?.match(/[0-9,]+/)?.[0] || '',
             url: 'https://www.amazon.com/dp/' + asin,
             image: imageEl?.src || '',
             prime: !!primeEl,
+            _debug_titleSelector: titleSelectorUsed
           });
         }
 
@@ -1506,6 +1545,16 @@ export class AmazonShoppingTool<
         };
       })()
     `)) as { results: SearchResult[]; totalResults: number };
+
+    // Log extracted results for debugging
+    debugLog(
+      `[AmazonShoppingTool] Extracted ${searchData.results.length} results`
+    );
+    searchData.results.forEach((r, i) => {
+      debugLog(
+        `[AmazonShoppingTool] Result ${i}: ASIN=${r.asin}, title="${r.title.substring(0, 50)}..."`
+      );
+    });
 
     return {
       operation: 'search',
