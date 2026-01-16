@@ -90,6 +90,7 @@ export default function AllEventsView({
     bubbleResults,
     isEvaluating,
     evaluationResult,
+    activeBrowserSession,
   } = executionState;
 
   const eventsEndRef = useRef<HTMLDivElement>(null);
@@ -1424,6 +1425,7 @@ export default function AllEventsView({
                         execution={pairedExecution}
                         renderJson={JsonRenderer}
                         flowId={flowId}
+                        activeBrowserSession={activeBrowserSession}
                       />
                     </div>
                   ) : viewMode === 'unified' && !pairedExecution ? (

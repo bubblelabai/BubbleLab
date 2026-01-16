@@ -97,6 +97,31 @@ export const AmazonShoppingToolParamsSchema = z.discriminatedUnion(
         .optional()
         .describe('Required: AMAZON_CRED for authenticated Amazon session'),
     }),
+
+    // Screenshot operation
+    z.object({
+      operation: z
+        .literal('screenshot')
+        .describe(
+          'Take a screenshot of the current page and upload to cloud storage'
+        ),
+      url: z
+        .string()
+        .url()
+        .optional()
+        .describe('Optional URL to navigate to before taking screenshot'),
+      full_page: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Whether to capture the full scrollable page'),
+      credentials: z
+        .record(z.nativeEnum(CredentialType), z.string())
+        .optional()
+        .describe(
+          'Required: AMAZON_CRED for browser session, CLOUDFLARE_R2_* for storage'
+        ),
+    }),
   ]
 );
 
@@ -162,6 +187,10 @@ export const AmazonShoppingToolResultSchema = z.discriminatedUnion(
       items: z.array(CartItemSchema).optional().describe('Items in the cart'),
       subtotal: z.string().optional().describe('Cart subtotal'),
       total_items: z.number().optional().describe('Total number of items'),
+      screenshot_url: z
+        .string()
+        .optional()
+        .describe('URL to screenshot image of cart confirmation'),
       error: z.string().describe('Error message if operation failed'),
     }),
 
@@ -193,6 +222,10 @@ export const AmazonShoppingToolResultSchema = z.discriminatedUnion(
         )
         .optional()
         .describe('Items in the order'),
+      screenshot_url: z
+        .string()
+        .optional()
+        .describe('URL to screenshot image of order confirmation'),
       error: z.string().describe('Error message if operation failed'),
     }),
 
@@ -216,6 +249,17 @@ export const AmazonShoppingToolResultSchema = z.discriminatedUnion(
       operation: z.literal('get_product'),
       success: z.boolean().describe('Whether the operation was successful'),
       product: ProductDetailsSchema.optional().describe('Product details'),
+      error: z.string().describe('Error message if operation failed'),
+    }),
+
+    // Screenshot result
+    z.object({
+      operation: z.literal('screenshot'),
+      success: z.boolean().describe('Whether the operation was successful'),
+      screenshot_url: z
+        .string()
+        .optional()
+        .describe('URL to the uploaded screenshot image'),
       error: z.string().describe('Error message if operation failed'),
     }),
   ]

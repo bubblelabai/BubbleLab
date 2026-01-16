@@ -920,4 +920,24 @@ export class BubbleLogger {
     const bubbleStartTime = this.bubbleStartTimes.get(variableId);
     return bubbleStartTime ? Date.now() - bubbleStartTime : 0;
   }
+
+  /**
+   * Log browser session start event for live viewing
+   * Base implementation is a no-op - StreamingBubbleLogger overrides this
+   */
+  logBrowserSessionStart(
+    _sessionId: string,
+    _sessionUrl: string,
+    _variableId?: number
+  ): void {
+    // No-op in base logger - StreamingBubbleLogger will emit the event
+  }
+
+  /**
+   * Log browser session end event
+   * Base implementation is a no-op - StreamingBubbleLogger overrides this
+   */
+  logBrowserSessionEnd(_sessionId: string, _variableId?: number): void {
+    // No-op in base logger - StreamingBubbleLogger will emit the event
+  }
 }

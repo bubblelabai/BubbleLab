@@ -12,8 +12,6 @@ import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { api } from '@/lib/api';
 import { useSubscription } from '@/hooks/useSubscription';
 import { BubbleFlowDetailsResponse } from '@bubblelab/shared-schemas';
-import { useUIStore } from '@/stores/uiStore';
-import { getLiveOutputStore } from '@/stores/liveOutputStore';
 import { useLiveOutput } from './useLiveOutput';
 import {
   validateInputs,
@@ -93,8 +91,7 @@ export function useRunExecution(
   const { data: currentFlow, updateDefaultInputs } = useBubbleFlow(flowId);
   const { refetch: refetchSubscriptionStatus } = useSubscription();
   const { setExecutionHighlight, editor } = useEditor(flowId || undefined);
-  const { selectBubbleInConsole, selectResultsInConsole } =
-    useLiveOutput(flowId);
+  const { selectBubbleInConsole } = useLiveOutput(flowId);
 
   // Execute with streaming - merged from useExecutionStream
   const executeWithStreaming = useCallback(
@@ -106,14 +103,6 @@ export function useRunExecution(
 
       // Start execution in store
       getExecutionStore(flowId).startExecution();
-
-      // Open output panel and select first tab (index 0) at execution start
-      // This gives users the "adrenaline rush" of seeing output stream in from the beginning
-      useUIStore.getState().setConsolidatedPanelTab('output');
-      // Reset to first tab - when first bubble event comes in, it will appear here
-      getLiveOutputStore(flowId)
-        ?.getState()
-        .setSelectedTab({ kind: 'item', index: 0 });
 
       const abortController = new AbortController();
       getExecutionStore(flowId).setAbortController(abortController);
@@ -192,10 +181,8 @@ export function useRunExecution(
               }
 
               case 'bubble_execution_complete': {
-                // Jump to this bubble's tab on completion
-                if (result.bubbleId) {
-                  selectBubbleInConsole(result.bubbleId);
-                }
+                // No auto-scroll on completion - only jump to live browser sessions
+                optionsRef.current.onBubbleExecutionComplete?.(eventData);
                 break;
               }
 
@@ -211,9 +198,19 @@ export function useRunExecution(
               }
 
               case 'function_call_complete': {
-                // Jump to this function's tab on completion
-                if (result.bubbleId) {
-                  selectBubbleInConsole(result.bubbleId);
+                // No auto-scroll on completion - only jump to live browser sessions
+                break;
+              }
+
+              case 'browser_session_start': {
+                // Auto-jump to the bubble that has a live browser session
+                if (eventData.variableId) {
+                  const bubbleId = String(eventData.variableId);
+                  console.log(
+                    '[useRunExecution] Auto-jumping to live browser session:',
+                    bubbleId
+                  );
+                  selectBubbleInConsole(bubbleId);
                 }
                 break;
               }
@@ -224,21 +221,18 @@ export function useRunExecution(
               }
 
               case 'execution_complete': {
-                // Switch to Results tab
-                selectResultsInConsole();
+                // No auto-jump - only browser sessions trigger auto-jump
                 break;
               }
 
               case 'stream_complete': {
                 // This is the final event - stop execution
                 getExecutionStore(flowId).stopExecution();
-                selectResultsInConsole();
                 optionsRef.current.onComplete?.();
                 return true;
               }
 
               case 'fatal': {
-                selectResultsInConsole();
                 optionsRef.current.onError?.(
                   eventData.message,
                   true,
@@ -314,7 +308,6 @@ export function useRunExecution(
       queryClient,
       setExecutionHighlight,
       selectBubbleInConsole,
-      selectResultsInConsole,
     ]
   );
 

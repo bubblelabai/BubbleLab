@@ -143,6 +143,23 @@ export interface FlowExecutionState {
    */
   abortController: AbortController | null;
 
+  // ============= Browser Session State =============
+
+  /**
+   * Active browser session for live viewing (from BrowserBase)
+   */
+  activeBrowserSession: {
+    variableId: string;
+    sessionUrl: string;
+    sessionId: string;
+  } | null;
+
+  /**
+   * Whether auto-scroll to new events is enabled
+   * Disabled when browser session is active so user can observe the session
+   */
+  autoScrollEnabled: boolean;
+
   // ============= Evaluation State =============
 
   /**
@@ -297,6 +314,24 @@ export interface FlowExecutionState {
    */
   clearEvents: () => void;
 
+  // ============= Actions - Browser Session =============
+
+  /**
+   * Set active browser session for live viewing
+   */
+  setBrowserSession: (
+    session: {
+      variableId: string;
+      sessionUrl: string;
+      sessionId: string;
+    } | null
+  ) => void;
+
+  /**
+   * Set auto-scroll enabled state
+   */
+  setAutoScrollEnabled: (enabled: boolean) => void;
+
   // ============= Actions - Evaluation =============
 
   /**
@@ -408,6 +443,8 @@ function createExecutionStore(flowId: number) {
       events: [],
       currentLine: null,
       abortController: null,
+      activeBrowserSession: null,
+      autoScrollEnabled: true,
       isEvaluating: false,
       evaluationResult: null,
       showEvaluationPopup: false,
@@ -437,6 +474,9 @@ function createExecutionStore(flowId: number) {
           currentLine: null,
           // Clear running bubbles to prevent lingering state that could cause flicker
           runningBubbles: new Set<string>(),
+          // Clear browser session and re-enable auto-scroll
+          activeBrowserSession: null,
+          autoScrollEnabled: true,
         });
       },
 
@@ -568,6 +608,16 @@ function createExecutionStore(flowId: number) {
 
       clearEvents: () => set({ events: [], error: null }),
 
+      // Browser session state
+      setBrowserSession: (session) =>
+        set({
+          activeBrowserSession: session,
+          // Disable auto-scroll when browser session starts, re-enable when it ends
+          autoScrollEnabled: session === null,
+        }),
+
+      setAutoScrollEnabled: (enabled) => set({ autoScrollEnabled: enabled }),
+
       // Evaluation state
       setEvaluating: (evaluating) => set({ isEvaluating: evaluating }),
 
@@ -692,8 +742,33 @@ function createExecutionStore(flowId: number) {
             break;
           }
 
+          case 'browser_session_start': {
+            console.log('[ExecutionStore] browser_session_start event:', {
+              browserSessionUrl: event.browserSessionUrl,
+              browserSessionId: event.browserSessionId,
+              variableId: event.variableId,
+            });
+            if (event.browserSessionUrl && event.browserSessionId) {
+              const session = {
+                variableId: String(event.variableId ?? ''),
+                sessionUrl: event.browserSessionUrl,
+                sessionId: event.browserSessionId,
+              };
+              console.log('[ExecutionStore] Setting browser session:', session);
+              state.setBrowserSession(session);
+            }
+            break;
+          }
+
+          case 'browser_session_end': {
+            state.setBrowserSession(null);
+            break;
+          }
+
           case 'execution_complete': {
             result.isComplete = true;
+            // Clear browser session when execution completes
+            state.setBrowserSession(null);
             break;
           }
 
@@ -880,6 +955,8 @@ const emptyState: FlowExecutionState = {
   events: [],
   currentLine: null,
   abortController: null,
+  activeBrowserSession: null,
+  autoScrollEnabled: true,
   isEvaluating: false,
   evaluationResult: null,
   showEvaluationPopup: false,
@@ -906,6 +983,8 @@ const emptyState: FlowExecutionState = {
   setConnected: () => {},
   setError: () => {},
   clearEvents: () => {},
+  setBrowserSession: () => {},
+  setAutoScrollEnabled: () => {},
   setEvaluating: () => {},
   setEvaluationResult: () => {},
   dismissEvaluationPopup: () => {},

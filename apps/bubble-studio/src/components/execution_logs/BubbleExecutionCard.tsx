@@ -54,6 +54,12 @@ interface BubbleExecutionCardProps {
   flowId?: number | null;
   isSelected?: boolean;
   onSelect?: () => void;
+  /** Active browser session for live viewing */
+  activeBrowserSession?: {
+    variableId: string;
+    sessionUrl: string;
+    sessionId: string;
+  } | null;
 }
 
 /**
@@ -68,6 +74,7 @@ export function BubbleExecutionCard({
   flowId,
   isSelected = false,
   onSelect,
+  activeBrowserSession,
 }: BubbleExecutionCardProps) {
   // Current run index for pagination (0 = latest)
   const [currentRunIndex, setCurrentRunIndex] = useState(0);
@@ -100,6 +107,17 @@ export function BubbleExecutionCard({
   const outputResult = currentRun.outputData;
   const execTime = currentRun.executionTime;
   const runStatus = currentRun.status;
+
+  // Debug: Check browser session matching
+  if (runStatus === 'running') {
+    console.log('[BubbleExecutionCard] Session check:', {
+      runStatus,
+      activeBrowserSession,
+      executionVariableId: execution.variableId,
+      sessionVariableId: activeBrowserSession?.variableId,
+      match: activeBrowserSession?.variableId === execution.variableId,
+    });
+  }
 
   // Status styling
   const statusStyles = {
@@ -330,10 +348,28 @@ export function BubbleExecutionCard({
             </span>
           </div>
           {runStatus === 'running' ? (
-            <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-lg flex items-center gap-2 text-blue-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-xs font-medium">Executing...</span>
-            </div>
+            activeBrowserSession?.variableId === execution.variableId ? (
+              // Show embedded browser session for live viewing
+              <div className="relative w-full h-[400px] bg-gray-900 rounded-lg overflow-hidden border border-blue-500/30">
+                <iframe
+                  src={activeBrowserSession.sessionUrl}
+                  className="w-full h-full"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                  title="Live Browser Session"
+                  allow="clipboard-read; clipboard-write"
+                />
+                <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1.5 shadow-lg">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                  <span className="font-medium">Live Session</span>
+                </div>
+              </div>
+            ) : (
+              // Default executing loader
+              <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-lg flex items-center gap-2 text-blue-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs font-medium">Executing...</span>
+              </div>
+            )
           ) : runStatus === 'pending' ? (
             <div className="text-xs p-3 bg-[#0d1117]/50 border border-[#30363d] rounded-lg text-gray-500 italic">
               Waiting for execution...

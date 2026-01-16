@@ -6,6 +6,7 @@ import {
   BrowserSessionDataSchema,
   type CDPCookie,
 } from '../../service-bubble/browserbase/index.js';
+import { StorageBubble } from '../../service-bubble/storage.js';
 import {
   AmazonShoppingToolParamsSchema,
   AmazonShoppingToolResultSchema,
@@ -215,6 +216,16 @@ export class AmazonShoppingTool<
       `[AmazonShoppingTool] Browser session started: ${this.sessionId}, context: ${this.contextId}`
     );
 
+    // Emit browser session start event with Amazon Shopping Tool's variableId
+    // so the live session shows on this tool's step in the UI
+    if (this.context?.logger && result.data.debug_url) {
+      this.context.logger.logBrowserSessionStart(
+        this.sessionId,
+        result.data.debug_url,
+        this.context.variableId
+      );
+    }
+
     return this.sessionId;
   }
 
@@ -224,22 +235,31 @@ export class AmazonShoppingTool<
   private async endBrowserSession(): Promise<void> {
     if (!this.sessionId) return;
 
+    const sessionIdToEnd = this.sessionId;
+
     try {
       const browserBase = new BrowserBaseBubble(
         {
           operation: 'end_session' as const,
-          session_id: this.sessionId,
+          session_id: sessionIdToEnd,
         },
         this.context
       );
 
       await browserBase.action();
       console.log(
-        `[AmazonShoppingTool] Browser session ended: ${this.sessionId}`
+        `[AmazonShoppingTool] Browser session ended: ${sessionIdToEnd}`
       );
     } catch (error) {
       console.error('[AmazonShoppingTool] Error ending session:', error);
     } finally {
+      // Emit browser session end event to stop showing live view in UI
+      if (this.context?.logger) {
+        this.context.logger.logBrowserSessionEnd(
+          sessionIdToEnd,
+          this.context.variableId
+        );
+      }
       this.sessionId = null;
     }
   }
@@ -368,6 +388,108 @@ export class AmazonShoppingTool<
     return result.data.success;
   }
 
+  /**
+   * Take a screenshot and upload to Cloudflare R2
+   * Returns the URL of the uploaded screenshot
+   */
+  private async takeScreenshotAndUpload(
+    label: string,
+    fullPage = false
+  ): Promise<string | null> {
+    if (!this.sessionId) {
+      console.error('[AmazonShoppingTool] No session for screenshot');
+      return null;
+    }
+
+    try {
+      console.log(`[AmazonShoppingTool] Taking screenshot: ${label}`);
+
+      // Take screenshot using BrowserBase
+      const browserBase = new BrowserBaseBubble(
+        {
+          operation: 'screenshot' as const,
+          session_id: this.sessionId,
+          full_page: fullPage,
+          format: 'png',
+          credentials: this.params.credentials,
+        },
+        this.context
+      );
+
+      const screenshotResult = await browserBase.action();
+      if (!screenshotResult.data.success || !screenshotResult.data.data) {
+        console.error(
+          '[AmazonShoppingTool] Screenshot failed:',
+          screenshotResult.data.error
+        );
+        return null;
+      }
+
+      const base64Data = screenshotResult.data.data;
+      console.log(
+        `[AmazonShoppingTool] Screenshot captured, size: ${base64Data.length} chars`
+      );
+
+      // Upload to Cloudflare R2 using StorageBubble
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `amazon-${label}-${timestamp}.png`;
+
+      const storageBubble = new StorageBubble(
+        {
+          operation: 'updateFile' as const,
+          bucketName: 'bubble-lab-bucket',
+          fileName,
+          fileContent: `data:image/png;base64,${base64Data}`,
+          contentType: 'image/png',
+          credentials: this.params.credentials,
+        },
+        this.context
+      );
+
+      const uploadResult = await storageBubble.action();
+      if (!uploadResult.data.success || !uploadResult.data.fileName) {
+        console.error(
+          '[AmazonShoppingTool] Upload failed:',
+          uploadResult.data.error
+        );
+        return null;
+      }
+
+      console.log(
+        `[AmazonShoppingTool] Screenshot uploaded: ${uploadResult.data.fileName}`
+      );
+
+      // Get the download URL for the uploaded file
+      const getFileBubble = new StorageBubble(
+        {
+          operation: 'getFile' as const,
+          bucketName: 'bubble-lab-bucket',
+          fileName: uploadResult.data.fileName,
+          expirationMinutes: 60 * 24 * 7, // 7 days expiry
+          credentials: this.params.credentials,
+        },
+        this.context
+      );
+
+      const fileResult = await getFileBubble.action();
+      if (!fileResult.data.success || !fileResult.data.downloadUrl) {
+        console.error(
+          '[AmazonShoppingTool] Failed to get download URL:',
+          fileResult.data.error
+        );
+        return null;
+      }
+
+      console.log(
+        `[AmazonShoppingTool] Screenshot URL generated: ${fileResult.data.downloadUrl.substring(0, 80)}...`
+      );
+      return fileResult.data.downloadUrl;
+    } catch (error) {
+      console.error('[AmazonShoppingTool] Screenshot error:', error);
+      return null;
+    }
+  }
+
   async performAction(): Promise<
     Extract<AmazonShoppingToolResult, { operation: T['operation'] }>
   > {
@@ -410,6 +532,13 @@ export class AmazonShoppingTool<
               parsedParams as Extract<
                 AmazonShoppingToolParams,
                 { operation: 'get_product' }
+              >
+            );
+          case 'screenshot':
+            return await this.takeScreenshot(
+              parsedParams as Extract<
+                AmazonShoppingToolParams,
+                { operation: 'screenshot' }
               >
             );
           default:
@@ -551,12 +680,16 @@ export class AmazonShoppingTool<
       })()
     `)) as { items: CartItem[]; subtotal: string; totalItems: number };
 
+    // Take confirmation screenshot of the cart
+    const screenshotUrl = await this.takeScreenshotAndUpload('cart', false);
+
     return {
       operation: 'get_cart',
       success: true,
       items: cartData.items,
       subtotal: cartData.subtotal,
       total_items: cartData.totalItems,
+      screenshot_url: screenshotUrl || undefined,
       error: '',
     };
   }
@@ -1013,6 +1146,13 @@ export class AmazonShoppingTool<
     }
 
     console.log('[AmazonShoppingTool] SUCCESS: Order confirmed!');
+
+    // Take confirmation screenshot of the order
+    const screenshotUrl = await this.takeScreenshotAndUpload(
+      'checkout-confirmation',
+      false
+    );
+
     return {
       operation: 'checkout',
       success: true,
@@ -1025,6 +1165,7 @@ export class AmazonShoppingTool<
       shipping_address: confirmInfo.address,
       payment_method: confirmInfo.paymentMethod,
       items: confirmInfo.items,
+      screenshot_url: screenshotUrl || undefined,
       error: '',
     };
   }
@@ -1178,6 +1319,44 @@ export class AmazonShoppingTool<
       operation: 'get_product',
       success: true,
       product: productData,
+      error: '',
+    };
+  }
+
+  /**
+   * Take a screenshot operation - navigate to URL if provided, then capture screenshot
+   */
+  private async takeScreenshot(
+    params: Extract<AmazonShoppingToolParams, { operation: 'screenshot' }>
+  ): Promise<Extract<AmazonShoppingToolResult, { operation: 'screenshot' }>> {
+    console.log('[AmazonShoppingTool] Screenshot operation');
+
+    // Navigate to URL if provided
+    if (params.url) {
+      console.log(`[AmazonShoppingTool] Navigating to: ${params.url}`);
+      await this.navigateTo(params.url);
+      // Wait for page to load
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    // Take and upload screenshot
+    const screenshotUrl = await this.takeScreenshotAndUpload(
+      'page',
+      params.full_page
+    );
+
+    if (!screenshotUrl) {
+      return {
+        operation: 'screenshot',
+        success: false,
+        error: 'Failed to capture or upload screenshot',
+      };
+    }
+
+    return {
+      operation: 'screenshot',
+      success: true,
+      screenshot_url: screenshotUrl,
       error: '',
     };
   }

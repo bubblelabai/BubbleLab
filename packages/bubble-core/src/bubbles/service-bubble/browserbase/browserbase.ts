@@ -444,6 +444,15 @@ export class BrowserBaseBubble<
       connectUrl,
     });
 
+    // Emit browser session start event for live viewing in UI
+    if (this.context?.logger) {
+      this.context.logger.logBrowserSessionStart(
+        sessionId,
+        debugResponse.debuggerFullscreenUrl,
+        this.context.variableId
+      );
+    }
+
     return {
       operation: 'start_session',
       success: true,
@@ -770,6 +779,14 @@ export class BrowserBaseBubble<
     }
 
     try {
+      // Emit browser session end event before closing
+      if (this.context?.logger) {
+        this.context.logger.logBrowserSessionEnd(
+          params.session_id,
+          this.context.variableId
+        );
+      }
+
       // Disconnect browser
       await session.browser.disconnect();
 
