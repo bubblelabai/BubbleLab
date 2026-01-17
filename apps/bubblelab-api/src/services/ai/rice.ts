@@ -17,9 +17,11 @@ import {
   RiceEvaluationResultSchema,
   RICE_DEFAULT_MODEL,
   CredentialType,
+} from '@bubblelab/shared-schemas';
+import {
   BUBBLE_STUDIO_INSTRUCTIONS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
-} from '@bubblelab/shared-schemas';
+} from '../../config/bubbleflow-generation-prompts.js';
 import { AIAgentBubble } from '@bubblelab/bubble-core';
 import { env } from 'src/config/env.js';
 

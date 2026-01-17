@@ -14,13 +14,15 @@ import {
   CredentialType,
   GenerationResultSchema,
   type GenerationResult,
+  type ParsedBubbleWithInfo,
+} from '@bubblelab/shared-schemas';
+import {
   CRITICAL_INSTRUCTIONS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
-  type ParsedBubbleWithInfo,
   INPUT_SCHEMA_INSTRUCTIONS,
-} from '@bubblelab/shared-schemas';
+} from '../../config/bubbleflow-generation-prompts.js';
 import {
   AIAgentBubble,
   parseJsonWithFallbacks,

@@ -16,16 +16,18 @@ import {
   PearlAgentOutputSchema,
   CredentialType,
   ParsedBubbleWithInfo,
+  CREDENTIAL_ENV_MAP,
+  BubbleName,
+  TOOL_CALL_TO_DISCARD,
+} from '@bubblelab/shared-schemas';
+import {
   INPUT_SCHEMA_INSTRUCTIONS,
   BUBBLE_SPECIFIC_INSTRUCTIONS,
   BUBBLE_STUDIO_INSTRUCTIONS,
   COMMON_DEBUGGING_INSTRUCTIONS,
-  CREDENTIAL_ENV_MAP,
   DEBUGGING_INSTRUCTIONS,
   AI_AGENT_BEHAVIOR_INSTRUCTIONS,
-  BubbleName,
-  TOOL_CALL_TO_DISCARD,
-} from '@bubblelab/shared-schemas';
+} from '../../config/bubbleflow-generation-prompts.js';
 import {
   AIAgentBubble,
   type ToolHookContext,

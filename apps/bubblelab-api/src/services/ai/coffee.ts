@@ -29,10 +29,10 @@ import {
   COFFEE_DEFAULT_MODEL,
   CREDENTIAL_ENV_MAP,
   CredentialType,
-  CRITICAL_INSTRUCTIONS,
   TOOL_CALL_TO_DISCARD,
   BubbleName,
 } from '@bubblelab/shared-schemas';
+import { CRITICAL_INSTRUCTIONS } from '../../config/bubbleflow-generation-prompts.js';
 import {
   AIAgentBubble,
   type StreamingCallback,
