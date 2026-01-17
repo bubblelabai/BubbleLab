@@ -116,13 +116,6 @@ export class CronScheduler {
         this.logger.log(`[cron] Flow ${f.id} skipped: already running`);
         continue; // avoid overlap per flow
       }
-      if (this.maxConcurrency && this.inFlight >= this.maxConcurrency) {
-        // Respect concurrency; leave remaining for next tick
-        this.logger.log(
-          `[cron] Max concurrency reached (${this.inFlight}/${this.maxConcurrency}), deferring remaining flows`
-        );
-        break;
-      }
 
       this.running.add(f.id);
       this.inFlight++;
