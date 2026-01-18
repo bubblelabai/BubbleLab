@@ -165,9 +165,9 @@ export function extractStepGraph(
           childBubbleIds.length > 0 && functionCallNode.isMethodCall
             ? childBubbleIds
             : extractBubbleIdsByLineRange(
-                functionCallNode.methodDefinition.location,
-                bubbles
-              );
+              functionCallNode.methodDefinition.location,
+              bubbles
+            );
         const controlFlowNodes = extractControlFlowNodes(
           functionCallNode.children || []
         );
@@ -335,7 +335,12 @@ export function extractStepGraph(
 
         const parallelParents: string[] = [];
 
-        for (const child of parallelNode.children) {
+        const isDynamic = parallelNode.isDynamic;
+        const sourceArray = parallelNode.sourceArray || 'items';
+
+        for (let i = 0; i < parallelNode.children.length; i++) {
+          const child = parallelNode.children[i];
+
           if (child.type === 'function_call') {
             const fnChild = child as FunctionCallWorkflowNode;
             if (!fnChild.methodDefinition) continue;
@@ -348,9 +353,9 @@ export function extractStepGraph(
               childBubbleIds.length > 0 && fnChild.isMethodCall
                 ? childBubbleIds
                 : extractBubbleIdsByLineRange(
-                    fnChild.methodDefinition.location,
-                    bubbles
-                  );
+                  fnChild.methodDefinition.location,
+                  bubbles
+                );
             const controlFlowNodes = extractControlFlowNodes(
               fnChild.children || []
             );
@@ -360,11 +365,30 @@ export function extractStepGraph(
               parents: frontier.parents,
             };
 
+            // Enhance name/description for dynamic parallel steps
+            let functionName = fnChild.functionName;
+            let description = fnChild.description;
+
+            if (isDynamic) {
+              // If it's the first child of a dynamic map, label it clearly
+              if (i === 0 && parallelNode.children.length === 1) {
+                functionName = `${functionName} (Mapped)`;
+                description = description
+                  ? `${description} (Parallel execution over ${sourceArray})`
+                  : `Parallel execution over ${sourceArray}`;
+              } else if (isDynamic) {
+                // Multiple resolved elements but dynamic source
+                description = description
+                  ? `${description} (Parallel item from ${sourceArray})`
+                  : `Parallel item from ${sourceArray}`;
+              }
+            }
+
             const step = createStepBase(
               stepId,
               parallelLevel,
-              fnChild.functionName,
-              fnChild.description,
+              functionName,
+              description,
               fnChild.methodDefinition.isAsync,
               fnChild.location,
               bubbleIds,
@@ -458,9 +482,9 @@ export function extractStepsFromWorkflow(
         childBubbleIds.length > 0 && functionCallNode.isMethodCall
           ? childBubbleIds
           : extractBubbleIdsByLineRange(
-              functionCallNode.methodDefinition.location,
-              bubbles
-            );
+            functionCallNode.methodDefinition.location,
+            bubbles
+          );
 
       // Extract control flow nodes (if/for/while) for edge generation
       const controlFlowNodes = extractControlFlowNodes(
@@ -500,9 +524,9 @@ export function extractStepsFromWorkflow(
             childBubbleIds.length > 0 && functionCallNode.isMethodCall
               ? childBubbleIds
               : extractBubbleIdsByLineRange(
-                  functionCallNode.methodDefinition.location,
-                  bubbles
-                );
+                functionCallNode.methodDefinition.location,
+                bubbles
+              );
 
           // Extract control flow nodes
           const controlFlowNodes = extractControlFlowNodes(
