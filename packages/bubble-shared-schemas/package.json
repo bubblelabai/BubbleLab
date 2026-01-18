@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/shared-schemas",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
@@ -38,6 +38,7 @@
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.37.0",
     "eslint": "^9.31.0",
+    "tsup": "^8.3.5",
     "typescript": "^5.8.3",
     "vitest": "^2.1.8"
   }
