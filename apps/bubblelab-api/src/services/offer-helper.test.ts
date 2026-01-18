@@ -186,7 +186,7 @@ describe('offer-helper', () => {
       it('should get pro_plan limits', () => {
         const limits = APP_PLAN_TO_MONTHLY_LIMITS['pro_plan'];
 
-        expect(limits.executionLimit).toBe(3000);
+        expect(limits.executionLimit).toBe(6000);
         expect(limits.creditLimit).toBe(20);
         expect(limits.webhookLimit).toBe(10);
       });
@@ -284,7 +284,7 @@ describe('offer-helper', () => {
       it('should get pro_plan limits after expiration', () => {
         const limits = APP_PLAN_TO_MONTHLY_LIMITS['pro_plan'];
 
-        expect(limits.executionLimit).toBe(3000);
+        expect(limits.executionLimit).toBe(6000);
         expect(limits.creditLimit).toBe(20);
         expect(limits.webhookLimit).toBe(10);
       });
