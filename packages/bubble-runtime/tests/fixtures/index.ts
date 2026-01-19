@@ -21,6 +21,7 @@ export const fixtures = {
   'reddit-scraper': '',
   'test-script': '',
   'parameter-with-string': '',
+  'custom-tool-mixed': '',
   'bubble-inside-promise': '',
   'data-assistant': '',
   'research-agent': '',

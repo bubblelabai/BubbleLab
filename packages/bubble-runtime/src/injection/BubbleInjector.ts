@@ -573,25 +573,41 @@ export class BubbleInjector {
       }
     }
 
+    // Find the earliest nested bubble start line to determine which bubbles
+    // are affected by phase 1 deletions
+    const earliestNestedStartLine =
+      nestedBubbles.length > 0
+        ? Math.min(...nestedBubbles.map((b) => b.location.startLine))
+        : Infinity;
+
     // Now process non-nested bubbles in order, tracking line shifts
-    // For parent bubbles: lines were deleted from INSIDE them (nested bubbles), not before them
-    // So their start line should NOT be shifted by phase1LinesDeleted
-    // For non-parent bubbles: lines were deleted BEFORE them, so both start and end should be shifted
-    let lineShift = -phase1LinesDeleted; // Start with the shift from phase 1
+    // - Phase 1 shift (from nested bubble deletions) only affects bubbles that
+    //   come AFTER the nested bubbles, not before them
+    // - Cumulative shift from processing earlier non-nested bubbles affects all
+    //   subsequent bubbles
+    let cumulativeShift = 0; // Shift from processing earlier non-nested bubbles in phase 2
     for (const bubble of nonNestedBubbles) {
       const isParentBubble = parentBubbleIds.has(bubble.variableId);
+
+      // Only apply phase1 shift if this bubble comes AFTER the nested bubbles
+      // Bubbles before the nested bubbles are not affected by their deletion
+      const isAfterNestedBubbles =
+        bubble.location.startLine > earliestNestedStartLine;
+      const phase1Shift = isAfterNestedBubbles ? -phase1LinesDeleted : 0;
 
       const adjustedBubble = {
         ...bubble,
         location: {
           ...bubble.location,
           // For parent bubbles, start line is not affected by phase 1 deletions (they're inside, not before)
-          // For non-parent bubbles, start line is shifted by lines deleted in phase 1
+          // For non-parent bubbles, apply phase1 shift only if after nested bubbles
           startLine: isParentBubble
-            ? bubble.location.startLine
-            : bubble.location.startLine + lineShift,
-          // End line is always shifted for bubbles that come after phase 1 deletions
-          endLine: bubble.location.endLine + lineShift,
+            ? bubble.location.startLine + cumulativeShift
+            : bubble.location.startLine + phase1Shift + cumulativeShift,
+          // End line: parent bubbles need phase1 shift (nested deleted inside), others only if after
+          endLine: isParentBubble
+            ? bubble.location.endLine - phase1LinesDeleted + cumulativeShift
+            : bubble.location.endLine + phase1Shift + cumulativeShift,
         },
       };
 
@@ -600,7 +616,7 @@ export class BubbleInjector {
       const linesAfter = lines.length;
 
       const linesDeleted = linesBefore - linesAfter;
-      lineShift -= linesDeleted;
+      cumulativeShift -= linesDeleted;
     }
 
     const finalScript = lines.join('\n');
@@ -769,7 +785,7 @@ export class BubbleInjector {
    * Injects logger to the bubble instantiations
    */
   injectBubbleLoggingAndReinitializeBubbleParameters(
-    loggingEnabled: boolean = true
+    loggingEnabled: boolean = false
   ) {
     const script = this.bubbleScript.currentBubbleScript;
     try {
@@ -797,13 +813,19 @@ export class BubbleInjector {
         'Error injecting bubble logging and reinitialize bubble parameters:',
         error
       );
+      console.log(
+        '--------------------------------SCRIPT ERROR--------------------------------'
+      );
+      console.log(this.bubbleScript.currentBubbleScript);
+      console.log(
+        '--------------------------------SCRIPT ERROR--------------------------------'
+      );
       // Revert the script to the original script
       this.bubbleScript.currentBubbleScript = script;
     }
 
     try {
       this.loggerInjector.injectSelfCapture();
-      this.bubbleScript.showScript('[BubbleInjector] After injectSelfCapture');
     } catch (error) {
       this.bubbleScript.parsingErrors.push(
         `Error injecting self capture: ${error instanceof Error ? error.message : String(error)}`

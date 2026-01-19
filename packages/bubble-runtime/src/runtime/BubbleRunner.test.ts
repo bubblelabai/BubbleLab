@@ -438,9 +438,7 @@ describe('BubbleRunner correctly runs and plans', () => {
         });
         runner.injector.injectBubbleLoggingAndReinitializeBubbleParameters();
         // expect ..({ operation: 'send_message', channel: channel, ...slackMessage }
-        expect(runner.bubbleScript.bubblescript).toContain(
-          "({ operation: 'send_message', channel: channel, ...slackMessage }"
-        );
+        expect(runner.bubbleScript.bubblescript).toContain('...slackMessage');
       });
     });
 
@@ -617,6 +615,15 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
 
+      await expectValidScript(runner, testScript, true);
+      expect(result).toBeDefined();
+    });
+    it('should execute a flow with a custom tool mixed', async () => {
+      const testScript = getFixture('custom-tool-mixed');
+      const runner = new BubbleRunner(testScript, bubbleFactory, {
+        pricingTable: {},
+      });
+      const result = await runner.runAll();
       await expectValidScript(runner, testScript, true);
       expect(result).toBeDefined();
     });

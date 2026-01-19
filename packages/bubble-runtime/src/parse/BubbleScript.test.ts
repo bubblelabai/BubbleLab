@@ -700,6 +700,7 @@ describe('BubbleScript.getWorkflow()', () => {
     const totalBubblesInWorkflow = bubbleIdsFromTraversal.size;
     expect(totalBubblesInWorkflow * 2).toEqual(totalParsedBubbles);
   });
+
   it('should get workflow from reddit scraper script', () => {
     const redditScraperScript = getFixture('reddit-scraper');
     const analyzer = new BubbleScript(redditScraperScript, bubbleFactory);
