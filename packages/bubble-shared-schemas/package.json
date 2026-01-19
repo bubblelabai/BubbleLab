@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc --emitDeclarationOnly",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
