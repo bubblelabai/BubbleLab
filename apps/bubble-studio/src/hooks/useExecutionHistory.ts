@@ -55,18 +55,7 @@ export function useExecutionHistory(
         throw new Error('Flow ID is required');
       }
 
-      console.log(
-        `[useExecutionHistory] Fetching execution history for ID: ${flowId}`
-      );
-      const response = await bubbleFlowApi.getBubbleFlowExecutions(
-        flowId,
-        queryOptions
-      );
-      console.log(
-        '[useExecutionHistory] Execution history received:',
-        response
-      );
-      return response;
+      return bubbleFlowApi.getBubbleFlowExecutions(flowId, queryOptions);
     },
     // Don't fetch if flowId is null OR if it's an optimistic ID
     enabled: !!flowId && !isOptimistic,
@@ -74,12 +63,6 @@ export function useExecutionHistory(
     gcTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 30 * 1000, // Auto-refetch every minute (60 seconds)
   });
-
-  if (isOptimistic) {
-    console.log(
-      `[useExecutionHistory] Skipping execution history fetch for optimistic flow ID: ${flowId}`
-    );
-  }
 
   return {
     data: query.data?.items,

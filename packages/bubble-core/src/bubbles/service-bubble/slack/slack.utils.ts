@@ -84,33 +84,49 @@ export function markdownToMrkdwn(markdown: string): string {
   let result = markdown;
 
   // Convert links: [text](url) → <url|text>
+  // Must be done first to preserve link text formatting
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>');
 
-  // Convert bold: **text** or __text__ → *text*
-  // Must be done before italic to avoid conflicts
-  result = result.replace(/\*\*([^*]+)\*\*/g, '*$1*');
-  result = result.replace(/__([^_]+)__/g, '*$1*');
+  // Convert bullet lists: - item or * item → • item
+  // Must be done BEFORE italic/bold to avoid * being treated as formatting
+  result = result.replace(/^(\s*)[-]\s+/gm, '$1• ');
+  result = result.replace(/^(\s*)\*\s+/gm, '$1• ');
 
-  // Convert italic: *text* (single asterisk, not double) → _text_
-  // Use negative lookbehind/lookahead to avoid matching bold
-  // Match single * not preceded or followed by *
-  result = result.replace(/(?<!\*)\*(?!\*)([^*]+)(?<!\*)\*(?!\*)/g, '_$1_');
+  // Use placeholder tokens to safely convert bold before italic
+  // This prevents **text** from being partially matched by *text* pattern
+  const BOLD_PLACEHOLDER = '\u0000BOLD\u0000';
+
+  // Convert headers for inline display: # Header → BOLD placeholder
+  // Using placeholder so it doesn't get converted by italic regex
+  result = result.replace(
+    /^#{1,6}\s+(.+)$/gm,
+    `${BOLD_PLACEHOLDER}$1${BOLD_PLACEHOLDER}`
+  );
+
+  // Convert bold: **text** → placeholder
+  result = result.replace(
+    /\*\*([^*]+)\*\*/g,
+    `${BOLD_PLACEHOLDER}$1${BOLD_PLACEHOLDER}`
+  );
+
+  // Convert bold: __text__ → placeholder
+  result = result.replace(
+    /__([^_]+)__/g,
+    `${BOLD_PLACEHOLDER}$1${BOLD_PLACEHOLDER}`
+  );
+
+  // Convert italic: *text* (single asterisk) → _text_
+  // Now safe because ** and headers have been converted to placeholder
+  result = result.replace(/\*([^*]+)\*/g, '_$1_');
 
   // Convert italic: _text_ (single underscore, not double) → _text_ (unchanged for Slack)
   // Already correct format for Slack mrkdwn
 
+  // Replace bold placeholders with Slack bold syntax
+  result = result.replace(new RegExp(BOLD_PLACEHOLDER, 'g'), '*');
+
   // Convert strikethrough: ~~text~~ → ~text~
   result = result.replace(/~~([^~]+)~~/g, '~$1~');
-
-  // Convert bullet lists: - item or * item → • item
-  result = result.replace(/^[\s]*[-*]\s+/gm, '• ');
-
-  // Convert numbered lists: 1. item → 1. item (keep as is, Slack renders nicely)
-
-  // Convert headers for inline display: # Header → *Header*
-  // This is handled separately in markdownToBlocks for block-level conversion
-  // For inline mrkdwn, we just make headers bold
-  result = result.replace(/^#{1,6}\s+(.+)$/gm, '*$1*');
 
   return result;
 }

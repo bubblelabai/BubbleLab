@@ -254,7 +254,9 @@ export class SlackDataAssistantWorkflow extends WorkflowBubble<
             const allMessages = threadResult.data.messages;
 
             // Sort messages chronologically (should already be sorted, but be safe)
-            allMessages.sort((a, b) => parseFloat(a.ts) - parseFloat(b.ts));
+            allMessages.sort(
+              (a, b) => parseFloat(a.ts ?? '0') - parseFloat(b.ts ?? '0')
+            );
 
             // Build thread context with user lookups if needed
             if (allMessages.length > 1) {
