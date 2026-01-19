@@ -20,6 +20,24 @@ describe('BubbleFlow Validation', () => {
       expect(result.errors).toBeDefined();
       expect(result.errors!.length).toBeGreaterThan(0);
     });
+    it('should pass when handle payload uses correct type for slack/bot_mentioned trigger', async () => {
+      const code = `
+import type { SlackMentionEvent } from '@bubblelab/bubble-core';
+import { BubbleFlow } from '@bubblelab/bubble-core';
+
+export class MyFlow extends BubbleFlow<'slack/bot_mentioned'> {
+  async handle(payload: SlackMentionEvent): Promise<{ message: string }> {
+    return { message: payload.text };
+  }
+}
+      `;
+      const result = await validateBubbleFlow(code);
+      if (!result.valid) {
+        console.log(result.errors);
+      }
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
   });
   describe('Valid BubbleFlow validation', () => {
     it('should invalidate credential in flow', async () => {
@@ -110,6 +128,26 @@ describe('BubbleFlow Validation', () => {
       const result = await validateAndExtract(code, bubbleFactory, false);
 
       expect(result.valid).toBe(false);
+    });
+  });
+
+  describe('Validation and Extraction with SlackMentionEvent', () => {
+    it('should validate and extract SlackMentionEvent', async () => {
+      const code = getFixture('slack-with-custom-input');
+      const result = await validateAndExtract(code, bubbleFactory, false);
+      if (!result.valid) {
+        console.log(result.errors);
+      }
+      // Check input schema for slack_event
+      expect(result.inputSchema).toBeDefined();
+      console.log(result.inputSchema);
+      expect(result.valid).toBe(true);
+      expect(result.trigger?.type).toBe('slack/bot_mentioned');
+      expect(result.inputSchema!['properties']).toHaveProperty(
+        'knowledgeBaseDocId'
+      );
+
+      expect(result.errors).toBeUndefined();
     });
   });
 

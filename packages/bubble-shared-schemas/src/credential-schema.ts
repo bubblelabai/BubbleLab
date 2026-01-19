@@ -643,6 +643,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'hello-world': [],
   http: [CredentialType.CUSTOM_AUTH_KEY],
   'get-bubble-details-tool': [],
+  'get-trigger-detail-tool': [],
   'list-bubbles-tool': [],
   'sql-query-tool': [CredentialType.DATABASE_CRED],
   'chart-js-tool': [],
@@ -658,6 +659,9 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'research-agent-tool': [
     CredentialType.FIRECRAWL_API_KEY,
     CredentialType.GOOGLE_GEMINI_CRED,
+    CredentialType.OPENAI_CRED,
+    CredentialType.ANTHROPIC_CRED,
+    CredentialType.OPENROUTER_CRED,
     CredentialType.APIFY_CRED,
   ],
   'reddit-scrape-tool': [],

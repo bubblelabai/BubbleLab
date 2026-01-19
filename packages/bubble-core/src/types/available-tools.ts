@@ -16,6 +16,7 @@ export const AvailableTools = z.enum([
   // Existing bubble tools (for reference - these are handled by bubble names)
   'list-bubbles-tool',
   'get-bubble-details-tool',
+  'get-trigger-detail-tool',
   'bubbleflow-validation-tool',
   'code-edit-tool',
   'chart-js-tool',

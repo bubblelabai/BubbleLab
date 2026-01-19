@@ -71,6 +71,7 @@ export const fixtures = {
   'promise-all-patterns': '',
   'string-literal-complex': '',
   'promises-all-map': '',
+  'slack-with-custom-input': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

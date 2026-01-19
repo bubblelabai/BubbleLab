@@ -65,6 +65,7 @@ export type BubbleName =
   | 'database-analyzer'
   | 'slack-notifier'
   | 'get-bubble-details-tool'
+  | 'get-trigger-detail-tool'
   | 'list-bubbles-tool'
   | 'sql-query-tool'
   | 'chart-js-tool'

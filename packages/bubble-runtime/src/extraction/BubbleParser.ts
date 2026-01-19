@@ -1,10 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 import type { Scope, ScopeManager } from '@bubblelab/ts-scope-manager';
-import {
-  BubbleFactory,
-  BubbleTriggerEventRegistry,
-} from '@bubblelab/bubble-core';
+import { BubbleFactory } from '@bubblelab/bubble-core';
 import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import { buildClassNameLookup } from '../utils/bubble-helper';
 import type {
@@ -29,6 +26,9 @@ import {
   BubbleParameterType,
   hashToVariableId,
   buildCallSiteKey,
+  getTriggerEventConfig,
+  isValidBubbleTriggerEvent,
+  getTriggerEventTypeFromInterfaceName,
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
@@ -531,7 +531,9 @@ export class BubbleParser {
   /**
    * Build a JSON Schema object for the payload parameter of the top-level `handle` entrypoint.
    * Supports primitives, arrays, unions (anyOf), intersections (allOf), type literals, and
-   * same-file interfaces/type aliases. Interface `extends` are ignored for now.
+   * same-file interfaces/type aliases. When an interface extends a known trigger event type
+   * (e.g., SlackMentionEvent), the schema includes an `extendsEvent` field and only contains
+   * the additional custom properties defined in the interface.
    */
   public getPayloadJsonSchema(
     ast: TSESTree.Program
@@ -854,12 +856,12 @@ export class BubbleParser {
           obj.typeName.name === 'BubbleTriggerEventRegistry' &&
           idx.type === 'TSLiteralType' &&
           idx.literal.type === 'Literal' &&
-          typeof idx.literal.value === 'string'
+          typeof idx.literal.value === 'string' &&
+          isValidBubbleTriggerEvent(idx.literal.value)
         ) {
-          const schema = this.eventKeyToSchema(
-            idx.literal.value as keyof BubbleTriggerEventRegistry
-          );
-          if (schema) return schema;
+          const config = getTriggerEventConfig(idx.literal.value);
+          if (config?.payloadSchema)
+            return config.payloadSchema as unknown as Record<string, unknown>;
         }
         return {};
       }
@@ -919,57 +921,6 @@ export class BubbleParser {
     return schema;
   }
 
-  // Minimal mapping for known trigger event keys to JSON Schema shapes
-  // Used for the input schema in the BubbleFlow editor if defined as BubbleTriggerEventRegistry[eventType]
-  private eventKeyToSchema(
-    eventKey: keyof BubbleTriggerEventRegistry
-  ): Record<string, unknown> | null {
-    if (eventKey === 'slack/bot_mentioned') {
-      return {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          channel: { type: 'string' },
-          thread_ts: { type: 'string' },
-          user: { type: 'string' },
-          slack_event: { type: 'object' },
-          // Allow additional field used in flows
-          monthlyLimitError: {},
-        },
-        required: ['text', 'channel', 'user', 'slack_event'],
-      };
-    }
-    if (eventKey === 'webhook/http') {
-      return {
-        type: 'object',
-        properties: {
-          body: { type: 'object' },
-        },
-      };
-    }
-    if (eventKey === 'schedule/cron') {
-      return {
-        type: 'object',
-        properties: {
-          body: { type: 'object' },
-        },
-      };
-    }
-    if (eventKey === 'slack/message_received') {
-      return {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          channel: { type: 'string' },
-          user: { type: 'string' },
-          channel_type: { type: 'string' },
-          slack_event: { type: 'object' },
-        },
-        required: ['text', 'channel', 'user', 'slack_event'],
-      };
-    }
-    return null;
-  }
   /** Resolve in-file interface/type alias by name to JSON Schema */
   private resolveTypeNameToJson(
     name: string,
@@ -977,7 +928,7 @@ export class BubbleParser {
   ): Record<string, unknown> | null {
     for (const stmt of ast.body) {
       if (stmt.type === 'TSInterfaceDeclaration' && stmt.id.name === name) {
-        return this.objectTypeToJsonSchema(stmt.body, ast);
+        return this.resolveInterfaceToJsonSchema(stmt, ast);
       }
       if (stmt.type === 'TSTypeAliasDeclaration' && stmt.id.name === name) {
         return this.tsTypeToJsonSchema(stmt.typeAnnotation, ast) || {};
@@ -987,7 +938,7 @@ export class BubbleParser {
         stmt.declaration?.type === 'TSInterfaceDeclaration' &&
         stmt.declaration.id.name === name
       ) {
-        return this.objectTypeToJsonSchema(stmt.declaration.body, ast);
+        return this.resolveInterfaceToJsonSchema(stmt.declaration, ast);
       }
       if (
         stmt.type === 'ExportNamedDeclaration' &&
@@ -1000,6 +951,50 @@ export class BubbleParser {
       }
     }
     return null;
+  }
+
+  /**
+   * Resolve an interface declaration to JSON Schema, handling extends clauses.
+   * If the interface extends a known trigger event type, the schema will include
+   * an `extendsEvent` field indicating the base trigger type, and `properties`
+   * will only contain the additional custom properties.
+   */
+  private resolveInterfaceToJsonSchema(
+    interfaceDecl: TSESTree.TSInterfaceDeclaration,
+    ast: TSESTree.Program
+  ): Record<string, unknown> {
+    // Check if this interface extends a known trigger event type
+    if (interfaceDecl.extends && interfaceDecl.extends.length > 0) {
+      for (const heritage of interfaceDecl.extends) {
+        // Get the extended interface name
+        let extendedName: string | null = null;
+        if (heritage.expression.type === 'Identifier') {
+          extendedName = heritage.expression.name;
+        }
+
+        if (extendedName) {
+          // Check if it's a known trigger event interface
+          const triggerEventType =
+            getTriggerEventTypeFromInterfaceName(extendedName);
+          if (triggerEventType) {
+            // Extract only the additional properties from this interface
+            const additionalSchema = this.objectTypeToJsonSchema(
+              interfaceDecl.body,
+              ast
+            );
+
+            // Return schema with extendsEvent marker for the UI to handle
+            return {
+              ...additionalSchema,
+              extendsEvent: triggerEventType,
+            };
+          }
+        }
+      }
+    }
+
+    // No trigger event extension found, use normal processing
+    return this.objectTypeToJsonSchema(interfaceDecl.body, ast);
   }
 
   /**

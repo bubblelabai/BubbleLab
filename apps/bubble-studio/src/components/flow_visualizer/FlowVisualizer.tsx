@@ -33,6 +33,7 @@ import type {
   ParsedBubbleWithInfo,
   FunctionCallWorkflowNode,
   BubbleWorkflowNode,
+  BubbleTriggerEventRegistry,
 } from '@bubblelab/shared-schemas';
 import { extractStepGraph, type StepData } from '@/utils/workflowToSteps';
 import { useExecutionStore, getExecutionStore } from '@/stores/executionStore';
@@ -40,6 +41,7 @@ import { useBubbleFlow } from '@/hooks/useBubbleFlow';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditor } from '@/hooks/useEditor';
 import CronScheduleNode from './nodes/CronScheduleNode';
+import ServiceTriggerNode from './nodes/ServiceTriggerNode';
 import { useEditorStore } from '@/stores/editorStore';
 import { getPearlChatStore } from '@/stores/pearlChatStore';
 import { GeneratingOverlay } from './GeneratingOverlay';
@@ -59,6 +61,7 @@ const nodeTypes = {
   bubbleNode: BubbleNode,
   inputSchemaNode: InputSchemaNode,
   cronScheduleNode: CronScheduleNode,
+  serviceTriggerNode: ServiceTriggerNode,
   stepContainerNode: StepContainerNode,
   transformationNode: TransformationNode,
 };
@@ -160,8 +163,18 @@ function FlowVisualizerInner({
   );
 
   const eventType = currentFlow?.eventType;
-  const entryNodeId =
-    eventType === 'schedule/cron' ? 'cron-schedule-node' : 'input-schema-node';
+  // Determine entry node ID based on event type
+  const entryNodeId = (() => {
+    if (eventType === 'schedule/cron') return 'cron-schedule-node';
+    if (
+      eventType &&
+      eventType !== 'webhook/http' &&
+      eventType !== 'schedule/cron'
+    ) {
+      return 'service-trigger-node';
+    }
+    return 'input-schema-node';
+  })();
 
   const bubbleEntries = useMemo(() => {
     const entries = Object.entries(bubbleParameters).sort(([, a], [, b]) => {
@@ -990,8 +1003,35 @@ function FlowVisualizerInner({
           },
         };
         nodes.push(cronScheduleNode);
+      } else if (
+        eventType &&
+        eventType !== 'webhook/http' &&
+        eventType !== 'schedule/cron'
+      ) {
+        // Create ServiceTriggerNode for service-specific triggers (Slack, etc.)
+        const entryNodeId = 'service-trigger-node';
+        const persistedEntryPos = persistedPositions.current.get(entryNodeId);
+        const serviceTriggerNode: Node = {
+          id: entryNodeId,
+          type: 'serviceTriggerNode',
+          position: persistedEntryPos || {
+            x: startX - FLOW_LAYOUT.SEQUENTIAL.ENTRY_NODE_OFFSET,
+            y: baseY,
+          },
+          origin: [0, 0.5] as [number, number],
+          draggable: true,
+          data: {
+            flowId: currentFlow?.id || flowId,
+            flowName: flowName,
+            eventType: eventType as keyof BubbleTriggerEventRegistry,
+            inputSchema: currentFlow?.inputSchema || {},
+            isActive: true, // Service triggers are active if they exist
+            onFocusBubble: onFocusBubble,
+          },
+        };
+        nodes.push(serviceTriggerNode);
       } else {
-        // Create InputSchemaNode for regular flows (with or without input schema)
+        // Create InputSchemaNode for regular flows (webhook/http or unknown)
         const entryNodeId = 'input-schema-node';
         const persistedEntryPos = persistedPositions.current.get(entryNodeId);
         const inputSchemaNode: Node = {
@@ -1202,6 +1242,12 @@ function FlowVisualizerInner({
       ) {
         const firstBubbleId = mainBubbles[0].nodeId;
         if (nodes.some((n) => n.id === firstBubbleId)) {
+          // Determine edge color based on trigger type
+          const getEntryEdgeColor = () => {
+            if (eventType === 'schedule/cron') return '#9333ea'; // purple
+            if (eventType && eventType !== 'webhook/http') return '#14b8a6'; // teal for service triggers
+            return '#60a5fa'; // blue for webhook
+          };
           edges.push({
             id: `${entryNodeId}-to-first-bubble`,
             source: entryNodeId,
@@ -1211,7 +1257,7 @@ function FlowVisualizerInner({
             type: 'straight',
             animated: true,
             style: {
-              stroke: eventType === 'schedule/cron' ? '#9333ea' : '#60a5fa',
+              stroke: getEntryEdgeColor(),
               strokeWidth: 2,
               strokeDasharray: '5,5',
             },

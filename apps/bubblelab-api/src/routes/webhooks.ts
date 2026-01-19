@@ -103,13 +103,24 @@ app.openapi(webhookRoute, async (c) => {
   }
 
   // Transform the webhook payload into the appropriate event structure
-  const webhookPayload = transformWebhookPayload(
+  const transformedPayload = transformWebhookPayload(
     webhook.bubbleFlow.eventType as keyof BubbleTriggerEventRegistry,
     requestBody,
     `/webhook/${userId}/${path}`,
     c.req.method,
     c.req.header()
   );
+
+  // Merge defaultInputs from the flow (similar to cron behavior)
+  // Default values are overridden by incoming payload values
+  const defaultInputs = (webhook.bubbleFlow.defaultInputs || {}) as Record<
+    string,
+    unknown
+  >;
+  const webhookPayload = {
+    ...defaultInputs,
+    ...transformedPayload,
+  };
 
   // For Slack events, return 200 immediately and process asynchronously
   const isSlackEvent = webhook.bubbleFlow.eventType.startsWith('slack/');

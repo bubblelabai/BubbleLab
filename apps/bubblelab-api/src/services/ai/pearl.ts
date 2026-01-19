@@ -477,6 +477,10 @@ export async function runPearl(
             credentials: credentials || {},
           },
           {
+            name: 'get-trigger-detail-tool',
+            credentials: credentials || {},
+          },
+          {
             name: 'web-scrape-tool',
             credentials: credentials || {},
           },
