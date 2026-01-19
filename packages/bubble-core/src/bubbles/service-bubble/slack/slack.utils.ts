@@ -374,7 +374,7 @@ export function markdownToBlocks(
         });
         break;
 
-      case 'quote':
+      case 'quote': {
         // Slack supports > for quotes in mrkdwn
         const quoteLines = block.content.split('\n').map((line) => `> ${line}`);
         slackBlocks.push({
@@ -385,6 +385,7 @@ export function markdownToBlocks(
           },
         });
         break;
+      }
 
       case 'list':
         slackBlocks.push({
@@ -397,7 +398,7 @@ export function markdownToBlocks(
         break;
 
       case 'paragraph':
-      default:
+      default: {
         let content = markdownToMrkdwn(block.content);
         if (!preserveLineBreaks) {
           content = content.replace(/\n/g, ' ');
@@ -410,6 +411,7 @@ export function markdownToBlocks(
           },
         });
         break;
+      }
     }
   }
 

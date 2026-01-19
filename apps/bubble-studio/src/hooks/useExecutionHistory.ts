@@ -1,9 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { bubbleFlowApi } from '../services/bubbleFlowApi';
-import type {
-  ListBubbleFlowExecutionsResponse,
-  BubbleFlowExecution,
-} from '@bubblelab/shared-schemas';
+import type { BubbleFlowExecution } from '@bubblelab/shared-schemas';
 
 interface UseExecutionHistoryOptions {
   limit?: number;
