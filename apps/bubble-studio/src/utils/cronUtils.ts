@@ -67,85 +67,148 @@ export function formatTimeZoneLabel(
 }
 
 /**
- * Parse cron expression to UI-friendly parts (reused from CronScheduleNode)
+ * Parse a cron field that may contain single values, comma-separated lists, and/or ranges.
+ * Examples: "5", "1,3,5", "1-5", "1,3-5,7" - all become arrays of numbers
  */
-function parseCronToParts(cronSchedule: string): CronParts {
-  const parts = cronSchedule.split(' ');
+function parseCronField(field: string): number[] {
+  if (field === '*') return [];
+
+  const results: number[] = [];
+  const segments = field.split(',');
+
+  for (const segment of segments) {
+    if (segment.includes('-')) {
+      // Handle range like "1-5"
+      const [startStr, endStr] = segment.split('-');
+      const start = parseInt(startStr, 10);
+      const end = parseInt(endStr, 10);
+      if (!isNaN(start) && !isNaN(end) && start <= end) {
+        for (let i = start; i <= end; i++) {
+          results.push(i);
+        }
+      }
+    } else if (segment.startsWith('*/')) {
+      // Handle step - this is handled separately, so we skip here
+      continue;
+    } else {
+      const num = parseInt(segment, 10);
+      if (!isNaN(num)) {
+        results.push(num);
+      }
+    }
+  }
+
+  // Remove duplicates and sort
+  return Array.from(new Set(results)).sort((a, b) => a - b);
+}
+
+/**
+ * Extract step interval from a cron field like "STAR/5" or "0-30/10"
+ * Returns the interval number, or null if no step pattern
+ */
+function extractStepInterval(field: string): number | null {
+  if (field.includes('/')) {
+    const stepPart = field.split('/')[1];
+    const interval = parseInt(stepPart, 10);
+    return isNaN(interval) ? null : interval;
+  }
+  return null;
+}
+
+/**
+ * Parse cron expression to UI-friendly parts.
+ * Supports arbitrary cron expressions and maps them to the closest UI representation.
+ *
+ * Priority order for detection:
+ * 1. Minute interval (minute field has step)
+ * 2. Hourly interval (hour field has step)
+ * 3. Monthly (day-of-month is specific, takes precedence over weekly for mixed expressions)
+ * 4. Weekly (day-of-week is specific)
+ * 5. Daily (fallback)
+ */
+export function parseCronToParts(cronSchedule: string): CronParts {
+  const defaultParts: CronParts = {
+    frequency: 'day',
+    interval: 1,
+    hour: 0,
+    minute: 0,
+    daysOfWeek: [],
+    dayOfMonth: 1,
+  };
+
+  const parts = cronSchedule.trim().split(/\s+/);
   if (parts.length !== 5) {
-    return {
-      frequency: 'day',
-      interval: 1,
-      hour: 0,
-      minute: 0,
-      daysOfWeek: [],
-      dayOfMonth: 1,
-    };
+    return defaultParts;
   }
 
   const [minutePart, hourPart, dayPart, , weekPart] = parts;
 
-  // Detect frequency type
-  if (minutePart.startsWith('*/')) {
+  // 1. Check for minute interval (e.g., "*/5 * * * *")
+  const minuteInterval = extractStepInterval(minutePart);
+  if (minuteInterval !== null && (minutePart.startsWith('*') || minutePart.includes('/'))) {
     return {
       frequency: 'minute',
-      interval: parseInt(minutePart.slice(2)) || 1,
+      interval: minuteInterval,
       hour: 0,
       minute: 0,
       daysOfWeek: [],
       dayOfMonth: 1,
     };
   }
-  if (hourPart.startsWith('*/') && minutePart !== '*') {
+
+  // 2. Check for hourly interval (e.g., "0 */2 * * *" or "30 */3 * * *")
+  const hourInterval = extractStepInterval(hourPart);
+  if (hourInterval !== null && (hourPart.startsWith('*') || hourPart.includes('/'))) {
+    // Parse the minute value (could be specific or wildcard)
+    const minuteValue = minutePart === '*' ? 0 : parseInt(minutePart, 10) || 0;
     return {
       frequency: 'hour',
-      interval: parseInt(hourPart.slice(2)) || 1,
+      interval: hourInterval,
       hour: 0,
-      minute: parseInt(minutePart) || 0,
+      minute: minuteValue,
       daysOfWeek: [],
       dayOfMonth: 1,
     };
   }
+
+  // Parse hour and minute for remaining cases
+  const hourValue = hourPart === '*' ? 0 : parseInt(hourPart, 10) || 0;
+  const minuteValue = minutePart === '*' ? 0 : parseInt(minutePart, 10) || 0;
+
+  // 3. Check for monthly schedule (day-of-month is specific)
+  // Monthly takes precedence because day-of-month constraints are more restrictive
+  if (dayPart !== '*') {
+    const dayOfMonthValues = parseCronField(dayPart);
+    return {
+      frequency: 'month',
+      interval: 1,
+      hour: hourValue,
+      minute: minuteValue,
+      daysOfWeek: [],
+      // Use first day if multiple specified, default to 1
+      dayOfMonth: dayOfMonthValues.length > 0 ? dayOfMonthValues[0] : 1,
+    };
+  }
+
+  // 4. Check for weekly schedule (day-of-week is specific)
   if (weekPart !== '*') {
-    // Weekly schedule
-    const daysOfWeek = weekPart.includes(',')
-      ? weekPart.split(',').map((d) => parseInt(d))
-      : weekPart.includes('-')
-        ? Array.from(
-            {
-              length:
-                parseInt(weekPart.split('-')[1]) -
-                parseInt(weekPart.split('-')[0]) +
-                1,
-            },
-            (_, i) => parseInt(weekPart.split('-')[0]) + i
-          )
-        : [parseInt(weekPart)];
+    const daysOfWeek = parseCronField(weekPart);
     return {
       frequency: 'week',
       interval: 1,
-      hour: parseInt(hourPart) || 0,
-      minute: parseInt(minutePart) || 0,
+      hour: hourValue,
+      minute: minuteValue,
       daysOfWeek,
       dayOfMonth: 1,
     };
   }
-  if (dayPart !== '*' && dayPart !== '1') {
-    return {
-      frequency: 'month',
-      interval: 1,
-      hour: parseInt(hourPart) || 0,
-      minute: parseInt(minutePart) || 0,
-      daysOfWeek: [],
-      dayOfMonth: parseInt(dayPart) || 1,
-    };
-  }
 
-  // Daily schedule
+  // 5. Daily schedule (default fallback)
   return {
     frequency: 'day',
     interval: 1,
-    hour: parseInt(hourPart) || 0,
-    minute: parseInt(minutePart) || 0,
+    hour: hourValue,
+    minute: minuteValue,
     daysOfWeek: [],
     dayOfMonth: 1,
   };
