@@ -55,6 +55,17 @@ const AttendeeSchema = z
   })
   .describe('Event attendee');
 
+// Attachment schema (for Google Drive files attached to events)
+const AttachmentSchema = z
+  .object({
+    fileId: z.string().optional().describe('Google Drive file ID'),
+    fileUrl: z.string().optional().describe('URL link to the attachment'),
+    title: z.string().optional().describe('Attachment title/filename'),
+    mimeType: z.string().optional().describe('MIME type of the attachment'),
+    iconLink: z.string().optional().describe('URL link to the attachment icon'),
+  })
+  .describe('Event attachment (Google Drive file)');
+
 // Event schema
 const CalendarEventSchema = z
   .object({
@@ -93,6 +104,16 @@ const CalendarEventSchema = z
       .any()
       .optional()
       .describe('Conference data for virtual meetings'),
+    attachments: z
+      .array(AttachmentSchema)
+      .optional()
+      .describe('List of file attachments on the event'),
+    driveAttachmentFileIds: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'List of Google Drive file IDs extracted from event attachments'
+      ),
   })
   .passthrough()
   .describe('Google Calendar event');
@@ -396,12 +417,36 @@ export class GoogleCalendarBubble<
     }
   }
 
+  // Extracts Google Drive file IDs from event attachments
+  private extractDriveAttachmentFileIds(
+    attachments: z.infer<typeof AttachmentSchema>[] | undefined
+  ): string[] {
+    if (!attachments || !Array.isArray(attachments)) {
+      return [];
+    }
+    return attachments
+      .map((attachment) => attachment.fileId)
+      .filter((fileId): fileId is string => typeof fileId === 'string');
+  }
+
+  // Processes an event to add the driveAttachmentFileIds field
+  private processEventWithDriveAttachments<
+    T extends { attachments?: z.infer<typeof AttachmentSchema>[] },
+  >(event: T): T & { driveAttachmentFileIds: string[] } {
+    return {
+      ...event,
+      driveAttachmentFileIds: this.extractDriveAttachmentFileIds(
+        event.attachments
+      ),
+    };
+  }
+
   private async makeCalendarApiRequest(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
-    body?: any,
+    body?: unknown,
     headers: Record<string, string> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const url = endpoint.startsWith('https://')
       ? endpoint
       : `https://www.googleapis.com/calendar/v3${endpoint}`;
@@ -474,9 +519,12 @@ export class GoogleCalendarBubble<
     const { max_results, page_token } = params;
     const qp = new URLSearchParams({ maxResults: String(max_results ?? 50) });
     if (page_token) qp.set('pageToken', page_token);
-    const resp = await this.makeCalendarApiRequest(
+    const resp = (await this.makeCalendarApiRequest(
       `/users/me/calendarList?${qp.toString()}`
-    );
+    )) as {
+      items?: z.infer<typeof CalendarListEntrySchema>[];
+      nextPageToken?: string;
+    };
     return {
       operation: 'list_calendars',
       success: true,
@@ -509,14 +557,22 @@ export class GoogleCalendarBubble<
     if (q) qp.set('q', q);
     if (page_token) qp.set('pageToken', page_token);
 
-    const resp = await this.makeCalendarApiRequest(
+    const resp = (await this.makeCalendarApiRequest(
       `/calendars/${encodeURIComponent(calendar_id)}/events?${qp.toString()}`
+    )) as {
+      items?: z.infer<typeof CalendarEventSchema>[];
+      nextPageToken?: string;
+    };
+
+    // Process events to add driveAttachmentFileIds
+    const events = (resp.items || []).map((event) =>
+      this.processEventWithDriveAttachments(event)
     );
 
     return {
       operation: 'list_events',
       success: true,
-      events: resp.items || [],
+      events,
       next_page_token: resp.nextPageToken,
       error: '',
     };
@@ -526,13 +582,17 @@ export class GoogleCalendarBubble<
     params: Extract<GoogleCalendarParams, { operation: 'get_event' }>
   ): Promise<Extract<GoogleCalendarResult, { operation: 'get_event' }>> {
     const { calendar_id = 'primary', event_id } = params;
-    const resp = await this.makeCalendarApiRequest(
+    const resp = (await this.makeCalendarApiRequest(
       `/calendars/${encodeURIComponent(calendar_id)}/events/${encodeURIComponent(event_id)}`
-    );
+    )) as z.infer<typeof CalendarEventSchema>;
+
+    // Process event to add driveAttachmentFileIds
+    const event = this.processEventWithDriveAttachments(resp);
+
     return {
       operation: 'get_event',
       success: true,
-      event: resp,
+      event,
       error: '',
     };
   }
@@ -583,16 +643,20 @@ export class GoogleCalendarBubble<
       };
     }
 
-    const resp = await this.makeCalendarApiRequest(
+    const resp = (await this.makeCalendarApiRequest(
       `/calendars/${encodeURIComponent(calendar_id)}/events`,
       'POST',
       body,
       conference ? { 'X-Goog-Api-Version': '2' } : {}
-    );
+    )) as z.infer<typeof CalendarEventSchema>;
+
+    // Process event to add driveAttachmentFileIds
+    const event = this.processEventWithDriveAttachments(resp);
+
     return {
       operation: 'create_event',
       success: true,
-      event: resp,
+      event,
       error: '',
     };
   }
@@ -618,15 +682,19 @@ export class GoogleCalendarBubble<
       end,
       attendees,
     });
-    const resp = await this.makeCalendarApiRequest(
+    const resp = (await this.makeCalendarApiRequest(
       `/calendars/${encodeURIComponent(calendar_id)}/events/${encodeURIComponent(event_id)}`,
       'PATCH',
       body
-    );
+    )) as z.infer<typeof CalendarEventSchema>;
+
+    // Process event to add driveAttachmentFileIds
+    const event = this.processEventWithDriveAttachments(resp);
+
     return {
       operation: 'update_event',
       success: true,
-      event: resp,
+      event,
       error: '',
     };
   }
