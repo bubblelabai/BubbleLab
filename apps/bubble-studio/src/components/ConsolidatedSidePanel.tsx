@@ -29,7 +29,7 @@ export function ConsolidatedSidePanel() {
     shallow
   );
   const { editor } = useEditor();
-  const { data: executionHistory } = useExecutionHistory(flowId, { limit: 10 });
+  const { total: executionTotal } = useExecutionHistory(flowId, { limit: 10 });
 
   const tabs = [
     {
@@ -54,7 +54,7 @@ export function ConsolidatedSidePanel() {
       id: 'history' as const,
       label: 'History',
       icon: Clock,
-      badge: executionHistory?.length ?? null,
+      badge: executionTotal ?? null,
     },
   ];
 

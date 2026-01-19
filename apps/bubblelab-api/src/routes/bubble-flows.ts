@@ -929,17 +929,25 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
   }
 
   // Get execution history for this BubbleFlow
-  const executions = await db.query.bubbleFlowExecutions.findMany({
-    where: eq(bubbleFlowExecutions.bubbleFlowId, id),
-    limit,
-    offset,
-    orderBy: (table, { desc }) => [desc(table.startedAt)], // Most recent first
-  });
+  const [executions, totalResult] = await Promise.all([
+    db.query.bubbleFlowExecutions.findMany({
+      where: eq(bubbleFlowExecutions.bubbleFlowId, id),
+      limit,
+      offset,
+      orderBy: (table, { desc }) => [desc(table.startedAt)], // Most recent first
+    }),
+    db
+      .select({ count: count() })
+      .from(bubbleFlowExecutions)
+      .where(eq(bubbleFlowExecutions.bubbleFlowId, id)),
+  ]);
 
-  const response = executions.map((execution) => ({
+  const total = totalResult[0]?.count ?? 0;
+
+  const items = executions.map((execution) => ({
     id: execution.id,
     status: execution.status as 'running' | 'success' | 'error',
-    payload: execution.payload as Record<string, any>,
+    payload: execution.payload as Record<string, unknown>,
     result: execution.result,
     error: execution.error || undefined,
     startedAt: execution.startedAt.toISOString(),
@@ -948,7 +956,7 @@ app.openapi(listBubbleFlowExecutionsRoute, async (c) => {
     code: execution.code || undefined,
   }));
 
-  return c.json(response, 200);
+  return c.json({ items, total }, 200);
 });
 
 // GET /bubble-flow/:id/executions/:executionId - Get single execution with logs

@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { bubbleFlowApi } from '../services/bubbleFlowApi';
-import type { ListBubbleFlowExecutionsResponse } from '@bubblelab/shared-schemas';
+import type {
+  ListBubbleFlowExecutionsResponse,
+  BubbleFlowExecution,
+} from '@bubblelab/shared-schemas';
 
 interface UseExecutionHistoryOptions {
   limit?: number;
@@ -8,7 +11,8 @@ interface UseExecutionHistoryOptions {
 }
 
 interface UseExecutionHistoryResult {
-  data: ListBubbleFlowExecutionsResponse | undefined;
+  data: BubbleFlowExecution[] | undefined;
+  total: number | undefined;
   loading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -78,7 +82,8 @@ export function useExecutionHistory(
   }
 
   return {
-    data: query.data,
+    data: query.data?.items,
+    total: query.data?.total,
     loading: query.isLoading,
     error: query.error,
     refetch: () => query.refetch(),
