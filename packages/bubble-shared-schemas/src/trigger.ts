@@ -399,3 +399,29 @@ export function isServiceTrigger(
 ): boolean {
   return eventType !== 'webhook/http' && eventType !== 'schedule/cron';
 }
+
+/**
+ * Mapping from trigger event interface names to their event type keys.
+ * Used by BubbleParser to identify when a payload interface extends a known trigger event.
+ */
+export const TRIGGER_EVENT_INTERFACE_MAP: Record<
+  string,
+  keyof BubbleTriggerEventRegistry
+> = {
+  SlackMentionEvent: 'slack/bot_mentioned',
+  SlackMessageReceivedEvent: 'slack/message_received',
+  CronEvent: 'schedule/cron',
+  WebhookEvent: 'webhook/http',
+  BubbleTriggerEvent: 'webhook/http', // Base type defaults to webhook
+};
+
+/**
+ * Get the trigger event type key from an interface name.
+ * @param interfaceName - The name of the interface (e.g., 'SlackMentionEvent')
+ * @returns The trigger event type key or undefined if not a known trigger interface
+ */
+export function getTriggerEventTypeFromInterfaceName(
+  interfaceName: string
+): keyof BubbleTriggerEventRegistry | undefined {
+  return TRIGGER_EVENT_INTERFACE_MAP[interfaceName];
+}

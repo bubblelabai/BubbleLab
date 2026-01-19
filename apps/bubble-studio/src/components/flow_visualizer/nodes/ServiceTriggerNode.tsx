@@ -8,6 +8,7 @@ import {
   Zap,
   BookOpen,
   Code2,
+  Settings2,
 } from 'lucide-react';
 import {
   getTriggerEventConfig,
@@ -119,6 +120,8 @@ function ServiceTriggerNode({ data }: ServiceTriggerNodeProps) {
   // Payload schema is collapsed by default for clarity
   const [isPayloadExpanded, setIsPayloadExpanded] = useState(false);
   const [isSetupGuideExpanded, setIsSetupGuideExpanded] = useState(false);
+  // Custom fields are expanded by default since they're user inputs
+  const [isCustomFieldsExpanded, setIsCustomFieldsExpanded] = useState(true);
 
   // Get trigger config from centralized registry
   const triggerConfig = getTriggerEventConfig(eventType);
@@ -147,34 +150,74 @@ function ServiceTriggerNode({ data }: ServiceTriggerNodeProps) {
     }
   }, [executionInputs]);
 
-  // Parse input schema (use config schema if no custom schema provided)
-  const effectiveSchema = useMemo(() => {
+  // Check if inputSchema extends a trigger event (has custom fields)
+  const extendsEvent = useMemo(() => {
+    if (inputSchema && typeof inputSchema === 'object') {
+      return (inputSchema as Record<string, unknown>).extendsEvent as
+        | string
+        | undefined;
+    }
+    return undefined;
+  }, [inputSchema]);
+
+  // Custom fields are the additional properties defined by the user's payload interface
+  const customFields = useMemo(() => {
+    // Only show custom fields if the schema extends a trigger event
+    if (!extendsEvent || !inputSchema) return [];
+
+    const schema = inputSchema as Record<string, unknown>;
+    if (schema.properties) {
+      return Object.entries(
+        schema.properties as Record<string, Record<string, unknown>>
+      ).map(([name, fieldSchema]) => ({
+        name,
+        type: (fieldSchema?.type as string) || 'string',
+        required: Array.isArray(schema.required)
+          ? schema.required.includes(name)
+          : false,
+        description: fieldSchema?.description as string,
+        default: fieldSchema?.default,
+        canBeFile: fieldSchema?.canBeFile as boolean | undefined,
+        canBeGoogleFile: fieldSchema?.canBeGoogleFile as boolean | undefined,
+      }));
+    }
+    return [];
+  }, [inputSchema, extendsEvent]);
+
+  // Parse base payload schema (from triggerConfig when extending, otherwise from inputSchema)
+  const baseSchema = useMemo(() => {
+    // If extending a trigger event, use the centralized config schema
+    if (extendsEvent) {
+      return triggerConfig?.payloadSchema || {};
+    }
+    // Otherwise use the inputSchema if provided, or fall back to config
     if (inputSchema && Object.keys(inputSchema).length > 0) {
       return inputSchema;
     }
     return triggerConfig?.payloadSchema || {};
-  }, [inputSchema, triggerConfig]);
+  }, [inputSchema, triggerConfig, extendsEvent]);
 
   const schemaFields = useMemo(() => {
-    if (typeof effectiveSchema === 'string') {
-      return parseJSONSchema(effectiveSchema);
+    if (typeof baseSchema === 'string') {
+      return parseJSONSchema(baseSchema);
     }
-    if (effectiveSchema.properties) {
+    const schema = baseSchema as Record<string, unknown>;
+    if (schema.properties) {
       return Object.entries(
-        effectiveSchema.properties as Record<string, Record<string, unknown>>
-      ).map(([name, schema]) => ({
+        schema.properties as Record<string, Record<string, unknown>>
+      ).map(([name, fieldSchema]) => ({
         name,
-        type: (schema?.type as string) || 'string',
-        required: Array.isArray(effectiveSchema.required)
-          ? effectiveSchema.required.includes(name)
+        type: (fieldSchema?.type as string) || 'string',
+        required: Array.isArray(schema.required)
+          ? schema.required.includes(name)
           : false,
-        description: schema?.description as string,
-        default: schema?.default,
-        canBeFile: schema?.canBeFile as boolean | undefined,
+        description: fieldSchema?.description as string,
+        default: fieldSchema?.default,
+        canBeFile: fieldSchema?.canBeFile as boolean | undefined,
       }));
     }
     return [];
-  }, [effectiveSchema]);
+  }, [baseSchema]);
 
   // Check if this node is highlighted
   const isHighlighted = highlightedBubble === 'service-trigger-node';
@@ -295,6 +338,41 @@ function ServiceTriggerNode({ data }: ServiceTriggerNodeProps) {
               <ReactMarkdown components={setupGuideMarkdownComponents}>
                 {triggerConfig.setupGuide}
               </ReactMarkdown>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Custom Fields (shown when payload extends a trigger event) */}
+      {customFields.length > 0 && (
+        <div className="border-b border-neutral-600">
+          <button
+            type="button"
+            onClick={() => setIsCustomFieldsExpanded(!isCustomFieldsExpanded)}
+            className="w-full px-4 py-2.5 flex items-center justify-between text-xs text-neutral-300 hover:text-neutral-100 hover:bg-neutral-700/50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Settings2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-medium">Custom Fields</span>
+              <span className="text-neutral-500 font-normal">
+                ({customFields.length} field
+                {customFields.length !== 1 ? 's' : ''})
+              </span>
+            </span>
+            {isCustomFieldsExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          {isCustomFieldsExpanded && (
+            <div className="px-4 pb-4 space-y-3">
+              <InputFieldsRenderer
+                schemaFields={customFields}
+                inputValues={inputValues}
+                onInputChange={handleInputChange}
+                isExecuting={isExecuting}
+              />
             </div>
           )}
         </div>

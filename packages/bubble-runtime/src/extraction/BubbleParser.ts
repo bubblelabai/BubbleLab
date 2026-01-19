@@ -28,6 +28,7 @@ import {
   buildCallSiteKey,
   getTriggerEventConfig,
   isValidBubbleTriggerEvent,
+  getTriggerEventTypeFromInterfaceName,
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
@@ -530,7 +531,9 @@ export class BubbleParser {
   /**
    * Build a JSON Schema object for the payload parameter of the top-level `handle` entrypoint.
    * Supports primitives, arrays, unions (anyOf), intersections (allOf), type literals, and
-   * same-file interfaces/type aliases. Interface `extends` are ignored for now.
+   * same-file interfaces/type aliases. When an interface extends a known trigger event type
+   * (e.g., SlackMentionEvent), the schema includes an `extendsEvent` field and only contains
+   * the additional custom properties defined in the interface.
    */
   public getPayloadJsonSchema(
     ast: TSESTree.Program
@@ -925,7 +928,7 @@ export class BubbleParser {
   ): Record<string, unknown> | null {
     for (const stmt of ast.body) {
       if (stmt.type === 'TSInterfaceDeclaration' && stmt.id.name === name) {
-        return this.objectTypeToJsonSchema(stmt.body, ast);
+        return this.resolveInterfaceToJsonSchema(stmt, ast);
       }
       if (stmt.type === 'TSTypeAliasDeclaration' && stmt.id.name === name) {
         return this.tsTypeToJsonSchema(stmt.typeAnnotation, ast) || {};
@@ -935,7 +938,7 @@ export class BubbleParser {
         stmt.declaration?.type === 'TSInterfaceDeclaration' &&
         stmt.declaration.id.name === name
       ) {
-        return this.objectTypeToJsonSchema(stmt.declaration.body, ast);
+        return this.resolveInterfaceToJsonSchema(stmt.declaration, ast);
       }
       if (
         stmt.type === 'ExportNamedDeclaration' &&
@@ -948,6 +951,50 @@ export class BubbleParser {
       }
     }
     return null;
+  }
+
+  /**
+   * Resolve an interface declaration to JSON Schema, handling extends clauses.
+   * If the interface extends a known trigger event type, the schema will include
+   * an `extendsEvent` field indicating the base trigger type, and `properties`
+   * will only contain the additional custom properties.
+   */
+  private resolveInterfaceToJsonSchema(
+    interfaceDecl: TSESTree.TSInterfaceDeclaration,
+    ast: TSESTree.Program
+  ): Record<string, unknown> {
+    // Check if this interface extends a known trigger event type
+    if (interfaceDecl.extends && interfaceDecl.extends.length > 0) {
+      for (const heritage of interfaceDecl.extends) {
+        // Get the extended interface name
+        let extendedName: string | null = null;
+        if (heritage.expression.type === 'Identifier') {
+          extendedName = heritage.expression.name;
+        }
+
+        if (extendedName) {
+          // Check if it's a known trigger event interface
+          const triggerEventType =
+            getTriggerEventTypeFromInterfaceName(extendedName);
+          if (triggerEventType) {
+            // Extract only the additional properties from this interface
+            const additionalSchema = this.objectTypeToJsonSchema(
+              interfaceDecl.body,
+              ast
+            );
+
+            // Return schema with extendsEvent marker for the UI to handle
+            return {
+              ...additionalSchema,
+              extendsEvent: triggerEventType,
+            };
+          }
+        }
+      }
+    }
+
+    // No trigger event extension found, use normal processing
+    return this.objectTypeToJsonSchema(interfaceDecl.body, ast);
   }
 
   /**

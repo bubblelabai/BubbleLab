@@ -131,6 +131,26 @@ export class MyFlow extends BubbleFlow<'slack/bot_mentioned'> {
     });
   });
 
+  describe('Validation and Extraction with SlackMentionEvent', () => {
+    it('should validate and extract SlackMentionEvent', async () => {
+      const code = getFixture('slack-with-custom-input');
+      const result = await validateAndExtract(code, bubbleFactory, false);
+      if (!result.valid) {
+        console.log(result.errors);
+      }
+      // Check input schema for slack_event
+      expect(result.inputSchema).toBeDefined();
+      console.log(result.inputSchema);
+      expect(result.valid).toBe(true);
+      expect(result.trigger?.type).toBe('slack/bot_mentioned');
+      expect(result.inputSchema!['properties']).toHaveProperty(
+        'knowledgeBaseDocId'
+      );
+
+      expect(result.errors).toBeUndefined();
+    });
+  });
+
   describe('Invalid BubbleFlow validation', () => {
     it('should fail validation for class not extending BubbleFlow', async () => {
       const code = getFixture('invalid-flow');

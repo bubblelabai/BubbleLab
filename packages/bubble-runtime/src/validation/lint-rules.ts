@@ -1036,6 +1036,14 @@ const TRIGGER_PAYLOAD_TYPE_MAP: Record<string, string> = {
 };
 
 /**
+ * Set of all base trigger event type names.
+ * Used to detect when a user uses the wrong base type (e.g., CronEvent for a Slack trigger).
+ */
+const BASE_TRIGGER_EVENT_TYPES = new Set(
+  Object.values(TRIGGER_PAYLOAD_TYPE_MAP)
+);
+
+/**
  * Lint rule that enforces proper payload typing for BubbleFlow<TriggerType>
  *
  * When a class extends BubbleFlow<'slack/bot_mentioned'>, the handle() method's
@@ -1119,17 +1127,22 @@ export const enforcePayloadTypeRule: LintRule = {
         actualTypeName = typeName.right.text;
       }
 
-      // Check if it matches the expected type or uses BubbleTriggerEventRegistry[triggerType]
       if (actualTypeName && actualTypeName !== expectedTypeName) {
-        // Allow indexed access type: BubbleTriggerEventRegistry['slack/bot_mentioned']
-        // This is also valid
-        const { line } = context.sourceFile.getLineAndCharacterOfPosition(
-          typeAnnotation.getStart(context.sourceFile)
-        );
-        errors.push({
-          line: line + 1,
-          message: `Payload type mismatch: expected '${expectedTypeName}' for trigger type '${context.bubbleFlowTriggerType}', but found '${actualTypeName}'.`,
-        });
+        // Allow custom interfaces that extend the base trigger event.
+        // We only error if the type is a DIFFERENT base trigger event type.
+        // e.g., using CronEvent for a Slack trigger is an error,
+        // but using MyCustomSlackPayload (which extends SlackMentionEvent) is allowed.
+        if (BASE_TRIGGER_EVENT_TYPES.has(actualTypeName)) {
+          // Using a different base trigger event type - this is an error
+          const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+            typeAnnotation.getStart(context.sourceFile)
+          );
+          errors.push({
+            line: line + 1,
+            message: `Payload type mismatch: expected '${expectedTypeName}' (or a custom interface extending it) for trigger type '${context.bubbleFlowTriggerType}', but found '${actualTypeName}'.`,
+          });
+        }
+        // Otherwise, it's a custom interface - allow it (parser will handle extraction)
       }
     }
 
@@ -1168,6 +1181,108 @@ export const enforcePayloadTypeRule: LintRule = {
 };
 
 /**
+ * Lint rule that bans casting the payload parameter to a different type inside handle().
+ *
+ * This pattern defeats the type system and prevents the parser from extracting custom fields:
+ *
+ * BAD:
+ * ```typescript
+ * interface MyPayload extends SlackMentionEvent { customField: string; }
+ * async handle(payload: SlackMentionEvent) {
+ *   const { customField } = payload as MyPayload; // Cast inside - BAD!
+ * }
+ * ```
+ *
+ * GOOD:
+ * ```typescript
+ * interface MyPayload extends SlackMentionEvent { customField: string; }
+ * async handle(payload: MyPayload) { // Use custom type directly
+ *   const { customField } = payload; // No cast needed
+ * }
+ * ```
+ */
+export const noCastPayloadInHandleRule: LintRule = {
+  name: 'no-cast-payload-in-handle',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    // Skip if no handle method or body
+    if (!context.handleMethod || !context.handleMethodBody) {
+      return errors;
+    }
+
+    // Get the payload parameter name
+    const parameters = context.handleMethod.parameters;
+    if (parameters.length === 0) {
+      return errors;
+    }
+
+    const firstParam = parameters[0];
+    let payloadParamName: string | null = null;
+
+    if (ts.isIdentifier(firstParam.name)) {
+      payloadParamName = firstParam.name.text;
+    }
+
+    if (!payloadParamName) {
+      return errors;
+    }
+
+    // Get the declared type of the payload parameter
+    const paramType = firstParam.type;
+    let declaredTypeName: string | null = null;
+
+    if (paramType && ts.isTypeReferenceNode(paramType)) {
+      if (ts.isIdentifier(paramType.typeName)) {
+        declaredTypeName = paramType.typeName.text;
+      }
+    }
+
+    // Walk the handle method body looking for 'as' expressions on the payload
+    const findPayloadCasts = (node: ts.Node): void => {
+      // Check for type assertion: payload as SomeType
+      if (ts.isAsExpression(node)) {
+        const expression = node.expression;
+        const targetType = node.type;
+
+        // Check if the expression is the payload parameter
+        if (
+          ts.isIdentifier(expression) &&
+          expression.text === payloadParamName
+        ) {
+          // Get the target type name
+          let targetTypeName: string | null = null;
+          if (ts.isTypeReferenceNode(targetType)) {
+            if (ts.isIdentifier(targetType.typeName)) {
+              targetTypeName = targetType.typeName.text;
+            }
+          }
+
+          // If casting to a different type than declared, report error
+          if (targetTypeName && targetTypeName !== declaredTypeName) {
+            const { line, character } =
+              context.sourceFile.getLineAndCharacterOfPosition(
+                node.getStart(context.sourceFile)
+              );
+            errors.push({
+              line: line + 1,
+              column: character + 1,
+              message: `Do not cast payload to '${targetTypeName}' inside handle(). Instead, use '${targetTypeName}' as the parameter type directly: handle(payload: ${targetTypeName}). This allows the parser to extract custom fields from your payload interface.`,
+            });
+          }
+        }
+      }
+
+      ts.forEachChild(node, findPayloadCasts);
+    };
+
+    findPayloadCasts(context.handleMethodBody);
+
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -1181,3 +1296,4 @@ defaultLintRuleRegistry.register(noTryCatchInHandleRule);
 defaultLintRuleRegistry.register(noAnyTypeRule);
 defaultLintRuleRegistry.register(singleBubbleFlowClassRule);
 defaultLintRuleRegistry.register(enforcePayloadTypeRule);
+defaultLintRuleRegistry.register(noCastPayloadInHandleRule);
