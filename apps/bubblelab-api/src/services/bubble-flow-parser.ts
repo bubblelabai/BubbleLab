@@ -864,7 +864,7 @@ export function mergeCredentialsByBubbleName(
   }
 
   // For each new bubble, try to find matching credentials by bubbleName
-  for (const [newKey, newBubble] of Object.entries(updatedParameters)) {
+  for (const [_, newBubble] of Object.entries(updatedParameters)) {
     const bubbleName = newBubble.bubbleName;
 
     // Skip if this bubble already has credentials with actual values
