@@ -431,10 +431,38 @@ declare module '${packageName}' {
     return minified;
   }
 
+  /**
+   * Truncates long string literals that can break minification.
+   * Specifically targets longDescription properties which contain markdown
+   * that gets mangled by whitespace compression.
+   */
+  private truncateLongStrings(content: string): string {
+    // Match longDescription with string value assignment
+    // The .d.ts files have strings with escaped quotes inside, so we need to match
+    // from 'longDescription = "' until the closing '";' while handling escaped quotes
+    // Pattern: longDescription = "...content with \"escaped\" quotes...";
+    const longDescPattern =
+      /(static\s+readonly\s+longDescription\s*=\s*)"((?:[^"\\]|\\.)*)"/g;
+
+    const result = content.replace(
+      longDescPattern,
+      (match, prefix: string, stringContent: string) => {
+        // If the string content is long (>500 chars), truncate it
+        if (stringContent.length > 500) {
+          return `${prefix}"See bubble documentation for details"`;
+        }
+        return match;
+      }
+    );
+
+    return result;
+  }
+
   private minifyBundle(content: string): string {
     this.log('Minifying bundle...');
 
-    const minified = content;
+    // First, truncate long string literals that would break minification
+    const minified = this.truncateLongStrings(content);
 
     // Remove comments (but keep header comment)
     const headerEnd = minified.indexOf(
