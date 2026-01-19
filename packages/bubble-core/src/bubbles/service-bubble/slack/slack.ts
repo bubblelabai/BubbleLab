@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { ServiceBubble } from '../../types/service-bubble-class.js';
-import type { BubbleContext } from '../../types/bubble.js';
+import { ServiceBubble } from '../../../types/service-bubble-class.js';
+import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { markdownToBlocks, containsMarkdown } from './slack.utils.js';
 
 // Slack API base URL
 const SLACK_API_BASE = 'https://slack.com/api';
@@ -793,7 +794,7 @@ const SlackUserSchema = z
 const SlackMessageSchema = z
   .object({
     type: z.string().describe('Message type (usually "message")'),
-    ts: z.string().describe('Message timestamp (unique identifier)'),
+    ts: z.string().optional().describe('Message timestamp (unique identifier)'),
     user: z.string().optional().describe('User ID who sent the message'),
     bot_id: z
       .string()
@@ -1516,9 +1517,20 @@ Official docs: https://docs.slack.dev/apis/events-api/
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
 
+    // Detect markdown in text and convert to blocks if no blocks are already provided
+    let finalBlocks = blocks;
+    let finalText = text;
+
+    if (text && !blocks && containsMarkdown(text)) {
+      // Convert markdown to blocks
+      finalBlocks = markdownToBlocks(text) as unknown as typeof blocks;
+      // Keep text as fallback for notifications/previews
+      finalText = text;
+    }
+
     const body: Record<string, unknown> = {
       channel: resolvedChannel,
-      text,
+      text: finalText,
       unfurl_links,
       unfurl_media,
     };
@@ -1527,7 +1539,7 @@ Official docs: https://docs.slack.dev/apis/events-api/
     if (icon_emoji) body.icon_emoji = icon_emoji;
     if (icon_url) body.icon_url = icon_url;
     if (attachments) body.attachments = JSON.stringify(attachments);
-    if (blocks) body.blocks = JSON.stringify(blocks);
+    if (finalBlocks) body.blocks = JSON.stringify(finalBlocks);
     if (thread_ts) {
       body.thread_ts = thread_ts;
       body.reply_broadcast = reply_broadcast;

@@ -469,7 +469,7 @@ export class GoogleDriveBubble<
     try {
       // Test the credentials by making a simple API call
       const response = await fetch(
-        'https://www.googleapis.com/drive/v3/about?fields=user',
+        'https://www.googleapis.com/drive/v3/about?fields=user&supportsAllDrives=true',
         {
           headers: {
             Authorization: `Bearer ${credential}`,
@@ -685,7 +685,7 @@ export class GoogleDriveBubble<
       const fullBody = Buffer.concat([bodyBuffer, fileData, closeBuffer]);
 
       const uploadUrl =
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents';
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents';
 
       // Make the upload request
       const response = await this.makeGoogleApiRequest(
@@ -765,9 +765,9 @@ export class GoogleDriveBubble<
   ): Promise<Extract<GoogleDriveResult, { operation: 'download_file' }>> {
     const { file_id, export_format } = params;
 
-    // First get file metadata to determine if it's a Google Workspace file
+    // Get file metadata to determine if it's a Google Workspace file
     const fileInfo = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=name,mimeType`
+      `/files/${file_id}?fields=name,mimeType&supportsAllDrives=true`
     );
 
     let content: string;
@@ -780,7 +780,7 @@ export class GoogleDriveBubble<
       }
 
       const exportResponse = await this.makeGoogleApiRequest(
-        `/files/${file_id}/export?mimeType=${encodeURIComponent(export_format)}`,
+        `/files/${file_id}/export?mimeType=${encodeURIComponent(export_format)}&supportsAllDrives=true`,
         'GET',
         undefined,
         {},
@@ -798,14 +798,14 @@ export class GoogleDriveBubble<
     } else {
       // Regular file download
       const downloadResponse = await this.makeGoogleApiRequest(
-        `/files/${file_id}?alt=media`,
+        `/files/${file_id}?alt=media&supportsAllDrives=true`,
         'GET',
         undefined,
         {},
         'arrayBuffer'
       );
 
-      actualMimeType = fileInfo.mimeType;
+      actualMimeType = fileInfo.mimeType || 'application/octet-stream';
 
       // Return as plain text for text-based formats, base64 for binary
       if (this.isTextMimeType(actualMimeType)) {
@@ -856,6 +856,8 @@ export class GoogleDriveBubble<
       orderBy: order_by!,
       fields:
         'nextPageToken,files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents,shared,owners)',
+      supportsAllDrives: 'true',
+      includeItemsFromAllDrives: 'true',
     });
 
     if (searchQuery) {
@@ -891,7 +893,7 @@ export class GoogleDriveBubble<
     }
 
     const response = await this.makeGoogleApiRequest(
-      '/files?fields=id,name,webViewLink,parents',
+      '/files?supportsAllDrives=true&fields=id,name,webViewLink,parents',
       'POST',
       fileMetadata
     );
@@ -911,12 +913,19 @@ export class GoogleDriveBubble<
 
     if (permanent) {
       // Permanently delete the file
-      await this.makeGoogleApiRequest(`/files/${file_id}`, 'DELETE');
+      await this.makeGoogleApiRequest(
+        `/files/${file_id}?supportsAllDrives=true`,
+        'DELETE'
+      );
     } else {
       // Move to trash
-      await this.makeGoogleApiRequest(`/files/${file_id}`, 'PATCH', {
-        trashed: true,
-      });
+      await this.makeGoogleApiRequest(
+        `/files/${file_id}?supportsAllDrives=true`,
+        'PATCH',
+        {
+          trashed: true,
+        }
+      );
     }
 
     return {
@@ -936,13 +945,13 @@ export class GoogleDriveBubble<
       'id,name,mimeType,size,createdTime,modifiedTime,webViewLink,webContentLink,parents,shared,owners';
 
     const response = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=${fields}`
+      `/files/${file_id}?fields=${fields}&supportsAllDrives=true`
     );
 
     let permissions;
     if (include_permissions) {
       const permissionsResponse = await this.makeGoogleApiRequest(
-        `/files/${file_id}/permissions?fields=permissions(id,type,role,emailAddress,displayName)`
+        `/files/${file_id}/permissions?fields=permissions(id,type,role,emailAddress,displayName)&supportsAllDrives=true`
       );
       permissions = permissionsResponse.permissions;
     }
@@ -972,6 +981,7 @@ export class GoogleDriveBubble<
 
     const queryParams = new URLSearchParams({
       fields: 'id',
+      supportsAllDrives: 'true',
     });
 
     if (send_notification !== undefined) {
@@ -986,7 +996,7 @@ export class GoogleDriveBubble<
 
     // Get the file's web view link for sharing
     const fileResponse = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=webViewLink`
+      `/files/${file_id}?fields=webViewLink&supportsAllDrives=true`
     );
 
     return {
@@ -1005,13 +1015,15 @@ export class GoogleDriveBubble<
 
     // First, get the current file info to retrieve existing parents
     const currentFileInfo = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=parents`
+      `/files/${file_id}?fields=parents&supportsAllDrives=true`
     );
 
     const currentParents: string[] = currentFileInfo.parents || [];
 
     // Build the query parameters for the update
-    const queryParams = new URLSearchParams();
+    const queryParams = new URLSearchParams({
+      supportsAllDrives: 'true',
+    });
 
     // Determine which parents to add
     if (new_parent_folder_id) {

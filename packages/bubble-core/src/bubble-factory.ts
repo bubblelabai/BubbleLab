@@ -179,7 +179,7 @@ export class BubbleFactory {
     const { PostgreSQLBubble } = await import(
       './bubbles/service-bubble/postgresql.js'
     );
-    const { SlackBubble } = await import('./bubbles/service-bubble/slack.js');
+    const { SlackBubble } = await import('./bubbles/service-bubble/slack');
     const { TelegramBubble } = await import(
       './bubbles/service-bubble/telegram.js'
     );

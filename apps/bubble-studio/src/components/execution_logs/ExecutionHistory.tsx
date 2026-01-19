@@ -60,6 +60,7 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
   // Fetch execution history using React Query
   const {
     data: executionHistory,
+    total: executionTotal,
     loading: historyLoading,
     error: historyError,
     refetch: refetchHistory,
@@ -80,12 +81,11 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
     prevExecutingRef.current = isCurrentlyExecuting;
   }, [isCurrentlyExecuting, flowId]);
 
-  // Determine if we're on the last page (fewer items than limit means last page)
-  const isLastPage = executionHistory
-    ? executionHistory.length < ITEMS_PER_PAGE
-    : false;
-  const hasNextPage =
-    !isLastPage && executionHistory?.length === ITEMS_PER_PAGE;
+  // Determine pagination state based on total count
+  const totalPages = executionTotal
+    ? Math.ceil(executionTotal / ITEMS_PER_PAGE)
+    : 1;
+  const hasNextPage = currentPage < totalPages;
   const hasPreviousPage = currentPage > 1;
 
   const handlePreviousPage = () => {
@@ -433,7 +433,11 @@ export function ExecutionHistory({ flowId }: ExecutionHistoryProps) {
         {/* Pagination Controls */}
         {executionHistory && executionHistory.length > 0 && (
           <div className="flex-shrink-0 border-t border-[#30363d] bg-[#0f1115] px-4 py-3 flex items-center justify-between">
-            <div className="text-xs text-gray-400">Page {currentPage}</div>
+            <div className="text-xs text-gray-400">
+              {executionTotal !== undefined
+                ? `${executionTotal} total • Page ${currentPage} of ${totalPages}`
+                : `Page ${currentPage}`}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"

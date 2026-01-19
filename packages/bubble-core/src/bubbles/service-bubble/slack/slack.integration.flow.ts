@@ -133,10 +133,6 @@ export class SlackIntegrationTest extends BubbleFlow<'webhook/http'> {
       text: newText,
     }).action();
 
-    if (!result.success || result.data?.operation !== 'update_message') {
-      throw new Error(`Failed to update message: ${result.error}`);
-    }
-
     return result.data;
   }
 

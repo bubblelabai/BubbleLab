@@ -208,7 +208,15 @@ export const bubbleFlowExecutionSchema = z.object({
 
 // GET /bubble-flow/:id/executions - List BubbleFlow executions response
 export const listBubbleFlowExecutionsResponseSchema = z
-  .array(bubbleFlowExecutionSchema)
+  .object({
+    items: z.array(bubbleFlowExecutionSchema).openapi({
+      description: 'Array of execution records for the current page',
+    }),
+    total: z.number().openapi({
+      description: 'Total number of executions for this flow',
+      example: 42,
+    }),
+  })
   .openapi('ListBubbleFlowExecutionsResponse');
 
 export type ListBubbleFlowExecutionsResponse = z.infer<
@@ -218,12 +226,9 @@ export type ListBubbleFlowExecutionsResponse = z.infer<
 // GET /bubble-flow/:id/executions/:executionId - Single execution with logs
 export const bubbleFlowExecutionDetailSchema = bubbleFlowExecutionSchema.extend(
   {
-    executionLogs: z
-      .array(z.any())
-      .optional()
-      .openapi({
-        description: 'Array of streaming log events from the execution',
-      }),
+    executionLogs: z.array(z.any()).optional().openapi({
+      description: 'Array of streaming log events from the execution',
+    }),
   }
 );
 
