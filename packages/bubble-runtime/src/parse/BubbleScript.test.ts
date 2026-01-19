@@ -425,6 +425,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadJsonSchema).toBeDefined();
       expect(payloadJsonSchema).toEqual({
         type: 'object',
+        extendsEvent: 'schedule/cron',
         properties: {
           message: { type: 'string' },
           name: { type: 'string' },
@@ -455,6 +456,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
+        extendsEvent: 'webhook/http',
         properties: {
           image: { type: 'string', description: 'base64 encoded image' },
           mimeType: { type: 'string', description: 'mime type of the image' },
@@ -478,6 +480,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadZodSchemaString).toBeDefined();
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
+        extendsEvent: 'webhook/http',
         properties: {
           spreadsheetId: {
             type: 'string',
@@ -504,12 +507,26 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadZodSchemaString).toEqual({
         type: 'object',
         properties: {
-          text: { type: 'string' },
-          channel: { type: 'string' },
-          thread_ts: { type: 'string' },
-          user: { type: 'string' },
-          slack_event: { type: 'object' },
-          monthlyLimitError: {},
+          text: {
+            type: 'string',
+            description: 'The message text mentioning the bot',
+          },
+          channel: {
+            type: 'string',
+            description: 'Channel ID where bot was mentioned',
+          },
+          thread_ts: {
+            type: 'string',
+            description: 'Thread timestamp (if replying in a thread)',
+          },
+          user: {
+            type: 'string',
+            description: 'User ID who mentioned the bot',
+          },
+          slack_event: {
+            type: 'object',
+            description: 'Full Slack event wrapper',
+          },
         },
         required: ['text', 'channel', 'user', 'slack_event'],
       });
@@ -546,6 +563,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(inputSchema).toBeDefined();
       expect(inputSchema).toEqual({
         type: 'object',
+        extendsEvent: 'webhook/http',
         properties: {
           email: {
             type: 'string',
@@ -581,6 +599,7 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(inputSchema).toBeDefined();
       expect(inputSchema).toEqual({
         type: 'object',
+        extendsEvent: 'webhook/http',
         properties: {
           ticker: { type: 'string' },
           email: { type: 'string' },
@@ -625,6 +644,7 @@ export class CalendarEmailFlow extends BubbleFlow {
       expect(inputSchema).toBeDefined();
       expect(inputSchema).toEqual({
         type: 'object',
+        extendsEvent: 'webhook/http',
         properties: {
           email: {
             type: 'string',
