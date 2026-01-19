@@ -79,8 +79,8 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         result.bubbles &&
         Object.keys(result.bubbles).length > 0
       ) {
-        // Code was already optimistically updated in onMutate
-        // Now update the validation results (bubbles, schema, credentials, workflow)
+        // Backend returns bubbleParameters with credentials merged by bubbleName
+        // Just use them directly - no need to do matching on frontend
         updateBubbleParameters(result.bubbles);
         updateWorkflow(result.workflow);
         updateInputSchema(result.inputSchema);
@@ -96,25 +96,53 @@ export function useValidateCode({ flowId }: ValidateCodeOptions) {
         }
 
         // Clear execution state when bubble structure changes (sync happened)
-        // This ensures old bubble IDs don't interfere with new execution
         if (!executionState.isRunning) {
-          // Only clear if not currently running (don't interrupt active execution)
-          // resetExecution clears completedBubbles, events, highlighting, etc.
-          // But it doesn't clear runningBubbles, so we need to ensure it's cleared
           executionState.resetExecution();
-          // Manually clear runningBubbles if any are lingering
           if (flowId && executionState.runningBubbles.size > 0) {
-            getExecutionStore(flowId).stopExecution(); // This clears runningBubbles
+            getExecutionStore(flowId).stopExecution();
           }
         } else {
-          // If running, just clear highlighting to avoid stale state
           executionState.clearHighlighting();
           executionState.setBubbleError(null);
         }
+
+        // Extract credentials from bubbleParameters and sync pendingCredentials
+        const newCredentials: Record<string, Record<string, number>> = {};
+        Object.entries(result.bubbles).forEach(([key, bubbleData]) => {
+          const bubble = bubbleData as {
+            parameters?: Array<{
+              name: string;
+              type?: string;
+              value?: unknown;
+            }>;
+          };
+          const credentialsParam = bubble.parameters?.find(
+            (p) => p.name === 'credentials'
+          );
+          if (
+            credentialsParam &&
+            credentialsParam.type === 'object' &&
+            credentialsParam.value
+          ) {
+            const credValue = credentialsParam.value as Record<string, unknown>;
+            const bubbleCredentials: Record<string, number> = {};
+            Object.entries(credValue).forEach(([credType, credId]) => {
+              if (typeof credId === 'number') {
+                bubbleCredentials[credType] = credId;
+              }
+            });
+            if (Object.keys(bubbleCredentials).length > 0) {
+              newCredentials[key] = bubbleCredentials;
+            }
+          }
+        });
+        executionState.setAllCredentials(newCredentials);
       }
 
       if (result.defaultInputs) {
         updateDefaultInputs(result.defaultInputs || {});
+        // Sync executionInputs with the new defaultInputs to avoid false "unsaved changes"
+        executionState.setInputs(result.defaultInputs);
       }
 
       // Handle cron activation if requested

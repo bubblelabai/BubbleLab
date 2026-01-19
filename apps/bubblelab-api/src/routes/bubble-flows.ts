@@ -15,7 +15,7 @@ import { getFlowNameFromCode } from '../utils/code-parser.js';
 import {
   extractRequiredCredentials,
   generateDisplayedBubbleParameters,
-  mergeCredentialsIntoBubbleParameters,
+  mergeCredentialsByBubbleName,
 } from '../services/bubble-flow-parser.js';
 import { injectCredentialsIntoBubbleParameters } from '../utils/bubble-parameters.js';
 import {
@@ -1160,12 +1160,16 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
         }
       }
 
-      // Prepare bubble parameters with credentials if provided
+      // Prepare bubble parameters with credentials - merge by bubbleName
+      // This handles when variableIds change but bubbleNames stay the same
       let finalBubbleParameters = result.bubbleParameters || {};
-      // If credentials are provided in the request, merge them into the bubble parameters
       if (credentials && Object.keys(credentials).length > 0) {
-        finalBubbleParameters = mergeCredentialsIntoBubbleParameters(
+        finalBubbleParameters = mergeCredentialsByBubbleName(
           finalBubbleParameters,
+          existingFlow?.bubbleParameters as Record<
+            string | number,
+            ParsedBubbleWithInfo
+          > | null,
           credentials
         );
       }
@@ -1193,6 +1197,21 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
         .where(eq(bubbleFlows.id, flowId));
     }
 
+    // Prepare final bubble parameters - merge credentials by bubbleName
+    // This handles when variableIds change but bubbleNames stay the same
+    let finalBubbleParametersForResponse = result.bubbleParameters || {};
+    if (credentials && Object.keys(credentials).length > 0) {
+      // Use bubbleName-based matching to carry over credentials from old bubbles to new
+      finalBubbleParametersForResponse = mergeCredentialsByBubbleName(
+        finalBubbleParametersForResponse,
+        existingFlow?.bubbleParameters as Record<
+          string | number,
+          ParsedBubbleWithInfo
+        > | null,
+        credentials
+      );
+    }
+
     // Return the validation result based on if code itself is valid
     if (result.valid) {
       return c.json(
@@ -1200,7 +1219,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           valid: true,
           success: true,
           inputSchema: result.inputSchema || {},
-          bubbles: result.bubbleParameters,
+          bubbles: finalBubbleParametersForResponse,
           eventType: result.trigger?.type || 'webhook/http',
           webhookPath: getWebhookUrl(
             userId,
@@ -1213,7 +1232,7 @@ app.openapi(validateBubbleFlowCodeRoute, async (c) => {
           error: '',
           errors: [],
           requiredCredentials: extractRequiredCredentials(
-            result.bubbleParameters || {}
+            finalBubbleParametersForResponse
           ),
           metadata: {
             validatedAt: new Date().toISOString(),

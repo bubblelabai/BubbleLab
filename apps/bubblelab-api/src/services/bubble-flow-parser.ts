@@ -827,6 +827,95 @@ export function mergeCredentialsIntoBubbleParameters(
   return updatedParameters;
 }
 
+/**
+ * Merges credentials from old bubble parameters into new bubble parameters by matching bubbleName.
+ * This handles the case when variableIds change between code versions but bubbleNames stay the same.
+ * @param newBubbleParameters - The new parsed bubble parameters from validation
+ * @param oldBubbleParameters - The previous bubble parameters (from existing flow)
+ * @param credentials - Credentials mapping: old variableId -> credential type -> credential ID
+ * @returns Updated new bubble parameters with credentials matched by bubbleName
+ */
+export function mergeCredentialsByBubbleName(
+  newBubbleParameters: Record<string | number, ParsedBubbleWithInfo>,
+  oldBubbleParameters:
+    | Record<string | number, ParsedBubbleWithInfo>
+    | null
+    | undefined,
+  credentials: Record<string | number, Record<string, number>>
+): Record<string | number, ParsedBubbleWithInfo> {
+  const updatedParameters = { ...newBubbleParameters };
+
+  // If no old parameters or no credentials, nothing to merge
+  if (
+    !oldBubbleParameters ||
+    !credentials ||
+    Object.keys(credentials).length === 0
+  ) {
+    return updatedParameters;
+  }
+
+  // Build a map of bubbleName -> credentials from old parameters
+  const credentialsByBubbleName: Record<string, Record<string, number>> = {};
+  for (const [oldKey, oldBubble] of Object.entries(oldBubbleParameters)) {
+    const bubbleName = oldBubble.bubbleName;
+    if (bubbleName && credentials[oldKey]) {
+      credentialsByBubbleName[bubbleName] = credentials[oldKey];
+    }
+  }
+
+  // For each new bubble, try to find matching credentials by bubbleName
+  for (const [newKey, newBubble] of Object.entries(updatedParameters)) {
+    const bubbleName = newBubble.bubbleName;
+
+    // Skip if this bubble already has credentials with actual values
+    const existingCredParam = newBubble.parameters.find(
+      (p) => p.name === 'credentials'
+    );
+    if (existingCredParam && existingCredParam.value) {
+      const credValue = existingCredParam.value as Record<string, unknown>;
+      const hasRealCredentials = Object.values(credValue).some(
+        (v) => typeof v === 'number'
+      );
+      if (hasRealCredentials) {
+        continue; // Already has credentials, skip
+      }
+    }
+
+    // Try to match by bubbleName
+    if (bubbleName && credentialsByBubbleName[bubbleName]) {
+      const matchedCredentials = credentialsByBubbleName[bubbleName];
+
+      // Find or create credentials parameter
+      let credentialsParam = newBubble.parameters.find(
+        (p) => p.name === 'credentials'
+      );
+      if (!credentialsParam) {
+        credentialsParam = {
+          name: 'credentials',
+          value: {},
+          type: BubbleParameterType.OBJECT,
+        };
+        newBubble.parameters.push(credentialsParam);
+      }
+
+      // Merge credentials
+      if (
+        typeof credentialsParam.value !== 'object' ||
+        credentialsParam.value === null
+      ) {
+        credentialsParam.value = {};
+      }
+      const credObj = credentialsParam.value as Record<string, number>;
+      for (const [credType, credId] of Object.entries(matchedCredentials)) {
+        credObj[credType] = credId;
+      }
+      credentialsParam.value = credObj;
+    }
+  }
+
+  return updatedParameters;
+}
+
 // TODO: Replace with actual flow decomposition logic
 export function generateDisplayedBubbleParameters(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
