@@ -3,6 +3,258 @@ import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
+// ============================================================================
+// Markdown to Google Docs Utility
+// ============================================================================
+
+interface TextRange {
+  start: number;
+  end: number;
+}
+
+interface MarkdownParseResult {
+  plainText: string;
+  requests: Array<Record<string, unknown>>;
+}
+
+/**
+ * Parses markdown content and converts it to Google Docs API formatting requests.
+ * Supports: headers, bold, italic, links, bullet lists, numbered lists.
+ *
+ * @param content - The markdown content to parse
+ * @param insertIndex - The starting index in the Google Doc where text will be inserted
+ * @returns Object containing plain text and formatting requests
+ */
+function parseMarkdownToGoogleDocs(
+  content: string,
+  insertIndex: number
+): MarkdownParseResult {
+  const requests: Array<Record<string, unknown>> = [];
+  const lines = content.split('\n');
+  const processedLines: string[] = [];
+
+  // Track formatting to apply after text insertion
+  const boldRanges: TextRange[] = [];
+  const italicRanges: TextRange[] = [];
+  const linkRanges: Array<TextRange & { url: string }> = [];
+  const headerLines: Array<{ lineIndex: number; level: number }> = [];
+  const bulletLines: number[] = [];
+  const numberedLines: number[] = [];
+
+  let currentOffset = 0;
+
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    let line = lines[lineIdx];
+    const lineStartOffset = currentOffset;
+
+    // Check for headers (# ## ### etc.)
+    const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headerMatch) {
+      const level = headerMatch[1].length;
+      line = headerMatch[2];
+      headerLines.push({ lineIndex: processedLines.length, level });
+    }
+
+    // Check for bullet lists (- or *)
+    const bulletMatch = line.match(/^[\-\*]\s+(.*)$/);
+    if (bulletMatch) {
+      line = bulletMatch[1];
+      bulletLines.push(processedLines.length);
+    }
+
+    // Check for numbered lists (1. 2. etc.)
+    const numberedMatch = line.match(/^\d+\.\s+(.*)$/);
+    if (numberedMatch) {
+      line = numberedMatch[1];
+      numberedLines.push(processedLines.length);
+    }
+
+    // Process inline formatting (bold, italic, links)
+    let processedLine = '';
+    let i = 0;
+
+    while (i < line.length) {
+      // Check for links [text](url)
+      const linkMatch = line.slice(i).match(/^\[([^\]]+)\]\(([^)]+)\)/);
+      if (linkMatch) {
+        const linkText = linkMatch[1];
+        const linkUrl = linkMatch[2];
+        const startPos = lineStartOffset + processedLine.length;
+        linkRanges.push({
+          start: startPos,
+          end: startPos + linkText.length,
+          url: linkUrl,
+        });
+        processedLine += linkText;
+        i += linkMatch[0].length;
+        continue;
+      }
+
+      // Check for bold **text** or __text__
+      const boldMatch = line.slice(i).match(/^(\*\*|__)([^*_]+)\1/);
+      if (boldMatch) {
+        const boldText = boldMatch[2];
+        const startPos = lineStartOffset + processedLine.length;
+        boldRanges.push({
+          start: startPos,
+          end: startPos + boldText.length,
+        });
+        processedLine += boldText;
+        i += boldMatch[0].length;
+        continue;
+      }
+
+      // Check for italic *text* or _text_ (but not ** or __)
+      const italicMatch = line.slice(i).match(/^(\*|_)([^*_]+)\1/);
+      if (
+        italicMatch &&
+        !line.slice(i).startsWith('**') &&
+        !line.slice(i).startsWith('__')
+      ) {
+        const italicText = italicMatch[2];
+        const startPos = lineStartOffset + processedLine.length;
+        italicRanges.push({
+          start: startPos,
+          end: startPos + italicText.length,
+        });
+        processedLine += italicText;
+        i += italicMatch[0].length;
+        continue;
+      }
+
+      processedLine += line[i];
+      i++;
+    }
+
+    processedLines.push(processedLine);
+    currentOffset += processedLine.length + 1; // +1 for newline
+  }
+
+  const plainText = processedLines.join('\n');
+
+  // Build formatting requests (applied in reverse order for correct indexing)
+
+  // Apply header styles
+  let lineStart = insertIndex;
+  for (let i = 0; i < processedLines.length; i++) {
+    const lineEnd = lineStart + processedLines[i].length + 1;
+
+    const header = headerLines.find((h) => h.lineIndex === i);
+    if (header) {
+      const namedStyle = `HEADING_${Math.min(header.level, 6)}`;
+      requests.push({
+        updateParagraphStyle: {
+          range: { startIndex: lineStart, endIndex: lineEnd },
+          paragraphStyle: { namedStyleType: namedStyle },
+          fields: 'namedStyleType',
+        },
+      });
+    }
+
+    lineStart = lineEnd;
+  }
+
+  // Apply bullet lists
+  if (bulletLines.length > 0) {
+    lineStart = insertIndex;
+    for (let i = 0; i < processedLines.length; i++) {
+      const lineEnd = lineStart + processedLines[i].length + 1;
+      if (bulletLines.includes(i)) {
+        requests.push({
+          createParagraphBullets: {
+            range: { startIndex: lineStart, endIndex: lineEnd },
+            bulletPreset: 'BULLET_DISC_CIRCLE_SQUARE',
+          },
+        });
+      }
+      lineStart = lineEnd;
+    }
+  }
+
+  // Apply numbered lists
+  if (numberedLines.length > 0) {
+    lineStart = insertIndex;
+    for (let i = 0; i < processedLines.length; i++) {
+      const lineEnd = lineStart + processedLines[i].length + 1;
+      if (numberedLines.includes(i)) {
+        requests.push({
+          createParagraphBullets: {
+            range: { startIndex: lineStart, endIndex: lineEnd },
+            bulletPreset: 'NUMBERED_DECIMAL_NESTED',
+          },
+        });
+      }
+      lineStart = lineEnd;
+    }
+  }
+
+  // Apply bold formatting
+  for (const range of boldRanges) {
+    requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: insertIndex + range.start,
+          endIndex: insertIndex + range.end,
+        },
+        textStyle: { bold: true },
+        fields: 'bold',
+      },
+    });
+  }
+
+  // Apply italic formatting
+  for (const range of italicRanges) {
+    requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: insertIndex + range.start,
+          endIndex: insertIndex + range.end,
+        },
+        textStyle: { italic: true },
+        fields: 'italic',
+      },
+    });
+  }
+
+  // Apply link formatting
+  for (const range of linkRanges) {
+    requests.push({
+      updateTextStyle: {
+        range: {
+          startIndex: insertIndex + range.start,
+          endIndex: insertIndex + range.end,
+        },
+        textStyle: {
+          link: { url: range.url },
+        },
+        fields: 'link',
+      },
+    });
+  }
+
+  return { plainText, requests };
+}
+
+/**
+ * Detects if content contains markdown formatting.
+ */
+function isMarkdown(content: string): boolean {
+  const markdownPatterns = [
+    /^#{1,6}\s+/m, // Headers
+    /\*\*[^*]+\*\*/, // Bold
+    /\*[^*]+\*/, // Italic
+    /__[^_]+__/, // Bold alt
+    /_[^_]+_/, // Italic alt
+    /\[[^\]]+\]\([^)]+\)/, // Links
+    /^[\-\*]\s+/m, // Bullet lists
+    /^\d+\.\s+/m, // Numbered lists
+  ];
+
+  return markdownPatterns.some((pattern) => pattern.test(content));
+}
+
+// ============================================================================
+
 // Define file metadata schema
 const DriveFileSchema = z
   .object({
@@ -328,6 +580,38 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Update Google Doc content operation (uses Google Docs API)
+  z.object({
+    operation: z
+      .literal('update_doc')
+      .describe(
+        'Update a Google Doc with new content using the Google Docs API batchUpdate'
+      ),
+    document_id: z
+      .string()
+      .min(1, 'Document ID is required')
+      .describe('The ID of the Google Doc to update'),
+    content: z
+      .string()
+      .min(1, 'Content is required')
+      .describe(
+        'The text or markdown content to write to the document (auto-detected)'
+      ),
+    mode: z
+      .enum(['replace', 'append'])
+      .optional()
+      .default('replace')
+      .describe(
+        'Update mode: "replace" clears existing content first, "append" adds to the end'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -472,6 +756,26 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Extracted plain text content from the document'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('update_doc')
+      .describe(
+        'Update a Google Doc with new content using the Google Docs API batchUpdate'
+      ),
+    success: z
+      .boolean()
+      .describe('Whether the document was updated successfully'),
+    documentId: z
+      .string()
+      .optional()
+      .describe('The ID of the updated document'),
+    revisionId: z
+      .string()
+      .optional()
+      .describe('The new revision ID after the update'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -646,6 +950,8 @@ export class GoogleDriveBubble<
             return await this.moveFile(this.params);
           case 'get_doc':
             return await this.getDoc(this.params);
+          case 'update_doc':
+            return await this.updateDoc(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1147,6 +1453,117 @@ export class GoogleDriveBubble<
       success: true,
       document: response,
       plainText,
+      error: '',
+    };
+  }
+
+  private async updateDoc(
+    params: Extract<GoogleDriveParams, { operation: 'update_doc' }>
+  ): Promise<Extract<GoogleDriveResult, { operation: 'update_doc' }>> {
+    const { document_id, content, mode } = params;
+
+    const url = `https://docs.googleapis.com/v1/documents/${document_id}:batchUpdate`;
+
+    // Build the requests array based on mode
+    const requests: Array<Record<string, unknown>> = [];
+
+    // Auto-detect markdown and parse if needed
+    const useMarkdown = isMarkdown(content);
+
+    if (mode === 'replace') {
+      // For replace mode, first get the document to find content length
+      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}`;
+      const document = await this.makeGoogleApiRequest(docUrl, 'GET');
+
+      // Get the end index of the document body content
+      const body = document.body as { content?: Array<{ endIndex?: number }> };
+      const contentElements = body?.content || [];
+      const lastElement = contentElements[contentElements.length - 1];
+      const endIndex = lastElement?.endIndex || 1;
+
+      // Only delete if there's content to delete (endIndex > 1)
+      if (endIndex > 1) {
+        requests.push({
+          deleteContentRange: {
+            range: {
+              startIndex: 1,
+              endIndex: endIndex - 1,
+            },
+          },
+        });
+      }
+
+      if (useMarkdown) {
+        // Parse markdown and get plain text + formatting requests
+        const parsed = parseMarkdownToGoogleDocs(content, 1);
+
+        // Insert plain text first
+        requests.push({
+          insertText: {
+            location: { index: 1 },
+            text: parsed.plainText,
+          },
+        });
+
+        // Add formatting requests
+        requests.push(...parsed.requests);
+      } else {
+        // Plain text - just insert
+        requests.push({
+          insertText: {
+            location: { index: 1 },
+            text: content,
+          },
+        });
+      }
+    } else {
+      // For append mode, get document to find the end position
+      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}`;
+      const document = await this.makeGoogleApiRequest(docUrl, 'GET');
+
+      // Get the end index of the document body content
+      const body = document.body as { content?: Array<{ endIndex?: number }> };
+      const contentElements = body?.content || [];
+      const lastElement = contentElements[contentElements.length - 1];
+      const endIndex = lastElement?.endIndex || 1;
+
+      const insertIndex = endIndex - 1;
+
+      if (useMarkdown) {
+        // Parse markdown and get plain text + formatting requests
+        const parsed = parseMarkdownToGoogleDocs(content, insertIndex);
+
+        // Insert plain text first
+        requests.push({
+          insertText: {
+            location: { index: insertIndex },
+            text: parsed.plainText,
+          },
+        });
+
+        // Add formatting requests
+        requests.push(...parsed.requests);
+      } else {
+        // Plain text - just insert
+        requests.push({
+          insertText: {
+            location: { index: insertIndex },
+            text: content,
+          },
+        });
+      }
+    }
+
+    // Make the batchUpdate request
+    const response = await this.makeGoogleApiRequest(url, 'POST', {
+      requests,
+    });
+
+    return {
+      operation: 'update_doc',
+      success: true,
+      documentId: response.documentId,
+      revisionId: response.writeControl?.requiredRevisionId,
       error: '',
     };
   }
