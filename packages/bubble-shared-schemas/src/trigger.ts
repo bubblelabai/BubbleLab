@@ -231,6 +231,78 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
         slack_event: {
           type: 'object',
           description: 'Full Slack event wrapper',
+          properties: {
+            token: { type: 'string', description: 'Verification token' },
+            team_id: { type: 'string', description: 'Workspace ID' },
+            api_app_id: { type: 'string', description: 'Slack App ID' },
+            type: {
+              type: 'string',
+              enum: ['event_callback'],
+              description: 'Event type',
+            },
+            event_id: { type: 'string', description: 'Unique event ID' },
+            event_time: { type: 'number', description: 'Event timestamp' },
+            event_context: { type: 'string', description: 'Event context' },
+            authorizations: {
+              type: 'array',
+              description: 'Bot authorizations',
+              items: {
+                type: 'object',
+                properties: {
+                  enterprise_id: { type: 'string' },
+                  team_id: { type: 'string' },
+                  user_id: { type: 'string' },
+                  is_bot: { type: 'boolean' },
+                },
+              },
+            },
+            event: {
+              type: 'object',
+              description: 'Inner message event data',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['message'],
+                  description: 'Event type',
+                },
+                user: {
+                  type: 'string',
+                  description: 'User ID who sent the message',
+                },
+                text: { type: 'string', description: 'Message text content' },
+                ts: { type: 'string', description: 'Message timestamp' },
+                channel: { type: 'string', description: 'Channel ID' },
+                event_ts: { type: 'string', description: 'Event timestamp' },
+                channel_type: {
+                  type: 'string',
+                  enum: ['channel', 'group', 'im', 'mpim'],
+                  description: 'Type of channel',
+                },
+                subtype: {
+                  type: 'string',
+                  description: 'Message subtype (if any)',
+                },
+              },
+              required: [
+                'type',
+                'user',
+                'text',
+                'ts',
+                'channel',
+                'event_ts',
+                'channel_type',
+              ],
+            },
+          },
+          required: [
+            'token',
+            'team_id',
+            'api_app_id',
+            'type',
+            'event_id',
+            'event_time',
+            'event',
+          ],
         },
       },
       required: ['text', 'channel', 'user', 'slack_event'],
@@ -286,6 +358,68 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
         slack_event: {
           type: 'object',
           description: 'Full Slack event wrapper',
+          properties: {
+            token: { type: 'string', description: 'Verification token' },
+            team_id: { type: 'string', description: 'Workspace ID' },
+            api_app_id: { type: 'string', description: 'Slack App ID' },
+            type: {
+              type: 'string',
+              enum: ['event_callback'],
+              description: 'Event type',
+            },
+            event_id: { type: 'string', description: 'Unique event ID' },
+            event_time: { type: 'number', description: 'Event timestamp' },
+            event_context: { type: 'string', description: 'Event context' },
+            authorizations: {
+              type: 'array',
+              description: 'Bot authorizations',
+              items: {
+                type: 'object',
+                properties: {
+                  enterprise_id: { type: 'string' },
+                  team_id: { type: 'string' },
+                  user_id: { type: 'string' },
+                  is_bot: { type: 'boolean' },
+                },
+              },
+            },
+            event: {
+              type: 'object',
+              description: 'Inner app_mention event data',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['app_mention'],
+                  description: 'Event type',
+                },
+                user: {
+                  type: 'string',
+                  description: 'User ID who mentioned the bot',
+                },
+                text: {
+                  type: 'string',
+                  description: 'Message text containing the mention',
+                },
+                ts: { type: 'string', description: 'Message timestamp' },
+                channel: { type: 'string', description: 'Channel ID' },
+                event_ts: { type: 'string', description: 'Event timestamp' },
+                thread_ts: {
+                  type: 'string',
+                  description: 'Thread timestamp (if in a thread)',
+                },
+              },
+              required: ['type', 'user', 'text', 'ts', 'channel', 'event_ts'],
+            },
+          },
+          required: [
+            'token',
+            'team_id',
+            'api_app_id',
+            'type',
+            'event_id',
+            'event_time',
+            'event',
+          ],
         },
       },
       required: ['text', 'channel', 'user', 'slack_event'],
