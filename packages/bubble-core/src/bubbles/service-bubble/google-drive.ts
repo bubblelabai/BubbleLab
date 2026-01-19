@@ -50,6 +50,35 @@ const DriveFolderSchema = z
   })
   .describe('Google Drive folder metadata');
 
+// Define Google Docs Document schema (simplified structure focusing on essential fields)
+const GoogleDocsDocumentSchema = z
+  .object({
+    documentId: z.string().describe('The ID of the document'),
+    title: z.string().describe('The title of the document'),
+    revisionId: z
+      .string()
+      .optional()
+      .describe('The revision ID of the document'),
+    body: z
+      .record(z.unknown())
+      .optional()
+      .describe('The main body of the document containing content array'),
+    suggestionsViewMode: z
+      .string()
+      .optional()
+      .describe('The suggestions view mode applied to the document'),
+    inlineObjects: z
+      .record(z.unknown())
+      .optional()
+      .describe('The inline objects (images, etc.) in the document'),
+    lists: z
+      .record(z.unknown())
+      .optional()
+      .describe('The lists in the document, keyed by list ID'),
+  })
+  .passthrough()
+  .describe('Google Docs document structure');
+
 // Define the parameters schema for Google Drive operations
 const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
   // Upload file operation
@@ -280,6 +309,25 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Get Google Doc content operation (uses Google Docs API)
+  z.object({
+    operation: z
+      .literal('get_doc')
+      .describe(
+        'Get the content and metadata of a Google Doc using the Google Docs API, use this over download_file for Google Docs'
+      ),
+    document_id: z
+      .string()
+      .min(1, 'Document ID is required')
+      .describe('The ID of the Google Doc to retrieve'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define result schemas for different operations
@@ -405,6 +453,25 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
     file: DriveFileSchema.optional().describe(
       'Updated file metadata after move'
     ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('get_doc')
+      .describe(
+        'Get the content and metadata of a Google Doc using the Google Docs API'
+      ),
+    success: z
+      .boolean()
+      .describe('Whether the document was retrieved successfully'),
+    document: GoogleDocsDocumentSchema.optional().describe(
+      'The Google Docs document content and metadata'
+    ),
+    plainText: z
+      .string()
+      .optional()
+      .describe('Extracted plain text content from the document'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -577,6 +644,8 @@ export class GoogleDriveBubble<
             return await this.shareFile(this.params);
           case 'move_file':
             return await this.moveFile(this.params);
+          case 'get_doc':
+            return await this.getDoc(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1058,6 +1127,58 @@ export class GoogleDriveBubble<
       file: response,
       error: '',
     };
+  }
+
+  private async getDoc(
+    params: Extract<GoogleDriveParams, { operation: 'get_doc' }>
+  ): Promise<Extract<GoogleDriveResult, { operation: 'get_doc' }>> {
+    const { document_id } = params;
+
+    const url = `https://docs.googleapis.com/v1/documents/${document_id}`;
+
+    // Make the request to Google Docs API
+    const response = await this.makeGoogleApiRequest(url, 'GET');
+
+    // Extract plain text from the document body
+    const plainText = this.extractPlainTextFromDoc(response);
+
+    return {
+      operation: 'get_doc',
+      success: true,
+      document: response,
+      plainText,
+      error: '',
+    };
+  }
+
+  /**
+   * Extracts plain text content from a Google Docs document body
+   */
+  private extractPlainTextFromDoc(document: Record<string, unknown>): string {
+    const body = document.body as
+      | { content?: Array<Record<string, unknown>> }
+      | undefined;
+    if (!body?.content) {
+      return '';
+    }
+
+    const textParts: string[] = [];
+
+    for (const element of body.content) {
+      const paragraph = element.paragraph as
+        | { elements?: Array<Record<string, unknown>> }
+        | undefined;
+      if (paragraph?.elements) {
+        for (const elem of paragraph.elements) {
+          const textRun = elem.textRun as { content?: string } | undefined;
+          if (textRun?.content) {
+            textParts.push(textRun.content);
+          }
+        }
+      }
+    }
+
+    return textParts.join('');
   }
 
   private isBase64(str: string): boolean {
