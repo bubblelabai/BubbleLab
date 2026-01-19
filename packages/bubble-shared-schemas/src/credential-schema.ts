@@ -364,7 +364,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
         displayName: 'Google Drive',
         defaultScopes: [
           'https://www.googleapis.com/auth/drive.file',
-          'https://www.googleapis.com/auth/drive.readonly',
           'https://www.googleapis.com/auth/documents',
           'https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive',
@@ -374,13 +373,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'https://www.googleapis.com/auth/drive.file',
             description:
-              'View and manage Google Drive files and folders that you have created with Bubble Lab',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'https://www.googleapis.com/auth/drive.readonly',
-            description:
-              'View all Google Drive files and folders (including files shared with you). Required to access shared documents.',
+              'View and manage Google Drive files and folders that you have created with Bubble Lab or selected w/ file picker',
             defaultEnabled: true,
           },
           {
@@ -396,7 +389,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'https://www.googleapis.com/auth/drive',
             description:
-              'View and manage all of your Google Drive files and folders (will see a warning about an "untrusted app" during authentication. Choose only if you need write access to shared files)',
+              'View and manage all of your Google Drive files and folders (will see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
             defaultEnabled: false,
           },
         ],
