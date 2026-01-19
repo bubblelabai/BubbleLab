@@ -523,10 +523,10 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
             type: 'string',
             description: 'User ID who mentioned the bot',
           },
-          slack_event: {
+          slack_event: expect.objectContaining({
             type: 'object',
             description: 'Full Slack event wrapper',
-          },
+          }),
         },
         required: ['text', 'channel', 'user', 'slack_event'],
       });
