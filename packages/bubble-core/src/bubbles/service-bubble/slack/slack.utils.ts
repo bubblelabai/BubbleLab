@@ -476,3 +476,68 @@ export function createContextBlock(texts: string[]): SlackContextBlock {
     })),
   };
 }
+
+/**
+ * Detects if a string contains markdown formatting.
+ * Checks for common markdown patterns like headers, bold, italic, code blocks, lists, etc.
+ *
+ * @param text - Text to check for markdown
+ * @returns True if markdown patterns are detected
+ */
+export function containsMarkdown(text: string): boolean {
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+
+  // Check for headers (# Header)
+  if (/^#{1,6}\s+.+$/m.test(text)) {
+    return true;
+  }
+
+  // Check for bold (**text** or __text__)
+  if (/\*\*[^*]+\*\*/.test(text) || /__[^_]+__/.test(text)) {
+    return true;
+  }
+
+  // Check for italic (*text* or _text_ - but not ** or __)
+  if (/(?<!\*)\*[^*]+\*(?!\*)/.test(text) || /(?<!_)_[^_]+_(?!_)/.test(text)) {
+    return true;
+  }
+
+  // Check for code blocks (```code```)
+  if (/```[\s\S]*?```/.test(text)) {
+    return true;
+  }
+
+  // Check for inline code (`code`)
+  if (/`[^`]+`/.test(text)) {
+    return true;
+  }
+
+  // Check for lists (- item or * item or 1. item)
+  if (/^[\s]*[-*]\s+/m.test(text) || /^[\s]*\d+\.\s+/m.test(text)) {
+    return true;
+  }
+
+  // Check for links [text](url)
+  if (/\[([^\]]+)\]\(([^)]+)\)/.test(text)) {
+    return true;
+  }
+
+  // Check for blockquotes (> text)
+  if (/^>\s+/m.test(text)) {
+    return true;
+  }
+
+  // Check for horizontal rules (--- or ***)
+  if (/^[-*_]{3,}\s*$/m.test(text)) {
+    return true;
+  }
+
+  // Check for strikethrough (~~text~~)
+  if (/~~[^~]+~~/.test(text)) {
+    return true;
+  }
+
+  return false;
+}
