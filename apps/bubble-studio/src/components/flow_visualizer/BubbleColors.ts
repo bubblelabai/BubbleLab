@@ -46,6 +46,14 @@ export const BUBBLE_COLORS = {
     background: 'bg-amber-500/20',
     text: 'text-amber-300',
   },
+
+  // Service trigger state - rose (for service-specific triggers like Slack)
+  SERVICE_TRIGGER: {
+    border: 'border-rose-500',
+    background: 'bg-rose-900/20',
+    handle: 'bg-rose-500',
+    accent: 'bg-rose-600',
+  },
 } as const;
 
 // Badge colors

@@ -69,6 +69,7 @@ const MAX_ITERATIONS = 50;
 const TOOL_NAMES = {
   VALIDATION: 'bubbleflow-validation-tool',
   BUBBLE_DETAILS: 'get-bubble-details-tool',
+  TRIGGER_DETAILS: 'get-trigger-detail-tool',
   LIST_BUBBLES: 'list-bubbles-tool',
 } as const;
 
@@ -77,11 +78,12 @@ const SYSTEM_PROMPT_BASE = `You are an expert TypeScript developer who specializ
 WORKFLOW:
 1. First identify bubbles needed using list-bubbles-tool
 2. Use get-bubble-details-tool for each bubble to understand proper usage
-3. Write complete code using exact patterns from bubble details
-4. Call createWorkflow with your complete code - it will validate and return errors if any
-5. If validation fails, use editWorkflow to fix the errors iteratively, DO NOT use createWorkflow as it is not very efficient after the first call.
-6. Keep calling editWorkflow until validation passes
-7. Do not provide a response until your code is fully validated
+3. If user requests a specific trigger (Slack, cron, etc), use get-trigger-detail-tool to get the payload schema and setup instructions
+4. Write complete code using exact patterns from bubble details
+5. Call createWorkflow with your complete code - it will validate and return errors if any
+6. If validation fails, use editWorkflow to fix the errors iteratively, DO NOT use createWorkflow as it is not very efficient after the first call.
+7. Keep calling editWorkflow until validation passes
+8. Do not provide a response until your code is fully validated
 
 
 IMPORTANT TOOL USAGE:
@@ -539,6 +541,10 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
           tools: [
             {
               name: TOOL_NAMES.BUBBLE_DETAILS,
+              credentials: this.params.credentials || {},
+            },
+            {
+              name: TOOL_NAMES.TRIGGER_DETAILS,
               credentials: this.params.credentials || {},
             },
             {

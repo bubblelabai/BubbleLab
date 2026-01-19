@@ -5,6 +5,7 @@ import {
   type BubbleName,
   type BubbleNodeType,
   BUBBLE_CREDENTIAL_OPTIONS,
+  TRIGGER_EVENT_CONFIGS,
 } from '@bubblelab/shared-schemas';
 // Local type to describe detailed dependencies without cross-package type coupling
 type BubbleDependencySpec = {
@@ -159,6 +160,7 @@ export class BubbleFactory {
       'notion',
       'firecrawl',
       'insforge-db',
+
       'amazon-shopping-tool',
     ];
   }
@@ -219,6 +221,9 @@ export class BubbleFactory {
     );
     const { GetBubbleDetailsTool } = await import(
       './bubbles/tool-bubble/get-bubble-details-tool.js'
+    );
+    const { GetTriggerDetailTool } = await import(
+      './bubbles/tool-bubble/get-trigger-detail-tool.js'
     );
     const { SQLQueryTool } = await import(
       './bubbles/tool-bubble/sql-query-tool.js'
@@ -364,6 +369,10 @@ export class BubbleFactory {
     this.register(
       'get-bubble-details-tool',
       GetBubbleDetailsTool as BubbleClassWithMetadata
+    );
+    this.register(
+      'get-trigger-detail-tool',
+      GetTriggerDetailTool as BubbleClassWithMetadata
     );
     this.register(
       'list-bubbles-tool',
@@ -673,15 +682,19 @@ export class BubbleFactory {
   }
 
   /**
-   * Generate comprehensive BubbleFlow boilerplate template with all imports
-   * This template includes ALL available bubble classes and types
-   * Perfect for AI code generation and testing
+   * Generate minimal BubbleFlow boilerplate template
+   * Use get-trigger-detail-tool to get specific trigger configuration and payload types
    */
   generateBubbleFlowBoilerplate(options?: { className?: string }): string {
     const className = options?.className || 'GeneratedFlow';
 
+    // Generate dynamic trigger list from registry
+    const triggerList = Object.keys(TRIGGER_EVENT_CONFIGS)
+      .map((t) => `'${t}'`)
+      .join(' | ');
+
     return `
-import {z} from 'zod';
+import { z } from 'zod';
 import {
   // Base classes
   BubbleFlow,
@@ -715,108 +728,30 @@ import {
   TwitterTool, // bubble name: 'twitter-tool'
   GoogleMapsTool, // bubble name: 'google-maps-tool'
   YouTubeTool, // bubble name: 'youtube-tool'
+  AmazonShoppingTool, // bubble name: 'amazon-shopping-tool'
 
-  // Event Types (How the workflow is triggered)
+  // Event Types (Import the one matching your trigger)
   type WebhookEvent,
   type CronEvent,
+  type SlackMentionEvent,
+  type SlackMessageReceivedEvent,
 } from '@bubblelab/bubble-core';
 
-export interface Output {
-  // TODO: Add your output fields here
-  message: string;
-  processed: boolean;
-}
+// AVAILABLE TRIGGERS: ${triggerList}
+// Use get-trigger-detail-tool to get the payload schema and setup instructions for your chosen trigger
 
-// TRIGGER TYPE 1: Webhook HTTP Trigger
-// Define your custom input interface for webhook triggers
-export interface CustomWebhookPayload extends WebhookEvent {
-  // TODO: Add your custom payload fields here
-  input?: string;
+export interface Output {
+  message: string;
+  // Add your output fields here
 }
 
 export class ${className} extends BubbleFlow<'webhook/http'> {
-  
-  // Sanitizes and normalizes raw webhook input by trimming whitespace and converting to uppercase
-  private transformData(input: string | undefined) {
-    // Example: Transform or clean the input data
-    if (!input || input.trim().length === 0) return null;
-    return input.trim().toUpperCase();
-  }
-
-  // Sends cleaned input to AI agent for natural language processing and response generation
-  // Condition: Only runs when transformedInput is not null and has more than 3 characters
-  private async processWithAI(input: string) {
-    const agent = new AIAgentBubble({
-      model: { model: 'google/gemini-2.5-flash' },
-      systemPrompt: 'You are a helpful assistant.',
-      message: \`Process this input: \${input}\`
-    });
-
-    const result = await agent.action();
-
-    if (!result.success) {
-      throw new Error(\`AI Agent failed: \${result.error}\`);
-    }
-
-    return result.data.response;
-  }
-
-  // Constructs final output payload with either AI-generated response or default fallback message
-  private formatOutput(response: string | null, wasProcessed: boolean) {
-    return {
-      message: response || 'No input provided',
-      processed: wasProcessed,
-    };
-  }
-
-  // Main workflow orchestration
-  // - No Bubbles directly in handle()
-  // - No try/catch in handle() (let errors bubble up)
-  // - Only calls to private methods
-  async handle(payload: CustomWebhookPayload): Promise<Output> {
-    const transformedInput = this.transformData(payload.input);
-
-    // Only process with AI if input meets minimum length requirement
-    let aiResponse: string | null = null;
-    if (transformedInput && transformedInput.length > 3) {
-      aiResponse = await this.processWithAI(transformedInput);
-    }
-
-    return this.formatOutput(aiResponse, aiResponse !== null);
+  async handle(payload: WebhookEvent): Promise<Output> {
+    // Your workflow logic here
+    // Use get-bubble-details-tool to learn about available bubbles
+    return { message: 'Hello from BubbleFlow!' };
   }
 }
-
-// TRIGGER TYPE 2: Cron Schedule Trigger
-// For cron-based scheduled workflows, or any workflow that can be benefited from being scheduled, extend BubbleFlow with 'schedule/cron'
-// and define the cronSchedule property with a cron expression
-// Time is in utc timezone, so if you want to schedule for a specific timezone, you need to convert the timezone to utc before writing the cron expression
-/*
-export interface CustomCronPayload extends CronEvent {
-  // TODO: Add your custom payload fields here
-}
-
-export class ${className}Cron extends BubbleFlow<'schedule/cron'> {
-  // Define cron schedule using standard 5-part cron format:
-  // * * * * * = minute hour day-of-month month day-of-week
-  // Examples:
-  //   '0 0 * * *'     = Daily at midnight
-  //   '0 9 * * 1-5'   = Every weekday at 9am
-  //   '*/15 * * * *' = Every 15 minutes
-  //   '0 0 1 * *'     = First day of every month at midnight
-  readonly cronSchedule = '* 3 * * * *'; // Every 3 minutes
-
-  // Performs scheduled database check or external API call to fetch latest data
-  private async performScheduledTask() {
-     // Example: Check a database or API
-     return "Task completed";
-  }
-
-  async handle(payload: CustomCronPayload): Promise<Output> {
-    const result = await this.performScheduledTask();
-
-    return { message: result, processed: true };
-  }
-}
-*/`;
+`;
   }
 }

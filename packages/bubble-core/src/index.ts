@@ -97,6 +97,7 @@ export { ParseDocumentWorkflow } from './bubbles/workflow-bubble/parse-document.
 // Export tool bubbles
 export { ListBubblesTool } from './bubbles/tool-bubble/list-bubbles-tool.js';
 export { GetBubbleDetailsTool } from './bubbles/tool-bubble/get-bubble-details-tool.js';
+export { GetTriggerDetailTool } from './bubbles/tool-bubble/get-trigger-detail-tool.js';
 export { SQLQueryTool } from './bubbles/tool-bubble/sql-query-tool.js';
 export { BubbleFlowValidationTool } from './bubbles/tool-bubble/bubbleflow-validation-tool.js';
 export { EditBubbleFlowTool } from './bubbles/tool-bubble/code-edit-tool.js';

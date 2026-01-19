@@ -643,6 +643,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'hello-world': [],
   http: [CredentialType.CUSTOM_AUTH_KEY],
   'get-bubble-details-tool': [],
+  'get-trigger-detail-tool': [],
   'list-bubbles-tool': [],
   'sql-query-tool': [CredentialType.DATABASE_CRED],
   'chart-js-tool': [],

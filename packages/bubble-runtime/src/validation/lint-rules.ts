@@ -19,6 +19,8 @@ export interface LintRuleContext {
   handleMethod: ts.MethodDeclaration | null;
   handleMethodBody: ts.Block | null;
   importedBubbleClasses: Set<string>;
+  /** The trigger type extracted from BubbleFlow<'trigger-type'> generic parameter */
+  bubbleFlowTriggerType: string | null;
 }
 
 /**
@@ -78,6 +80,7 @@ export class LintRuleRegistry {
 function parseLintRuleContext(sourceFile: ts.SourceFile): LintRuleContext {
   let bubbleFlowClass: ts.ClassDeclaration | null = null;
   let handleMethod: ts.MethodDeclaration | null = null;
+  let bubbleFlowTriggerType: string | null = null;
   const importedBubbleClasses = new Set<string>();
 
   // Single AST traversal to collect all needed information
@@ -91,6 +94,18 @@ function parseLintRuleContext(sourceFile: ts.SourceFile): LintRuleContext {
               if (ts.isIdentifier(type.expression)) {
                 if (type.expression.text === 'BubbleFlow') {
                   bubbleFlowClass = node;
+
+                  // Extract trigger type from BubbleFlow<'trigger-type'> generic parameter
+                  if (type.typeArguments && type.typeArguments.length > 0) {
+                    const firstArg = type.typeArguments[0];
+                    if (
+                      ts.isLiteralTypeNode(firstArg) &&
+                      ts.isStringLiteral(firstArg.literal)
+                    ) {
+                      bubbleFlowTriggerType = firstArg.literal.text;
+                    }
+                  }
+
                   // Find handle method in this class
                   if (node.members) {
                     for (const member of node.members) {
@@ -162,6 +177,7 @@ function parseLintRuleContext(sourceFile: ts.SourceFile): LintRuleContext {
     handleMethod,
     handleMethodBody,
     importedBubbleClasses,
+    bubbleFlowTriggerType,
   };
 }
 
@@ -1009,6 +1025,149 @@ export const singleBubbleFlowClassRule: LintRule = {
 };
 
 /**
+ * Mapping of trigger types to their expected payload type names
+ * Used by the enforce-payload-type lint rule
+ */
+const TRIGGER_PAYLOAD_TYPE_MAP: Record<string, string> = {
+  'slack/bot_mentioned': 'SlackMentionEvent',
+  'slack/message_received': 'SlackMessageReceivedEvent',
+  'schedule/cron': 'CronEvent',
+  'webhook/http': 'WebhookEvent',
+};
+
+/**
+ * Lint rule that enforces proper payload typing for BubbleFlow<TriggerType>
+ *
+ * When a class extends BubbleFlow<'slack/bot_mentioned'>, the handle() method's
+ * payload parameter must be typed with the correct event type (e.g., SlackMentionEvent)
+ * from BubbleTriggerEventRegistry, not 'any' or an incompatible type.
+ *
+ * This is a blocking error - mismatched types will prevent the flow from being saved.
+ */
+export const enforcePayloadTypeRule: LintRule = {
+  name: 'enforce-payload-type',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    // Skip if no BubbleFlow class or handle method found
+    if (!context.bubbleFlowClass || !context.handleMethod) {
+      return errors;
+    }
+
+    // Skip if no trigger type extracted
+    if (!context.bubbleFlowTriggerType) {
+      return errors;
+    }
+
+    // Get the expected payload type for this trigger
+    const expectedTypeName =
+      TRIGGER_PAYLOAD_TYPE_MAP[context.bubbleFlowTriggerType];
+    if (!expectedTypeName) {
+      // Unknown trigger type, skip validation
+      return errors;
+    }
+
+    // Check the handle method's first parameter
+    const parameters = context.handleMethod.parameters;
+    if (parameters.length === 0) {
+      const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+        context.handleMethod.getStart(context.sourceFile)
+      );
+      errors.push({
+        line: line + 1,
+        message: `handle() method must have a payload parameter typed as '${expectedTypeName}' for trigger type '${context.bubbleFlowTriggerType}'.`,
+      });
+      return errors;
+    }
+
+    const firstParam = parameters[0];
+    const typeAnnotation = firstParam.type;
+
+    // Check if parameter has no type annotation
+    if (!typeAnnotation) {
+      const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+        firstParam.getStart(context.sourceFile)
+      );
+      errors.push({
+        line: line + 1,
+        message: `Payload parameter must be typed as '${expectedTypeName}' for trigger type '${context.bubbleFlowTriggerType}'. Add explicit type annotation.`,
+      });
+      return errors;
+    }
+
+    // Check for 'any' type
+    if (typeAnnotation.kind === ts.SyntaxKind.AnyKeyword) {
+      const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+        typeAnnotation.getStart(context.sourceFile)
+      );
+      errors.push({
+        line: line + 1,
+        message: `Payload type 'any' is not allowed. Use '${expectedTypeName}' for trigger type '${context.bubbleFlowTriggerType}'.`,
+      });
+      return errors;
+    }
+
+    // Check if the type is a reference type and matches expected
+    if (ts.isTypeReferenceNode(typeAnnotation)) {
+      const typeName = typeAnnotation.typeName;
+      let actualTypeName: string | null = null;
+
+      if (ts.isIdentifier(typeName)) {
+        actualTypeName = typeName.text;
+      } else if (ts.isQualifiedName(typeName)) {
+        // Handle qualified names like Namespace.Type
+        actualTypeName = typeName.right.text;
+      }
+
+      // Check if it matches the expected type or uses BubbleTriggerEventRegistry[triggerType]
+      if (actualTypeName && actualTypeName !== expectedTypeName) {
+        // Allow indexed access type: BubbleTriggerEventRegistry['slack/bot_mentioned']
+        // This is also valid
+        const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+          typeAnnotation.getStart(context.sourceFile)
+        );
+        errors.push({
+          line: line + 1,
+          message: `Payload type mismatch: expected '${expectedTypeName}' for trigger type '${context.bubbleFlowTriggerType}', but found '${actualTypeName}'.`,
+        });
+      }
+    }
+
+    // Check for indexed access type: BubbleTriggerEventRegistry['slack/bot_mentioned']
+    if (ts.isIndexedAccessTypeNode(typeAnnotation)) {
+      const objectType = typeAnnotation.objectType;
+      const indexType = typeAnnotation.indexType;
+
+      // Verify it's BubbleTriggerEventRegistry
+      if (
+        ts.isTypeReferenceNode(objectType) &&
+        ts.isIdentifier(objectType.typeName) &&
+        objectType.typeName.text === 'BubbleTriggerEventRegistry'
+      ) {
+        // Verify the index matches the trigger type
+        if (
+          ts.isLiteralTypeNode(indexType) &&
+          ts.isStringLiteral(indexType.literal)
+        ) {
+          const indexValue = indexType.literal.text;
+          if (indexValue !== context.bubbleFlowTriggerType) {
+            const { line } = context.sourceFile.getLineAndCharacterOfPosition(
+              typeAnnotation.getStart(context.sourceFile)
+            );
+            errors.push({
+              line: line + 1,
+              message: `Payload type mismatch: indexed access uses '${indexValue}' but BubbleFlow extends '${context.bubbleFlowTriggerType}'.`,
+            });
+          }
+        }
+      }
+    }
+
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -1021,3 +1180,4 @@ defaultLintRuleRegistry.register(noMethodCallingMethodRule);
 defaultLintRuleRegistry.register(noTryCatchInHandleRule);
 defaultLintRuleRegistry.register(noAnyTypeRule);
 defaultLintRuleRegistry.register(singleBubbleFlowClassRule);
+defaultLintRuleRegistry.register(enforcePayloadTypeRule);

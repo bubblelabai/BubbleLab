@@ -7,10 +7,14 @@ import {
   SYSTEM_CREDENTIALS,
   generateCredentialsSummary,
   RECOMMENDED_MODELS,
+  TRIGGER_EVENT_CONFIGS,
 } from '@bubblelab/shared-schemas';
 
 // Re-export RECOMMENDED_MODELS for convenience
 export { RECOMMENDED_MODELS };
+
+// Generate dynamic list of available triggers
+const AVAILABLE_TRIGGERS = Object.keys(TRIGGER_EVENT_CONFIGS).join(', ');
 
 export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
 1. Start with the exact boilerplate template above (it has all the correct imports and class structure), come up with a name for the flow based on the user's request, export class [name] extends BubbleFlow
@@ -21,7 +25,12 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
    - The correct input parameters and their types
    - The expected output structure in result.data
    - How to properly handle success/error cases
-6. IMPLEMENTATION ARCHITECTURE (CRITICAL):
+6. TRIGGER SELECTION:
+   - Available triggers: ${AVAILABLE_TRIGGERS}
+   - Use get-trigger-detail-tool to get the payload schema, setup guide, and TypeScript interface for your chosen trigger
+   - The tool returns the exact payload interface to extend (e.g., SlackMentionEvent, CronEvent, WebhookEvent)
+   - Default to 'webhook/http' if no specific trigger is requested
+7. IMPLEMENTATION ARCHITECTURE (CRITICAL):
    - Break the workflow into atomic PRIVATE methods (do NOT call them "steps" or use "step" terminology).
    - Types of methods:
      a) Transformation Methods: Pure functions for data cleaning, validation, or formatting. NO Bubble usage here.
@@ -42,21 +51,21 @@ export const CRITICAL_INSTRUCTIONS = `CRITICAL INSTRUCTIONS:
      // Sends cleaned input to AI for natural language processing
      // Only runs when input length is greater than 3 characters
      private async processWithAI(input: string): Promise<string> { ... }
-7. Use the exact parameter structures shown in the bubble details
-8. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
-9. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
-10. Return meaningful data from the handle method, this is the data that will be shown to the user.
-11. DO NOT include credentials in bubble parameters - credentials are handled automatically
-12. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
-13. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
-14. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
-15. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
-16. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
-17. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
-18. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
-19. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
-20. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. User-specific values like folder IDs, spreadsheet IDs, email addresses MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). EXCEPTION: API keys and authentication credentials should NOT go in the payload - they are handled automatically by the Bubble Studio credential system and injected at runtime. Bubbles like HTTP have built-in authType parameters for this purpose.
-21. NEVER use the 'any' type. TypeScript's type inference is powerful - let it work for you:
+8. Use the exact parameter structures shown in the bubble details
+9. If deterministic tool calls and branch logic are possible, there is no need to use AI agent.
+10. Access bubble outputs safely using result.data with null checking (e.g., result.data?.someProperty or check if result.data exists first)
+11. Return meaningful data from the handle method, this is the data that will be shown to the user.
+12. DO NOT include credentials in bubble parameters - credentials are handled automatically
+13. CRITICAL: In Bubble methods, always use the pattern: const result = await new SomeBubble({params}).action() - NEVER use runBubble, this.runBubble, or any other method.
+14. When using AI Agent, ensure your prompt includes comprehensive context and explicitly pass in all relevant information needed for the task. Be thorough in providing complete data rather than expecting the AI to infer or assume missing details (unless the information must be retrieved from an online source)
+15. When generating and dealing with images, process them one at a time to ensure proper handling and avoid overwhelming the system
+16. If the location of the output is unknown or not specified by the user, use this.logger?.info(message:string) to print the output to the console.
+17. DO NOT repeat the user's request in your response or thinking process. Do not include "The user says: <user's request>" in your response.
+18. Write short and concise comments throughout the code. Name methods clearly (e.g., 'transformInput', 'performResearch', 'formatOutput'). The variable name for bubble should describe the bubble's purpose and its role in the workflow. NEVER use the word "step" in method names, comments, or variable names.
+19. If user does not specify a communication channel to get the result, use email sending via resend and do not set the 'from' parameter, it will be set automatically and use bubble lab's default email, unless the user has their own resend setup and account domain verified.
+20. When importing JSON workflows from other platforms, focus on capturing the ESSENCE and INTENT of the workflow, not the exact architecture. Convert to appropriate BubbleFlow patterns - use deterministic workflows when the logic is linear and predictable, only use AI agents when dynamic decision-making is truly needed.
+21. NEVER generate placeholder values like "YOUR_API_KEY_HERE", "YOUR_FOLDER_ID", "REPLACE_THIS", etc. in constants. User-specific values like folder IDs, spreadsheet IDs, email addresses MUST be defined in the payload interface and passed as inputs. Constants should only contain truly static values that never change (like MIME types, fixed strings, enum values, etc.). EXCEPTION: API keys and authentication credentials should NOT go in the payload - they are handled automatically by the Bubble Studio credential system and injected at runtime. Bubbles like HTTP have built-in authType parameters for this purpose.
+22. NEVER use the 'any' type. TypeScript's type inference is powerful - let it work for you:
     - For bubble results: DO NOT annotate the type. Just write \`const result = await new GmailBubble({...}).readEmail()\` and TypeScript will infer the correct type automatically.
     - For function return types: Omit return type annotations when the return value is obvious from the implementation. TypeScript infers them correctly.
     - When you MUST annotate: Use the specific type (e.g., \`BubbleResult<GmailReadEmailData>\`), generic parameters, or \`unknown\` if truly unknown.

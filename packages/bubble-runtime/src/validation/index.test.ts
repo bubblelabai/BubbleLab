@@ -20,6 +20,24 @@ describe('BubbleFlow Validation', () => {
       expect(result.errors).toBeDefined();
       expect(result.errors!.length).toBeGreaterThan(0);
     });
+    it('should pass when handle payload uses correct type for slack/bot_mentioned trigger', async () => {
+      const code = `
+import type { SlackMentionEvent } from '@bubblelab/bubble-core';
+import { BubbleFlow } from '@bubblelab/bubble-core';
+
+export class MyFlow extends BubbleFlow<'slack/bot_mentioned'> {
+  async handle(payload: SlackMentionEvent): Promise<{ message: string }> {
+    return { message: payload.text };
+  }
+}
+      `;
+      const result = await validateBubbleFlow(code);
+      if (!result.valid) {
+        console.log(result.errors);
+      }
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeUndefined();
+    });
   });
   describe('Valid BubbleFlow validation', () => {
     it('should invalidate credential in flow', async () => {

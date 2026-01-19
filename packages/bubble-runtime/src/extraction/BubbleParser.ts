@@ -1,10 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 import type { Scope, ScopeManager } from '@bubblelab/ts-scope-manager';
-import {
-  BubbleFactory,
-  BubbleTriggerEventRegistry,
-} from '@bubblelab/bubble-core';
+import { BubbleFactory } from '@bubblelab/bubble-core';
 import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import { buildClassNameLookup } from '../utils/bubble-helper';
 import type {
@@ -29,6 +26,8 @@ import {
   BubbleParameterType,
   hashToVariableId,
   buildCallSiteKey,
+  getTriggerEventConfig,
+  isValidBubbleTriggerEvent,
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
 
@@ -854,12 +853,12 @@ export class BubbleParser {
           obj.typeName.name === 'BubbleTriggerEventRegistry' &&
           idx.type === 'TSLiteralType' &&
           idx.literal.type === 'Literal' &&
-          typeof idx.literal.value === 'string'
+          typeof idx.literal.value === 'string' &&
+          isValidBubbleTriggerEvent(idx.literal.value)
         ) {
-          const schema = this.eventKeyToSchema(
-            idx.literal.value as keyof BubbleTriggerEventRegistry
-          );
-          if (schema) return schema;
+          const config = getTriggerEventConfig(idx.literal.value);
+          if (config?.payloadSchema)
+            return config.payloadSchema as unknown as Record<string, unknown>;
         }
         return {};
       }
@@ -919,57 +918,6 @@ export class BubbleParser {
     return schema;
   }
 
-  // Minimal mapping for known trigger event keys to JSON Schema shapes
-  // Used for the input schema in the BubbleFlow editor if defined as BubbleTriggerEventRegistry[eventType]
-  private eventKeyToSchema(
-    eventKey: keyof BubbleTriggerEventRegistry
-  ): Record<string, unknown> | null {
-    if (eventKey === 'slack/bot_mentioned') {
-      return {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          channel: { type: 'string' },
-          thread_ts: { type: 'string' },
-          user: { type: 'string' },
-          slack_event: { type: 'object' },
-          // Allow additional field used in flows
-          monthlyLimitError: {},
-        },
-        required: ['text', 'channel', 'user', 'slack_event'],
-      };
-    }
-    if (eventKey === 'webhook/http') {
-      return {
-        type: 'object',
-        properties: {
-          body: { type: 'object' },
-        },
-      };
-    }
-    if (eventKey === 'schedule/cron') {
-      return {
-        type: 'object',
-        properties: {
-          body: { type: 'object' },
-        },
-      };
-    }
-    if (eventKey === 'slack/message_received') {
-      return {
-        type: 'object',
-        properties: {
-          text: { type: 'string' },
-          channel: { type: 'string' },
-          user: { type: 'string' },
-          channel_type: { type: 'string' },
-          slack_event: { type: 'object' },
-        },
-        required: ['text', 'channel', 'user', 'slack_event'],
-      };
-    }
-    return null;
-  }
   /** Resolve in-file interface/type alias by name to JSON Schema */
   private resolveTypeNameToJson(
     name: string,
