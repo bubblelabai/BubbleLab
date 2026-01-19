@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { WorkflowBubble } from '../../types/workflow-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
-import { SlackBubble } from '../service-bubble/slack.js';
+import { SlackBubble } from '../service-bubble/slack';
 import { DatabaseAnalyzerWorkflowBubble } from './database-analyzer.workflow.js';
 import { AIAgentBubble } from '../service-bubble/ai-agent.js';
 import { SlackFormatterAgentBubble } from './slack-formatter-agent.js';
