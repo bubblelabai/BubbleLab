@@ -765,53 +765,98 @@ export class GoogleDriveBubble<
   ): Promise<Extract<GoogleDriveResult, { operation: 'download_file' }>> {
     const { file_id, export_format } = params;
 
-    // First get file metadata to determine if it's a Google Workspace file
-    const fileInfo = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=name,mimeType`
-    );
+    let fileInfo: { name?: string; mimeType?: string };
+    let usePublicDownload = false;
+
+    // First try to get file metadata to determine if it's a Google Workspace file
+    try {
+      fileInfo = await this.makeGoogleApiRequest(
+        `/files/${file_id}?fields=name,mimeType`
+      );
+    } catch (error) {
+      // If metadata request fails (e.g., 404 for public files without auth),
+      // fall back to public download URL
+      if (
+        error instanceof Error &&
+        (error.message.includes('404') ||
+          error.message.includes('File not found'))
+      ) {
+        usePublicDownload = true;
+        fileInfo = { name: undefined, mimeType: undefined };
+      } else {
+        throw error;
+      }
+    }
 
     let content: string;
     let actualMimeType: string;
 
-    // Check if it's a Google Workspace file that needs export
-    if (fileInfo.mimeType?.startsWith('application/vnd.google-apps.')) {
-      if (!export_format) {
-        throw new Error('Export format is required for Google Workspace files');
+    if (usePublicDownload) {
+      // Use public download URL for files that are public but not accessible via API
+      // This works for files shared with "Anyone with the link"
+      const publicDownloadUrl = `https://drive.google.com/uc?export=download&id=${file_id}`;
+
+      const response = await fetch(publicDownloadUrl);
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to download public file: ${response.status} ${response.statusText}`
+        );
       }
 
-      const exportResponse = await this.makeGoogleApiRequest(
-        `/files/${file_id}/export?mimeType=${encodeURIComponent(export_format)}`,
-        'GET',
-        undefined,
-        {},
-        'arrayBuffer'
-      );
-
-      actualMimeType = export_format;
+      const arrayBuffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || '';
+      actualMimeType = contentType.split(';')[0] || 'application/octet-stream';
 
       // Return as plain text for text-based formats, base64 for binary
       if (this.isTextMimeType(actualMimeType)) {
-        content = Buffer.from(exportResponse).toString('utf-8');
+        content = Buffer.from(arrayBuffer).toString('utf-8');
       } else {
-        content = Buffer.from(exportResponse).toString('base64');
+        content = Buffer.from(arrayBuffer).toString('base64');
       }
     } else {
-      // Regular file download
-      const downloadResponse = await this.makeGoogleApiRequest(
-        `/files/${file_id}?alt=media`,
-        'GET',
-        undefined,
-        {},
-        'arrayBuffer'
-      );
+      // Check if it's a Google Workspace file that needs export
+      if (fileInfo.mimeType?.startsWith('application/vnd.google-apps.')) {
+        if (!export_format) {
+          throw new Error(
+            'Export format is required for Google Workspace files'
+          );
+        }
 
-      actualMimeType = fileInfo.mimeType;
+        const exportResponse = await this.makeGoogleApiRequest(
+          `/files/${file_id}/export?mimeType=${encodeURIComponent(export_format)}`,
+          'GET',
+          undefined,
+          {},
+          'arrayBuffer'
+        );
 
-      // Return as plain text for text-based formats, base64 for binary
-      if (this.isTextMimeType(actualMimeType)) {
-        content = Buffer.from(downloadResponse).toString('utf-8');
+        actualMimeType = export_format;
+
+        // Return as plain text for text-based formats, base64 for binary
+        if (this.isTextMimeType(actualMimeType)) {
+          content = Buffer.from(exportResponse).toString('utf-8');
+        } else {
+          content = Buffer.from(exportResponse).toString('base64');
+        }
       } else {
-        content = Buffer.from(downloadResponse).toString('base64');
+        // Regular file download
+        const downloadResponse = await this.makeGoogleApiRequest(
+          `/files/${file_id}?alt=media`,
+          'GET',
+          undefined,
+          {},
+          'arrayBuffer'
+        );
+
+        actualMimeType = fileInfo.mimeType || 'application/octet-stream';
+
+        // Return as plain text for text-based formats, base64 for binary
+        if (this.isTextMimeType(actualMimeType)) {
+          content = Buffer.from(downloadResponse).toString('utf-8');
+        } else {
+          content = Buffer.from(downloadResponse).toString('base64');
+        }
       }
     }
 
