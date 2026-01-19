@@ -204,8 +204,9 @@ Navigate to **OAuth & Permissions** and add these Bot Token Scopes:
 ### 3. Enable Event Subscriptions
 1. Go to **Event Subscriptions**
 2. Toggle "Enable Events" to ON
-3. Add your webhook URL: \`https://your-domain.com/webhook/your-path\`
-4. Subscribe to bot events: \`message.channels\`, \`message.groups\`, \`message.im\`, \`message.mpim\`
+3. Toggle the webhook active button above and copy the webhook URL
+4. Add your webhook URL to the Request URL field
+5. Subscribe to bot events: \`message.channels\`, \`message.groups\`, \`message.im\`, \`message.mpim\`
 
 ### 4. Install to Workspace
 1. Go to **Install App**
@@ -255,8 +256,9 @@ Navigate to **OAuth & Permissions** and add these Bot Token Scopes:
 ### 3. Enable Event Subscriptions
 1. Go to **Event Subscriptions**
 2. Toggle "Enable Events" to ON
-3. Add your webhook URL: \`https://your-domain.com/webhook/your-path\`
-4. Subscribe to bot events: \`app_mention\`
+3. Toggle the webhook active button above and copy the webhook URL
+4. Add your webhook URL to the Request URL field
+5. Subscribe to bot events: \`app_mention\`
 
 ### 4. Install to Workspace
 1. Go to **Install App**
@@ -345,7 +347,7 @@ export class DailyReportFlow extends BubbleFlow<'schedule/cron'> {
     setupGuide: `## Webhook Setup Guide
 
 ### Your Webhook URL
-Send HTTP POST requests to your unique webhook URL to trigger this flow.
+Toggle the webhook active button above and copy the webhook URL to send HTTP POST requests to trigger this flow.
 
 ### Request Format
 \`\`\`bash
