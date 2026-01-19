@@ -659,6 +659,9 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'research-agent-tool': [
     CredentialType.FIRECRAWL_API_KEY,
     CredentialType.GOOGLE_GEMINI_CRED,
+    CredentialType.OPENAI_CRED,
+    CredentialType.ANTHROPIC_CRED,
+    CredentialType.OPENROUTER_CRED,
     CredentialType.APIFY_CRED,
   ],
   'reddit-scrape-tool': [],
