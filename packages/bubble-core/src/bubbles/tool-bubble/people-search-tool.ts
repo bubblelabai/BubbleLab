@@ -67,7 +67,10 @@ const PersonResultSchema = z.object({
           .describe('Company LinkedIn URL'),
         seniorityLevel: z.string().nullable().describe('Seniority level'),
         functionCategory: z.string().nullable().describe('Function category'),
-        startDate: z.string().nullable().describe('Start date'),
+        startDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('Start date'),
         yearsAtCompany: z.number().nullable().describe('Years at company'),
         companyHeadcount: z.number().nullable().describe('Company headcount'),
         companyIndustries: z
@@ -84,8 +87,14 @@ const PersonResultSchema = z.object({
       z.object({
         title: z.string().nullable().describe('Job title'),
         companyName: z.string().nullable().describe('Company name'),
-        startDate: z.string().nullable().describe('Start date'),
-        endDate: z.string().nullable().describe('End date'),
+        startDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('Start date'),
+        endDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('End date'),
       })
     )
     .nullable()
@@ -768,7 +777,12 @@ export class PeopleSearchTool extends ToolBubble<
           companyLinkedinUrl: emp.company_linkedin_profile_url || null,
           seniorityLevel: emp.seniority_level || null,
           functionCategory: emp.function_category || null,
-          startDate: emp.start_date || null,
+          startDate:
+            emp.start_date !== null && emp.start_date !== undefined
+              ? typeof emp.start_date === 'number'
+                ? String(emp.start_date)
+                : emp.start_date
+              : null,
           yearsAtCompany: emp.years_at_company_raw || null,
           companyHeadcount: emp.company_headcount_latest || null,
           companyIndustries: emp.company_industries || null,
@@ -780,8 +794,18 @@ export class PeopleSearchTool extends ToolBubble<
       ? profile.past_employers.map((emp) => ({
           title: emp.title || null,
           companyName: emp.company_name || emp.name || null,
-          startDate: emp.start_date || null,
-          endDate: emp.end_date || null,
+          startDate:
+            emp.start_date !== null && emp.start_date !== undefined
+              ? typeof emp.start_date === 'number'
+                ? String(emp.start_date)
+                : emp.start_date
+              : null,
+          endDate:
+            emp.end_date !== null && emp.end_date !== undefined
+              ? typeof emp.end_date === 'number'
+                ? String(emp.end_date)
+                : emp.end_date
+              : null,
         }))
       : null;
 

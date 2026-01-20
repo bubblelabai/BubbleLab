@@ -26,7 +26,7 @@ export const PersonProfileSchema = z
           title: z.string().nullable().optional(),
           company_name: z.string().nullable().optional(),
           company_linkedin_url: z.string().nullable().optional(),
-          start_date: z.string().nullable().optional(),
+          start_date: z.union([z.string(), z.number()]).nullable().optional(),
           description: z.string().nullable().optional(),
         })
       )
@@ -37,8 +37,8 @@ export const PersonProfileSchema = z
         z.object({
           title: z.string().nullable().optional(),
           company_name: z.string().nullable().optional(),
-          start_date: z.string().nullable().optional(),
-          end_date: z.string().nullable().optional(),
+          start_date: z.union([z.string(), z.number()]).nullable().optional(),
+          end_date: z.union([z.string(), z.number()]).nullable().optional(),
         })
       )
       .nullable()
@@ -168,8 +168,8 @@ export const PersonDBEmployerSchema = z
     company_industries: z.array(z.string()).nullable().optional(),
     seniority_level: z.string().nullable().optional(),
     function_category: z.string().nullable().optional(),
-    start_date: z.string().nullable().optional(),
-    end_date: z.string().nullable().optional(),
+    start_date: z.union([z.string(), z.number()]).nullable().optional(),
+    end_date: z.union([z.string(), z.number()]).nullable().optional(),
     years_at_company_raw: z.number().nullable().optional(),
     description: z.string().nullable().optional(),
     location: z.string().nullable().optional(),
@@ -182,8 +182,8 @@ export const PersonDBEducationSchema = z
     degree_name: z.string().nullable().optional(),
     institute_name: z.string().nullable().optional(),
     field_of_study: z.string().nullable().optional(),
-    start_date: z.string().nullable().optional(),
-    end_date: z.string().nullable().optional(),
+    start_date: z.union([z.string(), z.number()]).nullable().optional(),
+    end_date: z.union([z.string(), z.number()]).nullable().optional(),
   })
   .passthrough();
 
@@ -234,7 +234,10 @@ export const PersonDBProfileSchema = z
         z
           .object({
             name: z.string().nullable().optional(),
-            issued_date: z.string().nullable().optional(),
+            issued_date: z
+              .union([z.string(), z.number()])
+              .nullable()
+              .optional(),
             issuing_authority: z.string().nullable().optional(),
           })
           .passthrough()
@@ -246,7 +249,10 @@ export const PersonDBProfileSchema = z
         z
           .object({
             title: z.string().nullable().optional(),
-            issued_date: z.string().nullable().optional(),
+            issued_date: z
+              .union([z.string(), z.number()])
+              .nullable()
+              .optional(),
             issuer: z.string().nullable().optional(),
           })
           .passthrough()

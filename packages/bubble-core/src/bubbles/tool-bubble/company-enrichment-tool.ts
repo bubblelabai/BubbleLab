@@ -44,7 +44,10 @@ const ContactSchema = z.object({
           .string()
           .nullable()
           .describe('Company LinkedIn URL'),
-        startDate: z.string().nullable().describe('Start date'),
+        startDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('Start date'),
         description: z.string().nullable().describe('Role description'),
       })
     )
@@ -56,8 +59,14 @@ const ContactSchema = z.object({
       z.object({
         title: z.string().nullable().describe('Job title'),
         companyName: z.string().nullable().describe('Company name'),
-        startDate: z.string().nullable().describe('Start date'),
-        endDate: z.string().nullable().describe('End date'),
+        startDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('Start date'),
+        endDate: z
+          .union([z.string(), z.number()])
+          .nullable()
+          .describe('End date'),
       })
     )
     .nullable()
@@ -412,7 +421,12 @@ export class CompanyEnrichmentTool extends ToolBubble<
             title: pos.title || null,
             companyName: pos.company_name || null,
             companyLinkedinUrl: pos.company_linkedin_url || null,
-            startDate: pos.start_date || null,
+            startDate:
+              pos.start_date !== null && pos.start_date !== undefined
+                ? typeof pos.start_date === 'number'
+                  ? String(pos.start_date)
+                  : pos.start_date
+                : null,
             description: pos.description || null,
           }))
         : null,
@@ -420,8 +434,18 @@ export class CompanyEnrichmentTool extends ToolBubble<
         ? profile.past_positions.map((pos) => ({
             title: pos.title || null,
             companyName: pos.company_name || null,
-            startDate: pos.start_date || null,
-            endDate: pos.end_date || null,
+            startDate:
+              pos.start_date !== null && pos.start_date !== undefined
+                ? typeof pos.start_date === 'number'
+                  ? String(pos.start_date)
+                  : pos.start_date
+                : null,
+            endDate:
+              pos.end_date !== null && pos.end_date !== undefined
+                ? typeof pos.end_date === 'number'
+                  ? String(pos.end_date)
+                  : pos.end_date
+                : null,
           }))
         : null,
       education: profile.education
