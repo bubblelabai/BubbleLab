@@ -9,6 +9,8 @@ import {
   ChevronDown,
   ChevronRight,
   Workflow,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { StreamingLogEvent } from '@bubblelab/shared-schemas';
 import { findLogoForBubble } from '../../lib/integrations';
@@ -22,6 +24,8 @@ import type { TabType } from '../../stores/liveOutputStore';
 import { extractStepGraph, type StepData } from '../../utils/workflowToSteps';
 import { BubbleExecutionCard } from './BubbleExecutionCard';
 import { pairBubbleEvents } from './pairBubbleEvents';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { DEBUG_MODE } from '../../env';
 
 interface AllEventsViewProps {
   orderedItems: Array<
@@ -106,6 +110,9 @@ export default function AllEventsView({
 
   // View mode: 'unified' shows input/output together, 'timeline' shows original slider view
   const [viewMode, setViewMode] = useState<'unified' | 'timeline'>('unified');
+
+  // Copy to clipboard for execution details
+  const { copied, copyToClipboard } = useCopyToClipboard();
 
   // Memoized paired executions for unified view
   const pairedExecutions = useMemo(() => {
@@ -1362,29 +1369,69 @@ export default function AllEventsView({
                         Execution Details
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 bg-[#0d1117] rounded-lg p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setViewMode('unified')}
-                        className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
-                          viewMode === 'unified'
-                            ? 'bg-[#21262d] text-gray-200'
-                            : 'text-gray-500 hover:text-gray-400'
-                        }`}
-                      >
-                        Unified
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewMode('timeline')}
-                        className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
-                          viewMode === 'timeline'
-                            ? 'bg-[#21262d] text-gray-200'
-                            : 'text-gray-500 hover:text-gray-400'
-                        }`}
-                      >
-                        Timeline
-                      </button>
+                    <div className="flex items-center gap-2">
+                      {/* Copy Execution Details Button - Debug mode only */}
+                      {DEBUG_MODE && pairedExecution && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentRun = pairedExecution.runs[0];
+                            const executionData = {
+                              bubbleName: pairedExecution.bubbleName,
+                              displayName: pairedExecution.displayName,
+                              variableId: pairedExecution.variableId,
+                              input: currentRun?.inputData ?? null,
+                              output: currentRun?.outputData ?? null,
+                              status: currentRun?.status ?? 'unknown',
+                              executionTime: currentRun?.executionTime,
+                              errors: pairedExecution.errors,
+                              warnings: pairedExecution.warnings,
+                            };
+                            copyToClipboard(
+                              JSON.stringify(executionData, null, 2)
+                            );
+                          }}
+                          className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium text-gray-400 hover:text-gray-200 bg-[#0d1117] hover:bg-[#21262d] rounded-md transition-all"
+                          title="Copy execution details to clipboard"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {/* View Mode Toggle */}
+                      <div className="flex items-center gap-1 bg-[#0d1117] rounded-lg p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode('unified')}
+                          className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
+                            viewMode === 'unified'
+                              ? 'bg-[#21262d] text-gray-200'
+                              : 'text-gray-500 hover:text-gray-400'
+                          }`}
+                        >
+                          Unified
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode('timeline')}
+                          className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${
+                            viewMode === 'timeline'
+                              ? 'bg-[#21262d] text-gray-200'
+                              : 'text-gray-500 hover:text-gray-400'
+                          }`}
+                        >
+                          Timeline
+                        </button>
+                      </div>
                     </div>
                   </div>
 

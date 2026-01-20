@@ -229,6 +229,13 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My InsForge API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.CRUSTDATA_API_KEY]: {
+      label: 'Crustdata API Key',
+      description: 'API key for your Crustdata backend',
+      placeholder: 'crust_...',
+      namePlaceholder: 'My Crustdata API Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.CUSTOM_AUTH_KEY]: {
       label: 'Custom Authentication Key',
       description:
@@ -291,6 +298,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
+  [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -307,6 +315,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   // Scraping credentials
   CredentialType.APIFY_CRED,
+  CredentialType.CRUSTDATA_API_KEY,
 ]);
 
 /**
@@ -736,6 +745,9 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.CLOUDFLARE_R2_SECRET_KEY,
     CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   ],
+  crustdata: [CredentialType.CRUSTDATA_API_KEY],
+  'company-enrichment-tool': [CredentialType.CRUSTDATA_API_KEY],
+  'people-search-tool': [CredentialType.CRUSTDATA_API_KEY],
 };
 
 // POST /credentials - Create credential schema

@@ -1141,9 +1141,30 @@ export class GoogleDriveBubble<
     const { file_id, export_format } = params;
 
     // Get file metadata to determine if it's a Google Workspace file
-    const fileInfo = await this.makeGoogleApiRequest(
-      `/files/${file_id}?fields=name,mimeType&supportsAllDrives=true`
-    );
+    let fileInfo: { name?: string; mimeType?: string };
+    try {
+      fileInfo = await this.makeGoogleApiRequest(
+        `/files/${file_id}?fields=name,mimeType&supportsAllDrives=true`
+      );
+    } catch (error) {
+      // On 404, fall back to get_doc (file might be a Google Doc)
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('404')) {
+        const docUrl = `https://docs.googleapis.com/v1/documents/${file_id}`;
+        const document = await this.makeGoogleApiRequest(docUrl, 'GET');
+        const content = this.extractPlainTextFromDoc(document);
+        return {
+          operation: 'download_file',
+          success: true,
+          content,
+          filename: document.title,
+          mimeType: 'text/plain',
+          error: '',
+        };
+      }
+      throw error;
+    }
 
     let content: string;
     let actualMimeType: string;

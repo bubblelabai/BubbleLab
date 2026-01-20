@@ -145,7 +145,10 @@ export function parseCronToParts(cronSchedule: string): CronParts {
 
   // 1. Check for minute interval (e.g., "*/5 * * * *")
   const minuteInterval = extractStepInterval(minutePart);
-  if (minuteInterval !== null && (minutePart.startsWith('*') || minutePart.includes('/'))) {
+  if (
+    minuteInterval !== null &&
+    (minutePart.startsWith('*') || minutePart.includes('/'))
+  ) {
     return {
       frequency: 'minute',
       interval: minuteInterval,
@@ -158,7 +161,10 @@ export function parseCronToParts(cronSchedule: string): CronParts {
 
   // 2. Check for hourly interval (e.g., "0 */2 * * *" or "30 */3 * * *")
   const hourInterval = extractStepInterval(hourPart);
-  if (hourInterval !== null && (hourPart.startsWith('*') || hourPart.includes('/'))) {
+  if (
+    hourInterval !== null &&
+    (hourPart.startsWith('*') || hourPart.includes('/'))
+  ) {
     // Parse the minute value (could be specific or wildcard)
     const minuteValue = minutePart === '*' ? 0 : parseInt(minutePart, 10) || 0;
     return {
@@ -239,6 +245,18 @@ export function buildCronFromParts(parts: CronParts): string {
 }
 
 /**
+ * Format hour and minute to 12-hour time string (e.g., "9am", "2:30pm", "12am")
+ */
+function formatTime12Hour(hour: number, minute: number): string {
+  const period = hour >= 12 ? 'pm' : 'am';
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  if (minute === 0) {
+    return `${hour12}${period}`;
+  }
+  return `${hour12}:${minute.toString().padStart(2, '0')}${period}`;
+}
+
+/**
  * Create simplified schedule description for display
  * @param parts - Parsed cron parts
  * @returns Simplified human-readable schedule description
@@ -246,15 +264,15 @@ export function buildCronFromParts(parts: CronParts): string {
 export function getSimplifiedSchedule(parts: CronParts): string {
   switch (parts.frequency) {
     case 'minute':
-      return `Every ${parts.interval} minute${parts.interval > 1 ? 's' : ''}`;
+      return `Every ${parts.interval} min${parts.interval > 1 ? 's' : ''}`;
     case 'hour':
-      return `Every ${parts.interval} hour${parts.interval > 1 ? 's' : ''}`;
+      return `Every ${parts.interval} hr${parts.interval > 1 ? 's' : ''}`;
     case 'day':
-      return 'Daily';
+      return `Daily ${formatTime12Hour(parts.hour, parts.minute)}`;
     case 'week':
-      return 'Weekly';
+      return `Weekly ${formatTime12Hour(parts.hour, parts.minute)}`;
     case 'month':
-      return 'Monthly';
+      return `Monthly ${formatTime12Hour(parts.hour, parts.minute)}`;
     default:
       return 'Scheduled';
   }

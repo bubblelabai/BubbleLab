@@ -40,7 +40,6 @@ import {
   StreamingCallback,
   AvailableTool,
   EditBubbleFlowTool,
-  ListBubblesTool,
   ToolMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
@@ -53,8 +52,15 @@ import { env } from 'src/config/env.js';
  */
 async function buildSystemPrompt(userName: string): Promise<string> {
   const bubbleFactory = await getBubbleFactory();
-  const listBubblesTool = new ListBubblesTool({});
-  const listBubblesResult = await listBubblesTool.action();
+  const availableBubbles = bubbleFactory.listBubblesForCodeGenerator();
+
+  const bubbleDescriptions = availableBubbles
+    .map((name) => {
+      const metadata = bubbleFactory.getMetadata(name);
+      return `- ${name}: ${metadata?.shortDescription || 'No description'}`;
+    })
+    .join('\n');
+
   return `You are Pearl, an AI Builder Agent specializing in editing completed Bubble Lab workflows (called BubbleFlow).
   You reside inside bubblelab-studio, the frontend of Bubble Lab.
   ${BUBBLE_STUDIO_INSTRUCTIONS}
@@ -69,7 +75,7 @@ YOUR ROLE:
 - Use the web-scrape-tool to scrape the web for information when the user provides a URL or mentions a website, or useful if you need to understand a site's structure or content.
 
 Available Bubbles:
-${listBubblesResult.data.bubbles.map((bubble) => bubble.name).join(', ')}
+${bubbleDescriptions}
 
 DECISION PROCESS:
 1. Analyze the user's request carefully

@@ -84,6 +84,14 @@ export {
   type CDPCookie,
   type BrowserSessionData,
 } from './bubbles/service-bubble/browserbase/index.js';
+export { CrustdataBubble } from './bubbles/service-bubble/crustdata/index.js';
+export type {
+  CrustdataParams,
+  CrustdataParamsInput,
+  CrustdataResult,
+  PersonProfile,
+  CompanyInfo,
+} from './bubbles/service-bubble/crustdata/index.js';
 
 // Export workflow bubbles
 export { DatabaseAnalyzerWorkflowBubble } from './bubbles/workflow-bubble/database-analyzer.workflow.js';
@@ -108,6 +116,7 @@ export { WebExtractTool } from './bubbles/tool-bubble/web-extract-tool.js';
 export { ResearchAgentTool } from './bubbles/tool-bubble/research-agent-tool.js';
 export { RedditScrapeTool } from './bubbles/tool-bubble/reddit-scrape-tool.js';
 export { InstagramTool } from './bubbles/tool-bubble/instagram-tool.js';
+export { PeopleSearchTool } from './bubbles/tool-bubble/people-search-tool.js';
 export type {
   InstagramPost,
   InstagramProfile,
@@ -134,6 +143,11 @@ export {
   type SearchResult,
   type ProductDetails,
 } from './bubbles/tool-bubble/amazon-shopping-tool/index.js';
+export { CompanyEnrichmentTool } from './bubbles/tool-bubble/company-enrichment-tool.js';
+export type {
+  Contact,
+  CompanyEnrichmentResult,
+} from './bubbles/tool-bubble/company-enrichment-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {

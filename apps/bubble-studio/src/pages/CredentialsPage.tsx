@@ -85,6 +85,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',
     [CredentialType.AMAZON_CRED]: 'Amazon',
+    [CredentialType.CRUSTDATA_API_KEY]: 'Crustdata',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

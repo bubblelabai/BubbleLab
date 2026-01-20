@@ -96,6 +96,71 @@ function extractSchemaFields(
 }
 
 /**
+ * Extract a specific variant from a Zod discriminated union
+ *
+ * @param schema - The discriminated union schema
+ * @param discriminatorValue - The value of the discriminator field to extract
+ * @returns The schema for the matching variant, or undefined if not found
+ *
+ * @example
+ * ```typescript
+ * const identifySchema = extractUnionVariant(
+ *   CrustdataResultSchema,
+ *   'identify'
+ * );
+ * ```
+ */
+export function extractUnionVariant(
+  schema: z.ZodTypeAny,
+  discriminatorValue: string
+): z.ZodTypeAny | undefined {
+  // Unwrap effects/optional/nullable/default wrappers
+  let currentSchema = schema;
+
+  while (currentSchema instanceof z.ZodEffects) {
+    currentSchema = currentSchema._def.schema;
+  }
+
+  if (currentSchema instanceof z.ZodOptional) {
+    currentSchema = currentSchema._def.innerType;
+  }
+
+  if (currentSchema instanceof z.ZodNullable) {
+    currentSchema = currentSchema._def.innerType;
+  }
+
+  if (currentSchema instanceof z.ZodDefault) {
+    currentSchema = currentSchema._def.innerType;
+  }
+
+  // Check if it's a discriminated union
+  if (!(currentSchema instanceof z.ZodDiscriminatedUnion)) {
+    return undefined;
+  }
+
+  const def = currentSchema._def;
+  const discriminator = def.discriminator;
+  const options = def.options as z.ZodTypeAny[];
+
+  // Find the option with matching discriminator value
+  for (const option of options) {
+    if (option instanceof z.ZodObject) {
+      const shape = option.shape;
+      const discriminatorField = shape[discriminator];
+
+      // Check if this is a literal matching our value
+      if (discriminatorField instanceof z.ZodLiteral) {
+        if (discriminatorField.value === discriminatorValue) {
+          return option;
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Get expected type description from a Zod schema
  */
 function getExpectedType(schema: z.ZodTypeAny): string {
@@ -539,7 +604,7 @@ function generateExpectedSchemaStructure(
     const expectedType = getExpectedType(fieldInfo.schema);
     const marker = fieldInfo.isOptional ? '(optional)' : '(required)';
 
-    // Check if it's a nested object
+    // Check if it's a nested object or array
     let innerSchema = fieldInfo.schema;
     if (innerSchema instanceof z.ZodOptional) {
       innerSchema = innerSchema._def.innerType;
@@ -555,6 +620,17 @@ function generateExpectedSchemaStructure(
       lines.push(`${pad}${fieldName}: object ${marker} {`);
       lines.push(generateExpectedSchemaStructure(innerSchema, indent + 1));
       lines.push(`${pad}}`);
+    } else if (innerSchema instanceof z.ZodArray) {
+      // Handle arrays - show the element type structure
+      const elementSchema = innerSchema._def.type;
+      if (elementSchema instanceof z.ZodObject) {
+        lines.push(`${pad}${fieldName}: array ${marker} [{`);
+        lines.push(generateExpectedSchemaStructure(elementSchema, indent + 1));
+        lines.push(`${pad}}]`);
+      } else {
+        const elementType = getExpectedType(elementSchema);
+        lines.push(`${pad}${fieldName}: array<${elementType}> ${marker}`);
+      }
     } else {
       lines.push(`${pad}${fieldName}: ${expectedType} ${marker}`);
     }
@@ -593,8 +669,24 @@ function inferSchemaFromData(
         const typeName = getTypeName(value);
         fieldTypes.get(fieldPath)!.add(typeName);
 
-        // Recursively process nested objects
-        if (
+        // Handle arrays - process array elements
+        if (Array.isArray(value) && value.length > 0) {
+          // Process first element to infer structure
+          const firstElement = value[0];
+          if (
+            typeof firstElement === 'object' &&
+            firstElement !== null &&
+            !Array.isArray(firstElement)
+          ) {
+            // Array of objects - recursively process the object structure
+            collectFieldsRecursive(
+              firstElement as Record<string, unknown>,
+              fieldPath
+            );
+          }
+        }
+        // Recursively process nested objects (but not arrays)
+        else if (
           typeof value === 'object' &&
           value !== null &&
           !Array.isArray(value)
@@ -668,6 +760,12 @@ function generateActualSchemaStructure(
         );
         node.isObject = hasChildren || types.has('object');
       } else {
+        // For intermediate nodes, check if the path itself exists as a field
+        // This helps identify arrays (array field has children from array elements)
+        const intermediatePath = parts.slice(0, i + 1).join('.');
+        if (fieldTypes.has(intermediatePath)) {
+          node.types = fieldTypes.get(intermediatePath)!;
+        }
         node.isObject = true;
       }
 
@@ -688,11 +786,21 @@ function generateActualSchemaStructure(
       return;
     }
 
+    // Check if this node is an array by looking at the original data
+    // Arrays will have types including 'array' and children that represent array elements
+    const isArray = node.types.has('array');
+
     if (node.children.size > 0) {
-      // This is an object with nested fields
-      const typeStr =
-        node.types.size > 0 ? Array.from(node.types).join(' | ') : 'object';
-      lines.push(`${pad}${node.name}: ${typeStr} {`);
+      // This has nested fields - could be object or array of objects
+      if (isArray) {
+        // Render as array with element structure
+        lines.push(`${pad}${node.name}: array {`);
+      } else {
+        // Render as object
+        const typeStr =
+          node.types.size > 0 ? Array.from(node.types).join(' | ') : 'object';
+        lines.push(`${pad}${node.name}: ${typeStr} {`);
+      }
 
       // Render children
       for (const child of Array.from(node.children.values()).sort((a, b) =>
