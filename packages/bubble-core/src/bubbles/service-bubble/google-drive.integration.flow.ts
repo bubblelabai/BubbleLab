@@ -29,6 +29,12 @@ export interface GoogleDocsTestPayload extends WebhookEvent {
    * @canBeFile false
    */
   deleteAfterTest?: boolean;
+
+  /**
+   * An existing Google Doc ID to test downloading. If provided, the download test will be run against this document.
+   * @canBeFile false
+   */
+  downloadTestDocId?: string;
 }
 
 export class GoogleDocsIntegrationTest extends BubbleFlow<'webhook/http'> {
@@ -154,10 +160,30 @@ export class GoogleDocsIntegrationTest extends BubbleFlow<'webhook/http'> {
     return result.data?.deleted_file_id;
   }
 
+  // Downloads a Google Doc as plain text
+  private async downloadDocument(fileId: string) {
+    const result = await new GoogleDriveBubble({
+      operation: 'download_file',
+      file_id: fileId,
+      export_format: 'text/plain',
+    }).action();
+
+    if (!result.success) {
+      throw new Error(`Failed to download document: ${result.error}`);
+    }
+
+    return {
+      content: result.data?.content,
+      filename: result.data?.filename,
+      mimeType: result.data?.mimeType,
+    };
+  }
+
   async handle(payload: GoogleDocsTestPayload): Promise<Output> {
     const {
       testTitle = 'Google Docs Integration Test',
       deleteAfterTest = true,
+      downloadTestDocId = '11Lgi-NgmxoguMCmAmOwD_Vq4-PRzK3i9TIpdhiTMjg8',
     } = payload;
     const results: Output['testResults'] = [];
     let documentId = '';
@@ -270,7 +296,15 @@ End of test document.`;
       details: `MIME type: ${fileInfo?.mimeType}`,
     });
 
-    // 10. Delete Document (cleanup)
+    // 10. Download Document Test - download an existing Google Doc
+    const downloadResult = await this.downloadDocument(downloadTestDocId);
+    results.push({
+      operation: 'download_document',
+      success: !!downloadResult.content && downloadResult.content.length > 0,
+      details: `Downloaded ${downloadResult.content?.length || 0} characters, filename: ${downloadResult.filename || 'N/A'}`,
+    });
+
+    // 11. Delete Document (cleanup)
     if (deleteAfterTest) {
       await this.deleteDocument(documentId);
       results.push({
