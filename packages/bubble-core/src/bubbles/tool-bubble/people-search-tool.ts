@@ -271,10 +271,10 @@ const PeopleSearchToolParamsSchema = z.object({
   // ===== PAGINATION =====
   limit: z
     .number()
-    .max(100)
-    .default(20)
+    .max(1000)
+    .default(100)
     .optional()
-    .describe('Maximum results to return (default: 20, max: 100)'),
+    .describe('Maximum results to return (default: 100, max: 1000)'),
 
   // Credentials (auto-injected)
   credentials: z
@@ -426,7 +426,7 @@ export class PeopleSearchTool extends ToolBubble<
         excludeCompanies,
         excludeProfiles,
         // Pagination
-        limit = 20,
+        limit = 100,
       } = this.params;
 
       // Validate at least one search criteria is provided
