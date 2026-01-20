@@ -13,7 +13,7 @@ export const PersonProfileSchema = z
     location: z.string().nullable().optional(),
     profile_picture_url: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
-    email: z.string().nullable().optional(),
+    emails: z.array(z.string()).nullable().optional(),
     twitter_handle: z.string().nullable().optional(),
     github_profile_id: z.string().nullable().optional(),
     skills: z.array(z.string()).nullable().optional(),

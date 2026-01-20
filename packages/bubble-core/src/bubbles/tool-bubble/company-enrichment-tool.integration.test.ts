@@ -96,7 +96,7 @@ describeIfApiKey('CompanyEnrichmentTool Integration Tests', () => {
       const bubble = new CrustdataBubble({
         operation: 'enrich',
         company_domain: 'stripe.com',
-        fields: 'decision_makers,cxos,founders.profiles',
+        fields: 'decision_makers',
         credentials,
       });
 

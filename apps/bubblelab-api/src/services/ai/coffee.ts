@@ -36,7 +36,6 @@ import { CRITICAL_INSTRUCTIONS } from '../../config/bubbleflow-generation-prompt
 import {
   AIAgentBubble,
   type StreamingCallback,
-  ListBubblesTool,
   type ToolHookAfter,
   type ToolHookContext,
 } from '@bubblelab/bubble-core';

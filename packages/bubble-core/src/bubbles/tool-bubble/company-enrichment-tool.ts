@@ -18,7 +18,7 @@ const ContactSchema = z.object({
   profilePictureUrl: z.string().nullable().describe('Profile picture URL'),
 
   // Contact info
-  email: z.string().nullable().describe('Email address'),
+  emails: z.array(z.string()).nullable().describe('Email addresses'),
   twitterHandle: z.string().nullable().describe('Twitter/X handle'),
 
   // Classification (CXOs prioritized)
@@ -272,7 +272,7 @@ export class CompanyEnrichmentTool extends ToolBubble<
           `Failed to enrich company: ${enrichResult.data.error}`
         );
       }
-      console.log("enrichResult.data", enrichResult.data);
+      console.log('enrichResult.data', enrichResult.data);
 
       // Step 3: Transform and merge contacts
       const contacts = this.transformContacts(
@@ -398,7 +398,7 @@ export class CompanyEnrichmentTool extends ToolBubble<
       linkedinUrl:
         profile.linkedin_profile_url || profile.linkedin_flagship_url || null,
       profilePictureUrl: profile.profile_picture_url || null,
-      email: profile.email || null,
+      emails: profile.emails || null,
       twitterHandle: profile.twitter_handle || null,
       role,
       location: profile.location || null,
