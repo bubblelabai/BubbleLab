@@ -12,7 +12,6 @@
 [![CI Status](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml/badge.svg)](https://github.com/bubblelabai/BubbleLab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE.txt)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/bubblelabai/BubbleLab/pulls)
 
 [Try it](https://app.bubblelab.ai/) - [Demos](https://www.bubblelab.ai/demos)
 
@@ -172,16 +171,22 @@ The documentation includes:
 - API references
 - Best practices and examples
 
-## 🤝 Contributing
+## 🤝 Community & Support
 
-We welcome all sort contributions and anyone is welcomed! See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for detailed setup instructions, project architecture, and contribution guidelines.
+> **⚠️ UPDATE (January 20, 2026)**: We are no longer accepting code contributions or pull requests at this time. However, we still welcome and encourage:
+> - 🐛 **Bug reports** - Help us identify issues
+> - 💬 **Feature requests** - Share your ideas for improvements  
+> - 🗨️ **Community discussions** - Join conversations in Discord
+> - 📖 **Documentation feedback** - Suggest improvements to our docs
+>
+> Thank you to everyone who has contributed and shown interest in Bubble Lab!
 
-Quick links:
+**Get involved:**
 
 - [Join our Discord community](https://discord.gg/PkJvcU2myV) for discussions and support
 - [Open issues](https://github.com/bubblelabai/BubbleLab/issues) for bugs or feature requests
-- [Submit pull requests](https://github.com/bubblelabai/BubbleLab/pulls) to contribute code
-
+- Check out **[CONTRIBUTING.md](./CONTRIBUTING.md)** for project setup and architecture details
+  
 ## License
 
 Apache 2.0
