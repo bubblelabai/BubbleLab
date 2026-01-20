@@ -386,6 +386,28 @@ export function extractStepGraph(
         if (parallelParents.length > 0) {
           frontier = { level: parallelLevel, parents: parallelParents };
         }
+      } else if (node.type === 'try_catch') {
+        // Handle try_catch blocks by recursing into both try and catch children
+        const tryCatchNode =
+          node as import('@bubblelab/shared-schemas').TryCatchWorkflowNode;
+
+        // Process the try block children
+        if (tryCatchNode.children && tryCatchNode.children.length > 0) {
+          frontier = processNodes(tryCatchNode.children, {
+            frontier,
+            branchType: 'sequential',
+          });
+        }
+
+        // Process the catch block children (if any)
+        if (tryCatchNode.catchBlock && tryCatchNode.catchBlock.length > 0) {
+          // Catch block starts from the same frontier as try block would have
+          // since either path could be taken
+          frontier = processNodes(tryCatchNode.catchBlock, {
+            frontier,
+            branchType: 'sequential',
+          });
+        }
       }
     }
 
@@ -697,10 +719,15 @@ function extractTopLevelBubbles(
   // Collect all bubbles inside function calls (recursively)
   collectBubblesInSteps(workflow.root);
 
-  const clonesReferencingOriginal = new Set<number>();
+  // Track which original bubbles have clones that are used in the workflow
+  const originalsWithUsedClones = new Set<number>();
   for (const bubble of Object.values(bubbles)) {
-    if (typeof bubble.clonedFromVariableId === 'number') {
-      clonesReferencingOriginal.add(bubble.clonedFromVariableId);
+    if (
+      typeof bubble.clonedFromVariableId === 'number' &&
+      bubblesInSteps.has(bubble.variableId)
+    ) {
+      // This clone is used in the workflow, so its original is "used"
+      originalsWithUsedClones.add(bubble.clonedFromVariableId);
     }
   }
 
@@ -708,14 +735,38 @@ function extractTopLevelBubbles(
   const topLevelBubbleIds: number[] = [];
   for (const [id, bubble] of Object.entries(bubbles)) {
     const bubbleId = bubble.variableId || parseInt(id, 10);
-    // Skip invocation clones, bubbles inside function steps, and bubbles inside custom tools
-    if (
-      clonesReferencingOriginal.has(bubbleId) ||
-      bubblesInSteps.has(bubbleId) ||
-      bubble.isInsideCustomTool
-    ) {
+
+    // Skip bubbles inside custom tools
+    if (bubble.isInsideCustomTool) {
       continue;
     }
+
+    // Skip bubbles that are already counted in steps
+    if (bubblesInSteps.has(bubbleId)) {
+      continue;
+    }
+
+    // Skip original bubbles that have clones used in the workflow
+    // (the clone represents the original in the execution flow)
+    if (originalsWithUsedClones.has(bubbleId)) {
+      continue;
+    }
+
+    // Skip bubbles from unused methods:
+    // If a bubble is not in steps AND doesn't have a used clone,
+    // it means it's from a method that was never called
+    if (
+      !bubblesInSteps.has(bubbleId) &&
+      !originalsWithUsedClones.has(bubbleId)
+    ) {
+      // Check if this bubble is a clone - if so, it should be in steps
+      // If it's an original with no used clone, it's from unused code
+      if (typeof bubble.clonedFromVariableId !== 'number') {
+        // This is an original bubble with no clone being used - skip it
+        continue;
+      }
+    }
+
     topLevelBubbleIds.push(bubbleId);
   }
 

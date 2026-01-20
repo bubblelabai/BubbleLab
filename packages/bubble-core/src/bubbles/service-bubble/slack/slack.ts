@@ -1238,7 +1238,6 @@ export class SlackBubble<
   static readonly longDescription = `
 Comprehensive Slack integration for messaging and workspace management.
 Supports both Bot tokens (xoxb-) and User tokens (xoxp-).
-
 ## Token Types: Bot vs User
 
 | Aspect | Bot Token (xoxb-) | User Token (xoxp-) |
@@ -1497,6 +1496,9 @@ Official docs: https://docs.slack.dev/apis/events-api/
     return matchedChannel.id;
   }
 
+  // Slack's maximum blocks per message
+  private static readonly MAX_BLOCKS_PER_MESSAGE = 50;
+
   private async sendMessage(
     params: Extract<SlackParams, { operation: 'send_message' }>
   ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
@@ -1528,6 +1530,28 @@ Official docs: https://docs.slack.dev/apis/events-api/
       finalText = text;
     }
 
+    // If we have more than 50 blocks, split into multiple messages
+    if (
+      finalBlocks &&
+      finalBlocks.length > SlackBubble.MAX_BLOCKS_PER_MESSAGE
+    ) {
+      return await this.sendMessageWithBlockChunks(
+        resolvedChannel,
+        finalText,
+        finalBlocks,
+        {
+          username,
+          icon_emoji,
+          icon_url,
+          attachments,
+          thread_ts,
+          reply_broadcast,
+          unfurl_links,
+          unfurl_media,
+        }
+      );
+    }
+
     const body: Record<string, unknown> = {
       channel: resolvedChannel,
       text: finalText,
@@ -1544,7 +1568,6 @@ Official docs: https://docs.slack.dev/apis/events-api/
       body.thread_ts = thread_ts;
       body.reply_broadcast = reply_broadcast;
     }
-    console.log('sending blocks', body.blocks);
 
     const response = await this.makeSlackApiCall('chat.postMessage', body);
 
@@ -1559,6 +1582,114 @@ Official docs: https://docs.slack.dev/apis/events-api/
           : undefined,
       error: !response.ok ? JSON.stringify(response, null, 2) : '',
       success: response.ok,
+    };
+  }
+
+  /**
+   * Sends a message with blocks split into multiple messages when exceeding Slack's 50 block limit.
+   * Subsequent chunks are sent as thread replies to the first message.
+   */
+  private async sendMessageWithBlockChunks(
+    channel: string,
+    text: string,
+    blocks: NonNullable<
+      Extract<SlackParams, { operation: 'send_message' }>['blocks']
+    >,
+    options: {
+      username?: string;
+      icon_emoji?: string;
+      icon_url?: string;
+      attachments?: Extract<
+        SlackParams,
+        { operation: 'send_message' }
+      >['attachments'];
+      thread_ts?: string;
+      reply_broadcast?: boolean;
+      unfurl_links?: boolean;
+      unfurl_media?: boolean;
+    }
+  ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
+    // Split blocks into chunks of 50
+    const blockChunks: (typeof blocks)[] = [];
+    for (
+      let i = 0;
+      i < blocks.length;
+      i += SlackBubble.MAX_BLOCKS_PER_MESSAGE
+    ) {
+      blockChunks.push(blocks.slice(i, i + SlackBubble.MAX_BLOCKS_PER_MESSAGE));
+    }
+
+    let firstMessageTs: string | undefined;
+    let firstMessageChannel: string | undefined;
+    let firstMessageResponse:
+      | ReturnType<typeof SlackMessageSchema.parse>
+      | undefined;
+    const errors: string[] = [];
+
+    for (let chunkIndex = 0; chunkIndex < blockChunks.length; chunkIndex++) {
+      const chunk = blockChunks[chunkIndex];
+      const isFirstChunk = chunkIndex === 0;
+
+      const body: Record<string, unknown> = {
+        channel,
+        // Only include text in the first message
+        text: isFirstChunk
+          ? text
+          : `(continued ${chunkIndex + 1}/${blockChunks.length})`,
+        blocks: JSON.stringify(chunk),
+        unfurl_links: options.unfurl_links,
+        unfurl_media: options.unfurl_media,
+      };
+
+      if (options.username) body.username = options.username;
+      if (options.icon_emoji) body.icon_emoji = options.icon_emoji;
+      if (options.icon_url) body.icon_url = options.icon_url;
+
+      // For the first chunk, use the provided thread_ts
+      // For subsequent chunks, reply in thread to the first message
+      if (isFirstChunk && options.thread_ts) {
+        body.thread_ts = options.thread_ts;
+        body.reply_broadcast = options.reply_broadcast;
+      } else if (!isFirstChunk && firstMessageTs) {
+        // Reply in thread to the first message
+        body.thread_ts = options.thread_ts || firstMessageTs;
+      }
+
+      // Only include attachments in the first message
+      if (isFirstChunk && options.attachments) {
+        body.attachments = JSON.stringify(options.attachments);
+      }
+
+      const response = await this.makeSlackApiCall('chat.postMessage', body);
+
+      if (!response.ok) {
+        errors.push(
+          `Chunk ${chunkIndex + 1}/${blockChunks.length}: ${JSON.stringify(response)}`
+        );
+        continue;
+      }
+
+      if (isFirstChunk) {
+        firstMessageTs = response.ts as string;
+        firstMessageChannel = response.channel as string;
+        if (response.message) {
+          firstMessageResponse = SlackMessageSchema.parse(response.message);
+        }
+      }
+    }
+
+    // Return result based on the first message (which is the "main" message)
+    const hasErrors = errors.length > 0;
+    const allFailed = !firstMessageTs;
+
+    return {
+      operation: 'send_message',
+      ok: !allFailed,
+      channel: firstMessageChannel,
+      ts: firstMessageTs,
+      message: firstMessageResponse,
+      error: hasErrors ? errors.join('; ') : '',
+      success: !allFailed,
     };
   }
 

@@ -106,6 +106,75 @@ export class SlackIntegrationTest extends BubbleFlow<'webhook/http'> {
     };
   }
 
+  // Sends a super long message (50000 characters) to test handling of large payloads
+  private async sendLongMessage(channel: string) {
+    // Generate a 50000 character message
+    const baseText = 'This is a long message test. ';
+    const repeatCount = Math.ceil(50000 / baseText.length);
+    const longMessage = baseText.repeat(repeatCount).slice(0, 50000);
+
+    const result = await new SlackBubble({
+      operation: 'send_message',
+      channel: channel,
+      text: longMessage,
+    }).action();
+
+    if (
+      !result.success ||
+      result.data?.operation !== 'send_message' ||
+      !result.data.ts
+    ) {
+      throw new Error(`Failed to send long message: ${result.error}`);
+    }
+
+    return {
+      ts: result.data.ts,
+      channel: result.data.channel,
+      messageLength: longMessage.length,
+    };
+  }
+
+  // Sends a message with many blocks (>200) to test handling of large block payloads
+  private async sendManyBlocksMessage(channel: string) {
+    // Generate 250 blocks to exceed the typical limit
+    const blockCount = 250;
+    const blocks: Array<{
+      type: string;
+      text: { type: 'mrkdwn'; text: string };
+    }> = [];
+
+    for (let i = 0; i < blockCount; i++) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `Block ${i + 1}: This is test block number ${i + 1} of ${blockCount}.`,
+        },
+      });
+    }
+
+    const result = await new SlackBubble({
+      operation: 'send_message',
+      channel: channel,
+      text: `Test message with ${blockCount} blocks`,
+      blocks: blocks,
+    }).action();
+
+    if (
+      !result.success ||
+      result.data?.operation !== 'send_message' ||
+      !result.data.ts
+    ) {
+      throw new Error(`Failed to send many blocks message: ${result.error}`);
+    }
+
+    return {
+      ts: result.data.ts,
+      channel: result.data.channel,
+      blockCount: blockCount,
+    };
+  }
+
   // Gets conversation history from a channel
   private async getConversationHistory(channel: string, limit: number = 10) {
     const result = await new SlackBubble({
@@ -328,6 +397,42 @@ export class SlackIntegrationTest extends BubbleFlow<'webhook/http'> {
         success: true,
         details: `Block message sent with timestamp: ${blockResult.ts}`,
       });
+
+      // 6b. Send Long Message (50000 characters)
+      const longMessageResult = await this.sendLongMessage(testChannelId);
+      results.push({
+        operation: 'send_long_message',
+        success: true,
+        details: `Long message (${longMessageResult.messageLength} chars) sent with timestamp: ${longMessageResult.ts}`,
+      });
+
+      // 6c. Delete Long Message (cleanup)
+      if (longMessageResult.ts) {
+        await this.deleteMessage(testChannelId, longMessageResult.ts);
+        results.push({
+          operation: 'delete_long_message',
+          success: true,
+          details: 'Long message deleted',
+        });
+      }
+
+      // 6d. Send Many Blocks Message (250 blocks)
+      const manyBlocksResult = await this.sendManyBlocksMessage(testChannelId);
+      results.push({
+        operation: 'send_many_blocks_message',
+        success: true,
+        details: `Many blocks message (${manyBlocksResult.blockCount} blocks) sent with timestamp: ${manyBlocksResult.ts}`,
+      });
+
+      // 6e. Delete Many Blocks Message (cleanup)
+      if (manyBlocksResult.ts) {
+        await this.deleteMessage(testChannelId, manyBlocksResult.ts);
+        results.push({
+          operation: 'delete_many_blocks_message',
+          success: true,
+          details: 'Many blocks message deleted',
+        });
+      }
 
       // 7. Get Conversation History
       const history = await this.getConversationHistory(testChannelId, 5);

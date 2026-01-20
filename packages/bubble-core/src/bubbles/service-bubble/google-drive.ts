@@ -56,7 +56,7 @@ function parseMarkdownToGoogleDocs(
     }
 
     // Check for bullet lists (- or *)
-    const bulletMatch = line.match(/^[\-\*]\s+(.*)$/);
+    const bulletMatch = line.match(/^[-*]\s+(.*)$/);
     if (bulletMatch) {
       line = bulletMatch[1];
       bulletLines.push(processedLines.length);
@@ -246,7 +246,7 @@ function isMarkdown(content: string): boolean {
     /__[^_]+__/, // Bold alt
     /_[^_]+_/, // Italic alt
     /\[[^\]]+\]\([^)]+\)/, // Links
-    /^[\-\*]\s+/m, // Bullet lists
+    /^[-*]\s+/m, // Bullet lists
     /^\d+\.\s+/m, // Numbered lists
   ];
 
