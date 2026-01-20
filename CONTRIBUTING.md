@@ -1,5 +1,9 @@
-# Contributing to Bubble Lab
+# Contributing to Bubble Lab - Important Notice
 
+⚠️ UPDATE (January 20, 2026): We are no longer accepting contributions to this project at this time. Thank you to everyone who has contributed and shown interest in Bubble Lab.
+
+
+# Contributing to Bubble Lab (Prior to Jan 20, 2026)
 Thank you for your interest in contributing to Bubble Lab! We welcome all kinds of contributions from the community. AI-powered search tools such as Cursor's ask mode can significantly speed up the process of understanding each part of the codebase.
 
 ## 📋 Table of Contents
