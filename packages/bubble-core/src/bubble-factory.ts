@@ -158,11 +158,10 @@ export class BubbleFactory {
       'agi-inc',
       'airtable',
       'notion',
-      'firecrawl',
       'insforge-db',
       'amazon-shopping-tool',
-      'crustdata',
       'company-enrichment-tool',
+      'people-search-tool',
     ];
   }
 
@@ -170,7 +169,9 @@ export class BubbleFactory {
     // Import and register all default bubbles
     // This will be implemented in a separate file to avoid circular deps
     // Register all default bubbles
-
+    const { PeopleSearchTool } = await import(
+      './bubbles/tool-bubble/people-search-tool.js'
+    );
     const { HelloWorldBubble } = await import(
       './bubbles/service-bubble/hello-world.js'
     );
@@ -425,6 +426,10 @@ export class BubbleFactory {
     this.register('firecrawl', FirecrawlBubble as BubbleClassWithMetadata);
     this.register('insforge-db', InsForgeDbBubble as BubbleClassWithMetadata);
     this.register('browserbase', BrowserBaseBubble as BubbleClassWithMetadata);
+    this.register(
+      'people-search-tool',
+      PeopleSearchTool as BubbleClassWithMetadata
+    );
     this.register(
       'amazon-shopping-tool',
       AmazonShoppingTool as BubbleClassWithMetadata
@@ -740,7 +745,8 @@ import {
   TwitterTool, // bubble name: 'twitter-tool'
   GoogleMapsTool, // bubble name: 'google-maps-tool'
   YouTubeTool, // bubble name: 'youtube-tool'
-  AmazonShoppingTool, // bubble name: 'amazon-shopping-tool'
+  AmazonShoppingTool, // bubble name: 'amazon-shopping-tool',
+  PeopleSearchTool, // bubble name: 'people-search-tool'
 
   // Event Types (Import the one matching your trigger)
   type WebhookEvent,

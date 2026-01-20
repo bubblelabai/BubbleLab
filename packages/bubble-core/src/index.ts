@@ -116,6 +116,7 @@ export { WebExtractTool } from './bubbles/tool-bubble/web-extract-tool.js';
 export { ResearchAgentTool } from './bubbles/tool-bubble/research-agent-tool.js';
 export { RedditScrapeTool } from './bubbles/tool-bubble/reddit-scrape-tool.js';
 export { InstagramTool } from './bubbles/tool-bubble/instagram-tool.js';
+export { PeopleSearchTool } from './bubbles/tool-bubble/people-search-tool.js';
 export type {
   InstagramPost,
   InstagramProfile,

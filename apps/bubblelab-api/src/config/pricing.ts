@@ -521,6 +521,24 @@ export const PRICING_TABLE: PricingTable = {
     unitCost: (12.0 * 1.05) / 1_000_000, // $12.00 per 1M tokens * 1.05 markup = $12.60 per 1M tokens (for prompts ≤200K tokens, includes thinking tokens)
   },
 
+  // Crustdata Services - Company Enrichment and People Search
+  [getPricingKey(CredentialType.CRUSTDATA_API_KEY, 'identify', 'per_result')]: {
+    unit: 'per_result',
+    unitCost: 0.01 * 1.05, // $0.01 per company identification with 1.05x markup
+  },
+  [getPricingKey(CredentialType.CRUSTDATA_API_KEY, 'enrich', 'per_company')]: {
+    unit: 'per_company',
+    unitCost: 0.1 * 1.05, // $0.10 per company enrichment with 1.05x markup
+  },
+  [getPricingKey(
+    CredentialType.CRUSTDATA_API_KEY,
+    'person_search_db',
+    'per_result'
+  )]: {
+    unit: 'per_result',
+    unitCost: 0.03 * 1.05, // $0.03 per result with 1.05x markup (3 credits per 100 results)
+  },
+
   // Legacy entries for services without subService (fallback pricing)
   // These may be used if subService is not provided
   [getPricingKey(CredentialType.OPENAI_CRED, undefined, 'per_1m_tokens')]: {

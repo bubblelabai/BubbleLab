@@ -315,6 +315,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   // Scraping credentials
   CredentialType.APIFY_CRED,
+  CredentialType.CRUSTDATA_API_KEY,
 ]);
 
 /**
@@ -746,6 +747,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   ],
   crustdata: [CredentialType.CRUSTDATA_API_KEY],
   'company-enrichment-tool': [CredentialType.CRUSTDATA_API_KEY],
+  'people-search-tool': [CredentialType.CRUSTDATA_API_KEY],
 };
 
 // POST /credentials - Create credential schema

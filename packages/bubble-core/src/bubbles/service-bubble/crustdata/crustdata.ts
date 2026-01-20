@@ -8,6 +8,7 @@ import {
   type CrustdataParamsInput,
   type CrustdataResult,
   type PersonProfile,
+  type PersonDBProfile,
 } from './crustdata.schema.js';
 
 const CRUSTDATA_BASE_URL = 'https://api.crustdata.com';
@@ -15,18 +16,20 @@ const CRUSTDATA_BASE_URL = 'https://api.crustdata.com';
 /**
  * Crustdata Service Bubble
  *
- * Low-level API wrapper for Crustdata company data enrichment.
+ * Low-level API wrapper for Crustdata company data enrichment and people search.
  *
  * Operations:
  * - identify: Resolve company name/domain/LinkedIn URL to company_id (FREE)
  * - enrich: Get company data with decision makers, CXOs, and founders (1 credit)
+ * - person_search_db: In-database people search with advanced filtering (3 credits per 100 results)
  *
  * Use cases:
  * - Lead generation and sales prospecting
  * - Company research and intelligence
  * - Contact discovery for outreach
+ * - People search across companies with various filters
  *
- * Note: For agent-friendly usage, use CompanyEnrichmentTool instead.
+ * Note: For agent-friendly usage, use CompanyEnrichmentTool or PeopleSearchTool instead.
  */
 export class CrustdataBubble<
   T extends CrustdataParamsInput = CrustdataParamsInput,
@@ -41,20 +44,24 @@ export class CrustdataBubble<
   static readonly schema = CrustdataParamsSchema;
   static readonly resultSchema = CrustdataResultSchema;
   static readonly shortDescription =
-    'Crustdata API for company data enrichment';
+    'Crustdata API for company data enrichment and people search';
   static readonly longDescription = `
-    Crustdata service integration for company data enrichment and lead generation.
+    Crustdata service integration for company data enrichment, lead generation, and people search.
 
     Operations:
     - identify: Resolve company name/domain/LinkedIn URL to company_id (FREE)
     - enrich: Get company data with decision makers, CXOs, and founders (1 credit)
+    - person_search_db: In-database people search with advanced filtering (3 credits per 100 results)
 
     Use cases:
     - Lead generation and sales prospecting
     - Company research and intelligence
     - Contact discovery for outreach
+    - People search across companies with various filters
+    - Find professionals by title, company, skills, location, etc.
+    - Geographic radius search for local talent
 
-    Note: For agent-friendly usage, use CompanyEnrichmentTool instead.
+    Note: For agent-friendly usage, use CompanyEnrichmentTool or PeopleSearchTool instead.
   `;
 
   constructor(
@@ -114,10 +121,22 @@ export class CrustdataBubble<
             return await this.enrich(
               parsedParams as Extract<CrustdataParams, { operation: 'enrich' }>
             );
+          case 'person_search_db':
+            return await this.personSearchDB(
+              parsedParams as Extract<
+                CrustdataParams,
+                { operation: 'person_search_db' }
+              >
+            );
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
       })();
+
+      // Log token usage for billable operations
+      if (result.success && this.context?.logger) {
+        this.logUsage(operation, result);
+      }
 
       return result as Extract<CrustdataResult, { operation: T['operation'] }>;
     } catch (error) {
@@ -127,6 +146,89 @@ export class CrustdataBubble<
         error:
           error instanceof Error ? error.message : 'Unknown error occurred',
       } as Extract<CrustdataResult, { operation: T['operation'] }>;
+    }
+  }
+
+  /**
+   * Log usage for billable Crustdata operations
+   * - identify: $0.01 per company identified
+   * - enrich: $0.10 per company enriched
+   * - person_search_db: $0.03 per result
+   */
+  private logUsage(operation: string, result: CrustdataResult): void {
+    if (!this.context?.logger) return;
+
+    switch (operation) {
+      case 'identify': {
+        // Identify charges $0.01 per company identified
+        const identifyResult = result as Extract<
+          CrustdataResult,
+          { operation: 'identify' }
+        >;
+        const resultCount = identifyResult.results?.length ?? 0;
+        if (resultCount > 0) {
+          this.context.logger.logTokenUsage(
+            {
+              usage: resultCount,
+              service: CredentialType.CRUSTDATA_API_KEY,
+              unit: 'per_result',
+              subService: 'identify',
+            },
+            `Crustdata identify: ${resultCount} companies identified`,
+            {
+              bubbleName: 'crustdata',
+              variableId: this.context?.variableId,
+              operationType: 'bubble_execution',
+            }
+          );
+        }
+        break;
+      }
+      case 'enrich': {
+        // Enrich charges $0.10 per company enriched
+        this.context.logger.logTokenUsage(
+          {
+            usage: 1,
+            service: CredentialType.CRUSTDATA_API_KEY,
+            unit: 'per_company',
+            subService: 'enrich',
+          },
+          `Crustdata enrich: 1 company enriched`,
+          {
+            bubbleName: 'crustdata',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+        break;
+      }
+      case 'person_search_db': {
+        // PersonDB charges $0.03 per result
+        const personSearchResult = result as Extract<
+          CrustdataResult,
+          { operation: 'person_search_db' }
+        >;
+        const resultCount = personSearchResult.profiles?.length ?? 0;
+        if (resultCount > 0) {
+          this.context.logger.logTokenUsage(
+            {
+              usage: resultCount,
+              service: CredentialType.CRUSTDATA_API_KEY,
+              unit: 'per_result',
+              subService: 'person_search_db',
+            },
+            `Crustdata person_search_db: ${resultCount} results returned`,
+            {
+              bubbleName: 'crustdata',
+              variableId: this.context?.variableId,
+              operationType: 'bubble_execution',
+            }
+          );
+        }
+        break;
+      }
+      default:
+        break;
     }
   }
 
@@ -282,6 +384,58 @@ export class CrustdataBubble<
         (firstCompany?.founders as {
           profiles?: PersonProfile[] | null;
         } | null) || null,
+      error: '',
+    };
+  }
+
+  /**
+   * PersonDB In-Database Search
+   * Searches for people profiles using advanced filtering with cursor-based pagination.
+   * Credits: 3 per 100 results returned, 0 in preview mode
+   */
+  private async personSearchDB(
+    params: Extract<CrustdataParams, { operation: 'person_search_db' }>
+  ): Promise<Extract<CrustdataResult, { operation: 'person_search_db' }>> {
+    const { filters, sorts, cursor, limit, preview, post_processing } = params;
+
+    // Build request body
+    const body: Record<string, unknown> = {
+      filters,
+    };
+
+    if (sorts && sorts.length > 0) body.sorts = sorts;
+    if (cursor) body.cursor = cursor;
+    if (limit !== undefined) body.limit = limit;
+    if (preview !== undefined) body.preview = preview;
+    if (post_processing) body.post_processing = post_processing;
+
+    const response = await fetch(
+      `${CRUSTDATA_BASE_URL}/screener/persondb/search`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${this.chooseCredential()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Crustdata PersonDB search API error (${response.status}): ${errorText}`
+      );
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+
+    return {
+      operation: 'person_search_db',
+      success: true,
+      profiles: (data.profiles as PersonDBProfile[]) || [],
+      total_count: (data.total_count as number) || 0,
+      next_cursor: (data.next_cursor as string) || undefined,
       error: '',
     };
   }

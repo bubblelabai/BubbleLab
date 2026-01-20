@@ -71,18 +71,17 @@ const CoffeeAgentOutputSchema = z.object({
  * Build the system prompt for Coffee agent
  */
 async function buildCoffeeSystemPrompt(): Promise<string> {
-  const listBubblesTool = new ListBubblesTool({});
-  const listBubblesResult = await listBubblesTool.action();
+  const bubbleFactory = await getBubbleFactory();
+  const availableBubbles = bubbleFactory.listBubblesForCodeGenerator();
 
-  const boilerplate = (
-    await getBubbleFactory()
-  ).generateBubbleFlowBoilerplate();
-  const bubbleList = listBubblesResult.data.bubbles
-    .map(
-      (bubble) =>
-        `- ${bubble.name}: ${bubble.shortDescription || 'No description'}`
-    )
+  const bubbleList = availableBubbles
+    .map((name) => {
+      const metadata = bubbleFactory.getMetadata(name);
+      return `- ${name}: ${metadata?.shortDescription || 'No description'}`;
+    })
     .join('\n');
+
+  const boilerplate = bubbleFactory.generateBubbleFlowBoilerplate();
 
   return `You are Coffee, a Planning Agent for Bubble Lab workflows.
 Your role is to understand the user's workflow requirements, ask clarifying questions, gather external context when needed, and generate an implementation plan BEFORE code generation begins.

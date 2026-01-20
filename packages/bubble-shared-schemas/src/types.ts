@@ -110,4 +110,5 @@ export type BubbleName =
   | 'browserbase'
   | 'amazon-shopping-tool'
   | 'crustdata'
-  | 'company-enrichment-tool';
+  | 'company-enrichment-tool'
+  | 'people-search-tool';
