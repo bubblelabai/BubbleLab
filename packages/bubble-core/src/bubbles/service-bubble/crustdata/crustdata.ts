@@ -69,9 +69,10 @@ export class CrustdataBubble<
       operation: 'identify',
       query_company_name: '',
     } as T,
-    context?: BubbleContext
+    context?: BubbleContext,
+    instanceId?: string
   ) {
-    super(params, context);
+    super(params, context, instanceId);
   }
 
   public async testCredential(): Promise<boolean> {
@@ -156,7 +157,8 @@ export class CrustdataBubble<
    * - person_search_db: $0.03 per result
    */
   private logUsage(operation: string, result: CrustdataResult): void {
-    if (!this.context?.logger) return;
+    const logger = this.context?.logger;
+    if (!logger) return;
 
     switch (operation) {
       case 'identify': {
@@ -167,7 +169,7 @@ export class CrustdataBubble<
         >;
         const resultCount = identifyResult.results?.length ?? 0;
         if (resultCount > 0) {
-          this.context.logger.logTokenUsage(
+          logger.logTokenUsage(
             {
               usage: resultCount,
               service: CredentialType.CRUSTDATA_API_KEY,
@@ -186,7 +188,7 @@ export class CrustdataBubble<
       }
       case 'enrich': {
         // Enrich charges $0.10 per company enriched
-        this.context.logger.logTokenUsage(
+        logger.logTokenUsage(
           {
             usage: 1,
             service: CredentialType.CRUSTDATA_API_KEY,
@@ -210,7 +212,7 @@ export class CrustdataBubble<
         >;
         const resultCount = personSearchResult.profiles?.length ?? 0;
         if (resultCount > 0) {
-          this.context.logger.logTokenUsage(
+          logger.logTokenUsage(
             {
               usage: resultCount,
               service: CredentialType.CRUSTDATA_API_KEY,

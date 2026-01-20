@@ -234,7 +234,8 @@ export class CompanyEnrichmentTool extends ToolBubble<
           ...identifyParams,
           credentials,
         },
-        this.context
+        this.context,
+        'identifyBubble'
       );
 
       const identifyResult = await identifyBubble.action();
@@ -262,7 +263,8 @@ export class CompanyEnrichmentTool extends ToolBubble<
           fields: 'decision_makers,cxos,founders.profiles',
           credentials,
         },
-        this.context
+        this.context,
+        'enrichBubble'
       );
 
       const enrichResult = await enrichBubble.action();
