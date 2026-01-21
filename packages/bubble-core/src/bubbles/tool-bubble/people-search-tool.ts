@@ -202,7 +202,7 @@ const PeopleSearchToolParamsSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'Company industries to filter by (e.g., ["Technology", "Healthcare", "Finance"])'
+      'Company industries to filter by with fuzzy matching (e.g., ["Technology", "SaaS", "Finance", "Fintech"]). Uses fuzzy text search, so partial terms like "Technology" will match "IT Services and IT Consulting", "Software Development", etc. Multiple values use OR logic.'
     ),
   minCompanyHeadcount: z
     .number()
@@ -609,12 +609,28 @@ export class PeopleSearchTool extends ToolBubble<
       }
 
       // ===== COMPANY ATTRIBUTE FILTERS =====
+      // Company industries with fuzzy matching (allows partial matches like "Technology", "SaaS")
       if (companyIndustries && companyIndustries.length > 0) {
-        conditions.push({
-          column: 'current_employers.company_industries',
-          type: 'in',
-          value: companyIndustries,
-        });
+        if (companyIndustries.length === 1) {
+          // Single industry - simple condition with fuzzy matching
+          conditions.push({
+            column: 'current_employers.company_industries',
+            type: '(.)',
+            value: companyIndustries[0],
+          });
+        } else {
+          // Multiple industries - OR condition group with fuzzy matching
+          const industryConditions: PersonDBFilterCondition[] =
+            companyIndustries.map((industry) => ({
+              column: 'current_employers.company_industries',
+              type: '(.)' as const,
+              value: industry,
+            }));
+          conditions.push({
+            op: 'or',
+            conditions: industryConditions,
+          } as PersonDBFilterGroup);
+        }
       }
 
       if (minCompanyHeadcount !== undefined) {
