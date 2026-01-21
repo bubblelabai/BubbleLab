@@ -22,7 +22,10 @@ import {
   setupErrorHandler,
   validationErrorHook,
 } from '../utils/error-handler.js';
-import { transformWebhookPayload } from '../utils/payload-transformer.js';
+import {
+  transformWebhookPayload,
+  shouldSkipSlackEvent,
+} from '../utils/payload-transformer.js';
 
 const app = new OpenAPIHono({
   defaultHook: validationErrorHook,
@@ -126,6 +129,16 @@ app.openapi(webhookRoute, async (c) => {
   const isSlackEvent = webhook.bubbleFlow.eventType.startsWith('slack/');
 
   if (isSlackEvent) {
+    // Skip bot messages and system messages to prevent infinite loops
+    if (
+      shouldSkipSlackEvent(
+        webhook.bubbleFlow.eventType as keyof BubbleTriggerEventRegistry,
+        requestBody
+      )
+    ) {
+      return c.json({}, 200);
+    }
+
     // Execute the flow asynchronously (don't await)
     executeBubbleFlowViaWebhook(webhook.bubbleFlowId, webhookPayload, {
       userId,

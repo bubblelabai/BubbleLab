@@ -6,6 +6,59 @@ import type {
 } from '@bubblelab/shared-schemas';
 
 /**
+ * Checks if a Slack event should be ignored based on the flow's event type.
+ * This prevents infinite loops and ensures flows only respond to relevant events.
+ *
+ * - For 'slack/bot_mentioned': Only process 'app_mention' events, skip everything else
+ * - For 'slack/message_received': Skip bot messages and system messages (subtypes)
+ *
+ * @param eventType - The event type from the flow
+ * @param rawBody - The raw webhook payload
+ * @returns true if the event should be skipped, false if it should be processed
+ */
+export function shouldSkipSlackEvent(
+  eventType: keyof BubbleTriggerEventRegistry,
+  rawBody: Record<string, unknown>
+): boolean {
+  const slackBody = rawBody as unknown as SlackEventWrapper;
+  const event = slackBody?.event as
+    | SlackMessageEvent
+    | SlackAppMentionEvent
+    | undefined;
+
+  if (!event) {
+    return false;
+  }
+
+  if (eventType === 'slack/bot_mentioned') {
+    // For bot_mentioned flows, only process app_mention events
+    // Skip all other event types (message, etc.)
+    if (event.type !== 'app_mention') {
+      return true;
+    }
+    return false;
+  }
+
+  if (eventType === 'slack/message_received') {
+    // Skip messages from bots (including our own bot)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ('bot_id' in event && (event as any).bot_id) {
+      return true;
+    }
+
+    // Skip system messages with subtypes (e.g., bot_add, channel_join, message_changed)
+    // Regular user messages don't have a subtype
+    if ('subtype' in event && event.subtype) {
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
+/**
  * Transforms raw webhook payload into the appropriate BubbleTriggerEvent structure
  * based on the event type. This ensures the payload matches the expected interface
  * for each specific event type.
