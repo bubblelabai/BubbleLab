@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo, useState } from 'react';
+import { type CSSProperties, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CogIcon } from '@heroicons/react/24/outline';
 import { BookOpen, Code, X, Info, Cpu } from 'lucide-react';
@@ -11,14 +11,13 @@ import {
   SYSTEM_CREDENTIALS,
   OPTIONAL_CREDENTIALS,
   AvailableModels,
-  BubbleParameterType,
 } from '@bubblelab/shared-schemas';
 import { CreateCredentialModal } from '@/pages/CredentialsPage';
 import { useCreateCredential } from '@/hooks/useCredentials';
 import { useOverlay } from '@/hooks/useOverlay';
 import { useEditor } from '@/hooks/useEditor';
 import { extractParamValue } from '@/utils/bubbleParamEditor';
-import { ParamEditor } from '@/components/flow_visualizer/ParamEditor';
+import { SchemaParamsSection } from '@/components/flow_visualizer/param-editors/SchemaParamsSection';
 import {
   getModelParamConfig,
   getExcludedParamNames,
@@ -82,36 +81,8 @@ export function BubbleDetailsOverlay({
   const currentModel = modelExtracted?.value as string | undefined;
   const isModelEditable = modelExtracted?.shouldBeEditable ?? false;
 
-  // Get param names to exclude from Parameters section
+  // Get param names to exclude from Parameters section (model params shown in Model section)
   const excludedParamNames = getExcludedParamNames(bubble.bubbleName);
-
-  // Filter params for display
-  // - Always exclude: credentials, env params (by type)
-  // - Exclude model params (they have their own section)
-  const displayParams = useMemo(
-    () =>
-      bubble.parameters.filter((param) => {
-        if (
-          param.name === 'credentials' ||
-          param.type === BubbleParameterType.ENV
-        ) {
-          return false;
-        }
-        if (excludedParamNames.includes(param.name)) {
-          return false;
-        }
-        return true;
-      }),
-    [bubble.parameters, excludedParamNames]
-  );
-
-  const sensitiveEnvParams = useMemo(
-    () =>
-      bubble.parameters.filter(
-        (param) => param.type === BubbleParameterType.ENV
-      ),
-    [bubble.parameters]
-  );
 
   // Handle overlay behavior (escape key, body scroll prevention)
   useOverlay({ isOpen, onClose });
@@ -335,44 +306,16 @@ export function BubbleDetailsOverlay({
 
             {/* Parameters Section */}
             <section className="border-b border-neutral-900 bg-neutral-950/95 p-6 sm:p-8">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
+              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-400 mb-6">
                 <Info className="h-4 w-4" />
                 Parameters
               </div>
-              {displayParams.length === 0 && sensitiveEnvParams.length === 0 ? (
-                <p className="mt-4 rounded-xl border border-neutral-800 bg-neutral-900/80 px-4 py-6 text-sm text-neutral-400">
-                  This bubble does not define parameters.
-                </p>
-              ) : (
-                <div className="mt-6 space-y-5">
-                  {displayParams.map((param) => (
-                    <ParamEditor
-                      key={param.name}
-                      param={param}
-                      variableId={bubble.variableId}
-                      bubbleName={bubble.bubbleName}
-                      updateBubbleParam={updateBubbleParam}
-                      onParamEditInCode={onParamEditInCode}
-                    />
-                  ))}
-                  {sensitiveEnvParams.length > 0 && (
-                    <div className="rounded-2xl border border-yellow-900 bg-yellow-950/40 p-5 text-yellow-200">
-                      <p className="text-base font-semibold">
-                        Hidden environment parameters
-                      </p>
-                      <p className="mt-2 text-sm opacity-80">
-                        The following parameters contain environment secrets and
-                        are hidden for security:
-                      </p>
-                      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                        {sensitiveEnvParams.map((param) => (
-                          <li key={param.name}>{param.name}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+              <SchemaParamsSection
+                bubble={bubble}
+                updateBubbleParam={updateBubbleParam}
+                onParamEditInCode={onParamEditInCode}
+                excludedParamNames={excludedParamNames}
+              />
             </section>
 
             {/* Credentials Section */}

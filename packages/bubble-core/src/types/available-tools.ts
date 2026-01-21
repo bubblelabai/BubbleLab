@@ -26,6 +26,7 @@ export const AvailableTools = z.enum([
   'twitter-tool',
   'google-maps-tool',
   'youtube-tool',
+  'people-search-tool',
   'sql-query-tool',
 ] as const satisfies readonly BubbleName[]);
 

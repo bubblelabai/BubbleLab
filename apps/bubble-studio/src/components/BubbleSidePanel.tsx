@@ -35,6 +35,10 @@ interface BubbleDefinition {
   outputSchema: string;
   usageExample: string;
   requiredCredentials: string[];
+  /** JSON Schema for input parameters - used for schema-aware parameter editing */
+  inputJsonSchema?: Record<string, unknown>;
+  /** JSON Schema for output - used for documentation */
+  outputJsonSchema?: Record<string, unknown>;
 }
 
 interface BubblesData {

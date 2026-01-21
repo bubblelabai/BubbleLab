@@ -1,8 +1,14 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { JsonSchema7Type } from 'zod-to-json-schema';
 import { ListBubblesTool } from '../dist/bubbles/tool-bubble/list-bubbles-tool.js';
 import { GetBubbleDetailsTool } from '../dist/bubbles/tool-bubble/get-bubble-details-tool.js';
-import { BUBBLE_CREDENTIAL_OPTIONS } from '@bubblelab/shared-schemas';
+import { BubbleFactory } from '../dist/bubble-factory.js';
+import {
+  BUBBLE_CREDENTIAL_OPTIONS,
+  type BubbleName,
+} from '@bubblelab/shared-schemas';
 
 interface BubbleMetadata {
   name: string;
@@ -11,8 +17,12 @@ interface BubbleMetadata {
   shortDescription: string;
   longDescription?: string;
   useCase: string;
+  // Legacy string-based schemas (for AI readability)
   inputSchema?: string;
   outputSchema: string;
+  // New JSON Schema format (for validation & discriminated unions)
+  inputJsonSchema?: JsonSchema7Type;
+  outputJsonSchema?: JsonSchema7Type;
   usageExample: string;
   requiredCredentials: string[];
 }
@@ -26,9 +36,11 @@ interface BubblesManifest {
 
 class BubbleMetadataBundler {
   private verbose = false;
+  private factory: BubbleFactory;
 
   constructor(verbose = false) {
     this.verbose = verbose;
+    this.factory = new BubbleFactory();
   }
 
   private log(message: string) {
@@ -45,10 +57,54 @@ class BubbleMetadataBundler {
     console.log(`✅ ${message}`);
   }
 
+  /**
+   * Convert a Zod schema to JSON Schema, with special handling for discriminated unions
+   */
+  private convertToJsonSchema(
+    zodSchema: unknown,
+    schemaName: string
+  ): JsonSchema7Type | undefined {
+    if (!zodSchema) return undefined;
+
+    try {
+      // Use zod-to-json-schema which handles discriminated unions properly
+      const jsonSchema = zodToJsonSchema(
+        zodSchema as Parameters<typeof zodToJsonSchema>[0],
+        {
+          name: schemaName,
+          // Use OpenAPI 3.0 target for better discriminator support
+          target: 'openApi3',
+          // Remove $schema to reduce bundle size
+          $refStrategy: 'none',
+        }
+      );
+
+      // Remove the outer wrapper if it exists (zod-to-json-schema adds definitions)
+      if (
+        jsonSchema &&
+        typeof jsonSchema === 'object' &&
+        'definitions' in jsonSchema
+      ) {
+        const defs = jsonSchema.definitions as Record<string, JsonSchema7Type>;
+        if (defs && schemaName in defs) {
+          return defs[schemaName];
+        }
+      }
+
+      return jsonSchema;
+    } catch (err) {
+      this.log(`Warning: Failed to convert schema for ${schemaName}: ${err}`);
+      return undefined;
+    }
+  }
+
   async generateBubbleManifest(outputPath: string): Promise<boolean> {
     this.log('Starting bubble metadata bundler...');
 
     try {
+      // Initialize the factory
+      await this.factory.registerDefaults();
+
       // Step 1: Get list of all bubbles
       this.log('Fetching list of all bubbles...');
       const listTool = new ListBubblesTool({});
@@ -69,6 +125,7 @@ class BubbleMetadataBundler {
         this.log(`Processing: ${bubble.name}...`);
 
         try {
+          // Get string-based schema from GetBubbleDetailsTool (for AI readability)
           const detailsTool = new GetBubbleDetailsTool({
             bubbleName: bubble.name,
             includeInputSchema: true,
@@ -82,14 +139,37 @@ class BubbleMetadataBundler {
                 bubble.name as keyof typeof BUBBLE_CREDENTIAL_OPTIONS
               ] || [];
 
+            // Get the actual Zod schemas from the factory for JSON Schema conversion
+            const metadata = this.factory.getMetadata(
+              bubble.name as BubbleName
+            );
+            let inputJsonSchema: JsonSchema7Type | undefined;
+            let outputJsonSchema: JsonSchema7Type | undefined;
+
+            if (metadata) {
+              // Convert Zod schemas to JSON Schema
+              inputJsonSchema = this.convertToJsonSchema(
+                metadata.schema,
+                `${bubble.name}Input`
+              );
+              outputJsonSchema = this.convertToJsonSchema(
+                metadata.resultSchema,
+                `${bubble.name}Output`
+              );
+            }
+
             bubbleMetadata.push({
               name: bubble.name,
               alias: bubble.alias,
               type: bubble.type,
               shortDescription: bubble.shortDescription,
               useCase: bubble.useCase,
+              // Legacy string schemas
               inputSchema: detailsResult.data.inputSchema,
               outputSchema: detailsResult.data.outputSchema,
+              // New JSON Schema
+              inputJsonSchema,
+              outputJsonSchema,
               usageExample: detailsResult.data.usageExample,
               requiredCredentials: requiredCredentials,
             });
@@ -107,7 +187,7 @@ class BubbleMetadataBundler {
 
       // Step 3: Create manifest
       const manifest: BubblesManifest = {
-        version: '1.0.0',
+        version: '2.0.0', // Bumped version for JSON Schema support
         generatedAt: new Date().toISOString(),
         totalCount: bubbleMetadata.length,
         bubbles: bubbleMetadata,
