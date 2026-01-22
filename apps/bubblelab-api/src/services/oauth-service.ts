@@ -3,6 +3,7 @@ import {
   CredentialType,
   OAUTH_PROVIDERS,
   type OAuthProvider,
+  type JiraOAuthMetadata,
 } from '@bubblelab/shared-schemas';
 import { db } from '../db/index.js';
 import { userCredentials } from '../db/schema.js';
@@ -109,6 +110,24 @@ export class OAuthService {
     } else {
       console.warn(
         'Notion OAuth credentials not configured. Set NOTION_OAUTH_CLIENT_ID and NOTION_OAUTH_CLIENT_SECRET'
+      );
+    }
+
+    // Jira OAuth 2.0 configuration (Atlassian Cloud)
+    if (env.JIRA_OAUTH_CLIENT_ID && env.JIRA_OAUTH_CLIENT_SECRET) {
+      this.clients.set(
+        'jira',
+        new OAuth2Client({
+          server: 'https://auth.atlassian.com',
+          clientId: env.JIRA_OAUTH_CLIENT_ID,
+          clientSecret: env.JIRA_OAUTH_CLIENT_SECRET,
+          authorizationEndpoint: '/authorize',
+          tokenEndpoint: 'https://auth.atlassian.com/oauth/token',
+        })
+      );
+    } else {
+      console.warn(
+        'Jira OAuth credentials not configured. Set JIRA_OAUTH_CLIENT_ID and JIRA_OAUTH_CLIENT_SECRET'
       );
     }
   }
@@ -292,6 +311,12 @@ export class OAuthService {
         );
       }
 
+      // For Jira, fetch accessible resources to get Cloud ID
+      let jiraMetadata: JiraOAuthMetadata | undefined;
+      if (provider === 'jira') {
+        jiraMetadata = await this.fetchJiraCloudId(token.accessToken);
+      }
+
       // Store token in database
       const credentialId = await this.storeOAuthToken(
         stateData.userId,
@@ -299,7 +324,8 @@ export class OAuthService {
         stateData.credentialType,
         token,
         stateData.scopes,
-        stateData.credentialName || credentialName
+        stateData.credentialName || credentialName,
+        jiraMetadata
       );
 
       return { credentialId, token };
@@ -399,6 +425,58 @@ export class OAuthService {
   }
 
   /**
+   * Fetch Jira Cloud ID from accessible resources endpoint
+   * This must be called after OAuth token exchange to get the Cloud ID needed for API calls
+   */
+  private async fetchJiraCloudId(
+    accessToken: string
+  ): Promise<JiraOAuthMetadata> {
+    const response = await fetch(
+      'https://api.atlassian.com/oauth/token/accessible-resources',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to fetch Jira accessible resources: ${response.status} - ${errorText}`
+      );
+    }
+
+    const resources = (await response.json()) as Array<{
+      id: string;
+      url: string;
+      name: string;
+      scopes: string[];
+      avatarUrl?: string;
+    }>;
+
+    if (!resources || resources.length === 0) {
+      throw new Error(
+        'No Jira sites accessible with this account. Please ensure you have access to at least one Jira Cloud site.'
+      );
+    }
+
+    // Use the first accessible site (most common case)
+    // TODO: If user has multiple sites, we could let them choose
+    const site = resources[0];
+    console.log(
+      `[Jira OAuth] Found ${resources.length} accessible site(s). Using: ${site.name} (${site.url})`
+    );
+
+    return {
+      cloudId: site.id,
+      siteUrl: site.url,
+      siteName: site.name,
+    };
+  }
+
+  /**
    * Store OAuth token in database
    */
   private async storeOAuthToken(
@@ -407,7 +485,8 @@ export class OAuthService {
     credentialType: CredentialType,
     token: OAuth2Token,
     requestedScopes?: string[],
-    credentialName?: string
+    credentialName?: string,
+    providerMetadata?: JiraOAuthMetadata
   ): Promise<number> {
     // Encrypt tokens
     const encryptedAccessToken = await CredentialEncryption.encrypt(
@@ -442,7 +521,7 @@ export class OAuthService {
         oauthScopes: scopes,
         oauthTokenType: 'Bearer', // OAuth2 tokens are typically Bearer tokens
         oauthProvider: provider,
-        metadata: null, // OAuth credentials don't have database metadata
+        metadata: providerMetadata ?? null, // Store provider-specific metadata (e.g., Jira cloudId)
       })
       .returning({ id: userCredentials.id });
 

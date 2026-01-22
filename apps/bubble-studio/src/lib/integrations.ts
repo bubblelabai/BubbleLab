@@ -34,6 +34,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   InsForge: '/integrations/insforge.svg',
   Amazon: '/integrations/amazon.png',
   Browserbase: '/integrations/browserbase.png',
+  Jira: '/integrations/jira.png',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -81,6 +82,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'InsForge', file: SERVICE_LOGOS['InsForge'] },
   { name: 'Amazon', file: SERVICE_LOGOS['Amazon'] },
   { name: 'Browserbase', file: SERVICE_LOGOS['Browserbase'] },
+  { name: 'Jira', file: SERVICE_LOGOS['Jira'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -154,6 +156,8 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   amazon: 'Amazon',
   'amazon-shopping-tool': 'Amazon',
   browserbase: 'Browserbase',
+  jira: 'Jira',
+  'jira-bubble': 'Jira',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -288,6 +292,7 @@ export function findLogoForBubble(
     [/\bweb\s*crawl\b|\bweb-crawl\b/, 'Web Crawl'],
     [/\bamazon\b|\bamazon-shopping\b/, 'Amazon'],
     [/\bbrowserbase\b/, 'Browserbase'],
+    [/\bjira\b/, 'Jira'],
   ];
 
   const allLogos = { ...SERVICE_LOGOS, ...TOOL_LOGOS };
@@ -344,6 +349,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
       followupbossbubble: 'followupboss-bubble',
       telegrambubble: 'telegram-bubble',
       airtablebubble: 'airtable-bubble',
+      jirabubble: 'jira-bubble',
     }
   );
 
@@ -388,6 +394,7 @@ export function findDocsUrlForBubble(bubble: MinimalBubble): string | null {
     fub: 'followupboss-bubble',
     telegram: 'telegram-bubble',
     airtable: 'airtable-bubble',
+    jira: 'jira-bubble',
   });
 
   // Known tool docs keyed by bubbleName variants

@@ -1,6 +1,9 @@
 import { BubbleName, CredentialType } from './types.js';
 import { z } from '@hono/zod-openapi';
-import { databaseMetadataSchema } from './database-definition-schema.js';
+import {
+  databaseMetadataSchema,
+  jiraOAuthMetadataSchema,
+} from './database-definition-schema.js';
 
 /**
  * Configuration for a credential type displayed in the UI
@@ -252,6 +255,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Amazon Account',
       credentialConfigurations: {},
     },
+    [CredentialType.JIRA_CRED]: {
+      label: 'Jira',
+      description:
+        'OAuth connection to Jira Cloud for issue tracking and project management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Jira Connection',
+      credentialConfigurations: {},
+    },
   } as const satisfies Record<CredentialType, CredentialConfig>;
 
 /**
@@ -299,6 +310,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
+  [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
 };
 
 /** Used by bubblelab studio */
@@ -329,7 +341,7 @@ export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google' | 'followupboss' | 'notion';
+export type OAuthProvider = 'google' | 'followupboss' | 'notion' | 'jira';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -481,6 +493,50 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
         description:
           'Authorize access to your Notion workspace for searching and reading pages/databases',
       },
+    },
+  },
+  jira: {
+    name: 'jira',
+    displayName: 'Jira',
+    credentialTypes: {
+      [CredentialType.JIRA_CRED]: {
+        displayName: 'Jira Cloud',
+        defaultScopes: [
+          'read:jira-user',
+          'read:jira-work',
+          'write:jira-work',
+          'offline_access', // Required for refresh tokens
+        ],
+        description:
+          'Access Jira Cloud for issue tracking and project management',
+        scopeDescriptions: [
+          {
+            scope: 'read:jira-user',
+            description: 'View user information and search for users',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:jira-work',
+            description: 'View issues, projects, and workflows',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write:jira-work',
+            description: 'Create and update issues, comments, and transitions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'offline_access',
+            description:
+              'Maintain access when you are not actively using the app',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      audience: 'api.atlassian.com',
+      prompt: 'consent',
     },
   },
 };
@@ -748,6 +804,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   crustdata: [CredentialType.CRUSTDATA_API_KEY],
   'company-enrichment-tool': [CredentialType.CRUSTDATA_API_KEY],
   'people-search-tool': [CredentialType.CRUSTDATA_API_KEY],
+  jira: [CredentialType.JIRA_CRED],
 };
 
 // POST /credentials - Create credential schema
@@ -849,9 +906,13 @@ export const credentialResponseSchema = z
     id: z.number().openapi({ description: 'Credential ID' }),
     credentialType: z.string().openapi({ description: 'Type of credential' }),
     name: z.string().optional().openapi({ description: 'Credential name' }),
-    metadata: databaseMetadataSchema
+    metadata: z
+      .union([databaseMetadataSchema, jiraOAuthMetadataSchema])
       .optional()
-      .openapi({ description: 'Credential metadata' }),
+      .openapi({
+        description:
+          'Credential metadata (DatabaseMetadata or JiraOAuthMetadata)',
+      }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 
     // OAuth-specific fields

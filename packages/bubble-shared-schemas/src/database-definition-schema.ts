@@ -88,3 +88,21 @@ export const databaseMetadataSchema = z.object({
 });
 
 export type DatabaseMetadata = z.infer<typeof databaseMetadataSchema>;
+
+/**
+ * Jira OAuth metadata - stored after OAuth callback with cloudId for API calls
+ */
+export const jiraOAuthMetadataSchema = z.object({
+  cloudId: z.string(),
+  siteUrl: z.string(),
+  siteName: z.string().optional(),
+});
+
+export type JiraOAuthMetadata = z.infer<typeof jiraOAuthMetadataSchema>;
+
+/**
+ * Union type for all credential metadata types
+ * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
+ * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
+ */
+export type CredentialMetadata = DatabaseMetadata | JiraOAuthMetadata;

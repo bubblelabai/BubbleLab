@@ -162,6 +162,7 @@ export class BubbleFactory {
       'amazon-shopping-tool',
       'company-enrichment-tool',
       'people-search-tool',
+      'jira',
     ];
   }
 
@@ -312,6 +313,9 @@ export class BubbleFactory {
     const { CompanyEnrichmentTool } = await import(
       './bubbles/tool-bubble/company-enrichment-tool.js'
     );
+    const { JiraBubble } = await import(
+      './bubbles/service-bubble/jira/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -439,6 +443,7 @@ export class BubbleFactory {
       'company-enrichment-tool',
       CompanyEnrichmentTool as BubbleClassWithMetadata
     );
+    this.register('jira', JiraBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {

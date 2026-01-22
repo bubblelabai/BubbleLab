@@ -4,7 +4,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { CredentialEncryption } from '../utils/encryption.js';
 // CredentialType imported for future use in credential validation
 import type { ParsedBubble } from '@bubblelab/shared-schemas';
-import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
+import type { CredentialMetadata } from '@bubblelab/shared-schemas';
 import { oauthService } from './oauth-service.js';
 
 export interface UserCredentialMapping {
@@ -12,7 +12,7 @@ export interface UserCredentialMapping {
   secret: string;
   credentialType: string; // The credential type from the database (e.g., 'OPENAI_CRED', 'SLACK_CRED')
   credentialId: number;
-  metadata?: DatabaseMetadata; // Database metadata for DATABASE_CRED types
+  metadata?: CredentialMetadata; // Credential metadata (DatabaseMetadata or JiraOAuthMetadata)
 }
 
 /**
@@ -88,16 +88,49 @@ export class CredentialHelper {
 
         if (encryptedCred.isOauth) {
           // Prefer using OAuth service to auto-refresh and return a valid token
-          resolvedSecret = await oauthService.getValidToken(encryptedCred.id);
+          const oauthToken = await oauthService.getValidToken(encryptedCred.id);
 
           // Fallback: attempt to decrypt stored access token if service returned null
-          if (!resolvedSecret && encryptedCred.oauthAccessToken) {
+          if (!oauthToken && encryptedCred.oauthAccessToken) {
             try {
               resolvedSecret = await CredentialEncryption.decrypt(
                 encryptedCred.oauthAccessToken
               );
             } catch (e) {
               // Ignore and let it fall through to skip
+            }
+          } else if (oauthToken) {
+            // Special handling for Jira OAuth - encode token + cloudId as base64 JSON
+            // Base64 encoding avoids JSON escaping issues when injecting into generated code
+            if (
+              encryptedCred.credentialType === 'JIRA_CRED' &&
+              encryptedCred.metadata
+            ) {
+              const jiraMetadata = encryptedCred.metadata as unknown as {
+                cloudId?: string;
+                siteUrl?: string;
+                siteName?: string;
+              };
+              if (jiraMetadata.cloudId) {
+                // Encode Jira credential as base64-encoded JSON with token and cloudId
+                const jsonPayload = JSON.stringify({
+                  accessToken: oauthToken,
+                  cloudId: jiraMetadata.cloudId,
+                  siteUrl: jiraMetadata.siteUrl,
+                });
+                resolvedSecret = Buffer.from(jsonPayload).toString('base64');
+                console.log(
+                  '[CredentialHelper] Encoded Jira OAuth credential (base64) with cloudId:',
+                  jiraMetadata.cloudId
+                );
+              } else {
+                console.error(
+                  '[CredentialHelper] Jira credential missing cloudId in metadata'
+                );
+                resolvedSecret = oauthToken;
+              }
+            } else {
+              resolvedSecret = oauthToken;
             }
           }
         } else if (encryptedCred.isBrowserSession) {
