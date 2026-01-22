@@ -10,6 +10,30 @@ import {
   type PersonDBFilterGroup,
 } from '../service-bubble/crustdata/index.js';
 
+/**
+ * Sanitizes a LinkedIn URL by removing trailing slashes and normalizing the format.
+ *
+ * @param url - LinkedIn URL to sanitize
+ * @returns Sanitized URL without trailing slashes, or null if invalid
+ */
+function sanitizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // Trim whitespace
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // Remove trailing slashes
+  const sanitized = trimmed.replace(/\/+$/, '');
+
+  // Basic validation: should be a LinkedIn URL
+  if (!sanitized.includes('linkedin.com')) {
+    return sanitized; // Return as-is if not a LinkedIn URL (let API handle validation)
+  }
+
+  return sanitized;
+}
+
 // Simplified person result schema with full profile information
 const PersonResultSchema = z.object({
   // Basic info
@@ -474,11 +498,14 @@ export class PeopleSearchTool extends ToolBubble<
       const conditions: (PersonDBFilterCondition | PersonDBFilterGroup)[] = [];
 
       // ===== CURRENT COMPANY FILTERS =====
-      if (companyLinkedinUrl) {
+      // Sanitize LinkedIn URL to remove trailing slashes
+      const sanitizedCompanyLinkedinUrl =
+        sanitizeLinkedInUrl(companyLinkedinUrl);
+      if (sanitizedCompanyLinkedinUrl) {
         conditions.push({
           column: 'current_employers.company_linkedin_profile_url',
           type: '=',
-          value: companyLinkedinUrl,
+          value: sanitizedCompanyLinkedinUrl,
         });
       } else if (companyName) {
         conditions.push({
@@ -721,8 +748,14 @@ export class PeopleSearchTool extends ToolBubble<
       }
 
       // Build post-processing options
-      const postProcessing = excludeProfiles?.length
-        ? { exclude_profiles: excludeProfiles }
+      // Sanitize LinkedIn URLs in excludeProfiles to remove trailing slashes
+      const sanitizedExcludeProfiles = excludeProfiles?.length
+        ? excludeProfiles
+            .map((url) => sanitizeLinkedInUrl(url))
+            .filter((url): url is string => url !== null)
+        : undefined;
+      const postProcessing = sanitizedExcludeProfiles?.length
+        ? { exclude_profiles: sanitizedExcludeProfiles }
         : undefined;
 
       // Call the Crustdata PersonDB search API

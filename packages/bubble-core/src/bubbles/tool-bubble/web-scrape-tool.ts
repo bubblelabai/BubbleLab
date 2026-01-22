@@ -42,7 +42,9 @@ const WebScrapeToolParamsSchema = z.object({
   format: z
     .enum(['markdown', 'html'])
     .default('markdown')
-    .describe('Content format to extract (default: markdown)'),
+    .describe(
+      'Content format to extract (default: markdown), only use html if looking for particular html elements'
+    ),
   onlyMainContent: z
     .boolean()
     .default(true)
