@@ -94,7 +94,9 @@ export const JiraProjectSchema = z
 export const JiraCommentSchema = z
   .object({
     id: z.string().describe('Comment ID'),
-    author: JiraUserSchema.optional().describe('Comment author'),
+    author: JiraUserSchema.nullable()
+      .optional()
+      .describe('Comment author (null if deleted or anonymized)'),
     body: z
       .unknown()
       .optional()
@@ -131,11 +133,15 @@ export const JiraIssueSchema = z
           .optional()
           .describe('Issue description (ADF format)'),
         status: JiraStatusSchema.optional().describe('Current status'),
-        priority: JiraPrioritySchema.optional().describe('Issue priority'),
+        priority: JiraPrioritySchema.nullable()
+          .optional()
+          .describe('Issue priority (null if not assigned)'),
         assignee: JiraUserSchema.nullable()
           .optional()
           .describe('Assigned user'),
-        reporter: JiraUserSchema.optional().describe('Reporter user'),
+        reporter: JiraUserSchema.nullable()
+          .optional()
+          .describe('Reporter user (null if deleted or anonymized)'),
         issuetype: JiraIssueTypeSchema.optional().describe('Issue type'),
         project: JiraProjectSchema.optional().describe('Project'),
         labels: z.array(z.string()).optional().describe('Issue labels'),
