@@ -102,7 +102,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Sheet Name!A:G" - sheet names with spaces are automatically quoted)'
+      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
     ),
     major_dimension: z
       .enum(['ROWS', 'COLUMNS'])
@@ -135,7 +135,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Sheet Name!A:G" - sheet names with spaces are automatically quoted)'
+      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
     ),
     values: createValuesField(
       'Data to write as array of arrays (null/undefined automatically converted to empty strings)'
@@ -173,7 +173,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Sheet Name!A:G" - sheet names with spaces are automatically quoted)'
+      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
     ),
     values: createValuesField(
       'Data to update as array of arrays (null/undefined automatically converted to empty strings)'
@@ -211,7 +211,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range to search for table (e.g., "Sheet1!A:A" or "Sheet Name!A:G" - sheet names with spaces are automatically quoted)'
+      'A1 notation range to search for table (e.g., "Sheet1!A:A" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
     ),
     values: createValuesField(
       'Data to append as array of arrays (null/undefined automatically converted to empty strings)'
@@ -252,7 +252,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Sheet Name!A:G" - sheet names with spaces are automatically quoted)'
+      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
     ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
@@ -272,7 +272,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     ranges: createRangesField(
-      'Array of A1 notation ranges (sheet names with spaces are automatically quoted)'
+      'Array of A1 notation ranges (tab names with spaces are automatically quoted)'
     ),
     major_dimension: z
       .enum(['ROWS', 'COLUMNS'])
@@ -313,7 +313,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
             .string()
             .transform((val) => normalizeRange(val))
             .describe(
-              'A1 notation range (sheet names with spaces are automatically quoted)'
+              'A1 notation range (tab names with spaces are automatically quoted)'
             ),
           values: z
             .array(z.array(z.unknown()))
@@ -382,7 +382,9 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .array(z.string())
       .optional()
       .default(['Sheet1'])
-      .describe('Titles for the initial sheets'),
+      .describe(
+        'Tab names for the initial tabs (these are the tabs at the bottom of a spreadsheet, not the spreadsheet name)'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -393,17 +395,17 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
 
   // Add sheet operation
   z.object({
-    operation: z
-      .literal('add_sheet')
-      .describe('Add a new sheet to spreadsheet'),
+    operation: z.literal('add_sheet').describe('Add a new tab to spreadsheet'),
     spreadsheet_id: z
       .string()
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     sheet_title: z
       .string()
-      .min(1, 'Sheet title is required')
-      .describe('Title for the new sheet'),
+      .min(1, 'Tab name is required')
+      .describe(
+        'Tab name for the new tab (this is the tab at the bottom of a spreadsheet, not the spreadsheet name)'
+      ),
     row_count: z
       .number()
       .min(1)
@@ -428,7 +430,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('delete_sheet')
-      .describe('Delete a sheet from spreadsheet'),
+      .describe('Delete a tab from spreadsheet'),
     spreadsheet_id: z
       .string()
       .min(1, 'Spreadsheet ID is required')
@@ -607,19 +609,17 @@ export const GoogleSheetsResultSchema = z.discriminatedUnion('operation', [
   }),
 
   z.object({
-    operation: z
-      .literal('add_sheet')
-      .describe('Add a new sheet to spreadsheet'),
+    operation: z.literal('add_sheet').describe('Add a new tab to spreadsheet'),
     success: z.boolean().describe('Whether the operation was successful'),
     sheet_id: z.number().optional().describe('ID of the added sheet'),
-    sheet_title: z.string().optional().describe('Title of the added sheet'),
+    sheet_title: z.string().optional().describe('Tab name of the added tab'),
     error: z.string().describe('Error message if operation failed'),
   }),
 
   z.object({
     operation: z
       .literal('delete_sheet')
-      .describe('Delete a sheet from spreadsheet'),
+      .describe('Delete a tab from spreadsheet'),
     success: z.boolean().describe('Whether the operation was successful'),
     deleted_sheet_id: z.number().optional().describe('ID of the deleted sheet'),
     error: z.string().describe('Error message if operation failed'),
