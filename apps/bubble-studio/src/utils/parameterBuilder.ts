@@ -76,8 +76,15 @@ export function replaceBubbleInCode(
     };
   }
 
+  // Filter out credentials - they are injected at runtime, never in user code
+  const parametersWithoutCredentials = newParameters.filter(
+    (p) => p.name !== 'credentials'
+  );
+
   // Build the parameters object string using shared formatter
-  let parametersObject = buildParameterObjectLiteral(newParameters);
+  let parametersObject = buildParameterObjectLiteral(
+    parametersWithoutCredentials
+  );
 
   // Strip comments and condense if no function literals
   parametersObject = stripCommentsOutsideStrings(parametersObject);
