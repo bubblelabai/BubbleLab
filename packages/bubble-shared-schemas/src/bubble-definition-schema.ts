@@ -49,6 +49,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.CUSTOM_AUTH_KEY]: {},
   [CredentialType.AMAZON_CRED]: {},
   [CredentialType.CRUSTDATA_API_KEY]: {},
+  [CredentialType.JIRA_CRED]: {},
 };
 
 // Fixed list of bubble names that need context injection

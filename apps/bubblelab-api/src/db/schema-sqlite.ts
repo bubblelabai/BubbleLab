@@ -1,6 +1,6 @@
 import { sqliteTable, text, int, unique, real } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
-import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
+import type { CredentialMetadata } from '@bubblelab/shared-schemas';
 
 export const users = sqliteTable('users', {
   clerkId: text('clerk_id').primaryKey(),
@@ -116,7 +116,7 @@ export const userCredentials = sqliteTable('user_credentials', {
   credentialType: text('credential_type').notNull(), // e.g., 'OPENAI_CRED', 'SLACK_CRED'
   encryptedValue: text('encrypted_value'), // Encrypted credential value (nullable for OAuth)
   name: text('name'), // Optional user-friendly name for the credential
-  metadata: text('metadata', { mode: 'json' }).$type<DatabaseMetadata>(), // Typed JSON field for database metadata
+  metadata: text('metadata', { mode: 'json' }).$type<CredentialMetadata>(), // Typed JSON field for credential metadata (DatabaseMetadata or JiraOAuthMetadata)
 
   // OAuth-specific fields
   oauthAccessToken: text('oauth_access_token'), // Encrypted OAuth access token

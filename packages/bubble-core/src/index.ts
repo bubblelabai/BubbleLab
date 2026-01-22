@@ -70,6 +70,8 @@ export type { AGIIncParamsInput } from './bubbles/service-bubble/agi-inc.js';
 export { AirtableBubble } from './bubbles/service-bubble/airtable.js';
 export type { AirtableParamsInput } from './bubbles/service-bubble/airtable.js';
 export { NotionBubble } from './bubbles/service-bubble/notion/notion.js';
+export { JiraBubble } from './bubbles/service-bubble/jira/index.js';
+export type { JiraParamsInput } from './bubbles/service-bubble/jira/index.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';

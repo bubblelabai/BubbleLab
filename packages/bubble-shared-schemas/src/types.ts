@@ -53,6 +53,9 @@ export enum CredentialType {
   AMAZON_CRED = 'AMAZON_CRED',
   // Crustdata Credentials
   CRUSTDATA_API_KEY = 'CRUSTDATA_API_KEY',
+
+  // Jira Credentials
+  JIRA_CRED = 'JIRA_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -111,4 +114,5 @@ export type BubbleName =
   | 'amazon-shopping-tool'
   | 'crustdata'
   | 'company-enrichment-tool'
-  | 'people-search-tool';
+  | 'people-search-tool'
+  | 'jira';

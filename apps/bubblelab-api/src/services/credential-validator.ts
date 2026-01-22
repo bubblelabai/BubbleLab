@@ -193,6 +193,9 @@ export class CredentialValidator {
       case CredentialType.NOTION_OAUTH_TOKEN:
         baseParams.operation = 'list_users';
         break;
+      case CredentialType.JIRA_CRED:
+        baseParams.operation = 'list_projects';
+        break;
       default:
         break;
     }

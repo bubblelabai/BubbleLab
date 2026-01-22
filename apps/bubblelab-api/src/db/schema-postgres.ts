@@ -10,7 +10,7 @@ import {
   doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import type { DatabaseMetadata } from '@bubblelab/shared-schemas';
+import type { CredentialMetadata } from '@bubblelab/shared-schemas';
 
 export const users = pgTable('users', {
   clerkId: text('clerk_id').primaryKey(),
@@ -122,7 +122,7 @@ export const userCredentials = pgTable('user_credentials', {
   credentialType: text('credential_type').notNull(), // e.g., 'OPENAI_CRED', 'SLACK_CRED'
   encryptedValue: text('encrypted_value'), // Encrypted credential value (nullable for OAuth)
   name: text('name'), // Optional user-friendly name for the credential
-  metadata: jsonb('metadata').$type<DatabaseMetadata>(), // Typed JSONB field for database metadata
+  metadata: jsonb('metadata').$type<CredentialMetadata>(), // Typed JSONB field for credential metadata (DatabaseMetadata or JiraOAuthMetadata)
 
   // OAuth-specific fields
   oauthAccessToken: text('oauth_access_token'), // Encrypted OAuth access token
