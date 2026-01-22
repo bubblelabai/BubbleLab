@@ -334,7 +334,11 @@ export function useEditor(flowId?: number) {
       }
 
       // Check if parameter exists in the bubble
-      const existingParam = bubble.parameters.find((p) => p.name === paramName);
+      // For nested paths like "model.model", check using the base param name
+      const baseParamName = paramName.split('.')[0];
+      const existingParam = bubble.parameters.find(
+        (p) => p.name === baseParamName
+      );
 
       // Use the actual bubble's variableId (may be different if we redirected from clone to original)
       const targetVariableId = bubble.variableId;
