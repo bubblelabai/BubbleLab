@@ -597,7 +597,8 @@ export function updateCacheAfterRebuild(
       // This is the edited bubble (or a clone) - replace parameters and update endLine
       // Clear param locations since full rebuild condenses to single line
       updatedBubble.parameters = newParameters.map((p) => {
-        const { location: _loc, ...rest } = p;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { location, ...rest } = p;
         return rest;
       });
       updatedBubble.location = {
