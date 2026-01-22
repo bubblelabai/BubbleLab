@@ -1283,6 +1283,78 @@ export const noCastPayloadInHandleRule: LintRule = {
 };
 
 /**
+ * Lint rule that prevents calling .toString() on Zod schemas for expectedOutputSchema.
+ *
+ * Calling .toString() on a Zod schema returns a useless string like "ZodObject"
+ * instead of the actual JSON schema. This causes the AI to not follow the expected
+ * output structure.
+ *
+ * BAD:
+ * ```typescript
+ * expectedOutputSchema: z.object({ companies: z.array(...) }).toString()
+ * ```
+ *
+ * GOOD:
+ * ```typescript
+ * expectedOutputSchema: z.object({ companies: z.array(...) })
+ * ```
+ */
+export const noToStringOnExpectedOutputSchemaRule: LintRule = {
+  name: 'no-tostring-on-expected-output-schema',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    const visit = (node: ts.Node): void => {
+      // Look for property assignments: expectedOutputSchema: <value>
+      if (ts.isPropertyAssignment(node)) {
+        const propName = node.name;
+        let isExpectedOutputSchema = false;
+
+        if (
+          ts.isIdentifier(propName) &&
+          propName.text === 'expectedOutputSchema'
+        ) {
+          isExpectedOutputSchema = true;
+        } else if (
+          ts.isStringLiteral(propName) &&
+          propName.text === 'expectedOutputSchema'
+        ) {
+          isExpectedOutputSchema = true;
+        }
+
+        if (isExpectedOutputSchema) {
+          // Check if the value is a call expression ending with .toString()
+          const value = node.initializer;
+          if (ts.isCallExpression(value)) {
+            const callee = value.expression;
+            if (
+              ts.isPropertyAccessExpression(callee) &&
+              callee.name.text === 'toString'
+            ) {
+              const { line, character } =
+                context.sourceFile.getLineAndCharacterOfPosition(
+                  value.getStart(context.sourceFile)
+                );
+              errors.push({
+                line: line + 1,
+                column: character + 1,
+                message:
+                  'Do not call .toString() on Zod schemas for expectedOutputSchema. Pass the Zod schema directly: expectedOutputSchema: z.object({ ... })',
+              });
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -1297,3 +1369,4 @@ defaultLintRuleRegistry.register(noAnyTypeRule);
 defaultLintRuleRegistry.register(singleBubbleFlowClassRule);
 defaultLintRuleRegistry.register(enforcePayloadTypeRule);
 defaultLintRuleRegistry.register(noCastPayloadInHandleRule);
+defaultLintRuleRegistry.register(noToStringOnExpectedOutputSchemaRule);
