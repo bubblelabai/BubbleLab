@@ -413,15 +413,22 @@ export class JiraBubble<
       });
     }
 
+    // The /search/jql endpoint returns different pagination fields:
+    // - total: may not be present, use issues.length as fallback
+    // - startAt: pagination offset
+    // - maxResults: requested limit
+    // - isLast: boolean indicating if this is the last page
+    const issuesArray = Array.isArray(response.issues) ? response.issues : [];
+
     return {
       operation: 'search',
       success: true,
-      issues: response.issues as JiraResult extends { issues?: infer I }
+      issues: issuesArray as JiraResult extends { issues?: infer I }
         ? I
         : never,
-      total: response.total as number,
-      offset: response.startAt as number,
-      limit: response.maxResults as number,
+      total: (response.total as number) ?? issuesArray.length,
+      offset: (response.startAt as number) ?? offset ?? 0,
+      limit: (response.maxResults as number) ?? limit ?? 50,
       error: '',
     };
   }
