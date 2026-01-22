@@ -10,6 +10,30 @@ import {
   type PersonDBFilterGroup,
 } from '../service-bubble/crustdata/index.js';
 
+/**
+ * Sanitizes a LinkedIn URL by removing trailing slashes and normalizing the format.
+ *
+ * @param url - LinkedIn URL to sanitize
+ * @returns Sanitized URL without trailing slashes, or null if invalid
+ */
+function sanitizeLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // Trim whitespace
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // Remove trailing slashes
+  const sanitized = trimmed.replace(/\/+$/, '');
+
+  // Basic validation: should be a LinkedIn URL
+  if (!sanitized.includes('linkedin.com')) {
+    return sanitized; // Return as-is if not a LinkedIn URL (let API handle validation)
+  }
+
+  return sanitized;
+}
+
 // Simplified person result schema with full profile information
 const PersonResultSchema = z.object({
   // Basic info
@@ -202,7 +226,7 @@ const PeopleSearchToolParamsSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'Company industries to filter by (e.g., ["Technology", "Healthcare", "Finance"])'
+      'Company industries to filter by with fuzzy matching (e.g., ["Technology", "SaaS", "Finance", "Fintech"]). Uses fuzzy text search, so partial terms like "Technology" will match "IT Services and IT Consulting", "Software Development", etc. Multiple values use OR logic.'
     ),
   minCompanyHeadcount: z
     .number()
@@ -474,11 +498,14 @@ export class PeopleSearchTool extends ToolBubble<
       const conditions: (PersonDBFilterCondition | PersonDBFilterGroup)[] = [];
 
       // ===== CURRENT COMPANY FILTERS =====
-      if (companyLinkedinUrl) {
+      // Sanitize LinkedIn URL to remove trailing slashes
+      const sanitizedCompanyLinkedinUrl =
+        sanitizeLinkedInUrl(companyLinkedinUrl);
+      if (sanitizedCompanyLinkedinUrl) {
         conditions.push({
           column: 'current_employers.company_linkedin_profile_url',
           type: '=',
-          value: companyLinkedinUrl,
+          value: sanitizedCompanyLinkedinUrl,
         });
       } else if (companyName) {
         conditions.push({
@@ -609,12 +636,28 @@ export class PeopleSearchTool extends ToolBubble<
       }
 
       // ===== COMPANY ATTRIBUTE FILTERS =====
+      // Company industries with fuzzy matching (allows partial matches like "Technology", "SaaS")
       if (companyIndustries && companyIndustries.length > 0) {
-        conditions.push({
-          column: 'current_employers.company_industries',
-          type: 'in',
-          value: companyIndustries,
-        });
+        if (companyIndustries.length === 1) {
+          // Single industry - simple condition with fuzzy matching
+          conditions.push({
+            column: 'current_employers.company_industries',
+            type: '(.)',
+            value: companyIndustries[0],
+          });
+        } else {
+          // Multiple industries - OR condition group with fuzzy matching
+          const industryConditions: PersonDBFilterCondition[] =
+            companyIndustries.map((industry) => ({
+              column: 'current_employers.company_industries',
+              type: '(.)' as const,
+              value: industry,
+            }));
+          conditions.push({
+            op: 'or',
+            conditions: industryConditions,
+          } as PersonDBFilterGroup);
+        }
       }
 
       if (minCompanyHeadcount !== undefined) {
@@ -705,8 +748,14 @@ export class PeopleSearchTool extends ToolBubble<
       }
 
       // Build post-processing options
-      const postProcessing = excludeProfiles?.length
-        ? { exclude_profiles: excludeProfiles }
+      // Sanitize LinkedIn URLs in excludeProfiles to remove trailing slashes
+      const sanitizedExcludeProfiles = excludeProfiles?.length
+        ? excludeProfiles
+            .map((url) => sanitizeLinkedInUrl(url))
+            .filter((url): url is string => url !== null)
+        : undefined;
+      const postProcessing = sanitizedExcludeProfiles?.length
+        ? { exclude_profiles: sanitizedExcludeProfiles }
         : undefined;
 
       // Call the Crustdata PersonDB search API

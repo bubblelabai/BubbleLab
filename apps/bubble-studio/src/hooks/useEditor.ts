@@ -5,19 +5,31 @@ import { toast } from 'react-toastify';
 import {
   updateBubbleParamInCode,
   updateCachedBubbleParameters,
+  updateCacheAfterRebuild,
 } from '../utils/bubbleParamEditor';
+import {
+  replaceBubbleInCode,
+  updateOrAddParameter,
+} from '../utils/parameterBuilder';
 import type {
   BubbleParameter,
   ParsedBubbleWithInfo,
 } from '@bubblelab/shared-schemas';
+import { BubbleParameterType } from '@bubblelab/shared-schemas';
 
 // Re-export for external use
 export {
   updateBubbleParamInCode,
   updateCachedBubbleParameters,
+  updateCacheAfterRebuild,
   serializeValue,
   getRelatedBubbleVariableIds,
 } from '../utils/bubbleParamEditor';
+
+export {
+  replaceBubbleInCode,
+  updateOrAddParameter,
+} from '../utils/parameterBuilder';
 
 /**
  * Get the current code from Monaco editor
@@ -267,11 +279,23 @@ export function useEditor(flowId?: number) {
   );
 
   /**
-   * Update a bubble parameter in the editor using location-based editing
-   * Falls back to regex-based approach if location is not available
+   * Update a bubble parameter in the editor.
+   *
+   * For existing parameters: Uses location-based incremental editing for precision.
+   * For new parameters: Uses full rebuild to add the parameter to the code.
+   *
+   * @param variableId - The bubble's variableId
+   * @param paramName - The parameter name to update or add
+   * @param newValue - The new value for the parameter
+   * @param paramType - Optional: The parameter type (required when adding new params from schema)
    */
   const updateBubbleParam = useCallback(
-    (variableId: number, paramName: string, newValue: unknown) => {
+    (
+      variableId: number,
+      paramName: string,
+      newValue: unknown,
+      paramType?: BubbleParameterType
+    ) => {
       const editorInst = useEditorStore.getState().editorInstance;
       if (!editorInst) {
         toast.error('Editor instance not available');
@@ -284,7 +308,7 @@ export function useEditor(flowId?: number) {
         return;
       }
 
-      const bubble = bubbleParametersById[variableId];
+      let bubble = bubbleParametersById[variableId];
       if (!bubble) {
         toast.error(`Bubble not found: ${variableId}`);
         return;
@@ -296,32 +320,81 @@ export function useEditor(flowId?: number) {
         ParsedBubbleWithInfo
       >;
 
-      const result = updateBubbleParamInCode(
-        currentCode,
-        bubbleParameters,
-        variableId,
-        paramName,
-        newValue
-      );
+      // If this is an invocation-specific clone, find and use the original bubble
+      // Clones share the same source code location as the original
+      if (
+        bubble.invocationCallSiteKey &&
+        bubble.clonedFromVariableId !== undefined
+      ) {
+        const originalBubble =
+          bubbleParametersById[bubble.clonedFromVariableId];
+        if (originalBubble) {
+          bubble = originalBubble;
+        }
+      }
 
-      if (result.success) {
-        model.setValue(result.code);
+      // Check if parameter exists in the bubble
+      const existingParam = bubble.parameters.find((p) => p.name === paramName);
 
-        // Update the cached bubbleParameters for ALL related bubbles (original + clones)
-        // so subsequent edits find the new value, and adjust line numbers if needed
-        const updatedBubbleParameters = updateCachedBubbleParameters(
+      // Use the actual bubble's variableId (may be different if we redirected from clone to original)
+      const targetVariableId = bubble.variableId;
+
+      if (existingParam) {
+        // Parameter exists: use incremental update for precision
+        const result = updateBubbleParamInCode(
+          currentCode,
           bubbleParameters,
-          result.relatedVariableIds,
+          targetVariableId,
+          paramName,
+          newValue
+        );
+
+        if (result.success) {
+          model.setValue(result.code);
+
+          // Update the cached bubbleParameters for ALL related bubbles (original + clones)
+          // so subsequent edits find the new value, and adjust line numbers if needed
+          const updatedBubbleParameters = updateCachedBubbleParameters(
+            bubbleParameters,
+            result.relatedVariableIds,
+            paramName,
+            newValue,
+            result.isTemplateLiteral,
+            result.lineDiff,
+            result.editedBubbleEndLine,
+            result.editedParamEndLine
+          );
+          updateBubbleParameters(updatedBubbleParameters);
+        } else {
+          toast.error(result.error);
+        }
+      } else {
+        // Parameter doesn't exist: use full rebuild to add it
+        const updatedParams = updateOrAddParameter(
+          bubble.parameters,
           paramName,
           newValue,
-          result.isTemplateLiteral,
-          result.lineDiff,
-          result.editedBubbleEndLine,
-          result.editedParamEndLine
+          paramType
         );
-        updateBubbleParameters(updatedBubbleParameters);
-      } else {
-        toast.error(result.error);
+
+        const result = replaceBubbleInCode(currentCode, bubble, updatedParams);
+
+        if (result.success) {
+          model.setValue(result.code);
+
+          // Update cache with new parameters and adjusted locations
+          // Uses targetVariableId to ensure all related bubbles (original + clones) are updated
+          const updatedBubbleParameters = updateCacheAfterRebuild(
+            bubbleParameters,
+            targetVariableId,
+            updatedParams,
+            result.lineDiff,
+            bubble.location.endLine
+          );
+          updateBubbleParameters(updatedBubbleParameters);
+        } else {
+          toast.error(result.error);
+        }
       }
     },
     [

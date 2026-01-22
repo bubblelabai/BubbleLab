@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/bubble-core",
-  "version": "0.1.25",
+  "version": "0.1.26",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
@@ -56,10 +56,10 @@
     "pg": "^8.16.3",
     "puppeteer-core": "^24.10.0",
     "resend": "^4.8.0",
-    "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.24.6"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "zod-to-json-schema": "^3.24.6",
     "@types/node": "^20.12.12",
     "@vitest/ui": "^3.2.4",
     "tsx": "^4.20.3",

@@ -549,3 +549,86 @@ export function updateCachedBubbleParameters(
 
   return updatedBubbleParameters;
 }
+
+/**
+ * Update the cached bubble parameters after a full rebuild.
+ * This is simpler than the incremental update because we replace the entire
+ * parameters array for the edited bubble and just shift locations for others.
+ *
+ * @param bubbleParameters - The current bubble parameters cache
+ * @param editedVariableId - The variable ID of the bubble that was edited
+ * @param newParameters - The new parameters array for the edited bubble
+ * @param lineDiff - Number of lines added (positive) or removed (negative)
+ * @param originalEndLine - The original endLine of the edited bubble (before the edit)
+ * @returns Updated bubble parameters cache with adjusted locations
+ */
+export function updateCacheAfterRebuild(
+  bubbleParameters: Record<string, ParsedBubbleWithInfo>,
+  editedVariableId: number,
+  newParameters: BubbleParameter[],
+  lineDiff: number,
+  originalEndLine: number
+): Record<string, ParsedBubbleWithInfo> {
+  const updatedBubbleParameters = { ...bubbleParameters };
+
+  // Find the edited bubble and get all related IDs
+  const editedBubble = Object.values(bubbleParameters).find(
+    (b) => b.variableId === editedVariableId
+  );
+
+  if (!editedBubble) {
+    console.warn(`Could not find bubble with variableId: ${editedVariableId}`);
+    return bubbleParameters;
+  }
+
+  const relatedIds = getRelatedBubbleVariableIds(
+    editedBubble,
+    bubbleParameters
+  );
+  const relatedIdSet = new Set(relatedIds);
+
+  // Update all bubbles
+  for (const [key, bubbleToUpdate] of Object.entries(updatedBubbleParameters)) {
+    const updatedBubble = { ...bubbleToUpdate };
+    const isRelatedBubble = relatedIdSet.has(bubbleToUpdate.variableId);
+    const location = updatedBubble.location;
+
+    if (isRelatedBubble) {
+      // This is the edited bubble (or a clone) - replace parameters and update endLine
+      // Clear param locations since full rebuild condenses to single line
+      updatedBubble.parameters = newParameters.map((p) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { location, ...rest } = p;
+        return rest;
+      });
+      updatedBubble.location = {
+        ...location,
+        endLine: location.endLine + lineDiff,
+      };
+    } else if (location.startLine > originalEndLine) {
+      // This bubble comes AFTER the edited bubble - shift both start and end
+      updatedBubble.location = {
+        ...location,
+        startLine: location.startLine + lineDiff,
+        endLine: location.endLine + lineDiff,
+      };
+      // Also shift all parameter locations within this bubble
+      updatedBubble.parameters = updatedBubble.parameters.map((p) => {
+        if (!p.location) return p;
+        return {
+          ...p,
+          location: {
+            ...p.location,
+            startLine: p.location.startLine + lineDiff,
+            endLine: p.location.endLine + lineDiff,
+          },
+        };
+      });
+    }
+    // Bubbles that come BEFORE the edited bubble don't need location updates
+
+    updatedBubbleParameters[key] = updatedBubble;
+  }
+
+  return updatedBubbleParameters;
+}
