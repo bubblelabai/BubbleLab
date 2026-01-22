@@ -2265,9 +2265,20 @@ export class BubbleParser {
   private markBubblesInsideCustomTools(
     nodes: Record<number, ParsedBubbleWithInfo>
   ): void {
+    // Collect all parent ai-agent variableIds that own custom tools
+    const parentAgentVariableIds = new Set(
+      this.customToolFuncs.map((tf) => tf.parentBubbleVariableId)
+    );
+
     for (const bubble of Object.values(nodes)) {
-      // Skip ai-agent bubbles themselves
-      if (bubble.bubbleName === 'ai-agent') continue;
+      // Skip ai-agent bubbles that are PARENTS of custom tools (they own the customTools, not inside them)
+      // But DO NOT skip nested ai-agent bubbles that are INSIDE custom tool funcs
+      if (
+        bubble.bubbleName === 'ai-agent' &&
+        parentAgentVariableIds.has(bubble.variableId)
+      ) {
+        continue;
+      }
 
       // Check if this bubble's location falls inside any custom tool func
       for (const toolFunc of this.customToolFuncs) {

@@ -1323,6 +1323,96 @@ export class SlackIntegrationTest extends BubbleFlow<'webhook/http'> {
     await validateEachBubbleHasAtLeastOneClone(validationResult);
   });
 
+  it('should handle nested AIAgentBubble inside custom tools', async () => {
+    const code = `import { z } from 'zod';
+import {
+  BubbleFlow,
+  AIAgentBubble,
+  GoogleDriveBubble,
+  type WebhookEvent,
+} from '@bubblelab/bubble-core';
+
+export interface Output {
+  response: string;
+}
+
+export interface Payload extends WebhookEvent {
+  message: string;
+}
+
+export class NestedAgentFlow extends BubbleFlow<'webhook/http'> {
+  private async runAgent(message: string): Promise<string> {
+    const agent = new AIAgentBubble({
+      model: { model: 'google/gemini-3-flash-preview' },
+      message: message,
+      systemPrompt: 'You are a helpful assistant.',
+      customTools: [
+        {
+          name: 'analyze-and-save',
+          description: 'Analyzes content and saves the result to a Google Doc.',
+          schema: {
+            content: z.string().describe('Content to analyze'),
+          },
+          func: async (params: Record<string, unknown>) => {
+            const content = params.content as string;
+
+            // Nested AIAgentBubble inside custom tool
+            const analysisAgent = new AIAgentBubble({
+              model: { model: 'google/gemini-3-pro-preview' },
+              message: \`Analyze this: \${content}\`,
+              systemPrompt: 'You are an expert analyst.',
+            });
+
+            const analysisResult = await analysisAgent.action();
+            if (!analysisResult.success) {
+              return { success: false, error: analysisResult.error };
+            }
+
+            // Save to Google Drive
+            const drive = new GoogleDriveBubble({
+              operation: 'upload_file',
+              name: 'Analysis Result',
+              content: analysisResult.data?.response || '',
+              mimeType: 'text/plain',
+              convert_to_google_docs: true,
+            });
+
+            const driveResult = await drive.action();
+            return {
+              success: driveResult.success,
+              analysis: analysisResult.data?.response,
+              docUrl: driveResult.data?.file?.webViewLink,
+            };
+          },
+        },
+      ],
+    });
+
+    const result = await agent.action();
+    return result.data?.response || '';
+  }
+
+  async handle(payload: Payload): Promise<Output> {
+    const response = await this.runAgent(payload.message);
+    return { response };
+  }
+}
+`;
+
+    const validationResult = await getValidationResponse(code);
+
+    // Verify the nested AIAgentBubble is properly marked as inside custom tool
+    const bubbles = validationResult.bubbles || {};
+    const nestedAgent = Object.values(bubbles).find(
+      (b) => b.bubbleName === 'ai-agent' && b.variableName === 'analysisAgent'
+    );
+    expect(nestedAgent).toBeDefined();
+    expect(nestedAgent?.isInsideCustomTool).toBe(true);
+
+    await validateEachBubbleHasAtLeastOneClone(validationResult);
+    await validateAllNodesAreUsed(validationResult);
+  });
+
   it('should ignore unused instance methods that are never called', async () => {
     const code = `import {
   BubbleFlow,
