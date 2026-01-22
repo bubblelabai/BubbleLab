@@ -17,6 +17,8 @@ export interface SchemaParamEditorProps {
   ) => void;
   /** Optional callback to view code for this param */
   onParamEditInCode?: (paramName: string) => void;
+  /** Whether to allow adding new params that don't exist in code (default: true) */
+  allowAddNew?: boolean;
 }
 
 /**

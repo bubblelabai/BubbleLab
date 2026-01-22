@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronDown, Zap } from 'lucide-react';
+import { Lock, Zap } from 'lucide-react';
 import type {
   BubbleParameter,
   BubbleParameterType,
@@ -25,8 +25,6 @@ export interface DiscriminatedUnionEditorProps {
     newValue: unknown,
     paramType?: BubbleParameterType
   ) => void;
-  /** Callback when operation changes (clears all other params) */
-  onOperationChange: (operation: string) => void;
   /** Optional callback to view code for a param */
   onParamEditInCode?: (paramName: string) => void;
 }
@@ -40,7 +38,6 @@ export function DiscriminatedUnionEditor({
   runtimeParams,
   variableId,
   onValueChange,
-  onOperationChange,
   onParamEditInCode,
 }: DiscriminatedUnionEditorProps) {
   // Get all available operations from schema
@@ -61,13 +58,6 @@ export function DiscriminatedUnionEditor({
     return getParamsForOperation(schema, currentOperation, runtimeParams);
   }, [schema, currentOperation, runtimeParams]);
 
-  // Handle operation selection change
-  const handleOperationSelect = (newOperation: string) => {
-    if (newOperation !== currentOperation) {
-      onOperationChange(newOperation);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Operation Selector */}
@@ -87,24 +77,13 @@ export function DiscriminatedUnionEditor({
         )}
 
         <div className="relative">
-          <select
-            title="Select operation"
-            value={currentOperation || ''}
-            onChange={(e) => handleOperationSelect(e.target.value)}
-            className="w-full appearance-none rounded-xl border border-purple-700/50 bg-purple-950/30 px-4 py-3 pr-10 text-sm text-neutral-100 focus:border-purple-500 focus:outline-none cursor-pointer"
-          >
-            {!currentOperation && (
-              <option value="" disabled>
-                Select an operation...
-              </option>
-            )}
-            {operationOptions.map((op) => (
-              <option key={op.operation} value={op.operation}>
-                {formatOperationName(op.operation)}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-400 pointer-events-none" />
+          {/* Operation is read-only - show as disabled input instead of dropdown */}
+          <div className="w-full rounded-xl border border-neutral-700 bg-neutral-950/50 px-4 py-3 text-sm text-neutral-300">
+            {currentOperation
+              ? formatOperationName(currentOperation)
+              : 'No operation set'}
+          </div>
+          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 pointer-events-none" />
         </div>
 
         {/* Operation quick description */}

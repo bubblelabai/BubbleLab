@@ -84,15 +84,6 @@ export function SchemaParamsSection({
     updateBubbleParam(bubble.variableId, paramName, newValue, paramType);
   };
 
-  // Handle operation change for discriminated unions
-  // When operation changes, we need to clear other param values
-  const handleOperationChange = (newOperation: string) => {
-    // First update the operation
-    updateBubbleParam(bubble.variableId, 'operation', newOperation);
-    // Note: Clearing other params could be done here, but for now we just update operation
-    // The UI will show the new params with defaults
-  };
-
   // Check if schema is a discriminated union
   const isDiscriminatedUnion = useMemo(
     () => isDiscriminatedUnionSchema(schema),
@@ -124,7 +115,6 @@ export function SchemaParamsSection({
           runtimeParams={displayParams}
           variableId={bubble.variableId}
           onValueChange={handleValueChange}
-          onOperationChange={handleOperationChange}
           onParamEditInCode={onParamEditInCode}
         />
 

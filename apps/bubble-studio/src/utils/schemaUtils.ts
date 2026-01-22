@@ -194,6 +194,12 @@ export function mergeSchemaWithParams(
       const runtimeParam = runtimeLookup.get(name);
       const paramType = detectParamType(propSchema);
 
+      // Check if runtime param is a variable/expression reference - these are not editable
+      // because the value in code is a variable name, not a literal value
+      const isVariableOrExpression =
+        runtimeParam?.type === 'variable' ||
+        runtimeParam?.type === 'expression';
+
       return {
         name,
         schema: propSchema,
@@ -205,7 +211,7 @@ export function mergeSchemaWithParams(
         enumOptions: propSchema.enum,
         itemSchema: propSchema.items as JsonSchema | undefined,
         paramType,
-        isEditable: isParamEditable(paramType),
+        isEditable: isParamEditable(paramType) && !isVariableOrExpression,
       };
     });
 
