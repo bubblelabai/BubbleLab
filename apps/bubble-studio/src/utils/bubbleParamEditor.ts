@@ -595,7 +595,11 @@ export function updateCacheAfterRebuild(
 
     if (isRelatedBubble) {
       // This is the edited bubble (or a clone) - replace parameters and update endLine
-      updatedBubble.parameters = newParameters;
+      // Clear param locations since full rebuild condenses to single line
+      updatedBubble.parameters = newParameters.map((p) => {
+        const { location: _loc, ...rest } = p;
+        return rest;
+      });
       updatedBubble.location = {
         ...location,
         endLine: location.endLine + lineDiff,
