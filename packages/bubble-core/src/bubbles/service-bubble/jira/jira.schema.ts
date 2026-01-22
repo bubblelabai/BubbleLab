@@ -50,6 +50,7 @@ export const JiraUserSchema = z
     emailAddress: z.string().optional().describe('User email address'),
     active: z.boolean().optional().describe('Whether the user is active'),
   })
+  .passthrough()
   .describe('Jira user information');
 
 export const JiraIssueTypeSchema = z
@@ -59,6 +60,7 @@ export const JiraIssueTypeSchema = z
     description: z.string().optional().describe('Issue type description'),
     subtask: z.boolean().optional().describe('Whether this is a subtask type'),
   })
+  .passthrough()
   .describe('Jira issue type');
 
 export const JiraStatusSchema = z
@@ -72,9 +74,11 @@ export const JiraStatusSchema = z
         key: z.string().describe('Category key'),
         name: z.string().describe('Category name'),
       })
+      .passthrough()
       .optional()
       .describe('Status category'),
   })
+  .passthrough()
   .describe('Jira issue status');
 
 export const JiraPrioritySchema = z
@@ -82,6 +86,7 @@ export const JiraPrioritySchema = z
     id: z.string().describe('Priority ID'),
     name: z.string().describe('Priority name'),
   })
+  .passthrough()
   .describe('Jira priority');
 
 export const JiraProjectSchema = z
@@ -90,6 +95,7 @@ export const JiraProjectSchema = z
     key: z.string().describe('Project key (e.g., "PROJ")'),
     name: z.string().describe('Project name'),
   })
+  .passthrough()
   .describe('Jira project');
 
 export const JiraCommentSchema = z
@@ -106,6 +112,7 @@ export const JiraCommentSchema = z
     created: z.string().optional().describe('Creation timestamp'),
     updated: z.string().optional().describe('Last update timestamp'),
   })
+  .passthrough()
   .describe('Jira comment');
 
 export const JiraTransitionSchema = z
@@ -116,12 +123,14 @@ export const JiraTransitionSchema = z
       .describe('Transition name (e.g., "Start Progress", "Done")'),
     to: JiraStatusSchema.optional().describe('Target status'),
   })
+  .passthrough()
   .describe('Jira transition');
 
 export const JiraIssueSchema = z
   .object({
-    id: z.string().describe('Issue ID'),
-    key: z.string().describe('Issue key (e.g., "PROJ-123")'),
+    expand: z.string().optional().describe('Expanded fields'),
+    id: z.string().optional().describe('Issue ID'),
+    key: z.string().optional().describe('Issue key (e.g., "PROJ-123")'),
     self: z.string().optional().describe('Issue API URL'),
     fields: z
       .object({
@@ -155,6 +164,7 @@ export const JiraIssueSchema = z
             id: z.string(),
             key: z.string(),
           })
+          .passthrough()
           .optional()
           .describe('Parent issue (for subtasks)'),
         comment: z
@@ -162,10 +172,12 @@ export const JiraIssueSchema = z
             comments: z.array(JiraCommentSchema).optional(),
             total: z.number().optional(),
           })
+          .passthrough()
           .optional()
           .describe('Issue comments'),
       })
       .passthrough()
+      .optional()
       .describe('Issue fields'),
     transitions: z
       .array(JiraTransitionSchema)
