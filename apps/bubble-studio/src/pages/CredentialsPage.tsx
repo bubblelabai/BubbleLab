@@ -86,6 +86,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',
     [CredentialType.AMAZON_CRED]: 'Amazon',
     [CredentialType.CRUSTDATA_API_KEY]: 'Crustdata',
+    [CredentialType.JIRA_CRED]: 'Jira',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

@@ -23,6 +23,7 @@ export {
   type JiraListIssueTypesParams,
   type JiraAddCommentParams,
   type JiraGetCommentsParams,
+  type JiraIssue,
 } from './jira.schema.js';
 export {
   textToADF,

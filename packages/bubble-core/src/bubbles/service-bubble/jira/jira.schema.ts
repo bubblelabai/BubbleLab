@@ -97,10 +97,7 @@ export const JiraCommentSchema = z
     author: JiraUserSchema.nullable()
       .optional()
       .describe('Comment author (null if deleted or anonymized)'),
-    body: z
-      .unknown()
-      .optional()
-      .describe('Comment body (ADF format or plain text)'),
+    body: z.string().optional().describe('Comment body as plain text'),
     renderedBody: z
       .string()
       .optional()
@@ -650,3 +647,6 @@ export type JiraGetCommentsParams = Extract<
   JiraParams,
   { operation: 'get_comments' }
 >;
+
+// Issue type for proper typing
+export type JiraIssue = z.infer<typeof JiraIssueSchema>;

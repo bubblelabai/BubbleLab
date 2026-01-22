@@ -17,6 +17,7 @@ import {
   type JiraListIssueTypesParams,
   type JiraAddCommentParams,
   type JiraGetCommentsParams,
+  type JiraIssue,
 } from './jira.schema.js';
 import {
   textToADF,
@@ -293,6 +294,38 @@ export class JiraBubble<
       'GET'
     );
 
+    // Convert comment bodies from ADF to plain text if comments are present
+    if (Array.isArray(response.issues)) {
+      response.issues = response.issues.map((issue: unknown) => {
+        if (
+          issue &&
+          typeof issue === 'object' &&
+          'fields' in issue &&
+          issue.fields &&
+          typeof issue.fields === 'object' &&
+          'comment' in issue.fields &&
+          issue.fields.comment &&
+          typeof issue.fields.comment === 'object' &&
+          'comments' in issue.fields.comment &&
+          Array.isArray(issue.fields.comment.comments)
+        ) {
+          const comments = issue.fields.comment.comments as Array<{
+            id: string;
+            author?: unknown;
+            body?: unknown;
+            created?: string;
+            updated?: string;
+          }>;
+          issue.fields.comment.comments = comments.map((c) => ({
+            ...c,
+            body: adfToText(c.body),
+            renderedBody: adfToText(c.body),
+          }));
+        }
+        return issue;
+      });
+    }
+
     return {
       operation: 'search',
       success: true,
@@ -342,10 +375,34 @@ export class JiraBubble<
 
     const response = await this.makeJiraApiRequest(endpoint, 'GET');
 
+    // Convert comment bodies from ADF to plain text if comments are present
+    if (
+      response.fields &&
+      typeof response.fields === 'object' &&
+      'comment' in response.fields &&
+      response.fields.comment &&
+      typeof response.fields.comment === 'object' &&
+      'comments' in response.fields.comment &&
+      Array.isArray(response.fields.comment.comments)
+    ) {
+      const comments = response.fields.comment.comments as Array<{
+        id: string;
+        author?: unknown;
+        body?: unknown;
+        created?: string;
+        updated?: string;
+      }>;
+      response.fields.comment.comments = comments.map((c) => ({
+        ...c,
+        body: adfToText(c.body),
+        renderedBody: adfToText(c.body),
+      }));
+    }
+
     return {
       operation: 'get',
       success: true,
-      issue: response as JiraResult extends { issue?: infer I } ? I : never,
+      issue: response as JiraIssue,
       error: '',
     };
   }
@@ -756,8 +813,8 @@ export class JiraBubble<
     const comments = rawComments?.map((c) => ({
       id: c.id,
       author: c.author,
-      body: c.body, // Keep original ADF
-      renderedBody: adfToText(c.body), // Add plain text version
+      body: adfToText(c.body), // Convert ADF to plain text
+      renderedBody: adfToText(c.body), // Plain text version
       created: c.created,
       updated: c.updated,
     }));
