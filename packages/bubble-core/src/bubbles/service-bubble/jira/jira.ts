@@ -214,6 +214,72 @@ export class JiraBubble<
     return {};
   }
 
+  /**
+   * Resolves an assignee (email or accountId) to a Jira accountId.
+   * If the assignee contains '@', it's treated as an email and looked up via the Jira API.
+   * Otherwise, it's assumed to be an accountId and returned as-is.
+   *
+   * @param assignee - Email address or accountId
+   * @returns The resolved accountId
+   * @throws Error if assignee is an email but no user is found
+   */
+  private async resolveAssigneeAccountId(assignee: string): Promise<string> {
+    // If it doesn't contain '@', assume it's already an accountId
+    if (!assignee.includes('@')) {
+      return assignee;
+    }
+
+    // It's an email, look up the user
+    const queryParams = new URLSearchParams({
+      query: assignee,
+    });
+
+    try {
+      const response = await this.makeJiraApiRequest(
+        `/rest/api/3/user/search?${queryParams.toString()}`,
+        'GET'
+      );
+
+      // Jira user search API returns an array directly
+      // Handle both array response and object-wrapped response
+      const usersArray = Array.isArray(response)
+        ? response
+        : (response as unknown as { values?: unknown[] }).values;
+
+      if (!Array.isArray(usersArray) || usersArray.length === 0) {
+        throw new Error(
+          `No user found with email "${assignee}". Please verify the email address or use an accountId instead.`
+        );
+      }
+
+      const users = usersArray as Array<{
+        accountId: string;
+        emailAddress?: string;
+        displayName?: string;
+      }>;
+
+      // Find exact email match (case-insensitive)
+      const matchingUser = users.find(
+        (user) => user.emailAddress?.toLowerCase() === assignee.toLowerCase()
+      );
+
+      if (!matchingUser || !matchingUser.accountId) {
+        throw new Error(
+          `No user found with email "${assignee}". Please verify the email address or use an accountId instead.`
+        );
+      }
+
+      return matchingUser.accountId;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(
+        `Failed to lookup user with email "${assignee}": ${String(error)}`
+      );
+    }
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<Extract<JiraResult, { operation: T['operation'] }>> {
@@ -436,14 +502,8 @@ export class JiraBubble<
     }
 
     if (assignee) {
-      // Try to determine if it's an account ID or email
-      // Account IDs typically don't contain @ symbol
-      if (assignee.includes('@')) {
-        // Will need to look up account ID by email - for now use accountId field
-        fields.assignee = { accountId: assignee };
-      } else {
-        fields.assignee = { accountId: assignee };
-      }
+      const accountId = await this.resolveAssigneeAccountId(assignee);
+      fields.assignee = { accountId };
     }
 
     if (priority) {
@@ -515,7 +575,8 @@ export class JiraBubble<
       if (assignee === null) {
         fields.assignee = null;
       } else {
-        fields.assignee = { accountId: assignee };
+        const accountId = await this.resolveAssigneeAccountId(assignee);
+        fields.assignee = { accountId };
       }
     }
 

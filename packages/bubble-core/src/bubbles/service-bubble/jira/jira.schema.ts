@@ -22,10 +22,11 @@ const LabelsModificationSchema = z
     'Label modifications - use add/remove for incremental changes, or set to replace all'
   );
 
-// Priority enum for consistent values
+// Priority schema - accepts any non-empty string to support custom priorities
 const PrioritySchema = z
-  .enum(['Highest', 'High', 'Medium', 'Low', 'Lowest'])
-  .describe('Issue priority level');
+  .string()
+  .min(1, 'Priority must be a non-empty string')
+  .describe('Issue priority level (supports custom priority names)');
 
 // Expand options for get operation
 const ExpandOptionsSchema = z
