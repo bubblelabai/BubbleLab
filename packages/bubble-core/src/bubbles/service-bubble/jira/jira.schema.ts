@@ -310,7 +310,9 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
     description: z
       .string()
       .optional()
-      .describe('New description (plain text - auto-converted to ADF)'),
+      .describe(
+        'New description (markdown or plain text - auto-converted to ADF). Supports: **bold**, *italic*, `code`, [links](url), # headings, lists, > blockquotes, ``` code blocks ```, ~~strikethrough~~'
+      ),
 
     assignee: z
       .string()
@@ -328,7 +330,12 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .describe('New due date (YYYY-MM-DD) or null to clear'),
 
-    comment: z.string().optional().describe('Add a comment with this update'),
+    comment: z
+      .string()
+      .optional()
+      .describe(
+        'Add a comment with this update (markdown or plain text - auto-converted to ADF). Supports: **bold**, *italic*, `code`, [links](url), # headings, lists, > blockquotes, ``` code blocks ```, ~~strikethrough~~'
+      ),
 
     credentials: credentialsField,
   }),
@@ -363,7 +370,9 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
     comment: z
       .string()
       .optional()
-      .describe('Comment to add with the transition'),
+      .describe(
+        'Comment to add with the transition (markdown or plain text - auto-converted to ADF). Supports: **bold**, *italic*, `code`, [links](url), # headings, lists, > blockquotes, ``` code blocks ```, ~~strikethrough~~'
+      ),
 
     resolution: z
       .string()
@@ -448,7 +457,9 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
     body: z
       .string()
       .min(1, 'Comment body is required')
-      .describe('Comment text (plain text - auto-converted to ADF)'),
+      .describe(
+        'Comment text (markdown or plain text - auto-converted to ADF). Supports: **bold**, *italic*, `code`, [links](url), # headings, lists, > blockquotes, ``` code blocks ```, ~~strikethrough~~'
+      ),
 
     credentials: credentialsField,
   }),

@@ -737,6 +737,7 @@ import {
   ApifyBubble, // bubble name: 'apify'
   ElevenLabsBubble, // bubble name: 'eleven-labs'
   FollowUpBossBubble, // bubble name: 'followupboss'
+  JiraBubble, // bubble name: 'jira'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

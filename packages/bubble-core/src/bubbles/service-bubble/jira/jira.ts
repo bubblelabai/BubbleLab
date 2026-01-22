@@ -46,7 +46,8 @@ import {
  * - get_comments: Retrieve comments for an issue
  *
  * Features:
- * - Plain text descriptions auto-converted to Atlassian Document Format (ADF)
+ * - Markdown or plain text descriptions/comments auto-converted to Atlassian Document Format (ADF)
+ * - Supports markdown: **bold**, *italic*, `code`, [links](url), # headings, lists, > blockquotes, ``` code blocks ```, ~~strikethrough~~
  * - Status transitions by name (e.g., "Done") instead of IDs
  * - Flexible label operations (add/remove/set)
  * - Smart defaults for 90% of use cases
@@ -84,7 +85,7 @@ export class JiraBubble<
     - get_comments: Retrieve comments for an issue
 
     Features:
-    - Plain text descriptions auto-converted to Atlassian Document Format (ADF)
+    - Markdown or plain text descriptions/comments auto-converted to Atlassian Document Format (ADF)
     - Status transitions by name (e.g., "Done") instead of IDs
     - Flexible label operations (add/remove/set)
     - Smart defaults for 90% of use cases
