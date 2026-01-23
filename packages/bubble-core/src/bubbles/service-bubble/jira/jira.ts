@@ -350,9 +350,30 @@ export class JiraBubble<
       maxResults: String(limit ?? 50),
     });
 
-    if (fields && fields.length > 0) {
-      queryParams.set('fields', fields.join(','));
-    }
+    // Default fields to request if not specified
+    // The /search/jql endpoint requires explicit field specification
+    // Note: 'key' must be explicitly requested with this endpoint
+    const defaultFields = [
+      'key',
+      'summary',
+      'status',
+      'priority',
+      'assignee',
+      'reporter',
+      'issuetype',
+      'project',
+      'labels',
+      'created',
+      'updated',
+      'duedate',
+      'description',
+      'parent',
+      'comment',
+    ];
+
+    const fieldsToRequest =
+      fields && fields.length > 0 ? fields : defaultFields;
+    queryParams.set('fields', fieldsToRequest.join(','));
 
     // Use the new /search/jql endpoint (old /search was deprecated and returns 410)
     const response = await this.makeJiraApiRequest(
@@ -392,15 +413,22 @@ export class JiraBubble<
       });
     }
 
+    // The /search/jql endpoint returns different pagination fields:
+    // - total: may not be present, use issues.length as fallback
+    // - startAt: pagination offset
+    // - maxResults: requested limit
+    // - isLast: boolean indicating if this is the last page
+    const issuesArray = Array.isArray(response.issues) ? response.issues : [];
+
     return {
       operation: 'search',
       success: true,
-      issues: response.issues as JiraResult extends { issues?: infer I }
+      issues: issuesArray as JiraResult extends { issues?: infer I }
         ? I
         : never,
-      total: response.total as number,
-      offset: response.startAt as number,
-      limit: response.maxResults as number,
+      total: (response.total as number) ?? issuesArray.length,
+      offset: (response.startAt as number) ?? offset ?? 0,
+      limit: (response.maxResults as number) ?? limit ?? 50,
       error: '',
     };
   }
