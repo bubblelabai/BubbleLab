@@ -408,7 +408,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
             defaultEnabled: true,
           },
           {
-            scope: 'https://www.googleapis.com/auth/drive',
+            scope: 'https://www.googleapis.com/auth/drive.readonly',
             description:
               'View and manage all of your Google Drive files and folders (will see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
             defaultEnabled: false,
