@@ -237,7 +237,7 @@ export const usedCredentialSchema = z
     }),
     type: z.nativeEnum(CredentialType).openapi({
       description: 'Credential type',
-      example: 'OPENAI_CRED',
+      example: CredentialType.OPENAI_CRED,
     }),
     ownerId: z.string().openapi({
       description: 'User ID of the credential owner',
