@@ -171,8 +171,9 @@ export class ResearchAgentTool extends ToolBubble<
       // Create the AI agent with web search and scraping tools
       const researchSubAgent = new AIAgentBubble(
         {
-          message: this.buildResearchPrompt(task, jsonSchemaString),
+          message: this.buildResearchPrompt(task),
           systemPrompt: this.buildSystemPrompt(),
+          expectedOutputSchema: this.params.expectedResultSchema,
           model: {
             model: this.params.model,
             temperature: 1,
@@ -301,14 +302,9 @@ export class ResearchAgentTool extends ToolBubble<
   /**
    * Build the main research prompt for the AI agent
    */
-  private buildResearchPrompt(
-    task: string,
-    expectedResultSchema: string
-  ): string {
+  private buildResearchPrompt(task: string): string {
     return `
 Research Task: ${task}
-
-Required Output Format (JSON Schema): ${expectedResultSchema}
 
 Instructions:
 1. Use web-search-tool to find relevant sources

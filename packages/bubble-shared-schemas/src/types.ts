@@ -56,6 +56,12 @@ export enum CredentialType {
 
   // Jira Credentials
   JIRA_CRED = 'JIRA_CRED',
+
+  // Ashby Credentials
+  ASHBY_CRED = 'ASHBY_CRED',
+
+  // FullEnrich Credentials
+  FULLENRICH_API_KEY = 'FULLENRICH_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -115,4 +121,6 @@ export type BubbleName =
   | 'crustdata'
   | 'company-enrichment-tool'
   | 'people-search-tool'
-  | 'jira';
+  | 'jira'
+  | 'ashby'
+  | 'fullenrich';

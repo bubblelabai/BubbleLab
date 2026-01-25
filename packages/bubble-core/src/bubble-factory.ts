@@ -163,6 +163,8 @@ export class BubbleFactory {
       'company-enrichment-tool',
       'people-search-tool',
       'jira',
+      'ashby',
+      'fullenrich',
     ];
   }
 
@@ -316,6 +318,12 @@ export class BubbleFactory {
     const { JiraBubble } = await import(
       './bubbles/service-bubble/jira/index.js'
     );
+    const { AshbyBubble } = await import(
+      './bubbles/service-bubble/ashby/index.js'
+    );
+    const { FullEnrichBubble } = await import(
+      './bubbles/service-bubble/fullenrich/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -444,6 +452,8 @@ export class BubbleFactory {
       CompanyEnrichmentTool as BubbleClassWithMetadata
     );
     this.register('jira', JiraBubble as BubbleClassWithMetadata);
+    this.register('ashby', AshbyBubble as BubbleClassWithMetadata);
+    this.register('fullenrich', FullEnrichBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -738,6 +748,8 @@ import {
   ElevenLabsBubble, // bubble name: 'eleven-labs'
   FollowUpBossBubble, // bubble name: 'followupboss'
   JiraBubble, // bubble name: 'jira'
+  AshbyBubble, // bubble name: 'ashby'
+  FullEnrichBubble, // bubble name: 'fullenrich'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

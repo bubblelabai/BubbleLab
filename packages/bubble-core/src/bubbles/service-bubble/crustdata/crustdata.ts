@@ -9,6 +9,8 @@ import {
   type CrustdataResult,
   type PersonProfile,
   type PersonDBProfile,
+  type PersonEnrichmentProfile,
+  type PersonEnrichmentError,
 } from './crustdata.schema.js';
 
 const CRUSTDATA_BASE_URL = 'https://api.crustdata.com';
@@ -22,12 +24,15 @@ const CRUSTDATA_BASE_URL = 'https://api.crustdata.com';
  * - identify: Resolve company name/domain/LinkedIn URL to company_id (FREE)
  * - enrich: Get company data with decision makers, CXOs, and founders (1 credit)
  * - person_search_db: In-database people search with advanced filtering (3 credits per 100 results)
+ * - person_enrich: Enrich LinkedIn profiles with comprehensive data (3-5 credits per profile)
  *
  * Use cases:
  * - Lead generation and sales prospecting
  * - Company research and intelligence
  * - Contact discovery for outreach
  * - People search across companies with various filters
+ * - LinkedIn profile enrichment with employment history, education, skills
+ * - Reverse email lookup to find LinkedIn profiles
  *
  * Note: For agent-friendly usage, use CompanyEnrichmentTool or PeopleSearchTool instead.
  */
@@ -52,6 +57,7 @@ export class CrustdataBubble<
     - identify: Resolve company name/domain/LinkedIn URL to company_id (FREE)
     - enrich: Get company data with decision makers, CXOs, and founders (1 credit)
     - person_search_db: In-database people search with advanced filtering (3 credits per 100 results)
+    - person_enrich: Enrich LinkedIn profiles with comprehensive data (3-5 credits per profile)
 
     Use cases:
     - Lead generation and sales prospecting
@@ -60,6 +66,9 @@ export class CrustdataBubble<
     - People search across companies with various filters
     - Find professionals by title, company, skills, location, etc.
     - Geographic radius search for local talent
+    - LinkedIn profile enrichment with employment history, education, skills
+    - Reverse email lookup to find LinkedIn profiles
+    - Business email discovery for outreach
 
     Note: For agent-friendly usage, use CompanyEnrichmentTool or PeopleSearchTool instead.
   `;
@@ -127,6 +136,13 @@ export class CrustdataBubble<
               parsedParams as Extract<
                 CrustdataParams,
                 { operation: 'person_search_db' }
+              >
+            );
+          case 'person_enrich':
+            return await this.personEnrich(
+              parsedParams as Extract<
+                CrustdataParams,
+                { operation: 'person_enrich' }
               >
             );
           default:
@@ -220,6 +236,35 @@ export class CrustdataBubble<
               subService: 'person_search_db',
             },
             `Crustdata person_search_db: ${resultCount} results returned`,
+            {
+              bubbleName: 'crustdata',
+              variableId: this.context?.variableId,
+              operationType: 'bubble_execution',
+            }
+          );
+        }
+        break;
+      }
+      case 'person_enrich': {
+        // Person Enrichment charges:
+        // - Database: 3 credits per profile
+        // - Real-time: 5 credits per profile
+        // - +2 credits for business_email field
+        // - Preview mode: 0 credits
+        const personEnrichResult = result as Extract<
+          CrustdataResult,
+          { operation: 'person_enrich' }
+        >;
+        const profileCount = personEnrichResult.profiles?.length ?? 0;
+        if (profileCount > 0) {
+          logger.logTokenUsage(
+            {
+              usage: profileCount,
+              service: CredentialType.CRUSTDATA_API_KEY,
+              unit: 'per_profile',
+              subService: 'person_enrich',
+            },
+            `Crustdata person_enrich: ${profileCount} profiles enriched`,
             {
               bubbleName: 'crustdata',
               variableId: this.context?.variableId,
@@ -394,6 +439,8 @@ export class CrustdataBubble<
    * PersonDB In-Database Search
    * Searches for people profiles using advanced filtering with cursor-based pagination.
    * Credits: 3 per 100 results returned, 0 in preview mode
+   *
+   * @see People Discovery API Data Dictionary below for complete response structure
    */
   private async personSearchDB(
     params: Extract<CrustdataParams, { operation: 'person_search_db' }>
@@ -438,6 +485,137 @@ export class CrustdataBubble<
       profiles: (data.profiles as PersonDBProfile[]) || [],
       total_count: (data.total_count as number) || 0,
       next_cursor: (data.next_cursor as string) || undefined,
+      error: '',
+    };
+  }
+
+  /**
+   * Person Enrichment API
+   * Enriches LinkedIn profiles with comprehensive data including employment history,
+   * education, skills, and optionally business emails.
+   *
+   * Credits:
+   * - Database enrichment: 3 credits per profile
+   * - Real-time enrichment: 5 credits per profile
+   * - Business email discovery: +2 credits per profile
+   * - Preview mode: 0 credits
+   */
+  private async personEnrich(
+    params: Extract<CrustdataParams, { operation: 'person_enrich' }>
+  ): Promise<Extract<CrustdataResult, { operation: 'person_enrich' }>> {
+    const {
+      linkedin_profile_url,
+      business_email,
+      enrich_realtime,
+      fields,
+      preview,
+    } = params;
+
+    // Validate that at least one identifier is provided
+    if (!linkedin_profile_url && !business_email) {
+      return {
+        operation: 'person_enrich',
+        success: false,
+        profiles: [],
+        errors: [],
+        error: 'You must provide either linkedin_profile_url or business_email',
+      };
+    }
+
+    // Validate mutually exclusive parameters
+    if (linkedin_profile_url && business_email) {
+      return {
+        operation: 'person_enrich',
+        success: false,
+        profiles: [],
+        errors: [],
+        error:
+          'linkedin_profile_url and business_email are mutually exclusive. Provide only one.',
+      };
+    }
+
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    if (linkedin_profile_url) {
+      queryParams.set('linkedin_profile_url', linkedin_profile_url);
+    }
+    if (business_email) {
+      queryParams.set('business_email', business_email);
+    }
+    if (enrich_realtime !== undefined) {
+      queryParams.set('enrich_realtime', enrich_realtime.toString());
+    }
+    if (fields) {
+      queryParams.set('fields', fields);
+    }
+    if (preview !== undefined) {
+      queryParams.set('preview', preview.toString());
+    }
+
+    const response = await fetch(
+      `${CRUSTDATA_BASE_URL}/screener/person/enrich?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Token ${this.chooseCredential()}`,
+          Accept: 'application/json, text/plain, */*',
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    // Handle various response scenarios
+    if (response.status === 400) {
+      const errorText = await response.text();
+      return {
+        operation: 'person_enrich',
+        success: false,
+        profiles: [],
+        errors: [],
+        error: `Bad request: ${errorText}`,
+      };
+    }
+
+    if (response.status === 404) {
+      // Profile not found - return with error info
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        operation: 'person_enrich',
+        success: true,
+        profiles: [],
+        errors: [errorData as PersonEnrichmentError],
+        error: '',
+      };
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Crustdata Person Enrichment API error (${response.status}): ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+    // API returns an array of results (profiles and/or errors)
+    const results = Array.isArray(data) ? data : [data];
+
+    // Separate successful profiles from errors
+    const profiles: PersonEnrichmentProfile[] = [];
+    const errors: PersonEnrichmentError[] = [];
+
+    for (const item of results) {
+      if (item.error || item.error_code || item.message) {
+        errors.push(item as PersonEnrichmentError);
+      } else {
+        profiles.push(item as PersonEnrichmentProfile);
+      }
+    }
+
+    return {
+      operation: 'person_enrich',
+      success: true,
+      profiles,
+      errors: errors.length > 0 ? errors : undefined,
       error: '',
     };
   }

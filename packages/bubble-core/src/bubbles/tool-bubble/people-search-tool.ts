@@ -9,6 +9,7 @@ import {
   type PersonDBFilterCondition,
   type PersonDBFilterGroup,
 } from '../service-bubble/crustdata/index.js';
+import { FullEnrichBubble } from '../service-bubble/fullenrich/index.js';
 
 /**
  * Sanitizes a LinkedIn URL by removing trailing slashes and normalizing the format.
@@ -51,6 +52,38 @@ const PersonResultSchema = z.object({
     .nullable()
     .describe('Personal/professional websites'),
 
+  // Enriched email data (from FullEnrich if enabled)
+  enrichedWorkEmail: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Work email found via FullEnrich'),
+  enrichedPersonalEmail: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Personal email found via FullEnrich'),
+  enrichedWorkEmails: z
+    .array(
+      z.object({
+        email: z.string(),
+        status: z.string().optional(),
+      })
+    )
+    .nullable()
+    .optional()
+    .describe('All work emails found via FullEnrich'),
+  enrichedPersonalEmails: z
+    .array(
+      z.object({
+        email: z.string(),
+        status: z.string().optional(),
+      })
+    )
+    .nullable()
+    .optional()
+    .describe('All personal emails found via FullEnrich'),
+
   // Classification
   seniorityLevel: z
     .string()
@@ -89,6 +122,10 @@ const PersonResultSchema = z.object({
           .string()
           .nullable()
           .describe('Company LinkedIn URL'),
+        companyDomainUrl: z
+          .string()
+          .nullable()
+          .describe('Company website domain'),
         seniorityLevel: z.string().nullable().describe('Seniority level'),
         functionCategory: z.string().nullable().describe('Function category'),
         startDate: z
@@ -309,6 +346,22 @@ const PeopleSearchToolParamsSchema = z.object({
     .optional()
     .describe('Maximum results to return (default: 100, max: 1000)'),
 
+  // ===== EMAIL ENRICHMENT (requires FULLENRICH_API_KEY) =====
+  enrichEmails: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Enrich emails for found people using FullEnrich. Requires FULLENRICH_API_KEY credential. Costs 1 credit per work email, 3 credits per personal email.'
+    ),
+  includePersonalEmails: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'When enrichEmails is true, also search for personal emails (costs 3 additional credits per person)'
+    ),
+
   // Credentials (auto-injected)
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
@@ -361,7 +414,7 @@ export class PeopleSearchTool extends ToolBubble<
   static readonly schema = PeopleSearchToolParamsSchema;
   static readonly resultSchema = PeopleSearchToolResultSchema;
   static readonly shortDescription =
-    'Comprehensive people search by company, title, location, skills, and more';
+    'Comprehensive people search by company, title, location, skills, with optional email enrichment';
   static readonly longDescription = `
     Comprehensive people search tool for finding and discovering professionals.
     Uses the Crustdata PersonDB in-database search for fast, comprehensive results.
@@ -789,7 +842,21 @@ export class PeopleSearchTool extends ToolBubble<
       };
 
       // Transform results
-      const people = this.transformProfiles(personSearchData.profiles || []);
+      let people = this.transformProfiles(personSearchData.profiles || []);
+
+      // Email enrichment if requested and FULLENRICH_API_KEY is available
+      const { enrichEmails, includePersonalEmails } = this.params;
+      if (
+        enrichEmails &&
+        credentials[CredentialType.FULLENRICH_API_KEY] &&
+        people.length > 0
+      ) {
+        people = await this.enrichPeopleEmails(
+          people,
+          credentials,
+          includePersonalEmails ?? false
+        );
+      }
 
       return {
         people,
@@ -824,6 +891,7 @@ export class PeopleSearchTool extends ToolBubble<
           title: emp.title || null,
           companyName: emp.company_name || emp.name || null,
           companyLinkedinUrl: emp.company_linkedin_profile_url || null,
+          companyDomainUrl: emp.company_website_domain || null,
           seniorityLevel: emp.seniority_level || null,
           functionCategory: emp.function_category || null,
           startDate:
@@ -905,5 +973,217 @@ export class PeopleSearchTool extends ToolBubble<
       success: false,
       error: errorMessage,
     };
+  }
+
+  /**
+   * Enrich people with email data using FullEnrich
+   * Batches requests and polls until completion
+   */
+  private async enrichPeopleEmails(
+    people: PersonResult[],
+    credentials: Partial<Record<CredentialType, string>>,
+    includePersonalEmails: boolean
+  ): Promise<PersonResult[]> {
+    // Build contacts for enrichment (only those with LinkedIn URLs or name+company)
+    const contactsToEnrich: Array<{
+      index: number;
+      firstname: string;
+      lastname: string;
+      linkedin_url?: string;
+      domain?: string;
+      company_name?: string;
+    }> = [];
+
+    for (let i = 0; i < people.length; i++) {
+      const person = people[i];
+
+      // Parse name into first/last
+      const nameParts = (person.name || '').trim().split(/\s+/);
+      const firstname = nameParts[0] || '';
+      const lastname = nameParts.slice(1).join(' ') || '';
+
+      // Get company info from current employer
+      const currentEmployer = person.currentEmployers?.[0];
+      const domain = currentEmployer?.companyDomainUrl || undefined;
+      const company_name = currentEmployer?.companyName || undefined;
+      const linkedin_url = person.linkedinUrl || undefined;
+
+      // Need at least LinkedIn URL or (name + company info) for enrichment
+      if (linkedin_url || (firstname && (domain || company_name))) {
+        contactsToEnrich.push({
+          index: i,
+          firstname,
+          lastname,
+          linkedin_url,
+          domain,
+          company_name,
+        });
+      }
+    }
+
+    if (contactsToEnrich.length === 0) {
+      return people; // No contacts to enrich
+    }
+
+    // Determine enrich fields
+    const enrich_fields: ('contact.emails' | 'contact.personal_emails')[] = [
+      'contact.emails',
+    ];
+    if (includePersonalEmails) {
+      enrich_fields.push('contact.personal_emails');
+    }
+
+    // Start bulk enrichment (max 100 contacts per batch)
+    const batchSize = 100;
+    const enrichedPeople = [...people];
+
+    for (
+      let batchStart = 0;
+      batchStart < contactsToEnrich.length;
+      batchStart += batchSize
+    ) {
+      const batch = contactsToEnrich.slice(batchStart, batchStart + batchSize);
+
+      try {
+        // Start enrichment
+        const find_email = await new FullEnrichBubble(
+          {
+            operation: 'start_bulk_enrichment',
+            name: `PeopleSearchTool-${Date.now()}`,
+            contacts: batch.map((c, batchIndex) => ({
+              firstname: c.firstname,
+              lastname: c.lastname,
+              linkedin_url: c.linkedin_url,
+              domain: c.domain,
+              company_name: c.company_name,
+              enrich_fields,
+              custom: { index: String(batchIndex) }, // Track position in batch
+            })),
+            credentials,
+          },
+          this.context,
+          'find_email'
+        ).action();
+
+        if (!find_email.success || !find_email.data?.enrichment_id) {
+          continue; // Skip this batch on error
+        }
+
+        const enrichmentId = find_email.data.enrichment_id;
+
+        // Poll until done (max 60 seconds)
+        const maxWaitMs = 60000;
+        const pollIntervalMs = 3000;
+        const startTime = Date.now();
+
+        while (Date.now() - startTime < maxWaitMs) {
+          await this.sleep(pollIntervalMs);
+
+          const poll_email = await new FullEnrichBubble(
+            {
+              operation: 'get_enrichment_result',
+              enrichment_id: enrichmentId,
+              force_results: false,
+              credentials,
+            },
+            this.context,
+            'poll_email'
+          ).action();
+
+          if (!poll_email.success) {
+            continue;
+          }
+
+          const status = poll_email.data?.status;
+
+          if (
+            status === 'FINISHED' ||
+            status === 'CANCELED' ||
+            status === 'CREDITS_INSUFFICIENT'
+          ) {
+            // Extract results
+            const results = poll_email.data?.results as
+              | Array<{
+                  custom?: Record<string, string>;
+                  contact?: {
+                    most_probable_email?: string;
+                    most_probable_personal_email?: string;
+                    emails?: Array<{ email?: string; status?: string }>;
+                    personal_emails?: Array<{
+                      email?: string;
+                      status?: string;
+                    }>;
+                  };
+                }>
+              | undefined;
+
+            if (results) {
+              for (const result of results) {
+                const batchIndex = parseInt(result.custom?.index || '-1', 10);
+                if (batchIndex >= 0 && batchIndex < batch.length) {
+                  const originalIndex = batch[batchIndex].index;
+                  const contact = result.contact;
+
+                  if (contact) {
+                    // Merge enriched emails into main emails array
+                    const existingEmails =
+                      enrichedPeople[originalIndex].emails || [];
+                    const newEmails = new Set(existingEmails);
+
+                    // Add work emails
+                    if (contact.most_probable_email) {
+                      newEmails.add(contact.most_probable_email);
+                    }
+                    contact.emails?.forEach((e) => {
+                      if (e.email) newEmails.add(e.email);
+                    });
+
+                    // Add personal emails
+                    if (contact.most_probable_personal_email) {
+                      newEmails.add(contact.most_probable_personal_email);
+                    }
+                    contact.personal_emails?.forEach((e) => {
+                      if (e.email) newEmails.add(e.email);
+                    });
+
+                    enrichedPeople[originalIndex] = {
+                      ...enrichedPeople[originalIndex],
+                      // Override emails with merged list (enriched emails first)
+                      emails: newEmails.size > 0 ? Array.from(newEmails) : null,
+                      enrichedWorkEmail: contact.most_probable_email || null,
+                      enrichedPersonalEmail:
+                        contact.most_probable_personal_email || null,
+                      enrichedWorkEmails:
+                        contact.emails?.map((e) => ({
+                          email: e.email || '',
+                          status: e.status,
+                        })) || null,
+                      enrichedPersonalEmails:
+                        contact.personal_emails?.map((e) => ({
+                          email: e.email || '',
+                          status: e.status,
+                        })) || null,
+                    };
+                  }
+                }
+              }
+            }
+            break; // Done with this batch
+          }
+        }
+      } catch {
+        // Continue with next batch on error
+        continue;
+      }
+    }
+
+    return enrichedPeople;
+  }
+
+  /**
+   * Sleep helper for polling
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

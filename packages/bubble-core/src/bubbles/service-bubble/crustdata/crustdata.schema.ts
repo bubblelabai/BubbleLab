@@ -59,6 +59,170 @@ export const PersonProfileSchema = z
   .describe('Person profile from Crustdata');
 
 // ==========================================
+// Person Enrichment API Schemas
+// ==========================================
+
+// Business email with verification metadata
+export const BusinessEmailMetadataSchema = z.object({
+  verification_status: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Email verification status'),
+  last_validated_at: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Last validation date'),
+});
+
+// Employer schema for person enrichment (current and past employers)
+export const PersonEnrichmentEmployerSchema = z
+  .object({
+    employer_name: z.string().nullable().optional(),
+    employer_linkedin_id: z.string().nullable().optional(),
+    employer_logo_url: z.string().nullable().optional(),
+    employer_linkedin_description: z.string().nullable().optional(),
+    employer_company_id: z.array(z.number()).nullable().optional(),
+    employer_company_website_domain: z.array(z.string()).nullable().optional(),
+    domains: z.array(z.string()).nullable().optional(),
+    employee_position_id: z.number().nullable().optional(),
+    employee_title: z.string().nullable().optional(),
+    employee_description: z.string().nullable().optional(),
+    employee_location: z.string().nullable().optional(),
+    start_date: z.string().nullable().optional(),
+    end_date: z.string().nullable().optional(),
+    is_default: z.boolean().nullable().optional(),
+    business_emails: z
+      .record(z.string(), BusinessEmailMetadataSchema)
+      .nullable()
+      .optional()
+      .describe('Business emails with verification metadata'),
+  })
+  .passthrough();
+
+// Education background for person enrichment
+export const PersonEnrichmentEducationSchema = z
+  .object({
+    degree_name: z.string().nullable().optional(),
+    institute_name: z.string().nullable().optional(),
+    institute_linkedin_id: z.string().nullable().optional(),
+    institute_linkedin_url: z.string().nullable().optional(),
+    institute_logo_url: z.string().nullable().optional(),
+    field_of_study: z.string().nullable().optional(),
+    start_date: z.string().nullable().optional(),
+    end_date: z.string().nullable().optional(),
+    activities_and_societies: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+// Certification schema for person enrichment
+export const PersonEnrichmentCertificationSchema = z
+  .object({
+    name: z.string().nullable().optional(),
+    issued_date: z.string().nullable().optional(),
+    expiration_date: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+    issuer_organization: z.string().nullable().optional(),
+    issuer_organization_linkedin_id: z.string().nullable().optional(),
+    certification_id: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+// Honor schema for person enrichment
+export const PersonEnrichmentHonorSchema = z
+  .object({
+    title: z.string().nullable().optional(),
+    issued_date: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    issuer: z.string().nullable().optional(),
+    media_urls: z.array(z.string()).nullable().optional(),
+    associated_organization_linkedin_id: z.string().nullable().optional(),
+    associated_organization: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+// Main person enrichment profile schema
+export const PersonEnrichmentProfileSchema = z
+  .object({
+    // Basic profile info
+    linkedin_profile_url: z.string().nullable().optional(),
+    linkedin_flagship_url: z.string().nullable().optional(),
+    name: z.string().nullable().optional(),
+    location: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+    title: z.string().nullable().optional(),
+    last_updated: z.string().nullable().optional(),
+    headline: z.string().nullable().optional(),
+    summary: z.string().nullable().optional(),
+    num_of_connections: z.number().nullable().optional(),
+    profile_picture_url: z.string().nullable().optional(),
+    profile_picture_permalink: z.string().nullable().optional(),
+    twitter_handle: z.string().nullable().optional(),
+    languages: z.array(z.string()).nullable().optional(),
+    linkedin_joined_date: z.string().nullable().optional(),
+    linkedin_verifications: z.array(z.string()).nullable().optional(),
+    linkedin_open_to_cards: z.array(z.string()).nullable().optional(),
+
+    // Skills and metadata
+    skills: z.array(z.string()).nullable().optional(),
+    all_employers: z.array(z.string()).nullable().optional(),
+    all_employers_company_id: z.array(z.number()).nullable().optional(),
+    all_titles: z.array(z.string()).nullable().optional(),
+    all_schools: z.array(z.string()).nullable().optional(),
+    all_degrees: z.array(z.string()).nullable().optional(),
+
+    // Employment history
+    current_employers: z
+      .array(PersonEnrichmentEmployerSchema)
+      .nullable()
+      .optional(),
+    past_employers: z
+      .array(PersonEnrichmentEmployerSchema)
+      .nullable()
+      .optional(),
+
+    // Education
+    education_background: z
+      .array(PersonEnrichmentEducationSchema)
+      .nullable()
+      .optional(),
+
+    // Certifications and honors (limited access)
+    certifications: z
+      .array(PersonEnrichmentCertificationSchema)
+      .nullable()
+      .optional(),
+    honors: z.array(PersonEnrichmentHonorSchema).nullable().optional(),
+
+    // Business email (if requested)
+    business_email: z.array(z.string()).nullable().optional(),
+
+    // Enrichment metadata
+    enriched_realtime: z.boolean().nullable().optional(),
+    query_linkedin_profile_urn_or_slug: z
+      .array(z.string())
+      .nullable()
+      .optional(),
+
+    // Score field for reverse email lookup
+    score: z.number().nullable().optional(),
+  })
+  .passthrough()
+  .describe('Enriched person profile from Crustdata People Enrichment API');
+
+// Error response for person enrichment when profile not found
+export const PersonEnrichmentErrorSchema = z
+  .object({
+    linkedin_profile_url: z.string().nullable().optional(),
+    business_email: z.string().nullable().optional(),
+    error: z.string().optional(),
+    error_code: z.string().optional(),
+    message: z.string().optional(),
+  })
+  .passthrough();
+
+// ==========================================
 // PersonDB In-Database Search Schemas
 // ==========================================
 
@@ -412,6 +576,54 @@ export const CrustdataParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Person Enrichment operation - enrich LinkedIn profiles or reverse lookup by email
+  // Database: 3 credits, Real-time: 5 credits, +2 for business_email field, Preview: 0 credits
+  z.object({
+    operation: z
+      .literal('person_enrich')
+      .describe(
+        'Enrich LinkedIn profiles with comprehensive data (3-5 credits per profile)'
+      ),
+    linkedin_profile_url: z
+      .string()
+      .optional()
+      .describe(
+        'Comma-separated LinkedIn profile URLs to enrich (max 25). Example: "https://www.linkedin.com/in/dvdhsu/"'
+      ),
+    business_email: z
+      .string()
+      .optional()
+      .describe(
+        'Comma-separated business emails for reverse lookup (max 25). Mutually exclusive with linkedin_profile_url.'
+      ),
+    enrich_realtime: z
+      .boolean()
+      .default(false)
+      .optional()
+      .describe(
+        'If true, fetch fresh data from LinkedIn in real-time (5 credits vs 3 for database)'
+      ),
+    fields: z
+      .string()
+      .optional()
+      .describe(
+        'Comma-separated fields to include in response. Use "business_email" to discover work emails (+2 credits). Default returns standard profile fields.'
+      ),
+    preview: z
+      .boolean()
+      .default(false)
+      .optional()
+      .describe(
+        'Preview mode returns basic profile details only (0 credits, access controlled)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Identify result - single company match
@@ -489,6 +701,23 @@ export const CrustdataResultSchema = z.discriminatedUnion('operation', [
       .describe('Cursor for fetching the next page of results'),
     error: z.string().describe('Error message if operation failed'),
   }),
+
+  // Person Enrichment operation result
+  z.object({
+    operation: z
+      .literal('person_enrich')
+      .describe('Person enrichment operation'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    profiles: z
+      .array(PersonEnrichmentProfileSchema)
+      .optional()
+      .describe('Array of enriched person profiles'),
+    errors: z
+      .array(PersonEnrichmentErrorSchema)
+      .optional()
+      .describe('Array of errors for profiles that could not be enriched'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
 ]);
 
 export type CrustdataResult = z.output<typeof CrustdataResultSchema>;
@@ -517,3 +746,20 @@ export type GeoDistanceValue = z.infer<typeof GeoDistanceValueSchema>;
 export type PersonDBFilterOperator = z.infer<
   typeof PersonDBFilterOperatorSchema
 >;
+
+// Person Enrichment types
+export type PersonEnrichmentProfile = z.infer<
+  typeof PersonEnrichmentProfileSchema
+>;
+export type PersonEnrichmentEmployer = z.infer<
+  typeof PersonEnrichmentEmployerSchema
+>;
+export type PersonEnrichmentEducation = z.infer<
+  typeof PersonEnrichmentEducationSchema
+>;
+export type PersonEnrichmentCertification = z.infer<
+  typeof PersonEnrichmentCertificationSchema
+>;
+export type PersonEnrichmentHonor = z.infer<typeof PersonEnrichmentHonorSchema>;
+export type PersonEnrichmentError = z.infer<typeof PersonEnrichmentErrorSchema>;
+export type BusinessEmailMetadata = z.infer<typeof BusinessEmailMetadataSchema>;

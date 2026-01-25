@@ -17,6 +17,14 @@ export {
   PersonDBEducationSchema,
   PersonDBLocationDetailsSchema,
   GeoDistanceValueSchema,
+  // Person Enrichment schemas
+  PersonEnrichmentProfileSchema,
+  PersonEnrichmentEmployerSchema,
+  PersonEnrichmentEducationSchema,
+  PersonEnrichmentCertificationSchema,
+  PersonEnrichmentHonorSchema,
+  PersonEnrichmentErrorSchema,
+  BusinessEmailMetadataSchema,
   // Types
   type CrustdataParams,
   type CrustdataParamsInput,
@@ -36,4 +44,12 @@ export {
   type PersonDBLocationDetails,
   type GeoDistanceValue,
   type PersonDBFilterOperator,
+  // Person Enrichment types
+  type PersonEnrichmentProfile,
+  type PersonEnrichmentEmployer,
+  type PersonEnrichmentEducation,
+  type PersonEnrichmentCertification,
+  type PersonEnrichmentHonor,
+  type PersonEnrichmentError,
+  type BusinessEmailMetadata,
 } from './crustdata.schema.js';

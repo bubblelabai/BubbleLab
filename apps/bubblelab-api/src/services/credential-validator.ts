@@ -196,6 +196,10 @@ export class CredentialValidator {
       case CredentialType.JIRA_CRED:
         baseParams.operation = 'list_projects';
         break;
+      case CredentialType.ASHBY_CRED:
+        baseParams.operation = 'list_candidates';
+        baseParams.limit = 1;
+        break;
       default:
         break;
     }

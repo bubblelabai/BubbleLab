@@ -263,6 +263,22 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Jira Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.ASHBY_CRED]: {
+      label: 'Ashby',
+      description:
+        'API key for Ashby ATS (Applicant Tracking System) for candidate management',
+      placeholder: 'Enter your Ashby API key...',
+      namePlaceholder: 'My Ashby API Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.FULLENRICH_API_KEY]: {
+      label: 'FullEnrich',
+      description:
+        'API key for FullEnrich B2B contact enrichment (emails, phones, LinkedIn data)',
+      placeholder: 'Enter your FullEnrich API key...',
+      namePlaceholder: 'My FullEnrich API Key',
+      credentialConfigurations: {},
+    },
   } as const satisfies Record<CredentialType, CredentialConfig>;
 
 /**
@@ -311,6 +327,8 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
+  [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
+  [CredentialType.FULLENRICH_API_KEY]: 'FULLENRICH_API_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -336,6 +354,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
  */
 export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CUSTOM_AUTH_KEY,
+  CredentialType.FULLENRICH_API_KEY,
 ]);
 
 /**
@@ -803,8 +822,13 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   ],
   crustdata: [CredentialType.CRUSTDATA_API_KEY],
   'company-enrichment-tool': [CredentialType.CRUSTDATA_API_KEY],
-  'people-search-tool': [CredentialType.CRUSTDATA_API_KEY],
+  'people-search-tool': [
+    CredentialType.CRUSTDATA_API_KEY,
+    CredentialType.FULLENRICH_API_KEY,
+  ],
   jira: [CredentialType.JIRA_CRED],
+  ashby: [CredentialType.ASHBY_CRED],
+  fullenrich: [CredentialType.FULLENRICH_API_KEY],
 };
 
 // POST /credentials - Create credential schema

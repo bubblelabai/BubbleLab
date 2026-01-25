@@ -10,6 +10,7 @@ import {
   CrustdataBubble,
   IdentifyResultItemSchema,
   PersonDBProfileSchema,
+  PersonEnrichmentProfileSchema,
 } from '../service-bubble/crustdata/index.js';
 import { PeopleSearchTool } from './people-search-tool.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
@@ -313,6 +314,92 @@ describeIfApiKey('CompanyEnrichmentTool Integration Tests', () => {
         console.log(JSON.stringify(result, null, 2));
         expect(result.success).toBe(true);
         expect(result.data.success).toBe(true);
+      }, 60000);
+    });
+
+    describe('Person Enrichment API Operation', () => {
+      it('should enrich a LinkedIn profile by URL', async () => {
+        const bubble = new CrustdataBubble({
+          operation: 'person_enrich',
+          linkedin_profile_url:
+            'https://www.linkedin.com/in/selina-li-2624a4198/',
+          credentials,
+        });
+
+        const result = await bubble.action();
+
+        console.log(JSON.stringify(result, null, 2));
+        expect(result.success).toBe(true);
+        expect(result.data.success).toBe(true);
+
+        const data = result.data as {
+          operation: 'person_enrich';
+          success: boolean;
+          profiles?: Array<Record<string, unknown>>;
+          errors?: Array<Record<string, unknown>>;
+          error: string;
+        };
+
+        expect(data.profiles).toBeDefined();
+        expect(data.profiles!.length).toBeGreaterThan(0);
+
+        // Validate profile has expected fields
+        const profile = data.profiles![0];
+        expect(profile.name).toBeDefined();
+        expect(
+          profile.linkedin_profile_url || profile.linkedin_flagship_url
+        ).toBeDefined();
+
+        // Validate profiles schema
+        const validationResult = compareMultipleWithSchema(
+          PersonEnrichmentProfileSchema,
+          data.profiles!
+        );
+        console.log(validationResult.summary);
+        expect(validationResult.status).toBe('PASS');
+      }, 60000);
+
+      it('should enrich only business email (2 credits)', async () => {
+        const bubble = new CrustdataBubble({
+          operation: 'person_enrich',
+          linkedin_profile_url:
+            'https://www.linkedin.com/in/selina-li-2624a4198/',
+          fields: 'business_email',
+          credentials,
+        });
+
+        const result = await bubble.action();
+
+        console.log(JSON.stringify(result, null, 2));
+        expect(result.success).toBe(true);
+        expect(result.data.success).toBe(true);
+
+        const data = result.data as {
+          operation: 'person_enrich';
+          success: boolean;
+          profiles?: Array<Record<string, unknown>>;
+          errors?: Array<Record<string, unknown>>;
+          error: string;
+        };
+
+        expect(data.profiles).toBeDefined();
+        expect(data.profiles!.length).toBeGreaterThan(0);
+
+        const profile = data.profiles![0];
+        // Should have business_email in response
+        expect(
+          profile.business_email ||
+            profile.current_employers ||
+            profile.past_employers
+        ).toBeDefined();
+
+        // Validate profiles schema
+        const validationResult = compareMultipleWithSchema(
+          PersonEnrichmentProfileSchema,
+          data.profiles!
+        );
+        console.log(validationResult.summary);
+        expect(validationResult.status).toBe('PASS');
       }, 60000);
     });
   });
