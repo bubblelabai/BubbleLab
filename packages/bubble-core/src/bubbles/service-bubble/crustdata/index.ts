@@ -5,6 +5,9 @@ export {
   PersonProfileSchema,
   CompanyInfoSchema,
   IdentifyResultItemSchema,
+  // Person Search Filter Enums
+  PersonFunctionEnum,
+  PersonSeniorityLevelEnum,
   // PersonDB schemas
   PersonDBFilterOperatorSchema,
   PersonDBFilterConditionSchema,
@@ -32,6 +35,9 @@ export {
   type PersonProfile,
   type CompanyInfo,
   type IdentifyResultItem,
+  // Person Search Filter Types
+  type PersonFunction,
+  type PersonSeniorityLevel,
   // PersonDB types
   type PersonDBFilterCondition,
   type PersonDBFilterGroup,

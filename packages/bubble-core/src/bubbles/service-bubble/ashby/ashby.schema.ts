@@ -247,11 +247,19 @@ export const AshbyParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Name is required')
       .describe("Candidate's full name (first and last name)"),
-    email: z
-      .string()
-      .email()
+    emails: z
+      .array(
+        z.object({
+          email: z.string().email().describe('Email address'),
+          type: z
+            .enum(['Personal', 'Work', 'Other'])
+            .describe('Type of email (Personal, Work, or Other)'),
+        })
+      )
       .optional()
-      .describe("Candidate's primary email address"),
+      .describe(
+        "Candidate's email addresses with type. The Personal email becomes the primary email, others become alternates."
+      ),
     phone_number: z
       .string()
       .optional()

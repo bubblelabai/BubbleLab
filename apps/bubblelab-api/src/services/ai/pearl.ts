@@ -481,6 +481,7 @@ export async function runPearl(
           {
             name: 'get-bubble-details-tool',
             credentials: credentials || {},
+            config: { includeLongDescription: true },
           },
           {
             name: 'get-trigger-detail-tool',

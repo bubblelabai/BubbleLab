@@ -45,12 +45,14 @@ const ASHBY_API_BASE = 'https://api.ashbyhq.com';
  *   candidate_id: 'abc123-uuid',
  * }).action();
  *
- * // Create a new candidate
+ * // Create a new candidate (Personal email becomes primary)
  * const newCandidate = await new AshbyBubble({
  *   operation: 'create_candidate',
- *   first_name: 'John',
- *   last_name: 'Doe',
- *   email: 'john.doe@example.com',
+ *   name: 'John Doe',
+ *   emails: [
+ *     { email: 'john.work@company.com', type: 'Work' },
+ *     { email: 'john.doe@example.com', type: 'Personal' }, // This becomes primary
+ *   ],
  * }).action();
  * ```
  */
@@ -344,8 +346,25 @@ export class AshbyBubble<
       name: params.name,
     };
 
-    if (params.email) {
-      body.email = params.email;
+    if (params.emails && params.emails.length > 0) {
+      // Find the personal email to use as primary
+      const personalEmail = params.emails.find((e) => e.type === 'Personal');
+      const otherEmails = params.emails.filter((e) => e !== personalEmail);
+
+      if (personalEmail) {
+        body.email = personalEmail.email;
+        if (otherEmails.length > 0) {
+          body.alternateEmailAddresses = otherEmails.map((e) => e.email);
+        }
+      } else {
+        // No personal email found, use first as primary
+        body.email = params.emails[0].email;
+        if (params.emails.length > 1) {
+          body.alternateEmailAddresses = params.emails
+            .slice(1)
+            .map((e) => e.email);
+        }
+      }
     }
     if (params.phone_number) {
       body.phoneNumber = params.phone_number;

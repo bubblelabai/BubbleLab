@@ -11,17 +11,19 @@ const GetBubbleDetailsToolParamsSchema = z.object({
     .string()
     .min(1, 'Bubble name is required')
     .describe('The name of the bubble to get details about'),
-  includeInputSchema: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe('Include input parameter schema in the response'),
   credentials: z
     .record(z.nativeEnum(CredentialType), z.string())
     .optional()
     .describe(
       'Object mapping credential types to values (injected at runtime)'
     ),
+  config: z
+    .object({
+      includeLongDescription: z.boolean().optional(),
+      includeInputSchema: z.boolean().optional(),
+    })
+    .optional()
+    .describe('Tool configuration injected at runtime from AI agent'),
 });
 
 // Type definitions
@@ -40,6 +42,10 @@ type GetBubbleDetailsToolResult = z.output<
 const GetBubbleDetailsToolResultSchema = z.object({
   name: z.string().describe('Name of the bubble'),
   alias: z.string().optional().describe('Short alias for the bubble'),
+  longDescription: z
+    .string()
+    .optional()
+    .describe('Detailed description of the bubble'),
   inputSchema: z
     .string()
     .optional()
@@ -131,14 +137,20 @@ export class GetBubbleDetailsTool extends ToolBubble<
       metadata.resultSchema
     );
 
-    // Generate string representation of input schema if requested
-    const inputSchemaString = this.params.includeInputSchema
+    // Generate string representation of input schema if requested (via config)
+    const inputSchemaString = this.params.config?.includeInputSchema
       ? this.generateOutputSchemaString(metadata.schema)
+      : undefined;
+
+    // Include long description if requested (via config)
+    const longDescription = this.params.config?.includeLongDescription
+      ? metadata.longDescription
       : undefined;
 
     return {
       name: metadata.name,
       alias: metadata.alias,
+      longDescription,
       inputSchema: inputSchemaString,
       outputSchema: outputSchemaString,
       usageExample,

@@ -1,6 +1,106 @@
 import { z } from 'zod';
 import { CredentialType } from '@bubblelab/shared-schemas';
 
+// ==========================================
+// Enums for Person Search Filters
+// ==========================================
+
+/**
+ * Function/role categories for person search filters
+ * Used in FUNCTION filter type for person_search_db operation
+ */
+export const PersonFunctionEnum = z.enum([
+  'Accounting',
+  'Administrative',
+  'Arts and Design',
+  'Business Development',
+  'Community and Social Services',
+  'Consulting',
+  'Education',
+  'Engineering',
+  'Entrepreneurship',
+  'Finance',
+  'Healthcare Services',
+  'Human Resources',
+  'Information Technology',
+  'Legal',
+  'Marketing',
+  'Media and Communication',
+  'Military and Protective Services',
+  'Operations',
+  'Product Management',
+  'Program and Project Management',
+  'Purchasing',
+  'Quality Assurance',
+  'Real Estate',
+  'Research',
+  'Sales',
+  'Customer Success and Support',
+]);
+
+/**
+ * Seniority levels for person search filters
+ * Used in SENIORITY_LEVEL filter type for person_search_db operation
+ */
+export const PersonSeniorityLevelEnum = z.enum([
+  'Owner / Partner',
+  'CXO',
+  'Vice President',
+  'Director',
+  'Experienced Manager',
+  'Entry Level Manager',
+  'Strategic',
+  'Senior',
+  'Entry Level',
+  'In Training',
+]);
+
+export type PersonFunction = z.infer<typeof PersonFunctionEnum>;
+export type PersonSeniorityLevel = z.infer<typeof PersonSeniorityLevelEnum>;
+
+// ==========================================
+// Person Search Filter Documentation
+// ==========================================
+
+/**
+ * Available filter types for PersonDB search (person_search_db operation)
+ *
+ * Text Filters (require type: "in" or "not in" and value: string[]):
+ * - CURRENT_COMPANY: Current company (use LinkedIn URL, domain, or name)
+ * - CURRENT_TITLE: Current job title (supports fuzzy_match attribute)
+ * - PAST_TITLE: Past job titles (supports fuzzy_match attribute)
+ * - COMPANY_HEADQUARTERS: Company headquarters location
+ * - REGION: Person's geographical region
+ * - INDUSTRY: Company industry
+ * - PROFILE_LANGUAGE: Profile language
+ * - FIRST_NAME: First name (max 1 value)
+ * - LAST_NAME: Last name (max 1 value)
+ * - PAST_COMPANY: Past companies (use LinkedIn URL, domain, or name)
+ * - KEYWORD: Keywords related to company (max 1 value)
+ * - SCHOOL: School attended (max 1 value)
+ *
+ * Range Filters (require type: "in" and value: string[]):
+ * - COMPANY_HEADCOUNT: "Self-employed", "1-10", "11-50", "51-200", "201-500", "501-1,000", "1,001-5,000", "5,001-10,000", "10,001+"
+ * - YEARS_AT_CURRENT_COMPANY: "Less than 1 year", "1 to 2 years", "3 to 5 years", "6 to 10 years", "More than 10 years"
+ * - YEARS_IN_CURRENT_POSITION: "Less than 1 year", "1 to 2 years", "3 to 5 years", "6 to 10 years", "More than 10 years"
+ * - YEARS_OF_EXPERIENCE: "Less than 1 year", "1 to 2 years", "3 to 5 years", "6 to 10 years", "More than 10 years"
+ *
+ * Enum Filters (require type: "in" or "not in" and value: string[]):
+ * - FUNCTION: Use PersonFunctionEnum values
+ * - SENIORITY_LEVEL: Use PersonSeniorityLevelEnum values
+ * - COMPANY_TYPE: "Public Company", "Privately Held", "Non Profit", "Educational Institution", "Partnership", "Self Employed", "Self Owned", "Government Agency"
+ *
+ * Boolean Filters (no type or value required):
+ * - POSTED_ON_LINKEDIN: Posted on LinkedIn in last 30 days
+ * - RECENTLY_CHANGED_JOBS: Changed jobs in last 90 days
+ * - IN_THE_NEWS: Mentioned in the news
+ *
+ * Note: For valid values for COMPANY_HEADQUARTERS, REGION, and INDUSTRY,
+ * use the Filters Autocomplete API or refer to the full documentation.
+ *
+ * @see https://docs.crustdata.com/people-docs/how-to-build-people-filters
+ */
+
 // Person profile schema for decision makers, CXOs, and founders
 export const PersonProfileSchema = z
   .object({
@@ -255,10 +355,22 @@ export const GeoDistanceValueSchema = z.object({
 });
 
 // Single filter condition for PersonDB search
+// Common filter columns:
+// - "current_employers.function_category" - Use PersonFunctionEnum values
+// - "current_employers.seniority_level" - Use PersonSeniorityLevelEnum values
+// - "current_employers.title" - Job title
+// - "current_employers.company_name" - Company name
+// - "region" - Geographic region
+// - "current_employers.company_industries" - Company industries
+// - "years_of_experience_raw" - Years of experience (numeric)
+// - "recently_changed_jobs" - Boolean (true/false)
+// See filter documentation above for complete list of available filters
 export const PersonDBFilterConditionSchema = z.object({
   column: z
     .string()
-    .describe('Field to filter on (e.g., "current_employers.title", "region")'),
+    .describe(
+      'Field to filter on (e.g., "current_employers.title", "current_employers.function_category", "region"). For function_category, use PersonFunctionEnum values. For seniority_level, use PersonSeniorityLevelEnum values.'
+    ),
   type: PersonDBFilterOperatorSchema.describe('Filter operator'),
   value: z
     .union([
@@ -269,7 +381,9 @@ export const PersonDBFilterConditionSchema = z.object({
       z.array(z.number()),
       GeoDistanceValueSchema,
     ])
-    .describe('Value(s) to match'),
+    .describe(
+      'Value(s) to match. For function_category and seniority_level, use enum values.'
+    ),
 });
 
 // Recursive filter group schema for complex AND/OR logic

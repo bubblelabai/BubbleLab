@@ -4,12 +4,18 @@ import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType, type BubbleName } from '@bubblelab/shared-schemas';
 import {
   CrustdataBubble,
+  PersonFunctionEnum,
+  PersonSeniorityLevelEnum,
   type PersonDBProfile,
   type PersonDBFilters,
   type PersonDBFilterCondition,
   type PersonDBFilterGroup,
 } from '../service-bubble/crustdata/index.js';
 import { FullEnrichBubble } from '../service-bubble/fullenrich/index.js';
+import {
+  normalizeSeniorityLevels,
+  normalizeFunctionCategories,
+} from './people-search-utils.js';
 
 /**
  * Sanitizes a LinkedIn URL by removing trailing slashes and normalizing the format.
@@ -249,13 +255,13 @@ const PeopleSearchToolParamsSchema = z.object({
     .array(z.string())
     .optional()
     .describe(
-      'Seniority levels (e.g., ["CXO", "Vice President", "Director", "Manager", "Senior", "Entry"])'
+      `Seniority levels. Valid values: ${(PersonSeniorityLevelEnum._def.values as readonly string[]).join(', ')}. Examples: ["CXO", "Vice President", "Director", "Experienced Manager", "Senior"]`
     ),
   functionCategories: z
     .array(z.string())
     .optional()
     .describe(
-      'Job function categories (e.g., ["Engineering", "Sales", "Marketing", "Finance", "Operations", "HR"])'
+      `Job function categories. Valid values: ${(PersonFunctionEnum._def.values as readonly string[]).join(', ')}. Examples: ["Engineering", "Sales", "Marketing", "Finance", "Operations", "Human Resources"]`
     ),
 
   // ===== COMPANY FILTERS =====
@@ -429,6 +435,12 @@ export class PeopleSearchTool extends ToolBubble<
     - Education: schoolName
     - Status: recentlyChangedJobs, minConnections, minYearsAtCompany
 
+    **SENIORITY LEVELS (valid values):**
+    ${(PersonSeniorityLevelEnum._def.values as readonly string[]).map((v) => `- ${v}`).join('\n    ')}
+
+    **FUNCTION CATEGORIES (valid values):**
+    ${(PersonFunctionEnum._def.values as readonly string[]).map((v) => `- ${v}`).join('\n    ')}
+
     **GEO RADIUS SEARCH:**
     Use locationRadius to find people within X miles of a location:
     - locationRadius: { location: "San Francisco", radiusMiles: 75 }
@@ -453,6 +465,7 @@ export class PeopleSearchTool extends ToolBubble<
     - schoolName: "Stanford", seniorityLevels: ["CXO", "Vice President"] → Stanford alum executives
     - recentlyChangedJobs: true, companyName: "Meta" → recent Meta hires (good for outreach)
     - minCompanyHeadcount: 1000, maxCompanyHeadcount: 5000 → mid-size company employees
+    - functionCategories: ["Engineering", "Product Management"], seniorityLevels: ["Director", "Vice President"] → engineering and product leaders
 
     **CREDITS:** 3 credits per 100 results returned
   `;
@@ -672,20 +685,28 @@ export class PeopleSearchTool extends ToolBubble<
       }
 
       // ===== SENIORITY & FUNCTION FILTERS =====
+      // Normalize user input to match valid API enum values (case-insensitive, aliases, fuzzy)
       if (seniorityLevels && seniorityLevels.length > 0) {
-        conditions.push({
-          column: 'current_employers.seniority_level',
-          type: 'in',
-          value: seniorityLevels,
-        });
+        const normalizedSeniority = normalizeSeniorityLevels(seniorityLevels);
+        if (normalizedSeniority.length > 0) {
+          conditions.push({
+            column: 'current_employers.seniority_level',
+            type: 'in',
+            value: normalizedSeniority,
+          });
+        }
       }
 
       if (functionCategories && functionCategories.length > 0) {
-        conditions.push({
-          column: 'current_employers.function_category',
-          type: 'in',
-          value: functionCategories,
-        });
+        const normalizedFunctions =
+          normalizeFunctionCategories(functionCategories);
+        if (normalizedFunctions.length > 0) {
+          conditions.push({
+            column: 'current_employers.function_category',
+            type: 'in',
+            value: normalizedFunctions,
+          });
+        }
       }
 
       // ===== COMPANY ATTRIBUTE FILTERS =====
@@ -1071,8 +1092,8 @@ export class PeopleSearchTool extends ToolBubble<
 
         const enrichmentId = find_email.data.enrichment_id;
 
-        // Poll until done (max 60 seconds)
-        const maxWaitMs = 60000;
+        // Poll until done (max 120 seconds)
+        const maxWaitMs = 120000;
         const pollIntervalMs = 3000;
         const startTime = Date.now();
 

@@ -542,6 +542,7 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
             {
               name: TOOL_NAMES.BUBBLE_DETAILS,
               credentials: this.params.credentials || {},
+              config: { includeLongDescription: true },
             },
             {
               name: TOOL_NAMES.TRIGGER_DETAILS,
