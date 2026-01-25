@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/ts-scope-manager",
-  "version": "0.1.34",
+  "version": "0.1.36",
   "private": false,
   "license": "MIT",
   "type": "commonjs",
