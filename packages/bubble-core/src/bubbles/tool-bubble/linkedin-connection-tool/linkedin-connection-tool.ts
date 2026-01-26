@@ -646,21 +646,71 @@ export class LinkedInConnectionTool<
     try {
       const info = (await this.evaluate(`
         (() => {
-          // Get profile name
-          const nameEl = document.querySelector('h1.text-heading-xlarge') ||
-                         document.querySelector('.pv-top-card--list li:first-child') ||
-                         document.querySelector('[data-generated-suggestion-target*="name"]');
-          const name = nameEl?.textContent?.trim() || '';
+          // Get profile name - try multiple strategies
+          let name = '';
 
-          // Get headline
-          const headlineEl = document.querySelector('.text-body-medium.break-words') ||
-                            document.querySelector('.pv-top-card--list-bullet li');
-          const headline = headlineEl?.textContent?.trim() || '';
+          // Strategy 1: h1 element (has obfuscated class but also standard classes)
+          const h1El = document.querySelector('h1');
+          if (h1El) {
+            name = h1El.textContent?.trim() || '';
+          }
 
-          // Get location
-          const locationEl = document.querySelector('.text-body-small.inline.t-black--light.break-words') ||
-                            document.querySelector('.pv-top-card--list:nth-child(2) li');
-          const location = locationEl?.textContent?.trim() || '';
+          // Strategy 2: Profile picture alt/title attribute
+          if (!name) {
+            const imgEl = document.querySelector('img.pv-top-card-profile-picture__image--show') ||
+                         document.querySelector('img[class*="pv-top-card-profile-picture"]');
+            if (imgEl) {
+              name = imgEl.getAttribute('alt') || imgEl.getAttribute('title') || '';
+            }
+          }
+
+          // Strategy 3: Extract from Connect button aria-label "Invite X to connect"
+          if (!name) {
+            const connectBtn = document.querySelector('button[aria-label*="to connect"]');
+            if (connectBtn) {
+              const ariaLabel = connectBtn.getAttribute('aria-label') || '';
+              const match = ariaLabel.match(/Invite (.+) to connect/i);
+              if (match) {
+                name = match[1];
+              }
+            }
+          }
+
+          // Get headline - div with text-body-medium break-words and data-generated-suggestion-target
+          let headline = '';
+          const headlineEl = document.querySelector('div.text-body-medium.break-words[data-generated-suggestion-target]') ||
+                            document.querySelector('div.text-body-medium.break-words');
+          if (headlineEl) {
+            headline = headlineEl.textContent?.trim() || '';
+          }
+
+          // Get location - span before Contact info link
+          let location = '';
+          const contactInfoLink = document.querySelector('a[href*="contact-info"]');
+          if (contactInfoLink) {
+            // Location is in a sibling or parent span
+            const parentSpan = contactInfoLink.closest('span');
+            if (parentSpan && parentSpan.previousElementSibling) {
+              location = parentSpan.previousElementSibling.textContent?.trim() || '';
+            }
+          }
+
+          // Fallback: look for location pattern in spans
+          if (!location) {
+            const spans = document.querySelectorAll('span');
+            for (const span of spans) {
+              const text = span.textContent?.trim() || '';
+              // Location usually contains comma-separated place names
+              if (text.includes(',') && !text.includes('@') && !text.includes('|') &&
+                  text.length < 100 && text.length > 5) {
+                // Check if it looks like a location (contains country/city patterns)
+                if (/(?:United|Kingdom|States|England|Germany|France|India|Canada|Australia|California|New York|London|Manchester)/i.test(text)) {
+                  location = text;
+                  break;
+                }
+              }
+            }
+          }
 
           return {
             name,
