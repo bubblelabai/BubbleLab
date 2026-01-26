@@ -491,6 +491,14 @@ export class AIAgentBubble extends ServiceBubble<
    * Modify params before execution - centralizes all param transformations
    */
   private beforeAction(): void {
+    // Enforce minimum maxTokens of 10000
+    if (
+      this.params.model.maxTokens === undefined ||
+      this.params.model.maxTokens < 10000
+    ) {
+      this.params.model.maxTokens = 10000;
+    }
+
     // Auto-enable JSON mode when expectedOutputSchema is provided
     if (this.params.expectedOutputSchema) {
       this.params.model.jsonMode = true;
