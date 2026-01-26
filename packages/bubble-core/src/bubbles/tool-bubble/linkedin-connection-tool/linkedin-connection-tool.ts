@@ -306,6 +306,117 @@ export class LinkedInConnectionTool<
   }
 
   /**
+   * Poll for an element using evaluate with retries
+   * More flexible than waitForSelector as it can use custom JS logic
+   */
+  private async pollForElement(
+    checkScript: string,
+    options: {
+      maxAttempts?: number;
+      intervalMs?: number;
+      description?: string;
+    } = {}
+  ): Promise<boolean> {
+    const {
+      maxAttempts = 15,
+      intervalMs = 1000,
+      description = 'element',
+    } = options;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const found = await this.evaluate(checkScript);
+      if (found) {
+        debugLog(
+          `[LinkedInConnectionTool] Found ${description} on attempt ${attempt}/${maxAttempts}`
+        );
+        return true;
+      }
+      debugLog(
+        `[LinkedInConnectionTool] Waiting for ${description}... attempt ${attempt}/${maxAttempts}`
+      );
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+
+    debugLog(
+      `[LinkedInConnectionTool] ${description} not found after ${maxAttempts} attempts`
+    );
+    return false;
+  }
+
+  /**
+   * Wait for page to be ready by checking for key LinkedIn profile elements
+   */
+  private async waitForProfilePageReady(): Promise<boolean> {
+    // Poll for either: profile name (h1), connect button, or "More" button
+    // This indicates the page has loaded enough for interaction
+    const checkScript = `
+      (() => {
+        // Check for profile name
+        const h1 = document.querySelector('h1');
+        if (h1 && h1.textContent?.trim()) return true;
+
+        // Check for Connect button
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+          if (ariaLabel.includes('connect') || text === 'connect') return true;
+          if (ariaLabel === 'more actions' || btn.id?.includes('profile-overflow-action')) return true;
+        }
+        return false;
+      })()
+    `;
+
+    return this.pollForElement(checkScript, {
+      maxAttempts: 20,
+      intervalMs: 500,
+      description: 'profile page elements',
+    });
+  }
+
+  /**
+   * Wait for modal/dialog to appear after clicking Connect
+   */
+  private async waitForConnectionModal(): Promise<boolean> {
+    const checkScript = `
+      (() => {
+        const buttons = document.querySelectorAll('button');
+        for (const btn of buttons) {
+          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+          // Look for "Add a note" or "Send without a note" buttons in the modal
+          if (text.includes('add a note') || text.includes('send without')) return true;
+        }
+        return false;
+      })()
+    `;
+
+    return this.pollForElement(checkScript, {
+      maxAttempts: 10,
+      intervalMs: 500,
+      description: 'connection modal',
+    });
+  }
+
+  /**
+   * Wait for dropdown menu to appear after clicking "More"
+   */
+  private async waitForDropdownMenu(): Promise<boolean> {
+    const checkScript = `
+      (() => {
+        // Check for dropdown content being visible
+        const dropdownItems = document.querySelectorAll('.artdeco-dropdown__item[role="button"], .artdeco-dropdown__content-inner [role="button"]');
+        return dropdownItems.length > 0;
+      })()
+    `;
+
+    return this.pollForElement(checkScript, {
+      maxAttempts: 10,
+      intervalMs: 300,
+      description: 'dropdown menu',
+    });
+  }
+
+  /**
    * Save current DOM state to file for debugging
    * Only saves when DEBUG env var is set
    */
@@ -362,8 +473,13 @@ export class LinkedInConnectionTool<
     // Navigate to profile page
     await this.navigateTo(profile_url);
 
-    // Wait for page to load
-    await new Promise((resolve) => setTimeout(resolve, 8000));
+    // Wait for page to be ready using polling instead of fixed timeout
+    const pageReady = await this.waitForProfilePageReady();
+    if (!pageReady) {
+      debugLog(
+        '[LinkedInConnectionTool] Profile page did not load in time, trying to continue anyway'
+      );
+    }
 
     // Save debug state after page load
     await this.saveDebugState('01-after-page-load');
@@ -446,7 +562,9 @@ export class LinkedInConnectionTool<
         debugLog(
           `[LinkedInConnectionTool] Clicked More button: id="${moreButtonResult.id}", aria-label="${moreButtonResult.ariaLabel}"`
         );
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait longer for dropdown to open
+
+        // Wait for dropdown menu to appear using polling
+        await this.waitForDropdownMenu();
 
         // Save debug state after clicking More button
         await this.saveDebugState('03-after-more-dropdown-open');
@@ -500,8 +618,13 @@ export class LinkedInConnectionTool<
       };
     }
 
-    // Wait for connection modal to appear
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Wait for connection modal to appear using polling
+    const modalReady = await this.waitForConnectionModal();
+    if (!modalReady) {
+      debugLog(
+        '[LinkedInConnectionTool] Connection modal did not appear, trying to continue anyway'
+      );
+    }
 
     // Check if we need to add a note or send without note
     if (message) {
@@ -526,7 +649,15 @@ export class LinkedInConnectionTool<
 
       if (addNoteResult.clicked) {
         debugLog('[LinkedInConnectionTool] Clicked Add a note button');
-        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Wait for textarea to appear
+        const textareaReady = await this.pollForElement(
+          `!!document.querySelector('#custom-message')`,
+          { maxAttempts: 10, intervalMs: 200, description: 'note textarea' }
+        );
+        if (!textareaReady) {
+          debugLog('[LinkedInConnectionTool] Note textarea did not appear');
+        }
 
         // Type the message into the textarea
         const typed = await this.typeText('#custom-message', message);
@@ -547,8 +678,18 @@ export class LinkedInConnectionTool<
         debugLog('[LinkedInConnectionTool] Typed note message');
       }
 
-      // Wait a moment before sending
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for Send button to be ready
+      await this.pollForElement(
+        `(() => {
+          const buttons = document.querySelectorAll('button');
+          for (const btn of buttons) {
+            const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+            if (text === 'send' && btn.classList.contains('artdeco-button--primary')) return true;
+          }
+          return false;
+        })()`,
+        { maxAttempts: 5, intervalMs: 200, description: 'Send button' }
+      );
 
       // Click Send button (after adding note)
       const sendResult = (await this.evaluate(`
@@ -612,8 +753,25 @@ export class LinkedInConnectionTool<
       debugLog('[LinkedInConnectionTool] Clicked Send without a note button');
     }
 
-    // Wait for request to be processed
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Wait for request to be processed by checking if modal closed or "Not now" prompt appears
+    await this.pollForElement(
+      `(() => {
+        // Check if modal has closed (no more Send buttons visible)
+        const sendButtons = document.querySelectorAll('button');
+        for (const btn of sendButtons) {
+          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+          if (text === 'send' || text.includes('send without')) return false;
+          // Also check for "Not now" prompt (success indicator)
+          if (text === 'not now') return true;
+        }
+        return true;  // Modal closed
+      })()`,
+      {
+        maxAttempts: 10,
+        intervalMs: 500,
+        description: 'connection request completion',
+      }
+    );
 
     // Handle "Not now" prompt if it appears (for adding to address book)
     await this.evaluate(`
