@@ -351,6 +351,12 @@ const PeopleSearchToolParamsSchema = z.object({
     .default(100)
     .optional()
     .describe('Maximum results to return (default: 100, max: 1000)'),
+  cursor: z
+    .string()
+    .optional()
+    .describe(
+      'Pagination cursor from previous response. Use to fetch the next page of results.'
+    ),
 
   // ===== EMAIL ENRICHMENT (requires FULLENRICH_API_KEY) =====
   enrichEmails: z
@@ -379,6 +385,12 @@ const PeopleSearchToolParamsSchema = z.object({
 const PeopleSearchToolResultSchema = z.object({
   people: z.array(PersonResultSchema).describe('List of people found'),
   totalCount: z.number().describe('Total number of people available'),
+  nextCursor: z
+    .string()
+    .optional()
+    .describe(
+      'Pagination cursor for fetching the next page. Pass this as the cursor parameter in the next request. Undefined when no more results are available.'
+    ),
   success: z.boolean().describe('Whether the operation was successful'),
   error: z.string().describe('Error message if operation failed'),
 });
@@ -526,6 +538,7 @@ export class PeopleSearchTool extends ToolBubble<
         excludeProfiles,
         // Pagination
         limit = 100,
+        cursor,
       } = this.params;
 
       // Validate at least one search criteria is provided
@@ -838,6 +851,7 @@ export class PeopleSearchTool extends ToolBubble<
           operation: 'person_search_db',
           filters,
           limit,
+          cursor,
           post_processing: postProcessing,
           credentials,
         },
@@ -882,6 +896,7 @@ export class PeopleSearchTool extends ToolBubble<
       return {
         people,
         totalCount: personSearchData.total_count || people.length,
+        nextCursor: personSearchData.next_cursor,
         success: true,
         error: '',
       };

@@ -363,7 +363,7 @@ export class LinkedInConnectionTool<
     await this.navigateTo(profile_url);
 
     // Wait for page to load
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 8000));
 
     // Save debug state after page load
     await this.saveDebugState('01-after-page-load');
