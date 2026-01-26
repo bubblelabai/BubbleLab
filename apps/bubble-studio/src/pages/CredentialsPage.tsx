@@ -89,6 +89,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.JIRA_CRED]: 'Jira',
     [CredentialType.ASHBY_CRED]: 'Ashby',
     [CredentialType.FULLENRICH_API_KEY]: 'FullEnrich',
+    [CredentialType.LINKEDIN_CRED]: 'LinkedIn',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

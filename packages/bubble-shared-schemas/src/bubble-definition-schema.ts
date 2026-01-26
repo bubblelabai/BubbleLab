@@ -48,6 +48,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.INSFORGE_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},
   [CredentialType.AMAZON_CRED]: {},
+  [CredentialType.LINKEDIN_CRED]: {},
   [CredentialType.CRUSTDATA_API_KEY]: {},
   [CredentialType.JIRA_CRED]: {},
   [CredentialType.ASHBY_CRED]: {},

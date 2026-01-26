@@ -149,6 +149,15 @@ export {
   type SearchResult,
   type ProductDetails,
 } from './bubbles/tool-bubble/amazon-shopping-tool/index.js';
+export {
+  LinkedInConnectionTool,
+  LinkedInConnectionToolParamsSchema,
+  LinkedInConnectionToolResultSchema,
+  type LinkedInConnectionToolParams,
+  type LinkedInConnectionToolParamsInput,
+  type LinkedInConnectionToolResult,
+  type ProfileInfo,
+} from './bubbles/tool-bubble/linkedin-connection-tool/index.js';
 export { CompanyEnrichmentTool } from './bubbles/tool-bubble/company-enrichment-tool.js';
 export type {
   Contact,

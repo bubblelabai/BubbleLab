@@ -255,6 +255,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Amazon Account',
       credentialConfigurations: {},
     },
+    [CredentialType.LINKEDIN_CRED]: {
+      label: 'LinkedIn',
+      description:
+        'Browser session authentication for LinkedIn automation (connections, messaging). Authenticate by logging into your LinkedIn account in a secure browser session.',
+      placeholder: '', // Not used for browser session auth
+      namePlaceholder: 'My LinkedIn Account',
+      credentialConfigurations: {},
+    },
     [CredentialType.JIRA_CRED]: {
       label: 'Jira',
       description:
@@ -325,6 +333,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
+  [CredentialType.LINKEDIN_CRED]: '', // Browser session credential, no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
@@ -656,6 +665,13 @@ export const BROWSER_SESSION_PROVIDERS: Record<
         targetUrl: 'https://www.amazon.com',
         cookieDomain: 'amazon',
       },
+      [CredentialType.LINKEDIN_CRED]: {
+        displayName: 'LinkedIn Account',
+        description:
+          'Log into LinkedIn to enable connection requests and messaging automation',
+        targetUrl: 'https://www.linkedin.com',
+        cookieDomain: 'linkedin',
+      },
     },
   },
 };
@@ -829,6 +845,12 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   jira: [CredentialType.JIRA_CRED],
   ashby: [CredentialType.ASHBY_CRED],
   fullenrich: [CredentialType.FULLENRICH_API_KEY],
+  'linkedin-connection-tool': [
+    CredentialType.LINKEDIN_CRED,
+    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
+    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
+    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+  ],
 };
 
 // POST /credentials - Create credential schema

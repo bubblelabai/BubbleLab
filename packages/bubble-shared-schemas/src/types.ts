@@ -51,6 +51,7 @@ export enum CredentialType {
 
   // Browser Session Credentials (BrowserBase-powered)
   AMAZON_CRED = 'AMAZON_CRED',
+  LINKEDIN_CRED = 'LINKEDIN_CRED',
   // Crustdata Credentials
   CRUSTDATA_API_KEY = 'CRUSTDATA_API_KEY',
 
@@ -123,4 +124,5 @@ export type BubbleName =
   | 'people-search-tool'
   | 'jira'
   | 'ashby'
-  | 'fullenrich';
+  | 'fullenrich'
+  | 'linkedin-connection-tool';

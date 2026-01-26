@@ -160,6 +160,7 @@ export class BubbleFactory {
       'notion',
       'insforge-db',
       'amazon-shopping-tool',
+      'linkedin-connection-tool',
       'company-enrichment-tool',
       'people-search-tool',
       'jira',
@@ -324,6 +325,9 @@ export class BubbleFactory {
     const { FullEnrichBubble } = await import(
       './bubbles/service-bubble/fullenrich/index.js'
     );
+    const { LinkedInConnectionTool } = await import(
+      './bubbles/tool-bubble/linkedin-connection-tool/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -454,6 +458,10 @@ export class BubbleFactory {
     this.register('jira', JiraBubble as BubbleClassWithMetadata);
     this.register('ashby', AshbyBubble as BubbleClassWithMetadata);
     this.register('fullenrich', FullEnrichBubble as BubbleClassWithMetadata);
+    this.register(
+      'linkedin-connection-tool',
+      LinkedInConnectionTool as BubbleClassWithMetadata
+    );
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -764,6 +772,7 @@ import {
   GoogleMapsTool, // bubble name: 'google-maps-tool'
   YouTubeTool, // bubble name: 'youtube-tool'
   AmazonShoppingTool, // bubble name: 'amazon-shopping-tool',
+  LinkedInConnectionTool, // bubble name: 'linkedin-connection-tool'
   PeopleSearchTool, // bubble name: 'people-search-tool'
 
   // Event Types (Import the one matching your trigger)
