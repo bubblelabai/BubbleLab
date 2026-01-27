@@ -40,6 +40,11 @@ export const organizationSchema = z
       example: 'my-team',
     }),
     type: orgTypeSchema,
+    domain: z.string().nullable().optional().openapi({
+      description:
+        'Email domain for auto-joining (e.g., "acme.com"). Users with matching email domains are automatically added as members.',
+      example: 'acme.com',
+    }),
     role: orgRoleSchema.openapi({
       description: "Current user's role in this organization",
     }),
@@ -118,6 +123,18 @@ export const createOrganizationSchema = z
         description: 'Organization slug for URLs',
         example: 'my-team',
       }),
+    domain: z
+      .string()
+      .regex(
+        /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i,
+        'Must be a valid domain (e.g., acme.com)'
+      )
+      .optional()
+      .openapi({
+        description:
+          'Email domain for auto-joining. Users with matching email domains are automatically added as members.',
+        example: 'acme.com',
+      }),
   })
   .openapi('CreateOrganizationRequest');
 
@@ -140,6 +157,19 @@ export const updateOrganizationSchema = z
       .openapi({
         description: 'Organization slug for URLs',
         example: 'my-team',
+      }),
+    domain: z
+      .string()
+      .regex(
+        /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i,
+        'Must be a valid domain (e.g., acme.com)'
+      )
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Email domain for auto-joining. Set to null to disable auto-join.',
+        example: 'acme.com',
       }),
   })
   .openapi('UpdateOrganizationRequest');

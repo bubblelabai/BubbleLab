@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/bubble-core",
-  "version": "0.1.44",
+  "version": "0.1.50",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",

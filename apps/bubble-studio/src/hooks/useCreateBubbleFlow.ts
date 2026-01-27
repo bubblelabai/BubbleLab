@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useAuth } from './useAuth';
 import type {
   CreateBubbleFlowResponse,
   BubbleFlowListResponse,
@@ -71,6 +72,7 @@ export function useCreateBubbleFlow(options?: {
   isEmpty?: boolean;
 }): UseCreateBubbleFlowResult | UseCreateEmptyBubbleFlowResult {
   const queryClient = useQueryClient();
+  const { userId } = useAuth();
   const isEmpty = options?.isEmpty || false;
 
   const mutation = useMutation({
@@ -111,6 +113,10 @@ export function useCreateBubbleFlow(options?: {
 
       // Optimistically update the flow list with new flow
       if (previousFlowList) {
+        // Get ownerId from existing flow or from auth context
+        const ownerId =
+          previousFlowList.bubbleFlows[0]?.ownerId || userId || 'unknown';
+
         const optimisticFlow: OptimisticBubbleFlowListItem = {
           id: tempId, // Temporary ID that will be replaced by real ID from server
           name: newFlow.name,
@@ -123,6 +129,7 @@ export function useCreateBubbleFlow(options?: {
           executionCount: 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          ownerId,
           // Include bubbles if provided (for duplication)
           bubbles: newFlow._optimisticBubbles,
           // Mark as loading for UI indication
@@ -190,6 +197,7 @@ export function useCreateBubbleFlow(options?: {
                 cronActive: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                ownerId: flow.ownerId, // Preserve ownerId from optimistic flow
                 // Preserve bubbles from optimistic update to prevent flash
                 bubbles: flow.bubbles,
                 // Remove loading state - flow is now real

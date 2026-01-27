@@ -355,6 +355,8 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
   // Scraping credentials
   CredentialType.APIFY_CRED,
   CredentialType.CRUSTDATA_API_KEY,
+  // Enrichment credentials
+  CredentialType.FULLENRICH_API_KEY,
 ]);
 
 /**

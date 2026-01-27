@@ -539,6 +539,16 @@ export const PRICING_TABLE: PricingTable = {
     unitCost: 0.03 * 1.05, // $0.03 per result with 1.05x markup (3 credits per 100 results)
   },
 
+  // BrowserBase Services - Browser Session Duration
+  // Note: Using AMAZON_CRED as service type with subService 'browserbase' as workaround
+  // TODO: Consider adding BROWSERBASE_CRED as a new CredentialType for proper tracking
+  // Pricing based on BrowserBase Developer plan: $0.12/browser hour = $0.002/minute
+  // With 1.05x markup: $0.0021 per minute
+  [getPricingKey(CredentialType.AMAZON_CRED, 'browserbase', 'per_minute')]: {
+    unit: 'per_minute',
+    unitCost: 0.0021, // $0.002 per minute (BrowserBase Developer plan rate) with 1.05x markup
+  },
+
   // Legacy entries for services without subService (fallback pricing)
   // These may be used if subService is not provided
   [getPricingKey(CredentialType.OPENAI_CRED, undefined, 'per_1m_tokens')]: {

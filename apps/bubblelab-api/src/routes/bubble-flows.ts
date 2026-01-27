@@ -90,6 +90,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
         updatedAt: true,
         originalCode: true,
         bubbleParameters: true,
+        userId: true,
       },
       with: {
         webhooks: {
@@ -149,6 +150,7 @@ app.openapi(listBubbleFlowsRoute, async (c) => {
       webhookFailureCount: flow.webhookFailureCount,
       executionCount: executionCountMap.get(flow.id) || 0,
       bubbles,
+      ownerId: flow.userId,
       createdAt: flow.createdAt.toISOString(),
       updatedAt: flow.updatedAt.toISOString(),
     };

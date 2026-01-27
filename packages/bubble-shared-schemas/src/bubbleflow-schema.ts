@@ -388,6 +388,10 @@ export const bubbleFlowListItemSchema = z.object({
     description: 'Organization ID this flow belongs to',
     example: 123,
   }),
+  ownerId: z.string().openapi({
+    description: 'User ID of the flow owner',
+    example: 'user_abc123',
+  }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
 });

@@ -310,8 +310,11 @@ export class FullEnrichBubble<
       cost?: { credits: number };
     }>(endpoint, 'GET');
 
-    return {
-      operation: 'get_enrichment_result',
+    const result: Extract<
+      FullEnrichResult,
+      { operation: 'get_enrichment_result' }
+    > = {
+      operation: 'get_enrichment_result' as const,
       success: true,
       id: response.id,
       name: response.name,
@@ -327,6 +330,54 @@ export class FullEnrichBubble<
       cost: response.cost,
       error: '',
     };
+
+    // Track usage: count emails found (work emails + personal emails)
+    if (
+      result.success &&
+      result.status === 'FINISHED' &&
+      result.results &&
+      this.context &&
+      this.context.logger
+    ) {
+      const logger = this.context.logger;
+      let emailCount = 0;
+      for (const record of result.results) {
+        const contact = record.contact as
+          | {
+              emails?: Array<{ email?: string }>;
+              personal_emails?: Array<{ email?: string }>;
+            }
+          | undefined;
+        if (contact) {
+          // Count work emails
+          if (Array.isArray(contact.emails)) {
+            emailCount += contact.emails.length;
+          }
+          // Count personal emails
+          if (Array.isArray(contact.personal_emails)) {
+            emailCount += contact.personal_emails.length;
+          }
+        }
+      }
+
+      if (emailCount > 0) {
+        logger.logTokenUsage(
+          {
+            usage: emailCount,
+            service: CredentialType.FULLENRICH_API_KEY,
+            unit: 'per_email',
+          },
+          `FullEnrich enrichment: ${emailCount} email(s) found`,
+          {
+            bubbleName: 'fullenrich',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -386,8 +437,11 @@ export class FullEnrichBubble<
       cost?: { credits: number };
     }>(`/contact/reverse/email/bulk/${reverse_email_id}`, 'GET');
 
-    return {
-      operation: 'get_reverse_email_result',
+    const result: Extract<
+      FullEnrichResult,
+      { operation: 'get_reverse_email_result' }
+    > = {
+      operation: 'get_reverse_email_result' as const,
       success: true,
       id: response.id,
       name: response.name,
@@ -403,6 +457,42 @@ export class FullEnrichBubble<
       cost: response.cost,
       error: '',
     };
+
+    // Track usage: count successful matches (emails with contact data found)
+    if (
+      result.success &&
+      result.status === 'FINISHED' &&
+      result.results &&
+      this.context &&
+      this.context.logger
+    ) {
+      const logger = this.context.logger;
+      let matchCount = 0;
+      for (const record of result.results) {
+        // Count as a match if contact data was found
+        if (record.contact) {
+          matchCount += 1;
+        }
+      }
+
+      if (matchCount > 0) {
+        logger.logTokenUsage(
+          {
+            usage: matchCount,
+            service: CredentialType.FULLENRICH_API_KEY,
+            unit: 'per_email',
+          },
+          `FullEnrich reverse email lookup: ${matchCount} match(es) found`,
+          {
+            bubbleName: 'fullenrich',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+    }
+
+    return result;
   }
 
   /**

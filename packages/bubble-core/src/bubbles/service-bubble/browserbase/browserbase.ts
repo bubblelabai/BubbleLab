@@ -31,6 +31,7 @@ interface ActiveSession {
   browser: Browser;
   page: Page;
   connectUrl: string;
+  startTime: number; // Timestamp when session was created (for cost tracking)
 }
 
 /**
@@ -56,6 +57,27 @@ interface BrowserBaseContextResponse {
  */
 interface BrowserBaseDebugResponse {
   debuggerFullscreenUrl: string;
+}
+
+/**
+ * BrowserBase Session update response from API
+ */
+interface BrowserBaseSessionUpdateResponse {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  projectId: string;
+  startedAt: string;
+  endedAt: string | null;
+  expiresAt: string;
+  status: string;
+  proxyBytes: number;
+  avgCpuUsage: number;
+  memoryUsage: number;
+  keepAlive: boolean;
+  contextId?: string;
+  region: string;
+  userMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -435,13 +457,14 @@ export class BrowserBaseBubble<
       `/sessions/${sessionId}/debug`
     );
 
-    // Store session
+    // Store session with start time for cost tracking
     BrowserBaseBubble.activeSessions.set(sessionId, {
       sessionId,
       contextId,
       browser,
       page,
       connectUrl,
+      startTime: Date.now(),
     });
 
     // Emit browser session start event for live viewing in UI
@@ -782,6 +805,51 @@ export class BrowserBaseBubble<
     }
 
     try {
+      // Disconnect browser first
+      await session.browser.disconnect();
+
+      // Release session via API and get the updated session data
+      const sessionUpdateResponse =
+        await this.browserbaseApi<BrowserBaseSessionUpdateResponse>(
+          `/sessions/${params.session_id}`,
+          'POST',
+          {
+            projectId: this.getConfig()?.projectId,
+            status: 'REQUEST_RELEASE',
+          }
+        );
+
+      // Calculate session duration from API response (most accurate)
+      // Use endedAt if available, otherwise use updatedAt as fallback
+      const endTime = sessionUpdateResponse.endedAt
+        ? new Date(sessionUpdateResponse.endedAt).getTime()
+        : new Date(sessionUpdateResponse.updatedAt).getTime();
+      const startTime = new Date(sessionUpdateResponse.startedAt).getTime();
+      const sessionDurationMs = endTime - startTime;
+      const sessionDurationMinutes = Math.max(
+        0,
+        sessionDurationMs / (1000 * 60)
+      ); // Ensure non-negative
+
+      // Track service usage for browser session duration based on API response
+      // Using AMAZON_CRED as service type with subService 'browserbase' to distinguish
+      // TODO: Consider adding BROWSERBASE_CRED as a new CredentialType for proper tracking
+      if (this.context?.logger && sessionDurationMinutes > 0) {
+        this.context.logger.addServiceUsage(
+          {
+            service: CredentialType.AMAZON_CRED, // Using AMAZON_CRED as workaround - BrowserBase doesn't have its own CredentialType
+            subService: 'browserbase',
+            unit: 'per_minute',
+            usage: sessionDurationMinutes,
+          },
+          this.context.variableId
+        );
+
+        console.log(
+          `[BrowserBaseBubble] Tracked session duration: ${sessionDurationMinutes.toFixed(2)} minutes (from API: startedAt=${sessionUpdateResponse.startedAt}, endedAt=${sessionUpdateResponse.endedAt || sessionUpdateResponse.updatedAt}) for session ${params.session_id}`
+        );
+      }
+
       // Emit browser session end event before closing
       if (this.context?.logger) {
         this.context.logger.logBrowserSessionEnd(
@@ -789,15 +857,6 @@ export class BrowserBaseBubble<
           this.context.variableId
         );
       }
-
-      // Disconnect browser
-      await session.browser.disconnect();
-
-      // Release session via API
-      await this.browserbaseApi(`/sessions/${params.session_id}`, 'POST', {
-        projectId: this.getConfig()?.projectId,
-        status: 'REQUEST_RELEASE',
-      });
 
       // Remove from active sessions
       BrowserBaseBubble.activeSessions.delete(params.session_id);
