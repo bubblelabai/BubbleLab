@@ -368,8 +368,8 @@ export class LinkedInConnectionTool<
     `;
 
     return this.pollForElement(checkScript, {
-      maxAttempts: 20,
-      intervalMs: 500,
+      maxAttempts: 15,
+      intervalMs: 1500,
       description: 'profile page elements',
     });
   }
@@ -391,8 +391,8 @@ export class LinkedInConnectionTool<
     `;
 
     return this.pollForElement(checkScript, {
-      maxAttempts: 10,
-      intervalMs: 500,
+      maxAttempts: 8,
+      intervalMs: 1500,
       description: 'connection modal',
     });
   }
@@ -410,8 +410,8 @@ export class LinkedInConnectionTool<
     `;
 
     return this.pollForElement(checkScript, {
-      maxAttempts: 10,
-      intervalMs: 300,
+      maxAttempts: 8,
+      intervalMs: 1000,
       description: 'dropdown menu',
     });
   }
@@ -653,7 +653,7 @@ export class LinkedInConnectionTool<
         // Wait for textarea to appear
         const textareaReady = await this.pollForElement(
           `!!document.querySelector('#custom-message')`,
-          { maxAttempts: 10, intervalMs: 200, description: 'note textarea' }
+          { maxAttempts: 8, intervalMs: 500, description: 'note textarea' }
         );
         if (!textareaReady) {
           debugLog('[LinkedInConnectionTool] Note textarea did not appear');
@@ -688,7 +688,7 @@ export class LinkedInConnectionTool<
           }
           return false;
         })()`,
-        { maxAttempts: 5, intervalMs: 200, description: 'Send button' }
+        { maxAttempts: 5, intervalMs: 500, description: 'Send button' }
       );
 
       // Click Send button (after adding note)
@@ -767,8 +767,8 @@ export class LinkedInConnectionTool<
         return true;  // Modal closed
       })()`,
       {
-        maxAttempts: 10,
-        intervalMs: 500,
+        maxAttempts: 8,
+        intervalMs: 1500,
         description: 'connection request completion',
       }
     );
