@@ -1057,3 +1057,315 @@ export function formatAggregatedDifferencesDetailed(
 
   return lines.join('\n');
 }
+
+/**
+ * Format a unified diff-style view showing expected schema vs actual data
+ * with +/- markers for missing/extra fields
+ *
+ * @param schema - The expected Zod schema
+ * @param data - The actual data received
+ * @param diff - Pre-computed schema difference (optional, will compute if not provided)
+ * @returns Formatted string with expected vs actual comparison
+ */
+export function formatSchemaExpectedVsActual(
+  schema: z.ZodTypeAny,
+  data: unknown,
+  diff?: SchemaDifference
+): string {
+  // Handle discriminated unions by extracting the appropriate variant
+  let effectiveSchema = schema;
+  let discriminatorInfo = '';
+
+  // Unwrap effects/optional/nullable/default to check for discriminated union
+  let unwrappedSchema = schema;
+  while (unwrappedSchema instanceof z.ZodEffects) {
+    unwrappedSchema = unwrappedSchema._def.schema;
+  }
+  if (unwrappedSchema instanceof z.ZodOptional) {
+    unwrappedSchema = unwrappedSchema._def.innerType;
+  }
+  if (unwrappedSchema instanceof z.ZodNullable) {
+    unwrappedSchema = unwrappedSchema._def.innerType;
+  }
+  if (unwrappedSchema instanceof z.ZodDefault) {
+    unwrappedSchema = unwrappedSchema._def.innerType;
+  }
+
+  // Check if it's a discriminated union and extract the variant
+  if (
+    unwrappedSchema instanceof z.ZodDiscriminatedUnion &&
+    typeof data === 'object' &&
+    data !== null
+  ) {
+    const discriminator = unwrappedSchema._def.discriminator as string;
+    const discriminatorValue = (data as Record<string, unknown>)[discriminator];
+
+    if (typeof discriminatorValue === 'string') {
+      const variant = extractUnionVariant(schema, discriminatorValue);
+      if (variant) {
+        effectiveSchema = variant;
+        discriminatorInfo = ` (variant: ${discriminator}="${discriminatorValue}")`;
+      }
+    }
+  }
+
+  const schemaDiff = diff ?? compareWithSchema(effectiveSchema, data);
+  const lines: string[] = [];
+
+  lines.push(`Schema Validation Diff${discriminatorInfo}`);
+  lines.push('='.repeat(60));
+  lines.push('');
+
+  // Build sets for quick lookup
+  const missingRequired = new Set(
+    schemaDiff.missingRequiredFields.map((f) => f.path)
+  );
+  const missingOptional = new Set(
+    schemaDiff.missingOptionalFields.map((f) => f.path)
+  );
+  const extraFields = new Set(schemaDiff.extraFields.map((f) => f.path));
+  const typeMismatches = new Map(
+    schemaDiff.typeMismatches.map((m) => [m.path, m])
+  );
+
+  // Collect nested missing/extra fields
+  const collectNestedPaths = (
+    nested: Record<string, SchemaDifference>,
+    prefix = ''
+  ): void => {
+    for (const [key, nestedDiff] of Object.entries(nested)) {
+      const nestedPrefix = prefix ? `${prefix}.${key}` : key;
+      for (const f of nestedDiff.missingRequiredFields) {
+        missingRequired.add(f.path);
+      }
+      for (const f of nestedDiff.missingOptionalFields) {
+        missingOptional.add(f.path);
+      }
+      for (const f of nestedDiff.extraFields) {
+        extraFields.add(f.path);
+      }
+      for (const m of nestedDiff.typeMismatches) {
+        typeMismatches.set(m.path, m);
+      }
+      collectNestedPaths(nestedDiff.nestedDifferences, nestedPrefix);
+    }
+  };
+  collectNestedPaths(schemaDiff.nestedDifferences);
+
+  // Generate expected schema structure with markers
+  lines.push(`Expected Schema${discriminatorInfo}:`);
+  lines.push('-'.repeat(40));
+  const expectedLines = generateExpectedSchemaWithMarkers(
+    effectiveSchema,
+    missingRequired,
+    missingOptional,
+    typeMismatches
+  );
+  lines.push(...expectedLines);
+  lines.push('');
+
+  // Generate actual data structure with markers
+  lines.push('Actual Data (received):');
+  lines.push('-'.repeat(40));
+  const actualLines = generateActualDataWithMarkers(
+    data,
+    extraFields,
+    missingRequired,
+    typeMismatches
+  );
+  lines.push(...actualLines);
+  lines.push('');
+
+  // Summary
+  lines.push('Legend:');
+  lines.push('  - field    Missing from actual data (expected but not found)');
+  lines.push('  + field    Extra in actual data (not in schema)');
+  lines.push('  ! field    Type mismatch');
+  lines.push('  ✓ field    Matches schema');
+
+  return lines.join('\n');
+}
+
+/**
+ * Generate expected schema structure with diff markers
+ */
+function generateExpectedSchemaWithMarkers(
+  schema: z.ZodTypeAny,
+  missingRequired: Set<string>,
+  missingOptional: Set<string>,
+  typeMismatches: Map<string, TypeMismatch>,
+  indent = 1,
+  basePath = ''
+): string[] {
+  const lines: string[] = [];
+  const pad = '  '.repeat(indent);
+  const schemaFields = extractSchemaFields(schema);
+
+  for (const [fieldName, fieldInfo] of schemaFields) {
+    const fullPath = basePath ? `${basePath}.${fieldName}` : fieldName;
+    const expectedType = getExpectedType(fieldInfo.schema);
+    const optionalMarker = fieldInfo.isOptional ? '?' : '';
+
+    // Determine the status marker
+    let marker = '  ';
+    let status = '';
+    if (missingRequired.has(fullPath)) {
+      marker = '- ';
+      status = ' ← MISSING (required)';
+    } else if (missingOptional.has(fullPath)) {
+      marker = '- ';
+      status = ' ← MISSING (optional)';
+    } else if (typeMismatches.has(fullPath)) {
+      const mismatch = typeMismatches.get(fullPath)!;
+      marker = '! ';
+      status = ` ← TYPE MISMATCH (got ${mismatch.actualType})`;
+    } else {
+      marker = '✓ ';
+    }
+
+    // Check if it's a nested object
+    let innerSchema = fieldInfo.schema;
+    if (innerSchema instanceof z.ZodOptional) {
+      innerSchema = innerSchema._def.innerType;
+    }
+    if (innerSchema instanceof z.ZodNullable) {
+      innerSchema = innerSchema._def.innerType;
+    }
+    if (innerSchema instanceof z.ZodDefault) {
+      innerSchema = innerSchema._def.innerType;
+    }
+
+    if (innerSchema instanceof z.ZodObject) {
+      lines.push(`${marker}${pad}${fieldName}${optionalMarker}: {${status}`);
+      lines.push(
+        ...generateExpectedSchemaWithMarkers(
+          innerSchema,
+          missingRequired,
+          missingOptional,
+          typeMismatches,
+          indent + 1,
+          fullPath
+        )
+      );
+      lines.push(`  ${pad}}`);
+    } else if (innerSchema instanceof z.ZodArray) {
+      const elementSchema = innerSchema._def.type;
+      if (elementSchema instanceof z.ZodObject) {
+        lines.push(
+          `${marker}${pad}${fieldName}${optionalMarker}: Array<{${status}`
+        );
+        lines.push(
+          ...generateExpectedSchemaWithMarkers(
+            elementSchema,
+            missingRequired,
+            missingOptional,
+            typeMismatches,
+            indent + 1,
+            fullPath
+          )
+        );
+        lines.push(`  ${pad}}>`);
+      } else {
+        const elementType = getExpectedType(elementSchema);
+        lines.push(
+          `${marker}${pad}${fieldName}${optionalMarker}: Array<${elementType}>${status}`
+        );
+      }
+    } else {
+      lines.push(
+        `${marker}${pad}${fieldName}${optionalMarker}: ${expectedType}${status}`
+      );
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * Generate actual data structure with diff markers
+ */
+function generateActualDataWithMarkers(
+  data: unknown,
+  extraFields: Set<string>,
+  missingRequired: Set<string>,
+  typeMismatches: Map<string, TypeMismatch>,
+  indent = 1,
+  basePath = ''
+): string[] {
+  const lines: string[] = [];
+  const pad = '  '.repeat(indent);
+
+  if (typeof data !== 'object' || data === null) {
+    lines.push(`${pad}(not an object: ${getTypeName(data)})`);
+    return lines;
+  }
+
+  const dataObj = data as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(dataObj)) {
+    const fullPath = basePath ? `${basePath}.${key}` : key;
+    const actualType = getTypeName(value);
+
+    // Determine the status marker
+    let marker = '  ';
+    let status = '';
+    if (extraFields.has(fullPath)) {
+      marker = '+ ';
+      status = ' ← EXTRA (not in schema)';
+    } else if (typeMismatches.has(fullPath)) {
+      const mismatch = typeMismatches.get(fullPath)!;
+      marker = '! ';
+      status = ` ← expected ${mismatch.expectedType}`;
+    } else if (!missingRequired.has(fullPath)) {
+      marker = '✓ ';
+    }
+
+    // Format value preview
+    let valuePreview = '';
+    if (actualType === 'object') {
+      lines.push(`${marker}${pad}${key}: {${status}`);
+      lines.push(
+        ...generateActualDataWithMarkers(
+          value,
+          extraFields,
+          missingRequired,
+          typeMismatches,
+          indent + 1,
+          fullPath
+        )
+      );
+      lines.push(`  ${pad}}`);
+      continue;
+    } else if (actualType === 'array') {
+      const arr = value as unknown[];
+      if (arr.length > 0 && typeof arr[0] === 'object' && arr[0] !== null) {
+        lines.push(`${marker}${pad}${key}: Array(${arr.length}) [{${status}`);
+        lines.push(
+          ...generateActualDataWithMarkers(
+            arr[0],
+            extraFields,
+            missingRequired,
+            typeMismatches,
+            indent + 1,
+            fullPath
+          )
+        );
+        lines.push(`  ${pad}}]`);
+        continue;
+      } else {
+        valuePreview = `Array(${arr.length})`;
+      }
+    } else if (actualType === 'string') {
+      const str = value as string;
+      valuePreview = str.length > 30 ? `"${str.slice(0, 30)}..."` : `"${str}"`;
+    } else {
+      valuePreview = String(value);
+    }
+
+    lines.push(
+      `${marker}${pad}${key}: ${actualType} = ${valuePreview}${status}`
+    );
+  }
+
+  return lines;
+}

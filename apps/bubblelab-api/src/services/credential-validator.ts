@@ -200,6 +200,9 @@ export class CredentialValidator {
         baseParams.operation = 'list_candidates';
         baseParams.limit = 1;
         break;
+      case CredentialType.STRIPE_CRED:
+        baseParams.operation = 'get_balance';
+        break;
       default:
         break;
     }

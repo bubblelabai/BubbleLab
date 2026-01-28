@@ -166,6 +166,7 @@ export class BubbleFactory {
       'jira',
       'ashby',
       'fullenrich',
+      'stripe',
     ];
   }
 
@@ -328,6 +329,9 @@ export class BubbleFactory {
     const { LinkedInConnectionTool } = await import(
       './bubbles/tool-bubble/linkedin-connection-tool/index.js'
     );
+    const { StripeBubble } = await import(
+      './bubbles/service-bubble/stripe/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -462,6 +466,7 @@ export class BubbleFactory {
       'linkedin-connection-tool',
       LinkedInConnectionTool as BubbleClassWithMetadata
     );
+    this.register('stripe', StripeBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -758,6 +763,7 @@ import {
   JiraBubble, // bubble name: 'jira'
   AshbyBubble, // bubble name: 'ashby'
   FullEnrichBubble, // bubble name: 'fullenrich'
+  StripeBubble, // bubble name: 'stripe'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

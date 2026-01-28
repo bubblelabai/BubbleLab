@@ -287,6 +287,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My FullEnrich API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.STRIPE_CRED]: {
+      label: 'Stripe',
+      description:
+        'Stripe API secret key for payment processing (sk_live_... or sk_test_...)',
+      placeholder: 'sk_...',
+      namePlaceholder: 'My Stripe API Key',
+      credentialConfigurations: {},
+    },
   } as const satisfies Record<CredentialType, CredentialConfig>;
 
 /**
@@ -338,6 +346,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
   [CredentialType.FULLENRICH_API_KEY]: 'FULLENRICH_API_KEY',
+  [CredentialType.STRIPE_CRED]: 'STRIPE_SECRET_KEY',
 };
 
 /** Used by bubblelab studio */
@@ -853,6 +862,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.CLOUDFLARE_R2_SECRET_KEY,
     CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   ],
+  stripe: [CredentialType.STRIPE_CRED],
 };
 
 // POST /credentials - Create credential schema

@@ -63,6 +63,9 @@ export enum CredentialType {
 
   // FullEnrich Credentials
   FULLENRICH_API_KEY = 'FULLENRICH_API_KEY',
+
+  // Stripe Credentials
+  STRIPE_CRED = 'STRIPE_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -125,4 +128,5 @@ export type BubbleName =
   | 'jira'
   | 'ashby'
   | 'fullenrich'
-  | 'linkedin-connection-tool';
+  | 'linkedin-connection-tool'
+  | 'stripe';

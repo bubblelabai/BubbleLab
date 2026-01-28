@@ -53,6 +53,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.JIRA_CRED]: {},
   [CredentialType.ASHBY_CRED]: {},
   [CredentialType.FULLENRICH_API_KEY]: {},
+  [CredentialType.STRIPE_CRED]: {},
 };
 
 // Fixed list of bubble names that need context injection

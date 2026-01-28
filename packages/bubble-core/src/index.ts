@@ -76,6 +76,14 @@ export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
 export type { AshbyParamsInput } from './bubbles/service-bubble/ashby/index.js';
 export { FullEnrichBubble } from './bubbles/service-bubble/fullenrich/index.js';
 export type { FullEnrichParamsInput } from './bubbles/service-bubble/fullenrich/index.js';
+export {
+  StripeBubble,
+  StripeParamsSchema,
+  StripeResultSchema,
+  type StripeParams,
+  type StripeParamsInput,
+  type StripeResult,
+} from './bubbles/service-bubble/stripe/index.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';

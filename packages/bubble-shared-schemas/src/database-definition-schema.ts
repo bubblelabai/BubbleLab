@@ -101,6 +101,17 @@ export const jiraOAuthMetadataSchema = z.object({
 export type JiraOAuthMetadata = z.infer<typeof jiraOAuthMetadataSchema>;
 
 /**
+ * Stripe Apps OAuth metadata - stored after OAuth callback
+ */
+export const stripeOAuthMetadataSchema = z.object({
+  stripeUserId: z.string(), // Connected account ID (acct_xxx)
+  stripePublishableKey: z.string(), // Publishable key (pk_live_xxx or pk_test_xxx)
+  livemode: z.boolean(), // true = production, false = test mode
+});
+
+export type StripeOAuthMetadata = z.infer<typeof stripeOAuthMetadataSchema>;
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials

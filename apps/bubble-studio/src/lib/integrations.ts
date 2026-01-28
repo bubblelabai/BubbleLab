@@ -37,6 +37,7 @@ export const SERVICE_LOGOS: Readonly<Record<string, string>> = Object.freeze({
   Jira: '/integrations/jira.png',
   Ashby: '/integrations/ashby.png',
   FullEnrich: '/integrations/fullenrich.png',
+  Stripe: '/integrations/stripe.svg',
 
   // AI models (also used as fallbacks for vendor names)
   GPT: '/integrations/gpt.svg',
@@ -87,6 +88,7 @@ export const INTEGRATIONS: IntegrationLogo[] = [
   { name: 'Jira', file: SERVICE_LOGOS['Jira'] },
   { name: 'Ashby', file: SERVICE_LOGOS['Ashby'] },
   { name: 'FullEnrich', file: SERVICE_LOGOS['FullEnrich'] },
+  { name: 'Stripe', file: SERVICE_LOGOS['Stripe'] },
 ];
 
 // Scraping services (Apify actors and general web scraping)
@@ -168,6 +170,8 @@ const NAME_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   'fullenrich-bubble': 'FullEnrich',
   'full-enrich': 'FullEnrich',
   enrich: 'FullEnrich',
+  stripe: 'Stripe',
+  'stripe-bubble': 'Stripe',
   'research-agent': 'Research Agent',
   'research-agent-tool': 'Research Agent',
   research: 'Research Agent',
@@ -305,6 +309,7 @@ export function findLogoForBubble(
     [/\bjira\b/, 'Jira'],
     [/\bashby\b/, 'Ashby'],
     [/\bfullenrich\b|\bfull-enrich\b|\benrich\b/, 'FullEnrich'],
+    [/\bstripe\b/, 'Stripe'],
   ];
 
   const allLogos = { ...SERVICE_LOGOS, ...TOOL_LOGOS };

@@ -317,6 +317,9 @@ export class OAuthService {
         jiraMetadata = await this.fetchJiraCloudId(token.accessToken);
       }
 
+      // Determine which provider metadata to pass
+      const providerMetadata = jiraMetadata;
+
       // Store token in database
       const credentialId = await this.storeOAuthToken(
         stateData.userId,
@@ -325,7 +328,7 @@ export class OAuthService {
         token,
         stateData.scopes,
         stateData.credentialName || credentialName,
-        jiraMetadata
+        providerMetadata
       );
 
       return { credentialId, token };

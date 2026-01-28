@@ -14,6 +14,7 @@ import {
   BubbleExecutionError,
 } from './bubble-errors.js';
 import { sanitizeParams } from '@bubblelab/shared-schemas';
+import { formatSchemaExpectedVsActual } from '../utils/schema-comparison.js';
 
 /**
  * Abstract base class for all bubble types
@@ -291,6 +292,27 @@ export abstract class BaseBubble<
           validationError instanceof z.ZodError
             ? `Result schema validation failed: ${validationError.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`
             : `Result validation failed: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`;
+
+        // Generate schema comparison for detailed debugging
+        const diffReport = formatSchemaExpectedVsActual(
+          this.resultSchema,
+          result
+        );
+        const detailedError = `${errorMessage}\n\n${diffReport}`;
+
+        // Log the validation error before throwing
+        logger?.logBubbleExecutionComplete(
+          this.context?.variableId ?? -999,
+          this.name,
+          this.name,
+          {
+            success: false,
+            error: detailedError,
+            executionId: randomUUID(),
+            timestamp: new Date(),
+          }
+        );
+        logger?.error(`[${this.name}] ${detailedError}`);
 
         throw new BubbleValidationError(errorMessage, {
           variableId: this.context?.variableId,
