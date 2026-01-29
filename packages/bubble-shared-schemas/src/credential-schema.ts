@@ -380,7 +380,12 @@ export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
 /**
  * OAuth provider names - type-safe provider identifiers
  */
-export type OAuthProvider = 'google' | 'followupboss' | 'notion' | 'jira';
+export type OAuthProvider =
+  | 'google'
+  | 'followupboss'
+  | 'notion'
+  | 'jira'
+  | 'slack';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -577,6 +582,58 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       audience: 'api.atlassian.com',
       prompt: 'consent',
     },
+  },
+  slack: {
+    name: 'slack',
+    displayName: 'Slack',
+    credentialTypes: {
+      [CredentialType.SLACK_CRED]: {
+        displayName: 'Slack Workspace',
+        defaultScopes: [
+          'chat:write',
+          'channels:read',
+          'channels:history',
+          'app_mentions:read',
+          'users:read',
+          'team:read',
+        ],
+        description:
+          'Connect to your Slack workspace for sending messages, reading channels, and receiving mentions',
+        scopeDescriptions: [
+          {
+            scope: 'chat:write',
+            description: 'Send messages as the app',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'channels:read',
+            description: 'View basic information about public channels',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'channels:history',
+            description: 'View messages and content in public channels',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'app_mentions:read',
+            description: 'View messages that mention the app',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'users:read',
+            description: 'View people in the workspace',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'team:read',
+            description: 'View workspace information',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    // Slack doesn't require special authorization params
   },
 };
 
