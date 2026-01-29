@@ -600,22 +600,41 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'chat:write',
           'chat:write.public',
           'chat:write.customize',
-          // Channels & Conversations
+          // Channels & Conversations - Read
           'channels:read',
-          'channels:join',
           'groups:read',
           'im:read',
           'mpim:read',
+          // Channels & Conversations - Write
+          'channels:join',
+          'channels:manage',
+          'channels:write.invites',
+          'channels:write.topic',
+          'groups:write',
+          'groups:write.invites',
+          'groups:write.topic',
+          'im:write',
+          'im:write.topic',
+          'mpim:write',
+          'mpim:write.topic',
           // Users & Team
           'users:read',
           'users:read.email',
+          'users:write',
+          'users.profile:read',
           'team:read',
+          'usergroups:read',
+          'usergroups:write',
+          'dnd:read',
           // Reactions
           'reactions:read',
           'reactions:write',
           // Files
           'files:read',
           'files:write',
+          'remote_files:read',
+          'remote_files:write',
+          'remote_files:share',
           // Pins & Bookmarks
           'pins:read',
           'pins:write',
@@ -624,18 +643,47 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           // Links
           'links:read',
           'links:write',
-          // Emoji
+          'links.embed:write',
+          // Canvases & Lists
+          'canvases:read',
+          'canvases:write',
+          'lists:read',
+          'lists:write',
+          // Calls
+          'calls:read',
+          'calls:write',
+          // Reminders
+          'reminders:read',
+          'reminders:write',
+          // Slack Connect
+          'conversations.connect:read',
+          'conversations.connect:write',
+          'conversations.connect:manage',
+          // Triggers & Commands
+          'triggers:read',
+          'triggers:write',
+          'commands',
+          // Metadata & Emoji
+          'metadata.message:read',
           'emoji:read',
+          // Assistant
+          'assistant:write',
           // Webhooks
           'incoming-webhook',
+          // Search
+          'search:read.files',
+          'search:read.public',
+          'search:read.users',
+          // Team Preferences
+          'team.preferences:read',
         ],
         description:
-          'Connect to your Slack workspace for messaging, file sharing, and workflow automation',
+          'Connect to your Slack workspace for full messaging, file sharing, and workflow automation capabilities',
         scopeDescriptions: [
           // Messaging - Read
           {
             scope: 'app_mentions:read',
-            description: 'Receive notifications when someone @mentions the bot',
+            description: 'Receive @mentions of the bot',
             defaultEnabled: true,
           },
           {
@@ -645,8 +693,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           },
           {
             scope: 'groups:history',
-            description:
-              'Read messages in private channels where bot is invited',
+            description: 'Read messages in private channels',
             defaultEnabled: true,
           },
           {
@@ -656,13 +703,13 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           },
           {
             scope: 'mpim:history',
-            description: 'Read group DMs where bot is included',
+            description: 'Read group DMs with the bot',
             defaultEnabled: true,
           },
           // Messaging - Write
           {
             scope: 'chat:write',
-            description: 'Send messages to channels where bot is invited',
+            description: 'Send messages to channels',
             defaultEnabled: true,
           },
           {
@@ -672,72 +719,163 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           },
           {
             scope: 'chat:write.customize',
-            description: 'Customize bot message appearance (username & avatar)',
+            description: 'Customize bot username and avatar',
             defaultEnabled: false,
           },
-          // Channels & Conversations
+          // Channels - Read
           {
             scope: 'channels:read',
-            description: 'View list of public channels',
+            description: 'View public channels list',
             defaultEnabled: true,
           },
           {
-            scope: 'channels:join',
-            description: 'Join public channels automatically',
-            defaultEnabled: false,
-          },
-          {
             scope: 'groups:read',
-            description: 'View private channels where bot is member',
+            description: 'View private channels list',
             defaultEnabled: true,
           },
           {
             scope: 'im:read',
-            description: 'View direct message conversations',
+            description: 'View direct messages list',
             defaultEnabled: true,
           },
           {
             scope: 'mpim:read',
-            description: 'View group DM conversations',
+            description: 'View group DMs list',
             defaultEnabled: true,
+          },
+          // Channels - Write
+          {
+            scope: 'channels:join',
+            description: 'Join public channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'channels:manage',
+            description: 'Create and archive public channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'channels:write.invites',
+            description: 'Invite users to public channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'channels:write.topic',
+            description: 'Set public channel topics',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'groups:write',
+            description: 'Create and archive private channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'groups:write.invites',
+            description: 'Invite users to private channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'groups:write.topic',
+            description: 'Set private channel topics',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'im:write',
+            description: 'Start DM conversations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'im:write.topic',
+            description: 'Set DM topics',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'mpim:write',
+            description: 'Start group DM conversations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'mpim:write.topic',
+            description: 'Set group DM topics',
+            defaultEnabled: false,
           },
           // Users & Team
           {
             scope: 'users:read',
-            description: 'View user names and basic info',
+            description: 'View user information',
             defaultEnabled: true,
           },
           {
             scope: 'users:read.email',
-            description: 'View user email addresses',
+            description: 'View user emails',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'users:write',
+            description: 'Set bot presence status',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'users.profile:read',
+            description: 'View detailed user profiles',
             defaultEnabled: false,
           },
           {
             scope: 'team:read',
-            description: 'View workspace information',
+            description: 'View workspace info',
             defaultEnabled: true,
+          },
+          {
+            scope: 'usergroups:read',
+            description: 'View user groups',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'usergroups:write',
+            description: 'Manage user groups',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'dnd:read',
+            description: 'View Do Not Disturb status',
+            defaultEnabled: false,
           },
           // Reactions
           {
             scope: 'reactions:read',
-            description: 'View emoji reactions on messages',
+            description: 'View emoji reactions',
             defaultEnabled: true,
           },
           {
             scope: 'reactions:write',
-            description: 'Add emoji reactions to messages',
+            description: 'Add emoji reactions',
             defaultEnabled: true,
           },
           // Files
           {
             scope: 'files:read',
-            description: 'Access files shared in conversations',
+            description: 'View shared files',
             defaultEnabled: true,
           },
           {
             scope: 'files:write',
-            description: 'Upload files to conversations',
+            description: 'Upload files',
             defaultEnabled: true,
+          },
+          {
+            scope: 'remote_files:read',
+            description: 'View remote files',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'remote_files:write',
+            description: 'Manage remote files',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'remote_files:share',
+            description: 'Share remote files',
+            defaultEnabled: false,
           },
           // Pins & Bookmarks
           {
@@ -747,40 +885,153 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           },
           {
             scope: 'pins:write',
-            description: 'Pin messages to channels',
+            description: 'Pin messages',
             defaultEnabled: false,
           },
           {
             scope: 'bookmarks:read',
-            description: 'View channel bookmarks',
+            description: 'View bookmarks',
             defaultEnabled: false,
           },
           {
             scope: 'bookmarks:write',
-            description: 'Add channel bookmarks',
+            description: 'Add bookmarks',
             defaultEnabled: false,
           },
           // Links
           {
             scope: 'links:read',
-            description: 'View URL metadata in messages',
+            description: 'View link metadata',
             defaultEnabled: false,
           },
           {
             scope: 'links:write',
-            description: 'Unfurl links in bot messages',
+            description: 'Unfurl links',
             defaultEnabled: false,
           },
-          // Emoji
+          {
+            scope: 'links.embed:write',
+            description: 'Embed video players',
+            defaultEnabled: false,
+          },
+          // Canvases & Lists
+          {
+            scope: 'canvases:read',
+            description: 'Read Slack canvases',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'canvases:write',
+            description: 'Create and edit canvases',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'lists:read',
+            description: 'Read Slack lists',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'lists:write',
+            description: 'Manage Slack lists',
+            defaultEnabled: false,
+          },
+          // Calls
+          {
+            scope: 'calls:read',
+            description: 'View call information',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'calls:write',
+            description: 'Start and manage calls',
+            defaultEnabled: false,
+          },
+          // Reminders
+          {
+            scope: 'reminders:read',
+            description: 'View reminders',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'reminders:write',
+            description: 'Create reminders',
+            defaultEnabled: false,
+          },
+          // Slack Connect
+          {
+            scope: 'conversations.connect:read',
+            description: 'View Slack Connect events',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'conversations.connect:write',
+            description: 'Create Slack Connect invites',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'conversations.connect:manage',
+            description: 'Manage Slack Connect channels',
+            defaultEnabled: false,
+          },
+          // Triggers & Commands
+          {
+            scope: 'triggers:read',
+            description: 'View Platform triggers',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'triggers:write',
+            description: 'Create Platform triggers',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'commands',
+            description: 'Use slash commands',
+            defaultEnabled: false,
+          },
+          // Metadata & Emoji
+          {
+            scope: 'metadata.message:read',
+            description: 'Read message metadata',
+            defaultEnabled: false,
+          },
           {
             scope: 'emoji:read',
-            description: 'View custom workspace emoji',
+            description: 'View custom emoji',
+            defaultEnabled: false,
+          },
+          // Assistant
+          {
+            scope: 'assistant:write',
+            description: 'Respond in Slack AI threads',
             defaultEnabled: false,
           },
           // Webhooks
           {
             scope: 'incoming-webhook',
-            description: 'Post via incoming webhooks',
+            description: 'Post via webhooks',
+            defaultEnabled: false,
+          },
+          // Search
+          {
+            scope: 'search:read.files',
+            description: 'Search files',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'search:read.public',
+            description: 'Search public channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'search:read.users',
+            description: 'Search for users',
+            defaultEnabled: false,
+          },
+          // Team Preferences
+          {
+            scope: 'team.preferences:read',
+            description: 'Read workspace preferences',
             defaultEnabled: false,
           },
         ],
