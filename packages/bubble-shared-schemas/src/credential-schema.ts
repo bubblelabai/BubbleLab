@@ -720,7 +720,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'chat:write.customize',
             description: 'Customize bot username and avatar',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Channels - Read
           {
@@ -747,37 +747,37 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'channels:join',
             description: 'Join public channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'channels:manage',
             description: 'Create and archive public channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'channels:write.invites',
             description: 'Invite users to public channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'channels:write.topic',
             description: 'Set public channel topics',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'groups:write',
             description: 'Create and archive private channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'groups:write.invites',
             description: 'Invite users to private channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'groups:write.topic',
             description: 'Set private channel topics',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'im:write',
@@ -787,7 +787,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'im:write.topic',
             description: 'Set DM topics',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'mpim:write',
@@ -797,7 +797,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'mpim:write.topic',
             description: 'Set group DM topics',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Users & Team
           {
@@ -808,17 +808,17 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'users:read.email',
             description: 'View user emails',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'users:write',
             description: 'Set bot presence status',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'users.profile:read',
             description: 'View detailed user profiles',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'team:read',
@@ -828,17 +828,17 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'usergroups:read',
             description: 'View user groups',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'usergroups:write',
             description: 'Manage user groups',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'dnd:read',
             description: 'View Do Not Disturb status',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Reactions
           {
@@ -865,174 +865,174 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'remote_files:read',
             description: 'View remote files',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'remote_files:write',
             description: 'Manage remote files',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'remote_files:share',
             description: 'Share remote files',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Pins & Bookmarks
           {
             scope: 'pins:read',
             description: 'View pinned messages',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'pins:write',
             description: 'Pin messages',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'bookmarks:read',
             description: 'View bookmarks',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'bookmarks:write',
             description: 'Add bookmarks',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Links
           {
             scope: 'links:read',
             description: 'View link metadata',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'links:write',
             description: 'Unfurl links',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'links.embed:write',
             description: 'Embed video players',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Canvases & Lists
           {
             scope: 'canvases:read',
             description: 'Read Slack canvases',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'canvases:write',
             description: 'Create and edit canvases',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'lists:read',
             description: 'Read Slack lists',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'lists:write',
             description: 'Manage Slack lists',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Calls
           {
             scope: 'calls:read',
             description: 'View call information',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'calls:write',
             description: 'Start and manage calls',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Reminders
           {
             scope: 'reminders:read',
             description: 'View reminders',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'reminders:write',
             description: 'Create reminders',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Slack Connect
           {
             scope: 'conversations.connect:read',
             description: 'View Slack Connect events',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'conversations.connect:write',
             description: 'Create Slack Connect invites',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'conversations.connect:manage',
             description: 'Manage Slack Connect channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Triggers & Commands
           {
             scope: 'triggers:read',
             description: 'View Platform triggers',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'triggers:write',
             description: 'Create Platform triggers',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'commands',
             description: 'Use slash commands',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Metadata & Emoji
           {
             scope: 'metadata.message:read',
             description: 'Read message metadata',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'emoji:read',
             description: 'View custom emoji',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Assistant
           {
             scope: 'assistant:write',
             description: 'Respond in Slack AI threads',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Webhooks
           {
             scope: 'incoming-webhook',
             description: 'Post via webhooks',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Search
           {
             scope: 'search:read.files',
             description: 'Search files',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'search:read.public',
             description: 'Search public channels',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           {
             scope: 'search:read.users',
             description: 'Search for users',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
           // Team Preferences
           {
             scope: 'team.preferences:read',
             description: 'Read workspace preferences',
-            defaultEnabled: false,
+            defaultEnabled: true,
           },
         ],
       },
