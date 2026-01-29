@@ -112,8 +112,23 @@ export const stripeOAuthMetadataSchema = z.object({
 export type StripeOAuthMetadata = z.infer<typeof stripeOAuthMetadataSchema>;
 
 /**
+ * Slack OAuth metadata - stored after OAuth callback with workspace info
+ */
+export const slackOAuthMetadataSchema = z.object({
+  teamId: z.string(),
+  teamName: z.string(),
+  botUserId: z.string(),
+});
+
+export type SlackOAuthMetadata = z.infer<typeof slackOAuthMetadataSchema>;
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
+ * - SlackOAuthMetadata: For SLACK_CRED OAuth credentials
  */
-export type CredentialMetadata = DatabaseMetadata | JiraOAuthMetadata;
+export type CredentialMetadata =
+  | DatabaseMetadata
+  | JiraOAuthMetadata
+  | SlackOAuthMetadata;
