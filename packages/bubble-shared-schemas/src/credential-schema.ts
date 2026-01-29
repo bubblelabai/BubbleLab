@@ -600,6 +600,9 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'chat:write',
           'chat:write.public',
           'chat:write.customize',
+          'im:write',
+          'mpim:write',
+          'assistant:write',
           // Channels & Conversations
           'channels:read',
           'channels:join',
@@ -673,6 +676,21 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'chat:write.customize',
             description: 'Customize bot message appearance (username & avatar)',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'im:write',
+            description: 'Start direct message conversations with users',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'mpim:write',
+            description: 'Start group DM conversations with multiple users',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'assistant:write',
+            description: 'Respond in Slack AI assistant threads',
             defaultEnabled: false,
           },
           // Channels & Conversations
