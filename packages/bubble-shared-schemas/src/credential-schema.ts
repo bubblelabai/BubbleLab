@@ -668,8 +668,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'emoji:read',
           // Assistant
           'assistant:write',
-          // Webhooks
-          'incoming-webhook',
           // Search
           'search:read.files',
           'search:read.public',
@@ -1004,12 +1002,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'assistant:write',
             description: 'Respond in Slack AI threads',
-            defaultEnabled: true,
-          },
-          // Webhooks
-          {
-            scope: 'incoming-webhook',
-            description: 'Post via webhooks',
             defaultEnabled: true,
           },
           // Search
