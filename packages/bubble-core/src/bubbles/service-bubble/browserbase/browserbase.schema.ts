@@ -30,6 +30,97 @@ export const BrowserSessionDataSchema = z.object({
 export type BrowserSessionData = z.infer<typeof BrowserSessionDataSchema>;
 
 /**
+ * Geolocation configuration for BrowserBase proxies
+ */
+export const ProxyGeolocationSchema = z.object({
+  city: z
+    .string()
+    .optional()
+    .describe('City name (e.g., "NEW_YORK", "LONDON")'),
+  state: z
+    .string()
+    .optional()
+    .describe('State code for US locations (e.g., "NY", "CA")'),
+  country: z
+    .string()
+    .describe('ISO 3166-1 alpha-2 country code (e.g., "US", "GB", "JP")'),
+});
+
+export type ProxyGeolocation = z.infer<typeof ProxyGeolocationSchema>;
+
+/**
+ * BrowserBase built-in proxy configuration
+ */
+export const BrowserbaseProxySchema = z.object({
+  type: z.literal('browserbase').describe('Use BrowserBase built-in proxies'),
+  geolocation: ProxyGeolocationSchema.optional().describe(
+    'Proxy geolocation settings'
+  ),
+  domainPattern: z
+    .string()
+    .optional()
+    .describe('Regex pattern for domains to route through this proxy'),
+});
+
+export type BrowserbaseProxy = z.infer<typeof BrowserbaseProxySchema>;
+
+/**
+ * External/custom proxy configuration
+ */
+export const ExternalProxySchema = z.object({
+  type: z.literal('external').describe('Use custom external proxy'),
+  server: z
+    .string()
+    .describe('Proxy server URL (e.g., "http://proxy.example.com:8080")'),
+  username: z.string().optional().describe('Proxy authentication username'),
+  password: z.string().optional().describe('Proxy authentication password'),
+  domainPattern: z
+    .string()
+    .optional()
+    .describe('Regex pattern for domains to route through this proxy'),
+});
+
+export type ExternalProxy = z.infer<typeof ExternalProxySchema>;
+
+/**
+ * Union type for proxy configurations
+ */
+export const ProxyConfigSchema = z.discriminatedUnion('type', [
+  BrowserbaseProxySchema,
+  ExternalProxySchema,
+]);
+
+export type ProxyConfig = z.infer<typeof ProxyConfigSchema>;
+
+/**
+ * Stealth mode configuration for BrowserBase sessions
+ */
+export const StealthConfigSchema = z.object({
+  advancedStealth: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Enable Advanced Stealth Mode with custom Chromium for better anti-bot avoidance (Scale Plan only)'
+    ),
+  solveCaptchas: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe('Enable automatic CAPTCHA solving (enabled by default)'),
+  captchaImageSelector: z
+    .string()
+    .optional()
+    .describe('CSS selector for custom CAPTCHA image element'),
+  captchaInputSelector: z
+    .string()
+    .optional()
+    .describe('CSS selector for custom CAPTCHA input field'),
+});
+
+export type StealthConfig = z.infer<typeof StealthConfigSchema>;
+
+/**
  * BrowserBase service bubble parameters schema
  * Multi-operation service for browser automation
  */
@@ -63,6 +154,17 @@ export const BrowserBaseParamsSchema = z.discriminatedUnion('operation', [
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
       .describe('Credentials including AMAZON_CRED for browser session data'),
+    // Proxy configuration
+    proxies: z
+      .union([z.literal(true), z.array(ProxyConfigSchema)])
+      .optional()
+      .describe(
+        'Proxy configuration: true for built-in proxies, or array of proxy configs with routing rules'
+      ),
+    // Stealth mode configuration
+    stealth: StealthConfigSchema.optional().describe(
+      'Stealth mode configuration for anti-bot avoidance and CAPTCHA solving'
+    ),
   }),
 
   // Navigate operation - navigate to a URL

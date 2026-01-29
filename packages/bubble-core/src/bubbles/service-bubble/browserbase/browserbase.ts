@@ -11,6 +11,7 @@ import {
   type BrowserBaseResult,
   type CDPCookie,
   type BrowserSessionData,
+  type ProxyConfig,
 } from './browserbase.schema.js';
 
 /**
@@ -93,6 +94,19 @@ interface BrowserBaseSessionUpdateResponse {
  * - Cookie injection for authenticated sessions
  * - Full page automation (click, type, evaluate)
  * - Screenshot and content extraction
+ * - Stealth mode for anti-bot avoidance
+ * - Automatic CAPTCHA solving
+ * - Proxy support (built-in and custom)
+ *
+ * Stealth Mode:
+ * - Basic Stealth: Automatic fingerprint randomization
+ * - Advanced Stealth: Custom Chromium for better anti-bot avoidance (Scale Plan)
+ * - CAPTCHA Solving: Automatic detection and solving (enabled by default)
+ *
+ * Proxy Options:
+ * - Built-in proxies: Residential proxies with geolocation support
+ * - Custom proxies: Use your own HTTP/HTTPS proxies
+ * - Routing rules: Route different domains through different proxies
  *
  * Use cases:
  * - Automated shopping workflows (Amazon, etc.)
@@ -128,7 +142,21 @@ export class BrowserBaseBubble<
     - Cookie injection for authenticated sessions
     - Full page automation (click, type, evaluate)
     - Screenshot and content extraction
-    - Cross-browser support
+    - Stealth mode for anti-bot avoidance
+    - Automatic CAPTCHA solving
+    - Built-in and custom proxy support
+
+    Stealth Mode Options:
+    - Basic Stealth: Automatic browser fingerprint randomization (default)
+    - Advanced Stealth: Custom Chromium browser for better anti-bot avoidance (Scale Plan only)
+    - CAPTCHA Solving: Automatic detection and solving (enabled by default, can be disabled)
+    - Custom CAPTCHA selectors: For non-standard CAPTCHA providers
+
+    Proxy Options:
+    - Built-in proxies: Set proxies=true for residential proxies with geolocation
+    - Geolocation: Specify city, state (US only), and country for proxy location
+    - Custom proxies: Use your own HTTP/HTTPS proxies with authentication
+    - Routing rules: Route different domains through different proxies using domainPattern
 
     Use cases:
     - Automated shopping workflows (Amazon, etc.)
@@ -236,6 +264,53 @@ export class BrowserBaseBubble<
       console.error('[BrowserBaseBubble] Failed to parse credential:', error);
       return null;
     }
+  }
+
+  /**
+   * Build proxy configuration for BrowserBase API
+   * Converts our schema format to the API format
+   */
+  private buildProxyConfig(
+    proxies: true | ProxyConfig[]
+  ): true | Record<string, unknown>[] {
+    // Simple boolean proxy (use built-in proxies)
+    if (proxies === true) {
+      return true;
+    }
+
+    // Array of proxy configurations
+    return proxies.map((proxy) => {
+      if (proxy.type === 'browserbase') {
+        const config: Record<string, unknown> = { type: 'browserbase' };
+        if (proxy.geolocation) {
+          config.geolocation = {
+            ...(proxy.geolocation.city && { city: proxy.geolocation.city }),
+            ...(proxy.geolocation.state && { state: proxy.geolocation.state }),
+            country: proxy.geolocation.country,
+          };
+        }
+        if (proxy.domainPattern) {
+          config.domainPattern = proxy.domainPattern;
+        }
+        return config;
+      } else {
+        // External proxy
+        const config: Record<string, unknown> = {
+          type: 'external',
+          server: proxy.server,
+        };
+        if (proxy.username) {
+          config.username = proxy.username;
+        }
+        if (proxy.password) {
+          config.password = proxy.password;
+        }
+        if (proxy.domainPattern) {
+          config.domainPattern = proxy.domainPattern;
+        }
+        return config;
+      }
+    });
   }
 
   public async testCredential(): Promise<boolean> {
@@ -398,17 +473,46 @@ export class BrowserBaseBubble<
       console.log(`[BrowserBaseBubble] Created new context: ${contextId}`);
     }
 
-    // Create session with context
+    // Build browser settings with context, stealth, and CAPTCHA options
+    const browserSettings: Record<string, unknown> = {
+      context: { id: contextId, persist: true },
+    };
+
+    // Apply stealth mode configuration
+    if (params.stealth) {
+      if (params.stealth.advancedStealth !== undefined) {
+        browserSettings.advancedStealth = params.stealth.advancedStealth;
+      }
+      if (params.stealth.solveCaptchas !== undefined) {
+        browserSettings.solveCaptchas = params.stealth.solveCaptchas;
+      }
+      if (params.stealth.captchaImageSelector) {
+        browserSettings.captchaImageSelector =
+          params.stealth.captchaImageSelector;
+      }
+      if (params.stealth.captchaInputSelector) {
+        browserSettings.captchaInputSelector =
+          params.stealth.captchaInputSelector;
+      }
+    }
+
+    // Build session creation request body
+    const sessionRequestBody: Record<string, unknown> = {
+      projectId: config.projectId,
+      browserSettings,
+    };
+
+    // Apply proxy configuration
+    if (params.proxies) {
+      sessionRequestBody.proxies = this.buildProxyConfig(params.proxies);
+    }
+
+    // Create session with context, stealth, and proxy settings
     const sessionResponse =
       await this.browserbaseApi<BrowserBaseSessionResponse>(
         '/sessions',
         'POST',
-        {
-          projectId: config.projectId,
-          browserSettings: {
-            context: { id: contextId, persist: true },
-          },
-        }
+        sessionRequestBody
       );
 
     const sessionId = sessionResponse.id;
