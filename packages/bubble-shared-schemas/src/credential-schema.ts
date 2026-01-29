@@ -590,50 +590,202 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       [CredentialType.SLACK_CRED]: {
         displayName: 'Slack Workspace',
         defaultScopes: [
-          'chat:write',
-          'channels:read',
-          'channels:history',
+          // Messaging - Read
           'app_mentions:read',
+          'channels:history',
+          'groups:history',
+          'im:history',
+          'mpim:history',
+          // Messaging - Write
+          'chat:write',
+          'chat:write.public',
+          'chat:write.customize',
+          // Channels & Conversations
+          'channels:read',
+          'channels:join',
+          'groups:read',
+          'im:read',
+          'mpim:read',
+          // Users & Team
           'users:read',
+          'users:read.email',
           'team:read',
+          // Reactions
+          'reactions:read',
+          'reactions:write',
+          // Files
+          'files:read',
+          'files:write',
+          // Pins & Bookmarks
+          'pins:read',
+          'pins:write',
+          'bookmarks:read',
+          'bookmarks:write',
+          // Links
+          'links:read',
+          'links:write',
+          // Emoji
+          'emoji:read',
+          // Webhooks
+          'incoming-webhook',
         ],
         description:
-          'Connect to your Slack workspace for sending messages, reading channels, and receiving mentions',
+          'Connect to your Slack workspace for messaging, file sharing, and workflow automation',
         scopeDescriptions: [
+          // Messaging - Read
           {
-            scope: 'chat:write',
-            description: 'Send messages as the app',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'channels:read',
-            description: 'View basic information about public channels',
+            scope: 'app_mentions:read',
+            description: 'Receive notifications when someone @mentions the bot',
             defaultEnabled: true,
           },
           {
             scope: 'channels:history',
-            description: 'View messages and content in public channels',
+            description: 'Read messages in public channels',
             defaultEnabled: true,
           },
           {
-            scope: 'app_mentions:read',
-            description: 'View messages that mention the app',
+            scope: 'groups:history',
+            description:
+              'Read messages in private channels where bot is invited',
             defaultEnabled: true,
           },
+          {
+            scope: 'im:history',
+            description: 'Read direct messages with the bot',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'mpim:history',
+            description: 'Read group DMs where bot is included',
+            defaultEnabled: true,
+          },
+          // Messaging - Write
+          {
+            scope: 'chat:write',
+            description: 'Send messages to channels where bot is invited',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'chat:write.public',
+            description: 'Send messages to any public channel',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'chat:write.customize',
+            description: 'Customize bot message appearance (username & avatar)',
+            defaultEnabled: false,
+          },
+          // Channels & Conversations
+          {
+            scope: 'channels:read',
+            description: 'View list of public channels',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'channels:join',
+            description: 'Join public channels automatically',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'groups:read',
+            description: 'View private channels where bot is member',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'im:read',
+            description: 'View direct message conversations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'mpim:read',
+            description: 'View group DM conversations',
+            defaultEnabled: true,
+          },
+          // Users & Team
           {
             scope: 'users:read',
-            description: 'View people in the workspace',
+            description: 'View user names and basic info',
             defaultEnabled: true,
+          },
+          {
+            scope: 'users:read.email',
+            description: 'View user email addresses',
+            defaultEnabled: false,
           },
           {
             scope: 'team:read',
             description: 'View workspace information',
             defaultEnabled: true,
           },
+          // Reactions
+          {
+            scope: 'reactions:read',
+            description: 'View emoji reactions on messages',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'reactions:write',
+            description: 'Add emoji reactions to messages',
+            defaultEnabled: true,
+          },
+          // Files
+          {
+            scope: 'files:read',
+            description: 'Access files shared in conversations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'files:write',
+            description: 'Upload files to conversations',
+            defaultEnabled: true,
+          },
+          // Pins & Bookmarks
+          {
+            scope: 'pins:read',
+            description: 'View pinned messages',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'pins:write',
+            description: 'Pin messages to channels',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'bookmarks:read',
+            description: 'View channel bookmarks',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'bookmarks:write',
+            description: 'Add channel bookmarks',
+            defaultEnabled: false,
+          },
+          // Links
+          {
+            scope: 'links:read',
+            description: 'View URL metadata in messages',
+            defaultEnabled: false,
+          },
+          {
+            scope: 'links:write',
+            description: 'Unfurl links in bot messages',
+            defaultEnabled: false,
+          },
+          // Emoji
+          {
+            scope: 'emoji:read',
+            description: 'View custom workspace emoji',
+            defaultEnabled: false,
+          },
+          // Webhooks
+          {
+            scope: 'incoming-webhook',
+            description: 'Post via incoming webhooks',
+            defaultEnabled: false,
+          },
         ],
       },
     },
-    // Slack doesn't require special authorization params
   },
 };
 
