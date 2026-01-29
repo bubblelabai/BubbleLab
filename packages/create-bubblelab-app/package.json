@@ -1,6 +1,6 @@
 {
   "name": "create-bubblelab-app",
-  "version": "0.1.60",
+  "version": "0.1.61",
   "type": "module",
   "license": "Apache-2.0",
   "description": "Create BubbleLab AI agent applications with one command",
