@@ -96,6 +96,8 @@ export const jiraOAuthMetadataSchema = z.object({
   cloudId: z.string(),
   siteUrl: z.string(),
   siteName: z.string().optional(),
+  /** Human-readable display name for the credential (e.g., Jira site name) */
+  displayName: z.string().optional(),
 });
 
 export type JiraOAuthMetadata = z.infer<typeof jiraOAuthMetadataSchema>;
@@ -107,6 +109,8 @@ export const stripeOAuthMetadataSchema = z.object({
   stripeUserId: z.string(), // Connected account ID (acct_xxx)
   stripePublishableKey: z.string(), // Publishable key (pk_live_xxx or pk_test_xxx)
   livemode: z.boolean(), // true = production, false = test mode
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
 });
 
 export type StripeOAuthMetadata = z.infer<typeof stripeOAuthMetadataSchema>;
@@ -118,6 +122,8 @@ export const slackOAuthMetadataSchema = z.object({
   teamId: z.string(),
   teamName: z.string(),
   botUserId: z.string(),
+  /** Human-readable display name for the credential (workspace name) */
+  displayName: z.string().optional(),
 });
 
 export type SlackOAuthMetadata = z.infer<typeof slackOAuthMetadataSchema>;

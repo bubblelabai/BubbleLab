@@ -53,6 +53,10 @@ export const createBubbleFlowSchema = z
         description:
           'Optional pre-parsed bubble parameters with descriptions (from AI generation). If provided, will be used instead of re-parsing the code.',
       }),
+    triggerCredentialId: z.number().nullable().optional().openapi({
+      description:
+        'ID of credential for trigger authentication (e.g., Slack OAuth)',
+    }),
   })
   .openapi('CreateBubbleFlowRequest');
 
@@ -89,6 +93,10 @@ export const createEmptyBubbleFlowSchema = z
     webhookActive: z.boolean().default(false).optional().openapi({
       description: 'Whether the webhook should be active immediately',
       example: true,
+    }),
+    triggerCredentialId: z.number().nullable().optional().openapi({
+      description:
+        'ID of credential for trigger authentication (e.g., Slack OAuth)',
     }),
   })
   .openapi('CreateEmptyBubbleFlowRequest');
@@ -164,6 +172,10 @@ export const createBubbleFlowResponseSchema = z
     eventType: z.string().min(1).openapi({
       description: 'Event type this BubbleFlow responds to',
       example: 'webhook/http',
+    }),
+    triggerCredentialId: z.number().nullable().optional().openapi({
+      description:
+        'ID of credential for trigger authentication (e.g., Slack OAuth)',
     }),
     webhook: z
       .object({
@@ -339,6 +351,9 @@ export const bubbleFlowDetailsResponseSchema = z
         description: 'Current user permission level for this flow',
         example: 'owner',
       }),
+    triggerCredentialId: z.number().nullable().optional().openapi({
+      description: 'Credential ID for trigger authentication',
+    }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
     updatedAt: z.string().openapi({ description: 'Update timestamp' }),
     webhook_url: z
@@ -391,6 +406,9 @@ export const bubbleFlowListItemSchema = z.object({
   ownerId: z.string().openapi({
     description: 'User ID of the flow owner',
     example: 'user_abc123',
+  }),
+  triggerCredentialId: z.number().nullable().optional().openapi({
+    description: 'Credential ID for trigger authentication',
   }),
   createdAt: z.string().openapi({ description: 'Creation timestamp' }),
   updatedAt: z.string().openapi({ description: 'Update timestamp' }),
