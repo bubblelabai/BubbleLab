@@ -401,7 +401,8 @@ export interface ScopeDescription {
  */
 export interface OAuthCredentialConfig {
   displayName: string; // User-facing name
-  defaultScopes: string[]; // OAuth scopes for this credential type
+  defaultScopes: string[]; // OAuth scopes for this credential type (non-admin, safe for any user)
+  adminScopes?: string[]; // OAuth scopes that require admin approval (optional)
   description: string; // Description of what this credential provides access to
   scopeDescriptions?: ScopeDescription[]; // Optional: descriptions for each scope
 }
@@ -605,26 +606,14 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'groups:read',
           'im:read',
           'mpim:read',
-          // Channels & Conversations - Write
+          // Channels & Conversations - Write (non-admin)
           'channels:join',
-          'channels:manage',
-          'channels:write.invites',
-          'channels:write.topic',
-          'groups:write',
-          'groups:write.invites',
-          'groups:write.topic',
-          'im:write',
-          'im:write.topic',
-          'mpim:write',
-          'mpim:write.topic',
-          // Users & Team
+          // Users & Team (read-only)
           'users:read',
           'users:read.email',
-          'users:write',
           'users.profile:read',
           'team:read',
           'usergroups:read',
-          'usergroups:write',
           'dnd:read',
           // Reactions
           'reactions:read',
@@ -632,47 +621,68 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           // Files
           'files:read',
           'files:write',
-          'remote_files:read',
-          'remote_files:write',
-          'remote_files:share',
-          // Pins & Bookmarks
+          // Pins & Bookmarks (read-only)
           'pins:read',
-          'pins:write',
           'bookmarks:read',
-          'bookmarks:write',
-          // Links
-          'links:read',
-          'links:write',
-          'links.embed:write',
-          // Canvases & Lists
-          'canvases:read',
-          'canvases:write',
-          'lists:read',
-          'lists:write',
-          // Calls
-          'calls:read',
-          'calls:write',
           // Reminders
           'reminders:read',
           'reminders:write',
-          // Slack Connect
-          'conversations.connect:read',
-          'conversations.connect:write',
-          'conversations.connect:manage',
-          // Triggers & Commands
-          'triggers:read',
-          'triggers:write',
+          // Commands
           'commands',
           // Metadata & Emoji
           'metadata.message:read',
           'emoji:read',
-          // Assistant
+        ],
+        adminScopes: [
+          // Channel management (requires admin)
+          'channels:manage',
+          'channels:write.invites',
+          'channels:write.topic',
+          // Private channel management (requires admin)
+          'groups:write',
+          'groups:write.invites',
+          'groups:write.topic',
+          // DM management (requires admin)
+          'im:write',
+          'im:write.topic',
+          'mpim:write',
+          'mpim:write.topic',
+          // User management (requires admin)
+          'users:write',
+          'usergroups:write',
+          // Pins & Bookmarks write (requires admin)
+          'pins:write',
+          'bookmarks:write',
+          // Links (requires admin)
+          'links:read',
+          'links:write',
+          'links.embed:write',
+          // Canvases & Lists (requires admin)
+          'canvases:read',
+          'canvases:write',
+          'lists:read',
+          'lists:write',
+          // Calls (requires admin)
+          'calls:read',
+          'calls:write',
+          // Slack Connect (requires admin)
+          'conversations.connect:read',
+          'conversations.connect:write',
+          'conversations.connect:manage',
+          // Triggers (requires admin)
+          'triggers:read',
+          'triggers:write',
+          // Remote files (requires admin)
+          'remote_files:read',
+          'remote_files:write',
+          'remote_files:share',
+          // Assistant (requires admin)
           'assistant:write',
-          // Search
+          // Search (requires admin)
           'search:read.files',
           'search:read.public',
           'search:read.users',
-          // Team Preferences
+          // Team Preferences (requires admin)
           'team.preferences:read',
         ],
         description:
@@ -1081,6 +1091,38 @@ export function getScopeDescriptions(
   }
 
   return credentialConfig.scopeDescriptions;
+}
+
+/**
+ * Get default (non-admin) scopes for a specific credential type
+ * Returns only the scopes that don't require admin approval
+ */
+export function getDefaultScopes(credentialType: CredentialType): string[] {
+  const provider = getOAuthProvider(credentialType);
+  if (!provider) {
+    return [];
+  }
+
+  const providerConfig = OAUTH_PROVIDERS[provider];
+  const credentialConfig = providerConfig?.credentialTypes[credentialType];
+
+  return credentialConfig?.defaultScopes || [];
+}
+
+/**
+ * Get admin scopes for a specific credential type
+ * Returns only the scopes that require admin/workspace admin approval
+ */
+export function getAdminScopes(credentialType: CredentialType): string[] {
+  const provider = getOAuthProvider(credentialType);
+  if (!provider) {
+    return [];
+  }
+
+  const providerConfig = OAUTH_PROVIDERS[provider];
+  const credentialConfig = providerConfig?.credentialTypes[credentialType];
+
+  return credentialConfig?.adminScopes || [];
 }
 
 /**
