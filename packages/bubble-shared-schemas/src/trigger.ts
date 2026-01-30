@@ -115,6 +115,13 @@ export interface SlackMessageEvent {
   event_ts: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
   subtype?: string;
+  // Bot message indicators - present when message is from a bot
+  bot_id?: string;
+  bot_profile?: {
+    id: string;
+    name: string;
+    app_id: string;
+  };
 }
 
 // BubbleTrigger-specific event types that wrap Slack events
