@@ -521,6 +521,14 @@ export class AIAgentBubble extends ServiceBubble<
     this.beforeAction();
 
     try {
+      // Check if this is a deep research model - bypass LangChain and call OpenRouter directly
+      if (this.isDeepResearchModel(this.params.model.model)) {
+        console.log(
+          '[AIAgent] Deep research model detected, using direct OpenRouter API'
+        );
+        return await this.executeDeepResearchViaOpenRouter();
+      }
+
       return await this.executeWithModel(this.params.model);
     } catch (error) {
       const errorMessage =
@@ -585,6 +593,183 @@ export class AIAgentBubble extends ServiceBubble<
         return credentials[CredentialType.OPENROUTER_CRED];
       default:
         throw new Error(`Unsupported model provider: ${provider}`);
+    }
+  }
+
+  /**
+   * Check if the model is a deep research model that requires direct API call
+   */
+  private isDeepResearchModel(model: string): boolean {
+    return (
+      model === 'openrouter/openai/o3-deep-research' ||
+      model === 'openrouter/openai/o4-mini-deep-research'
+    );
+  }
+
+  /**
+   * Execute deep research models via OpenRouter API directly
+   * Bypasses LangChain since these models have compatibility issues
+   */
+  private async executeDeepResearchViaOpenRouter(): Promise<AIAgentResult> {
+    const { message, systemPrompt, model, conversationHistory } = this.params;
+    // Extract the model name without 'openrouter/' prefix
+    const modelName = model.model.replace('openrouter/', '');
+
+    const credentials = this.params.credentials as
+      | Record<CredentialType, string>
+      | undefined;
+    const apiKey = credentials?.[CredentialType.OPENROUTER_CRED];
+
+    if (!apiKey) {
+      throw new Error(
+        'OpenRouter API key is required for deep research models'
+      );
+    }
+
+    // Build messages array
+    const messages: Array<{ role: string; content: string }> = [];
+
+    // Add system prompt
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    // Add conversation history if provided
+    if (conversationHistory && conversationHistory.length > 0) {
+      for (const historyMsg of conversationHistory) {
+        if (historyMsg.role === 'user' || historyMsg.role === 'assistant') {
+          messages.push({ role: historyMsg.role, content: historyMsg.content });
+        }
+      }
+    }
+
+    // Add current message
+    messages.push({ role: 'user', content: message });
+
+    // Emit start event
+    await this.streamingCallback?.({
+      type: 'llm_start',
+      data: {
+        model: model.model,
+        temperature: model.temperature,
+      },
+    });
+
+    try {
+      const response = await fetch(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://bubblelab.ai',
+            'X-Title': 'BubbleLab',
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages,
+            temperature: model.temperature,
+            max_tokens: model.maxTokens,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = (await response.json()) as {
+          error?: { message?: string };
+        };
+        throw new Error(
+          `OpenRouter API error: ${response.status} - ${errorData?.error?.message || response.statusText}`
+        );
+      }
+
+      const data = (await response.json()) as {
+        id: string;
+        choices: Array<{
+          message: {
+            role: string;
+            content: string;
+          };
+          finish_reason: string;
+        }>;
+        usage?: {
+          prompt_tokens: number;
+          completion_tokens: number;
+          total_tokens: number;
+        };
+      };
+
+      const finalResponse = data.choices?.[0]?.message?.content || '';
+
+      // Log token usage if available
+      if (data.usage && this.context?.logger) {
+        this.context.logger.logTokenUsage(
+          {
+            usage: data.usage.prompt_tokens,
+            service: CredentialType.OPENROUTER_CRED,
+            unit: 'input_tokens',
+            subService: model.model as CredentialType,
+          },
+          `Deep Research: ${data.usage.prompt_tokens} input`,
+          {
+            bubbleName: 'ai-agent',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+        this.context.logger.logTokenUsage(
+          {
+            usage: data.usage.completion_tokens,
+            service: CredentialType.OPENROUTER_CRED,
+            unit: 'output_tokens',
+            subService: model.model as CredentialType,
+          },
+          `Deep Research: ${data.usage.completion_tokens} output`,
+          {
+            bubbleName: 'ai-agent',
+            variableId: this.context?.variableId,
+            operationType: 'bubble_execution',
+          }
+        );
+      }
+
+      // Emit complete event
+      await this.streamingCallback?.({
+        type: 'llm_complete',
+        data: {
+          messageId: data.id,
+          content: finalResponse,
+          totalTokens: data.usage?.total_tokens,
+        },
+      });
+
+      return {
+        response: finalResponse,
+        toolCalls: [],
+        iterations: 1,
+        error: '',
+        success: true,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      await this.streamingCallback?.({
+        type: 'error',
+        data: {
+          error: errorMessage,
+          recoverable: false,
+        },
+      });
+
+      return {
+        response: `Deep Research Error: ${errorMessage}`,
+        toolCalls: [],
+        iterations: 0,
+        error: errorMessage,
+        success: false,
+      };
     }
   }
 

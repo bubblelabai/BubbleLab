@@ -26,6 +26,8 @@ export const AvailableModels = z.enum([
   'openrouter/google/gemini-3-pro-preview',
   'openrouter/morph/morph-v3-large',
   'openrouter/openai/gpt-oss-120b',
+  'openrouter/openai/o3-deep-research',
+  'openrouter/openai/o4-mini-deep-research',
 ]);
 
 export type AvailableModel = z.infer<typeof AvailableModels>;

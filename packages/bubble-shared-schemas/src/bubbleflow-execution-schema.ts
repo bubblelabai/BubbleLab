@@ -204,6 +204,9 @@ export const bubbleFlowExecutionSchema = z.object({
     description:
       'The code that was executed (snapshot of the code at execution time)',
   }),
+  totalCost: z.number().optional().openapi({
+    description: 'Total cost of the execution in credits',
+  }),
 });
 
 // GET /bubble-flow/:id/executions - List BubbleFlow executions response
