@@ -17,41 +17,53 @@ export type ProfileInfo = z.infer<typeof ProfileInfoSchema>;
  * LinkedIn Connection Tool parameters schema
  * Tool for sending connection requests on LinkedIn
  */
-export const LinkedInConnectionToolParamsSchema = z.object({
-  operation: z
-    .literal('send_connection')
-    .describe('Send a connection request to a LinkedIn profile'),
-  profile_url: z
-    .string()
-    .min(1)
-    .describe(
-      'LinkedIn profile URL (e.g., https://www.linkedin.com/in/username)'
-    ),
-  message: z
-    .string()
-    .max(300)
-    .optional()
-    .describe(
-      'Optional personalized note to include with the connection request (max 300 characters)'
-    ),
-  credentials: z
-    .record(z.nativeEnum(CredentialType), z.string())
-    .optional()
-    .describe('Required: LINKEDIN_CRED for authenticated LinkedIn session'),
-});
+export const LinkedInConnectionToolParamsSchema = z.discriminatedUnion(
+  'operation',
+  [
+    // Send connection request operation
+    z.object({
+      operation: z
+        .literal('send_connection')
+        .describe('Send a connection request to a LinkedIn profile'),
+      profile_url: z
+        .string()
+        .min(1)
+        .describe(
+          'LinkedIn profile URL (e.g., https://www.linkedin.com/in/username)'
+        ),
+      message: z
+        .string()
+        .max(300)
+        .optional()
+        .describe(
+          'Optional personalized note to include with the connection request (max 300 characters)'
+        ),
+      credentials: z
+        .record(z.nativeEnum(CredentialType), z.string())
+        .optional()
+        .describe('Required: LINKEDIN_CRED for authenticated LinkedIn session'),
+    }),
+  ]
+);
 
 /**
  * LinkedIn Connection Tool result schema
  */
-export const LinkedInConnectionToolResultSchema = z.object({
-  operation: z.literal('send_connection'),
-  success: z.boolean().describe('Whether the connection request was sent'),
-  message: z.string().optional().describe('Success or status message'),
-  profile: ProfileInfoSchema.optional().describe(
-    'Profile information of the person'
-  ),
-  error: z.string().describe('Error message if operation failed'),
-});
+export const LinkedInConnectionToolResultSchema = z.discriminatedUnion(
+  'operation',
+  [
+    // Send connection result
+    z.object({
+      operation: z.literal('send_connection'),
+      success: z.boolean().describe('Whether the connection request was sent'),
+      message: z.string().optional().describe('Success or status message'),
+      profile: ProfileInfoSchema.optional().describe(
+        'Profile information of the person'
+      ),
+      error: z.string().describe('Error message if operation failed'),
+    }),
+  ]
+);
 
 // Type exports
 export type LinkedInConnectionToolParams = z.output<
