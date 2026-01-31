@@ -345,7 +345,7 @@ export class AshbyBubble<
       // Parse URL to extract pathname
       const parsed = new URL(url);
       // Get the pathname and remove trailing slashes
-      let path = parsed.pathname.replace(/\/+$/, '');
+      const path = parsed.pathname.replace(/\/+$/, '');
       // Normalize the path to lowercase
       return path.toLowerCase();
     } catch {
