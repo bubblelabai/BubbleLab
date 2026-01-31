@@ -30,16 +30,18 @@ export interface TestPayload extends WebhookEvent {
  *
  * This flow exercises all candidate, tag, and custom field operations:
  * 1. Create a test candidate with optional tag (auto-creates tag if name provided)
- * 2. Get the created candidate's details
- * 3. Search for the candidate by email
- * 4. Search for the candidate by name
- * 5. List candidates
- * 6. List tags
- * 7. List custom fields
+ * 2. Test LinkedIn duplicate detection (create two candidates with same LinkedIn URL)
+ * 3. Get the created candidate's details
+ * 4. Search for the candidate by email
+ * 5. Search for the candidate by name
+ * 6. List candidates
+ * 7. List tags
+ * 8. List custom fields
  *
  * Edge cases tested:
  * - Names with special characters
  * - Tag creation and assignment (pass tag name like "bubblelab" to auto-create)
+ * - LinkedIn duplicate detection (allow_duplicate_linkedin flag)
  */
 export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
   async handle(payload: TestPayload): Promise<Output> {
@@ -82,7 +84,64 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 2. Get candidate details (if create succeeded)
+    // 2. Test LinkedIn duplicate detection
+    // Create a candidate with LinkedIn URL, then try to create another with the same URL
+    try {
+      const linkedinUrl = `https://linkedin.com/in/bubblelab-test-${timestamp}`;
+
+      // First candidate with LinkedIn URL
+      const firstLinkedInResult = await new AshbyBubble({
+        operation: 'create_candidate',
+        name: `LinkedIn Test First ${timestamp}`,
+        linkedin_url: linkedinUrl,
+        allow_duplicate_linkedin: true, // Allow this one to be created
+      }).action();
+
+      results.push({
+        operation: 'create_candidate_with_linkedin',
+        success: firstLinkedInResult.success,
+        details: firstLinkedInResult.success
+          ? `Created first LinkedIn candidate: ${firstLinkedInResult.data?.candidate?.id}`
+          : firstLinkedInResult.error,
+      });
+
+      // Second candidate with same LinkedIn URL - should return duplicate: true
+      const secondLinkedInResult = await new AshbyBubble({
+        operation: 'create_candidate',
+        name: `LinkedIn Test Second ${timestamp}`,
+        linkedin_url: linkedinUrl,
+        allow_duplicate_linkedin: false, // This should detect duplicate
+      }).action();
+
+      // Access duplicate field from the result data
+      const secondResultData = secondLinkedInResult.data as
+        | (typeof secondLinkedInResult.data & { duplicate?: boolean })
+        | undefined;
+      const isDuplicate = secondResultData?.duplicate === true;
+      const returnedExistingCandidate =
+        secondResultData?.candidate?.id ===
+        firstLinkedInResult.data?.candidate?.id;
+
+      results.push({
+        operation: 'linkedin_duplicate_detection',
+        success:
+          secondLinkedInResult.success &&
+          isDuplicate &&
+          returnedExistingCandidate,
+        details:
+          isDuplicate && returnedExistingCandidate
+            ? `Correctly detected duplicate LinkedIn and returned existing candidate: ${secondResultData?.candidate?.id}`
+            : `Expected duplicate=true and same candidate ID, got duplicate=${secondResultData?.duplicate}, candidateId=${secondResultData?.candidate?.id}`,
+      });
+    } catch (error) {
+      results.push({
+        operation: 'linkedin_duplicate_detection',
+        success: false,
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+
+    // 3. Get candidate details (if create succeeded)
     if (candidateId) {
       try {
         const getResult = await new AshbyBubble({
@@ -118,7 +177,7 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       }
     }
 
-    // 3. Search by email
+    // 4. Search by email
     try {
       const searchByEmailResult = await new AshbyBubble({
         operation: 'search_candidates',
@@ -144,7 +203,7 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 4. Search by name (with special characters)
+    // 5. Search by name (with special characters)
     try {
       const searchByNameResult = await new AshbyBubble({
         operation: 'search_candidates',
@@ -166,7 +225,7 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 5. List candidates and verify our test candidate appears
+    // 6. List candidates and verify our test candidate appears
     try {
       const listResult = await new AshbyBubble({
         operation: 'list_candidates',
@@ -197,7 +256,7 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 6. List tags to verify our tag exists
+    // 7. List tags to verify our tag exists
     try {
       const listTagsResult = await new AshbyBubble({
         operation: 'list_tags',
@@ -218,7 +277,7 @@ export class AshbyIntegrationTest extends BubbleFlow<'webhook/http'> {
       });
     }
 
-    // 7. List custom fields
+    // 8. List custom fields
     try {
       const listCustomFieldsResult = await new AshbyBubble({
         operation: 'list_custom_fields',

@@ -295,6 +295,13 @@ export const AshbyParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'Optional tag to add to the candidate. Can be a tag ID (UUID) or tag name. If a name is provided, the tag will be created first.'
       ),
+    allow_duplicate_linkedin: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        'Whether to allow creating a candidate with a LinkedIn URL that already exists. When false (default), the existing candidate is returned instead of creating a duplicate.'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -439,8 +446,14 @@ export const AshbyResultSchema = z.discriminatedUnion('operation', [
       .describe('Create candidate operation'),
     success: z.boolean().describe('Whether the operation was successful'),
     candidate: AshbyCandidateSchema.optional().describe(
-      'Created candidate details'
+      'Created candidate details (or existing candidate if duplicate was found)'
     ),
+    duplicate: z
+      .boolean()
+      .optional()
+      .describe(
+        'True if a candidate with the same LinkedIn profile already existed and was returned instead of creating a new one'
+      ),
     error: z.string().describe('Error message if operation failed'),
   }),
 

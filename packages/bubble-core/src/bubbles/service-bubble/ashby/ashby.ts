@@ -337,11 +337,124 @@ export class AshbyBubble<
   }
 
   /**
+   * Normalize LinkedIn URL for comparison
+   * Removes protocol, www, trailing slashes, and query params
+   */
+  private normalizeLinkedInUrl(url: string): string {
+    try {
+      // Parse URL to extract pathname
+      const parsed = new URL(url);
+      // Get the pathname and remove trailing slashes
+      let path = parsed.pathname.replace(/\/+$/, '');
+      // Normalize the path to lowercase
+      return path.toLowerCase();
+    } catch {
+      // If URL parsing fails, just do basic normalization
+      return url
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/+$/, '')
+        .split('?')[0];
+    }
+  }
+
+  /**
+   * Extract a searchable name from LinkedIn URL
+   * e.g., "https://linkedin.com/in/john-doe" -> "john doe"
+   */
+  private extractNameFromLinkedInUrl(linkedinUrl: string): string | null {
+    try {
+      const parsed = new URL(linkedinUrl);
+      const pathParts = parsed.pathname.split('/').filter(Boolean);
+      // LinkedIn URLs are typically /in/username or /pub/name/...
+      if (pathParts.length >= 2 && pathParts[0] === 'in') {
+        // Convert slug to name: "john-doe-123abc" -> "john doe"
+        return pathParts[1]
+          .replace(/-[a-f0-9]{6,}$/i, '') // Remove trailing ID hash
+          .replace(/-/g, ' ')
+          .trim();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Find existing candidates with the same LinkedIn URL
+   * Uses search by name extracted from LinkedIn URL for faster lookup
+   */
+  private async findCandidateByLinkedIn(
+    linkedinUrl: string
+  ): Promise<{ id: string; name: string; linkedinUrl: string } | null> {
+    const normalizedInput = this.normalizeLinkedInUrl(linkedinUrl);
+
+    // Extract name from LinkedIn URL for search
+    const searchName = this.extractNameFromLinkedInUrl(linkedinUrl);
+    if (!searchName) {
+      return null;
+    }
+
+    // Search for candidates by name
+    const response = await this.makeAshbyRequest('candidate.search', {
+      name: searchName,
+    });
+
+    const candidates = response.results as Array<{
+      id: string;
+      name: string;
+      socialLinks?: Array<{ url: string; type: string }>;
+    }>;
+
+    // Check each candidate for matching LinkedIn URL
+    for (const candidate of candidates) {
+      if (candidate.socialLinks) {
+        for (const link of candidate.socialLinks) {
+          if (
+            link.type === 'LinkedIn' &&
+            this.normalizeLinkedInUrl(link.url) === normalizedInput
+          ) {
+            return {
+              id: candidate.id,
+              name: candidate.name,
+              linkedinUrl: link.url,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Create a new candidate
    */
   private async createCandidate(
     params: AshbyCreateCandidateParams
   ): Promise<Extract<AshbyResult, { operation: 'create_candidate' }>> {
+    // Check for duplicate LinkedIn profile if not allowed
+    if (params.linkedin_url && !params.allow_duplicate_linkedin) {
+      const existingCandidate = await this.findCandidateByLinkedIn(
+        params.linkedin_url
+      );
+      if (existingCandidate) {
+        // Return existing candidate info - not creating a new one
+        const duplicateCandidate = {
+          id: existingCandidate.id,
+          name: existingCandidate.name,
+        };
+        return {
+          operation: 'create_candidate',
+          success: true,
+          candidate: duplicateCandidate,
+          duplicate: true,
+          error: '',
+        };
+      }
+    }
+
     const body: Record<string, unknown> = {
       name: params.name,
     };
