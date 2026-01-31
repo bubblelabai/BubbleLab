@@ -334,6 +334,12 @@ const AIAgentResultSchema = z.object({
     .describe(
       'The AI agents final response to the user message. For text responses, returns plain text. If JSON mode is enabled, returns a JSON string. For image generation models (like gemini-2.5-flash-image-preview), returns base64-encoded image data with data URI format (data:image/png;base64,...)'
     ),
+  reasoning: z
+    .string()
+    .optional()
+    .describe(
+      'The reasoning/thinking tokens from the model (if available). Present for deep research models and reasoning models.'
+    ),
   toolCalls: z
     .array(
       z.object({
@@ -346,6 +352,12 @@ const AIAgentResultSchema = z.object({
   iterations: z
     .number()
     .describe('Number of back-and-forth iterations in the agent workflow'),
+  totalCost: z
+    .number()
+    .optional()
+    .describe(
+      'Total cost in USD for this request (includes tokens + web search for deep research models)'
+    ),
   error: z
     .string()
     .describe('Error message of the run, undefined if successful'),
@@ -690,42 +702,32 @@ export class AIAgentBubble extends ServiceBubble<
           message: {
             role: string;
             content: string;
+            reasoning?: string; // Some models return reasoning in message
           };
           finish_reason: string;
         }>;
-        usage?: {
-          prompt_tokens: number;
-          completion_tokens: number;
-          total_tokens: number;
-        };
+        // OpenRouter returns total cost directly in 'usage' field (in USD)
+        usage?: number;
+        // Native token counts from the underlying model
+        native_tokens_prompt?: number;
+        native_tokens_completion?: number;
+        native_tokens_reasoning?: number;
       };
 
       const finalResponse = data.choices?.[0]?.message?.content || '';
+      const reasoning = data.choices?.[0]?.message?.reasoning;
+      const totalCost = data.usage;
 
-      // Log token usage if available
-      if (data.usage && this.context?.logger) {
+      // Log total cost if available
+      if (totalCost !== undefined && this.context?.logger) {
         this.context.logger.logTokenUsage(
           {
-            usage: data.usage.prompt_tokens,
+            usage: totalCost,
             service: CredentialType.OPENROUTER_CRED,
-            unit: 'input_tokens',
+            unit: 'total_cost_usd',
             subService: model.model as CredentialType,
           },
-          `Deep Research: ${data.usage.prompt_tokens} input`,
-          {
-            bubbleName: 'ai-agent',
-            variableId: this.context?.variableId,
-            operationType: 'bubble_execution',
-          }
-        );
-        this.context.logger.logTokenUsage(
-          {
-            usage: data.usage.completion_tokens,
-            service: CredentialType.OPENROUTER_CRED,
-            unit: 'output_tokens',
-            subService: model.model as CredentialType,
-          },
-          `Deep Research: ${data.usage.completion_tokens} output`,
+          `Deep Research total cost: $${totalCost.toFixed(4)}`,
           {
             bubbleName: 'ai-agent',
             variableId: this.context?.variableId,
@@ -740,14 +742,16 @@ export class AIAgentBubble extends ServiceBubble<
         data: {
           messageId: data.id,
           content: finalResponse,
-          totalTokens: data.usage?.total_tokens,
+          totalTokens: data.native_tokens_completion,
         },
       });
 
       return {
         response: finalResponse,
+        reasoning,
         toolCalls: [],
         iterations: 1,
+        totalCost,
         error: '',
         success: true,
       };

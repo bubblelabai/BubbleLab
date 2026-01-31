@@ -549,6 +549,26 @@ export const PRICING_TABLE: PricingTable = {
     unitCost: 0.0021, // $0.002 per minute (BrowserBase Developer plan rate) with 1.05x markup
   },
 
+  // OpenRouter Deep Research Models - Direct cost passthrough with markup
+  // These models return total cost directly (includes tokens + web search)
+  // We apply 1.05x markup to the total cost
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/openai/o3-deep-research',
+    'total_cost_usd'
+  )]: {
+    unit: 'total_cost_usd',
+    unitCost: 1.05, // 1.05x markup on the total cost from OpenRouter
+  },
+  [getPricingKey(
+    CredentialType.OPENROUTER_CRED,
+    'openrouter/openai/o4-mini-deep-research',
+    'total_cost_usd'
+  )]: {
+    unit: 'total_cost_usd',
+    unitCost: 1.05, // 1.05x markup on the total cost from OpenRouter
+  },
+
   // Legacy entries for services without subService (fallback pricing)
   // These may be used if subService is not provided
   [getPricingKey(CredentialType.OPENAI_CRED, undefined, 'per_1m_tokens')]: {
