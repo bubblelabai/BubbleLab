@@ -3,6 +3,7 @@ import { z } from '@hono/zod-openapi';
 import {
   databaseMetadataSchema,
   jiraOAuthMetadataSchema,
+  slackOAuthMetadataSchema,
 } from './database-definition-schema.js';
 
 /**
@@ -1459,11 +1460,15 @@ export const credentialResponseSchema = z
     credentialType: z.string().openapi({ description: 'Type of credential' }),
     name: z.string().optional().openapi({ description: 'Credential name' }),
     metadata: z
-      .union([databaseMetadataSchema, jiraOAuthMetadataSchema])
+      .union([
+        databaseMetadataSchema,
+        jiraOAuthMetadataSchema,
+        slackOAuthMetadataSchema,
+      ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata or JiraOAuthMetadata)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, or SlackOAuthMetadata)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

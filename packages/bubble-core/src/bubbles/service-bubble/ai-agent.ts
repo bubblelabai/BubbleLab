@@ -683,6 +683,7 @@ export class AIAgentBubble extends ServiceBubble<
             messages,
             temperature: model.temperature,
             max_tokens: model.maxTokens,
+            usage: { include: true },
           }),
         }
       );
@@ -706,20 +707,21 @@ export class AIAgentBubble extends ServiceBubble<
           };
           finish_reason: string;
         }>;
-        // OpenRouter returns total cost directly in 'usage' field (in USD)
-        usage?: number;
-        // Native token counts from the underlying model
-        native_tokens_prompt?: number;
-        native_tokens_completion?: number;
-        native_tokens_reasoning?: number;
+        // OpenRouter returns usage object with cost when usage.include is true
+        usage?: {
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          total_tokens?: number;
+          cost?: number;
+        };
       };
 
       const finalResponse = data.choices?.[0]?.message?.content || '';
       const reasoning = data.choices?.[0]?.message?.reasoning;
-      const totalCost = data.usage;
+      const totalCost = data.usage?.cost;
 
       // Log total cost if available
-      if (totalCost !== undefined && this.context?.logger) {
+      if (typeof totalCost === 'number' && this.context?.logger) {
         this.context.logger.logTokenUsage(
           {
             usage: totalCost,
@@ -742,7 +744,7 @@ export class AIAgentBubble extends ServiceBubble<
         data: {
           messageId: data.id,
           content: finalResponse,
-          totalTokens: data.native_tokens_completion,
+          totalTokens: data.usage?.total_tokens,
         },
       });
 
