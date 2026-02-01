@@ -601,6 +601,52 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
+
+  // Get file info operation
+  z.object({
+    operation: z
+      .literal('get_file_info')
+      .describe(
+        'Get detailed information about a file. Required scopes: files:read. Use this to get file URLs from a file_id (e.g., from file_shared events).'
+      ),
+    file_id: z
+      .string()
+      .min(1, 'File ID is required')
+      .describe('The file ID to get information about (e.g., F1234567890)'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Download file operation
+  z.object({
+    operation: z
+      .literal('download_file')
+      .describe(
+        'Download a file from Slack. Required scopes: files:read. Returns the file content as base64 encoded string.'
+      ),
+    file_url: z
+      .string()
+      .optional()
+      .describe(
+        'The url_private or url_private_download URL to download (e.g., https://files.slack.com/files-pri/...)'
+      ),
+    file_id: z
+      .string()
+      .optional()
+      .describe(
+        'The file ID to download. If provided without file_url, will first fetch file info to get the URL.'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
 ]);
 
 // Define Slack API response schemas for type safety
@@ -1185,6 +1231,56 @@ const SlackResultSchema = z.discriminatedUnion('operation', [
     error: z.string().describe('Error message if operation failed'),
     success: z.boolean().describe('Whether the operation was successful'),
   }),
+
+  // Get file info result
+  z.object({
+    operation: z
+      .literal('get_file_info')
+      .describe('Get detailed information about a file'),
+    ok: z.boolean().describe('Whether the Slack API call was successful'),
+    file: z
+      .object({
+        id: z.string().describe('Unique file identifier'),
+        name: z.string().describe('Filename'),
+        title: z.string().optional().describe('File title'),
+        mimetype: z.string().describe('MIME type of the file'),
+        filetype: z.string().describe('File type extension'),
+        size: z.number().describe('File size in bytes'),
+        user: z.string().optional().describe('User ID who uploaded the file'),
+        url_private: z
+          .string()
+          .optional()
+          .describe('Private URL to access file'),
+        url_private_download: z
+          .string()
+          .optional()
+          .describe('Private download URL'),
+        thumb_64: z.string().optional().describe('64px thumbnail URL'),
+        thumb_360: z.string().optional().describe('360px thumbnail URL'),
+        thumb_480: z.string().optional().describe('480px thumbnail URL'),
+        original_w: z.number().optional().describe('Original image width'),
+        original_h: z.number().optional().describe('Original image height'),
+        permalink: z.string().optional().describe('Permanent link to file'),
+      })
+      .optional()
+      .describe('File information object'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
+
+  // Download file result
+  z.object({
+    operation: z
+      .literal('download_file')
+      .describe('Download a file from Slack'),
+    ok: z.boolean().describe('Whether the download was successful'),
+    content: z.string().optional().describe('Base64 encoded file content'),
+    filename: z.string().optional().describe('Original filename'),
+    mimetype: z.string().optional().describe('MIME type of the file'),
+    size: z.number().optional().describe('File size in bytes'),
+    error: z.string().describe('Error message if operation failed'),
+    success: z.boolean().describe('Whether the operation was successful'),
+  }),
 ]);
 
 type SlackResult = z.output<typeof SlackResultSchema>;
@@ -1422,6 +1518,10 @@ Official docs: https://docs.slack.dev/apis/events-api/
             return await this.joinChannel(this.params);
           case 'schedule_message':
             return await this.scheduleMessage(this.params);
+          case 'get_file_info':
+            return await this.getFileInfo(this.params);
+          case 'download_file':
+            return await this.downloadFile(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -2285,6 +2385,179 @@ Official docs: https://docs.slack.dev/apis/events-api/
       error: !response.ok ? JSON.stringify(response, null, 2) : '',
       success: response.ok,
     };
+  }
+
+  private async getFileInfo(
+    params: Extract<SlackParams, { operation: 'get_file_info' }>
+  ): Promise<Extract<SlackResult, { operation: 'get_file_info' }>> {
+    const { file_id } = params;
+
+    const response = await this.makeSlackApiCall(
+      'files.info',
+      { file: file_id },
+      'GET'
+    );
+
+    if (!response.ok) {
+      return {
+        operation: 'get_file_info',
+        ok: false,
+        error: JSON.stringify(response, null, 2),
+        success: false,
+      };
+    }
+
+    const file = response.file as {
+      id?: string;
+      name?: string;
+      title?: string;
+      mimetype?: string;
+      filetype?: string;
+      size?: number;
+      user?: string;
+      url_private?: string;
+      url_private_download?: string;
+      thumb_64?: string;
+      thumb_360?: string;
+      thumb_480?: string;
+      original_w?: number;
+      original_h?: number;
+      permalink?: string;
+    };
+
+    return {
+      operation: 'get_file_info',
+      ok: true,
+      file: {
+        id: file.id || file_id,
+        name: file.name || '',
+        title: file.title,
+        mimetype: file.mimetype || '',
+        filetype: file.filetype || '',
+        size: file.size || 0,
+        user: file.user,
+        url_private: file.url_private,
+        url_private_download: file.url_private_download,
+        thumb_64: file.thumb_64,
+        thumb_360: file.thumb_360,
+        thumb_480: file.thumb_480,
+        original_w: file.original_w,
+        original_h: file.original_h,
+        permalink: file.permalink,
+      },
+      error: '',
+      success: true,
+    };
+  }
+
+  private async downloadFile(
+    params: Extract<SlackParams, { operation: 'download_file' }>
+  ): Promise<Extract<SlackResult, { operation: 'download_file' }>> {
+    let { file_url } = params;
+    const { file_id } = params;
+
+    // If no URL but we have file_id, fetch the file info first
+    if (!file_url && file_id) {
+      const fileInfo = await this.getFileInfo({
+        operation: 'get_file_info',
+        file_id,
+        credentials: params.credentials,
+      });
+
+      if (!fileInfo.ok || !fileInfo.file?.url_private_download) {
+        return {
+          operation: 'download_file',
+          ok: false,
+          error: fileInfo.error || 'Could not get file download URL',
+          success: false,
+        };
+      }
+
+      file_url = fileInfo.file.url_private_download;
+    }
+
+    if (!file_url) {
+      return {
+        operation: 'download_file',
+        ok: false,
+        error: 'Either file_url or file_id must be provided',
+        success: false,
+      };
+    }
+
+    try {
+      // Get the auth token
+      const authToken = this.chooseCredential();
+
+      if (!authToken) {
+        return {
+          operation: 'download_file',
+          ok: false,
+          error: 'Slack authentication token is required',
+          success: false,
+        };
+      }
+
+      // Download the file with authentication
+      const response = await fetch(file_url, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          operation: 'download_file',
+          ok: false,
+          error: `Failed to download file: ${response.status} ${response.statusText}`,
+          success: false,
+        };
+      }
+
+      // Get file content as buffer and convert to base64
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const base64Content = buffer.toString('base64');
+
+      // Extract filename from URL or content-disposition header
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = 'downloaded_file';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      } else {
+        // Try to extract from URL
+        const urlPath = new URL(file_url).pathname;
+        const urlFilename = urlPath.split('/').pop();
+        if (urlFilename) {
+          filename = urlFilename;
+        }
+      }
+
+      const mimetype =
+        response.headers.get('content-type') || 'application/octet-stream';
+
+      return {
+        operation: 'download_file',
+        ok: true,
+        content: base64Content,
+        filename,
+        mimetype,
+        size: buffer.length,
+        error: '',
+        success: true,
+      };
+    } catch (error) {
+      return {
+        operation: 'download_file',
+        ok: false,
+        error:
+          error instanceof Error ? error.message : 'Unknown download error',
+        success: false,
+      };
+    }
   }
 
   /**

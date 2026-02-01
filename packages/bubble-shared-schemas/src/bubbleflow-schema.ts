@@ -162,11 +162,12 @@ export const createBubbleFlowResponseSchema = z
       .optional()
       .openapi({
         description:
-          'Mapping of bubble names to their required credential types',
+          'Mapping of bubble names to their required credential types. Uses CREDENTIAL_WILDCARD ("*") for bubbles accepting any credential.',
         example: {
           'database-connection': [CredentialType.DATABASE_CRED],
           'slack-notification': [CredentialType.SLACK_CRED],
           'ai-analysis': [CredentialType.GOOGLE_GEMINI_CRED],
+          'http-request': [CredentialType.CREDENTIAL_WILDCARD],
         },
       }),
     eventType: z.string().min(1).openapi({
@@ -353,6 +354,10 @@ export const bubbleFlowDetailsResponseSchema = z
       }),
     triggerCredentialId: z.number().nullable().optional().openapi({
       description: 'Credential ID for trigger authentication',
+    }),
+    triggerCredential: usedCredentialSchema.nullable().optional().openapi({
+      description:
+        'Trigger credential metadata with owner info (for shared workflow visibility)',
     }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
     updatedAt: z.string().openapi({ description: 'Update timestamp' }),

@@ -124,7 +124,14 @@ export class HttpBubble extends ServiceBubble<HttpParams, HttpResult> {
     if (!credentials || typeof credentials !== 'object') {
       return undefined;
     }
-    return credentials[CredentialType.CUSTOM_AUTH_KEY];
+    // Accept any credential type - use CUSTOM_AUTH_KEY first if available,
+    // otherwise use the first credential provided (wildcard support)
+    if (credentials[CredentialType.CUSTOM_AUTH_KEY]) {
+      return credentials[CredentialType.CUSTOM_AUTH_KEY];
+    }
+    // Return the first available credential value
+    const values = Object.values(credentials);
+    return values.length > 0 ? values[0] : undefined;
   }
 
   public async testCredential(): Promise<boolean> {

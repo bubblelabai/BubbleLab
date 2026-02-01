@@ -3,6 +3,7 @@ import type {
   SlackEventWrapper,
   SlackAppMentionEvent,
   SlackMessageEvent,
+  SlackFile,
 } from '@bubblelab/shared-schemas';
 
 /**
@@ -47,8 +48,8 @@ export function shouldSkipSlackEvent(
     }
 
     // Skip system messages with subtypes (e.g., bot_add, channel_join, message_changed)
-    // Regular user messages don't have a subtype
-    if ('subtype' in event && event.subtype) {
+    // BUT allow file_share subtype so we can process messages with images/files
+    if ('subtype' in event && event.subtype && event.subtype !== 'file_share') {
       return true;
     }
 
@@ -91,6 +92,7 @@ export function transformWebhookPayload(
         user: event?.user,
         text: event?.text,
         thread_ts: event?.thread_ts,
+        files: event?.files as SlackFile[] | undefined,
       };
       return result;
     }
@@ -108,6 +110,7 @@ export function transformWebhookPayload(
         text: event?.text,
         channel_type: event?.channel_type,
         subtype: event?.subtype,
+        files: event?.files as SlackFile[] | undefined,
       };
       return result;
     }

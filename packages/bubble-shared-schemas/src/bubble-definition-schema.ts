@@ -55,6 +55,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.ASHBY_CRED]: {},
   [CredentialType.FULLENRICH_API_KEY]: {},
   [CredentialType.STRIPE_CRED]: {},
+  [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 
 // Fixed list of bubble names that need context injection

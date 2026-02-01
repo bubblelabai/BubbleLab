@@ -142,9 +142,39 @@ interface ParsedBlock {
   language?: string; // For code blocks
 }
 
+/**
+ * Normalizes markdown text by ensuring block-level elements start on new lines.
+ * This handles cases where markdown is pasted without proper line breaks.
+ */
+function normalizeMarkdownNewlines(markdown: string): string {
+  let result = markdown;
+
+  // Add newlines before headers (### Header) if not already at line start
+  // Lookbehind ensures we don't add newline if already at start or after newline
+  result = result.replace(/([^\n])(#{1,6}\s+\S)/g, '$1\n$2');
+
+  // Add newlines before horizontal rules (--- or ***)
+  result = result.replace(
+    /([^\n\s])\s*(---+|___+|\*\*\*+)\s*(?=\S|$)/g,
+    '$1\n$2\n'
+  );
+
+  // Add newlines before list items (- ** or * **) that appear after sentence endings
+  // This catches patterns like "...text. * **Item:**" or "...documentation. - **Item:**"
+  result = result.replace(/([.!?:])(\s+)([-*])\s+(\*\*)/g, '$1\n$3 $4');
+
+  // Add newlines before standalone list items (lines starting with - or * followed by space and text)
+  // But only after sentence-ending punctuation to avoid false positives
+  result = result.replace(/([.!?])(\s+)([-*]\s+)(?!\*)/g, '$1\n$3');
+
+  return result;
+}
+
 function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
   const blocks: ParsedBlock[] = [];
-  const lines = markdown.split('\n');
+  // Normalize markdown to ensure block elements are on their own lines
+  const normalizedMarkdown = normalizeMarkdownNewlines(markdown);
+  const lines = normalizedMarkdown.split('\n');
   let currentBlock: ParsedBlock | null = null;
   let inCodeBlock = false;
   let codeBlockContent: string[] = [];
@@ -334,25 +364,36 @@ export function markdownToBlocks(
   for (const block of parsedBlocks) {
     switch (block.type) {
       case 'header':
-        if (useHeaderBlocks) {
-          // Header blocks only support plain_text and have a 150 char limit
-          slackBlocks.push({
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: block.content.slice(0, 150),
-              emoji: true,
-            },
-          });
-        } else {
-          // Use section with bold mrkdwn for more formatting flexibility
-          slackBlocks.push({
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `*${markdownToMrkdwn(block.content)}*`,
-            },
-          });
+        {
+          if (useHeaderBlocks) {
+            // Header blocks only support plain_text and have a 150 char limit
+            slackBlocks.push({
+              type: 'header',
+              text: {
+                type: 'plain_text',
+                text: block.content.slice(0, 150),
+                emoji: true,
+              },
+            });
+          } else {
+            // Strip markdown bold markers since the entire header will be wrapped in bold
+            // This prevents nested/mismatched asterisks like *1. *TanStack Start**
+            let headerContent = block.content
+              .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove **bold**
+              .replace(/__([^_]+)__/g, '$1'); // Remove __bold__
+
+            // Convert other formatting (links, italics, etc.)
+            headerContent = markdownToMrkdwn(headerContent);
+
+            // Use section with bold mrkdwn for more formatting flexibility
+            slackBlocks.push({
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: `*${headerContent}*`,
+              },
+            });
+          }
         }
         if (addDividersAfterHeaders) {
           slackBlocks.push({ type: 'divider' });
@@ -415,7 +456,8 @@ export function markdownToBlocks(
     }
   }
 
-  return slackBlocks;
+  // Split any blocks that exceed Slack's text character limit
+  return splitLongBlocks(slackBlocks);
 }
 
 /**
@@ -477,6 +519,116 @@ export function createContextBlock(texts: string[]): SlackContextBlock {
       text: markdownToMrkdwn(text),
     })),
   };
+}
+
+/**
+ * Slack's maximum character limit for text in a single block
+ */
+const SLACK_MAX_BLOCK_TEXT_LENGTH = 3000;
+
+/**
+ * Splits long text into chunks that fit within Slack's block text limit.
+ * Attempts to split at paragraph boundaries first, then at sentence boundaries,
+ * and finally at word boundaries if necessary.
+ *
+ * @param text - Text to split
+ * @param maxLength - Maximum length per chunk (default: 3000)
+ * @returns Array of text chunks, each within the limit
+ */
+export function splitLongText(
+  text: string,
+  maxLength: number = SLACK_MAX_BLOCK_TEXT_LENGTH
+): string[] {
+  if (!text || text.length <= maxLength) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Find the best split point within maxLength
+    let splitPoint = maxLength;
+
+    // Try to split at a double newline (paragraph boundary)
+    const paragraphBreak = remaining.lastIndexOf('\n\n', maxLength);
+    if (paragraphBreak > maxLength * 0.5) {
+      splitPoint = paragraphBreak;
+    } else {
+      // Try to split at a single newline
+      const lineBreak = remaining.lastIndexOf('\n', maxLength);
+      if (lineBreak > maxLength * 0.5) {
+        splitPoint = lineBreak;
+      } else {
+        // Try to split at a sentence boundary (. ! ?)
+        const sentenceEnd = Math.max(
+          remaining.lastIndexOf('. ', maxLength),
+          remaining.lastIndexOf('! ', maxLength),
+          remaining.lastIndexOf('? ', maxLength)
+        );
+        if (sentenceEnd > maxLength * 0.5) {
+          splitPoint = sentenceEnd + 1; // Include the punctuation
+        } else {
+          // Fall back to splitting at a word boundary
+          const wordBreak = remaining.lastIndexOf(' ', maxLength);
+          if (wordBreak > maxLength * 0.3) {
+            splitPoint = wordBreak;
+          }
+          // If no good break point, just split at maxLength
+        }
+      }
+    }
+
+    chunks.push(remaining.slice(0, splitPoint).trim());
+    remaining = remaining.slice(splitPoint).trim();
+  }
+
+  return chunks.filter((chunk) => chunk.length > 0);
+}
+
+/**
+ * Splits a SlackBlock into multiple blocks if its text exceeds the character limit.
+ * Only splits section blocks; other block types are returned as-is.
+ *
+ * @param block - The block to potentially split
+ * @returns Array of blocks (1 if no split needed, multiple if text was too long)
+ */
+function splitLongBlock(block: SlackBlock): SlackBlock[] {
+  // Only split section blocks with text
+  if (block.type !== 'section' || !block.text) {
+    return [block];
+  }
+
+  const textContent = block.text.text;
+  if (textContent.length <= SLACK_MAX_BLOCK_TEXT_LENGTH) {
+    return [block];
+  }
+
+  // Split the text and create multiple section blocks
+  const textChunks = splitLongText(textContent, SLACK_MAX_BLOCK_TEXT_LENGTH);
+
+  return textChunks.map((chunk) => ({
+    type: 'section' as const,
+    text: {
+      type: block.text.type,
+      text: chunk,
+    },
+  }));
+}
+
+/**
+ * Processes an array of Slack blocks, splitting any that exceed the text limit.
+ *
+ * @param blocks - Array of Slack blocks
+ * @returns Array of blocks with long texts split into multiple blocks
+ */
+export function splitLongBlocks(blocks: SlackBlock[]): SlackBlock[] {
+  return blocks.flatMap(splitLongBlock);
 }
 
 /**

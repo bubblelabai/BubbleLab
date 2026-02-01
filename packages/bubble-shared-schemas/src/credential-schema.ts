@@ -305,6 +305,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Stripe API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.CREDENTIAL_WILDCARD]: {
+      label: 'Any Credential',
+      description:
+        'Wildcard marker - this is not a real credential type, used internally to indicate any credential is accepted',
+      placeholder: '',
+      namePlaceholder: '',
+      credentialConfigurations: {},
+    },
   } as const satisfies Record<CredentialType, CredentialConfig>;
 
 /**
@@ -358,6 +366,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
   [CredentialType.FULLENRICH_API_KEY]: 'FULLENRICH_API_KEY',
   [CredentialType.STRIPE_CRED]: 'STRIPE_SECRET_KEY',
+  [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
 /** Used by bubblelab studio */
@@ -1277,9 +1286,18 @@ export function isBrowserSessionCredential(
 export type CredentialOptions = Partial<Record<CredentialType, string>>;
 
 /**
+ * Credential options for a bubble - array of credential types.
+ * Use CredentialType.CREDENTIAL_WILDCARD to indicate the bubble accepts any credential.
+ */
+export type BubbleCredentialOption = CredentialType[];
+
+/**
  * Collection of credential options for all bubbles
  */
-export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
+export const BUBBLE_CREDENTIAL_OPTIONS: Record<
+  BubbleName,
+  BubbleCredentialOption
+> = {
   'ai-agent': [
     CredentialType.OPENAI_CRED,
     CredentialType.GOOGLE_GEMINI_CRED,
@@ -1311,7 +1329,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
     CredentialType.ANTHROPIC_CRED,
   ],
   'hello-world': [],
-  http: [CredentialType.CUSTOM_AUTH_KEY],
+  http: [CredentialType.CREDENTIAL_WILDCARD], // Accepts any credential type for flexible API integrations
   'get-bubble-details-tool': [],
   'get-trigger-detail-tool': [],
   'list-bubbles-tool': [],
@@ -1572,6 +1590,12 @@ export const credentialResponseSchema = z
       })
       .optional()
       .openapi({ description: 'Browser session metadata' }),
+
+    // Master/Child credential relationship (for Slack OAuth)
+    masterCredentialId: z.number().optional().openapi({
+      description:
+        'ID of the master credential this credential uses for tokens (null means this is a master)',
+    }),
   })
   .openapi('CredentialResponse');
 

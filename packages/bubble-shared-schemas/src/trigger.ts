@@ -82,6 +82,42 @@ export interface BubbleTrigger {
   retries?: number;
 }
 
+/**
+ * Slack file object - included in message events when files/images are shared
+ * @see https://api.slack.com/types/file
+ */
+export interface SlackFile {
+  /** Unique file identifier */
+  id: string;
+  /** Filename with extension */
+  name: string;
+  /** Display title of the file */
+  title?: string;
+  /** MIME type (e.g., 'image/png', 'application/pdf') */
+  mimetype: string;
+  /** File extension without dot (e.g., 'png', 'pdf') */
+  filetype: string;
+  /** File size in bytes */
+  size: number;
+  /** User ID who uploaded the file */
+  user?: string;
+
+  // File access URLs (require authentication with bot token)
+  /** Private URL to view the file (requires bot token auth) */
+  url_private?: string;
+  /** Private URL to download the file (requires bot token auth) */
+  url_private_download?: string;
+
+  // Image dimensions
+  /** Original image width in pixels */
+  original_w?: number;
+  /** Original image height in pixels */
+  original_h?: number;
+
+  /** Permanent link to the file */
+  permalink?: string;
+}
+
 // Slack Event Wrapper (outer payload)
 export interface SlackEventWrapper {
   token: string;
@@ -109,6 +145,10 @@ export interface SlackAppMentionEvent {
   channel: string;
   event_ts: string;
   thread_ts?: string;
+  /** Files/images attached to the mention message */
+  files?: SlackFile[];
+  /** Whether this message was an upload */
+  upload?: boolean;
 }
 
 // Slack Message Event (inner event data)
@@ -120,6 +160,7 @@ export interface SlackMessageEvent {
   channel: string;
   event_ts: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
+  /** Message subtype (e.g., 'file_share', 'bot_message', 'channel_join') */
   subtype?: string;
   // Bot message indicators - present when message is from a bot
   bot_id?: string;
@@ -128,6 +169,10 @@ export interface SlackMessageEvent {
     name: string;
     app_id: string;
   };
+  /** Files/images attached to this message (present when subtype is 'file_share' or user uploads files) */
+  files?: SlackFile[];
+  /** Whether this message was an upload */
+  upload?: boolean;
 }
 
 // BubbleTrigger-specific event types that wrap Slack events
@@ -137,6 +182,8 @@ export interface SlackMentionEvent extends BubbleTriggerEvent {
   user: string;
   text: string;
   thread_ts?: string;
+  /** Files/images attached to the mention message */
+  files?: SlackFile[];
 }
 
 export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
@@ -146,6 +193,8 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   text: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
   subtype?: string;
+  /** Files/images attached to this message */
+  files?: SlackFile[];
 }
 
 // ============================================================================
@@ -299,6 +348,57 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
           type: 'string',
           description: 'Type of channel (channel, group, im, mpim)',
         },
+        files: {
+          type: 'array',
+          description:
+            'Files/images attached to the message. Present when user shares files. Use url_private with bot token to download.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Unique file identifier' },
+              name: { type: 'string', description: 'Filename with extension' },
+              title: { type: 'string', description: 'Display title' },
+              mimetype: {
+                type: 'string',
+                description: 'MIME type (e.g., image/png)',
+              },
+              filetype: {
+                type: 'string',
+                description: 'File extension (e.g., png)',
+              },
+              size: { type: 'number', description: 'File size in bytes' },
+              url_private: {
+                type: 'string',
+                description: 'Private URL to access file (requires bot token)',
+              },
+              url_private_download: {
+                type: 'string',
+                description:
+                  'Private URL to download file (requires bot token)',
+              },
+              thumb_360: {
+                type: 'string',
+                description: '360px thumbnail URL for images',
+              },
+              thumb_480: {
+                type: 'string',
+                description: '480px thumbnail URL for images',
+              },
+              original_w: {
+                type: 'number',
+                description: 'Original image width in pixels',
+              },
+              original_h: {
+                type: 'number',
+                description: 'Original image height in pixels',
+              },
+              permalink: {
+                type: 'string',
+                description: 'Permanent link to the file',
+              },
+            },
+          },
+        },
         slack_event: {
           type: 'object',
           description: 'Full Slack event wrapper',
@@ -351,7 +451,12 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
                 },
                 subtype: {
                   type: 'string',
-                  description: 'Message subtype (if any)',
+                  description:
+                    'Message subtype (e.g., file_share when files attached)',
+                },
+                files: {
+                  type: 'array',
+                  description: 'Files attached to the message',
                 },
               },
               required: [
@@ -426,6 +531,57 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
           type: 'string',
           description: 'Thread timestamp (if replying in a thread)',
         },
+        files: {
+          type: 'array',
+          description:
+            'Files/images attached to the mention message. Use url_private with bot token to download.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Unique file identifier' },
+              name: { type: 'string', description: 'Filename with extension' },
+              title: { type: 'string', description: 'Display title' },
+              mimetype: {
+                type: 'string',
+                description: 'MIME type (e.g., image/png)',
+              },
+              filetype: {
+                type: 'string',
+                description: 'File extension (e.g., png)',
+              },
+              size: { type: 'number', description: 'File size in bytes' },
+              url_private: {
+                type: 'string',
+                description: 'Private URL to access file (requires bot token)',
+              },
+              url_private_download: {
+                type: 'string',
+                description:
+                  'Private URL to download file (requires bot token)',
+              },
+              thumb_360: {
+                type: 'string',
+                description: '360px thumbnail URL for images',
+              },
+              thumb_480: {
+                type: 'string',
+                description: '480px thumbnail URL for images',
+              },
+              original_w: {
+                type: 'number',
+                description: 'Original image width in pixels',
+              },
+              original_h: {
+                type: 'number',
+                description: 'Original image height in pixels',
+              },
+              permalink: {
+                type: 'string',
+                description: 'Permanent link to the file',
+              },
+            },
+          },
+        },
         slack_event: {
           type: 'object',
           description: 'Full Slack event wrapper',
@@ -477,6 +633,10 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
                 thread_ts: {
                   type: 'string',
                   description: 'Thread timestamp (if in a thread)',
+                },
+                files: {
+                  type: 'array',
+                  description: 'Files attached to the mention message',
                 },
               },
               required: ['type', 'user', 'text', 'ts', 'channel', 'event_ts'],

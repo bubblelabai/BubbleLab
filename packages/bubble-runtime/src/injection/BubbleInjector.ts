@@ -62,13 +62,27 @@ export class BubbleInjector {
       const allCredentialTypes = new Set<CredentialType>();
 
       // Get bubble-level credentials
-      let credentialOptions =
+      const rawCredentialOptions =
         BUBBLE_CREDENTIAL_OPTIONS[
           bubble.bubbleName as keyof typeof BUBBLE_CREDENTIAL_OPTIONS
         ];
 
+      // Handle wildcard - bubble accepts any credential type
+      let credentialOptions: CredentialType[];
+      if (
+        Array.isArray(rawCredentialOptions) &&
+        rawCredentialOptions.includes(CredentialType.CREDENTIAL_WILDCARD)
+      ) {
+        // Wildcard means all credential types are accepted
+        credentialOptions = Object.values(CredentialType).filter(
+          (ct) => ct !== CredentialType.CREDENTIAL_WILDCARD
+        );
+      } else {
+        credentialOptions = rawCredentialOptions || [];
+      }
+
       // For AI agent bubbles, optimize credential requirements based on model
-      if (bubble.bubbleName === 'ai-agent' && credentialOptions) {
+      if (bubble.bubbleName === 'ai-agent' && credentialOptions.length > 0) {
         const modelCredentialTypes = this.extractModelCredentialType(bubble);
         if (modelCredentialTypes !== null) {
           // Model is static - only include the credentials needed for primary and backup models
@@ -332,8 +346,24 @@ export class BubbleInjector {
         const bubbleName = bubble.bubbleName as BubbleName;
 
         // Get the credential options for this bubble from the registry
-        let bubbleCredentialOptions =
-          BUBBLE_CREDENTIAL_OPTIONS[bubbleName] || [];
+        const rawBubbleCredentialOptions =
+          BUBBLE_CREDENTIAL_OPTIONS[bubbleName];
+
+        // Handle wildcard - bubble accepts any credential type
+        let bubbleCredentialOptions: CredentialType[];
+        if (
+          Array.isArray(rawBubbleCredentialOptions) &&
+          rawBubbleCredentialOptions.includes(
+            CredentialType.CREDENTIAL_WILDCARD
+          )
+        ) {
+          // Wildcard means all credential types are accepted
+          bubbleCredentialOptions = Object.values(CredentialType).filter(
+            (ct) => ct !== CredentialType.CREDENTIAL_WILDCARD
+          );
+        } else {
+          bubbleCredentialOptions = rawBubbleCredentialOptions || [];
+        }
 
         // For AI agent bubbles, optimize credential injection based on model
         if (bubble.bubbleName === 'ai-agent') {

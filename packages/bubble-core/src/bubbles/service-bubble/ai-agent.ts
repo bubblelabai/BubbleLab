@@ -336,6 +336,7 @@ const AIAgentResultSchema = z.object({
     ),
   reasoning: z
     .string()
+    .nullable()
     .optional()
     .describe(
       'The reasoning/thinking tokens from the model (if available). Present for deep research models and reasoning models.'

@@ -1,6 +1,12 @@
 // Define CredentialType enum here to avoid circular dependencies
 
 export enum CredentialType {
+  /**
+   * Wildcard marker that indicates a bubble accepts any credential type.
+   * Used in BUBBLE_CREDENTIAL_OPTIONS to allow users to plug in any credential.
+   */
+  CREDENTIAL_WILDCARD = '*',
+
   // AI Credentials
   OPENAI_CRED = 'OPENAI_CRED',
   GOOGLE_GEMINI_CRED = 'GOOGLE_GEMINI_CRED',
