@@ -573,6 +573,15 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Document ID is required')
       .describe('The ID of the Google Doc to retrieve'),
+    tab_id: z
+      .string()
+      .optional()
+      .describe('Specific tab ID to read. If omitted, reads first tab.'),
+    include_all_tabs: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Return info for all tabs including their plain text content'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -605,6 +614,73 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'Update mode: "replace" clears existing content first, "append" adds to the end'
       ),
+    tab_id: z
+      .string()
+      .optional()
+      .describe('Tab to write to. If omitted, writes to first tab.'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Find and replace text operation (preserves formatting)
+  z.object({
+    operation: z
+      .literal('replace_text')
+      .describe(
+        'Find and replace text in a Google Doc while preserving formatting'
+      ),
+    document_id: z
+      .string()
+      .min(1, 'Document ID is required')
+      .describe('The ID of the Google Doc to perform replacements in'),
+    replacements: z
+      .array(
+        z.object({
+          find: z.string().describe('Text to find'),
+          replace: z.string().describe('Text to replace with'),
+          match_case: z
+            .boolean()
+            .optional()
+            .default(true)
+            .describe('Whether to match case when finding text'),
+        })
+      )
+      .describe('List of find/replace pairs'),
+    tab_id: z
+      .string()
+      .optional()
+      .describe(
+        'Tab to perform replacements in. If omitted, applies to all tabs.'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe(
+        'Object mapping credential types to values (injected at runtime)'
+      ),
+  }),
+
+  // Copy document operation
+  z.object({
+    operation: z
+      .literal('copy_doc')
+      .describe('Create a copy of a Google Doc (useful for templates)'),
+    document_id: z
+      .string()
+      .min(1, 'Document ID is required')
+      .describe('Source document ID to copy'),
+    new_name: z
+      .string()
+      .min(1, 'New name is required')
+      .describe('Name for the new document'),
+    parent_folder_id: z
+      .string()
+      .optional()
+      .describe('Folder to place the copy in'),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -756,6 +832,20 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Extracted plain text content from the document'),
+    tabs: z
+      .array(
+        z.object({
+          tabId: z.string().describe('Unique tab identifier'),
+          title: z.string().describe('Tab title'),
+          index: z.number().describe('Tab position index'),
+          plainText: z
+            .string()
+            .optional()
+            .describe('Plain text content of the tab'),
+        })
+      )
+      .optional()
+      .describe('All tabs in the document'),
     error: z.string().describe('Error message if operation failed'),
   }),
 
@@ -776,6 +866,33 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('The new revision ID after the update'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z
+      .literal('replace_text')
+      .describe('Find and replace text in a Google Doc'),
+    success: z
+      .boolean()
+      .describe('Whether the replacements were made successfully'),
+    replacements_made: z
+      .number()
+      .optional()
+      .describe('Total number of replacements made'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  z.object({
+    operation: z.literal('copy_doc').describe('Create a copy of a Google Doc'),
+    success: z
+      .boolean()
+      .describe('Whether the document was copied successfully'),
+    new_document_id: z.string().optional().describe('ID of the new document'),
+    new_document_url: z
+      .string()
+      .optional()
+      .describe('URL to view the new document'),
     error: z.string().describe('Error message if operation failed'),
   }),
 ]);
@@ -952,6 +1069,10 @@ export class GoogleDriveBubble<
             return await this.getDoc(this.params);
           case 'update_doc':
             return await this.updateDoc(this.params);
+          case 'replace_text':
+            return await this.replaceText(this.params);
+          case 'copy_doc':
+            return await this.copyDoc(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1459,21 +1580,47 @@ export class GoogleDriveBubble<
   private async getDoc(
     params: Extract<GoogleDriveParams, { operation: 'get_doc' }>
   ): Promise<Extract<GoogleDriveResult, { operation: 'get_doc' }>> {
-    const { document_id } = params;
+    const { document_id, tab_id, include_all_tabs } = params;
 
-    const url = `https://docs.googleapis.com/v1/documents/${document_id}`;
+    // Always fetch with tabs to get full structure
+    const url = `https://docs.googleapis.com/v1/documents/${document_id}?includeTabsContent=true`;
 
     // Make the request to Google Docs API
     const response = await this.makeGoogleApiRequest(url, 'GET');
 
-    // Extract plain text from the document body
-    const plainText = this.extractPlainTextFromDoc(response);
+    // Build tabs info if document has tabs
+    const responseTabs = response.tabs as
+      | Array<{
+          tabProperties?: { tabId?: string; title?: string; index?: number };
+          documentTab?: { body?: { content?: Array<Record<string, unknown>> } };
+        }>
+      | undefined;
+
+    const tabs = responseTabs?.map((tab) => ({
+      tabId: tab.tabProperties?.tabId || '',
+      title: tab.tabProperties?.title || 'Untitled',
+      index: tab.tabProperties?.index || 0,
+      plainText: include_all_tabs
+        ? this.extractPlainTextFromTab(tab)
+        : undefined,
+    }));
+
+    // Get content from specific tab or first tab
+    const targetTab = tab_id
+      ? responseTabs?.find((t) => t.tabProperties?.tabId === tab_id)
+      : responseTabs?.[0];
+
+    // Extract plain text from the target tab, or fall back to document body for non-tabbed docs
+    const plainText = targetTab
+      ? this.extractPlainTextFromTab(targetTab)
+      : this.extractPlainTextFromDoc(response);
 
     return {
       operation: 'get_doc',
       success: true,
       document: response,
       plainText,
+      tabs,
       error: '',
     };
   }
@@ -1481,7 +1628,7 @@ export class GoogleDriveBubble<
   private async updateDoc(
     params: Extract<GoogleDriveParams, { operation: 'update_doc' }>
   ): Promise<Extract<GoogleDriveResult, { operation: 'update_doc' }>> {
-    const { document_id, content, mode } = params;
+    const { document_id, content, mode, tab_id } = params;
 
     const url = `https://docs.googleapis.com/v1/documents/${document_id}:batchUpdate`;
 
@@ -1491,25 +1638,57 @@ export class GoogleDriveBubble<
     // Auto-detect markdown and parse if needed
     const useMarkdown = isMarkdown(content);
 
+    // Helper to build location object with optional tabId
+    const buildLocation = (index: number) => {
+      const location: { index: number; tabId?: string } = { index };
+      if (tab_id) {
+        location.tabId = tab_id;
+      }
+      return location;
+    };
+
+    // Helper to build range object with optional tabId
+    const buildRange = (startIndex: number, endIndex: number) => {
+      const range: { startIndex: number; endIndex: number; tabId?: string } = {
+        startIndex,
+        endIndex,
+      };
+      if (tab_id) {
+        range.tabId = tab_id;
+      }
+      return range;
+    };
+
     if (mode === 'replace') {
       // For replace mode, first get the document to find content length
-      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}`;
+      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}?includeTabsContent=true`;
       const document = await this.makeGoogleApiRequest(docUrl, 'GET');
 
-      // Get the end index of the document body content
-      const body = document.body as { content?: Array<{ endIndex?: number }> };
-      const contentElements = body?.content || [];
-      const lastElement = contentElements[contentElements.length - 1];
-      const endIndex = lastElement?.endIndex || 1;
+      // Get the end index from the target tab or document body
+      let endIndex = 1;
+      if (tab_id && document.tabs) {
+        const tabs = document.tabs as Array<{
+          tabProperties?: { tabId?: string };
+          documentTab?: { body?: { content?: Array<{ endIndex?: number }> } };
+        }>;
+        const targetTab = tabs.find((t) => t.tabProperties?.tabId === tab_id);
+        const tabContent = targetTab?.documentTab?.body?.content || [];
+        const lastElement = tabContent[tabContent.length - 1];
+        endIndex = lastElement?.endIndex || 1;
+      } else {
+        const body = document.body as {
+          content?: Array<{ endIndex?: number }>;
+        };
+        const contentElements = body?.content || [];
+        const lastElement = contentElements[contentElements.length - 1];
+        endIndex = lastElement?.endIndex || 1;
+      }
 
       // Only delete if there's content to delete (endIndex > 1)
       if (endIndex > 1) {
         requests.push({
           deleteContentRange: {
-            range: {
-              startIndex: 1,
-              endIndex: endIndex - 1,
-            },
+            range: buildRange(1, endIndex - 1),
           },
         });
       }
@@ -1521,32 +1700,52 @@ export class GoogleDriveBubble<
         // Insert plain text first
         requests.push({
           insertText: {
-            location: { index: 1 },
+            location: buildLocation(1),
             text: parsed.plainText,
           },
         });
 
-        // Add formatting requests
-        requests.push(...parsed.requests);
+        // Add formatting requests with tabId if provided
+        for (const req of parsed.requests) {
+          if (tab_id) {
+            // Add tabId to range objects in formatting requests
+            this.addTabIdToRequest(req, tab_id);
+          }
+          requests.push(req);
+        }
       } else {
         // Plain text - just insert
         requests.push({
           insertText: {
-            location: { index: 1 },
+            location: buildLocation(1),
             text: content,
           },
         });
       }
     } else {
       // For append mode, get document to find the end position
-      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}`;
+      const docUrl = `https://docs.googleapis.com/v1/documents/${document_id}?includeTabsContent=true`;
       const document = await this.makeGoogleApiRequest(docUrl, 'GET');
 
-      // Get the end index of the document body content
-      const body = document.body as { content?: Array<{ endIndex?: number }> };
-      const contentElements = body?.content || [];
-      const lastElement = contentElements[contentElements.length - 1];
-      const endIndex = lastElement?.endIndex || 1;
+      // Get the end index from the target tab or document body
+      let endIndex = 1;
+      if (tab_id && document.tabs) {
+        const tabs = document.tabs as Array<{
+          tabProperties?: { tabId?: string };
+          documentTab?: { body?: { content?: Array<{ endIndex?: number }> } };
+        }>;
+        const targetTab = tabs.find((t) => t.tabProperties?.tabId === tab_id);
+        const tabContent = targetTab?.documentTab?.body?.content || [];
+        const lastElement = tabContent[tabContent.length - 1];
+        endIndex = lastElement?.endIndex || 1;
+      } else {
+        const body = document.body as {
+          content?: Array<{ endIndex?: number }>;
+        };
+        const contentElements = body?.content || [];
+        const lastElement = contentElements[contentElements.length - 1];
+        endIndex = lastElement?.endIndex || 1;
+      }
 
       const insertIndex = endIndex - 1;
 
@@ -1557,18 +1756,23 @@ export class GoogleDriveBubble<
         // Insert plain text first
         requests.push({
           insertText: {
-            location: { index: insertIndex },
+            location: buildLocation(insertIndex),
             text: parsed.plainText,
           },
         });
 
-        // Add formatting requests
-        requests.push(...parsed.requests);
+        // Add formatting requests with tabId if provided
+        for (const req of parsed.requests) {
+          if (tab_id) {
+            this.addTabIdToRequest(req, tab_id);
+          }
+          requests.push(req);
+        }
       } else {
         // Plain text - just insert
         requests.push({
           insertText: {
-            location: { index: insertIndex },
+            location: buildLocation(insertIndex),
             text: content,
           },
         });
@@ -1590,6 +1794,103 @@ export class GoogleDriveBubble<
   }
 
   /**
+   * Adds tabId to range objects in formatting requests
+   */
+  private addTabIdToRequest(req: Record<string, unknown>, tabId: string): void {
+    for (const key of Object.keys(req)) {
+      const value = req[key] as Record<string, unknown>;
+      if (value && typeof value === 'object') {
+        if ('range' in value && typeof value.range === 'object') {
+          (value.range as Record<string, unknown>).tabId = tabId;
+        }
+        if ('location' in value && typeof value.location === 'object') {
+          (value.location as Record<string, unknown>).tabId = tabId;
+        }
+      }
+    }
+  }
+
+  private async replaceText(
+    params: Extract<GoogleDriveParams, { operation: 'replace_text' }>
+  ): Promise<Extract<GoogleDriveResult, { operation: 'replace_text' }>> {
+    const { document_id, replacements, tab_id } = params;
+
+    const url = `https://docs.googleapis.com/v1/documents/${document_id}:batchUpdate`;
+
+    // Build requests for each replacement
+    const requests = replacements.map((r) => {
+      const containsText: {
+        text: string;
+        matchCase: boolean;
+        tabId?: string;
+      } = {
+        text: r.find,
+        matchCase: r.match_case ?? true,
+      };
+
+      // Add tabId if provided to target specific tab
+      if (tab_id) {
+        containsText.tabId = tab_id;
+      }
+
+      return {
+        replaceAllText: {
+          containsText,
+          replaceText: r.replace,
+        },
+      };
+    });
+
+    // Make the batchUpdate request
+    const response = await this.makeGoogleApiRequest(url, 'POST', {
+      requests,
+    });
+
+    // Count total replacements made
+    const replies = response.replies as
+      | Array<{ replaceAllText?: { occurrencesChanged?: number } }>
+      | undefined;
+    const totalReplacements =
+      replies?.reduce(
+        (sum, r) => sum + (r.replaceAllText?.occurrencesChanged || 0),
+        0
+      ) || 0;
+
+    return {
+      operation: 'replace_text',
+      success: true,
+      replacements_made: totalReplacements,
+      error: '',
+    };
+  }
+
+  private async copyDoc(
+    params: Extract<GoogleDriveParams, { operation: 'copy_doc' }>
+  ): Promise<Extract<GoogleDriveResult, { operation: 'copy_doc' }>> {
+    const { document_id, new_name, parent_folder_id } = params;
+
+    // Use Drive API copy endpoint
+    const body: { name: string; parents?: string[] } = { name: new_name };
+    if (parent_folder_id) {
+      body.parents = [parent_folder_id];
+    }
+
+    const response = await this.makeGoogleApiRequest(
+      `/files/${document_id}/copy?supportsAllDrives=true&fields=id,webViewLink`,
+      'POST',
+      body
+    );
+
+    return {
+      operation: 'copy_doc',
+      success: true,
+      new_document_id: response.id,
+      new_document_url: response.webViewLink,
+      error: '',
+    };
+  }
+
+  /**
    * Extracts plain text content from a Google Docs document body
    */
   private extractPlainTextFromDoc(document: Record<string, unknown>): string {
@@ -1600,9 +1901,32 @@ export class GoogleDriveBubble<
       return '';
     }
 
+    return this.extractPlainTextFromContent(body.content);
+  }
+
+  /**
+   * Extracts plain text content from a Google Docs tab
+   */
+  private extractPlainTextFromTab(tab: {
+    documentTab?: { body?: { content?: Array<Record<string, unknown>> } };
+  }): string {
+    const body = tab?.documentTab?.body;
+    if (!body?.content) {
+      return '';
+    }
+
+    return this.extractPlainTextFromContent(body.content);
+  }
+
+  /**
+   * Extracts plain text from a content array
+   */
+  private extractPlainTextFromContent(
+    content: Array<Record<string, unknown>>
+  ): string {
     const textParts: string[] = [];
 
-    for (const element of body.content) {
+    for (const element of content) {
       const paragraph = element.paragraph as
         | { elements?: Array<Record<string, unknown>> }
         | undefined;
