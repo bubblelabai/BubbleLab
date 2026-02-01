@@ -688,27 +688,6 @@ const GoogleDriveParamsSchema = z.discriminatedUnion('operation', [
         'Object mapping credential types to values (injected at runtime)'
       ),
   }),
-
-  // Create tab operation
-  z.object({
-    operation: z
-      .literal('create_tab')
-      .describe('Create a new tab in a Google Doc'),
-    document_id: z
-      .string()
-      .min(1, 'Document ID is required')
-      .describe('The ID of the Google Doc to add a tab to'),
-    title: z
-      .string()
-      .min(1, 'Tab title is required')
-      .describe('Title for the new tab'),
-    credentials: z
-      .record(z.nativeEnum(CredentialType), z.string())
-      .optional()
-      .describe(
-        'Object mapping credential types to values (injected at runtime)'
-      ),
-  }),
 ]);
 
 // Define result schemas for different operations
@@ -916,15 +895,6 @@ const GoogleDriveResultSchema = z.discriminatedUnion('operation', [
       .describe('URL to view the new document'),
     error: z.string().describe('Error message if operation failed'),
   }),
-
-  z.object({
-    operation: z
-      .literal('create_tab')
-      .describe('Create a new tab in a Google Doc'),
-    success: z.boolean().describe('Whether the tab was created successfully'),
-    tab_id: z.string().optional().describe('ID of the newly created tab'),
-    error: z.string().describe('Error message if operation failed'),
-  }),
 ]);
 
 type GoogleDriveResult = z.output<typeof GoogleDriveResultSchema>;
@@ -966,7 +936,6 @@ export class GoogleDriveBubble<
     Google Docs Tab Support:
     - Read content from specific tabs or all tabs (get_doc with tab_id/include_all_tabs)
     - Write content to specific tabs (update_doc with tab_id)
-    - Create new tabs in documents (create_tab)
 
     Template & Formatting Operations:
     - Copy documents to create new docs from templates (copy_doc)
@@ -1116,8 +1085,6 @@ export class GoogleDriveBubble<
             return await this.replaceText(this.params);
           case 'copy_doc':
             return await this.copyDoc(this.params);
-          case 'create_tab':
-            return await this.createTab(this.params);
           default:
             throw new Error(`Unsupported operation: ${operation}`);
         }
@@ -1931,47 +1898,6 @@ export class GoogleDriveBubble<
       success: true,
       new_document_id: response.id,
       new_document_url: response.webViewLink,
-      error: '',
-    };
-  }
-
-  private async createTab(
-    params: Extract<GoogleDriveParams, { operation: 'create_tab' }>
-  ): Promise<Extract<GoogleDriveResult, { operation: 'create_tab' }>> {
-    const { document_id, title } = params;
-
-    const url = `https://docs.googleapis.com/v1/documents/${document_id}:batchUpdate`;
-
-    // Create a new tab using the addDocumentTab request
-    const requests = [
-      {
-        addDocumentTab: {
-          tab: {
-            tabProperties: {
-              title,
-            },
-          },
-        },
-      },
-    ];
-
-    // Make the batchUpdate request
-    const response = await this.makeGoogleApiRequest(url, 'POST', {
-      requests,
-    });
-
-    // Extract the new tab ID from the response
-    const replies = response.replies as
-      | Array<{
-          addDocumentTab?: { tab?: { tabProperties?: { tabId?: string } } };
-        }>
-      | undefined;
-    const newTabId = replies?.[0]?.addDocumentTab?.tab?.tabProperties?.tabId;
-
-    return {
-      operation: 'create_tab',
-      success: true,
-      tab_id: newTabId,
       error: '',
     };
   }
