@@ -951,17 +951,30 @@ export class GoogleDriveBubble<
   static readonly schema = GoogleDriveParamsSchema;
   static readonly resultSchema = GoogleDriveResultSchema;
   static readonly shortDescription =
-    'Google Drive integration for file management';
+    'Google Drive integration with full Google Docs tab support - read/write specific tabs, copy templates, and preserve formatting with find/replace';
   static readonly longDescription = `
-    Google Drive service integration for comprehensive file and folder management.
-    Use cases:
+    Google Drive service integration for comprehensive file, folder, and Google Docs management.
+
+    File & Folder Operations:
     - Upload files and documents to Google Drive
     - Download files with format conversion support
     - List and search files with advanced filtering
     - Create and organize folders
     - Share files and manage permissions
     - Get detailed file metadata and information
-    
+
+    Google Docs Tab Support:
+    - Read content from specific tabs or all tabs (get_doc with tab_id/include_all_tabs)
+    - Write content to specific tabs (update_doc with tab_id)
+    - Create new tabs in documents (create_tab)
+
+    Template & Formatting Operations:
+    - Copy documents to create new docs from templates (copy_doc)
+    - Find and replace text while preserving all formatting (replace_text)
+      - Preserves bold, colors, underlines, tables, shaded boxes, etc.
+      - Supports case-sensitive/insensitive matching
+      - Can target specific tabs or apply to all tabs
+
     Security Features:
     - OAuth 2.0 authentication with Google
     - Scoped access permissions
@@ -1929,10 +1942,10 @@ export class GoogleDriveBubble<
 
     const url = `https://docs.googleapis.com/v1/documents/${document_id}:batchUpdate`;
 
-    // Create a new tab using the addTab request
+    // Create a new tab using the addDocumentTab request
     const requests = [
       {
-        addTab: {
+        addDocumentTab: {
           tab: {
             tabProperties: {
               title,
@@ -1949,9 +1962,11 @@ export class GoogleDriveBubble<
 
     // Extract the new tab ID from the response
     const replies = response.replies as
-      | Array<{ addTab?: { tab?: { tabProperties?: { tabId?: string } } } }>
+      | Array<{
+          addDocumentTab?: { tab?: { tabProperties?: { tabId?: string } } };
+        }>
       | undefined;
-    const newTabId = replies?.[0]?.addTab?.tab?.tabProperties?.tabId;
+    const newTabId = replies?.[0]?.addDocumentTab?.tab?.tabProperties?.tabId;
 
     return {
       operation: 'create_tab',
