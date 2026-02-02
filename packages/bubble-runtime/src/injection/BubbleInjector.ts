@@ -397,27 +397,45 @@ export class BubbleInjector {
           string
         >;
 
-        // First, inject system credentials
-        for (const credentialType of allCredentialOptions as CredentialType[]) {
-          if (systemCredentials[credentialType]) {
-            credentialMapping[credentialType] = this.escapeString(
-              systemCredentials[credentialType]
-            );
-            injectedCredentials[`${bubble.variableId}.${credentialType}`] = {
-              isUserCredential: false,
-              credentialType: credentialType,
-              credentialValue: this.maskCredential(
+        // First, find user credentials for this bubble
+        // For clones, also check credentials under the original's variableId (clonedFromVariableId)
+        const userCreds = userCredentials.filter(
+          (uc) =>
+            uc.bubbleVarId === bubble.variableId ||
+            (bubble.clonedFromVariableId !== undefined &&
+              uc.bubbleVarId === bubble.clonedFromVariableId)
+        );
+
+        // Check if this is a wildcard bubble (accepts any credential type)
+        const isWildcardBubble =
+          Array.isArray(rawBubbleCredentialOptions) &&
+          rawBubbleCredentialOptions.includes(
+            CredentialType.CREDENTIAL_WILDCARD
+          );
+
+        // For wildcard bubbles with user credentials, ONLY inject the user-selected credential type
+        // This prevents system credentials from being picked over user's choice
+        const skipSystemCredentials = isWildcardBubble && userCreds.length > 0;
+
+        // Inject system credentials (skip for wildcard bubbles with user credentials)
+        if (!skipSystemCredentials) {
+          for (const credentialType of allCredentialOptions as CredentialType[]) {
+            if (systemCredentials[credentialType]) {
+              credentialMapping[credentialType] = this.escapeString(
                 systemCredentials[credentialType]
-              ),
-            };
+              );
+              injectedCredentials[`${bubble.variableId}.${credentialType}`] = {
+                isUserCredential: false,
+                credentialType: credentialType,
+                credentialValue: this.maskCredential(
+                  systemCredentials[credentialType]
+                ),
+              };
+            }
           }
         }
 
-        // Then inject user credentials (these override system credentials)
-        const userCreds = userCredentials.filter(
-          (uc) => uc.bubbleVarId === bubble.variableId
-        );
-
+        // Inject user credentials
         for (const userCred of userCreds) {
           const userCredType = userCred.credentialType;
 
