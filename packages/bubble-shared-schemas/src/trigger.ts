@@ -1,6 +1,9 @@
 export interface BubbleTriggerEventRegistry {
   'slack/bot_mentioned': SlackMentionEvent;
   'slack/message_received': SlackMessageReceivedEvent;
+  'airtable/record_created': AirtableRecordCreatedEvent;
+  'airtable/record_updated': AirtableRecordUpdatedEvent;
+  'airtable/record_deleted': AirtableRecordDeletedEvent;
   'schedule/cron': CronEvent;
   'webhook/http': WebhookEvent;
 }
@@ -10,6 +13,9 @@ export interface BubbleTriggerEventRegistry {
 export const BUBBLE_TRIGGER_EVENTS = {
   'slack/bot_mentioned': true,
   'slack/message_received': true,
+  'airtable/record_created': true,
+  'airtable/record_updated': true,
+  'airtable/record_deleted': true,
   'schedule/cron': true,
   'webhook/http': true,
 } as const satisfies Record<keyof BubbleTriggerEventRegistry, true>;
@@ -140,6 +146,64 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   text: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
   subtype?: string;
+}
+
+// ============================================================================
+// Airtable Event Types
+// ============================================================================
+
+/**
+ * Base Airtable event structure
+ */
+export interface AirtableEventBase extends BubbleTriggerEvent {
+  airtable_event: {
+    baseId: string;
+    webhookId: string;
+    timestamp: string;
+    baseTransactionNumber: number;
+    actionMetadata?: {
+      source: string;
+      sourceMetadata?: Record<string, unknown>;
+    };
+  };
+  base_id: string;
+  table_id: string;
+}
+
+/**
+ * Airtable record created event
+ */
+export interface AirtableRecordCreatedEvent extends AirtableEventBase {
+  airtable_event: AirtableEventBase['airtable_event'] & {
+    type: 'record_created';
+    records: Record<string, { cellValuesByFieldId: Record<string, unknown> }>;
+  };
+}
+
+/**
+ * Airtable record updated event
+ */
+export interface AirtableRecordUpdatedEvent extends AirtableEventBase {
+  airtable_event: AirtableEventBase['airtable_event'] & {
+    type: 'record_updated';
+    records: Record<
+      string,
+      {
+        current: { cellValuesByFieldId: Record<string, unknown> };
+        previous?: { cellValuesByFieldId: Record<string, unknown> };
+      }
+    >;
+  };
+}
+
+/**
+ * Airtable record deleted event
+ */
+export interface AirtableRecordDeletedEvent extends AirtableEventBase {
+  airtable_event: AirtableEventBase['airtable_event'] & {
+    type: 'record_deleted';
+    recordIds: string[];
+  };
 }
 
 // ============================================================================
@@ -432,6 +496,118 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
       required: ['text', 'channel', 'user', 'slack_event'],
     },
   },
+  'airtable/record_created': {
+    serviceName: 'Airtable',
+    friendlyName: 'When Airtable record is created',
+    description: 'Triggered when a new record is created in an Airtable base',
+    setupGuide: `## Airtable Record Created Setup Guide
+
+### 1. Connect Your Airtable Account
+1. Go to Credentials and add an Airtable OAuth connection
+2. Authorize access to your Airtable workspace
+
+### 2. Create a Webhook
+Webhooks must be created via the Airtable API. The system will handle this automatically when you configure the trigger.
+
+### 3. Configure the Trigger
+1. Select your Airtable credential
+2. Choose the base and table to monitor
+3. The webhook will be created automatically
+
+### Payload Structure
+The payload includes:
+- \`base_id\`: The Airtable base ID
+- \`table_id\`: The table where records were created
+- \`airtable_event.records\`: Map of record IDs to their field values`,
+    payloadSchema: {
+      type: 'object',
+      properties: {
+        base_id: { type: 'string', description: 'Airtable base ID' },
+        table_id: {
+          type: 'string',
+          description: 'Table ID where record was created',
+        },
+        airtable_event: {
+          type: 'object',
+          description: 'Full Airtable event data',
+        },
+      },
+      required: ['base_id', 'table_id', 'airtable_event'],
+    },
+  },
+  'airtable/record_updated': {
+    serviceName: 'Airtable',
+    friendlyName: 'When Airtable record is updated',
+    description: 'Triggered when a record is updated in an Airtable base',
+    setupGuide: `## Airtable Record Updated Setup Guide
+
+### 1. Connect Your Airtable Account
+1. Go to Credentials and add an Airtable OAuth connection
+2. Authorize access to your Airtable workspace
+
+### 2. Configure the Trigger
+1. Select your Airtable credential
+2. Choose the base and table to monitor
+3. The webhook will be created automatically
+
+### Payload Structure
+The payload includes:
+- \`base_id\`: The Airtable base ID
+- \`table_id\`: The table where records were updated
+- \`airtable_event.records\`: Map of record IDs to their current and previous field values`,
+    payloadSchema: {
+      type: 'object',
+      properties: {
+        base_id: { type: 'string', description: 'Airtable base ID' },
+        table_id: {
+          type: 'string',
+          description: 'Table ID where record was updated',
+        },
+        airtable_event: {
+          type: 'object',
+          description:
+            'Full Airtable event data with current and previous values',
+        },
+      },
+      required: ['base_id', 'table_id', 'airtable_event'],
+    },
+  },
+  'airtable/record_deleted': {
+    serviceName: 'Airtable',
+    friendlyName: 'When Airtable record is deleted',
+    description: 'Triggered when a record is deleted from an Airtable base',
+    setupGuide: `## Airtable Record Deleted Setup Guide
+
+### 1. Connect Your Airtable Account
+1. Go to Credentials and add an Airtable OAuth connection
+2. Authorize access to your Airtable workspace
+
+### 2. Configure the Trigger
+1. Select your Airtable credential
+2. Choose the base and table to monitor
+3. The webhook will be created automatically
+
+### Payload Structure
+The payload includes:
+- \`base_id\`: The Airtable base ID
+- \`table_id\`: The table where records were deleted
+- \`airtable_event.recordIds\`: Array of deleted record IDs`,
+    payloadSchema: {
+      type: 'object',
+      properties: {
+        base_id: { type: 'string', description: 'Airtable base ID' },
+        table_id: {
+          type: 'string',
+          description: 'Table ID where record was deleted',
+        },
+        airtable_event: {
+          type: 'object',
+          description: 'Full Airtable event data with deleted record IDs',
+        },
+      },
+      required: ['base_id', 'table_id', 'airtable_event'],
+    },
+  },
   'schedule/cron': {
     serviceName: 'Cron',
     friendlyName: 'On Schedule',
@@ -553,6 +729,9 @@ export const TRIGGER_EVENT_INTERFACE_MAP: Record<
 > = {
   SlackMentionEvent: 'slack/bot_mentioned',
   SlackMessageReceivedEvent: 'slack/message_received',
+  AirtableRecordCreatedEvent: 'airtable/record_created',
+  AirtableRecordUpdatedEvent: 'airtable/record_updated',
+  AirtableRecordDeletedEvent: 'airtable/record_deleted',
   CronEvent: 'schedule/cron',
   WebhookEvent: 'webhook/http',
   BubbleTriggerEvent: 'webhook/http', // Base type defaults to webhook
