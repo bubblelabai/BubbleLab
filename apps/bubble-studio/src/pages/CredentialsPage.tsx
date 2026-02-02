@@ -80,6 +80,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.GITHUB_TOKEN]: 'GitHub',
     [CredentialType.ELEVENLABS_API_KEY]: 'ElevenLabs',
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
+    [CredentialType.AIRTABLE_OAUTH]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',

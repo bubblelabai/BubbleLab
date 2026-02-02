@@ -32,6 +32,7 @@ export enum CredentialType {
   GOOGLE_CALENDAR_CRED = 'GOOGLE_CALENDAR_CRED',
   FUB_CRED = 'FUB_CRED',
   NOTION_OAUTH_TOKEN = 'NOTION_OAUTH_TOKEN',
+  AIRTABLE_OAUTH = 'AIRTABLE_OAUTH',
 
   // Development Platform Credentials
   GITHUB_TOKEN = 'GITHUB_TOKEN',

@@ -1505,7 +1505,11 @@ export class AirtableBubble<
       throw new Error('No Airtable credentials provided');
     }
 
-    return credentials[CredentialType.AIRTABLE_CRED];
+    // Prefer OAuth credential, fall back to PAT
+    return (
+      credentials[CredentialType.AIRTABLE_OAUTH] ??
+      credentials[CredentialType.AIRTABLE_CRED]
+    );
   }
 
   private async makeAirtableApiCall(
