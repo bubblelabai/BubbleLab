@@ -4,6 +4,7 @@ import {
   databaseMetadataSchema,
   jiraOAuthMetadataSchema,
   slackOAuthMetadataSchema,
+  airtableOAuthMetadataSchema,
 } from './database-definition-schema.js';
 
 /**
@@ -218,6 +219,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Airtable Token',
       credentialConfigurations: {},
     },
+    [CredentialType.AIRTABLE_OAUTH]: {
+      label: 'Airtable (OAuth)',
+      description:
+        'OAuth connection to Airtable for full API access including webhooks',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Airtable Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.INSFORGE_BASE_URL]: {
       label: 'InsForge Base URL',
       description:
@@ -337,6 +346,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.GITHUB_TOKEN]: 'GITHUB_TOKEN',
   [CredentialType.AGI_API_KEY]: 'AGI_API_KEY',
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
+  [CredentialType.AIRTABLE_OAUTH]: '', // OAuth credential, no env var
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
   [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
@@ -386,7 +396,8 @@ export type OAuthProvider =
   | 'followupboss'
   | 'notion'
   | 'jira'
-  | 'slack';
+  | 'slack'
+  | 'airtable';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -670,9 +681,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'conversations.connect:read',
           'conversations.connect:write',
           'conversations.connect:manage',
-          // Triggers (requires admin)
-          'triggers:read',
-          'triggers:write',
           // Remote files (requires admin)
           'remote_files:read',
           'remote_files:write',
@@ -982,17 +990,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
             description: 'Manage Slack Connect channels',
             defaultEnabled: true,
           },
-          // Triggers & Commands
-          {
-            scope: 'triggers:read',
-            description: 'View Platform triggers',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'triggers:write',
-            description: 'Create Platform triggers',
-            defaultEnabled: true,
-          },
+          // Commands
           {
             scope: 'commands',
             description: 'Use slash commands',
@@ -1035,6 +1033,72 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'team.preferences:read',
             description: 'Read workspace preferences',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+  },
+  airtable: {
+    name: 'airtable',
+    displayName: 'Airtable',
+    credentialTypes: {
+      [CredentialType.AIRTABLE_OAUTH]: {
+        displayName: 'Airtable (OAuth)',
+        defaultScopes: [
+          'data.records:read',
+          'data.records:write',
+          'data.recordComments:read',
+          'data.recordComments:write',
+          'schema.bases:read',
+          'schema.bases:write',
+          'user.email:read',
+          'webhook:manage',
+        ],
+        description:
+          'Connect to Airtable with OAuth for full API access including webhooks',
+        scopeDescriptions: [
+          {
+            scope: 'data.records:read',
+            description: 'See the data in records',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'data.records:write',
+            description: 'Create, edit, and delete records',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'data.recordComments:read',
+            description: 'See comments in records',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'data.recordComments:write',
+            description: 'Create, edit, and delete record comments',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'schema.bases:read',
+            description:
+              'See the structure of a base, like table names or field types',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'schema.bases:write',
+            description:
+              'Edit the structure of a base, like adding new fields or tables',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'user.email:read',
+            description: "See the user's email address",
+            defaultEnabled: true,
+          },
+          {
+            scope: 'webhook:manage',
+            description:
+              'View, create, delete webhooks for a base, as well as fetch webhook payloads',
             defaultEnabled: true,
           },
         ],
@@ -1323,7 +1387,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<BubbleName, CredentialType[]> = {
   'eleven-labs': [CredentialType.ELEVENLABS_API_KEY],
   followupboss: [CredentialType.FUB_CRED],
   'agi-inc': [CredentialType.AGI_API_KEY],
-  airtable: [CredentialType.AIRTABLE_CRED],
+  airtable: [CredentialType.AIRTABLE_CRED, CredentialType.AIRTABLE_OAUTH],
   notion: [CredentialType.NOTION_OAUTH_TOKEN],
   firecrawl: [CredentialType.FIRECRAWL_API_KEY],
   'insforge-db': [
@@ -1464,11 +1528,12 @@ export const credentialResponseSchema = z
         databaseMetadataSchema,
         jiraOAuthMetadataSchema,
         slackOAuthMetadataSchema,
+        airtableOAuthMetadataSchema,
       ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, or SlackOAuthMetadata)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, or AirtableOAuthMetadata)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

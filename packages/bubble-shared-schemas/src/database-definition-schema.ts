@@ -129,6 +129,18 @@ export const slackOAuthMetadataSchema = z.object({
 export type SlackOAuthMetadata = z.infer<typeof slackOAuthMetadataSchema>;
 
 /**
+ * Airtable OAuth metadata - stored after OAuth callback
+ */
+export const airtableOAuthMetadataSchema = z.object({
+  airtableUserId: z.string(),
+  email: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type AirtableOAuthMetadata = z.infer<typeof airtableOAuthMetadataSchema>;
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
@@ -137,4 +149,5 @@ export type SlackOAuthMetadata = z.infer<typeof slackOAuthMetadataSchema>;
 export type CredentialMetadata =
   | DatabaseMetadata
   | JiraOAuthMetadata
-  | SlackOAuthMetadata;
+  | SlackOAuthMetadata
+  | AirtableOAuthMetadata;

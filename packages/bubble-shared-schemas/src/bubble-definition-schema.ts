@@ -43,6 +43,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.GOOGLE_CALENDAR_CRED]: {},
   [CredentialType.GITHUB_TOKEN]: {},
   [CredentialType.AIRTABLE_CRED]: {},
+  [CredentialType.AIRTABLE_OAUTH]: {},
   [CredentialType.NOTION_OAUTH_TOKEN]: {},
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
