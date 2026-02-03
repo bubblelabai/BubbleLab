@@ -155,6 +155,7 @@ jobs:
         if: steps.version_check.outputs.changed == 'true'
         run: |
           echo "📦 Publishing version ${{ steps.version_check.outputs.version }}"
+          pnpm --filter "@bubblelab/ts-scope-manager" publish --access public --no-git-checks
           pnpm --filter "@bubblelab/shared-schemas" publish --access public --no-git-checks
           pnpm --filter "@bubblelab/bubble-core" publish --access public --no-git-checks
           pnpm --filter "@bubblelab/bubble-runtime" publish --access public --no-git-checks
