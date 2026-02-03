@@ -916,3 +916,95 @@ export function getTriggerEventTypeFromInterfaceName(
 ): keyof BubbleTriggerEventRegistry | undefined {
   return TRIGGER_EVENT_INTERFACE_MAP[interfaceName];
 }
+
+// ============================================================================
+// Airtable Trigger Configuration Types
+// ============================================================================
+
+/** Delay options for Airtable triggers (in seconds) */
+export const AIRTABLE_DELAY_OPTIONS = [0, 30, 60, 120, 300, 600] as const;
+export type AirtableDelaySeconds = (typeof AIRTABLE_DELAY_OPTIONS)[number];
+
+/** User-friendly labels for delay options */
+export const AIRTABLE_DELAY_LABELS: Record<AirtableDelaySeconds, string> = {
+  0: 'No delay',
+  30: '30 seconds',
+  60: '1 minute',
+  120: '2 minutes',
+  300: '5 minutes',
+  600: '10 minutes',
+};
+
+/** Airtable base metadata */
+export interface AirtableBase {
+  id: string;
+  name: string;
+  permissionLevel: 'none' | 'read' | 'comment' | 'edit' | 'create';
+}
+
+/** Airtable table metadata */
+export interface AirtableTable {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+/** Extended table metadata with fields */
+export interface AirtableTableFull extends AirtableTable {
+  primaryFieldId: string;
+  fields: Array<{
+    id: string;
+    name: string;
+    type: string;
+    description?: string;
+  }>;
+}
+
+/** Type-safe keys for Airtable trigger defaultInputs */
+export const AIRTABLE_TRIGGER_CONFIG_KEYS = {
+  BASE_ID: 'airtable_base_id',
+  TABLE_ID: 'airtable_table_id',
+  WEBHOOK_ID: 'airtable_webhook_id',
+  MAC_SECRET: 'airtable_mac_secret',
+  WEBHOOK_EXPIRATION: 'airtable_webhook_expiration',
+  DELAY_SECONDS: 'airtable_trigger_delay_seconds',
+} as const;
+
+/** Airtable trigger configuration stored in defaultInputs */
+export interface AirtableTriggerConfig {
+  airtable_base_id?: string;
+  airtable_table_id?: string;
+  airtable_webhook_id?: string;
+  airtable_mac_secret?: string;
+  airtable_webhook_expiration?: string;
+  airtable_trigger_delay_seconds?: AirtableDelaySeconds;
+}
+
+/** Extract typed Airtable config from defaultInputs */
+export function getAirtableTriggerConfig(
+  defaultInputs: Record<string, unknown>
+): AirtableTriggerConfig {
+  return {
+    airtable_base_id: defaultInputs.airtable_base_id as string | undefined,
+    airtable_table_id: defaultInputs.airtable_table_id as string | undefined,
+    airtable_webhook_id: defaultInputs.airtable_webhook_id as
+      | string
+      | undefined,
+    airtable_mac_secret: defaultInputs.airtable_mac_secret as
+      | string
+      | undefined,
+    airtable_webhook_expiration: defaultInputs.airtable_webhook_expiration as
+      | string
+      | undefined,
+    airtable_trigger_delay_seconds:
+      defaultInputs.airtable_trigger_delay_seconds as
+        | AirtableDelaySeconds
+        | undefined,
+  };
+}
+
+/** Helper type for Airtable event types */
+export type AirtableEventType = Extract<
+  keyof BubbleTriggerEventRegistry,
+  `airtable/${string}`
+>;
