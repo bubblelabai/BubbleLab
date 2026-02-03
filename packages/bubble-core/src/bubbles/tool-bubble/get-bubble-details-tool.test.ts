@@ -246,4 +246,19 @@ describe('GetBubbleDetailsTool', () => {
       expect(usageExample).toContain('url: string | null');
     });
   });
+
+  describe('slack operations', () => {
+    test('should include download_file operation for slack bubble', async () => {
+      const tool = new GetBubbleDetailsTool({ bubbleName: 'slack' });
+      const result = await tool.action();
+      const usageExample = result.data?.usageExample;
+      expect(usageExample).toBeDefined();
+      console.log('=== SLACK USAGE EXAMPLE ===');
+      console.log(usageExample);
+      console.log('=== END SLACK USAGE EXAMPLE ===');
+      // Check that download_file operation is included
+      expect(usageExample).toContain('download_file');
+      expect(usageExample).toContain('Download File example');
+    });
+  });
 });

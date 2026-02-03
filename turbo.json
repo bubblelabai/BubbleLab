@@ -3,7 +3,13 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "inputs": ["src/**", "tsconfig.json", "package.json"],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "tsconfig.tsbuildinfo"
+      ]
     },
     "dev": {
       "cache": false,
