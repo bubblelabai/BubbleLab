@@ -395,6 +395,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CUSTOM_AUTH_KEY,
   CredentialType.FULLENRICH_API_KEY,
+  CredentialType.CREDENTIAL_WILDCARD, // Wildcard means any credential is accepted, so it's always optional
 ]);
 
 /**
