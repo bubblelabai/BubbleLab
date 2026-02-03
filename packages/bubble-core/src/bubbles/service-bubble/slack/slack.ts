@@ -906,6 +906,34 @@ const SlackMessageSchema = z
       )
       .optional()
       .describe('Array of emoji reactions on this message'),
+    files: z
+      .array(
+        z.object({
+          id: z.string().describe('Unique file identifier'),
+          name: z.string().optional().describe('Filename'),
+          title: z.string().optional().describe('File title'),
+          mimetype: z.string().optional().describe('MIME type of the file'),
+          filetype: z.string().optional().describe('File type extension'),
+          size: z.number().optional().describe('File size in bytes'),
+          user: z.string().optional().describe('User ID who uploaded the file'),
+          url_private: z
+            .string()
+            .optional()
+            .describe('Private URL to access file'),
+          url_private_download: z
+            .string()
+            .optional()
+            .describe('Private download URL'),
+          thumb_64: z.string().optional().describe('64px thumbnail URL'),
+          thumb_360: z.string().optional().describe('360px thumbnail URL'),
+          thumb_480: z.string().optional().describe('480px thumbnail URL'),
+          original_w: z.number().optional().describe('Original image width'),
+          original_h: z.number().optional().describe('Original image height'),
+          permalink: z.string().optional().describe('Permanent link to file'),
+        })
+      )
+      .optional()
+      .describe('Array of files attached to this message'),
   })
   .describe('Slack message object with content and metadata');
 

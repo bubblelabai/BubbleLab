@@ -195,6 +195,41 @@ describe('Slack Bubble Result Schema Validation', () => {
       expect(parsed.operation).toBe('get_user_info');
     });
 
+    test('should validate get_thread_replies result', () => {
+      const mockThreadRepliesResult = {
+        operation: 'get_thread_replies',
+        ok: true,
+        success: true,
+        error: '',
+        messages: [
+          {
+            type: 'message',
+            ts: '1234567890.123456',
+            user: 'U1234567890',
+            text: 'Parent message',
+          },
+          {
+            type: 'message',
+            ts: '1234567891.123456',
+            user: 'U9876543210',
+            text: 'Reply in thread',
+            thread_ts: '1234567890.123456',
+          },
+        ],
+        has_more: false,
+        response_metadata: {
+          next_cursor: '',
+        },
+      };
+
+      const parsed = SlackBubble.resultSchema?.parse(mockThreadRepliesResult);
+      expect(parsed).toBeDefined();
+      expect(parsed?.operation).toBe('get_thread_replies');
+      if (parsed && parsed.operation === 'get_thread_replies') {
+        expect(parsed.messages).toHaveLength(2);
+      }
+    });
+
     test('should validate complex nested structures', () => {
       const mockHistoryResult = {
         operation: 'get_conversation_history',
@@ -268,6 +303,7 @@ describe('Slack Bubble Result Schema Validation', () => {
         'get_user_info',
         'list_users',
         'get_conversation_history',
+        'get_thread_replies',
         'update_message',
         'delete_message',
         'add_reaction',
@@ -295,6 +331,7 @@ describe('Slack Bubble Result Schema Validation', () => {
           ...(op === 'get_user_info' && { user: { id: 'U123', name: 'test' } }),
           ...(op === 'list_users' && { members: [] }),
           ...(op === 'get_conversation_history' && { messages: [] }),
+          ...(op === 'get_thread_replies' && { messages: [] }),
           ...(op === 'update_message' && { channel: 'C123', ts: '123.456' }),
           ...(op === 'delete_message' && { channel: 'C123', ts: '123.456' }),
           ...(op === 'add_reaction' && {}),

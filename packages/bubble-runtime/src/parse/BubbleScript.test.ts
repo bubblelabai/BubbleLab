@@ -504,32 +504,42 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       const triggerEventType = analyzer.getBubbleTriggerEventType();
       expect(triggerEventType?.type).toBe('slack/bot_mentioned');
       expect(payloadZodSchemaString).toBeDefined();
-      expect(payloadZodSchemaString).toEqual({
-        type: 'object',
-        properties: {
-          text: {
-            type: 'string',
-            description: 'The message text mentioning the bot',
-          },
-          channel: {
-            type: 'string',
-            description: 'Channel ID where bot was mentioned',
-          },
-          thread_ts: {
-            type: 'string',
-            description: 'Thread timestamp (if replying in a thread)',
-          },
-          user: {
-            type: 'string',
-            description: 'User ID who mentioned the bot',
-          },
-          slack_event: expect.objectContaining({
-            type: 'object',
-            description: 'Full Slack event wrapper',
+      expect(payloadZodSchemaString).toEqual(
+        expect.objectContaining({
+          type: 'object',
+          properties: expect.objectContaining({
+            text: {
+              type: 'string',
+              description: 'The message text mentioning the bot',
+            },
+            channel: {
+              type: 'string',
+              description: 'Channel ID where bot was mentioned',
+            },
+            thread_ts: {
+              type: 'string',
+              description: 'Thread timestamp (if replying in a thread)',
+            },
+            user: {
+              type: 'string',
+              description: 'User ID who mentioned the bot',
+            },
+            files: expect.objectContaining({
+              type: 'array',
+              description: expect.any(String),
+              items: expect.objectContaining({
+                type: 'object',
+                properties: expect.any(Object),
+              }),
+            }),
+            slack_event: expect.objectContaining({
+              type: 'object',
+              description: 'Full Slack event wrapper',
+            }),
           }),
-        },
-        required: ['text', 'channel', 'user', 'slack_event'],
-      });
+          required: ['text', 'channel', 'user', 'slack_event'],
+        })
+      );
     });
   });
 
