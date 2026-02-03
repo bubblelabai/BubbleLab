@@ -3,6 +3,7 @@ import ts from 'typescript';
 import {
   enforcePayloadTypeRule,
   noToStringOnExpectedOutputSchemaRule,
+  noJsonStringifyOnExpectedOutputSchemaRule,
   LintRuleRegistry,
 } from './lint-rules.js';
 
@@ -122,6 +123,94 @@ const obj = {
 
     const errors = registry.validateAll(sourceFile);
     console.log(errors);
+
+    expect(errors.length).toBe(0);
+  });
+});
+
+describe('no-json-stringify-on-expected-output-schema lint rule', () => {
+  it('should error when JSON.stringify() is called on expectedOutputSchema', () => {
+    const code = `
+import { z } from 'zod';
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const schema = z.object({
+  companies: z.array(z.object({ name: z.string() })),
+});
+
+const parser = new AIAgentBubble({
+  message: 'Extract companies',
+  model: { model: 'google/gemini-2.5-flash' },
+  expectedOutputSchema: JSON.stringify(schema),
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noJsonStringifyOnExpectedOutputSchemaRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain('Do not call JSON.stringify()');
+    expect(errors[0].message).toContain('expectedOutputSchema');
+  });
+
+  it('should not error when Zod schema is passed directly without JSON.stringify()', () => {
+    const code = `
+import { z } from 'zod';
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const parser = new AIAgentBubble({
+  message: 'Extract companies',
+  model: { model: 'google/gemini-2.5-flash' },
+  expectedOutputSchema: z.object({
+    companies: z.array(z.object({ name: z.string() })),
+  }),
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noJsonStringifyOnExpectedOutputSchemaRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(0);
+  });
+
+  it('should not error when JSON.stringify is called on other properties', () => {
+    const code = `
+import { z } from 'zod';
+
+const obj = {
+  someOtherProperty: JSON.stringify({ name: 'test' }),
+};
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noJsonStringifyOnExpectedOutputSchemaRule);
+
+    const errors = registry.validateAll(sourceFile);
 
     expect(errors.length).toBe(0);
   });

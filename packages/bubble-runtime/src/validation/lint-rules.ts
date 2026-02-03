@@ -1355,6 +1355,79 @@ export const noToStringOnExpectedOutputSchemaRule: LintRule = {
 };
 
 /**
+ * Lint rule that prevents calling JSON.stringify() on Zod schemas for expectedOutputSchema.
+ *
+ * JSON.stringify() on a Zod schema returns unusable JSON representation of the schema object
+ * instead of the actual JSON schema format needed for AI structured output.
+ *
+ * BAD:
+ * ```typescript
+ * expectedOutputSchema: JSON.stringify(z.object({ ... }))
+ * ```
+ *
+ * GOOD:
+ * ```typescript
+ * expectedOutputSchema: z.object({ ... })
+ * ```
+ */
+export const noJsonStringifyOnExpectedOutputSchemaRule: LintRule = {
+  name: 'no-json-stringify-on-expected-output-schema',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    const visit = (node: ts.Node): void => {
+      // Look for property assignments: expectedOutputSchema: <value>
+      if (ts.isPropertyAssignment(node)) {
+        const propName = node.name;
+        let isExpectedOutputSchema = false;
+
+        if (
+          ts.isIdentifier(propName) &&
+          propName.text === 'expectedOutputSchema'
+        ) {
+          isExpectedOutputSchema = true;
+        } else if (
+          ts.isStringLiteral(propName) &&
+          propName.text === 'expectedOutputSchema'
+        ) {
+          isExpectedOutputSchema = true;
+        }
+
+        if (isExpectedOutputSchema) {
+          // Check if the value is JSON.stringify(...)
+          const value = node.initializer;
+          if (ts.isCallExpression(value)) {
+            const callee = value.expression;
+            if (
+              ts.isPropertyAccessExpression(callee) &&
+              ts.isIdentifier(callee.expression) &&
+              callee.expression.text === 'JSON' &&
+              callee.name.text === 'stringify'
+            ) {
+              const { line, character } =
+                context.sourceFile.getLineAndCharacterOfPosition(
+                  value.getStart(context.sourceFile)
+                );
+              errors.push({
+                line: line + 1,
+                column: character + 1,
+                message:
+                  'Do not call JSON.stringify() on Zod schemas for expectedOutputSchema. Pass the Zod schema directly: expectedOutputSchema: z.object({ ... })',
+              });
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -1370,3 +1443,4 @@ defaultLintRuleRegistry.register(singleBubbleFlowClassRule);
 defaultLintRuleRegistry.register(enforcePayloadTypeRule);
 defaultLintRuleRegistry.register(noCastPayloadInHandleRule);
 defaultLintRuleRegistry.register(noToStringOnExpectedOutputSchemaRule);
+defaultLintRuleRegistry.register(noJsonStringifyOnExpectedOutputSchemaRule);

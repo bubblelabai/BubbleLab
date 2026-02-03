@@ -23,7 +23,7 @@ const ResearchAgentToolParamsSchema = z.object({
       'The research task that requires searching the internet and gathering information'
     ),
   expectedResultSchema: ExpectedResultSchema.describe(
-    'Zod schema or JSON schema string that defines the expected structure of the research result. Example: z.object({ trends: z.array(z.string()).describe("An array of trends"), summary: z.string().describe("A summary of the trends") }) or JSON.stringify({ type: "object", properties: { trends: { type: "array", items: { type: "string" } }, summary: { type: "string" } } })'
+    'Zod schema that defines the expected structure of the research result. Example: z.object({ trends: z.array(z.string()).describe("An array of trends"), summary: z.string().describe("A summary of the trends") })'
   ),
   model: AvailableModels.describe(
     `Model to use for the research agent (default: ${RECOMMENDED_MODELS.BEST})`
