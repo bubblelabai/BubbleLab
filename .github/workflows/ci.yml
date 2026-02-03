@@ -8,7 +8,7 @@ on:
     branches: [main, develop]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 jobs:
@@ -99,3 +99,65 @@ jobs:
         run: pnpm test
         env:
           CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY || 'test-encryption-key-that-is-32-chars-long-for-testing' }}
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    # Only run on push to main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 2 # Need previous commit to compare versions
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          # Compare bubble-core version in current commit vs previous
+          PREV_VERSION=$(git show HEAD~1:packages/bubble-core/package.json 2>/dev/null | jq -r .version || echo "0.0.0")
+          CURR_VERSION=$(jq -r .version packages/bubble-core/package.json)
+          echo "Previous version: $PREV_VERSION"
+          echo "Current version: $CURR_VERSION"
+          if [ "$PREV_VERSION" != "$CURR_VERSION" ]; then
+            echo "✅ Version changed! Will publish."
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURR_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "⏭️ Version unchanged. Skipping publish."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js
+        if: steps.version_check.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        if: steps.version_check.outputs.changed == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        if: steps.version_check.outputs.changed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        if: steps.version_check.outputs.changed == 'true'
+        run: pnpm build:core
+
+      - name: Publish packages
+        if: steps.version_check.outputs.changed == 'true'
+        run: |
+          echo "📦 Publishing version ${{ steps.version_check.outputs.version }}"
+          pnpm --filter "@bubblelab/shared-schemas" publish --access public --no-git-checks
+          pnpm --filter "@bubblelab/bubble-core" publish --access public --no-git-checks
+          pnpm --filter "@bubblelab/bubble-runtime" publish --access public --no-git-checks
+          pnpm --filter "create-bubblelab-app" publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

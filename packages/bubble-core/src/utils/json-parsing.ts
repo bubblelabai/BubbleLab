@@ -3,6 +3,73 @@
  */
 
 /**
+ * Unwraps JSON that was incorrectly formatted in JSON Schema style.
+ * Handles cases where the AI output {"type": "object", "properties": {actual data}}
+ * instead of just {actual data}.
+ *
+ * @param parsed - The parsed JSON object to check and potentially unwrap
+ * @returns The unwrapped data if it was schema-style, otherwise the original parsed object
+ */
+export function unwrapSchemaStyleResponse(parsed: unknown): unknown {
+  if (typeof parsed !== 'object' || parsed === null) {
+    return parsed;
+  }
+
+  const obj = parsed as Record<string, unknown>;
+
+  // Check for schema-style wrapping: {"type": "object", "properties": {...}}
+  if (
+    obj.type === 'object' &&
+    typeof obj.properties === 'object' &&
+    obj.properties !== null
+  ) {
+    // Check if properties contains actual data (values that aren't schema definitions)
+    const props = obj.properties as Record<string, unknown>;
+    const propKeys = Object.keys(props);
+
+    if (propKeys.length === 0) {
+      return parsed; // Empty properties, return as-is
+    }
+
+    // If properties has values that look like data (not schema definitions), unwrap
+    const looksLikeData = propKeys.some((key) => {
+      const val = props[key];
+      // Schema definitions have "type" as a string, data doesn't typically have this structure
+      if (typeof val === 'object' && val !== null) {
+        const valObj = val as Record<string, unknown>;
+        // If the value has "type" as one of the JSON Schema types, it's likely a schema
+        const schemaTypes = [
+          'string',
+          'number',
+          'boolean',
+          'object',
+          'array',
+          'null',
+          'integer',
+        ];
+        if (
+          typeof valObj.type === 'string' &&
+          schemaTypes.includes(valObj.type)
+        ) {
+          return false; // This looks like a schema definition
+        }
+      }
+      // Otherwise it's likely actual data
+      return true;
+    });
+
+    if (looksLikeData) {
+      console.log(
+        '[JSON Parser] Unwrapping schema-style response, extracting properties'
+      );
+      return props;
+    }
+  }
+
+  return parsed;
+}
+
+/**
  * Check if input has an incomplete code block (opening fence but no closing fence)
  */
 function hasIncompleteCodeBlock(input: string): boolean {
@@ -745,9 +812,17 @@ export function parseJsonWithFallbacks(finalResponse: string): {
       if (i > 0) {
         console.log(`[JSON Parser] Parsing successful on attempt ${i + 1}`);
       }
+
+      // Automatically unwrap schema-style responses
+      // This handles cases where AI outputs {"type": "object", "properties": {...}}
+      const unwrapped = unwrapSchemaStyleResponse(result.parsed);
+
       return {
-        response: result.response,
-        parsed: result.parsed,
+        response:
+          unwrapped !== result.parsed
+            ? JSON.stringify(unwrapped)
+            : result.response,
+        parsed: unwrapped as object | null,
         error: undefined,
         success: true,
       };

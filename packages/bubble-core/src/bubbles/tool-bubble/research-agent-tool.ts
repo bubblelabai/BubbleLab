@@ -221,31 +221,46 @@ export class ResearchAgentTool extends ToolBubble<
       const parseResult = parseJsonWithFallbacks(agentData.response);
 
       if (!parseResult.success || parseResult.error) {
-        // Check if this is already a processed error from the AI agent
-        if (
-          agentData.error &&
-          agentData.error.includes('failed to generate valid JSON')
-        ) {
-          throw new Error(`ResearchAgentTool failed: ${agentData.error}`);
+        // Parsing failed - try to repair using AI agent
+        console.log(
+          '[ResearchAgentTool] JSON parsing failed, attempting AI repair...'
+        );
+
+        const repairResult = await this.repairJsonWithAgent(
+          agentData.response,
+          jsonSchemaString
+        );
+
+        if (repairResult.success && repairResult.repaired) {
+          console.log('[ResearchAgentTool] AI repair successful');
+          parsedResult = repairResult.repaired as Record<string, unknown>;
+        } else {
+          // Check if this is already a processed error from the AI agent
+          if (
+            agentData.error &&
+            agentData.error.includes('failed to generate valid JSON')
+          ) {
+            throw new Error(`ResearchAgentTool failed: ${agentData.error}`);
+          }
+
+          // Both parsing and repair failed
+          throw new Error(
+            `ResearchAgentTool failed: AI Agent returned malformed JSON that could not be parsed or repaired: ${parseResult.error}. Repair error: ${repairResult.error || 'Unknown'}. Response: ${agentData.response.substring(0, 200)}...`
+          );
         }
-
-        // Use the robust parser's error message
-        throw new Error(
-          `ResearchAgentTool failed: AI Agent returned malformed JSON that could not be parsed: ${parseResult.error}. Response: ${agentData.response.substring(0, 200)}...`
-        );
-      }
-
-      try {
-        parsedResult = JSON.parse(parseResult.response);
-      } catch (finalParseError) {
-        // This should not happen with the robust parser, but just in case
-        const originalError =
-          finalParseError instanceof Error
-            ? finalParseError.message
-            : 'Unknown parsing error';
-        throw new Error(
-          `ResearchAgentTool failed: Final JSON parsing failed after robust processing: ${originalError}. Response: ${parseResult.response.substring(0, 200)}...`
-        );
+      } else {
+        try {
+          parsedResult = JSON.parse(parseResult.response);
+        } catch (finalParseError) {
+          // This should not happen with the robust parser, but just in case
+          const originalError =
+            finalParseError instanceof Error
+              ? finalParseError.message
+              : 'Unknown parsing error';
+          throw new Error(
+            `ResearchAgentTool failed: Final JSON parsing failed after robust processing: ${originalError}. Response: ${parseResult.response.substring(0, 200)}...`
+          );
+        }
       }
 
       // Extract sources from tool calls
@@ -448,5 +463,172 @@ You have access to web-search-tool, web-scrape-tool, web-crawl-tool, and web-ext
     const taskPreview = task.length > 50 ? task.substring(0, 50) + '...' : task;
 
     return `Completed research on "${taskPreview}" using ${toolCallsCount} tool operations across ${sourcesCount} web sources. Gathered and structured information according to the requested schema format.`;
+  }
+
+  /**
+   * Attempt to repair malformed JSON using AI agent as a fallback
+   */
+  private async repairJsonWithAgent(
+    malformedInput: string,
+    expectedSchema?: string
+  ): Promise<{ success: boolean; repaired: unknown | null; error?: string }> {
+    if (!this.params?.credentials?.[CredentialType.GOOGLE_GEMINI_CRED]) {
+      return {
+        success: false,
+        repaired: null,
+        error: 'No Google API key available for JSON repair',
+      };
+    }
+
+    const schemaInstruction = expectedSchema
+      ? `
+The JSON should match this schema structure (output data, not schema keywords):
+${expectedSchema}
+
+Remember: If schema says {"type": "object", "properties": {"name": {"type": "string"}}}
+Output should be: {"name": "actual value"}
+NOT: {"type": "object", "properties": {"name": "actual value"}}`
+      : '';
+
+    const systemPrompt = `You are a JSON repair assistant. Your ONLY job is to extract and fix the JSON from the input.
+
+RULES:
+1. Find the JSON data in the input (it may be mixed with markdown or explanatory text)
+2. Fix any JSON syntax errors (missing quotes, trailing commas, etc.)
+3. If the JSON incorrectly wraps data in "type"/"properties" schema keywords, unwrap it
+4. Return ONLY the fixed JSON - no explanations, no markdown code blocks
+5. Start your response with { or [ and end with } or ]
+${schemaInstruction}`;
+
+    const message = `INPUT TO REPAIR:
+${malformedInput.substring(0, 15000)}
+
+OUTPUT (valid JSON only):`;
+
+    try {
+      const repairAgent = new AIAgentBubble(
+        {
+          name: 'JSON Repair Agent',
+          message,
+          systemPrompt,
+          model: {
+            model: RECOMMENDED_MODELS.FAST,
+            temperature: 0,
+            maxTokens: 16000,
+            jsonMode: true,
+          },
+          tools: [],
+          maxIterations: 4,
+          credentials: this.params.credentials,
+        },
+        this.context
+      );
+
+      const result = await repairAgent.action();
+
+      if (!result.success || !result.data?.response) {
+        return {
+          success: false,
+          repaired: null,
+          error: `JSON repair agent failed: ${result.error || 'No response'}`,
+        };
+      }
+
+      // Try to parse the repaired JSON
+      try {
+        const parsed = JSON.parse(result.data.response);
+        // Unwrap schema-style response if needed (parseJsonWithFallbacks does this too)
+        const unwrapped = this.unwrapSchemaStyleResponse(parsed);
+        return {
+          success: true,
+          repaired: unwrapped,
+        };
+      } catch (parseError) {
+        // Try one more extraction - look for JSON in the response
+        const jsonMatch = result.data.response.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (jsonMatch) {
+          try {
+            const extracted = JSON.parse(jsonMatch[0]);
+            const unwrapped = this.unwrapSchemaStyleResponse(extracted);
+            return {
+              success: true,
+              repaired: unwrapped,
+            };
+          } catch {
+            // Fall through to error
+          }
+        }
+
+        return {
+          success: false,
+          repaired: null,
+          error: `Repaired JSON still invalid: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        repaired: null,
+        error: `JSON repair failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Unwraps JSON that was incorrectly formatted in JSON Schema style.
+   */
+  private unwrapSchemaStyleResponse(parsed: unknown): unknown {
+    if (typeof parsed !== 'object' || parsed === null) {
+      return parsed;
+    }
+
+    const obj = parsed as Record<string, unknown>;
+
+    // Check for schema-style wrapping: {"type": "object", "properties": {...}}
+    if (
+      obj.type === 'object' &&
+      typeof obj.properties === 'object' &&
+      obj.properties !== null
+    ) {
+      const props = obj.properties as Record<string, unknown>;
+      const propKeys = Object.keys(props);
+
+      if (propKeys.length === 0) {
+        return parsed;
+      }
+
+      // Check if properties contains actual data (not schema definitions)
+      const looksLikeData = propKeys.some((key) => {
+        const val = props[key];
+        if (typeof val === 'object' && val !== null) {
+          const valObj = val as Record<string, unknown>;
+          const schemaTypes = [
+            'string',
+            'number',
+            'boolean',
+            'object',
+            'array',
+            'null',
+            'integer',
+          ];
+          if (
+            typeof valObj.type === 'string' &&
+            schemaTypes.includes(valObj.type)
+          ) {
+            return false; // Looks like schema definition
+          }
+        }
+        return true; // Looks like actual data
+      });
+
+      if (looksLikeData) {
+        console.log(
+          '[ResearchAgentTool] Unwrapping schema-style response, extracting properties'
+        );
+        return props;
+      }
+    }
+
+    return parsed;
   }
 }

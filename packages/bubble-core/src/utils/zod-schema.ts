@@ -49,18 +49,26 @@ export function zodSchemaToJsonString(
 export function buildJsonSchemaInstruction(schemaString: string): string {
   return `
 OUTPUT FORMAT REQUIREMENTS:
-You MUST return your response as valid JSON that matches this exact schema:
+Your response MUST be valid JSON. The schema below describes the STRUCTURE your output should follow.
+
+JSON Schema (this describes the format - do NOT include schema keywords in your output):
 ${schemaString}
 
+IMPORTANT - UNDERSTAND THE DIFFERENCE:
+- The schema uses keywords like "type", "properties", "items" to DESCRIBE the format
+- Your output should contain the ACTUAL DATA, not these schema keywords
+
+Example of what the schema means:
+- Schema: {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "number"}}}
+- Your output: {"name": "John", "age": 30}
+- WRONG output: {"type": "object", "properties": {"name": "John", "age": 30}}
+
 CRITICAL JSON RULES:
-- Return ONLY valid JSON - no markdown code blocks, no explanations, no prefixes
-- Start your response directly with { or [ (the JSON structure)
-- End your response with } or ] (closing the JSON structure)
+- Return ONLY the data as valid JSON - no markdown, no code blocks, no explanations
+- Start your response directly with { or [
+- Do NOT include "type", "properties", "$schema", "items", "required" in your output
 - Use double quotes for all strings and property names
-- No trailing commas
-- No single quotes
-- No unescaped newlines in strings
+- No trailing commas, no single quotes
 - Properly escape special characters in strings
-- Ensure all required schema fields are present
 `.trim();
 }

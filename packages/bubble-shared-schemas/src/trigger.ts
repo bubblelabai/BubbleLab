@@ -160,6 +160,8 @@ export interface SlackMessageEvent {
   channel: string;
   event_ts: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
+  /** Thread timestamp - present when this message is a reply in a thread */
+  thread_ts?: string;
   /** Message subtype (e.g., 'file_share', 'bot_message', 'channel_join') */
   subtype?: string;
   // Bot message indicators - present when message is from a bot
@@ -181,6 +183,9 @@ export interface SlackMentionEvent extends BubbleTriggerEvent {
   channel: string;
   user: string;
   text: string;
+  /** Message timestamp - use this when replying to the message */
+  ts?: string;
+  /** Thread timestamp - present when this message is a reply in a thread */
   thread_ts?: string;
   /** Files/images attached to the mention message */
   files?: SlackFile[];
@@ -191,6 +196,10 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   channel: string;
   user: string;
   text: string;
+  /** Message timestamp - use this when replying to the message */
+  ts?: string;
+  /** Thread timestamp - present when this message is a reply in a thread */
+  thread_ts?: string;
   channel_type: 'channel' | 'group' | 'im' | 'mpim';
   subtype?: string;
   /** Files/images attached to this message */
