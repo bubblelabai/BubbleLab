@@ -196,7 +196,8 @@ export class ResearchAgentTool extends ToolBubble<
           credentials: this.params.credentials,
           streaming: false,
         },
-        this.context
+        this.context,
+        'researchSubAgent'
       );
 
       console.log('[ResearchAgentTool] Executing AI agent...');
@@ -521,7 +522,8 @@ OUTPUT (valid JSON only):`;
           maxIterations: 4,
           credentials: this.params.credentials,
         },
-        this.context
+        this.context,
+        'repairAgent'
       );
 
       const result = await repairAgent.action();

@@ -92,6 +92,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.FULLENRICH_API_KEY]: 'FullEnrich',
     [CredentialType.LINKEDIN_CRED]: 'LinkedIn',
     [CredentialType.STRIPE_CRED]: 'Stripe',
+    [CredentialType.CREDENTIAL_WILDCARD]: 'Wiki',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
