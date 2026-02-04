@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/shared-schemas",
-  "version": "0.1.98",
+  "version": "0.1.99",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",

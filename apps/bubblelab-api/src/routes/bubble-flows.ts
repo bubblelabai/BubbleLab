@@ -1443,18 +1443,21 @@ app.openapi(generateBubbleFlowCodeRoute, async (c) => {
 
             // Capture validation events for analytics
             if (
-              event.type === 'tool_complete' &&
+              event.type === 'tool_call_complete' &&
               event.data.tool === 'bubbleflow-validation-tool'
             ) {
               try {
                 const output = event.data
                   .output as BubbleResult<ValidationResult>;
+                const toolInput = event.data.input as
+                  | { input?: string }
+                  | undefined;
                 // Check if validation failed
                 if (output.data.errors && output.data.errors.length > 0) {
                   posthog.captureValidationError({
                     userId,
-                    code: event.data.input.input
-                      ? JSON.parse(event.data.input.input).code
+                    code: toolInput?.input
+                      ? JSON.parse(toolInput.input).code
                       : '',
                     errorMessages: output.data.errors || [],
                     source: 'ai_generation',
