@@ -283,6 +283,24 @@ export const StripeParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .optional()
       .describe('Filter customers by email address (case-sensitive)'),
+    cursor: z
+      .string()
+      .optional()
+      .describe(
+        'Pagination cursor - pass the next_cursor from a previous response to get the next page'
+      ),
+    credentials: credentialsField,
+  }),
+
+  // Retrieve Customer
+  z.object({
+    operation: z
+      .literal('retrieve_customer')
+      .describe('Retrieve a specific customer by ID'),
+    customer_id: z
+      .string()
+      .min(1, 'Customer ID is required')
+      .describe('ID of the customer to retrieve (cus_xxx)'),
     credentials: credentialsField,
   }),
 
@@ -716,6 +734,31 @@ export const StripeResultSchema = z.discriminatedUnion('operation', [
       .array(StripeCustomerSchema)
       .optional()
       .describe('List of customer objects'),
+    has_more: z
+      .boolean()
+      .optional()
+      .describe('Whether there are more customers available beyond this page'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        'Cursor to pass as "cursor" parameter to fetch the next page (null if no more pages)'
+      ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Retrieve Customer Result
+  z.object({
+    operation: z.literal('retrieve_customer'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    customer: StripeCustomerSchema.optional().describe(
+      'Retrieved customer object'
+    ),
+    deleted: z
+      .boolean()
+      .optional()
+      .describe('True if the customer has been deleted'),
     error: z.string().describe('Error message if operation failed'),
   }),
 

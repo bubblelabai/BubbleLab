@@ -205,6 +205,13 @@ export class StripeBubble<
                 { operation: 'list_customers' }
               >
             );
+          case 'retrieve_customer':
+            return await this.retrieveCustomer(
+              parsedParams as Extract<
+                StripeParams,
+                { operation: 'retrieve_customer' }
+              >
+            );
           case 'create_product':
             return await this.createProduct(
               parsedParams as Extract<
@@ -378,11 +385,12 @@ export class StripeBubble<
   private async listCustomers(
     params: Extract<StripeParams, { operation: 'list_customers' }>
   ): Promise<Extract<StripeResult, { operation: 'list_customers' }>> {
-    const { limit, email } = params;
+    const { limit, email, cursor } = params;
 
     const queryParams = new URLSearchParams();
     if (limit) queryParams.set('limit', String(limit));
     if (email) queryParams.set('email', email);
+    if (cursor) queryParams.set('starting_after', cursor);
 
     const endpoint = `/v1/customers${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await this.makeStripeRequest(endpoint, 'GET');
@@ -394,18 +402,80 @@ export class StripeBubble<
         created: number;
         metadata?: Record<string, string>;
       }>;
+      has_more: boolean;
     };
+
+    const customers = data.data.map((c) => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      created: c.created,
+      metadata: c.metadata,
+    }));
+
+    // Get the last customer's ID as the cursor for the next page
+    const nextCursor =
+      data.has_more && customers.length > 0
+        ? customers[customers.length - 1].id
+        : null;
 
     return {
       operation: 'list_customers',
       success: true,
-      customers: data.data.map((c) => ({
-        id: c.id,
-        name: c.name,
-        email: c.email,
-        created: c.created,
-        metadata: c.metadata,
-      })),
+      customers,
+      has_more: data.has_more,
+      next_cursor: nextCursor,
+      error: '',
+    };
+  }
+
+  private async retrieveCustomer(
+    params: Extract<StripeParams, { operation: 'retrieve_customer' }>
+  ): Promise<Extract<StripeResult, { operation: 'retrieve_customer' }>> {
+    const { customer_id } = params;
+
+    const response = await this.makeStripeRequest(
+      `/v1/customers/${customer_id}`,
+      'GET'
+    );
+    const customer = response as {
+      id: string;
+      object: string;
+      deleted?: boolean;
+      name?: string | null;
+      email?: string | null;
+      created?: number;
+      metadata?: Record<string, string>;
+    };
+
+    // Handle deleted customers
+    if (customer.deleted) {
+      return {
+        operation: 'retrieve_customer',
+        success: true,
+        customer: {
+          id: customer.id,
+          name: null,
+          email: null,
+          created: 0,
+          metadata: undefined,
+        },
+        deleted: true,
+        error: '',
+      };
+    }
+
+    return {
+      operation: 'retrieve_customer',
+      success: true,
+      customer: {
+        id: customer.id,
+        name: customer.name ?? null,
+        email: customer.email ?? null,
+        created: customer.created ?? 0,
+        metadata: customer.metadata,
+      },
+      deleted: false,
       error: '',
     };
   }
