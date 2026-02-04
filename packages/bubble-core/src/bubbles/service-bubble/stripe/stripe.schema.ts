@@ -105,6 +105,43 @@ export const StripeInvoiceSchema = z
   })
   .describe('Stripe invoice object');
 
+export const StripeInvoiceItemSchema = z
+  .object({
+    id: z.string().describe('Unique Stripe invoice item identifier (ii_xxx)'),
+    invoice: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('ID of the invoice this item belongs to'),
+    customer: z.string().describe('ID of the customer'),
+    amount: z
+      .number()
+      .describe(
+        'Total amount in smallest currency unit (unit_amount * quantity)'
+      ),
+    unit_amount: z
+      .number()
+      .nullable()
+      .optional()
+      .describe('Unit price in smallest currency unit'),
+    currency: z.string().describe('Three-letter ISO currency code'),
+    description: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Description of the invoice item'),
+    quantity: z.number().optional().describe('Quantity of the item'),
+    date: z
+      .number()
+      .optional()
+      .describe('Unix timestamp when the item was created'),
+    metadata: z
+      .record(z.string())
+      .optional()
+      .describe('Arbitrary metadata attached to the invoice item'),
+  })
+  .describe('Stripe invoice item object');
+
 export const StripeBalanceSchema = z
   .object({
     available: z
@@ -390,6 +427,33 @@ export const StripeParamsSchema = z.discriminatedUnion('operation', [
       .min(1)
       .optional()
       .describe('Days until invoice is due (for send_invoice collection)'),
+    items: z
+      .array(
+        z.object({
+          unit_amount: z
+            .number()
+            .int()
+            .min(1)
+            .describe(
+              'Unit price in smallest currency unit (e.g., cents). Total = unit_amount * quantity'
+            ),
+          description: z
+            .string()
+            .optional()
+            .describe('Description of the line item'),
+          quantity: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .default(1)
+            .describe('Quantity of items (default: 1)'),
+        })
+      )
+      .optional()
+      .describe(
+        'Line items to add to the invoice after creation. Each item will be created as an invoice item.'
+      ),
     metadata: z
       .record(z.string())
       .optional()
@@ -443,6 +507,65 @@ export const StripeParamsSchema = z.discriminatedUnion('operation', [
       .describe(
         'Whether to automatically advance the invoice after finalizing'
       ),
+    credentials: credentialsField,
+  }),
+
+  // Create Invoice Item
+  z.object({
+    operation: z
+      .literal('create_invoice_item')
+      .describe(
+        'Add a line item to an existing invoice or as a pending item for a customer'
+      ),
+    customer: z
+      .string()
+      .min(1, 'Customer ID is required')
+      .describe('ID of the customer to add the item to'),
+    invoice: z
+      .string()
+      .optional()
+      .describe(
+        'ID of the invoice to attach this item to (must be a draft invoice)'
+      ),
+    unit_amount: z
+      .number()
+      .int()
+      .min(1)
+      .describe(
+        'Unit price in smallest currency unit (e.g., cents). Total = unit_amount * quantity'
+      ),
+    currency: z
+      .string()
+      .length(3, 'Currency must be 3-letter ISO code')
+      .optional()
+      .default('usd')
+      .describe('Three-letter ISO currency code (e.g., "usd")'),
+    description: z.string().optional().describe('Description of the line item'),
+    quantity: z
+      .number()
+      .int()
+      .min(1)
+      .optional()
+      .default(1)
+      .describe('Quantity of items (default: 1)'),
+    metadata: z
+      .record(z.string())
+      .optional()
+      .describe('Arbitrary metadata to attach to the invoice item'),
+    credentials: credentialsField,
+  }),
+
+  // Send Invoice
+  z.object({
+    operation: z
+      .literal('send_invoice')
+      .describe(
+        "Send a finalized invoice to the customer via Stripe's built-in email service"
+      ),
+    invoice_id: z
+      .string()
+      .min(1, 'Invoice ID is required')
+      .describe('ID of the invoice to send (must be finalized/open status)'),
     credentials: credentialsField,
   }),
 
@@ -679,6 +802,26 @@ export const StripeResultSchema = z.discriminatedUnion('operation', [
     success: z.boolean().describe('Whether the operation succeeded'),
     invoice: StripeInvoiceSchema.optional().describe(
       'Finalized invoice object'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Create Invoice Item Result
+  z.object({
+    operation: z.literal('create_invoice_item'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    invoice_item: StripeInvoiceItemSchema.optional().describe(
+      'Created invoice item object'
+    ),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Send Invoice Result
+  z.object({
+    operation: z.literal('send_invoice'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    invoice: StripeInvoiceSchema.optional().describe(
+      'Invoice object after sending'
     ),
     error: z.string().describe('Error message if operation failed'),
   }),

@@ -254,7 +254,7 @@ export function handleStreamingEvent(
       }
       break;
 
-    case 'tool_start':
+    case 'tool_call_start':
       state.addToolCall(event.data.callId);
       state.removeLastTimelineEventIf((e) => e.type === 'llm_thinking');
       state.addEvent({
@@ -266,7 +266,7 @@ export function handleStreamingEvent(
       });
       break;
 
-    case 'tool_complete': {
+    case 'tool_call_complete': {
       state.removeToolCall(event.data.callId);
       state.updateTimelineEventByCallId(event.data.callId, (e) => ({
         type: 'tool_complete' as const,

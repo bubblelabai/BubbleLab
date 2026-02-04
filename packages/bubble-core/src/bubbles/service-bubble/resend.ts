@@ -11,14 +11,12 @@ const SYSTEM_DOMAINS = ['bubblelab.ai', 'hello.bubblelab.ai'];
 // Define attachment schema
 const AttachmentSchema = z.object({
   filename: z.string().describe('Name of the attached file'),
-  content: z
-    .union([z.string(), z.instanceof(Buffer)])
-    .describe('File content as string or Buffer'),
-  content_type: z.string().optional().describe('MIME type of the file'),
+  content: z.string().optional().describe('Base64 encoded file content'),
+  contentType: z.string().optional().describe('MIME type of the file'),
   path: z
     .string()
     .optional()
-    .describe('Path where the attachment file is hosted'),
+    .describe('URL where the attachment file is hosted'),
 });
 
 // Define the parameters schema for Resend operations
@@ -415,7 +413,12 @@ export class ResendBubble<
     if (html) emailPayload.html = html;
     if (reply_to) emailPayload.replyTo = reply_to;
     if (scheduled_at) emailPayload.scheduledAt = scheduled_at;
-    if (attachments) emailPayload.attachments = attachments;
+    if (attachments) {
+      emailPayload.attachments = attachments.map((att) => ({
+        ...att,
+        content: att.content ? Buffer.from(att.content, 'base64') : undefined,
+      }));
+    }
     if (tags) emailPayload.tags = tags;
     if (headers) emailPayload.headers = headers;
 

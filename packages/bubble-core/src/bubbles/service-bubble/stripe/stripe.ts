@@ -268,6 +268,20 @@ export class StripeBubble<
                 { operation: 'finalize_invoice' }
               >
             );
+          case 'create_invoice_item':
+            return await this.createInvoiceItem(
+              parsedParams as Extract<
+                StripeParams,
+                { operation: 'create_invoice_item' }
+              >
+            );
+          case 'send_invoice':
+            return await this.sendInvoice(
+              parsedParams as Extract<
+                StripeParams,
+                { operation: 'send_invoice' }
+              >
+            );
           case 'get_balance':
             return await this.getBalance();
           case 'list_payment_intents':
@@ -619,6 +633,7 @@ export class StripeBubble<
       auto_advance,
       collection_method,
       days_until_due,
+      items,
       metadata,
     } = params;
 
@@ -631,7 +646,7 @@ export class StripeBubble<
     if (metadata) body.metadata = metadata;
 
     const response = await this.makeStripeRequest('/v1/invoices', 'POST', body);
-    const invoice = response as {
+    let invoice = response as {
       id: string;
       customer: string | null;
       status: 'draft' | 'open' | 'paid' | 'uncollectible' | 'void' | null;
@@ -642,6 +657,32 @@ export class StripeBubble<
       hosted_invoice_url?: string | null;
       metadata?: Record<string, string>;
     };
+
+    // If items are provided, create invoice items for each
+    if (items && items.length > 0) {
+      for (const item of items) {
+        const quantity = item.quantity ?? 1;
+        // Calculate total amount (unit_amount * quantity) since Stripe's `amount` is the total
+        const totalAmount = item.unit_amount * quantity;
+
+        const itemBody: Record<string, unknown> = {
+          customer,
+          invoice: invoice.id,
+          amount: totalAmount,
+          currency: invoice.currency,
+        };
+        if (item.description) itemBody.description = item.description;
+
+        await this.makeStripeRequest('/v1/invoiceitems', 'POST', itemBody);
+      }
+
+      // Retrieve the updated invoice to get the correct total
+      const updatedResponse = await this.makeStripeRequest(
+        `/v1/invoices/${invoice.id}`,
+        'GET'
+      );
+      invoice = updatedResponse as typeof invoice;
+    }
 
     return {
       operation: 'create_invoice',
@@ -782,6 +823,113 @@ export class StripeBubble<
 
     return {
       operation: 'finalize_invoice',
+      success: true,
+      invoice: {
+        id: invoice.id,
+        customer: invoice.customer,
+        status: invoice.status,
+        total: invoice.total,
+        currency: invoice.currency,
+        created: invoice.created,
+        due_date: invoice.due_date
+          ? new Date(invoice.due_date * 1000).toISOString()
+          : null,
+        hosted_invoice_url: invoice.hosted_invoice_url,
+        invoice_pdf: invoice.invoice_pdf,
+        metadata: invoice.metadata,
+      },
+      error: '',
+    };
+  }
+
+  private async createInvoiceItem(
+    params: Extract<StripeParams, { operation: 'create_invoice_item' }>
+  ): Promise<Extract<StripeResult, { operation: 'create_invoice_item' }>> {
+    const {
+      customer,
+      invoice,
+      unit_amount,
+      currency,
+      description,
+      quantity,
+      metadata,
+    } = params;
+
+    const qty = quantity ?? 1;
+    // Calculate total amount (unit_amount * quantity) since Stripe's `amount` is the total
+    const totalAmount = unit_amount * qty;
+
+    const body: Record<string, unknown> = {
+      customer,
+      amount: totalAmount,
+      currency,
+    };
+    if (invoice) body.invoice = invoice;
+    if (description) body.description = description;
+    if (metadata) body.metadata = metadata;
+
+    const response = await this.makeStripeRequest(
+      '/v1/invoiceitems',
+      'POST',
+      body
+    );
+    const invoiceItem = response as {
+      id: string;
+      invoice: string | null;
+      customer: string;
+      amount: number;
+      unit_amount: number | null;
+      currency: string;
+      description: string | null;
+      quantity: number;
+      date: number;
+      metadata?: Record<string, string>;
+    };
+
+    return {
+      operation: 'create_invoice_item',
+      success: true,
+      invoice_item: {
+        id: invoiceItem.id,
+        invoice: invoiceItem.invoice,
+        customer: invoiceItem.customer,
+        amount: invoiceItem.amount,
+        unit_amount: invoiceItem.unit_amount,
+        currency: invoiceItem.currency,
+        description: invoiceItem.description,
+        quantity: invoiceItem.quantity,
+        date: invoiceItem.date,
+        metadata: invoiceItem.metadata,
+      },
+      error: '',
+    };
+  }
+
+  private async sendInvoice(
+    params: Extract<StripeParams, { operation: 'send_invoice' }>
+  ): Promise<Extract<StripeResult, { operation: 'send_invoice' }>> {
+    const { invoice_id } = params;
+
+    // Use Stripe's send endpoint to send the invoice via Stripe's email service
+    const response = await this.makeStripeRequest(
+      `/v1/invoices/${invoice_id}/send`,
+      'POST'
+    );
+    const invoice = response as {
+      id: string;
+      customer: string | null;
+      status: 'draft' | 'open' | 'paid' | 'uncollectible' | 'void' | null;
+      total: number;
+      currency: string;
+      created: number;
+      due_date?: number | null;
+      hosted_invoice_url?: string | null;
+      invoice_pdf?: string | null;
+      metadata?: Record<string, string>;
+    };
+
+    return {
+      operation: 'send_invoice',
       success: true,
       invoice: {
         id: invoice.id,
