@@ -777,12 +777,13 @@ export class StripeBubble<
   private async listInvoices(
     params: Extract<StripeParams, { operation: 'list_invoices' }>
   ): Promise<Extract<StripeResult, { operation: 'list_invoices' }>> {
-    const { limit, customer, status } = params;
+    const { limit, customer, status, cursor } = params;
 
     const queryParams = new URLSearchParams();
     if (limit) queryParams.set('limit', String(limit));
     if (customer) queryParams.set('customer', customer);
     if (status) queryParams.set('status', status);
+    if (cursor) queryParams.set('starting_after', cursor);
 
     const endpoint = `/v1/invoices${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await this.makeStripeRequest(endpoint, 'GET');
@@ -799,23 +800,33 @@ export class StripeBubble<
         invoice_pdf?: string | null;
         metadata?: Record<string, string>;
       }>;
+      has_more: boolean;
     };
+
+    const invoices = data.data.map((i) => ({
+      id: i.id,
+      customer: i.customer,
+      status: i.status,
+      total: i.total,
+      currency: i.currency,
+      created: i.created,
+      due_date: i.due_date ? new Date(i.due_date * 1000).toISOString() : null,
+      hosted_invoice_url: i.hosted_invoice_url,
+      invoice_pdf: i.invoice_pdf,
+      metadata: i.metadata,
+    }));
+
+    const nextCursor =
+      data.has_more && invoices.length > 0
+        ? invoices[invoices.length - 1].id
+        : null;
 
     return {
       operation: 'list_invoices',
       success: true,
-      invoices: data.data.map((i) => ({
-        id: i.id,
-        customer: i.customer,
-        status: i.status,
-        total: i.total,
-        currency: i.currency,
-        created: i.created,
-        due_date: i.due_date ? new Date(i.due_date * 1000).toISOString() : null,
-        hosted_invoice_url: i.hosted_invoice_url,
-        invoice_pdf: i.invoice_pdf,
-        metadata: i.metadata,
-      })),
+      invoices,
+      has_more: data.has_more,
+      next_cursor: nextCursor,
       error: '',
     };
   }

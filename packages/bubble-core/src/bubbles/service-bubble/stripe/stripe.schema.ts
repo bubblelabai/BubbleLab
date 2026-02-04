@@ -495,6 +495,12 @@ export const StripeParamsSchema = z.discriminatedUnion('operation', [
       .enum(['draft', 'open', 'paid', 'uncollectible', 'void'])
       .optional()
       .describe('Filter by invoice status'),
+    cursor: z
+      .string()
+      .optional()
+      .describe(
+        'Pagination cursor - pass the next_cursor from a previous response to get the next page'
+      ),
     credentials: credentialsField,
   }),
 
@@ -826,6 +832,17 @@ export const StripeResultSchema = z.discriminatedUnion('operation', [
       .array(StripeInvoiceSchema)
       .optional()
       .describe('List of invoice objects'),
+    has_more: z
+      .boolean()
+      .optional()
+      .describe('Whether there are more invoices available beyond this page'),
+    next_cursor: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        'Cursor to pass as "cursor" parameter to fetch the next page (null if no more pages)'
+      ),
     error: z.string().describe('Error message if operation failed'),
   }),
 
