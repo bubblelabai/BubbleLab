@@ -161,8 +161,11 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Subject is required')
       .describe('Email subject line'),
-    body_text: z.string().optional().describe('Plain text email body'),
-    body_html: z.string().optional().describe('HTML email body'),
+    body_text: z
+      .string()
+      .optional()
+      .describe('[ONEOF:body] Plain text email body'),
+    body_html: z.string().optional().describe('[ONEOF:body] HTML email body'),
     reply_to: z.string().email().optional().describe('Reply-to email address'),
     thread_id: z
       .string()
@@ -323,8 +326,11 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'Subject is required')
       .describe('Email subject line'),
-    body_text: z.string().optional().describe('Plain text email body'),
-    body_html: z.string().optional().describe('HTML email body'),
+    body_text: z
+      .string()
+      .optional()
+      .describe('[ONEOF:body] Plain text email body'),
+    body_html: z.string().optional().describe('[ONEOF:body] HTML email body'),
     reply_to: z.string().email().optional().describe('Reply-to email address'),
     thread_id: z
       .string()
