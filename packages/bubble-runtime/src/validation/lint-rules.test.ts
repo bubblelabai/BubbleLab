@@ -214,4 +214,37 @@ const obj = {
 
     expect(errors.length).toBe(0);
   });
+
+  it('should error when JSON.stringify() is called on expectedResultSchema (ResearchAgentTool)', () => {
+    const code = `
+import { z } from 'zod';
+import { ResearchAgentTool } from '@bubblelab/bubble-core';
+
+const schema = z.object({
+  programs: z.array(z.object({ name: z.string() })),
+});
+
+const researchTool = new ResearchAgentTool({
+  task: 'Find programs',
+  expectedResultSchema: JSON.stringify(schema),
+  model: 'google/gemini-3-pro-preview',
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noJsonStringifyOnExpectedOutputSchemaRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain('Do not call JSON.stringify()');
+    expect(errors[0].message).toContain('expectedResultSchema');
+  });
 });

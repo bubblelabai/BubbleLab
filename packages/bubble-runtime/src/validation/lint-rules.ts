@@ -1283,7 +1283,17 @@ export const noCastPayloadInHandleRule: LintRule = {
 };
 
 /**
- * Lint rule that prevents calling .toString() on Zod schemas for expectedOutputSchema.
+ * Property names that accept Zod schemas for structured output.
+ * - expectedOutputSchema: Used by AIAgentBubble
+ * - expectedResultSchema: Used by ResearchAgentTool
+ */
+const SCHEMA_PROPERTY_NAMES = [
+  'expectedOutputSchema',
+  'expectedResultSchema',
+] as const;
+
+/**
+ * Lint rule that prevents calling .toString() on Zod schemas for expectedOutputSchema/expectedResultSchema.
  *
  * Calling .toString() on a Zod schema returns a useless string like "ZodObject"
  * instead of the actual JSON schema. This causes the AI to not follow the expected
@@ -1292,11 +1302,13 @@ export const noCastPayloadInHandleRule: LintRule = {
  * BAD:
  * ```typescript
  * expectedOutputSchema: z.object({ companies: z.array(...) }).toString()
+ * expectedResultSchema: z.object({ result: z.string() }).toString()
  * ```
  *
  * GOOD:
  * ```typescript
  * expectedOutputSchema: z.object({ companies: z.array(...) })
+ * expectedResultSchema: z.object({ result: z.string() })
  * ```
  */
 export const noToStringOnExpectedOutputSchemaRule: LintRule = {
@@ -1305,24 +1317,30 @@ export const noToStringOnExpectedOutputSchemaRule: LintRule = {
     const errors: LintError[] = [];
 
     const visit = (node: ts.Node): void => {
-      // Look for property assignments: expectedOutputSchema: <value>
+      // Look for property assignments: expectedOutputSchema/expectedResultSchema: <value>
       if (ts.isPropertyAssignment(node)) {
         const propName = node.name;
-        let isExpectedOutputSchema = false;
+        let matchedPropName: string | null = null;
 
-        if (
-          ts.isIdentifier(propName) &&
-          propName.text === 'expectedOutputSchema'
-        ) {
-          isExpectedOutputSchema = true;
-        } else if (
-          ts.isStringLiteral(propName) &&
-          propName.text === 'expectedOutputSchema'
-        ) {
-          isExpectedOutputSchema = true;
+        if (ts.isIdentifier(propName)) {
+          if (
+            SCHEMA_PROPERTY_NAMES.includes(
+              propName.text as (typeof SCHEMA_PROPERTY_NAMES)[number]
+            )
+          ) {
+            matchedPropName = propName.text;
+          }
+        } else if (ts.isStringLiteral(propName)) {
+          if (
+            SCHEMA_PROPERTY_NAMES.includes(
+              propName.text as (typeof SCHEMA_PROPERTY_NAMES)[number]
+            )
+          ) {
+            matchedPropName = propName.text;
+          }
         }
 
-        if (isExpectedOutputSchema) {
+        if (matchedPropName) {
           // Check if the value is a call expression ending with .toString()
           const value = node.initializer;
           if (ts.isCallExpression(value)) {
@@ -1338,8 +1356,7 @@ export const noToStringOnExpectedOutputSchemaRule: LintRule = {
               errors.push({
                 line: line + 1,
                 column: character + 1,
-                message:
-                  'Do not call .toString() on Zod schemas for expectedOutputSchema. Pass the Zod schema directly: expectedOutputSchema: z.object({ ... })',
+                message: `Do not call .toString() on Zod schemas for ${matchedPropName}. Pass the Zod schema directly: ${matchedPropName}: z.object({ ... })`,
               });
             }
           }
@@ -1355,7 +1372,7 @@ export const noToStringOnExpectedOutputSchemaRule: LintRule = {
 };
 
 /**
- * Lint rule that prevents calling JSON.stringify() on Zod schemas for expectedOutputSchema.
+ * Lint rule that prevents calling JSON.stringify() on Zod schemas for expectedOutputSchema/expectedResultSchema.
  *
  * JSON.stringify() on a Zod schema returns unusable JSON representation of the schema object
  * instead of the actual JSON schema format needed for AI structured output.
@@ -1363,11 +1380,13 @@ export const noToStringOnExpectedOutputSchemaRule: LintRule = {
  * BAD:
  * ```typescript
  * expectedOutputSchema: JSON.stringify(z.object({ ... }))
+ * expectedResultSchema: JSON.stringify(z.object({ ... }))
  * ```
  *
  * GOOD:
  * ```typescript
  * expectedOutputSchema: z.object({ ... })
+ * expectedResultSchema: z.object({ ... })
  * ```
  */
 export const noJsonStringifyOnExpectedOutputSchemaRule: LintRule = {
@@ -1376,24 +1395,30 @@ export const noJsonStringifyOnExpectedOutputSchemaRule: LintRule = {
     const errors: LintError[] = [];
 
     const visit = (node: ts.Node): void => {
-      // Look for property assignments: expectedOutputSchema: <value>
+      // Look for property assignments: expectedOutputSchema/expectedResultSchema: <value>
       if (ts.isPropertyAssignment(node)) {
         const propName = node.name;
-        let isExpectedOutputSchema = false;
+        let matchedPropName: string | null = null;
 
-        if (
-          ts.isIdentifier(propName) &&
-          propName.text === 'expectedOutputSchema'
-        ) {
-          isExpectedOutputSchema = true;
-        } else if (
-          ts.isStringLiteral(propName) &&
-          propName.text === 'expectedOutputSchema'
-        ) {
-          isExpectedOutputSchema = true;
+        if (ts.isIdentifier(propName)) {
+          if (
+            SCHEMA_PROPERTY_NAMES.includes(
+              propName.text as (typeof SCHEMA_PROPERTY_NAMES)[number]
+            )
+          ) {
+            matchedPropName = propName.text;
+          }
+        } else if (ts.isStringLiteral(propName)) {
+          if (
+            SCHEMA_PROPERTY_NAMES.includes(
+              propName.text as (typeof SCHEMA_PROPERTY_NAMES)[number]
+            )
+          ) {
+            matchedPropName = propName.text;
+          }
         }
 
-        if (isExpectedOutputSchema) {
+        if (matchedPropName) {
           // Check if the value is JSON.stringify(...)
           const value = node.initializer;
           if (ts.isCallExpression(value)) {
@@ -1411,8 +1436,7 @@ export const noJsonStringifyOnExpectedOutputSchemaRule: LintRule = {
               errors.push({
                 line: line + 1,
                 column: character + 1,
-                message:
-                  'Do not call JSON.stringify() on Zod schemas for expectedOutputSchema. Pass the Zod schema directly: expectedOutputSchema: z.object({ ... })',
+                message: `Do not call JSON.stringify() on Zod schemas for ${matchedPropName}. Pass the Zod schema directly: ${matchedPropName}: z.object({ ... })`,
               });
             }
           }
