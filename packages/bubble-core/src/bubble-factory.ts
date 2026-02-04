@@ -170,6 +170,42 @@ export class BubbleFactory {
     ];
   }
 
+  /**
+   * Get the class names (e.g., 'SlackBubble', 'PostgreSQLBubble') for all bubbles
+   * available for code generation. Used to generate import statements.
+   */
+  listBubbleClassNamesForCodeGenerator(): string[] {
+    const bubbleNames = this.listBubblesForCodeGenerator();
+    const classNames: string[] = [];
+
+    for (const name of bubbleNames) {
+      const bubbleClass = this.registry.get(name);
+      if (bubbleClass && bubbleClass.name) {
+        classNames.push(bubbleClass.name);
+      }
+    }
+
+    return classNames;
+  }
+
+  /**
+   * Get a mapping of bubble names to class names for code generation.
+   * Returns object like { 'slack': 'SlackBubble', 'postgresql': 'PostgreSQLBubble' }
+   */
+  getBubbleNameToClassNameMap(): Record<string, string> {
+    const bubbleNames = this.listBubblesForCodeGenerator();
+    const mapping: Record<string, string> = {};
+
+    for (const name of bubbleNames) {
+      const bubbleClass = this.registry.get(name);
+      if (bubbleClass && bubbleClass.name) {
+        mapping[name] = bubbleClass.name;
+      }
+    }
+
+    return mapping;
+  }
+
   async registerDefaults(): Promise<void> {
     // Import and register all default bubbles
     // This will be implemented in a separate file to avoid circular deps
