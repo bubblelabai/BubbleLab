@@ -11,6 +11,7 @@ describe('BubbleRunner correctly runs and plans', () => {
   const helloWorldScript = getFixture('hello-world');
   const helloWorldMultipleScript = getFixture('hello-world-multiple');
   const researchWeatherScript = getFixture('research-weather');
+  const customToolSpreadParamScript = getFixture('custom-tool-spread-param');
   beforeEach(async () => {
     await bubbleFactory.registerDefaults();
   });
@@ -65,6 +66,39 @@ describe('BubbleRunner correctly runs and plans', () => {
       console.log('Logs:', logs);
 
       expect(result).toBeDefined();
+    }, 300000); // 5 minutes timeout
+
+    it('should execute custom tool with spread params (Stripe)', async () => {
+      const runner = new BubbleRunner(
+        customToolSpreadParamScript,
+        bubbleFactory,
+        {
+          pricingTable: {},
+        }
+      );
+
+      // Inject credentials including Stripe
+      const credentials = {
+        ...getUserCredential(),
+        STRIPE_CRED: 'test-stripe-key',
+      };
+      runner.injector.injectCredentials([], credentials);
+
+      // Get the script after injection
+      const injectedScript = runner.bubbleScript.bubblescript;
+
+      // Verify no arg0 wrapping - this was a bug where TSAsExpression wasn't unwrapped
+      expect(injectedScript).not.toContain('arg0:');
+      expect(injectedScript).not.toContain('{ arg0:');
+
+      // Verify the operation is at top level, not nested in arg0
+      expect(injectedScript).toContain("operation: 'create_invoice'");
+      expect(injectedScript).toContain("operation: 'list_invoices'");
+      expect(injectedScript).toContain("operation: 'retrieve_invoice'");
+      expect(injectedScript).toContain("operation: 'finalize_invoice'");
+
+      // Verify spread params are present
+      expect(injectedScript).toContain('...params');
     }, 300000); // 5 minutes timeout
   });
 });

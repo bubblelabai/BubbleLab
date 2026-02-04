@@ -73,6 +73,7 @@ export const fixtures = {
   'string-literal-complex': '',
   'promises-all-map': '',
   'slack-with-custom-input': '',
+  'custom-tool-spread-param': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;
@@ -106,6 +107,7 @@ export function getUserCredential(): Partial<Record<CredentialType, string>> {
     [CredentialType.RESEND_CRED]: 'test-resend-key',
     [CredentialType.GOOGLE_SHEETS_CRED]: 'test-google-sheets-key',
     [CredentialType.GOOGLE_DRIVE_CRED]: 'test-google-drive-key',
+    [CredentialType.STRIPE_CRED]: 'test-stripe-key',
   };
 }
 

@@ -1906,7 +1906,11 @@ export class BubbleParser {
 
     const parameters: BubbleParameter[] = [];
     if (newExpr.arguments && newExpr.arguments.length > 0) {
-      const firstArg = newExpr.arguments[0];
+      let firstArg = newExpr.arguments[0];
+      // Unwrap TSAsExpression to get the underlying expression (e.g., { ... } as any)
+      if (firstArg.type === 'TSAsExpression') {
+        firstArg = (firstArg as TSESTree.TSAsExpression).expression;
+      }
       if (firstArg.type === 'ObjectExpression') {
         for (const prop of firstArg.properties) {
           if (prop.type === 'Property') {
