@@ -136,4 +136,5 @@ export type BubbleName =
   | 'ashby'
   | 'fullenrich'
   | 'linkedin-connection-tool'
-  | 'stripe';
+  | 'stripe'
+  | 'yc-scraper-tool';

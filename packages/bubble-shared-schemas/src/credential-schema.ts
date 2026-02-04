@@ -1441,6 +1441,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
     CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   ],
   stripe: [CredentialType.STRIPE_CRED],
+  'yc-scraper-tool': [CredentialType.APIFY_CRED],
 };
 
 // POST /credentials - Create credential schema

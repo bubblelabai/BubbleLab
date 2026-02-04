@@ -167,6 +167,7 @@ export class BubbleFactory {
       'ashby',
       'fullenrich',
       'stripe',
+      'yc-scraper-tool',
     ];
   }
 
@@ -368,6 +369,9 @@ export class BubbleFactory {
     const { StripeBubble } = await import(
       './bubbles/service-bubble/stripe/index.js'
     );
+    const { YCScraperTool } = await import(
+      './bubbles/tool-bubble/yc-scraper-tool.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -503,6 +507,7 @@ export class BubbleFactory {
       LinkedInConnectionTool as BubbleClassWithMetadata
     );
     this.register('stripe', StripeBubble as BubbleClassWithMetadata);
+    this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -816,6 +821,7 @@ import {
   AmazonShoppingTool, // bubble name: 'amazon-shopping-tool',
   LinkedInConnectionTool, // bubble name: 'linkedin-connection-tool'
   PeopleSearchTool, // bubble name: 'people-search-tool'
+  YCScraperTool, // bubble name: 'yc-scraper-tool'
 
   // Event Types (Import the one matching your trigger)
   type WebhookEvent,

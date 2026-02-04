@@ -173,6 +173,12 @@ export type {
   Contact,
   CompanyEnrichmentResult,
 } from './bubbles/tool-bubble/company-enrichment-tool.js';
+export { YCScraperTool } from './bubbles/tool-bubble/yc-scraper-tool.js';
+export type {
+  YCPerson,
+  YCCompany,
+  YCFounder,
+} from './bubbles/tool-bubble/yc-scraper-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {
