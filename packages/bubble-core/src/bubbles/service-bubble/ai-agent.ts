@@ -1089,7 +1089,7 @@ export class AIAgentBubble extends ServiceBubble<
 
         // Send tool_start event (include variableId for console tracking)
         this.streamingCallback?.({
-          type: 'tool_start',
+          type: 'tool_call_start',
           data: {
             tool: toolCall.name,
             input: toolCall.args,
@@ -1100,7 +1100,7 @@ export class AIAgentBubble extends ServiceBubble<
 
         // Send tool_complete event with error
         this.streamingCallback?.({
-          type: 'tool_complete',
+          type: 'tool_call_complete',
           data: {
             callId: toolCall.id!,
             input: toolCall.args as { input: string },
@@ -1130,7 +1130,7 @@ export class AIAgentBubble extends ServiceBubble<
         });
 
         this.streamingCallback?.({
-          type: 'tool_start',
+          type: 'tool_call_start',
           data: {
             tool: toolCall.name,
             input: toolCall.args,
@@ -1181,7 +1181,7 @@ export class AIAgentBubble extends ServiceBubble<
           }
         }
         this.streamingCallback?.({
-          type: 'tool_complete',
+          type: 'tool_call_complete',
           data: {
             callId: toolCall.id!,
             input: toolCall.args as { input: string },
@@ -1203,7 +1203,7 @@ export class AIAgentBubble extends ServiceBubble<
 
         // Send tool_complete event even on failure so frontend can track it properly
         this.streamingCallback?.({
-          type: 'tool_complete',
+          type: 'tool_call_complete',
           data: {
             callId: toolCall.id!,
             input: toolCall.args as { input: string },

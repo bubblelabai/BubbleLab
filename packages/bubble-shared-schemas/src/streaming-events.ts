@@ -101,19 +101,23 @@ export type StreamingEvent =
       };
     }
   | {
-      type: 'tool_start';
-      data: { tool: string; input: unknown; callId: string };
-    }
-  | {
-      type: 'tool_complete';
+      type: 'tool_call_start';
       data: {
         tool: string;
-        input: {
-          input: string;
-        };
+        input: unknown;
+        callId: string;
+        variableId?: number;
+      };
+    }
+  | {
+      type: 'tool_call_complete';
+      data: {
+        tool: string;
+        input: unknown;
         output: unknown;
         duration: number;
         callId: string;
+        variableId?: number;
       };
     }
   | { type: 'iteration_start'; data: { iteration: number } }
