@@ -1087,13 +1087,14 @@ export class AIAgentBubble extends ServiceBubble<
         const errorContent = `Error: Tool ${toolCall.name} not found`;
         const startTime = Date.now();
 
-        // Send tool_start event
+        // Send tool_start event (include variableId for console tracking)
         this.streamingCallback?.({
           type: 'tool_start',
           data: {
             tool: toolCall.name,
             input: toolCall.args,
             callId: toolCall.id!,
+            variableId: this.context?.variableId,
           },
         });
 
@@ -1106,6 +1107,7 @@ export class AIAgentBubble extends ServiceBubble<
             tool: toolCall.name,
             output: { error: errorContent },
             duration: Date.now() - startTime,
+            variableId: this.context?.variableId,
           },
         });
 
@@ -1133,6 +1135,7 @@ export class AIAgentBubble extends ServiceBubble<
             tool: toolCall.name,
             input: toolCall.args,
             callId: toolCall.id!,
+            variableId: this.context?.variableId,
           },
         });
 
@@ -1185,6 +1188,7 @@ export class AIAgentBubble extends ServiceBubble<
             tool: toolCall.name,
             output: toolOutput,
             duration: Date.now() - startTime,
+            variableId: this.context?.variableId,
           },
         });
       } catch (error) {
@@ -1206,6 +1210,7 @@ export class AIAgentBubble extends ServiceBubble<
             tool: toolCall.name,
             output: { error: errorContent },
             duration: Date.now() - startTime,
+            variableId: this.context?.variableId,
           },
         });
       }
