@@ -141,13 +141,29 @@ export const airtableOAuthMetadataSchema = z.object({
 export type AirtableOAuthMetadata = z.infer<typeof airtableOAuthMetadataSchema>;
 
 /**
+ * Base preference fields that can be added to any credential metadata.
+ * These are used for default credential selection and usage tracking.
+ */
+export interface CredentialPreferences {
+  /** Whether this credential is the user's default for its credential type */
+  isDefault?: boolean;
+  /** ISO timestamp of when this credential was last used in a flow execution */
+  lastUsedAt?: string;
+}
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
  * - SlackOAuthMetadata: For SLACK_CRED OAuth credentials
+ *
+ * All metadata types include optional preference fields (isDefault, lastUsedAt)
+ * for default credential selection and usage tracking.
  */
-export type CredentialMetadata =
+export type CredentialMetadata = (
   | DatabaseMetadata
   | JiraOAuthMetadata
   | SlackOAuthMetadata
-  | AirtableOAuthMetadata;
+  | AirtableOAuthMetadata
+) &
+  CredentialPreferences;
