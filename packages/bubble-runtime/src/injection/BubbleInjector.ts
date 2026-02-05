@@ -4,6 +4,7 @@ import {
   ParsedBubbleWithInfo,
   BUBBLE_CREDENTIAL_OPTIONS,
   BubbleName,
+  CredentialMetadata,
 } from '@bubblelab/shared-schemas';
 import { BubbleScript } from '../parse/BubbleScript';
 import { LoggerInjector } from './LoggerInjector';
@@ -20,7 +21,7 @@ export interface UserCredentialWithId {
   secret: string;
   credentialType: CredentialType;
   credentialId?: number;
-  metadata?: Record<string, unknown>;
+  metadata?: CredentialMetadata;
 }
 
 export interface CredentialInjectionResult {
