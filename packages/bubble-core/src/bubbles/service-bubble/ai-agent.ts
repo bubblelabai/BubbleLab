@@ -554,6 +554,36 @@ export class AIAgentBubble extends ServiceBubble<
       this.params.systemPrompt = `${this.params.systemPrompt}\n\n${buildJsonSchemaInstruction(schemaString)}`;
     }
 
+    // Inject current UTC time into system prompt
+    const now = new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+      timeZoneName: 'short',
+    });
+    this.params.systemPrompt = `${this.params.systemPrompt}\n\nCurrent time: ${now}`;
+
+    // Apply capability model config overrides
+    for (const capConfig of this.params.capabilities ?? []) {
+      const capDef = getCapability(capConfig.id);
+      const override = capDef?.metadata.modelConfigOverride;
+      if (!override) continue;
+      if (override.model)
+        this.params.model.model =
+          override.model as typeof this.params.model.model;
+      if (override.reasoningEffort)
+        this.params.model.reasoningEffort = override.reasoningEffort;
+      if (override.maxTokens)
+        this.params.model.maxTokens = Math.max(
+          this.params.model.maxTokens ?? 0,
+          override.maxTokens
+        );
+    }
+
     // Inject capability system prompts
     for (const capConfig of this.params.capabilities ?? []) {
       const capDef = getCapability(capConfig.id);

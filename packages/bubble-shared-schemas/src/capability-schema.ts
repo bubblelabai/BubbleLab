@@ -8,6 +8,7 @@ import { CredentialType, type BubbleName } from './types.js';
 export const CapabilityInputSchema = z.object({
   name: z.string().min(1),
   type: z.enum(['string', 'number', 'boolean', 'string[]']),
+  label: z.string().optional(),
   description: z.string(),
   required: z.boolean().default(true),
   default: z
@@ -30,6 +31,18 @@ export const CapabilityToolDefSchema = z.object({
 export type CapabilityToolDef = z.infer<typeof CapabilityToolDefSchema>;
 
 /**
+ * Schema for optional model configuration overrides applied by a capability at runtime.
+ */
+export const CapabilityModelConfigOverrideSchema = z.object({
+  model: z.string().optional(),
+  reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
+  maxTokens: z.number().positive().optional(),
+});
+export type CapabilityModelConfigOverride = z.infer<
+  typeof CapabilityModelConfigOverrideSchema
+>;
+
+/**
  * Serializable capability metadata — used by frontend, parser, and capabilities.json.
  * Does NOT contain runtime logic (tool functions, factories).
  */
@@ -44,5 +57,6 @@ export const CapabilityMetadataSchema = z.object({
   inputs: z.array(CapabilityInputSchema),
   tools: z.array(CapabilityToolDefSchema),
   systemPromptAddition: z.string().optional(),
+  modelConfigOverride: CapabilityModelConfigOverrideSchema.optional(),
 });
 export type CapabilityMetadata = z.infer<typeof CapabilityMetadataSchema>;
