@@ -38,6 +38,10 @@ import {
   zodSchemaToJsonString,
   buildJsonSchemaInstruction,
 } from '../../utils/zod-schema.js';
+import {
+  getCapability,
+  type CapabilityRuntimeContext,
+} from '../../capabilities/index.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -251,6 +255,23 @@ const ExpectedOutputSchema = z.union([
 /** Type for conversation history messages - enables KV cache optimization */
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 
+// Schema for a single capability configuration on the AI agent
+const CapabilityConfigSchema = z.object({
+  id: z
+    .string()
+    .min(1)
+    .describe('Capability ID (e.g., "google-doc-knowledge-base")'),
+  inputs: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .default({})
+    .describe('Input parameter values for this capability'),
+  credentials: z
+    .record(z.nativeEnum(CredentialType), z.string())
+    .default({})
+    .optional()
+    .describe('Capability-specific credentials (injected at runtime)'),
+});
+
 // Define the parameters schema for the AI Agent bubble
 const AIAgentParamsSchema = z.object({
   message: z
@@ -321,6 +342,13 @@ const AIAgentParamsSchema = z.object({
     .default(false)
     .describe(
       'Enable real-time streaming of tokens, tool calls, and iteration progress'
+    ),
+  capabilities: z
+    .array(CapabilityConfigSchema)
+    .default([])
+    .optional()
+    .describe(
+      'Capabilities that extend the agent with bundled tools, prompts, and credentials. Example: [{ id: "google-doc-knowledge-base", inputs: { docId: "your-doc-id" } }]'
     ),
   expectedOutputSchema: ExpectedOutputSchema.optional().describe(
     'Zod schema or JSON schema string that defines the expected structure of the AI response. When provided, automatically enables JSON mode and instructs the AI to output in the exact format. Example: z.object({ summary: z.string(), items: z.array(z.object({ name: z.string(), score: z.number() })) })'
@@ -521,6 +549,28 @@ export class AIAgentBubble extends ServiceBubble<
         this.params.expectedOutputSchema
       );
       this.params.systemPrompt = `${this.params.systemPrompt}\n\n${buildJsonSchemaInstruction(schemaString)}`;
+    }
+
+    // Inject capability system prompts
+    for (const capConfig of this.params.capabilities ?? []) {
+      const capDef = getCapability(capConfig.id);
+      if (!capDef) continue;
+
+      const ctx: CapabilityRuntimeContext = {
+        credentials:
+          (capConfig.credentials as Partial<Record<CredentialType, string>>) ??
+          {},
+        inputs: capConfig.inputs ?? {},
+        bubbleContext: this.context,
+      };
+
+      const addition =
+        capDef.createSystemPrompt?.(ctx) ??
+        capDef.metadata.systemPromptAddition;
+
+      if (addition) {
+        this.params.systemPrompt = `${this.params.systemPrompt}\n\n${addition}`;
+      }
     }
   }
 
@@ -1059,7 +1109,116 @@ export class AIAgentBubble extends ServiceBubble<
       }
     }
 
+    // 3. Capability tools
+    for (const capConfig of this.params.capabilities ?? []) {
+      const capDef = getCapability(capConfig.id);
+      if (!capDef) {
+        console.warn(
+          `[AIAgent] Capability '${capConfig.id}' not found in registry. Skipping.`
+        );
+        continue;
+      }
+
+      try {
+        const ctx: CapabilityRuntimeContext = {
+          credentials:
+            (capConfig.credentials as Partial<
+              Record<CredentialType, string>
+            >) ?? {},
+          inputs: capConfig.inputs ?? {},
+          bubbleContext: this.context,
+        };
+
+        const toolFuncs = capDef.createTools(ctx);
+
+        for (const toolMeta of capDef.metadata.tools) {
+          const func = toolFuncs[toolMeta.name];
+          if (!func) continue;
+
+          // Convert JSON schema back to Zod for DynamicStructuredTool
+          const toolSchema = this.jsonSchemaToZod(toolMeta.parameterSchema);
+
+          const dynamicTool = new DynamicStructuredTool({
+            name: toolMeta.name,
+            description: toolMeta.description,
+            schema: toolSchema,
+            func: func as (input: Record<string, unknown>) => Promise<unknown>,
+          } as any);
+
+          tools.push(dynamicTool);
+          console.log(
+            `🔧 [AIAgent] Registered capability tool: ${toolMeta.name} (from ${capConfig.id})`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `Error initializing capability '${capConfig.id}':`,
+          error
+        );
+        continue;
+      }
+    }
+
     return tools;
+  }
+
+  /**
+   * Converts a JSON Schema object to a Zod schema for DynamicStructuredTool.
+   * Handles common JSON Schema types used by capability tool definitions.
+   */
+  private jsonSchemaToZod(
+    jsonSchema: Record<string, unknown>
+  ): z.ZodObject<z.ZodRawShape> {
+    const properties = (
+      jsonSchema as { properties?: Record<string, Record<string, unknown>> }
+    ).properties;
+    const required = (jsonSchema as { required?: string[] }).required ?? [];
+
+    if (!properties || Object.keys(properties).length === 0) {
+      return z.object({});
+    }
+
+    const shape: z.ZodRawShape = {};
+    for (const [key, prop] of Object.entries(properties)) {
+      let fieldSchema: z.ZodTypeAny;
+
+      switch (prop.type) {
+        case 'string':
+          fieldSchema = z.string();
+          if (prop.description)
+            fieldSchema = fieldSchema.describe(prop.description as string);
+          break;
+        case 'number':
+        case 'integer':
+          fieldSchema = z.number();
+          if (prop.description)
+            fieldSchema = fieldSchema.describe(prop.description as string);
+          break;
+        case 'boolean':
+          fieldSchema = z.boolean();
+          if (prop.description)
+            fieldSchema = fieldSchema.describe(prop.description as string);
+          break;
+        case 'array':
+          fieldSchema = z.array(z.unknown());
+          if (prop.description)
+            fieldSchema = fieldSchema.describe(prop.description as string);
+          break;
+        default:
+          fieldSchema = z.unknown();
+          if (prop.description)
+            fieldSchema = fieldSchema.describe(prop.description as string);
+          break;
+      }
+
+      if (!required.includes(key)) {
+        fieldSchema = fieldSchema.optional();
+      }
+
+      shape[key] = fieldSchema;
+    }
+
+    return z.object(shape);
   }
 
   /**

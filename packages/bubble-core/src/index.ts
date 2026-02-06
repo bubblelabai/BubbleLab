@@ -4,6 +4,9 @@ export * from '@bubblelab/shared-schemas';
 export * from './types/credentials.js';
 export * from './types/available-tools.js';
 
+// Export capabilities framework
+export * from './capabilities/index.js';
+
 // Export error classes
 export {
   BubbleError,
