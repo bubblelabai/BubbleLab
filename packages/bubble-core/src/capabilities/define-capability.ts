@@ -2,6 +2,7 @@ import type {
   CapabilityMetadata,
   CapabilityInput,
   CapabilityToolDef,
+  CapabilityModelConfigOverride,
 } from '@bubblelab/shared-schemas';
 import type { CredentialType, BubbleName } from '@bubblelab/shared-schemas';
 import type {
@@ -74,6 +75,8 @@ export interface DefineCapabilityOptions {
   /** Text (or async factory) to append to the agent's final response. */
   responseAppend?: string | CapabilityResponseAppendFactory;
   hooks?: CapabilityDefinition['hooks'];
+  /** Optional model config overrides applied at runtime (e.g., force a specific model or raise maxTokens). */
+  modelConfigOverride?: CapabilityModelConfigOverride;
 }
 
 /**
@@ -109,6 +112,7 @@ export function defineCapability(
       typeof options.systemPrompt === 'string'
         ? options.systemPrompt
         : undefined,
+    modelConfigOverride: options.modelConfigOverride,
   };
 
   // Build tool factory that curries context into each tool func
