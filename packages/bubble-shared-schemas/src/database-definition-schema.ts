@@ -152,10 +152,27 @@ export interface CredentialPreferences {
 }
 
 /**
+ * Confluence OAuth metadata - stored after OAuth callback with cloudId for API calls
+ * Uses the same Atlassian Cloud infrastructure as Jira
+ */
+export const confluenceOAuthMetadataSchema = z.object({
+  cloudId: z.string(),
+  siteUrl: z.string(),
+  siteName: z.string().optional(),
+  /** Human-readable display name for the credential (e.g., Confluence site name) */
+  displayName: z.string().optional(),
+});
+
+export type ConfluenceOAuthMetadata = z.infer<
+  typeof confluenceOAuthMetadataSchema
+>;
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
  * - SlackOAuthMetadata: For SLACK_CRED OAuth credentials
+ * - ConfluenceOAuthMetadata: For CONFLUENCE_CRED OAuth credentials
  *
  * All metadata types include optional preference fields (isDefault, lastUsedAt)
  * for default credential selection and usage tracking.
@@ -165,5 +182,6 @@ export type CredentialMetadata = (
   | JiraOAuthMetadata
   | SlackOAuthMetadata
   | AirtableOAuthMetadata
+  | ConfluenceOAuthMetadata
 ) &
   CredentialPreferences;

@@ -55,6 +55,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.ASHBY_CRED]: {},
   [CredentialType.FULLENRICH_API_KEY]: {},
   [CredentialType.STRIPE_CRED]: {},
+  [CredentialType.CONFLUENCE_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

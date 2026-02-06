@@ -102,7 +102,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
+      'A1 notation range. To read ALL data, use just the sheet name (e.g., "Sheet1") or use open-ended ranges like "Sheet1!A:ZZ" for columns beyond Z. Examples: "Sheet1" (entire sheet), "Sheet1!A2:ZZ" (all columns starting row 2), "Tab Name!A1:B10" (specific range). Tab names with spaces are automatically quoted.'
     ),
     major_dimension: z
       .enum(['ROWS', 'COLUMNS'])
@@ -135,7 +135,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
+      'A1 notation range. Use "Sheet1" for entire sheet, "Sheet1!A:ZZ" for all columns beyond Z, or specific ranges like "Sheet1!A1:B10". Tab names with spaces are automatically quoted.'
     ),
     values: createValuesField(
       'Data to write as array of arrays (null/undefined automatically converted to empty strings)'
@@ -173,7 +173,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
+      'A1 notation range. Use "Sheet1" for entire sheet, "Sheet1!A:ZZ" for all columns beyond Z, or specific ranges like "Sheet1!A1:B10". Tab names with spaces are automatically quoted.'
     ),
     values: createValuesField(
       'Data to update as array of arrays (null/undefined automatically converted to empty strings)'
@@ -211,7 +211,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range to search for table (e.g., "Sheet1!A:A" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
+      'A1 notation range to search for table. Use "Sheet1" for entire sheet, "Sheet1!A:ZZ" for all columns beyond Z, or "Sheet1!A:A" for single column. Tab names with spaces are automatically quoted.'
     ),
     values: createValuesField(
       'Data to append as array of arrays (null/undefined automatically converted to empty strings)'
@@ -252,7 +252,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     range: createRangeField(
-      'A1 notation range (e.g., "Sheet1!A1:B10" or "Tab Name!A:G" - tab names with spaces are automatically quoted)'
+      'A1 notation range. Use "Sheet1" for entire sheet, "Sheet1!A:ZZ" for all columns beyond Z, or specific ranges like "Sheet1!A1:B10". Tab names with spaces are automatically quoted.'
     ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
@@ -272,7 +272,7 @@ export const GoogleSheetsParamsSchema = z.discriminatedUnion('operation', [
       .min(1, 'Spreadsheet ID is required')
       .describe('Google Sheets spreadsheet ID'),
     ranges: createRangesField(
-      'Array of A1 notation ranges (tab names with spaces are automatically quoted)'
+      'Array of A1 notation ranges. Use "Sheet1" for entire sheet, "Sheet1!A:ZZ" for all columns beyond Z. Tab names with spaces are automatically quoted.'
     ),
     major_dimension: z
       .enum(['ROWS', 'COLUMNS'])

@@ -1688,10 +1688,21 @@ export class GoogleDriveBubble<
         const lastElement = tabContent[tabContent.length - 1];
         endIndex = lastElement?.endIndex || 1;
       } else {
+        // Try document.body first, then fall back to first tab's content
+        // (includeTabsContent=true puts content in tabs[].documentTab.body, not document.body)
+        let contentElements: Array<{ endIndex?: number }> = [];
         const body = document.body as {
           content?: Array<{ endIndex?: number }>;
         };
-        const contentElements = body?.content || [];
+        if (body?.content?.length) {
+          contentElements = body.content;
+        } else if (document.tabs) {
+          // Fall back to first tab's content
+          const tabs = document.tabs as Array<{
+            documentTab?: { body?: { content?: Array<{ endIndex?: number }> } };
+          }>;
+          contentElements = tabs[0]?.documentTab?.body?.content || [];
+        }
         const lastElement = contentElements[contentElements.length - 1];
         endIndex = lastElement?.endIndex || 1;
       }
@@ -1751,10 +1762,21 @@ export class GoogleDriveBubble<
         const lastElement = tabContent[tabContent.length - 1];
         endIndex = lastElement?.endIndex || 1;
       } else {
+        // Try document.body first, then fall back to first tab's content
+        // (includeTabsContent=true puts content in tabs[].documentTab.body, not document.body)
+        let contentElements: Array<{ endIndex?: number }> = [];
         const body = document.body as {
           content?: Array<{ endIndex?: number }>;
         };
-        const contentElements = body?.content || [];
+        if (body?.content?.length) {
+          contentElements = body.content;
+        } else if (document.tabs) {
+          // Fall back to first tab's content
+          const tabs = document.tabs as Array<{
+            documentTab?: { body?: { content?: Array<{ endIndex?: number }> } };
+          }>;
+          contentElements = tabs[0]?.documentTab?.body?.content || [];
+        }
         const lastElement = contentElements[contentElements.length - 1];
         endIndex = lastElement?.endIndex || 1;
       }

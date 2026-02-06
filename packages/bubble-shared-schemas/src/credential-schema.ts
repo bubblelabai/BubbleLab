@@ -5,6 +5,7 @@ import {
   jiraOAuthMetadataSchema,
   slackOAuthMetadataSchema,
   airtableOAuthMetadataSchema,
+  confluenceOAuthMetadataSchema,
 } from './database-definition-schema.js';
 
 /**
@@ -305,6 +306,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Stripe API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.CONFLUENCE_CRED]: {
+      label: 'Confluence',
+      description:
+        'OAuth connection to Confluence Cloud for wiki and content management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Confluence Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -366,6 +375,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
   [CredentialType.FULLENRICH_API_KEY]: 'FULLENRICH_API_KEY',
   [CredentialType.STRIPE_CRED]: 'STRIPE_SECRET_KEY',
+  [CredentialType.CONFLUENCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -590,6 +600,91 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'write:jira-work',
             description: 'Create and update issues, comments, and transitions',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'offline_access',
+            description:
+              'Maintain access when you are not actively using the app',
+            defaultEnabled: true,
+          },
+        ],
+      },
+      [CredentialType.CONFLUENCE_CRED]: {
+        displayName: 'Confluence Cloud',
+        defaultScopes: [
+          // Granular scopes for v2 API
+          'read:page:confluence',
+          'write:page:confluence',
+          'delete:page:confluence',
+          'read:space:confluence',
+          'read:comment:confluence',
+          'write:comment:confluence',
+          'read:content-details:confluence',
+          // Classic scopes for v1 API (CQL search)
+          'read:confluence-content.all',
+          'write:confluence-content',
+          'search:confluence',
+          'read:confluence-space.summary',
+          'offline_access', // Required for refresh tokens
+        ],
+        description:
+          'Access Confluence Cloud for wiki pages, spaces, and content management',
+        scopeDescriptions: [
+          {
+            scope: 'read:page:confluence',
+            description: 'View page content (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write:page:confluence',
+            description: 'Create and update pages (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'delete:page:confluence',
+            description: 'Delete pages (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:space:confluence',
+            description: 'View space details (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:comment:confluence',
+            description: 'View comments on pages (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write:comment:confluence',
+            description: 'Create comments on pages (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:content-details:confluence',
+            description: 'View content details (v2 API)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:confluence-content.all',
+            description: 'View all Confluence content (classic)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write:confluence-content',
+            description:
+              'Create, update, and delete pages and comments (classic)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'search:confluence',
+            description: 'Search Confluence content using CQL',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'read:confluence-space.summary',
+            description: 'View space summaries and metadata',
             defaultEnabled: true,
           },
           {
@@ -1441,6 +1536,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
     CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
   ],
   stripe: [CredentialType.STRIPE_CRED],
+  confluence: [CredentialType.CONFLUENCE_CRED],
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
 };
 
@@ -1549,11 +1645,12 @@ export const credentialResponseSchema = z
         jiraOAuthMetadataSchema,
         slackOAuthMetadataSchema,
         airtableOAuthMetadataSchema,
+        confluenceOAuthMetadataSchema,
       ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, or AirtableOAuthMetadata)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, or ConfluenceOAuthMetadata)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

@@ -72,6 +72,8 @@ export type { AirtableParamsInput } from './bubbles/service-bubble/airtable.js';
 export { NotionBubble } from './bubbles/service-bubble/notion/notion.js';
 export { JiraBubble } from './bubbles/service-bubble/jira/index.js';
 export type { JiraParamsInput } from './bubbles/service-bubble/jira/index.js';
+export { ConfluenceBubble } from './bubbles/service-bubble/confluence/index.js';
+export type { ConfluenceParamsInput } from './bubbles/service-bubble/confluence/index.js';
 export { AshbyBubble } from './bubbles/service-bubble/ashby/index.js';
 export type { AshbyParamsInput } from './bubbles/service-bubble/ashby/index.js';
 export { FullEnrichBubble } from './bubbles/service-bubble/fullenrich/index.js';

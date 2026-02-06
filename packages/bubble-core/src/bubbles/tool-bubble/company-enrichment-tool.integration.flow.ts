@@ -122,7 +122,7 @@ export class CompanyEnrichmentIntegrationTest extends BubbleFlow<'webhook/http'>
     const result = await new GoogleSheetsBubble({
       operation: 'append_values',
       spreadsheet_id: spreadsheetId,
-      range: `${sheetName}!A:Z`,
+      range: sheetName,
       values: values.map((row) =>
         row.map((v) => (v === null || v === undefined ? '' : v))
       ) as (string | number | boolean)[][],
