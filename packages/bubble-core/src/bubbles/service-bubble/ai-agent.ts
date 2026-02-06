@@ -262,7 +262,10 @@ const CapabilityConfigSchema = z.object({
     .min(1)
     .describe('Capability ID (e.g., "google-doc-knowledge-base")'),
   inputs: z
-    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])
+    )
     .default({})
     .describe('Input parameter values for this capability'),
   credentials: z
@@ -531,7 +534,7 @@ export class AIAgentBubble extends ServiceBubble<
   /**
    * Modify params before execution - centralizes all param transformations
    */
-  private beforeAction(): void {
+  private async beforeAction(): Promise<void> {
     // Enforce minimum maxTokens of 10000
     if (
       this.params.model.maxTokens === undefined ||
@@ -563,7 +566,7 @@ export class AIAgentBubble extends ServiceBubble<
       };
 
       const addition =
-        capDef.createSystemPrompt?.(ctx) ??
+        (await capDef.createSystemPrompt?.(ctx)) ??
         capDef.metadata.systemPromptAddition;
 
       if (addition) {
@@ -579,7 +582,7 @@ export class AIAgentBubble extends ServiceBubble<
     void context;
 
     // Apply param transformations before execution
-    this.beforeAction();
+    await this.beforeAction();
 
     try {
       // Check if this is a deep research model - bypass LangChain and call OpenRouter directly

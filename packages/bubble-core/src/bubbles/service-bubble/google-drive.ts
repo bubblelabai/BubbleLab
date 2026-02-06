@@ -1707,8 +1707,10 @@ export class GoogleDriveBubble<
         endIndex = lastElement?.endIndex || 1;
       }
 
-      // Only delete if there's content to delete (endIndex > 1)
-      if (endIndex > 1) {
+      // Only delete if there's actual content beyond the default newline.
+      // An empty Google Doc has endIndex=2 (just a trailing \n), so
+      // deleting range 1..1 is empty and triggers a 400 error.
+      if (endIndex > 2) {
         requests.push({
           deleteContentRange: {
             range: buildRange(1, endIndex - 1),

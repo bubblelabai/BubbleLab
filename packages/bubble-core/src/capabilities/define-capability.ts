@@ -15,7 +15,7 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 /** Runtime context passed to capability tool factories and system prompt factories. */
 export interface CapabilityRuntimeContext {
   credentials: Partial<Record<CredentialType, string>>;
-  inputs: Record<string, string | number | boolean>;
+  inputs: Record<string, string | number | boolean | string[]>;
   bubbleContext?: BubbleContext;
 }
 
@@ -32,7 +32,7 @@ export type CapabilityToolFactory = (
 /** Factory that creates a system prompt addition given a runtime context. */
 export type CapabilitySystemPromptFactory = (
   context: CapabilityRuntimeContext
-) => string;
+) => string | Promise<string>;
 
 /** Full runtime capability definition with metadata + factories. */
 export interface CapabilityDefinition {
