@@ -3,7 +3,7 @@ import type {
   CapabilityInput,
   CapabilityToolDef,
 } from '@bubblelab/shared-schemas';
-import type { CredentialType } from '@bubblelab/shared-schemas';
+import type { CredentialType, BubbleName } from '@bubblelab/shared-schemas';
 import type {
   ToolHookBefore,
   ToolHookAfter,
@@ -59,6 +59,8 @@ export interface DefineCapabilityOptions {
     name: string;
     description: string;
     schema: z.ZodObject<z.ZodRawShape>;
+    /** Bubble names used internally by this tool (e.g., ['google-drive']). */
+    internalBubbles?: BubbleName[];
     func: (ctx: CapabilityRuntimeContext) => CapabilityToolFunc;
   }>;
   systemPrompt?: string | CapabilitySystemPromptFactory;
@@ -80,6 +82,7 @@ export function defineCapability(
     parameterSchema: zodToJsonSchema(tool.schema, {
       $refStrategy: 'none',
     }) as Record<string, unknown>,
+    ...(tool.internalBubbles ? { internalBubbles: tool.internalBubbles } : {}),
   }));
 
   // Build serializable metadata

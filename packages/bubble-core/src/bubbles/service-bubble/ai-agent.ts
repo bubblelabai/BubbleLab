@@ -557,9 +557,7 @@ export class AIAgentBubble extends ServiceBubble<
       if (!capDef) continue;
 
       const ctx: CapabilityRuntimeContext = {
-        credentials:
-          (capConfig.credentials as Partial<Record<CredentialType, string>>) ??
-          {},
+        credentials: this.resolveCapabilityCredentials(capDef, capConfig),
         inputs: capConfig.inputs ?? {},
         bubbleContext: this.context,
       };
@@ -1120,20 +1118,68 @@ export class AIAgentBubble extends ServiceBubble<
       }
 
       try {
+        // Shared ctx captured by all tool funcs via closure — we mutate bubbleContext per-tool
         const ctx: CapabilityRuntimeContext = {
-          credentials:
-            (capConfig.credentials as Partial<
-              Record<CredentialType, string>
-            >) ?? {},
+          credentials: this.resolveCapabilityCredentials(capDef, capConfig),
           inputs: capConfig.inputs ?? {},
           bubbleContext: this.context,
         };
-
         const toolFuncs = capDef.createTools(ctx);
+        const logger = this.context?.logger;
 
         for (const toolMeta of capDef.metadata.tools) {
           const func = toolFuncs[toolMeta.name];
           if (!func) continue;
+
+          // Resolve this capability tool's variableId and uniqueId from the dependency graph
+          const { variableId: capToolVariableId, uniqueId: capToolUniqueId } =
+            this.resolveCapabilityToolNode(toolMeta.name);
+
+          // Build a per-tool child context so inner bubbles resolve under this capability tool
+          const capToolContext: BubbleContext | undefined = this.context
+            ? {
+                ...this.context,
+                variableId: capToolVariableId,
+                currentUniqueId: capToolUniqueId,
+                __uniqueIdCounters__: {},
+              }
+            : undefined;
+
+          // Wrap the tool function with execution logging and per-tool context
+          const wrappedFunc = async (
+            input: Record<string, unknown>
+          ): Promise<unknown> => {
+            logger?.logBubbleExecution(
+              capToolVariableId,
+              toolMeta.name,
+              toolMeta.name,
+              input
+            );
+
+            try {
+              // Swap ctx.bubbleContext so inner bubbles resolve under the capability tool node
+              ctx.bubbleContext = capToolContext;
+              const result = await func(input);
+              ctx.bubbleContext = this.context; // restore
+
+              logger?.logBubbleExecutionComplete(
+                capToolVariableId,
+                toolMeta.name,
+                toolMeta.name,
+                result
+              );
+              return result;
+            } catch (error) {
+              ctx.bubbleContext = this.context; // restore on error
+              logger?.logBubbleExecutionComplete(
+                capToolVariableId,
+                toolMeta.name,
+                toolMeta.name,
+                { success: false, error: String(error) }
+              );
+              throw error;
+            }
+          };
 
           // Convert JSON schema back to Zod for DynamicStructuredTool
           const toolSchema = this.jsonSchemaToZod(toolMeta.parameterSchema);
@@ -1142,12 +1188,14 @@ export class AIAgentBubble extends ServiceBubble<
             name: toolMeta.name,
             description: toolMeta.description,
             schema: toolSchema,
-            func: func as (input: Record<string, unknown>) => Promise<unknown>,
+            func: wrappedFunc as (
+              input: Record<string, unknown>
+            ) => Promise<unknown>,
           } as any);
 
           tools.push(dynamicTool);
           console.log(
-            `🔧 [AIAgent] Registered capability tool: ${toolMeta.name} (from ${capConfig.id})`
+            `🔧 [AIAgent] Registered capability tool: ${toolMeta.name} (from ${capConfig.id}, variableId: ${capToolVariableId})`
           );
         }
       } catch (error) {
@@ -1160,6 +1208,87 @@ export class AIAgentBubble extends ServiceBubble<
     }
 
     return tools;
+  }
+
+  /**
+   * Resolves credentials for a capability by pulling from the bubble-level
+   * credentials (this.params.credentials) for each type the capability requires,
+   * then overlaying any explicitly set capConfig.credentials on top.
+   */
+  private resolveCapabilityCredentials(
+    capDef: { metadata: { requiredCredentials: CredentialType[] } },
+    capConfig: { credentials?: Record<string, string> }
+  ): Partial<Record<CredentialType, string>> {
+    const resolved: Partial<Record<CredentialType, string>> = {};
+
+    // Pull from bubble-level credentials for each type the capability needs
+    for (const credType of capDef.metadata.requiredCredentials) {
+      if (this.params.credentials && this.params.credentials[credType]) {
+        resolved[credType] = this.params.credentials[credType];
+      }
+    }
+
+    // Overlay any explicitly set capability-level credentials (take precedence)
+    if (capConfig.credentials) {
+      for (const [key, value] of Object.entries(capConfig.credentials)) {
+        resolved[key as CredentialType] = value;
+      }
+    }
+
+    return resolved;
+  }
+
+  /**
+   * Resolves the variableId and uniqueId for a capability tool by walking the dependency graph.
+   * Finds the child node matching the given tool name under the current ai-agent node.
+   * Falls back to -999/empty string if the dependency graph is unavailable or the tool is not found.
+   */
+  private resolveCapabilityToolNode(toolName: string): {
+    variableId: number;
+    uniqueId: string;
+  } {
+    const graph = this.context?.dependencyGraph;
+    const currentId = this.context?.currentUniqueId;
+    if (!graph) return { variableId: -999, uniqueId: '' };
+
+    // Find the current ai-agent node in the dependency graph
+    const findByUniqueId = (
+      node: {
+        uniqueId?: string;
+        dependencies?: Array<{
+          uniqueId?: string;
+          name: string;
+          variableId?: number;
+          dependencies?: unknown[];
+        }>;
+      },
+      target: string
+    ): {
+      dependencies?: Array<{
+        uniqueId?: string;
+        name: string;
+        variableId?: number;
+      }>;
+    } | null => {
+      if (node.uniqueId === target) return node;
+      for (const child of node.dependencies || []) {
+        const found = findByUniqueId(child as typeof node, target);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const parentNode = currentId ? findByUniqueId(graph, currentId) : graph;
+    if (!parentNode?.dependencies) return { variableId: -999, uniqueId: '' };
+
+    // Find the child node matching the capability tool name
+    const matchingChild = parentNode.dependencies.find(
+      (c) => c.name === toolName
+    );
+    return {
+      variableId: matchingChild?.variableId ?? -999,
+      uniqueId: matchingChild?.uniqueId ?? '',
+    };
   }
 
   /**
