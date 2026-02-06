@@ -665,4 +665,45 @@ describe('BubbleParser Promise.all parsing', () => {
       expect(parallelNode.children.length).toBeGreaterThan(0);
     }
   });
+  it('should identify dynamic parallel execution from mapped array', async () => {
+    const testScript = `
+      import { BubbleFlow } from '@bubblelab/bubble-core';
+      import { MyBubble } from './my-bubble';
+      
+      export class DynamicMapFlow extends BubbleFlow {
+        async handle() {
+          const items = ['a', 'b', 'c'];
+          const tasks = items.map(item => this.myBubble.action(item));
+          await Promise.all(tasks);
+        }
+      }
+    `;
+    const bubbleParser = new BubbleParser(testScript);
+    const ast = parse(testScript, {
+      range: true,
+      loc: true,
+      sourceType: 'module',
+      ecmaVersion: 2022,
+    });
+    const scopeManager = analyze(ast, {
+      sourceType: 'module',
+    });
+    const parseResult = bubbleParser.parseBubblesFromAST(
+      bubbleFactory,
+      ast,
+      scopeManager
+    );
+
+    const parallelNode = parseResult.workflow.root.find(
+      (node) => node.type === 'parallel_execution'
+    );
+    expect(parallelNode).toBeDefined();
+
+    if (parallelNode?.type === 'parallel_execution') {
+      expect(parallelNode.isDynamic).toBe(true);
+      expect(parallelNode.sourceArray).toBe('items');
+      // Should have children (the map callback body)
+      expect(parallelNode.children.length).toBeGreaterThan(0);
+    }
+  });
 });

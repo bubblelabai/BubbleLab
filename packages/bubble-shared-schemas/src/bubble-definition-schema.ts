@@ -384,6 +384,8 @@ export interface ParallelExecutionWorkflowNode {
     variableType: 'const' | 'let' | 'var';
   };
   children: WorkflowNode[]; // Parallel tasks (function calls inside Promise.all)
+  isDynamic?: boolean;
+  sourceArray?: string;
 }
 
 export interface TransformationFunctionWorkflowNode {
@@ -566,6 +568,8 @@ export const ParallelExecutionWorkflowNodeSchema: z.ZodType<ParallelExecutionWor
         })
         .optional(),
       children: z.array(WorkflowNodeSchema),
+      isDynamic: z.boolean().optional(),
+      sourceArray: z.string().optional(),
     })
   );
 
