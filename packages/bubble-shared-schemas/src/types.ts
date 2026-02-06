@@ -73,6 +73,9 @@ export enum CredentialType {
 
   // Stripe Credentials
   STRIPE_CRED = 'STRIPE_CRED',
+
+  // Confluence Credentials
+  CONFLUENCE_CRED = 'CONFLUENCE_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -137,4 +140,5 @@ export type BubbleName =
   | 'fullenrich'
   | 'linkedin-connection-tool'
   | 'stripe'
+  | 'confluence'
   | 'yc-scraper-tool';

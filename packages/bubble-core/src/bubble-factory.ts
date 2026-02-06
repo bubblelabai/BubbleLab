@@ -164,6 +164,7 @@ export class BubbleFactory {
       'company-enrichment-tool',
       'people-search-tool',
       'jira',
+      'confluence',
       'ashby',
       'fullenrich',
       'stripe',
@@ -357,6 +358,9 @@ export class BubbleFactory {
     const { JiraBubble } = await import(
       './bubbles/service-bubble/jira/index.js'
     );
+    const { ConfluenceBubble } = await import(
+      './bubbles/service-bubble/confluence/index.js'
+    );
     const { AshbyBubble } = await import(
       './bubbles/service-bubble/ashby/index.js'
     );
@@ -500,6 +504,7 @@ export class BubbleFactory {
       CompanyEnrichmentTool as BubbleClassWithMetadata
     );
     this.register('jira', JiraBubble as BubbleClassWithMetadata);
+    this.register('confluence', ConfluenceBubble as BubbleClassWithMetadata);
     this.register('ashby', AshbyBubble as BubbleClassWithMetadata);
     this.register('fullenrich', FullEnrichBubble as BubbleClassWithMetadata);
     this.register(
@@ -802,6 +807,7 @@ import {
   ElevenLabsBubble, // bubble name: 'eleven-labs'
   FollowUpBossBubble, // bubble name: 'followupboss'
   JiraBubble, // bubble name: 'jira'
+  ConfluenceBubble, // bubble name: 'confluence'
   AshbyBubble, // bubble name: 'ashby'
   FullEnrichBubble, // bubble name: 'fullenrich'
   StripeBubble, // bubble name: 'stripe'
