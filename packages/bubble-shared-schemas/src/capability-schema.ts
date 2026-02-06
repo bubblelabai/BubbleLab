@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CredentialType } from './types.js';
+import { CredentialType, type BubbleName } from './types.js';
 
 /**
  * Schema for a single input parameter that a capability accepts.
@@ -22,6 +22,8 @@ export const CapabilityToolDefSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
   parameterSchema: z.record(z.string(), z.unknown()),
+  /** Bubble names used internally by this tool (e.g., ['google-drive']). Used for dependency graph hierarchy. */
+  internalBubbles: z.array(z.string() as z.ZodType<BubbleName>).optional(),
 });
 export type CapabilityToolDef = z.infer<typeof CapabilityToolDefSchema>;
 

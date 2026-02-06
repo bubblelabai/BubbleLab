@@ -1,7 +1,10 @@
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { AST_NODE_TYPES } from '@typescript-eslint/typescript-estree';
 import type { Scope, ScopeManager } from '@bubblelab/ts-scope-manager';
-import { BubbleFactory } from '@bubblelab/bubble-core';
+import {
+  BubbleFactory,
+  getCapabilityMetadataById,
+} from '@bubblelab/bubble-core';
 import type { MethodInvocationInfo } from '../parse/BubbleScript';
 import { buildClassNameLookup } from '../utils/bubble-helper';
 import type {
@@ -31,6 +34,62 @@ import {
   getTriggerEventTypeFromInterfaceName,
 } from '@bubblelab/shared-schemas';
 import { parseToolsParamValue } from '../utils/parameter-formatter';
+
+/**
+ * Represents a capability tool to be added as a synthetic child in the dependency graph.
+ */
+interface CapabilityToolInfo {
+  /** The tool name (e.g., 'read-knowledge-base') */
+  toolName: string;
+  /** The capability ID that defines this tool (e.g., 'google-doc-knowledge-base') */
+  capabilityId: string;
+  /** Bubble names used internally by this tool (e.g., ['google-drive']) */
+  internalBubbles?: BubbleName[];
+}
+
+/**
+ * Parses the `capabilities` parameter value from an AI agent bubble
+ * and returns the individual tool names from each capability's metadata.
+ */
+function parseCapabilityToolNames(
+  capParam: { value: unknown } | undefined
+): CapabilityToolInfo[] {
+  if (!capParam || typeof capParam.value !== 'string') return [];
+
+  try {
+    let capsArray: Array<{ id: string; [key: string]: unknown }>;
+
+    try {
+      const safeEval = new Function('return ' + capParam.value);
+      const evaluated = safeEval();
+      capsArray = Array.isArray(evaluated) ? evaluated : [evaluated];
+    } catch {
+      if ((capParam.value as string).startsWith('[')) {
+        capsArray = JSON.parse(capParam.value as string);
+      } else {
+        capsArray = [JSON.parse(capParam.value as string)];
+      }
+    }
+
+    const result: CapabilityToolInfo[] = [];
+    for (const cap of capsArray) {
+      if (!cap.id || typeof cap.id !== 'string') continue;
+      const meta = getCapabilityMetadataById(cap.id);
+      if (meta) {
+        for (const tool of meta.tools) {
+          result.push({
+            toolName: tool.name,
+            capabilityId: cap.id,
+            internalBubbles: tool.internalBubbles,
+          });
+        }
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Information about a custom tool's func property for tracking bubble containment
@@ -170,6 +229,7 @@ export class BubbleParser {
 
       // If this node is an ai-agent, extract tools for graph inclusion at the root level
       let rootAIAgentTools: BubbleName[] | undefined;
+      let rootAIAgentCapabilityTools: CapabilityToolInfo[] | undefined;
       if (bubble.bubbleName === 'ai-agent') {
         const toolsParam = bubble.parameters.find((p) => p.name === 'tools');
         const tools = toolsParam
@@ -179,6 +239,15 @@ export class BubbleParser {
           rootAIAgentTools = tools
             .map((t) => t?.name)
             .filter((n): n is string => typeof n === 'string') as BubbleName[];
+        }
+
+        // Extract capability tool names from the capabilities parameter
+        const capParam = bubble.parameters.find(
+          (p) => p.name === 'capabilities'
+        );
+        const capTools = parseCapabilityToolNames(capParam);
+        if (capTools.length > 0) {
+          rootAIAgentCapabilityTools = capTools;
         }
       }
 
@@ -194,7 +263,8 @@ export class BubbleParser {
         usedVariableIds,
         bubble.variableId, // Root variable id mirrors the parsed bubble's variable id
         true, // suppress adding self segment for root
-        bubble.variableName
+        bubble.variableName,
+        rootAIAgentCapabilityTools
       );
 
       // Add functionCallChildren for ai-agent bubbles with custom tools
@@ -371,7 +441,8 @@ export class BubbleParser {
     usedVariableIds: Set<number> = new Set<number>(),
     explicitVariableId?: number,
     suppressSelfSegment: boolean = false,
-    instanceVariableName?: string
+    instanceVariableName?: string,
+    capabilityToolsForThisNode?: CapabilityToolInfo[]
   ): DependencyGraphNode {
     // Compute this node's uniqueId and variableId FIRST so even cycle hits have IDs
     const countKey = `${parentUniqueId}|${bubbleName}`;
@@ -517,6 +588,53 @@ export class BubbleParser {
         );
       }
     }
+
+    // Include capability tool dependencies as children of ai-agent,
+    // with internal bubbles as sub-dependencies under each tool
+    if (
+      bubbleName === 'ai-agent' &&
+      Array.isArray(capabilityToolsForThisNode)
+    ) {
+      for (const capTool of capabilityToolsForThisNode) {
+        const capToolName = capTool.toolName as BubbleName;
+        const countKeyCapTool = `${uniqueId}|${capToolName}`;
+        const capOrdinal = (ordinalCounters.get(countKeyCapTool) || 0) + 1;
+        ordinalCounters.set(countKeyCapTool, capOrdinal);
+        const capToolUniqueId = `${uniqueId}.${capToolName}#${capOrdinal}`;
+        const capToolVariableId = hashToVariableId(capToolUniqueId);
+
+        // Build sub-dependency nodes for internal bubbles
+        const internalChildren: DependencyGraphNode[] = [];
+        if (capTool.internalBubbles) {
+          for (const internalBubbleName of capTool.internalBubbles) {
+            internalChildren.push(
+              this.buildDependencyGraph(
+                internalBubbleName as BubbleName,
+                bubbleFactory,
+                nextSeen,
+                undefined,
+                capToolUniqueId,
+                ordinalCounters,
+                usedVariableIds,
+                undefined,
+                false,
+                internalBubbleName
+              )
+            );
+          }
+        }
+
+        children.push({
+          name: capToolName,
+          uniqueId: capToolUniqueId,
+          variableId: capToolVariableId,
+          variableName: capToolName,
+          nodeType: 'tool',
+          dependencies: internalChildren,
+        });
+      }
+    }
+
     const nodeObj = {
       name: bubbleName,
       uniqueId,

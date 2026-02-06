@@ -74,6 +74,7 @@ export const fixtures = {
   'promises-all-map': '',
   'slack-with-custom-input': '',
   'custom-tool-spread-param': '',
+  'agent-with-capability': '',
 } as const;
 
 export type FixtureName = keyof typeof fixtures;

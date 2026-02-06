@@ -1,6 +1,12 @@
 import { BubbleRunner } from './BubbleRunner.js';
 import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
-import { BubbleFactory } from '@bubblelab/bubble-core';
+import {
+  BubbleFactory,
+  defineCapability,
+  registerCapability,
+} from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+import { z } from 'zod';
 import { BubbleInjector } from '../injection/BubbleInjector';
 
 describe('BubbleRunner correctly runs and plans', () => {
@@ -100,5 +106,60 @@ describe('BubbleRunner correctly runs and plans', () => {
       // Verify spread params are present
       expect(injectedScript).toContain('...params');
     }, 300000); // 5 minutes timeout
+
+    it('should execute AI agent with capability and pass Google Drive credential', async () => {
+      // Register the capability
+      registerCapability(
+        defineCapability({
+          id: 'google-doc-knowledge-base',
+          name: 'Google Doc Knowledge Base',
+          description:
+            'Read and update a Google Doc as a persistent knowledge base',
+          requiredCredentials: [CredentialType.GOOGLE_DRIVE_CRED],
+          inputs: [
+            {
+              name: 'docId',
+              type: 'string',
+              description: 'Google Doc ID',
+              required: true,
+            },
+          ],
+          tools: [
+            {
+              name: 'read-knowledge-base',
+              description: 'Reads the knowledge base',
+              schema: z.object({}),
+              func: () => async () => ({ success: true, content: 'mock KB' }),
+            },
+          ],
+          systemPrompt: 'You have access to a knowledge base.',
+        })
+      );
+
+      const script = getFixture('agent-with-capability');
+      const runner = new BubbleRunner(script, bubbleFactory, {
+        pricingTable: {},
+      });
+
+      runner.injector.injectCredentials([], {
+        ...getUserCredential(),
+        [CredentialType.GOOGLE_DRIVE_CRED]: 'fake-google-drive-token-xyz',
+      });
+
+      console.log('Final script:', runner.bubbleScript.bubblescript);
+
+      const result = await runner.runAll({
+        text: 'What is our refund policy?',
+        channel: '#general',
+      });
+      console.log('Result:', result);
+      expect(result).toBeDefined();
+      // Should fail with credential error (fake token) but not a parsing/injection error
+      expect(
+        result.success ||
+          result.error?.includes('credentials') ||
+          result.error?.includes('Google')
+      ).toBe(true);
+    }, 300000);
   });
 });

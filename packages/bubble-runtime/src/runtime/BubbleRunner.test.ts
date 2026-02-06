@@ -1,6 +1,13 @@
 import { BubbleRunner } from './BubbleRunner';
 import { getFixture, getUserCredential } from '../../tests/fixtures/index.js';
-import { BubbleFactory, WorkflowNode } from '@bubblelab/bubble-core';
+import {
+  BubbleFactory,
+  WorkflowNode,
+  defineCapability,
+  registerCapability,
+} from '@bubblelab/bubble-core';
+import { CredentialType } from '@bubblelab/shared-schemas';
+import { z } from 'zod';
 import { BubbleInjector } from '../injection/BubbleInjector';
 import { validateBubbleFlow } from '../validation/index';
 
@@ -653,6 +660,87 @@ describe('BubbleRunner correctly runs and plans', () => {
       });
       const result = await runner.runAll();
       await expectValidScript(runner, testScript, true);
+      expect(result).toBeDefined();
+    });
+
+    it('should execute AI agent with capability and inject Google Drive credential', async () => {
+      registerCapability(
+        defineCapability({
+          id: 'google-doc-knowledge-base',
+          name: 'Google Doc Knowledge Base',
+          description: 'Read and update a Google Doc',
+          requiredCredentials: [CredentialType.GOOGLE_DRIVE_CRED],
+          inputs: [
+            {
+              name: 'docId',
+              type: 'string',
+              description: 'Google Doc ID',
+              required: true,
+            },
+          ],
+          tools: [
+            {
+              name: 'read-knowledge-base',
+              description: 'Reads the knowledge base',
+              schema: z.object({}),
+              internalBubbles: ['google-drive'],
+              func: () => async () => ({ success: true, content: 'mock KB' }),
+            },
+          ],
+          systemPrompt: 'You have access to a knowledge base.',
+        })
+      );
+
+      const script = getFixture('agent-with-capability');
+      const runner = new BubbleRunner(script, bubbleFactory, {
+        pricingTable: {},
+      });
+
+      runner.injector.injectCredentials([], {
+        ...getUserCredential(),
+        [CredentialType.GOOGLE_DRIVE_CRED]: 'fake-google-drive-token-xyz',
+      });
+
+      console.log('Final script:', runner.bubbleScript.bubblescript);
+
+      // Google Drive cred should be injected into the AI agent bubble
+      expect(runner.bubbleScript.bubblescript).toContain(
+        'fake-google-drive-token-xyz'
+      );
+      expect(runner.bubbleScript.bubblescript).toContain('GOOGLE_DRIVE_CRED');
+      // Capabilities array should still be in the code
+      expect(runner.bubbleScript.bubblescript).toContain(
+        'google-doc-knowledge-base'
+      );
+
+      // Dependency graph should contain capability tool as a child of the ai-agent
+      const parsedBubbles = runner.getParsedBubbles();
+      const aiAgentBubble = Object.values(parsedBubbles).find(
+        (b) => b.bubbleName === 'ai-agent'
+      );
+      expect(aiAgentBubble).toBeDefined();
+      expect(aiAgentBubble!.dependencyGraph).toBeDefined();
+
+      const capToolNode = aiAgentBubble!.dependencyGraph!.dependencies.find(
+        (d) => d.name === 'read-knowledge-base'
+      );
+      expect(capToolNode).toBeDefined();
+      expect(capToolNode!.nodeType).toBe('tool');
+      expect(typeof capToolNode!.variableId).toBe('number');
+      expect(capToolNode!.variableId).not.toBe(-999);
+
+      // google-drive should be a sub-dependency under the capability tool
+      expect(capToolNode!.dependencies.length).toBe(1);
+      const googleDriveNode = capToolNode!.dependencies[0];
+      expect(googleDriveNode.name).toBe('google-drive');
+      expect(googleDriveNode.nodeType).toBe('service');
+      expect(typeof googleDriveNode.variableId).toBe('number');
+
+      const result = await runner.runAll({
+        text: 'Hello',
+        channel: '#general',
+      });
+      console.log('Result:', result);
       expect(result).toBeDefined();
     });
 

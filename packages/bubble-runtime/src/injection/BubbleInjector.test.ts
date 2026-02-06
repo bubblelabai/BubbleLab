@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { BubbleInjector, UserCredentialWithId } from './BubbleInjector.js';
 import { BubbleScript } from '../parse/BubbleScript';
 import {
@@ -6,7 +6,12 @@ import {
   ParsedBubbleWithInfo,
   BubbleParameterType,
 } from '@bubblelab/shared-schemas';
-import { BubbleFactory } from '@bubblelab/bubble-core';
+import {
+  BubbleFactory,
+  defineCapability,
+  registerCapability,
+} from '@bubblelab/bubble-core';
+import { z } from 'zod';
 import { getFixture } from '../../tests/fixtures';
 
 describe('BubbleInjector.findCredentials()', () => {
@@ -155,6 +160,124 @@ describe('BubbleInjector.findCredentials()', () => {
 
       // Should have 3 different bubble IDs with credentials
       expect(Object.keys(credentials)).toHaveLength(2);
+    });
+  });
+
+  describe('AI agent with capabilities credential detection', () => {
+    // Register a test capability before running these tests
+    beforeAll(() => {
+      const testCap = defineCapability({
+        id: 'test-google-doc-kb',
+        name: 'Test Google Doc KB',
+        description: 'Test capability for credential injection',
+        requiredCredentials: [CredentialType.GOOGLE_DRIVE_CRED],
+        inputs: [
+          {
+            name: 'docId',
+            type: 'string',
+            description: 'Google Doc ID',
+            required: true,
+          },
+        ],
+        tools: [
+          {
+            name: 'read-kb',
+            description: 'Read the knowledge base',
+            schema: z.object({}),
+            func: () => async () => ({ success: true }),
+          },
+        ],
+        systemPrompt: 'You have access to a knowledge base.',
+      });
+      registerCapability(testCap);
+    });
+
+    const aiAgentWithCapabilityScript = `
+      const agent = new AIAgentBubble({
+        model: { model: 'google/gemini-2.5-flash' },
+        message: 'Hello',
+        capabilities: [{ id: 'test-google-doc-kb', inputs: { docId: 'abc123' } }],
+      });
+    `;
+
+    it('should extract capability credentials from AI agent', () => {
+      const mockBubbleScript = new BubbleScript(
+        aiAgentWithCapabilityScript,
+        bubbleFactory
+      );
+      const injector = new BubbleInjector(mockBubbleScript);
+
+      const credentials = injector.findCredentials();
+      console.log('Capability credentials:', credentials);
+
+      expect(Object.keys(credentials)).toHaveLength(1);
+      // Should include GOOGLE_GEMINI_CRED (from model) + GOOGLE_DRIVE_CRED (from capability)
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(credentials['404']).toContain(CredentialType.GOOGLE_DRIVE_CRED);
+    });
+
+    it('should inject capability credentials into AI agent', () => {
+      const mockBubbleScript = new BubbleScript(
+        aiAgentWithCapabilityScript,
+        bubbleFactory
+      );
+      const injector = new BubbleInjector(mockBubbleScript);
+
+      const aiAgentVarId = Object.values(
+        mockBubbleScript.getParsedBubbles()
+      ).find((bubble) => bubble.bubbleName === 'ai-agent')?.variableId;
+      expect(aiAgentVarId).toBeDefined();
+
+      const userCredentials: UserCredentialWithId[] = [
+        {
+          bubbleVarId: aiAgentVarId!,
+          secret: 'user-google-drive-token',
+          credentialType: CredentialType.GOOGLE_DRIVE_CRED,
+        },
+      ];
+
+      const systemCredentials: Partial<Record<CredentialType, string>> = {
+        [CredentialType.GOOGLE_GEMINI_CRED]: 'system-gemini-key',
+      };
+
+      const result = injector.injectCredentials(
+        userCredentials,
+        systemCredentials
+      );
+
+      console.log('Injection result:', result.injectedCredentials);
+      console.log('Final code:', result.code);
+
+      expect(result.success).toBe(true);
+      expect(result.injectedCredentials).toBeDefined();
+
+      // Should have both GOOGLE_GEMINI_CRED and GOOGLE_DRIVE_CRED
+      expect(
+        result.injectedCredentials![`${aiAgentVarId}.GOOGLE_GEMINI_CRED`]
+      ).toBeDefined();
+      expect(
+        result.injectedCredentials![`${aiAgentVarId}.GOOGLE_DRIVE_CRED`]
+      ).toBeDefined();
+
+      // Verify credentials are in the bubble parameters
+      const credentialsParam = result.parsedBubbles?.[
+        aiAgentVarId!
+      ]?.parameters?.find((p) => p.name === 'credentials');
+      expect(credentialsParam).toBeDefined();
+
+      const credentialsObj = JSON.parse(
+        credentialsParam?.value as string
+      ) as Record<string, string>;
+      expect(credentialsObj[CredentialType.GOOGLE_GEMINI_CRED]).toBe(
+        'system-gemini-key'
+      );
+      expect(credentialsObj[CredentialType.GOOGLE_DRIVE_CRED]).toBe(
+        'user-google-drive-token'
+      );
+
+      // Verify credentials appear in the final code
+      expect(result.code).toContain('system-gemini-key');
+      expect(result.code).toContain('user-google-drive-token');
     });
   });
 
