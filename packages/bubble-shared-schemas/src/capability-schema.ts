@@ -7,10 +7,12 @@ import { CredentialType, type BubbleName } from './types.js';
  */
 export const CapabilityInputSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['string', 'number', 'boolean']),
+  type: z.enum(['string', 'number', 'boolean', 'string[]']),
   description: z.string(),
   required: z.boolean().default(true),
-  default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  default: z
+    .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
+    .optional(),
 });
 export type CapabilityInput = z.infer<typeof CapabilityInputSchema>;
 
