@@ -575,6 +575,34 @@ export class AIAgentBubble extends ServiceBubble<
     }
   }
 
+  /** Appends text from capability responseAppend factories to the final response. */
+  private async applyCapabilityResponseAppend(
+    result: AIAgentResult
+  ): Promise<AIAgentResult> {
+    const appendParts: string[] = [];
+    for (const capConfig of this.params.capabilities ?? []) {
+      const capDef = getCapability(capConfig.id);
+      if (!capDef?.createResponseAppend) continue;
+
+      const ctx: CapabilityRuntimeContext = {
+        credentials: this.resolveCapabilityCredentials(capDef, capConfig),
+        inputs: capConfig.inputs ?? {},
+        bubbleContext: this.context,
+      };
+
+      const text = await capDef.createResponseAppend(ctx);
+      if (text) appendParts.push(text);
+    }
+
+    if (appendParts.length > 0) {
+      return {
+        ...result,
+        response: `${result.response}\n\n${appendParts.join('\n\n')}`,
+      };
+    }
+    return result;
+  }
+
   protected async performAction(
     context?: BubbleContext
   ): Promise<AIAgentResult> {
@@ -585,15 +613,24 @@ export class AIAgentBubble extends ServiceBubble<
     await this.beforeAction();
 
     try {
+      let result: AIAgentResult;
+
       // Check if this is a deep research model - bypass LangChain and call OpenRouter directly
       if (this.isDeepResearchModel(this.params.model.model)) {
         console.log(
           '[AIAgent] Deep research model detected, using direct OpenRouter API'
         );
-        return await this.executeDeepResearchViaOpenRouter();
+        result = await this.executeDeepResearchViaOpenRouter();
+      } else {
+        result = await this.executeWithModel(this.params.model);
       }
 
-      return await this.executeWithModel(this.params.model);
+      // Append capability response additions (e.g. tips, blurbs)
+      if (result.success) {
+        result = await this.applyCapabilityResponseAppend(result);
+      }
+
+      return result;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -1375,7 +1412,8 @@ export class AIAgentBubble extends ServiceBubble<
       const tool = tools.find((t) => t.name === toolCall.name);
       if (!tool) {
         console.warn(`Tool ${toolCall.name} not found`);
-        const errorContent = `Error: Tool ${toolCall.name} not found`;
+        const availableToolNames = tools.map((t) => t.name).join(', ');
+        const errorContent = `Error: Tool "${toolCall.name}" not found. Available tools: ${availableToolNames}`;
         const startTime = Date.now();
 
         // Send tool_start event (include variableId for console tracking)
@@ -1402,12 +1440,12 @@ export class AIAgentBubble extends ServiceBubble<
           },
         });
 
-        toolMessages.push(
-          new ToolMessage({
-            content: errorContent,
-            tool_call_id: toolCall.id!,
-          })
-        );
+        const errorMessage = new ToolMessage({
+          content: errorContent,
+          tool_call_id: toolCall.id!,
+        });
+        toolMessages.push(errorMessage);
+        currentMessages = [...currentMessages, errorMessage];
         continue;
       }
 

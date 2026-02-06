@@ -34,11 +34,18 @@ export type CapabilitySystemPromptFactory = (
   context: CapabilityRuntimeContext
 ) => string | Promise<string>;
 
+/** Factory that creates text to append to the agent's final response. */
+export type CapabilityResponseAppendFactory = (
+  context: CapabilityRuntimeContext
+) => string | Promise<string>;
+
 /** Full runtime capability definition with metadata + factories. */
 export interface CapabilityDefinition {
   metadata: CapabilityMetadata;
   createTools: CapabilityToolFactory;
   createSystemPrompt?: CapabilitySystemPromptFactory;
+  /** Called after the agent finishes — returned text is appended to the response. */
+  createResponseAppend?: CapabilityResponseAppendFactory;
   hooks?: {
     beforeToolCall?: ToolHookBefore;
     afterToolCall?: ToolHookAfter;
@@ -64,6 +71,8 @@ export interface DefineCapabilityOptions {
     func: (ctx: CapabilityRuntimeContext) => CapabilityToolFunc;
   }>;
   systemPrompt?: string | CapabilitySystemPromptFactory;
+  /** Text (or async factory) to append to the agent's final response. */
+  responseAppend?: string | CapabilityResponseAppendFactory;
   hooks?: CapabilityDefinition['hooks'];
 }
 
@@ -117,10 +126,19 @@ export function defineCapability(
       ? options.systemPrompt
       : undefined;
 
+  // Build response append factory
+  const createResponseAppend: CapabilityResponseAppendFactory | undefined =
+    typeof options.responseAppend === 'function'
+      ? options.responseAppend
+      : typeof options.responseAppend === 'string'
+        ? () => options.responseAppend as string
+        : undefined;
+
   return {
     metadata,
     createTools,
     createSystemPrompt,
+    createResponseAppend,
     hooks: options.hooks,
   };
 }
