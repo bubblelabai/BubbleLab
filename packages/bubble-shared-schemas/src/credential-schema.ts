@@ -5,6 +5,7 @@ import {
   jiraOAuthMetadataSchema,
   slackOAuthMetadataSchema,
   airtableOAuthMetadataSchema,
+  googleOAuthMetadataSchema,
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
   credentialPreferencesSchema,
@@ -1646,6 +1647,7 @@ export const credentialResponseSchema = z
         jiraOAuthMetadataSchema,
         slackOAuthMetadataSchema,
         airtableOAuthMetadataSchema,
+        googleOAuthMetadataSchema,
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
         credentialPreferencesSchema,
@@ -1653,7 +1655,7 @@ export const credentialResponseSchema = z
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 
