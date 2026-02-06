@@ -71,7 +71,6 @@ Use a HEREDOC for proper formatting:
 git commit -m "$(cat <<'EOF'
 type(scope): description
 
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```
