@@ -29,7 +29,7 @@ export const ConfluenceSpaceSchema = z
       .unknown()
       .optional()
       .describe('Space description (string or structured object)'),
-    homepageId: z.string().optional().describe('Homepage ID'),
+    homepageId: z.string().nullable().optional().describe('Homepage ID'),
   })
   .passthrough()
   .describe('Confluence space');
