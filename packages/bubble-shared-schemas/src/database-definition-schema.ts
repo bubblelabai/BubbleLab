@@ -177,11 +177,11 @@ export type ConfluenceOAuthMetadata = z.infer<
  * All metadata types include optional preference fields (isDefault, lastUsedAt)
  * for default credential selection and usage tracking.
  */
-export type CredentialMetadata = (
+export type CredentialMetadata =
   | DatabaseMetadata
   | JiraOAuthMetadata
   | SlackOAuthMetadata
   | AirtableOAuthMetadata
   | ConfluenceOAuthMetadata
-) &
-  CredentialPreferences;
+  | StripeOAuthMetadata
+  | CredentialPreferences;
