@@ -489,8 +489,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'https://www.googleapis.com/auth/drive.readonly',
             description:
-              'View and manage all of your Google Drive files and folders (will see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
-            defaultEnabled: false,
+              'View and manage all of your Google Drive files and folders',
+            defaultEnabled: true,
           },
         ],
       },
@@ -509,9 +509,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           },
           {
             scope: 'https://www.googleapis.com/auth/gmail.modify',
-            description:
-              'View and manage all of your Gmail emails and labels (might see a warning about an "untrusted app" during authentication. Choose only if you need extra permissions)',
-            defaultEnabled: false,
+            description: 'View and manage all of your Gmail emails and labels',
+            defaultEnabled: true,
           },
         ],
       },
