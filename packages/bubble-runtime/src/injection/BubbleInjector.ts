@@ -6,6 +6,7 @@ import {
   BubbleName,
   CredentialMetadata,
 } from '@bubblelab/shared-schemas';
+import { getCapabilityMetadataById } from '@bubblelab/bubble-core';
 import { BubbleScript } from '../parse/BubbleScript';
 import { LoggerInjector } from './LoggerInjector';
 import { replaceBubbleInstantiation } from '../utils/parameter-formatter';
@@ -104,6 +105,12 @@ export class BubbleInjector {
       if (bubble.bubbleName === 'ai-agent') {
         const toolCredentials = this.extractToolCredentials(bubble);
         for (const credType of toolCredentials) {
+          allCredentialTypes.add(credType);
+        }
+
+        // Also collect capability-level credential requirements
+        const capabilityCredentials = this.extractCapabilityCredentials(bubble);
+        for (const credType of capabilityCredentials) {
           allCredentialTypes.add(credType);
         }
       }
@@ -321,6 +328,75 @@ export class BubbleInjector {
   }
 
   /**
+   * Extracts capability credential requirements from AI agent bubble parameters.
+   * Parses the `capabilities` array and looks up each capability's required credentials
+   * from the capability registry.
+   * @param bubble - The parsed bubble to extract capability requirements from
+   * @returns Array of credential types required by the bubble's capabilities
+   */
+  private extractCapabilityCredentials(
+    bubble: ParsedBubbleWithInfo
+  ): CredentialType[] {
+    if (bubble.bubbleName !== 'ai-agent') {
+      return [];
+    }
+
+    const capCredentials: Set<CredentialType> = new Set();
+
+    // Find the capabilities parameter in the bubble
+    const capParam = bubble.parameters.find(
+      (param) => param.name === 'capabilities'
+    );
+    if (!capParam || typeof capParam.value !== 'string') {
+      return [];
+    }
+
+    try {
+      // Parse the capabilities array from the parameter value
+      let capsArray: Array<{ id: string; [key: string]: unknown }>;
+
+      try {
+        // Use Function constructor to safely evaluate the expression in isolation
+        const safeEval = new Function('return ' + capParam.value);
+        const evaluated = safeEval();
+
+        if (Array.isArray(evaluated)) {
+          capsArray = evaluated;
+        } else {
+          capsArray = [evaluated];
+        }
+      } catch {
+        // Fallback to JSON.parse
+        if (capParam.value.startsWith('[')) {
+          capsArray = JSON.parse(capParam.value);
+        } else {
+          capsArray = [JSON.parse(capParam.value)];
+        }
+      }
+
+      // For each capability, get its credential requirements from registry
+      for (const cap of capsArray) {
+        if (!cap.id || typeof cap.id !== 'string') {
+          continue;
+        }
+
+        const meta = getCapabilityMetadataById(cap.id);
+        if (meta) {
+          for (const cred of meta.requiredCredentials) {
+            capCredentials.add(cred);
+          }
+        }
+      }
+    } catch (error) {
+      console.debug(
+        `Failed to parse capabilities parameter for credential extraction: ${error}`
+      );
+    }
+
+    return Array.from(capCredentials);
+  }
+
+  /**
    * Injects credentials into bubble parameters
    * @param userCredentials - User-provided credentials
    * @param systemCredentials - System-provided credentials (environment variables)
@@ -378,15 +454,24 @@ export class BubbleInjector {
           // If modelCredentialTypes is null, model is dynamic - include all credentials
         }
 
-        // For AI agent bubbles, also collect tool-level credential requirements
+        // For AI agent bubbles, also collect tool-level and capability-level credential requirements
         const toolCredentialOptions =
           bubble.bubbleName === 'ai-agent'
             ? this.extractToolCredentials(bubble)
             : [];
 
-        // Combine bubble and tool credentials
+        const capabilityCredentialOptions =
+          bubble.bubbleName === 'ai-agent'
+            ? this.extractCapabilityCredentials(bubble)
+            : [];
+
+        // Combine bubble, tool, and capability credentials
         const allCredentialOptions = [
-          ...new Set([...bubbleCredentialOptions, ...toolCredentialOptions]),
+          ...new Set([
+            ...bubbleCredentialOptions,
+            ...toolCredentialOptions,
+            ...capabilityCredentialOptions,
+          ]),
         ];
 
         if (allCredentialOptions.length === 0) {
