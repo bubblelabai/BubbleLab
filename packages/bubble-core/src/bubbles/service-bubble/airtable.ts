@@ -141,16 +141,20 @@ const AirtableParamsSchema = z.discriminatedUnion('operation', [
       .optional()
       .default('json')
       .describe(
-        'Format for cell values: json (structured) or string (formatted)'
+        'Format for cell values: json (structured) or string (formatted). When using "string", timeZone and userLocale are required by the Airtable API (defaults to UTC/en-US if omitted)'
       ),
     timeZone: z
       .string()
       .optional()
-      .describe('Time zone for date/time fields (e.g., "America/Los_Angeles")'),
+      .describe(
+        'Time zone for date/time fields (e.g., "America/Los_Angeles"). Required when cellFormat is "string", defaults to "UTC"'
+      ),
     userLocale: z
       .string()
       .optional()
-      .describe('Locale for formatting (e.g., "en-US")'),
+      .describe(
+        'Locale for formatting (e.g., "en-US"). Required when cellFormat is "string", defaults to "en-US"'
+      ),
     offset: z
       .string()
       .optional()
@@ -849,6 +853,10 @@ export class AirtableBubble<
   ): Promise<Extract<AirtableResult, { operation: 'list_records' }>> {
     // Parse params to apply defaults
     const parsed = AirtableParamsSchema.parse(params);
+    const listParams = parsed as Extract<
+      AirtableParamsParsed,
+      { operation: 'list_records' }
+    >;
     const {
       baseId,
       tableIdOrName,
@@ -859,10 +867,14 @@ export class AirtableBubble<
       sort,
       view,
       cellFormat,
-      timeZone,
-      userLocale,
       offset,
-    } = parsed as Extract<AirtableParamsParsed, { operation: 'list_records' }>;
+    } = listParams;
+
+    // Airtable API requires timeZone and userLocale when cellFormat is 'string'
+    const timeZone =
+      listParams.timeZone ?? (cellFormat === 'string' ? 'UTC' : undefined);
+    const userLocale =
+      listParams.userLocale ?? (cellFormat === 'string' ? 'en-US' : undefined);
 
     const queryParams = new URLSearchParams();
 
