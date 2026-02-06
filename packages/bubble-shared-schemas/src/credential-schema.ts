@@ -6,6 +6,8 @@ import {
   slackOAuthMetadataSchema,
   airtableOAuthMetadataSchema,
   confluenceOAuthMetadataSchema,
+  stripeOAuthMetadataSchema,
+  credentialPreferencesSchema,
 } from './database-definition-schema.js';
 
 /**
@@ -1646,11 +1648,13 @@ export const credentialResponseSchema = z
         slackOAuthMetadataSchema,
         airtableOAuthMetadataSchema,
         confluenceOAuthMetadataSchema,
+        stripeOAuthMetadataSchema,
+        credentialPreferencesSchema,
       ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, or ConfluenceOAuthMetadata)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

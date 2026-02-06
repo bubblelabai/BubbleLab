@@ -144,12 +144,14 @@ export type AirtableOAuthMetadata = z.infer<typeof airtableOAuthMetadataSchema>;
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
-export interface CredentialPreferences {
+export const credentialPreferencesSchema = z.object({
   /** Whether this credential is the user's default for its credential type */
-  isDefault?: boolean;
+  isDefault: z.boolean().optional(),
   /** ISO timestamp of when this credential was last used in a flow execution */
-  lastUsedAt?: string;
-}
+  lastUsedAt: z.string().optional(),
+});
+
+export type CredentialPreferences = z.infer<typeof credentialPreferencesSchema>;
 
 /**
  * Confluence OAuth metadata - stored after OAuth callback with cloudId for API calls

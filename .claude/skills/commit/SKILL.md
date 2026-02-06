@@ -41,7 +41,17 @@ Stage relevant files. Be selective:
 - Prefer `git add <specific-files>` over `git add -A`
 - **DO** include the bumped `packages/*/package.json` files
 
-## Step 4: Write Commit Message
+## Step 4: Typecheck
+
+Run typecheck to ensure no type errors before committing:
+
+```bash
+pnpm run typecheck
+```
+
+If typecheck fails, fix the errors before proceeding. Do NOT commit with type errors.
+
+## Step 5: Write Commit Message
 
 Follow **conventional commits** format:
 
@@ -63,7 +73,7 @@ Rules:
 - Keep first line under 72 characters
 - If the user provided a message via `$ARGUMENTS`, use it (adjusting format if needed)
 
-## Step 5: Commit
+## Step 6: Commit
 
 Use a HEREDOC for proper formatting:
 
@@ -82,7 +92,7 @@ EOF
 - NEVER push unless explicitly asked
 - If a pre-commit hook fails, fix the issue and create a NEW commit
 
-## Step 6: Verify & Remind
+## Step 7: Verify & Remind
 
 Run `git status` after committing to confirm success.
 
