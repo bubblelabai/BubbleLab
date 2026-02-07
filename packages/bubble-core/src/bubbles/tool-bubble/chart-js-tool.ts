@@ -371,11 +371,16 @@ export class ChartJSTool extends ToolBubble<
       let fileSize: number | undefined;
 
       try {
-        const renderResult = await this.renderChart(chartConfig, dimensions);
-        imageBase64 = renderResult.imageBase64;
-        filePath = renderResult.filePath;
-        fileExists = renderResult.fileExists;
-        fileSize = renderResult.fileSize;
+        const buffer = await this.renderToBuffer(chartConfig, dimensions);
+        imageBase64 = buffer.toString('base64');
+
+        // Only write to disk when generateFile is true
+        if (this.params.generateFile) {
+          const fileResult = await this.writeChartFile(buffer);
+          filePath = fileResult.filePath;
+          fileExists = fileResult.fileExists;
+          fileSize = fileResult.fileSize;
+        }
       } catch (renderError) {
         console.error(
           `⚠️ [ChartJSTool] Render failed, returning config only:`,
@@ -813,34 +818,32 @@ export class ChartJSTool extends ToolBubble<
   }
 
   /**
-   * Render chart to buffer, return base64 + write file to disk
+   * Render chart to PNG buffer (no disk I/O)
    */
-  private async renderChart(
+  private async renderToBuffer(
     chartConfig: Record<string, unknown>,
     dimensions: { width: number; height: number }
-  ): Promise<{
-    imageBase64: string;
-    filePath: string;
-    fileExists: boolean;
-    fileSize: number;
-  }> {
+  ): Promise<Buffer> {
     const { width, height } = dimensions;
 
-    // Create chartjs-node-canvas instance
     const chartJSNodeCanvas = new ChartJSNodeCanvas({
       width,
       height,
       backgroundColour: 'white',
     });
 
-    // Generate the chart buffer
     console.log(
       `🎨 [ChartJSTool] Rendering chart to buffer (${width}x${height})...`
     );
-    const buffer = await chartJSNodeCanvas.renderToBuffer(chartConfig as any);
-    const imageBase64 = buffer.toString('base64');
+    return chartJSNodeCanvas.renderToBuffer(chartConfig as any);
+  }
 
-    // Write file to disk
+  /**
+   * Write a chart buffer to disk (opt-in via generateFile)
+   */
+  private async writeChartFile(
+    buffer: Buffer
+  ): Promise<{ filePath: string; fileExists: boolean; fileSize: number }> {
     const outputDir = this.params.filePath || '/tmp/charts';
     const fileName =
       this.params.fileName ||
@@ -854,7 +857,6 @@ export class ChartJSTool extends ToolBubble<
     console.log(`💾 [ChartJSTool] Chart file generated: ${fullPath}`);
 
     return {
-      imageBase64,
       filePath: fullPath,
       fileExists: true,
       fileSize: stats.size,
