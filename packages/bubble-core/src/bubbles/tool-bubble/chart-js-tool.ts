@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { ToolBubble } from '../../types/tool-bubble-class.js';
+import {
+  ToolBubble,
+  type LangGraphTool,
+} from '../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
@@ -16,6 +19,7 @@ const ChartType = z.enum([
   'scatter',
   'bubble',
   'polarArea',
+  'table',
 ]);
 
 // Define color schemes
@@ -47,6 +51,10 @@ const ChartOptionsSchema = z.object({
     .describe('Maintain aspect ratio'),
   showLegend: z.boolean().default(true).describe('Show chart legend'),
   showTooltips: z.boolean().default(true).describe('Show tooltips on hover'),
+  stacked: z
+    .boolean()
+    .default(false)
+    .describe('Stack datasets on top of each other (for bar/line charts)'),
 });
 
 // Define the parameters schema
@@ -161,6 +169,17 @@ const ChartJSToolResultSchema = z.object({
       generatedAt: z.string(),
     })
     .describe('Metadata about chart generation'),
+  imageBase64: z
+    .string()
+    .optional()
+    .describe('Base64-encoded PNG image of the chart'),
+  tableData: z
+    .object({
+      headers: z.array(z.string()),
+      rows: z.array(z.array(z.string())),
+    })
+    .optional()
+    .describe('Structured table data (when chartType is table)'),
   filePath: z
     .string()
     .optional()
@@ -224,6 +243,39 @@ export class ChartJSTool extends ToolBubble<
     super(params, context);
   }
 
+  /**
+   * Override toolAgent to strip implementation details from the agent-facing schema
+   */
+  static override toolAgent(
+    credentials?: Partial<Record<CredentialType, string>>,
+    config?: Record<string, unknown>,
+    context?: BubbleContext
+  ): LangGraphTool {
+    const tool = super.toolAgent(credentials, config, context);
+
+    // Further strip fields the AI shouldn't see
+    const fieldsToStrip = [
+      'generateFile',
+      'filePath',
+      'fileName',
+      'width',
+      'height',
+      'advancedConfig',
+    ] as const;
+
+    let agentSchema = tool.schema as z.ZodObject<z.ZodRawShape>;
+    for (const field of fieldsToStrip) {
+      if (agentSchema instanceof z.ZodObject && agentSchema.shape?.[field]) {
+        agentSchema = agentSchema.omit({ [field]: true });
+      }
+    }
+
+    return {
+      ...tool,
+      schema: agentSchema,
+    };
+  }
+
   async performAction(context?: BubbleContext): Promise<ChartJSToolResult> {
     void context;
 
@@ -245,6 +297,33 @@ export class ChartJSTool extends ToolBubble<
         options,
         advancedConfig,
       } = this.params;
+
+      // Handle table output type — no chart rendering needed
+      if (chartType === 'table') {
+        const headers = Object.keys(data[0] || {});
+        const rows = data.map((row) =>
+          headers.map((h) => String(row[h] ?? ''))
+        );
+
+        console.log(
+          `✅ [ChartJSTool] Table generated: ${headers.length} columns, ${rows.length} rows`
+        );
+
+        return {
+          chartConfig: {},
+          chartType: 'table',
+          datasetCount: 0,
+          dataPointCount: rows.length,
+          suggestedSize: { width: 800, height: 400 },
+          metadata: {
+            colorScheme: 'default',
+            generatedAt: new Date().toISOString(),
+          },
+          tableData: { headers, rows },
+          success: true,
+          error: '',
+        };
+      }
 
       // Auto-detect columns if not provided
       const detectedColumns = this.detectColumns(data, xColumn, yColumn);
@@ -279,30 +358,40 @@ export class ChartJSTool extends ToolBubble<
       const dataPointCount = this.calculateDataPointCount(chartConfig);
       const suggestedSize = this.getSuggestedSize(chartType, dataPointCount);
 
-      // Generate file if requested
+      // Always render to buffer for base64
+      const parsedParams = ChartJSToolParamsSchema.parse(this.params);
+      const dimensions = {
+        width: parsedParams.width || 800,
+        height: parsedParams.height || 600,
+      };
+
+      let imageBase64: string | undefined;
       let filePath: string | undefined;
       let fileExists: boolean | undefined;
       let fileSize: number | undefined;
 
-      if (this.params.generateFile) {
-        const parsedParams = ChartJSToolParamsSchema.parse(this.params);
-        const dimensions = {
-          width: parsedParams.width,
-          height: parsedParams.height,
-        };
-        const fileResult = await this.generateChartFile(
-          chartConfig,
-          dimensions
+      try {
+        const renderResult = await this.renderChart(chartConfig, dimensions);
+        imageBase64 = renderResult.imageBase64;
+        filePath = renderResult.filePath;
+        fileExists = renderResult.fileExists;
+        fileSize = renderResult.fileSize;
+      } catch (renderError) {
+        console.error(
+          `⚠️ [ChartJSTool] Render failed, returning config only:`,
+          renderError
         );
-        filePath = fileResult.filePath;
-        fileExists = fileResult.fileExists;
-        fileSize = fileResult.fileSize;
       }
 
       console.log(`✅ [ChartJSTool] Chart generated successfully:`);
       console.log(`📈 [ChartJSTool] Type: ${chartType}`);
       console.log(`📊 [ChartJSTool] Datasets: ${datasetCount}`);
       console.log(`📍 [ChartJSTool] Data points: ${dataPointCount}`);
+      if (imageBase64) {
+        console.log(
+          `🖼️ [ChartJSTool] Base64 image: ${imageBase64.length} chars`
+        );
+      }
       if (filePath) {
         console.log(
           `💾 [ChartJSTool] File: ${filePath} (${fileSize} bytes, exists: ${fileExists})`
@@ -322,6 +411,7 @@ export class ChartJSTool extends ToolBubble<
           colorScheme: options?.colorScheme || 'default',
           generatedAt: new Date().toISOString(),
         },
+        imageBase64,
         filePath,
         fileExists,
         fileSize,
@@ -452,7 +542,8 @@ export class ChartJSTool extends ToolBubble<
         xColumn,
         yColumn,
         groupByColumn,
-        colors
+        colors,
+        options?.stacked
       );
     } else {
       return this.prepareSingleSeriesData(
@@ -538,7 +629,8 @@ export class ChartJSTool extends ToolBubble<
     xColumn: string | undefined,
     yColumn: string | undefined,
     groupByColumn: string,
-    colors: string[]
+    colors: string[],
+    stacked?: boolean
   ): Record<string, unknown> {
     // Group data by groupByColumn
     const groups = new Map<string, Record<string, unknown>[]>();
@@ -567,7 +659,7 @@ export class ChartJSTool extends ToolBubble<
           backgroundColor: color,
           borderColor: color.replace('0.8', '1'),
           borderWidth: chartType === 'line' ? 2 : 1,
-          fill: chartType === 'line' ? false : true,
+          fill: chartType === 'line' ? (stacked ? true : false) : true,
         };
       }
     );
@@ -604,23 +696,28 @@ export class ChartJSTool extends ToolBubble<
       };
     }
 
-    if (options?.xAxisLabel || options?.yAxisLabel) {
-      chartOptions.scales = {
-        x: {
-          display: true,
-          title: {
-            display: !!options?.xAxisLabel,
-            text: options?.xAxisLabel || '',
-          },
-        },
-        y: {
-          display: true,
-          title: {
-            display: !!options?.yAxisLabel,
-            text: options?.yAxisLabel || '',
-          },
+    if (options?.xAxisLabel || options?.yAxisLabel || options?.stacked) {
+      const xScale: Record<string, unknown> = {
+        display: true,
+        title: {
+          display: !!options?.xAxisLabel,
+          text: options?.xAxisLabel || '',
         },
       };
+      const yScale: Record<string, unknown> = {
+        display: true,
+        title: {
+          display: !!options?.yAxisLabel,
+          text: options?.yAxisLabel || '',
+        },
+      };
+
+      if (options?.stacked) {
+        xScale.stacked = true;
+        yScale.stacked = true;
+      }
+
+      chartOptions.scales = { x: xScale, y: yScale };
     }
 
     return chartOptions;
@@ -716,12 +813,17 @@ export class ChartJSTool extends ToolBubble<
   }
 
   /**
-   * Generate actual chart file using chartjs-node-canvas
+   * Render chart to buffer, return base64 + write file to disk
    */
-  private async generateChartFile(
+  private async renderChart(
     chartConfig: Record<string, unknown>,
     dimensions: { width: number; height: number }
-  ): Promise<{ filePath: string; fileExists: boolean; fileSize: number }> {
+  ): Promise<{
+    imageBase64: string;
+    filePath: string;
+    fileExists: boolean;
+    fileSize: number;
+  }> {
     const { width, height } = dimensions;
 
     // Create chartjs-node-canvas instance
@@ -731,41 +833,31 @@ export class ChartJSTool extends ToolBubble<
       backgroundColour: 'white',
     });
 
-    try {
-      // Generate the chart buffer
-      console.log(
-        `🎨 [ChartJSTool] Rendering chart to buffer (${width}x${height})...`
-      );
-      const buffer = await chartJSNodeCanvas.renderToBuffer(chartConfig as any);
+    // Generate the chart buffer
+    console.log(
+      `🎨 [ChartJSTool] Rendering chart to buffer (${width}x${height})...`
+    );
+    const buffer = await chartJSNodeCanvas.renderToBuffer(chartConfig as any);
+    const imageBase64 = buffer.toString('base64');
 
-      // Determine file path
-      const outputDir = this.params.filePath || '/tmp/charts';
-      const fileName =
-        this.params.fileName ||
-        `chart-${this.params.chartType}-${Date.now()}.png`;
-      const fullPath = path.join(outputDir, fileName);
+    // Write file to disk
+    const outputDir = this.params.filePath || '/tmp/charts';
+    const fileName =
+      this.params.fileName ||
+      `chart-${this.params.chartType}-${Date.now()}.png`;
+    const fullPath = path.join(outputDir, fileName);
 
-      // Ensure directory exists
-      await fs.mkdir(outputDir, { recursive: true });
+    await fs.mkdir(outputDir, { recursive: true });
+    await fs.writeFile(fullPath, buffer);
+    const stats = await fs.stat(fullPath);
 
-      // Write file
-      await fs.writeFile(fullPath, buffer);
+    console.log(`💾 [ChartJSTool] Chart file generated: ${fullPath}`);
 
-      // Verify file exists and get size
-      const stats = await fs.stat(fullPath);
-
-      console.log(`💾 [ChartJSTool] Chart file generated: ${fullPath}`);
-
-      return {
-        filePath: fullPath,
-        fileExists: true,
-        fileSize: stats.size,
-      };
-    } catch (error) {
-      console.error(`❌ [ChartJSTool] File generation failed:`, error);
-      throw new Error(
-        `Chart file generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
+    return {
+      imageBase64,
+      filePath: fullPath,
+      fileExists: true,
+      fileSize: stats.size,
+    };
   }
 }
