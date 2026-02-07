@@ -529,8 +529,16 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
       ),
     file_path: z
       .string()
-      .min(1, 'File path is required')
-      .describe('Local file path to upload'),
+      .optional()
+      .describe(
+        'Local file path to upload (provide either file_path or content)'
+      ),
+    content: z
+      .string()
+      .optional()
+      .describe(
+        'Base64-encoded file content to upload (provide either file_path or content)'
+      ),
     filename: z
       .string()
       .optional()
@@ -2054,8 +2062,15 @@ Comprehensive Slack integration for messaging and workspace management.
   private async uploadFile(
     params: Extract<SlackParams, { operation: 'upload_file' }>
   ): Promise<Extract<SlackResult, { operation: 'upload_file' }>> {
-    const { channel, file_path, filename, title, initial_comment, thread_ts } =
-      params;
+    const {
+      channel,
+      file_path,
+      content,
+      filename,
+      title,
+      initial_comment,
+      thread_ts,
+    } = params;
 
     // Resolve channel name to ID if needed
     const resolvedChannel = await this.resolveChannelId(channel);
@@ -2065,8 +2080,15 @@ Comprehensive Slack integration for messaging and workspace management.
     const path = await import('path');
 
     try {
-      const fileBuffer = await fs.readFile(file_path);
-      const actualFilename = filename || path.basename(file_path);
+      if (!file_path && !content) {
+        throw new Error('Either file_path or content must be provided');
+      }
+
+      const fileBuffer = content
+        ? Buffer.from(content, 'base64')
+        : await fs.readFile(file_path!);
+      const actualFilename =
+        filename || (file_path ? path.basename(file_path) : 'file');
       const fileSize = fileBuffer.length;
 
       // Step 1: Get upload URL

@@ -184,6 +184,7 @@ export type {
   YCCompany,
   YCFounder,
 } from './bubbles/tool-bubble/yc-scraper-tool.js';
+export { ChartJSTool } from './bubbles/tool-bubble/chart-js-tool.js';
 
 // Export factory (this is the main way to access bubbles)
 export {
