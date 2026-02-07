@@ -46,6 +46,7 @@ const SlackBlockType = z.enum([
   'input',
   'file',
   'image',
+  'table',
 ]);
 
 // Define model configuration
@@ -502,6 +503,23 @@ Block Kit Guidelines:
 - Include mrkdwn formatting in text objects
 - Ensure all JSON is valid and properly escaped
 - DO NOT include empty context blocks - omit them entirely if you have no context to add
+- Use table blocks for tabular data (max 100 rows including header, max 20 columns)
+- Only ONE table block per message — if you have multiple tables, use the table block for the most important one and render others as code blocks
+
+Table block example:
+\`\`\`json
+{
+  "type": "table",
+  "column_settings": [
+    { "align": "left" },
+    { "align": "right" }
+  ],
+  "rows": [
+    [{ "type": "raw_text", "text": "Name" }, { "type": "raw_text", "text": "Value" }],
+    [{ "type": "raw_text", "text": "Revenue" }, { "type": "raw_text", "text": "$1,234" }]
+  ]
+}
+\`\`\`
 
 Example structure:
 \`\`\`json
