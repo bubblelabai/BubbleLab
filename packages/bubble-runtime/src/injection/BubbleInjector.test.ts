@@ -73,7 +73,8 @@ describe('BubbleInjector.findCredentials()', () => {
       console.log(credentials);
       expect(credentials).toBeDefined();
       expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
-      expect(credentials['404']).toHaveLength(1);
+      expect(credentials['404']).toContain(CredentialType.SLACK_API);
+      expect(credentials['404']).toHaveLength(2);
     });
 
     it('should return all credentials including system credentials', () => {
@@ -148,9 +149,10 @@ describe('BubbleInjector.findCredentials()', () => {
       expect(credentials).toBeDefined();
       console.log(credentials);
 
-      // Slack bubble should require Slack credentials
+      // Slack bubble should require Slack credentials (OAuth + API key)
       expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
-      expect(credentials['404']).toHaveLength(1);
+      expect(credentials['404']).toContain(CredentialType.SLACK_API);
+      expect(credentials['404']).toHaveLength(2);
 
       // AI agent should require base credentials plus tool credentials
       expect(credentials['405']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
