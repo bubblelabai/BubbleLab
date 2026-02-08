@@ -1565,8 +1565,8 @@ Comprehensive Slack integration for messaging and workspace management.
     if (username) body.username = username;
     if (icon_emoji) body.icon_emoji = icon_emoji;
     if (icon_url) body.icon_url = icon_url;
-    if (attachments) body.attachments = JSON.stringify(attachments);
-    if (finalBlocks) body.blocks = JSON.stringify(finalBlocks);
+    if (attachments) body.attachments = attachments;
+    if (finalBlocks) body.blocks = finalBlocks;
     if (thread_ts) {
       body.thread_ts = thread_ts;
       body.reply_broadcast = reply_broadcast;
@@ -1639,7 +1639,7 @@ Comprehensive Slack integration for messaging and workspace management.
         text: isFirstChunk
           ? text
           : `(continued ${chunkIndex + 1}/${blockChunks.length})`,
-        blocks: JSON.stringify(chunk),
+        blocks: chunk,
         unfurl_links: options.unfurl_links,
         unfurl_media: options.unfurl_media,
       };
@@ -1660,7 +1660,7 @@ Comprehensive Slack integration for messaging and workspace management.
 
       // Only include attachments in the first message
       if (isFirstChunk && options.attachments) {
-        body.attachments = JSON.stringify(options.attachments);
+        body.attachments = options.attachments;
       }
 
       const response = await this.makeSlackApiCall('chat.postMessage', body);
@@ -1966,8 +1966,8 @@ Comprehensive Slack integration for messaging and workspace management.
     };
 
     if (text) body.text = text;
-    if (attachments) body.attachments = JSON.stringify(attachments);
-    if (blocks) body.blocks = JSON.stringify(blocks);
+    if (attachments) body.attachments = attachments;
+    if (blocks) body.blocks = blocks;
 
     const response = await this.makeSlackApiCall('chat.update', body);
 
@@ -2281,7 +2281,7 @@ Comprehensive Slack integration for messaging and workspace management.
     };
 
     if (thread_ts) body.thread_ts = thread_ts;
-    if (blocks) body.blocks = JSON.stringify(blocks);
+    if (blocks) body.blocks = blocks;
     if (unfurl_links !== undefined) body.unfurl_links = unfurl_links;
     if (unfurl_media !== undefined) body.unfurl_media = unfurl_media;
 
@@ -2566,9 +2566,11 @@ Comprehensive Slack integration for messaging and workspace management.
       return data;
     } else {
       // Most Slack POST endpoints expect form-encoded data, not JSON
-      // Only specific endpoints like chat.postMessage with blocks expect JSON
+      // Endpoints with structured payloads (blocks, attachments) need JSON
       const needsJson =
-        ['chat.postMessage', 'chat.update'].includes(endpoint) &&
+        ['chat.postMessage', 'chat.update', 'chat.scheduleMessage'].includes(
+          endpoint
+        ) &&
         (params.blocks || params.attachments);
 
       if (needsJson) {
@@ -2582,7 +2584,11 @@ Comprehensive Slack integration for messaging and workspace management.
         const formData = new URLSearchParams();
         for (const [key, value] of Object.entries(params)) {
           if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
+            // Serialize objects/arrays as JSON strings for form-encoded
+            formData.append(
+              key,
+              typeof value === 'object' ? JSON.stringify(value) : String(value)
+            );
           }
         }
         fetchConfig = {
