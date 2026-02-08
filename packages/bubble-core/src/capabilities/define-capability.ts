@@ -78,6 +78,8 @@ export interface DefineCapabilityOptions {
   hooks?: CapabilityDefinition['hooks'];
   /** Optional model config overrides applied at runtime (e.g., force a specific model or raise maxTokens). */
   modelConfigOverride?: CapabilityModelConfigOverride;
+  /** Hidden capabilities are registered for runtime use but not shown in the UI. */
+  hidden?: boolean;
 }
 
 /**
@@ -115,6 +117,7 @@ export function defineCapability(
         ? options.systemPrompt
         : undefined,
     modelConfigOverride: options.modelConfigOverride,
+    hidden: options.hidden,
   };
 
   // Build tool factory that curries context into each tool func

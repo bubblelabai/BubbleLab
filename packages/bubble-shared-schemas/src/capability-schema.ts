@@ -59,5 +59,7 @@ export const CapabilityMetadataSchema = z.object({
   tools: z.array(CapabilityToolDefSchema),
   systemPromptAddition: z.string().optional(),
   modelConfigOverride: CapabilityModelConfigOverrideSchema.optional(),
+  /** Hidden capabilities are registered for runtime use but not shown in the UI. */
+  hidden: z.boolean().optional(),
 });
 export type CapabilityMetadata = z.infer<typeof CapabilityMetadataSchema>;
