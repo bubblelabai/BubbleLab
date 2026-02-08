@@ -1310,8 +1310,24 @@ export class NotionBubble<
       { operation: 'create_page' }
     >;
 
+    // Auto-convert database_id parent to data_source_id for Notion API v2025+
+    // In the 2025 API, databases are containers and data sources are the queryable tables.
+    // Users/AI often pass database_id when they mean data_source_id, so convert transparently.
+    let effectiveParent = parent;
+    if (
+      parent &&
+      'type' in parent &&
+      parent.type === 'database_id' &&
+      'database_id' in parent
+    ) {
+      effectiveParent = {
+        type: 'data_source_id' as const,
+        data_source_id: (parent as { database_id: string }).database_id,
+      };
+    }
+
     const body: Record<string, unknown> = {
-      parent,
+      parent: effectiveParent,
     };
 
     if (properties) body.properties = properties;
