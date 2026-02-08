@@ -2513,8 +2513,11 @@ Comprehensive Slack integration for messaging and workspace management.
       throw new Error('No slack credentials provided');
     }
 
-    // Slack bubble always uses Slack credentials
-    return credentials[CredentialType.SLACK_CRED];
+    // Prefer OAuth credential, fall back to API key
+    return (
+      credentials[CredentialType.SLACK_CRED] ??
+      credentials[CredentialType.SLACK_API]
+    );
   }
 
   private async makeSlackApiCall(

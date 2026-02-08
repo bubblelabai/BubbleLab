@@ -66,6 +66,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.DATABASE_CRED]: 'Postgres',
     [CredentialType.FIRECRAWL_API_KEY]: 'Firecrawl',
     [CredentialType.SLACK_CRED]: 'Slack',
+    [CredentialType.SLACK_API]: 'Slack',
     [CredentialType.RESEND_CRED]: 'Resend',
     [CredentialType.OPENROUTER_CRED]: 'OpenRouter',
     [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: 'Cloudflare',

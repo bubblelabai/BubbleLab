@@ -18,6 +18,7 @@ export enum CredentialType {
   DATABASE_CRED = 'DATABASE_CRED',
   // Communication Credentials
   SLACK_CRED = 'SLACK_CRED',
+  SLACK_API = 'SLACK_API',
   TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN',
   // Email Credentials
   RESEND_CRED = 'RESEND_CRED',

@@ -30,6 +30,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.ANTHROPIC_CRED]: {},
   [CredentialType.FIRECRAWL_API_KEY]: {},
   [CredentialType.SLACK_CRED]: {},
+  [CredentialType.SLACK_API]: {},
   [CredentialType.RESEND_CRED]: {},
   [CredentialType.OPENROUTER_CRED]: {},
   [CredentialType.CLOUDFLARE_R2_ACCESS_KEY]: {},
