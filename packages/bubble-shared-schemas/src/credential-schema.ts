@@ -71,14 +71,21 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       },
     },
     [CredentialType.SLACK_CRED]: {
-      label: 'Slack',
-      description:
-        'Slack Bot token (xoxb-) or User token (xoxp-) from api.slack.com/apps. Configure scopes in OAuth & Permissions.',
-      placeholder: 'xoxb-... or xoxp-...',
-      namePlaceholder: 'My Slack Token',
+      label: 'Slack (OAuth)',
+      description: 'OAuth connection to Slack workspace',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Slack Connection',
       credentialConfigurations: {
         ignoreSSL: false,
       },
+    },
+    [CredentialType.SLACK_API]: {
+      label: 'Slack',
+      description:
+        'Slack Bot token (xoxb-) or User token (xoxp-) from api.slack.com/apps',
+      placeholder: 'xoxb-... or xoxp-...',
+      namePlaceholder: 'My Slack Bot Token',
+      credentialConfigurations: {},
     },
     [CredentialType.RESEND_CRED]: {
       label: 'Resend',
@@ -350,6 +357,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.FIRECRAWL_API_KEY]: 'FIRE_CRAWL_API_KEY',
   [CredentialType.DATABASE_CRED]: 'BUBBLE_CONNECTING_STRING_URL',
   [CredentialType.SLACK_CRED]: 'SLACK_TOKEN',
+  [CredentialType.SLACK_API]: 'SLACK_BOT_TOKEN',
   [CredentialType.TELEGRAM_BOT_TOKEN]: 'TELEGRAM_BOT_TOKEN',
   [CredentialType.RESEND_CRED]: 'RESEND_API_KEY',
   [CredentialType.OPENROUTER_CRED]: 'OPENROUTER_API_KEY',
@@ -1404,12 +1412,13 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
     CredentialType.OPENROUTER_CRED,
   ],
   postgresql: [CredentialType.DATABASE_CRED],
-  slack: [CredentialType.SLACK_CRED],
+  slack: [CredentialType.SLACK_CRED, CredentialType.SLACK_API],
   telegram: [CredentialType.TELEGRAM_BOT_TOKEN],
   resend: [CredentialType.RESEND_CRED],
   'database-analyzer': [CredentialType.DATABASE_CRED],
   'slack-notifier': [
     CredentialType.SLACK_CRED,
+    CredentialType.SLACK_API,
     CredentialType.OPENAI_CRED,
     CredentialType.GOOGLE_GEMINI_CRED,
     CredentialType.ANTHROPIC_CRED,
@@ -1422,6 +1431,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   'slack-data-assistant': [
     CredentialType.DATABASE_CRED,
     CredentialType.SLACK_CRED,
+    CredentialType.SLACK_API,
     CredentialType.OPENAI_CRED,
     CredentialType.GOOGLE_GEMINI_CRED,
     CredentialType.ANTHROPIC_CRED,
