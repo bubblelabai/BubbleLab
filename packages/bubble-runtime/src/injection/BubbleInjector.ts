@@ -385,6 +385,11 @@ export class BubbleInjector {
           for (const cred of meta.requiredCredentials) {
             capCredentials.add(cred);
           }
+          if (meta.optionalCredentials) {
+            for (const cred of meta.optionalCredentials) {
+              capCredentials.add(cred);
+            }
+          }
         }
       }
     } catch (error) {
