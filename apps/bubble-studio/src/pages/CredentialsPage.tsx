@@ -83,6 +83,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.AIRTABLE_CRED]: 'Airtable',
     [CredentialType.AIRTABLE_OAUTH]: 'Airtable',
     [CredentialType.NOTION_OAUTH_TOKEN]: 'Notion',
+    [CredentialType.NOTION_API]: 'Notion',
     [CredentialType.INSFORGE_BASE_URL]: 'InsForge',
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',

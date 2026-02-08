@@ -152,6 +152,20 @@ export const googleOAuthMetadataSchema = z.object({
 export type GoogleOAuthMetadata = z.infer<typeof googleOAuthMetadataSchema>;
 
 /**
+ * Notion OAuth metadata - stored after OAuth callback with workspace info
+ */
+export const notionOAuthMetadataSchema = z.object({
+  workspaceId: z.string(),
+  workspaceName: z.string().optional(),
+  workspaceIcon: z.string().optional(),
+  botId: z.string(),
+  /** Human-readable display name for the credential (workspace name) */
+  displayName: z.string().optional(),
+});
+
+export type NotionOAuthMetadata = z.infer<typeof notionOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -186,6 +200,7 @@ export type ConfluenceOAuthMetadata = z.infer<
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
  * - SlackOAuthMetadata: For SLACK_CRED OAuth credentials
  * - ConfluenceOAuthMetadata: For CONFLUENCE_CRED OAuth credentials
+ * - NotionOAuthMetadata: For NOTION_OAUTH_TOKEN OAuth credentials
  *
  * All metadata types include optional preference fields (isDefault, lastUsedAt)
  * for default credential selection and usage tracking.
@@ -196,6 +211,7 @@ export type CredentialMetadata =
   | SlackOAuthMetadata
   | AirtableOAuthMetadata
   | GoogleOAuthMetadata
+  | NotionOAuthMetadata
   | ConfluenceOAuthMetadata
   | StripeOAuthMetadata
   | CredentialPreferences;
