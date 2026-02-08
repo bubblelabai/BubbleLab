@@ -54,6 +54,7 @@ export const CapabilityMetadataSchema = z.object({
   category: z.string().optional(),
   version: z.string().default('1.0.0'),
   requiredCredentials: z.array(z.nativeEnum(CredentialType)),
+  optionalCredentials: z.array(z.nativeEnum(CredentialType)).optional(),
   inputs: z.array(CapabilityInputSchema),
   tools: z.array(CapabilityToolDefSchema),
   systemPromptAddition: z.string().optional(),

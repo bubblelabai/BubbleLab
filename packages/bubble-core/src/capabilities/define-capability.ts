@@ -62,6 +62,7 @@ export interface DefineCapabilityOptions {
   category?: string;
   version?: string;
   requiredCredentials: CredentialType[];
+  optionalCredentials?: CredentialType[];
   inputs: CapabilityInput[];
   tools: Array<{
     name: string;
@@ -106,6 +107,7 @@ export function defineCapability(
     category: options.category,
     version: options.version ?? '1.0.0',
     requiredCredentials: options.requiredCredentials,
+    optionalCredentials: options.optionalCredentials,
     inputs: options.inputs,
     tools: toolDefs,
     systemPromptAddition:
