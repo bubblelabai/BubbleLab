@@ -170,6 +170,13 @@ export const createBubbleFlowResponseSchema = z
           'http-request': [CredentialType.CREDENTIAL_WILDCARD],
         },
       }),
+    optionalCredentials: z
+      .record(z.string(), z.array(z.nativeEnum(CredentialType)))
+      .optional()
+      .openapi({
+        description:
+          'Mapping of bubble names to their optional credential types (from capability optionalCredentials). Shown in UI but do not block execution.',
+      }),
     eventType: z.string().min(1).openapi({
       description: 'Event type this BubbleFlow responds to',
       example: 'webhook/http',
@@ -309,6 +316,13 @@ export const bubbleFlowDetailsResponseSchema = z
     requiredCredentials: z
       .record(z.string(), z.array(z.nativeEnum(CredentialType)))
       .openapi({ description: 'Required credentials by bubble' }),
+    optionalCredentials: z
+      .record(z.string(), z.array(z.nativeEnum(CredentialType)))
+      .optional()
+      .openapi({
+        description:
+          'Optional credentials by bubble (from capability optionalCredentials)',
+      }),
     usedCredentials: z.array(usedCredentialSchema).optional().openapi({
       description:
         'Credentials used in this flow with metadata (for shared workflow visibility)',

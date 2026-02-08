@@ -1286,13 +1286,22 @@ export class AIAgentBubble extends ServiceBubble<
    * then overlaying any explicitly set capConfig.credentials on top.
    */
   private resolveCapabilityCredentials(
-    capDef: { metadata: { requiredCredentials: CredentialType[] } },
+    capDef: {
+      metadata: {
+        requiredCredentials: CredentialType[];
+        optionalCredentials?: CredentialType[];
+      };
+    },
     capConfig: { credentials?: Record<string, string> }
   ): Partial<Record<CredentialType, string>> {
     const resolved: Partial<Record<CredentialType, string>> = {};
 
     // Pull from bubble-level credentials for each type the capability needs
-    for (const credType of capDef.metadata.requiredCredentials) {
+    const allCredTypes = [
+      ...capDef.metadata.requiredCredentials,
+      ...(capDef.metadata.optionalCredentials ?? []),
+    ];
+    for (const credType of allCredTypes) {
       if (this.params.credentials && this.params.credentials[credType]) {
         resolved[credType] = this.params.credentials[credType];
       }
