@@ -56,12 +56,21 @@ export interface SlackTableBlock {
   block_id?: string;
 }
 
+export interface SlackImageBlock {
+  type: 'image';
+  image_url: string;
+  alt_text: string;
+  title?: SlackTextObject;
+  block_id?: string;
+}
+
 export type SlackBlock =
   | SlackSectionBlock
   | SlackDividerBlock
   | SlackHeaderBlock
   | SlackContextBlock
-  | SlackTableBlock;
+  | SlackTableBlock
+  | SlackImageBlock;
 
 /**
  * Options for markdown to blocks conversion
@@ -160,6 +169,27 @@ export function markdownToMrkdwn(markdown: string): string {
  * Parses markdown content and identifies different block types.
  * Returns an array of parsed blocks with their types and content.
  */
+/**
+ * Image hosting domains whose URLs should render as Slack image blocks
+ * instead of raw URL text.
+ */
+const IMAGE_URL_HOSTS = ['quickchart.io', 'i.imgur.com', 'imgur.com'];
+const IMAGE_URL_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+
+/**
+ * Checks if a URL points to an image that should be rendered as an image block.
+ */
+function isImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (IMAGE_URL_HOSTS.some((h) => parsed.hostname.endsWith(h))) return true;
+    const path = parsed.pathname.toLowerCase();
+    return IMAGE_URL_EXTENSIONS.some((ext) => path.endsWith(ext));
+  } catch {
+    return false;
+  }
+}
+
 interface ParsedBlock {
   type:
     | 'header'
@@ -168,7 +198,8 @@ interface ParsedBlock {
     | 'divider'
     | 'quote'
     | 'list'
-    | 'table';
+    | 'table'
+    | 'image';
   content: string;
   level?: number; // For headers (1-6)
   language?: string; // For code blocks
@@ -184,13 +215,13 @@ function normalizeMarkdownNewlines(markdown: string): string {
   let result = markdown;
 
   // Add newlines before headers (### Header) if not already at line start
-  // Lookbehind ensures we don't add newline if already at start or after newline
-  result = result.replace(/([^\n])(#{1,6}\s+\S)/g, '$1\n$2');
+  // Exclude # so multi-hash headers like ### don't get split into # + \n##
+  result = result.replace(/([^\n#])(#{1,6}\s+\S)/g, '$1\n$2');
 
   // Add newlines before horizontal rules (--- or ***)
-  // Exclude table separator rows (preceded by |)
+  // Exclude table separator rows (preceded by | or : as in |:---|)
   result = result.replace(
-    /([^\n\s|])\s*(---+|___+|\*\*\*+)\s*(?=\S|$)/g,
+    /([^\n\s|:])\s*(---+|___+|\*\*\*+)\s*(?=\S|$)/g,
     '$1\n$2\n'
   );
 
@@ -245,6 +276,23 @@ function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
 
     if (inCodeBlock) {
       codeBlockContent.push(line);
+      continue;
+    }
+
+    // Check for bare URL on its own line (image URLs become image blocks)
+    const trimmedLine = line.trim();
+    if (/^https?:\/\/\S+$/.test(trimmedLine)) {
+      if (currentBlock) {
+        blocks.push(currentBlock);
+        currentBlock = null;
+      }
+      if (isImageUrl(trimmedLine)) {
+        blocks.push({ type: 'image', content: trimmedLine });
+      } else {
+        // Non-image URL: keep as paragraph, markdownToMrkdwn will leave it as-is
+        // Slack auto-unfurls URLs, so just pass through
+        blocks.push({ type: 'paragraph', content: trimmedLine });
+      }
       continue;
     }
 
@@ -542,6 +590,30 @@ export function markdownToBlocks(
             },
           });
         }
+        break;
+      }
+
+      case 'image': {
+        // Extract a readable title from the URL
+        let altText = 'Image';
+        try {
+          const parsed = new URL(block.content);
+          // Use title param or path-based label
+          const titleParam =
+            parsed.searchParams.get('title') || parsed.searchParams.get('text');
+          if (titleParam) {
+            altText = titleParam;
+          } else {
+            altText = `Chart from ${parsed.hostname}`;
+          }
+        } catch {
+          // keep default
+        }
+        slackBlocks.push({
+          type: 'image',
+          image_url: block.content,
+          alt_text: altText,
+        });
         break;
       }
 

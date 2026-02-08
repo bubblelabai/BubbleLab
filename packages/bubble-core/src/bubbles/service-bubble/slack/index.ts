@@ -20,6 +20,7 @@ export {
   type SlackHeaderBlock,
   type SlackContextBlock,
   type SlackTableBlock,
+  type SlackImageBlock,
   type SlackTableCell,
   type SlackTableCellRawText,
   type SlackTableCellRichText,

@@ -614,6 +614,149 @@ More text.`;
     expect(tableBlock.rows[0]).toHaveLength(SLACK_TABLE_MAX_COLUMNS);
   });
 
+  it('should convert real-world AI response with table to valid blocks', () => {
+    const md = `Sure thing, Diana! Here are the top 5 users based on their monthly usage activity and total workflows created:
+
+| Name | Email | Monthly Usage | Workflows |
+| :--- | :--- | :--- | :--- |
+| Alice Park | alice.park@gmail.com | 1,655 | 16 |
+| Bob Chen | bob.chen@acmerobotics.ai | 769 | 6 |
+| Charlie Kim | charlie.kim@example.com | 719 | 67 |
+| Diana Lee | diana.lee@example.com | 445 | 720 |
+| Eve Martinez | eve.martinez@hotmail.com | 288 | 6 |
+
+It looks like you've been busy with those 720 workflows!
+
+**Fun Fact:** The world's oldest known recipe is for beer, dating back to 1800 BC in ancient Mesopotamia.`;
+
+    const blocks = markdownToBlocks(md);
+
+    // Should have: intro section, table, outro section, fun fact section
+    expect(blocks.length).toBeGreaterThanOrEqual(3);
+
+    // First block should be the intro text
+    expect(blocks[0].type).toBe('section');
+    expect((blocks[0] as SlackSectionBlock).text.text).toContain('Diana');
+
+    // Should have a table block
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // Table should have 1 header + 5 data rows = 6 rows
+    expect(tableBlock.rows).toHaveLength(6);
+
+    // Header row
+    expect(tableBlock.rows[0]).toHaveLength(4);
+    expect(tableBlock.rows[0][0]).toEqual({ type: 'raw_text', text: 'Name' });
+    expect(tableBlock.rows[0][1]).toEqual({ type: 'raw_text', text: 'Email' });
+    expect(tableBlock.rows[0][2]).toEqual({
+      type: 'raw_text',
+      text: 'Monthly Usage',
+    });
+    expect(tableBlock.rows[0][3]).toEqual({
+      type: 'raw_text',
+      text: 'Workflows',
+    });
+
+    // First data row
+    expect(tableBlock.rows[1][0]).toEqual({
+      type: 'raw_text',
+      text: 'Alice Park',
+    });
+    expect(tableBlock.rows[1][1]).toEqual({
+      type: 'raw_text',
+      text: 'alice.park@gmail.com',
+    });
+    expect(tableBlock.rows[1][2]).toEqual({
+      type: 'raw_text',
+      text: '1,655',
+    });
+    expect(tableBlock.rows[1][3]).toEqual({ type: 'raw_text', text: '16' });
+
+    // All cells should have non-empty text
+    for (const row of tableBlock.rows) {
+      for (const cell of row) {
+        expect(
+          (cell as { type: string; text: string }).text.length
+        ).toBeGreaterThan(0);
+      }
+    }
+
+    // Should have outro text
+    const outroBlock = blocks.find(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' && b.text.text.includes('720 workflows')
+    );
+    expect(outroBlock).toBeDefined();
+  });
+
+  it('should convert AI response with table and numbered list to valid blocks', () => {
+    const md = `Sure thing, dad! Here is a table of the 5 most recent users from our database:
+
+| First Name | Last Name | Email | Created At | Monthly Usage |
+| :--- | :--- | :--- | :--- | :--- |
+| Frank | Miller | frank.miller@gmail.com | 2026-02-07 | 0 |
+| Grace | Patel | grace.patel@gmail.com | 2026-02-07 | 1 |
+| Henry | Wilson | henry.wilson@gmail.com | 2026-02-07 | 0 |
+| Iris | Chang | iris.chang@gmail.com | 2026-02-07 | 4 |
+| Jack | Thompson | jack.thompson@gmail.com | 2026-02-07 | 2 |
+
+**Tool Usage & Reasoning:**
+
+1. **\`schema-query-tool (list_tables)\`**: I first checked the available tables to locate the user data.
+2. **\`schema-query-tool (describe_table)\`**: I inspected the \`users\` table schema to ensure I had the correct column names for the table.
+3. **\`sql-query-tool\`**: I executed a query to fetch the five most recently created accounts, ordered by \`created_at\` descending, to provide you with the latest activity.
+
+**Fun Fact:** A group of flamingos is called a "flamboyance".`;
+
+    const blocks = markdownToBlocks(md);
+
+    // Should have a table block
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // Table should have 1 header + 5 data rows = 6 rows
+    expect(tableBlock.rows).toHaveLength(6);
+
+    // 5 columns
+    expect(tableBlock.rows[0]).toHaveLength(5);
+    expect(tableBlock.rows[0][0]).toEqual({
+      type: 'raw_text',
+      text: 'First Name',
+    });
+    expect(tableBlock.rows[0][4]).toEqual({
+      type: 'raw_text',
+      text: 'Monthly Usage',
+    });
+
+    // First data row
+    expect(tableBlock.rows[1][0]).toEqual({ type: 'raw_text', text: 'Frank' });
+    expect(tableBlock.rows[1][2]).toEqual({
+      type: 'raw_text',
+      text: 'frank.miller@gmail.com',
+    });
+
+    // All cells should have non-empty text
+    for (const row of tableBlock.rows) {
+      for (const cell of row) {
+        expect(
+          (cell as { type: string; text: string }).text.length
+        ).toBeGreaterThan(0);
+      }
+    }
+
+    // Should have the numbered list content
+    const listOrSectionBlocks = blocks.filter(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' && b.text.text.includes('schema-query-tool')
+    );
+    expect(listOrSectionBlocks.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('should add context block when table is truncated', () => {
     const headers = ['ID', 'Val'];
     const headerLine = '| ' + headers.join(' | ') + ' |';
