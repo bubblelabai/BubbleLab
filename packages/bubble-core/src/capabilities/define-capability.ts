@@ -3,6 +3,8 @@ import type {
   CapabilityInput,
   CapabilityToolDef,
   CapabilityModelConfigOverride,
+  CapabilityProviderMetadata,
+  CapabilityId,
 } from '@bubblelab/shared-schemas';
 import type { CredentialType, BubbleName } from '@bubblelab/shared-schemas';
 import type {
@@ -55,7 +57,7 @@ export interface CapabilityDefinition {
 
 /** Options for the defineCapability() helper — ergonomic API for creating capabilities. */
 export interface DefineCapabilityOptions {
-  id: string;
+  id: CapabilityId;
   name: string;
   description: string;
   icon?: string;
@@ -82,6 +84,8 @@ export interface DefineCapabilityOptions {
   delegationHint?: string;
   /** Hidden capabilities are registered for runtime use but not shown in the UI. */
   hidden?: boolean;
+  /** Data-driven provider options for the wizard "Choose Providers" step. */
+  providers?: CapabilityProviderMetadata[];
 }
 
 /**
@@ -121,6 +125,7 @@ export function defineCapability(
     modelConfigOverride: options.modelConfigOverride,
     delegationHint: options.delegationHint,
     hidden: options.hidden,
+    providers: options.providers,
   };
 
   // Build tool factory that curries context into each tool func

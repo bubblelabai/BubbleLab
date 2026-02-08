@@ -264,6 +264,9 @@ export class BubbleFactory {
     const { ListBubblesTool } = await import(
       './bubbles/tool-bubble/list-bubbles-tool.js'
     );
+    const { ListCapabilitiesTool } = await import(
+      './bubbles/tool-bubble/list-capabilities-tool.js'
+    );
     const { GetBubbleDetailsTool } = await import(
       './bubbles/tool-bubble/get-bubble-details-tool.js'
     );
@@ -449,6 +452,10 @@ export class BubbleFactory {
     this.register(
       'list-bubbles-tool',
       ListBubblesTool as BubbleClassWithMetadata
+    );
+    this.register(
+      'list-capabilities-tool',
+      ListCapabilitiesTool as BubbleClassWithMetadata
     );
     this.register('sql-query-tool', SQLQueryTool as BubbleClassWithMetadata);
     this.register('chart-js-tool', ChartJSTool as BubbleClassWithMetadata);

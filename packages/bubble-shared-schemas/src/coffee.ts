@@ -138,6 +138,12 @@ export const CoffeePlanEventSchema = z.object({
   estimatedBubbles: z
     .array(z.string())
     .describe('All bubbles that will be used in the workflow'),
+  estimatedCapabilities: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Capability IDs to attach to AI agents (from list-capabilities-tool). Only pass the id, never inputs.'
+    ),
 });
 
 // ============================================================================

@@ -4,6 +4,7 @@ import {
   enforcePayloadTypeRule,
   noToStringOnExpectedOutputSchemaRule,
   noJsonStringifyOnExpectedOutputSchemaRule,
+  noCapabilityInputsRule,
   LintRuleRegistry,
 } from './lint-rules.js';
 
@@ -246,5 +247,111 @@ const researchTool = new ResearchAgentTool({
     expect(errors.length).toBe(1);
     expect(errors[0].message).toContain('Do not call JSON.stringify()');
     expect(errors[0].message).toContain('expectedResultSchema');
+  });
+});
+
+describe('no-capability-inputs lint rule', () => {
+  it('should error when capabilities have inline inputs', () => {
+    const code = `
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const agent = new AIAgentBubble({
+  message: 'Research this topic',
+  model: { model: 'google/gemini-2.5-flash' },
+  capabilities: [{ id: 'knowledge-base', inputs: { sources: [\`google-doc:\${docId}:edit\`] } }],
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain('inputs');
+    expect(errors[0].message).toContain('Capabilities panel');
+  });
+
+  it('should not error when capabilities only have id', () => {
+    const code = `
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const agent = new AIAgentBubble({
+  message: 'Research this topic',
+  model: { model: 'google/gemini-2.5-flash' },
+  capabilities: [{ id: 'knowledge-base' }],
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(0);
+  });
+
+  it('should error for multiple capabilities with inputs', () => {
+    const code = `
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const agent = new AIAgentBubble({
+  message: 'Do stuff',
+  capabilities: [
+    { id: 'knowledge-base', inputs: { sources: ['doc1'] } },
+    { id: 'data-analyst', inputs: { db: 'main' } },
+  ],
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(2);
+  });
+
+  it('should not flag objects without an id property', () => {
+    const code = `
+const config = {
+  capabilities: [{ name: 'something', inputs: { foo: 'bar' } }],
+};
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(0);
   });
 });

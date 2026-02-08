@@ -1453,6 +1453,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   'get-bubble-details-tool': [],
   'get-trigger-detail-tool': [],
   'list-bubbles-tool': [],
+  'list-capabilities-tool': [],
   'sql-query-tool': [CredentialType.DATABASE_CRED],
   'chart-js-tool': [],
   'bubbleflow-validation-tool': [],

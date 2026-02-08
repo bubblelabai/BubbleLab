@@ -123,6 +123,7 @@ export { ParseDocumentWorkflow } from './bubbles/workflow-bubble/parse-document.
 
 // Export tool bubbles
 export { ListBubblesTool } from './bubbles/tool-bubble/list-bubbles-tool.js';
+export { ListCapabilitiesTool } from './bubbles/tool-bubble/list-capabilities-tool.js';
 export { GetBubbleDetailsTool } from './bubbles/tool-bubble/get-bubble-details-tool.js';
 export { GetTriggerDetailTool } from './bubbles/tool-bubble/get-trigger-detail-tool.js';
 export { ListAirtableBasesTool } from './bubbles/tool-bubble/list-airtable-bases-tool.js';

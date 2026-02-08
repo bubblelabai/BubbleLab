@@ -2,6 +2,29 @@ import { z } from 'zod';
 import { CredentialType, type BubbleName } from './types.js';
 
 /**
+ * String literal union of all known capability IDs.
+ * Runtime validation stays permissive (any non-empty string); TypeScript narrows.
+ */
+export type CapabilityId =
+  | 'knowledge-base'
+  | 'google-doc-knowledge-base'
+  | 'data-analyst';
+
+/**
+ * Schema for a provider entry in a capability's metadata.
+ * Used by the wizard to render a data-driven "Choose Providers" step.
+ */
+export const CapabilityProviderMetadataSchema = z.object({
+  value: z.string().min(1),
+  label: z.string().min(1),
+  credentialType: z.nativeEnum(CredentialType),
+  icon: z.string().min(1),
+});
+export type CapabilityProviderMetadata = z.infer<
+  typeof CapabilityProviderMetadataSchema
+>;
+
+/**
  * Schema for a single input parameter that a capability accepts.
  * Inputs are user-configurable values (e.g., a Google Doc ID).
  */
@@ -47,7 +70,7 @@ export type CapabilityModelConfigOverride = z.infer<
  * Does NOT contain runtime logic (tool functions, factories).
  */
 export const CapabilityMetadataSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1) as z.ZodType<CapabilityId>,
   name: z.string().min(1),
   description: z.string(),
   icon: z.string().optional(),
@@ -67,5 +90,7 @@ export const CapabilityMetadataSchema = z.object({
   delegationHint: z.string().optional(),
   /** Hidden capabilities are registered for runtime use but not shown in the UI. */
   hidden: z.boolean().optional(),
+  /** Data-driven provider options for the wizard "Choose Providers" step. */
+  providers: z.array(CapabilityProviderMetadataSchema).optional(),
 });
 export type CapabilityMetadata = z.infer<typeof CapabilityMetadataSchema>;

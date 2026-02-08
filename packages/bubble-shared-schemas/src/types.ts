@@ -94,6 +94,7 @@ export type BubbleName =
   | 'get-bubble-details-tool'
   | 'get-trigger-detail-tool'
   | 'list-bubbles-tool'
+  | 'list-capabilities-tool'
   | 'sql-query-tool'
   | 'chart-js-tool'
   | 'web-search-tool'

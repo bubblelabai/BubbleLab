@@ -1452,6 +1452,106 @@ export const noJsonStringifyOnExpectedOutputSchemaRule: LintRule = {
 };
 
 /**
+ * Lint rule that prevents capabilities from having inline `inputs`.
+ *
+ * Capability inputs should be configured by the user via the Capabilities UI,
+ * not hardcoded in the flow code. The runtime injects input values at execution time.
+ *
+ * BAD:
+ * ```typescript
+ * capabilities: [{ id: 'knowledge-base', inputs: { sources: [`google-doc:${docId}:edit`] } }]
+ * ```
+ *
+ * GOOD:
+ * ```typescript
+ * capabilities: [{ id: 'knowledge-base' }]
+ * ```
+ */
+export const noCapabilityInputsRule: LintRule = {
+  name: 'no-capability-inputs',
+  validate(context: LintRuleContext): LintError[] {
+    const errors: LintError[] = [];
+
+    const visit = (node: ts.Node): void => {
+      // Look for property assignments named 'capabilities'
+      if (ts.isPropertyAssignment(node)) {
+        const propName = node.name;
+        const isCapabilities =
+          (ts.isIdentifier(propName) && propName.text === 'capabilities') ||
+          (ts.isStringLiteral(propName) && propName.text === 'capabilities');
+
+        if (isCapabilities) {
+          // Check if the value is an array literal
+          const value = node.initializer;
+          if (ts.isArrayLiteralExpression(value)) {
+            for (const element of value.elements) {
+              checkCapabilityObjectForInputs(
+                element,
+                context.sourceFile,
+                errors
+              );
+            }
+          }
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    };
+
+    visit(context.sourceFile);
+    return errors;
+  },
+};
+
+/**
+ * Checks if a capability object literal contains an 'inputs' property
+ */
+function checkCapabilityObjectForInputs(
+  node: ts.Expression,
+  sourceFile: ts.SourceFile,
+  errors: LintError[]
+): void {
+  if (!ts.isObjectLiteralExpression(node)) return;
+
+  // Verify this looks like a capability object (has an 'id' property)
+  let hasIdProperty = false;
+  for (const prop of node.properties) {
+    if (ts.isPropertyAssignment(prop)) {
+      const name = prop.name;
+      if (
+        (ts.isIdentifier(name) && name.text === 'id') ||
+        (ts.isStringLiteral(name) && name.text === 'id')
+      ) {
+        hasIdProperty = true;
+        break;
+      }
+    }
+  }
+
+  if (!hasIdProperty) return;
+
+  // Now check for 'inputs' property
+  for (const prop of node.properties) {
+    if (ts.isPropertyAssignment(prop)) {
+      const name = prop.name;
+      if (
+        (ts.isIdentifier(name) && name.text === 'inputs') ||
+        (ts.isStringLiteral(name) && name.text === 'inputs')
+      ) {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(
+          prop.getStart(sourceFile)
+        );
+        errors.push({
+          line: line + 1,
+          message:
+            "Capability 'inputs' should not be defined in code. Remove the inputs property — use only { id: 'capability-id' }. Users configure capability inputs in the Capabilities panel. Also remove all references of this variable if it is only used for the agent (commonly flow input).",
+        });
+      }
+    }
+  }
+}
+
+/**
  * Default registry instance with all rules registered
  */
 export const defaultLintRuleRegistry = new LintRuleRegistry();
@@ -1468,3 +1568,4 @@ defaultLintRuleRegistry.register(enforcePayloadTypeRule);
 defaultLintRuleRegistry.register(noCastPayloadInHandleRule);
 defaultLintRuleRegistry.register(noToStringOnExpectedOutputSchemaRule);
 defaultLintRuleRegistry.register(noJsonStringifyOnExpectedOutputSchemaRule);
+defaultLintRuleRegistry.register(noCapabilityInputsRule);

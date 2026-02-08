@@ -15,6 +15,7 @@ export const AvailableTools = z.enum([
   'instagram-tool',
   // Existing bubble tools (for reference - these are handled by bubble names)
   'list-bubbles-tool',
+  'list-capabilities-tool',
   'get-bubble-details-tool',
   'get-trigger-detail-tool',
   'bubbleflow-validation-tool',
