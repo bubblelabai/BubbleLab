@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { markdownToHtml } from '../../utils/markdown-to-html.js';
 
 // Essential headers that users typically care about
 const ESSENTIAL_HEADERS = [
@@ -164,8 +165,15 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
     body_text: z
       .string()
       .optional()
-      .describe('[ONEOF:body] Plain text email body'),
-    body_html: z.string().optional().describe('[ONEOF:body] HTML email body'),
+      .describe(
+        '[ONEOF:body] Email body (supports markdown — automatically converted to HTML for rendering)'
+      ),
+    body_html: z
+      .string()
+      .optional()
+      .describe(
+        '[ONEOF:body] HTML email body. If not provided and body_text is set, HTML is auto-generated from body_text.'
+      ),
     reply_to: z.string().email().optional().describe('Reply-to email address'),
     thread_id: z
       .string()
@@ -329,8 +337,15 @@ const GmailParamsSchema = z.discriminatedUnion('operation', [
     body_text: z
       .string()
       .optional()
-      .describe('[ONEOF:body] Plain text email body'),
-    body_html: z.string().optional().describe('[ONEOF:body] HTML email body'),
+      .describe(
+        '[ONEOF:body] Email body (supports markdown — automatically converted to HTML for rendering)'
+      ),
+    body_html: z
+      .string()
+      .optional()
+      .describe(
+        '[ONEOF:body] HTML email body. If not provided and body_text is set, HTML is auto-generated from body_text.'
+      ),
     reply_to: z.string().email().optional().describe('Reply-to email address'),
     thread_id: z
       .string()
@@ -1192,13 +1207,17 @@ export class GmailBubble<
       throw new Error('Either body_text or body_html must be provided');
     }
 
+    // Auto-convert markdown text to HTML when no HTML is provided
+    const resolvedHtml =
+      body_html || (body_text ? markdownToHtml(body_text) : undefined);
+
     const raw = this.createEmailMessage({
       to,
       cc,
       bcc,
       subject,
       body_text,
-      body_html,
+      body_html: resolvedHtml,
       reply_to,
       thread_id,
     });
@@ -1384,13 +1403,17 @@ export class GmailBubble<
       throw new Error('Either body_text or body_html must be provided');
     }
 
+    // Auto-convert markdown text to HTML when no HTML is provided
+    const resolvedHtml =
+      body_html || (body_text ? markdownToHtml(body_text) : undefined);
+
     const raw = this.createEmailMessage({
       to,
       cc,
       bcc,
       subject,
       body_text,
-      body_html,
+      body_html: resolvedHtml,
       reply_to,
       thread_id,
     });

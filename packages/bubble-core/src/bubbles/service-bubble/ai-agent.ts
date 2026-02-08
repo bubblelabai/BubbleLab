@@ -535,6 +535,16 @@ export class AIAgentBubble extends ServiceBubble<
    * Modify params before execution - centralizes all param transformations
    */
   private async beforeAction(): Promise<void> {
+    // Deduplicate capabilities by id — keep the first occurrence of each
+    if (this.params.capabilities && this.params.capabilities.length > 1) {
+      const seen = new Set<string>();
+      this.params.capabilities = this.params.capabilities.filter((c) => {
+        if (seen.has(c.id)) return false;
+        seen.add(c.id);
+        return true;
+      });
+    }
+
     // Enforce minimum maxTokens of 10000
     if (
       this.params.model.maxTokens === undefined ||

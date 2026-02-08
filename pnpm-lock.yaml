@@ -364,7 +364,7 @@ importers:
         version: 0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76)
       '@langchain/community':
         specifier: ^0.3.53
-        version: 0.3.57(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/client-s3@3.901.0)(@aws-sdk/credential-provider-node@3.901.0)(@browserbasehq/sdk@2.6.0)(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(@mendable/firecrawl-js@4.5.0)(@smithy/util-utf8@2.3.0)(axios@1.12.2)(fast-xml-parser@5.2.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.3.2)(jsdom@27.3.0(canvas@3.2.0)(postcss@8.5.6))(lodash@4.17.21)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(pg@8.16.3)(weaviate-client@3.9.0)(ws@8.19.0)
+        version: 0.3.57(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/client-s3@3.901.0)(@aws-sdk/credential-provider-node@3.901.0)(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(@mendable/firecrawl-js@4.5.0)(@smithy/util-utf8@2.3.0)(axios@1.12.2)(fast-xml-parser@5.2.5)(html-to-text@9.0.5)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(pg@8.16.3)(weaviate-client@3.9.0)(ws@8.19.0)
       '@langchain/core':
         specifier: ^0.3.66
         version: 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
@@ -373,7 +373,7 @@ importers:
         version: 1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))
       '@langchain/langgraph':
         specifier: ^0.3.10
-        version: 0.3.12(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(zod-to-json-schema@3.24.6(zod@3.25.76))
+        version: 0.3.12(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod-to-json-schema@3.24.6(zod@3.25.76))
       '@langchain/openai':
         specifier: ^0.6.2
         version: 0.6.14(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(ws@8.19.0)
@@ -400,7 +400,7 @@ importers:
         version: 24.35.0
       resend:
         specifier: ^4.8.0
-        version: 4.8.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        version: 4.8.0
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -419,7 +419,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.3.0(canvas@3.2.0)(postcss@8.5.6))(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+        version: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(tsx@4.20.6)(yaml@2.8.1)
       zod-to-json-schema:
         specifier: ^3.24.6
         version: 3.24.6(zod@3.25.76)
@@ -21430,7 +21430,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@langchain/community@0.3.57(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/client-s3@3.901.0)(@aws-sdk/credential-provider-node@3.901.0)(@browserbasehq/sdk@2.6.0)(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(@mendable/firecrawl-js@4.5.0)(@smithy/util-utf8@2.3.0)(axios@1.12.2)(fast-xml-parser@5.2.5)(handlebars@4.7.8)(html-to-text@9.0.5)(ignore@5.3.2)(jsdom@27.3.0(canvas@3.2.0)(postcss@8.5.6))(lodash@4.17.21)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(pg@8.16.3)(weaviate-client@3.9.0)(ws@8.19.0)':
+  '@langchain/community@0.3.57(@aws-crypto/sha256-js@5.2.0)(@aws-sdk/client-s3@3.901.0)(@aws-sdk/credential-provider-node@3.901.0)(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(@mendable/firecrawl-js@4.5.0)(@smithy/util-utf8@2.3.0)(axios@1.12.2)(fast-xml-parser@5.2.5)(html-to-text@9.0.5)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(pg@8.16.3)(weaviate-client@3.9.0)(ws@8.19.0)':
     dependencies:
       '@langchain/core': 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
       '@langchain/openai': 0.6.14(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(ws@8.19.0)
@@ -21439,7 +21439,7 @@ snapshots:
       expr-eval: 2.0.2
       flat: 5.0.2
       js-yaml: 4.1.0
-      langchain: 0.3.35(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(axios@1.12.2)(handlebars@4.7.8)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)
+      langchain: 0.3.35(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(axios@1.12.2)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(ws@8.19.0)
       langsmith: 0.3.72(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
       openai: 5.12.2(ws@8.19.0)(zod@3.25.76)
       uuid: 10.0.0
@@ -21448,14 +21448,10 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-s3': 3.901.0
       '@aws-sdk/credential-provider-node': 3.901.0
-      '@browserbasehq/sdk': 2.6.0
       '@mendable/firecrawl-js': 4.5.0
       '@smithy/util-utf8': 2.3.0
       fast-xml-parser: 5.2.5
       html-to-text: 9.0.5
-      ignore: 5.3.2
-      jsdom: 27.3.0(canvas@3.2.0)(postcss@8.5.6)
-      lodash: 4.17.21
       pg: 8.16.3
       weaviate-client: 3.9.0
       ws: 8.19.0
@@ -21511,7 +21507,7 @@ snapshots:
       '@langchain/core': 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
       uuid: 10.0.0
 
-  '@langchain/langgraph-sdk@0.0.112(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@langchain/langgraph-sdk@0.0.112(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))':
     dependencies:
       '@types/json-schema': 7.0.15
       p-queue: 6.6.2
@@ -21519,14 +21515,12 @@ snapshots:
       uuid: 9.0.1
     optionalDependencies:
       '@langchain/core': 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
 
-  '@langchain/langgraph@0.3.12(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(zod-to-json-schema@3.24.6(zod@3.25.76))':
+  '@langchain/langgraph@0.3.12(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod-to-json-schema@3.24.6(zod@3.25.76))':
     dependencies:
       '@langchain/core': 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
       '@langchain/langgraph-checkpoint': 0.0.18(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))
-      '@langchain/langgraph-sdk': 0.0.112(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@langchain/langgraph-sdk': 0.0.112(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))
       uuid: 10.0.0
       zod: 3.25.76
     optionalDependencies:
@@ -21787,6 +21781,12 @@ snapshots:
       - bare-buffer
       - react-native-b4a
       - supports-color
+
+  '@react-email/render@1.1.2':
+    dependencies:
+      html-to-text: 9.0.5
+      prettier: 3.6.2
+      react-promise-suspense: 0.3.4
 
   '@react-email/render@1.1.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
@@ -23305,6 +23305,14 @@ snapshots:
     optionalDependencies:
       vite: 7.1.9(@types/node@20.19.19)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
 
+  '@vitest/mocker@3.2.4(vite@7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@vitest/spy': 3.2.4
+      estree-walker: 3.0.3
+      magic-string: 0.30.19
+    optionalDependencies:
+      vite: 7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1)
+
   '@vitest/mocker@3.2.4(vite@7.1.9(@types/node@24.0.15)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
       '@vitest/spy': 3.2.4
@@ -23361,7 +23369,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.19)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.3.0(canvas@3.2.0)(postcss@8.5.6))(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+      vitest: 3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(tsx@4.20.6)(yaml@2.8.1)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -27179,7 +27187,7 @@ snapshots:
 
   kolorist@1.8.0: {}
 
-  langchain@0.3.35(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(axios@1.12.2)(handlebars@4.7.8)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(ws@8.19.0):
+  langchain@0.3.35(@langchain/anthropic@0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76))(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(@langchain/google-genai@1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))))(axios@1.12.2)(openai@5.12.2(ws@8.19.0)(zod@3.25.76))(ws@8.19.0):
     dependencies:
       '@langchain/core': 0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76))
       '@langchain/openai': 0.6.14(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(ws@8.19.0)
@@ -27197,7 +27205,6 @@ snapshots:
       '@langchain/anthropic': 0.3.33(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))(zod@3.25.76)
       '@langchain/google-genai': 1.0.3(@langchain/core@0.3.78(openai@5.12.2(ws@8.19.0)(zod@3.25.76)))
       axios: 1.12.2
-      handlebars: 4.7.8
     transitivePeerDependencies:
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
@@ -29443,6 +29450,13 @@ snapshots:
 
   requires-port@1.0.0: {}
 
+  resend@4.8.0:
+    dependencies:
+      '@react-email/render': 1.1.2
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
   resend@4.8.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
       '@react-email/render': 1.1.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -30695,6 +30709,27 @@ snapshots:
       - tsx
       - yaml
 
+  vite-node@3.2.4(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1):
+    dependencies:
+      cac: 6.7.14
+      debug: 4.4.3
+      es-module-lexer: 1.7.0
+      pathe: 2.0.3
+      vite: 7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - '@types/node'
+      - jiti
+      - less
+      - lightningcss
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
   vite-node@3.2.4(@types/node@24.0.15)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1):
     dependencies:
       cac: 6.7.14
@@ -30758,6 +30793,20 @@ snapshots:
       jiti: 2.6.1
       lightningcss: 1.30.1
       terser: 5.44.0
+      tsx: 4.20.6
+      yaml: 2.8.1
+
+  vite@7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1):
+    dependencies:
+      esbuild: 0.25.10
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.52.4
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 20.19.19
+      fsevents: 2.3.3
       tsx: 4.20.6
       yaml: 2.8.1
 
@@ -30888,6 +30937,48 @@ snapshots:
       '@types/node': 24.0.15
       '@vitest/ui': 3.2.4(vitest@3.2.4)
       jsdom: 27.3.0(canvas@3.2.0)(postcss@8.5.6)
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
+  vitest@3.2.4(@types/node@20.19.19)(@vitest/ui@3.2.4)(tsx@4.20.6)(yaml@2.8.1):
+    dependencies:
+      '@types/chai': 5.2.2
+      '@vitest/expect': 3.2.4
+      '@vitest/mocker': 3.2.4(vite@7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1))
+      '@vitest/pretty-format': 3.2.4
+      '@vitest/runner': 3.2.4
+      '@vitest/snapshot': 3.2.4
+      '@vitest/spy': 3.2.4
+      '@vitest/utils': 3.2.4
+      chai: 5.3.3
+      debug: 4.4.3
+      expect-type: 1.2.2
+      magic-string: 0.30.19
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 3.9.0
+      tinybench: 2.9.0
+      tinyexec: 0.3.2
+      tinyglobby: 0.2.15
+      tinypool: 1.1.1
+      tinyrainbow: 2.0.0
+      vite: 7.1.9(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1)
+      vite-node: 3.2.4(@types/node@20.19.19)(tsx@4.20.6)(yaml@2.8.1)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 20.19.19
+      '@vitest/ui': 3.2.4(vitest@3.2.4)
     transitivePeerDependencies:
       - jiti
       - less
