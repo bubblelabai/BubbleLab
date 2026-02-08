@@ -59,6 +59,12 @@ export const CapabilityMetadataSchema = z.object({
   tools: z.array(CapabilityToolDefSchema),
   systemPromptAddition: z.string().optional(),
   modelConfigOverride: CapabilityModelConfigOverrideSchema.optional(),
+  /**
+   * Short guidance for the main agent on when to delegate to this capability
+   * in multi-capability mode. E.g. "Delegate when the user asks to remember,
+   * save notes, or look up documents."
+   */
+  delegationHint: z.string().optional(),
   /** Hidden capabilities are registered for runtime use but not shown in the UI. */
   hidden: z.boolean().optional(),
 });
