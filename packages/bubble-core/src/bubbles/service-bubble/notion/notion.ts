@@ -1156,7 +1156,10 @@ export class NotionBubble<
     if (!credentials || typeof credentials !== 'object') {
       return undefined;
     }
-    return credentials[CredentialType.NOTION_OAUTH_TOKEN];
+    return (
+      credentials[CredentialType.NOTION_OAUTH_TOKEN] ??
+      credentials[CredentialType.NOTION_API]
+    );
   }
 
   protected async performAction(

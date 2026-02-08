@@ -6,6 +6,7 @@ import {
   slackOAuthMetadataSchema,
   airtableOAuthMetadataSchema,
   googleOAuthMetadataSchema,
+  notionOAuthMetadataSchema,
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
   credentialPreferencesSchema,
@@ -186,11 +187,18 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       credentialConfigurations: {},
     },
     [CredentialType.NOTION_OAUTH_TOKEN]: {
-      label: 'Notion',
+      label: 'Notion (OAuth)',
       description:
         'OAuth connection to your Notion workspace (pages, databases, search)',
       placeholder: '', // Not used for OAuth
       namePlaceholder: 'My Notion Connection',
+      credentialConfigurations: {},
+    },
+    [CredentialType.NOTION_API]: {
+      label: 'Notion (API Key)',
+      description: 'Internal Integration Token for Notion API access',
+      placeholder: 'ntn_...',
+      namePlaceholder: 'My Notion API Key',
       credentialConfigurations: {},
     },
     [CredentialType.GITHUB_TOKEN]: {
@@ -376,6 +384,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.AIRTABLE_CRED]: 'AIRTABLE_API_KEY',
   [CredentialType.AIRTABLE_OAUTH]: '', // OAuth credential, no env var
   [CredentialType.NOTION_OAUTH_TOKEN]: '',
+  [CredentialType.NOTION_API]: 'NOTION_API_KEY',
   [CredentialType.INSFORGE_BASE_URL]: 'INSFORGE_BASE_URL',
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
@@ -580,6 +589,9 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
         description:
           'Authorize access to your Notion workspace for searching and reading pages/databases',
       },
+    },
+    authorizationParams: {
+      owner: 'user',
     },
   },
   jira: {
@@ -1514,7 +1526,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   followupboss: [CredentialType.FUB_CRED],
   'agi-inc': [CredentialType.AGI_API_KEY],
   airtable: [CredentialType.AIRTABLE_CRED, CredentialType.AIRTABLE_OAUTH],
-  notion: [CredentialType.NOTION_OAUTH_TOKEN],
+  notion: [CredentialType.NOTION_OAUTH_TOKEN, CredentialType.NOTION_API],
   firecrawl: [CredentialType.FIRECRAWL_API_KEY],
   'insforge-db': [
     CredentialType.INSFORGE_BASE_URL,
@@ -1658,6 +1670,7 @@ export const credentialResponseSchema = z
         slackOAuthMetadataSchema,
         airtableOAuthMetadataSchema,
         googleOAuthMetadataSchema,
+        notionOAuthMetadataSchema,
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
         credentialPreferencesSchema,
@@ -1665,7 +1678,7 @@ export const credentialResponseSchema = z
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, NotionOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 

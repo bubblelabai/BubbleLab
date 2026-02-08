@@ -46,6 +46,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.AIRTABLE_CRED]: {},
   [CredentialType.AIRTABLE_OAUTH]: {},
   [CredentialType.NOTION_OAUTH_TOKEN]: {},
+  [CredentialType.NOTION_API]: {},
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},
