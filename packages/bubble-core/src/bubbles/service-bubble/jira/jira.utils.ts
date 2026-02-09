@@ -495,13 +495,20 @@ export function enhanceErrorMessage(
   // Try to parse JSON error
   try {
     const errorJson = JSON.parse(errorText);
-    if (errorJson.errorMessages && Array.isArray(errorJson.errorMessages)) {
-      message += `: ${errorJson.errorMessages.join(', ')}`;
-    } else if (errorJson.errors && typeof errorJson.errors === 'object') {
-      const errorDetails = Object.entries(errorJson.errors)
-        .map(([field, msg]) => `${field}: ${msg}`)
-        .join(', ');
-      message += `: ${errorDetails}`;
+    const errorMessages =
+      Array.isArray(errorJson.errorMessages) &&
+      errorJson.errorMessages.length > 0
+        ? errorJson.errorMessages.join(', ')
+        : '';
+    const fieldErrors =
+      errorJson.errors && typeof errorJson.errors === 'object'
+        ? Object.entries(errorJson.errors)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join(', ')
+        : '';
+
+    if (errorMessages || fieldErrors) {
+      message += `: ${[errorMessages, fieldErrors].filter(Boolean).join(' | ')}`;
     } else if (errorJson.message) {
       message += `: ${errorJson.message}`;
     }
