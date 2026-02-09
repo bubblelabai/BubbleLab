@@ -4,6 +4,7 @@ import type {
   SlackAppMentionEvent,
   SlackMessageEvent,
   SlackFile,
+  SlackThreadHistoryMessage,
 } from '@bubblelab/shared-schemas';
 
 /**
@@ -84,6 +85,11 @@ export function transformWebhookPayload(
       // Transform Slack app_mention event
       const slackBody = rawBody as SlackEventWrapper;
       const event = slackBody.event as SlackAppMentionEvent;
+      const threadHistories = (
+        rawBody as {
+          thread_histories?: SlackThreadHistoryMessage[];
+        }
+      ).thread_histories;
 
       const result: BubbleTriggerEventRegistry['slack/bot_mentioned'] = {
         ...basePayload,
@@ -93,6 +99,7 @@ export function transformWebhookPayload(
         text: event?.text,
         thread_ts: event?.thread_ts,
         files: event?.files as SlackFile[] | undefined,
+        thread_histories: threadHistories ?? [],
       };
       return result;
     }
@@ -101,6 +108,11 @@ export function transformWebhookPayload(
       // Transform Slack message event
       const slackBody = rawBody as SlackEventWrapper;
       const event = slackBody.event as SlackMessageEvent;
+      const threadHistories = (
+        rawBody as {
+          thread_histories?: SlackThreadHistoryMessage[];
+        }
+      ).thread_histories;
 
       const result: BubbleTriggerEventRegistry['slack/message_received'] = {
         ...basePayload,
@@ -111,6 +123,7 @@ export function transformWebhookPayload(
         channel_type: event?.channel_type,
         subtype: event?.subtype,
         files: event?.files as SlackFile[] | undefined,
+        thread_histories: threadHistories ?? [],
       };
       return result;
     }

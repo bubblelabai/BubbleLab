@@ -118,6 +118,22 @@ export interface SlackFile {
   permalink?: string;
 }
 
+/**
+ * Slack thread history message with user context
+ */
+export interface SlackThreadHistoryMessage {
+  /** Slack user ID or bot ID */
+  user_id: string;
+  /** User display name (best effort) */
+  name: string;
+  /** User timezone (best effort) */
+  timezone: string | null;
+  /** Message text */
+  message: string;
+  /** Private download URLs for images attached to the message */
+  image_url_private_downloads?: string[];
+}
+
 // Slack Event Wrapper (outer payload)
 export interface SlackEventWrapper {
   token: string;
@@ -189,6 +205,8 @@ export interface SlackMentionEvent extends BubbleTriggerEvent {
   thread_ts?: string;
   /** Files/images attached to the mention message */
   files?: SlackFile[];
+  /** Thread history messages, including current message for non-threaded events */
+  thread_histories: SlackThreadHistoryMessage[];
 }
 
 export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
@@ -204,6 +222,8 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   subtype?: string;
   /** Files/images attached to this message */
   files?: SlackFile[];
+  /** Thread history messages, including current message for non-threaded events */
+  thread_histories: SlackThreadHistoryMessage[];
 }
 
 // ============================================================================
@@ -329,6 +349,7 @@ Navigate to **OAuth & Permissions** and add these Bot Token Scopes:
 - \`im:history\` - To read direct messages
 - \`mpim:history\` - To read group direct messages
 - \`chat:write\` - To send messages
+- \`users:read\` - To look up user names and timezones
 
 ### 3. Enable Event Subscriptions
 1. Go to **Event Subscriptions**
@@ -406,6 +427,36 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
                 description: 'Permanent link to the file',
               },
             },
+          },
+        },
+        thread_histories: {
+          type: 'array',
+          description:
+            'Thread history messages including current message for non-threaded events',
+          items: {
+            type: 'object',
+            properties: {
+              user_id: {
+                type: 'string',
+                description: 'Slack user ID or bot ID',
+              },
+              name: {
+                type: 'string',
+                description: 'User display name (best effort)',
+              },
+              timezone: {
+                type: ['string', 'null'],
+                description: 'User timezone (best effort)',
+              },
+              message: { type: 'string', description: 'Message text' },
+              image_url_private_downloads: {
+                type: 'array',
+                description:
+                  'Private download URLs for images attached to the message',
+                items: { type: 'string' },
+              },
+            },
+            required: ['user_id', 'name', 'timezone', 'message'],
           },
         },
         slack_event: {
@@ -490,7 +541,7 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
           ],
         },
       },
-      required: ['text', 'channel', 'user', 'slack_event'],
+      required: ['text', 'channel', 'user', 'thread_histories', 'slack_event'],
     },
   },
   'slack/bot_mentioned': {
@@ -509,6 +560,7 @@ Navigate to **OAuth & Permissions** and add these Bot Token Scopes:
 - \`app_mentions:read\` - To receive mention events
 - \`chat:write\` - To send messages
 - \`channels:history\` - To read channel messages (optional)
+- \`users:read\` - To look up user names and timezones
 
 ### 3. Enable Event Subscriptions
 1. Go to **Event Subscriptions**
@@ -591,6 +643,36 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
             },
           },
         },
+        thread_histories: {
+          type: 'array',
+          description:
+            'Thread history messages including current message for non-threaded events',
+          items: {
+            type: 'object',
+            properties: {
+              user_id: {
+                type: 'string',
+                description: 'Slack user ID or bot ID',
+              },
+              name: {
+                type: 'string',
+                description: 'User display name (best effort)',
+              },
+              timezone: {
+                type: ['string', 'null'],
+                description: 'User timezone (best effort)',
+              },
+              message: { type: 'string', description: 'Message text' },
+              image_url_private_downloads: {
+                type: 'array',
+                description:
+                  'Private download URLs for images attached to the message',
+                items: { type: 'string' },
+              },
+            },
+            required: ['user_id', 'name', 'timezone', 'message'],
+          },
+        },
         slack_event: {
           type: 'object',
           description: 'Full Slack event wrapper',
@@ -662,7 +744,7 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
           ],
         },
       },
-      required: ['text', 'channel', 'user', 'slack_event'],
+      required: ['text', 'channel', 'user', 'thread_histories', 'slack_event'],
     },
   },
   'airtable/record_created': {
