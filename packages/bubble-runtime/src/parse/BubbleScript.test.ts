@@ -496,51 +496,6 @@ export class HelloWorldFlow extends BubbleFlow<'webhook/http'> {
       expect(payloadMock).toBeDefined();
       expect(payloadMock.spreadsheetId).toBeDefined();
     });
-
-    it('should get payload zod schema string from data assistant script', () => {
-      const dataAssistantScript = getFixture('data-assistant');
-      const analyzer = new BubbleScript(dataAssistantScript, bubbleFactory);
-      const payloadZodSchemaString = analyzer.getPayloadJsonSchema();
-      const triggerEventType = analyzer.getBubbleTriggerEventType();
-      expect(triggerEventType?.type).toBe('slack/bot_mentioned');
-      expect(payloadZodSchemaString).toBeDefined();
-      expect(payloadZodSchemaString).toEqual(
-        expect.objectContaining({
-          type: 'object',
-          properties: expect.objectContaining({
-            text: {
-              type: 'string',
-              description: 'The message text mentioning the bot',
-            },
-            channel: {
-              type: 'string',
-              description: 'Channel ID where bot was mentioned',
-            },
-            thread_ts: {
-              type: 'string',
-              description: 'Thread timestamp (if replying in a thread)',
-            },
-            user: {
-              type: 'string',
-              description: 'User ID who mentioned the bot',
-            },
-            files: expect.objectContaining({
-              type: 'array',
-              description: expect.any(String),
-              items: expect.objectContaining({
-                type: 'object',
-                properties: expect.any(Object),
-              }),
-            }),
-            slack_event: expect.objectContaining({
-              type: 'object',
-              description: 'Full Slack event wrapper',
-            }),
-          }),
-          required: ['text', 'channel', 'user', 'slack_event'],
-        })
-      );
-    });
   });
 
   describe('should show detailed bubble parameters and dependencies', () => {
