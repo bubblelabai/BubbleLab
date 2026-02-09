@@ -141,6 +141,22 @@ async function applyCapabilityResponseAppend(
   return result;
 }
 
+/**
+ * Detects conversation history that wasn't properly enhanced (e.g. Slack thread
+ * history fell back to raw user IDs instead of display names due to rate limits).
+ * Pattern: first user message starts with a Slack user ID like "U0831C0BXEX:"
+ */
+function hasUnenhancedConversationHistory(
+  history: AIAgentParamsParsed['conversationHistory']
+): boolean {
+  if (!history || history.length === 0) return false;
+  const firstUserMsg = history.find((m) => m.role === 'user');
+  if (!firstUserMsg) return false;
+  const name = firstUserMsg.content.split(':')[0]?.trim();
+  if (!name) return false;
+  return /^U[A-Z0-9]{8,12}$/.test(name);
+}
+
 function applyConversationHistoryNotice(
   result: AIAgentResult,
   params: AIAgentParamsParsed
@@ -153,12 +169,26 @@ function applyConversationHistoryNotice(
 
   const hasHistory =
     params.conversationHistory && params.conversationHistory.length > 0;
-  if (hasHistory) return result;
 
-  const notice =
-    '---\n💡 **Conversation History Not Available**\n\n' +
-    "I don't have access to our previous conversation or know what time it is for you, so I might ask you to repeat some information. " +
-    'To enable conversation history and make our chat more seamless, you can ask Pearl in Bubble Studio to add conversation history support to this bubble.';
+  let notice: string | null = null;
+
+  if (
+    hasHistory &&
+    hasUnenhancedConversationHistory(params.conversationHistory)
+  ) {
+    notice =
+      '---\n⚠️ **Conversation History Temporarily Unavailable**\n\n' +
+      "I couldn't remember your past conversation at the moment due to a rate limit. " +
+      'Please contact the Bubble Lab team if this issue persists.';
+  } else if (!hasHistory) {
+    notice =
+      '---\n💡 **Conversation History Not Available**\n\n' +
+      "I don't have access to our previous conversation or know what time it is for you, so I might ask you to repeat some information. " +
+      'To enable conversation history and make our chat more seamless, you can ask Pearl in Bubble Studio to add conversation history support to this bubble.';
+  }
+
+  if (!notice) return result;
+
   const separator = result.response?.trim().length ? '\n\n' : '';
   return {
     ...result,
