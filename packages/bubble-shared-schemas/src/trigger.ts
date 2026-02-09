@@ -320,6 +320,10 @@ export interface TriggerEventConfig {
   setupGuide: string;
   /** JSON Schema for the payload */
   payloadSchema: JsonSchema;
+  /** Credential type required for this trigger (checked via triggerCredentialId) */
+  requiredCredentialType?: string;
+  /** defaultInputs keys that must be non-empty for the trigger to be "ready" */
+  requiredConfigFields?: string[];
 }
 
 /**
@@ -335,6 +339,8 @@ export const TRIGGER_EVENT_CONFIGS: Record<
     friendlyName: 'When Slack message is received',
     description:
       'Triggered when a message is posted in a channel your bot has access to',
+    requiredCredentialType: 'SLACK_CRED',
+    requiredConfigFields: ['slack_active_channels'],
     setupGuide: `## Slack Message Event Setup Guide
 
 ### 1. Create a Slack App
@@ -548,6 +554,8 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
     serviceName: 'Slack',
     friendlyName: 'When Slack bot is mentioned',
     description: 'Triggered when someone mentions your bot in a Slack channel',
+    requiredCredentialType: 'SLACK_CRED',
+    requiredConfigFields: ['slack_active_channels'],
     setupGuide: `## Slack Bot Setup Guide
 
 ### 1. Create a Slack App
@@ -751,6 +759,8 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
     serviceName: 'Airtable',
     friendlyName: 'When Airtable record is created',
     description: 'Triggered when a new record is created in an Airtable base',
+    requiredCredentialType: 'AIRTABLE_OAUTH',
+    requiredConfigFields: ['airtable_base_id'],
     setupGuide: `## Airtable Record Created Setup Guide
 
 ### 1. Connect Your Airtable Account
@@ -790,6 +800,8 @@ The payload includes:
     serviceName: 'Airtable',
     friendlyName: 'When Airtable record is updated',
     description: 'Triggered when a record is updated in an Airtable base',
+    requiredCredentialType: 'AIRTABLE_OAUTH',
+    requiredConfigFields: ['airtable_base_id'],
     setupGuide: `## Airtable Record Updated Setup Guide
 
 ### 1. Connect Your Airtable Account
@@ -827,6 +839,8 @@ The payload includes:
     serviceName: 'Airtable',
     friendlyName: 'When Airtable record is deleted',
     description: 'Triggered when a record is deleted from an Airtable base',
+    requiredCredentialType: 'AIRTABLE_OAUTH',
+    requiredConfigFields: ['airtable_base_id'],
     setupGuide: `## Airtable Record Deleted Setup Guide
 
 ### 1. Connect Your Airtable Account
