@@ -10,6 +10,11 @@ export abstract class BubbleFlow<
   public readonly description: string;
   protected logger?: BubbleLogger;
   private __currentInvocationCallSiteKey?: string;
+  __executionMeta__?: {
+    flowId?: number;
+    executionId?: number;
+    studioBaseUrl?: string;
+  };
 
   /**
    * Cron schedule expression for schedule/cron event types.
