@@ -42,6 +42,11 @@ export interface BubbleRunnerOptions {
   useWebhookLogger?: boolean;
   pricingTable: Record<string, { unit: string; unitCost: number }>;
   userCredentialMapping?: Map<number, Set<CredentialType>>;
+  executionMeta?: {
+    flowId?: number;
+    executionId?: number;
+    studioBaseUrl?: string;
+  };
 }
 
 export class BubbleRunner {
@@ -477,6 +482,11 @@ export class BubbleRunner {
       // Instantiate the flow class with logger
       // Note: We need to determine the constructor parameters from the class
       const flowInstance = this.instantiateFlowClass(FlowClass);
+
+      // Attach execution metadata so generated code can thread it into BubbleContext
+      if (this.options.executionMeta) {
+        (flowInstance as any).__executionMeta__ = this.options.executionMeta;
+      }
 
       // Ensure the logger is set on the flow instance
       if (this.logger) {

@@ -1385,16 +1385,13 @@ Comprehensive Slack integration for messaging and workspace management.
   protected async performAction(
     context?: BubbleContext
   ): Promise<Extract<SlackResult, { operation: T['operation'] }>> {
-    // Context is available but not currently used in this implementation
-    void context;
-
     const { operation } = this.params;
 
     try {
       const result = await (async (): Promise<SlackResult> => {
         switch (operation) {
           case 'send_message':
-            return await this.sendMessage(this.params);
+            return await this.sendMessage(this.params, context);
           case 'list_channels':
             return await this.listChannels(this.params);
           case 'get_channel_info':
@@ -1502,8 +1499,36 @@ Comprehensive Slack integration for messaging and workspace management.
   // Slack's maximum blocks per message
   private static readonly MAX_BLOCKS_PER_MESSAGE = 50;
 
+  /**
+   * Build "Powered by BubbleLab" footer blocks from execution metadata.
+   * Returns empty array if no metadata is available.
+   */
+  private static buildFooterBlocks(executionMeta?: {
+    flowId?: number;
+    executionId?: number;
+    studioBaseUrl?: string;
+  }): Record<string, unknown>[] {
+    if (!executionMeta?.studioBaseUrl || !executionMeta?.flowId) {
+      return [];
+    }
+    const viewUrl = `${executionMeta.studioBaseUrl}/flow/${executionMeta.flowId}${executionMeta.executionId != null ? `?executionId=${executionMeta.executionId}` : ''}`;
+    return [
+      { type: 'divider' },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `Powered by <https://bubblelab.ai|BubbleLab> · <${viewUrl}|View execution>`,
+          },
+        ],
+      },
+    ];
+  }
+
   private async sendMessage(
-    params: Extract<SlackParams, { operation: 'send_message' }>
+    params: Extract<SlackParams, { operation: 'send_message' }>,
+    context?: BubbleContext
   ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
     const {
       channel,
@@ -1533,6 +1558,12 @@ Comprehensive Slack integration for messaging and workspace management.
       finalText = text;
     }
 
+    // Build "Powered by BubbleLab" footer from execution metadata
+    const executionMeta = context?.executionMeta as
+      | { flowId?: number; executionId?: number; studioBaseUrl?: string }
+      | undefined;
+    const footerBlocks = SlackBubble.buildFooterBlocks(executionMeta);
+
     // If we have more than 50 blocks, split into multiple messages
     if (
       finalBlocks &&
@@ -1551,8 +1582,26 @@ Comprehensive Slack integration for messaging and workspace management.
           reply_broadcast,
           unfurl_links,
           unfurl_media,
-        }
+        },
+        footerBlocks
       );
+    }
+
+    // Append footer blocks to the message
+    if (footerBlocks.length > 0) {
+      if (finalBlocks) {
+        // Append footer to existing blocks
+        finalBlocks = [...finalBlocks, ...footerBlocks] as typeof finalBlocks;
+      } else if (finalText) {
+        // Plain text message — convert to section block + footer
+        finalBlocks = [
+          {
+            type: 'section',
+            text: { type: 'mrkdwn', text: finalText },
+          },
+          ...footerBlocks,
+        ] as unknown as typeof blocks;
+      }
     }
 
     const body: Record<string, unknown> = {
@@ -1610,7 +1659,8 @@ Comprehensive Slack integration for messaging and workspace management.
       reply_broadcast?: boolean;
       unfurl_links?: boolean;
       unfurl_media?: boolean;
-    }
+    },
+    footerBlocks: Record<string, unknown>[] = []
   ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
     // Split blocks into chunks of 50
     const blockChunks: (typeof blocks)[] = [];
@@ -1630,7 +1680,12 @@ Comprehensive Slack integration for messaging and workspace management.
     const errors: string[] = [];
 
     for (let chunkIndex = 0; chunkIndex < blockChunks.length; chunkIndex++) {
-      const chunk = blockChunks[chunkIndex];
+      const isLastChunk = chunkIndex === blockChunks.length - 1;
+      // Append footer blocks to the last chunk
+      const chunk =
+        isLastChunk && footerBlocks.length > 0
+          ? ([...blockChunks[chunkIndex], ...footerBlocks] as typeof blocks)
+          : blockChunks[chunkIndex];
       const isFirstChunk = chunkIndex === 0;
 
       const body: Record<string, unknown> = {
