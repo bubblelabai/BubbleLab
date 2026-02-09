@@ -9,8 +9,10 @@ export type CapabilityId =
   | 'knowledge-base'
   | 'google-doc-knowledge-base'
   | 'data-analyst'
+  | 'chart-maker'
+  | 'gmail-assistant'
   | 'google-calendar'
-  | 'gmail-assistant';
+  | 'jira-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
