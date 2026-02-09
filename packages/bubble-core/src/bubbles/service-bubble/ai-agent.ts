@@ -579,7 +579,7 @@ export class AIAgentBubble extends ServiceBubble<
       timeZone: 'UTC',
       timeZoneName: 'short',
     });
-    this.params.systemPrompt = `${this.params.systemPrompt}\n\nCurrent time: ${now}`;
+    this.params.systemPrompt = `${this.params.systemPrompt}\n\n**System time:** ${now}`;
 
     // Apply capability model overrides and system prompt injections
     await applyCapabilityPreprocessing(
@@ -1155,7 +1155,7 @@ export class AIAgentBubble extends ServiceBubble<
             task: z
               .string()
               .describe(
-                'Clear description of what to do. Include any relevant context from the conversation.'
+                'Clear description of what to do. Include any relevant context from the conversation. Always include information about the users timezone and current time.'
               ),
           }),
           func: async (input: Record<string, unknown>) => {
@@ -1170,6 +1170,7 @@ export class AIAgentBubble extends ServiceBubble<
               {
                 message: task,
                 systemPrompt: '', // capability's systemPrompt fills this via beforeAction
+                name: `Capability Agent: ${capDef.metadata.name}`,
                 model: { ...this.params.model },
                 capabilities: [capConfig], // single cap = eager load in sub-agent
                 credentials: this.params.credentials,

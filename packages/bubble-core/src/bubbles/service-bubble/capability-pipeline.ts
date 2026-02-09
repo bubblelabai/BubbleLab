@@ -64,7 +64,7 @@ export async function applyCapabilityPreprocessing(
       })
       .filter((summary): summary is string => Boolean(summary));
 
-    params.systemPrompt += `\n\n---\nSYSTEM CAPABILITY EXTENSIONS:\nMultiple specialized capabilities are available. You MUST delegate to them using the 'use-capability' tool.\n\nAvailable Capabilities:\n${summaries.join('\n\n')}\n\nDELEGATION RULES:\n- Use 'use-capability' tool to delegate tasks to the appropriate capability\n- Do NOT attempt to handle capability tasks yourself\n- Include full context when delegating\n- Can chain multiple capabilities if needed\n- Only respond directly for: greetings, clarifications, or tasks outside all capabilities\n---\n\nYour role is to understand the user's request and delegate to the appropriate capability or respond directly when appropriate.`;
+    params.systemPrompt += `\n\n---\nSYSTEM CAPABILITY EXTENSIONS:\nMultiple specialized capabilities are available. You MUST delegate to them using the 'use-capability' tool.\n\nAvailable Capabilities:\n${summaries.join('\n\n')}\n\nDELEGATION RULES:\n- Use 'use-capability' tool to delegate tasks to the appropriate capability\n- Do NOT attempt to handle capability tasks yourself\n- Include full context when delegating, including all known user details and preferences from context (especially timezone)\n- Can chain multiple capabilities if needed\n- Only respond directly for: greetings, clarifications, or tasks outside all capabilities\n---\n\nYour role is to understand the user's request and delegate to the appropriate capability or respond directly when appropriate.`;
   } else {
     // Single or zero capabilities: eager load as before
     for (const capConfig of caps) {
@@ -146,7 +146,10 @@ function applyConversationHistoryNotice(
   params: AIAgentParamsParsed
 ): AIAgentResult {
   const caps = params.capabilities ?? [];
-  if (caps.length === 0) return result;
+  // Show for any capability-enabled main agent, not delegated sub-agents
+  if (caps.length === 0 || params.name?.startsWith('Capability Agent: ')) {
+    return result;
+  }
 
   const hasHistory =
     params.conversationHistory && params.conversationHistory.length > 0;
