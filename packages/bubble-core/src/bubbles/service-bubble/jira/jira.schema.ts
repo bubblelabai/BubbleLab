@@ -307,6 +307,13 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
 
     due_date: z.string().optional().describe('Due date in YYYY-MM-DD format'),
 
+    custom_fields: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        'Custom field values as { fieldId: value } (e.g., { "customfield_10319": "Hardware" })'
+      ),
+
     credentials: credentialsField,
   }),
 

@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/bubble-runtime",
-  "version": "0.1.135",
+  "version": "0.1.136",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",

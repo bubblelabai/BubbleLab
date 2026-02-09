@@ -517,6 +517,7 @@ export class JiraBubble<
       labels,
       parent,
       due_date,
+      custom_fields,
     } = params;
 
     const fields: Record<string, unknown> = {
@@ -550,6 +551,12 @@ export class JiraBubble<
       const normalizedDate = normalizeDate(due_date);
       if (normalizedDate) {
         fields.duedate = normalizedDate;
+      }
+    }
+
+    if (custom_fields) {
+      for (const [fieldId, value] of Object.entries(custom_fields)) {
+        fields[fieldId] = value;
       }
     }
 
