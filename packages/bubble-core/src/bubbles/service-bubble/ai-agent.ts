@@ -608,19 +608,19 @@ export class AIAgentBubble extends ServiceBubble<
     if (caps.length > 1) {
       // Multi-capability: summaries with tool names + delegation hints — sub-agents get full prompts
       const summaries = caps
-        .map((c) => {
+        .map((c, idx) => {
           const def = getCapability(c.id);
           if (!def) return null;
           const toolNames = def.metadata.tools.map((t) => t.name).join(', ');
-          let summary = `- "${def.metadata.name}" (id: ${c.id}): ${def.metadata.description}`;
-          if (toolNames) summary += `\n  Tools: ${toolNames}`;
+          let summary = `${idx + 1}. "${def.metadata.name}" (id: ${c.id})\n   Purpose: ${def.metadata.description}`;
+          if (toolNames) summary += `\n   Tools: ${toolNames}`;
           if (def.metadata.delegationHint)
-            summary += `\n  When to use: ${def.metadata.delegationHint}`;
+            summary += `\n   When to use: ${def.metadata.delegationHint}`;
           return summary;
         })
         .filter(Boolean);
 
-      this.params.systemPrompt += `\n\nYou have the following capabilities. You MUST use the 'use-capability' tool to delegate tasks to them — NEVER handle a capability-related request yourself.\n${summaries.join('\n')}\n\nRULES:\n- ALWAYS call use-capability when the user's request could be handled by a capability. Do NOT respond directly.\n- Include all relevant context from the conversation in the task description.\n- You can call multiple capabilities in sequence if needed.\n- When in doubt, delegate — the capability will decide if it can help.\n- Only respond directly for greetings, clarifying questions, or requests that clearly don't match any capability.`;
+      this.params.systemPrompt += `\n\n---\nSYSTEM CAPABILITY EXTENSIONS:\nMultiple specialized capabilities are available. You MUST delegate to them using the 'use-capability' tool.\n\nAvailable Capabilities:\n${summaries.join('\n\n')}\n\nDELEGATION RULES:\n- Use 'use-capability' tool to delegate tasks to the appropriate capability\n- Do NOT attempt to handle capability tasks yourself\n- Include full context when delegating\n- Can chain multiple capabilities if needed\n- Only respond directly for: greetings, clarifications, or tasks outside all capabilities\n---\n\nYour role is to understand the user's request and delegate to the appropriate capability or respond directly when appropriate.`;
     } else {
       // Single or zero capabilities: eager load as before
       for (const capConfig of caps) {
@@ -638,7 +638,7 @@ export class AIAgentBubble extends ServiceBubble<
           capDef.metadata.systemPromptAddition;
 
         if (addition) {
-          this.params.systemPrompt = `${this.params.systemPrompt}\n\n${addition}`;
+          this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\nSYSTEM CAPABILITY EXTENSION:\nThe following capability has been added to enhance your functionality:\n\n[${capDef.metadata.name}]\n${addition}\n---\n\nYour primary objective is to fulfill the user's request using both your base capabilities and the extended capability above.`;
         }
       }
     }

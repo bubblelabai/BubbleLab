@@ -8,7 +8,9 @@ import { CredentialType, type BubbleName } from './types.js';
 export type CapabilityId =
   | 'knowledge-base'
   | 'google-doc-knowledge-base'
-  | 'data-analyst';
+  | 'data-analyst'
+  | 'google-calendar'
+  | 'gmail-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.

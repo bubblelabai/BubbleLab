@@ -41,10 +41,18 @@ export function markdownToHtml(text: string): string {
   html = html.replace(/(?<!\w)_(.+?)_(?!\w)/g, '<em>$1</em>');
 
   // Images ![alt](url) — must come before links
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+  // Updated regex to handle URLs with parentheses: matches ) only if followed by non-whitespace (i.e., still inside URL)
+  html = html.replace(
+    /!\[([^\]]*)\]\(((?:[^)]|\)(?=[^\s]))+)\)/g,
+    '<img src="$2" alt="$1">'
+  );
 
   // Links [text](url)
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Updated regex to handle URLs with parentheses: matches ) only if followed by non-whitespace (i.e., still inside URL)
+  html = html.replace(
+    /\[([^\]]+)\]\(((?:[^)]|\)(?=[^\s]))+)\)/g,
+    '<a href="$2">$1</a>'
+  );
 
   // Unordered lists (- or * at start of line)
   html = html.replace(/(?:^[\t ]*[-*]\s+.+$\n?)+/gm, (block) => {
