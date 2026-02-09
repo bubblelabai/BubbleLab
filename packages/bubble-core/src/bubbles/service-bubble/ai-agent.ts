@@ -42,6 +42,10 @@ import {
   getCapability,
   type CapabilityRuntimeContext,
 } from '../../capabilities/index.js';
+import {
+  applyCapabilityPostprocessing,
+  applyCapabilityPreprocessing,
+} from './capability-pipeline.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -398,7 +402,7 @@ const AIAgentResultSchema = z.object({
     .describe('Whether the agent execution completed successfully'),
 });
 
-type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
+export type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   // Optional hooks for intercepting tool calls
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
@@ -406,14 +410,14 @@ type AIAgentParams = z.input<typeof AIAgentParamsSchema> & {
   afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
-type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
+export type AIAgentParamsParsed = z.output<typeof AIAgentParamsSchema> & {
   beforeToolCall?: ToolHookBefore;
   afterToolCall?: ToolHookAfter;
   afterLLMCall?: AfterLLMCallHook;
   streamingCallback?: StreamingCallback;
 };
 
-type AIAgentResult = z.output<typeof AIAgentResultSchema>;
+export type AIAgentResult = z.output<typeof AIAgentResultSchema>;
 
 export class AIAgentBubble extends ServiceBubble<
   AIAgentParamsParsed,
@@ -577,103 +581,12 @@ export class AIAgentBubble extends ServiceBubble<
     });
     this.params.systemPrompt = `${this.params.systemPrompt}\n\nCurrent time: ${now}`;
 
-    // Apply capability model config overrides
-    const caps = this.params.capabilities ?? [];
-    if (caps.length > 1) {
-      // Multi-capability delegator: use Gemini 3 Pro for reliable tool-calling / routing.
-      // Sub-agents apply their own modelConfigOverride in single-cap mode.
-      this.params.model.model =
-        RECOMMENDED_MODELS.BEST as typeof this.params.model.model;
-      this.params.model.reasoningEffort = undefined;
-    } else {
-      // Single-cap: apply that capability's model override directly
-      for (const capConfig of caps) {
-        const capDef = getCapability(capConfig.id);
-        const override = capDef?.metadata.modelConfigOverride;
-        if (!override) continue;
-        if (override.model)
-          this.params.model.model =
-            override.model as typeof this.params.model.model;
-        if (override.reasoningEffort)
-          this.params.model.reasoningEffort = override.reasoningEffort;
-        if (override.maxTokens)
-          this.params.model.maxTokens = Math.max(
-            this.params.model.maxTokens ?? 0,
-            override.maxTokens
-          );
-      }
-    }
-
-    // Inject capability system prompts
-    if (caps.length > 1) {
-      // Multi-capability: summaries with tool names + delegation hints — sub-agents get full prompts
-      const summaries = caps
-        .map((c, idx) => {
-          const def = getCapability(c.id);
-          if (!def) return null;
-          const toolNames = def.metadata.tools.map((t) => t.name).join(', ');
-          let summary = `${idx + 1}. "${def.metadata.name}" (id: ${c.id})\n   Purpose: ${def.metadata.description}`;
-          if (toolNames) summary += `\n   Tools: ${toolNames}`;
-          if (def.metadata.delegationHint)
-            summary += `\n   When to use: ${def.metadata.delegationHint}`;
-          return summary;
-        })
-        .filter(Boolean);
-
-      this.params.systemPrompt += `\n\n---\nSYSTEM CAPABILITY EXTENSIONS:\nMultiple specialized capabilities are available. You MUST delegate to them using the 'use-capability' tool.\n\nAvailable Capabilities:\n${summaries.join('\n\n')}\n\nDELEGATION RULES:\n- Use 'use-capability' tool to delegate tasks to the appropriate capability\n- Do NOT attempt to handle capability tasks yourself\n- Include full context when delegating\n- Can chain multiple capabilities if needed\n- Only respond directly for: greetings, clarifications, or tasks outside all capabilities\n---\n\nYour role is to understand the user's request and delegate to the appropriate capability or respond directly when appropriate.`;
-    } else {
-      // Single or zero capabilities: eager load as before
-      for (const capConfig of caps) {
-        const capDef = getCapability(capConfig.id);
-        if (!capDef) continue;
-
-        const ctx: CapabilityRuntimeContext = {
-          credentials: this.resolveCapabilityCredentials(capDef, capConfig),
-          inputs: capConfig.inputs ?? {},
-          bubbleContext: this.context,
-        };
-
-        const addition =
-          (await capDef.createSystemPrompt?.(ctx)) ??
-          capDef.metadata.systemPromptAddition;
-
-        if (addition) {
-          this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\nSYSTEM CAPABILITY EXTENSION:\nThe following capability has been added to enhance your functionality:\n\n[${capDef.metadata.name}]\n${addition}\n---\n\nYour primary objective is to fulfill the user's request using both your base capabilities and the extended capability above.`;
-        }
-      }
-    }
-  }
-
-  /** Appends text from capability responseAppend factories to the final response. */
-  private async applyCapabilityResponseAppend(
-    result: AIAgentResult
-  ): Promise<AIAgentResult> {
-    const caps = this.params.capabilities ?? [];
-    // Multi-cap: sub-agents handle their own responseAppend
-    if (caps.length > 1) return result;
-
-    const appendParts: string[] = [];
-    for (const capConfig of caps) {
-      const capDef = getCapability(capConfig.id);
-      if (!capDef?.createResponseAppend) continue;
-
-      const ctx: CapabilityRuntimeContext = {
-        credentials: this.resolveCapabilityCredentials(capDef, capConfig),
-        inputs: capConfig.inputs ?? {},
-        bubbleContext: this.context,
-      };
-
-      const text = await capDef.createResponseAppend(ctx);
-      if (text) appendParts.push(text);
-    }
-
-    if (appendParts.length > 0) {
-      return {
-        ...result,
-        response: `${result.response}\n\n${appendParts.join('\n\n')}`,
-      };
-    }
-    return result;
+    // Apply capability model overrides and system prompt injections
+    await applyCapabilityPreprocessing(
+      this.params,
+      this.context,
+      this.resolveCapabilityCredentials.bind(this)
+    );
   }
 
   protected async performAction(
@@ -700,7 +613,12 @@ export class AIAgentBubble extends ServiceBubble<
 
       // Append capability response additions (e.g. tips, blurbs)
       if (result.success) {
-        result = await this.applyCapabilityResponseAppend(result);
+        result = await applyCapabilityPostprocessing(
+          result,
+          this.params,
+          this.context,
+          this.resolveCapabilityCredentials.bind(this)
+        );
       }
 
       return result;
