@@ -19,6 +19,10 @@ import {
   LinkedInJobSchema,
 } from './actors/linkedin-jobs-scraper.js';
 import {
+  LinkedInProfileDetailInputSchema,
+  LinkedInProfileDetailOutputSchema,
+} from './actors/linkedin-profile-detail.js';
+import {
   YouTubeScraperInputSchema,
   YouTubeVideoSchema,
 } from './actors/youtube-scraper.js';
@@ -93,6 +97,14 @@ export const APIFY_ACTOR_SCHEMAS = {
     description: 'Scrape LinkedIn job postings with detailed information',
     documentation: 'https://apify.com/curious_coder/linkedin-jobs-scraper',
     category: 'jobs',
+  },
+  'harvestapi/linkedin-profile-scraper': {
+    input: LinkedInProfileDetailInputSchema,
+    output: LinkedInProfileDetailOutputSchema,
+    description:
+      'Scrape LinkedIn profile details from a profile URL - name, headline, experience, education, skills, and more',
+    documentation: 'https://apify.com/harvestapi/linkedin-profile-scraper',
+    category: 'social-media',
   },
   'clockworks/tiktok-scraper': {
     input: TikTokScraperInputSchema,

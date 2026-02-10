@@ -191,6 +191,7 @@ export class ApifyBubble<T extends string = string> extends ServiceBubble<
     Integrated Actors, use them through instagram-tool, reddit-tool, linkedin-tool, youtube-tool, tiktok-tool, twitter-tool, google-maps-tool, etc, not directly:
     - apify/instagram-scraper - Instagram posts, profiles, hashtags
     - apify/instagram-hashtag-scraper - Instagram hashtag posts
+    - harvestapi/linkedin-profile-scraper - LinkedIn profile details (name, experience, education, skills)
     - apimaestro/linkedin-profile-posts - LinkedIn profile posts and activity
     - apimaestro/linkedin-posts-search-scraper-no-cookies - Search LinkedIn posts by keyword
     - curious_coder/linkedin-jobs-scraper - LinkedIn job postings
