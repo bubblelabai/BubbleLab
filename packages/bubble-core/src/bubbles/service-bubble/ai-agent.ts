@@ -587,6 +587,19 @@ export class AIAgentBubble extends ServiceBubble<
       this.context,
       this.resolveCapabilityCredentials.bind(this)
     );
+
+    // Auto-inject trigger conversation history if no explicit conversationHistory was provided
+    // This enables Slack thread context to automatically flow into AI agents
+    if (
+      !this.params.conversationHistory?.length &&
+      this.context?.triggerConversationHistory
+    ) {
+      this.params.conversationHistory = this.context
+        .triggerConversationHistory as Array<{
+        role: 'user' | 'assistant';
+        content: string;
+      }>;
+    }
   }
 
   protected async performAction(

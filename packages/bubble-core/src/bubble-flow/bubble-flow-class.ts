@@ -15,6 +15,7 @@ export abstract class BubbleFlow<
     executionId?: number;
     studioBaseUrl?: string;
   };
+  __triggerConversationHistory__?: Array<{ role: string; content: string }>;
 
   /**
    * Cron schedule expression for schedule/cron event types.
