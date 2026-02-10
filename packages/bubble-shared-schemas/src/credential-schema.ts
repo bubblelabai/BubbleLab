@@ -329,14 +329,6 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Stripe API Key',
       credentialConfigurations: {},
     },
-    [CredentialType.PROXY_CRED]: {
-      label: 'Proxy',
-      description:
-        'Proxy server for browser automation (server, username, password). Base64-encoded JSON.',
-      placeholder: 'http://proxy.example.com:8080',
-      namePlaceholder: 'My Proxy',
-      credentialConfigurations: {},
-    },
     [CredentialType.CONFLUENCE_CRED]: {
       label: 'Confluence',
       description:
@@ -403,7 +395,6 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
   [CredentialType.LINKEDIN_CRED]: '', // Browser session credential, no env var
-  [CredentialType.PROXY_CRED]: '', // Proxy credential (base64 JSON), no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
@@ -439,7 +430,6 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CUSTOM_AUTH_KEY,
   CredentialType.FULLENRICH_API_KEY,
-  CredentialType.PROXY_CRED, // Optional for BrowserBase - use when proxy needed
   CredentialType.CREDENTIAL_WILDCARD, // Wildcard means any credential is accepted, so it's always optional
 ]);
 
@@ -1425,11 +1415,10 @@ export type CredentialOptions = Partial<Record<CredentialType, string>>;
 export type BubbleCredentialOption = CredentialType[];
 
 /**
- * Optional credentials shared by all BrowserBase tools (proxy, R2 for session storage).
+ * Optional credentials shared by all BrowserBase tools (R2 for session storage).
  * Add to any tool that uses BrowserBase to avoid repeating per-tool.
  */
 export const BROWSERBASE_OPTIONAL_CREDENTIALS: CredentialType[] = [
-  CredentialType.PROXY_CRED,
   CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
   CredentialType.CLOUDFLARE_R2_SECRET_KEY,
   CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
@@ -1585,6 +1574,10 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
     ...BROWSERBASE_OPTIONAL_CREDENTIALS,
   ],
   'linkedin-received-invitations-tool': [
+    CredentialType.LINKEDIN_CRED,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
+  ],
+  'linkedin-accept-invitations-tool': [
     CredentialType.LINKEDIN_CRED,
     ...BROWSERBASE_OPTIONAL_CREDENTIALS,
   ],
@@ -1790,6 +1783,23 @@ export const browserbaseSessionCreateRequestSchema = z
       description: 'User-friendly name for the credential',
       example: 'My Amazon Account',
     }),
+    proxy: z
+      .object({
+        server: z.string().describe('Proxy server URL'),
+        username: z
+          .string()
+          .optional()
+          .describe('Proxy authentication username'),
+        password: z
+          .string()
+          .optional()
+          .describe('Proxy authentication password'),
+      })
+      .optional()
+      .openapi({
+        description:
+          'Optional proxy to attach to the session (login browser will use it)',
+      }),
   })
   .openapi('BrowserbaseSessionCreateRequest');
 

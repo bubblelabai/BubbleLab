@@ -1,7 +1,10 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer-core';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  BROWSER_SESSION_PROVIDERS,
+} from '@bubblelab/shared-schemas';
 import {
   BrowserBaseParamsSchema,
   BrowserBaseResultSchema,
@@ -267,38 +270,11 @@ export class BrowserBaseBubble<
   }
 
   /**
-   * Parse PROXY_CRED credential (base64 JSON: { server, username?, password? })
-   * Returns external proxy config for BrowserBase API or null if invalid
+   * Normalize proxy server to valid URL (BrowserBase requires http/https)
    */
-  private parseProxyCredential(
-    credentialValue: string
-  ): Record<string, unknown> | null {
-    try {
-      const jsonString = Buffer.from(credentialValue, 'base64').toString(
-        'utf-8'
-      );
-      const parsed = JSON.parse(jsonString) as {
-        server?: string;
-        username?: string;
-        password?: string;
-      };
-      if (!parsed?.server || typeof parsed.server !== 'string') {
-        return null;
-      }
-      const config: Record<string, unknown> = {
-        type: 'external',
-        server: parsed.server,
-      };
-      if (parsed.username) {
-        config.username = parsed.username;
-      }
-      if (parsed.password) {
-        config.password = parsed.password;
-      }
-      return config;
-    } catch {
-      return null;
-    }
+  private normalizeProxyServer(server: string): string {
+    const s = server.trim();
+    return /^https?:\/\//i.test(s) ? s : `http://${s}`;
   }
 
   /**
@@ -332,7 +308,7 @@ export class BrowserBaseBubble<
         // External proxy
         const config: Record<string, unknown> = {
           type: 'external',
-          server: proxy.server,
+          server: this.normalizeProxyServer(proxy.server),
         };
         if (proxy.username) {
           config.username = proxy.username;
@@ -531,34 +507,25 @@ export class BrowserBaseBubble<
       }
     }
 
-    // Apply session timeout (BrowserBase: 60-21600 seconds)
-    if (params.timeout_seconds !== undefined) {
-      browserSettings.timeout = params.timeout_seconds;
-    }
-
     // Build session creation request body
     const sessionRequestBody: Record<string, unknown> = {
       projectId: config.projectId,
       browserSettings,
     };
 
-    // Apply proxy configuration: params.proxies > PROXY_CRED > embedded proxy in session credential
+    // Apply session timeout (BrowserBase: top-level, 60-21600 seconds)
+    if (params.timeout_seconds !== undefined) {
+      sessionRequestBody.timeout = params.timeout_seconds;
+    }
+
+    // Apply proxy configuration: params.proxies > embedded proxy in session credential
     if (params.proxies) {
       sessionRequestBody.proxies = this.buildProxyConfig(params.proxies);
-    } else if (params.credentials?.[CredentialType.PROXY_CRED]) {
-      const proxyConfig = this.parseProxyCredential(
-        params.credentials[CredentialType.PROXY_CRED]
-      );
-      if (proxyConfig) {
-        sessionRequestBody.proxies = [proxyConfig];
-        console.log('[BrowserBaseBubble] Using proxy from PROXY_CRED');
-      }
     } else if (params.credentials) {
-      // Check embedded proxy in session credentials (AMAZON_CRED, LINKEDIN_CRED)
-      const sessionCredTypes = [
-        CredentialType.AMAZON_CRED,
-        CredentialType.LINKEDIN_CRED,
-      ];
+      // Check embedded proxy in session credentials (browser session types from BROWSER_SESSION_PROVIDERS)
+      const sessionCredTypes = Object.keys(
+        BROWSER_SESSION_PROVIDERS.browserbase.credentialTypes
+      ) as CredentialType[];
       for (const credType of sessionCredTypes) {
         const credValue = params.credentials[credType];
         if (credValue) {
@@ -566,7 +533,7 @@ export class BrowserBaseBubble<
           if (sessionData?.proxy?.server) {
             const proxyConfig: Record<string, unknown> = {
               type: 'external',
-              server: sessionData.proxy.server,
+              server: this.normalizeProxyServer(sessionData.proxy.server),
             };
             if (sessionData.proxy.username) {
               proxyConfig.username = sessionData.proxy.username;
@@ -582,6 +549,25 @@ export class BrowserBaseBubble<
           }
         }
       }
+    }
+
+    // Log proxy config when present (helps verify proxies are properly received)
+    if (sessionRequestBody.proxies) {
+      const proxiesForLog =
+        sessionRequestBody.proxies === true
+          ? 'built-in (proxies: true)'
+          : Array.isArray(sessionRequestBody.proxies)
+            ? (sessionRequestBody.proxies as Record<string, unknown>[])
+                .map((p) =>
+                  p.type === 'browserbase'
+                    ? 'browserbase'
+                    : `external ${(p.server as string) ?? '?'}`
+                )
+                .join(', ')
+            : String(sessionRequestBody.proxies);
+      console.log(
+        `[BrowserBaseBubble] Proxies received for session: ${proxiesForLog}`
+      );
     }
 
     // Create session with context, stealth, and proxy settings
@@ -607,6 +593,23 @@ export class BrowserBaseBubble<
 
     const pages = await browser.pages();
     const page = pages[0] || (await browser.newPage());
+
+    // Log exit IP when using proxies (helps verify proxy routing)
+    if (sessionRequestBody.proxies) {
+      try {
+        const ip = await page.evaluate(async () => {
+          const res = await fetch('https://api.ipify.org?format=json');
+          const json = await res.json();
+          return (json as { ip: string }).ip;
+        });
+        console.log(`[BrowserBaseBubble] Session ${sessionId} exit IP: ${ip}`);
+      } catch (e) {
+        console.warn(
+          '[BrowserBaseBubble] Failed to fetch exit IP for session:',
+          e
+        );
+      }
+    }
 
     // Only inject cookies if we created a new context (no existing contextId from param or credential)
     // When contextId exists, BrowserBase context handles cookie persistence automatically

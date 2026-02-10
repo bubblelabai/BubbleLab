@@ -96,7 +96,6 @@ const getServiceNameForCredentialType = (
     [CredentialType.STRIPE_CRED]: 'Stripe',
     [CredentialType.CREDENTIAL_WILDCARD]: 'Wiki',
     [CredentialType.CONFLUENCE_CRED]: 'Confluence',
-    [CredentialType.PROXY_CRED]: 'Proxy',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

@@ -192,6 +192,15 @@ export {
   type LinkedInReceivedInvitationsToolResult,
   type ReceivedInvitationInfo,
 } from './bubbles/tool-bubble/browser-tools/linkedin-received-invitations/index.js';
+export {
+  LinkedInAcceptInvitationsTool,
+  LinkedInAcceptInvitationsToolParamsSchema,
+  LinkedInAcceptInvitationsToolResultSchema,
+  AcceptedInvitationInfoSchema,
+  type LinkedInAcceptInvitationsToolParamsInput,
+  type LinkedInAcceptInvitationsToolResult,
+  type AcceptedInvitationInfo,
+} from './bubbles/tool-bubble/browser-tools/linkedin-accept-invitations/index.js';
 export { CompanyEnrichmentTool } from './bubbles/tool-bubble/company-enrichment-tool.js';
 export type {
   Contact,

@@ -61,6 +61,7 @@ export class LinkedInReceivedInvitationsTool<
         cookies: this.cookies || undefined,
         credentials: this.params.credentials,
         stealth: { solveCaptchas: true },
+        timeout_seconds: 600, // 10 minutes for full session (navigate + scroll + extract)
         ...proxyConfig,
       },
       this.context,

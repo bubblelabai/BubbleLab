@@ -376,6 +376,7 @@ export class BubbleFactory {
       LinkedInConnectionTool,
       LinkedInSentInvitationsTool,
       LinkedInReceivedInvitationsTool,
+      LinkedInAcceptInvitationsTool,
     } = await import('./bubbles/tool-bubble/browser-tools/index.js');
     const { StripeBubble } = await import(
       './bubbles/service-bubble/stripe/index.js'
@@ -529,6 +530,10 @@ export class BubbleFactory {
     this.register(
       'linkedin-received-invitations-tool',
       LinkedInReceivedInvitationsTool as unknown as BubbleClassWithMetadata
+    );
+    this.register(
+      'linkedin-accept-invitations-tool',
+      LinkedInAcceptInvitationsTool as unknown as BubbleClassWithMetadata
     );
     this.register('stripe', StripeBubble as BubbleClassWithMetadata);
     this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
@@ -847,6 +852,7 @@ import {
   LinkedInConnectionTool, // bubble name: 'linkedin-connection-tool'
   LinkedInSentInvitationsTool, // bubble name: 'linkedin-sent-invitations-tool'
   LinkedInReceivedInvitationsTool, // bubble name: 'linkedin-received-invitations-tool'
+  LinkedInAcceptInvitationsTool, // bubble name: 'linkedin-accept-invitations-tool'
   PeopleSearchTool, // bubble name: 'people-search-tool'
   YCScraperTool, // bubble name: 'yc-scraper-tool'
 
