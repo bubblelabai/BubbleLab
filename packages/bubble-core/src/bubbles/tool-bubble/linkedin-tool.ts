@@ -125,12 +125,117 @@ const LinkedInJobSchema = z.object({
   skills: z.array(z.string()).nullable().describe('Required skills'),
 });
 
+const LinkedInProfileDateSchema = z.object({
+  month: z.string().nullable().describe('Month name'),
+  year: z.number().nullable().describe('Year'),
+  text: z.string().nullable().describe('Formatted date text'),
+});
+
+const LinkedInProfileExperienceSchema = z.object({
+  position: z.string().nullable().describe('Job title/position'),
+  location: z.string().nullable().describe('Job location'),
+  employmentType: z.string().nullable().describe('Employment type'),
+  workplaceType: z.string().nullable().describe('Workplace type'),
+  companyName: z.string().nullable().describe('Company name'),
+  companyLinkedinUrl: z.string().nullable().describe('Company LinkedIn URL'),
+  duration: z.string().nullable().describe('Duration text'),
+  description: z.string().nullable().describe('Role description'),
+  skills: z.array(z.string()).nullable().describe('Skills for this role'),
+  startDate: LinkedInProfileDateSchema.nullable().describe('Start date'),
+  endDate: LinkedInProfileDateSchema.nullable().describe('End date'),
+});
+
+const LinkedInProfileEducationSchema = z.object({
+  schoolName: z.string().nullable().describe('School name'),
+  schoolLinkedinUrl: z.string().nullable().describe('School LinkedIn URL'),
+  degree: z.string().nullable().describe('Degree type'),
+  fieldOfStudy: z.string().nullable().describe('Field of study'),
+  startDate: LinkedInProfileDateSchema.nullable().describe('Start date'),
+  endDate: LinkedInProfileDateSchema.nullable().describe('End date'),
+  period: z.string().nullable().describe('Period text'),
+});
+
+const LinkedInProfileSchema = z.object({
+  id: z.string().nullable().describe('LinkedIn member ID'),
+  publicIdentifier: z
+    .string()
+    .nullable()
+    .describe('Profile slug (e.g., "williamhgates")'),
+  linkedinUrl: z.string().nullable().describe('Full LinkedIn profile URL'),
+  firstName: z.string().nullable().describe('First name'),
+  lastName: z.string().nullable().describe('Last name'),
+  headline: z.string().nullable().describe('Profile headline'),
+  about: z.string().nullable().describe('About/summary section'),
+  openToWork: z.boolean().nullable().describe('Whether open to work'),
+  hiring: z.boolean().nullable().describe('Whether actively hiring'),
+  photo: z.string().nullable().describe('Profile photo URL'),
+  premium: z.boolean().nullable().describe('Whether premium subscriber'),
+  influencer: z.boolean().nullable().describe('Whether LinkedIn influencer'),
+  location: z
+    .object({
+      text: z.string().nullable().describe('Location text'),
+      countryCode: z.string().nullable().describe('Country code'),
+      country: z.string().nullable().describe('Country'),
+      state: z.string().nullable().describe('State/region'),
+      city: z.string().nullable().describe('City'),
+    })
+    .nullable()
+    .describe('Location information'),
+  verified: z.boolean().nullable().describe('Whether profile is verified'),
+  topSkills: z.string().nullable().describe('Top skills summary'),
+  connectionsCount: z.number().nullable().describe('Number of connections'),
+  followerCount: z.number().nullable().describe('Number of followers'),
+  currentPosition: z
+    .array(z.object({ companyName: z.string().nullable() }))
+    .nullable()
+    .describe('Current company/position'),
+  experience: z
+    .array(LinkedInProfileExperienceSchema)
+    .nullable()
+    .describe('Work experience history'),
+  education: z
+    .array(LinkedInProfileEducationSchema)
+    .nullable()
+    .describe('Education history'),
+  certifications: z
+    .array(
+      z.object({
+        title: z.string().nullable(),
+        issuedAt: z.string().nullable(),
+        issuedBy: z.string().nullable(),
+      })
+    )
+    .nullable()
+    .describe('Certifications'),
+  languages: z
+    .array(
+      z.object({
+        name: z.string().nullable(),
+        proficiency: z.string().nullable(),
+      })
+    )
+    .nullable()
+    .describe('Languages'),
+  skills: z
+    .array(z.object({ name: z.string().nullable() }))
+    .nullable()
+    .describe('All skills'),
+});
+
 // Gemini-compatible single object schema with optional fields
 const LinkedInToolParamsSchema = z.object({
   operation: z
-    .enum(['scrapePosts', 'searchPosts', 'scrapeJobs'])
+    .enum(['scrapeProfile', 'scrapePosts', 'searchPosts', 'scrapeJobs'])
     .describe(
-      'Operation to perform: scrapePosts (profiles), searchPosts (keywords), or scrapeJobs'
+      'Operation to perform: scrapeProfile (get profile info from LinkedIn URL), scrapePosts (get posts from a profile), searchPosts (search posts by keyword), or scrapeJobs (search jobs)'
+    ),
+
+  // Profile lookup fields (optional)
+  profileUrl: z
+    .string()
+    .optional()
+    .describe(
+      'LinkedIn profile URL or username (for scrapeProfile operation). Examples: "https://www.linkedin.com/in/williamhgates", "williamhgates"'
     ),
 
   // Profile scraping fields (optional)
@@ -221,8 +326,13 @@ const LinkedInToolParamsSchema = z.object({
 // Gemini-compatible single result schema
 const LinkedInToolResultSchema = z.object({
   operation: z
-    .enum(['scrapePosts', 'searchPosts', 'scrapeJobs'])
+    .enum(['scrapeProfile', 'scrapePosts', 'searchPosts', 'scrapeJobs'])
     .describe('Operation that was performed'),
+
+  // Profile data (only for scrapeProfile)
+  profile: LinkedInProfileSchema.nullable()
+    .optional()
+    .describe('LinkedIn profile data (only for scrapeProfile operation)'),
 
   // Jobs data (only for scrapeJobs)
   jobs: z
@@ -283,6 +393,7 @@ export type LinkedInPost = z.output<typeof LinkedInPostSchema>;
 export type LinkedInJob = z.output<typeof LinkedInJobSchema>;
 export type LinkedInAuthor = z.output<typeof LinkedInAuthorSchema>;
 export type LinkedInStats = z.output<typeof LinkedInStatsSchema>;
+export type LinkedInProfile = z.output<typeof LinkedInProfileSchema>;
 
 /**
  * LinkedIn scraping tool with multiple operations
@@ -308,65 +419,41 @@ export class LinkedInTool extends ToolBubble<
   static readonly schema = LinkedInToolParamsSchema;
   static readonly resultSchema = LinkedInToolResultSchema;
   static readonly shortDescription =
-    'Scrape LinkedIn posts by profile or search by keyword. Get engagement metrics, media, and complete metadata.';
+    'Look up LinkedIn profiles by URL, scrape posts by profile, or search posts/jobs by keyword.';
   static readonly longDescription = `
-    Universal LinkedIn scraping tool for extracting posts and activity data.
-    
+    Universal LinkedIn tool for profile lookup, post scraping, and job search.
+
+    **DO NOT USE research-agent-tool or web-scrape-tool for LinkedIn** - This tool is specifically optimized for LinkedIn.
+
     **OPERATIONS:**
-    1. **scrapePosts**: Scrape posts from a LinkedIn profile
-       - Get posts from specific users
-       - Extract author information and post metadata
-       - Track reactions, comments, and reposts
-       - Support for articles, documents, and reshared content
-    
-    2. **searchPosts**: Search LinkedIn posts by keyword
+
+    1. **scrapeProfile**: Get full profile info from a LinkedIn URL
+       - **USE THIS when you have a LinkedIn URL or username and need to know who someone is**
+       - Returns: name, headline, about, current company, work experience, education, skills, location, certifications, languages, and more
+       - Accepts full URLs (https://www.linkedin.com/in/williamhgates) or just usernames ("williamhgates")
+       - This is the RIGHT tool for "look up this LinkedIn profile" or "who is this person on LinkedIn?"
+
+    2. **scrapePosts**: Scrape posts from a LinkedIn profile
+       - Get posts from specific users by username
+       - Extract post text, engagement stats, media, articles, documents
+       - **DO NOT use scrapePosts to get profile info** - use scrapeProfile instead
+
+    3. **searchPosts**: Search LinkedIn posts by keyword
        - Find posts across all of LinkedIn by keyword
        - Filter by date (past 24h, week, month)
        - Sort by relevance or date
-       - Perfect for monitoring topics, trends, and mentions
-    
-    **WHEN TO USE THIS TOOL:**
-    - **LinkedIn profile research** - analyze someone's LinkedIn activity
-    - **Content strategy** - research what content performs well
-    - **Influencer analysis** - track thought leaders and their engagement
-    - **Competitive intelligence** - monitor competitor LinkedIn presence
-    - **Lead generation** - identify active LinkedIn users in your space
-    - **Social listening** - track discussions and trends on LinkedIn
-    - **Job Market Analysis** - scrape job postings and salary data
-    
-    **DO NOT USE research-agent-tool or web-scrape-tool for LinkedIn** - This tool is specifically optimized for LinkedIn and provides:
-    - Clean, structured post data ready for analysis
-    - Complete engagement metrics (reactions, comments, reposts)
-    - Support for all LinkedIn post types
-    - Automatic pagination handling
-    - Rate limiting and reliability
-    
-    **Simple Interface:**
-    Just provide a LinkedIn username to get back all their recent posts with complete metadata.
-    The tool automatically handles:
-    - Authentication with Apify
-    - Data transformation to unified format
-    - Error handling and retries
-    - Pagination token management
-    
-    **What you get:**
-    - Post text and metadata (URN, URL, type, timestamp)
-    - Complete engagement statistics (likes, comments, reposts, all reaction types)
-    - Author information (name, headline, profile URL, picture)
-    - Media content (images, videos, documents, articles)
-    - Reshared post data (for quote posts)
-    
-    **Use cases:**
-    - Influencer and thought leader tracking
-    - Content performance analysis
-    - Competitive research on LinkedIn
-    - Lead generation and prospecting
-    - Brand monitoring and reputation management
-    - Recruitment and talent sourcing
-    - Partnership and collaboration discovery
-    - Job market research and salary analysis
 
-    The tool uses Apify's LinkedIn scrapers behind the scenes while maintaining a clean, consistent interface.
+    4. **scrapeJobs**: Search LinkedIn job postings
+       - Search jobs by keyword and location
+       - Filter by job type, workplace type, experience level
+
+    **CHOOSING THE RIGHT OPERATION:**
+    - "Look up this LinkedIn profile" → **scrapeProfile**
+    - "Who is this person?" (with LinkedIn URL) → **scrapeProfile**
+    - "Get their name, company, experience" → **scrapeProfile**
+    - "What has this person been posting?" → **scrapePosts**
+    - "Find posts about AI on LinkedIn" → **searchPosts**
+    - "Find software engineer jobs" → **scrapeJobs**
   `;
   static readonly alias = 'li';
   static readonly type = 'tool';
@@ -403,6 +490,15 @@ export class LinkedInTool extends ToolBubble<
 
       // Validate required fields based on operation
       if (
+        operation === 'scrapeProfile' &&
+        (!this.params.profileUrl || this.params.profileUrl.length === 0)
+      ) {
+        return this.createErrorResult(
+          'profileUrl is required for scrapeProfile operation. Provide a LinkedIn URL (e.g., "https://www.linkedin.com/in/williamhgates") or username.'
+        );
+      }
+
+      if (
         operation === 'scrapePosts' &&
         (!this.params.username || this.params.username.length === 0)
       ) {
@@ -422,6 +518,8 @@ export class LinkedInTool extends ToolBubble<
 
       const result = await (async (): Promise<LinkedInToolResult> => {
         switch (operation) {
+          case 'scrapeProfile':
+            return await this.handleScrapeProfile(this.params);
           case 'scrapePosts':
             return await this.handleScrapePosts(this.params);
           case 'searchPosts':
@@ -449,6 +547,7 @@ export class LinkedInTool extends ToolBubble<
 
     return {
       operation: operation || 'scrapePosts',
+      profile: operation === 'scrapeProfile' ? null : undefined,
       posts: [],
       username:
         operation === 'scrapePosts' ? this.params.username || '' : undefined,
@@ -461,6 +560,190 @@ export class LinkedInTool extends ToolBubble<
       totalPosts: 0,
       success: false,
       error: errorMessage,
+    };
+  }
+
+  /**
+   * Normalize profileUrl input to a full LinkedIn URL.
+   * Accepts either a full URL or just a username.
+   */
+  private normalizeProfileUrl(profileUrl: string): string {
+    const trimmed = profileUrl.trim().replace(/\/+$/, '');
+    if (trimmed.includes('linkedin.com/in/')) {
+      return trimmed;
+    }
+    // Treat as username
+    return `https://www.linkedin.com/in/${trimmed}`;
+  }
+
+  /**
+   * Handle scrapeProfile operation - get full profile details from a LinkedIn URL
+   */
+  private async handleScrapeProfile(
+    params: LinkedInToolParams
+  ): Promise<LinkedInToolResult> {
+    const profileUrl = this.normalizeProfileUrl(params.profileUrl!);
+
+    const profileScraper =
+      new ApifyBubble<'harvestapi/linkedin-profile-scraper'>(
+        {
+          actorId: 'harvestapi/linkedin-profile-scraper',
+          input: {
+            profileScraperMode: 'Profile details no email ($4 per 1k)',
+            queries: [profileUrl],
+          },
+          waitForFinish: true,
+          limit: 1,
+          timeout: 180000,
+          credentials: params.credentials,
+        },
+        this.context,
+        'linkedinProfileScraper'
+      );
+
+    const apifyResult = await profileScraper.action();
+
+    if (!apifyResult.data.success) {
+      return {
+        operation: 'scrapeProfile',
+        profile: null,
+        posts: [],
+        totalPosts: 0,
+        success: false,
+        error:
+          apifyResult.data.error ||
+          'Failed to scrape LinkedIn profile. Please try again.',
+      };
+    }
+
+    const items = apifyResult.data.items || [];
+
+    if (items.length === 0) {
+      return {
+        operation: 'scrapeProfile',
+        profile: null,
+        posts: [],
+        totalPosts: 0,
+        success: false,
+        error:
+          'No profile found. The profile may be private or the URL may be invalid.',
+      };
+    }
+
+    const raw = items[0];
+
+    const profile = {
+      id: raw.id || null,
+      publicIdentifier: raw.publicIdentifier || null,
+      linkedinUrl: raw.linkedinUrl || null,
+      firstName: raw.firstName || null,
+      lastName: raw.lastName || null,
+      headline: raw.headline || null,
+      about: raw.about || null,
+      openToWork: raw.openToWork ?? null,
+      hiring: raw.hiring ?? null,
+      photo: raw.photo || null,
+      premium: raw.premium ?? null,
+      influencer: raw.influencer ?? null,
+      location: raw.location
+        ? {
+            text:
+              raw.location.parsed?.text || raw.location.linkedinText || null,
+            countryCode:
+              raw.location.parsed?.countryCode ||
+              raw.location.countryCode ||
+              null,
+            country: raw.location.parsed?.country || null,
+            state: raw.location.parsed?.state || null,
+            city: raw.location.parsed?.city || null,
+          }
+        : null,
+      verified: raw.verified ?? null,
+      topSkills: raw.topSkills || null,
+      connectionsCount: raw.connectionsCount ?? null,
+      followerCount: raw.followerCount ?? null,
+      currentPosition: raw.currentPosition
+        ? raw.currentPosition.map((p: any) => ({
+            companyName: p.companyName || null,
+          }))
+        : null,
+      experience: raw.experience
+        ? raw.experience.map((exp: any) => ({
+            position: exp.position || null,
+            location: exp.location || null,
+            employmentType: exp.employmentType || null,
+            workplaceType: exp.workplaceType || null,
+            companyName: exp.companyName || null,
+            companyLinkedinUrl: exp.companyLinkedinUrl || null,
+            duration: exp.duration || null,
+            description: exp.description || null,
+            skills: exp.skills || null,
+            startDate: exp.startDate
+              ? {
+                  month: exp.startDate.month || null,
+                  year: exp.startDate.year ?? null,
+                  text: exp.startDate.text || null,
+                }
+              : null,
+            endDate: exp.endDate
+              ? {
+                  month: exp.endDate.month || null,
+                  year: exp.endDate.year ?? null,
+                  text: exp.endDate.text || null,
+                }
+              : null,
+          }))
+        : null,
+      education: raw.education
+        ? raw.education.map((edu: any) => ({
+            schoolName: edu.schoolName || null,
+            schoolLinkedinUrl: edu.schoolLinkedinUrl || null,
+            degree: edu.degree || null,
+            fieldOfStudy: edu.fieldOfStudy || null,
+            startDate: edu.startDate
+              ? {
+                  month: edu.startDate.month || null,
+                  year: edu.startDate.year ?? null,
+                  text: edu.startDate.text || null,
+                }
+              : null,
+            endDate: edu.endDate
+              ? {
+                  month: edu.endDate.month || null,
+                  year: edu.endDate.year ?? null,
+                  text: edu.endDate.text || null,
+                }
+              : null,
+            period: edu.period || null,
+          }))
+        : null,
+      certifications: raw.certifications
+        ? raw.certifications.map((cert: any) => ({
+            title: cert.title || null,
+            issuedAt: cert.issuedAt || null,
+            issuedBy: cert.issuedBy || null,
+          }))
+        : null,
+      languages: raw.languages
+        ? raw.languages.map((lang: any) => ({
+            name: lang.name || null,
+            proficiency: lang.proficiency || null,
+          }))
+        : null,
+      skills: raw.skills
+        ? raw.skills.map((skill: any) => ({
+            name: skill.name || null,
+          }))
+        : null,
+    };
+
+    return {
+      operation: 'scrapeProfile',
+      profile,
+      posts: [],
+      totalPosts: 0,
+      success: true,
+      error: '',
     };
   }
 
