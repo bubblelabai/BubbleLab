@@ -49,6 +49,46 @@ function updatePackageVersion(packagePath: string): {
   return { oldVersion, newVersion };
 }
 
+/** @bubblelab packages that create-bubblelab-app templates depend on */
+const BUBBLELAB_PACKAGES = [
+  '@bubblelab/bubble-core',
+  '@bubblelab/bubble-runtime',
+  '@bubblelab/shared-schemas',
+];
+
+/**
+ * Update create-bubblelab-app template package.json files with new @bubblelab versions
+ */
+function updateTemplateDependencies(newVersion: string): void {
+  const templatePaths = [
+    'packages/create-bubblelab-app/templates/basic/package.json',
+    'packages/create-bubblelab-app/templates/reddit-scraper/package.json',
+  ];
+
+  for (const templatePath of templatePaths) {
+    try {
+      const content = readFileSync(templatePath, 'utf-8');
+      const pkg: PackageJson = JSON.parse(content);
+
+      if (!pkg.dependencies) continue;
+
+      let updated = false;
+      for (const name of BUBBLELAB_PACKAGES) {
+        if (name in pkg.dependencies) {
+          pkg.dependencies[name] = `^${newVersion}`;
+          updated = true;
+        }
+      }
+      if (updated) {
+        writeFileSync(templatePath, JSON.stringify(pkg, null, 2) + '\n');
+        console.log(`   📝 Updated ${templatePath}`);
+      }
+    } catch (err) {
+      console.warn(`   ⚠️  Could not update ${templatePath}:`, err);
+    }
+  }
+}
+
 /**
  * Main function to bump versions for all packages
  */
@@ -102,6 +142,14 @@ async function bumpPackageVersions(): Promise<void> {
       return;
     }
 
+    // Use the new version from shared-schemas (canonical source)
+    const newVersion =
+      updates.find((u) => u.name === '@bubblelab/shared-schemas')?.newVersion ??
+      updates[0]!.newVersion;
+
+    console.log('\n📦 Updating create-bubblelab-app template dependencies...');
+    updateTemplateDependencies(newVersion);
+
     console.log(`\n🎉 Successfully bumped ${updates.length} package(s):`);
     updates.forEach((update) => {
       console.log(
@@ -112,7 +160,9 @@ async function bumpPackageVersions(): Promise<void> {
     console.log('\n📝 Next steps:');
     console.log('   1. Review the changes');
     console.log('   2. Commit the version updates');
-    console.log('   3. Run the publish command');
+    console.log(
+      '   3. Run pnpm publish:packages (or use bump-and-publish for both)'
+    );
   } catch (error) {
     console.error('❌ Error bumping package versions:', error);
     process.exit(1);

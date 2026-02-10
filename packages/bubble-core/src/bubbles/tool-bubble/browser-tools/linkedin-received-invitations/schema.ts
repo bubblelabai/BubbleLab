@@ -15,13 +15,13 @@ export type ReceivedInvitationInfo = z.infer<
 >;
 
 export const LinkedInReceivedInvitationsToolParamsSchema = z.object({
-  operation: z.literal('get_received_invitations'),
+  operation: z.enum(['get_received_invitations']),
   credentials: z.record(z.nativeEnum(CredentialType), z.string()).optional(),
   proxy: ProxyChoiceSchema.optional(),
 });
 
 export const LinkedInReceivedInvitationsToolResultSchema = z.object({
-  operation: z.literal('get_received_invitations'),
+  operation: z.enum(['get_received_invitations']),
   success: z.boolean(),
   invitations: z.array(ReceivedInvitationInfoSchema).optional(),
   total_count: z.number().optional(),

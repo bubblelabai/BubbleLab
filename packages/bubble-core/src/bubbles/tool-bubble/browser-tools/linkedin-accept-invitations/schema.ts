@@ -16,7 +16,7 @@ export type AcceptedInvitationInfo = z.infer<
 >;
 
 export const LinkedInAcceptInvitationsToolParamsSchema = z.object({
-  operation: z.literal('accept_invitations'),
+  operation: z.enum(['accept_invitations']),
   count: z
     .number()
     .min(1)
@@ -29,7 +29,7 @@ export const LinkedInAcceptInvitationsToolParamsSchema = z.object({
 });
 
 export const LinkedInAcceptInvitationsToolResultSchema = z.object({
-  operation: z.literal('accept_invitations'),
+  operation: z.enum(['accept_invitations']),
   success: z.boolean(),
   accepted: z.array(AcceptedInvitationInfoSchema).optional(),
   accepted_count: z.number().optional(),

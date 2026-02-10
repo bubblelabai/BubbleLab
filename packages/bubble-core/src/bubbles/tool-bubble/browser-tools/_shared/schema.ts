@@ -31,10 +31,10 @@ export const CustomProxySchema = z.object({
 /**
  * Proxy choice - none, browserbase, or custom proxy
  */
-export const ProxyChoiceSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('none') }),
-  z.object({ type: z.literal('browserbase') }),
-  z.object({ type: z.literal('custom'), proxy: CustomProxySchema }),
+export const ProxyChoiceSchema = z.union([
+  z.object({ type: z.enum(['none']) }),
+  z.object({ type: z.enum(['browserbase']) }),
+  z.object({ type: z.enum(['custom']), proxy: CustomProxySchema }),
 ]);
 
 export type CustomProxy = z.infer<typeof CustomProxySchema>;

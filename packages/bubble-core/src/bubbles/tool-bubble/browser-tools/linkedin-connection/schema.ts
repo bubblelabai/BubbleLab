@@ -19,7 +19,7 @@ export type ProfileInfo = z.infer<typeof ProfileInfoSchema>;
  */
 export const LinkedInConnectionToolParamsSchema = z.object({
   operation: z
-    .literal('send_connection')
+    .enum(['send_connection'])
     .describe('Send a connection request to a LinkedIn profile'),
   profile_url: z
     .string()
@@ -47,7 +47,7 @@ export const LinkedInConnectionToolParamsSchema = z.object({
  * LinkedIn Connection Tool result schema
  */
 export const LinkedInConnectionToolResultSchema = z.object({
-  operation: z.literal('send_connection'),
+  operation: z.enum(['send_connection']),
   success: z.boolean().describe('Whether the connection request was sent'),
   message: z.string().optional().describe('Success or status message'),
   profile: ProfileInfoSchema.optional().describe(

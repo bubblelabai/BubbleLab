@@ -24,7 +24,7 @@ export class LinkedInAcceptInvitationsTool<
   static readonly shortDescription =
     'Accept top N LinkedIn connection invitations';
   static readonly longDescription =
-    'Navigates to the LinkedIn invitation manager page and accepts the top N received connection invitations. Returns info about each accepted invitation.';
+    'Recordable tool that navigates to the LinkedIn invitation manager page and accepts the top N received connection invitations.';
   static readonly alias = 'linkedin-accept-invitations';
   static readonly type = 'tool';
 
@@ -61,7 +61,7 @@ export class LinkedInAcceptInvitationsTool<
         cookies: this.cookies || undefined,
         credentials: this.params.credentials,
         stealth: { solveCaptchas: true },
-        timeout_seconds: 600,
+        timeout_seconds: 1200,
         ...proxyConfig,
       },
       this.context,
@@ -117,9 +117,11 @@ export class LinkedInAcceptInvitationsTool<
     return false;
   }
 
-  private async stepAcceptTopInvitations(
-    count: number
-  ): Promise<{ accepted: AcceptedInvitationInfo[]; skipped: number }> {
+  private async stepAcceptTopInvitations(): Promise<{
+    accepted: AcceptedInvitationInfo[];
+    skipped: number;
+  }> {
+    const count = (this.params as { count?: number }).count ?? 5;
     const accepted: AcceptedInvitationInfo[] = [];
     let skipped = 0;
     const TEMP_ID = '__bubblelab_accept_target__';
@@ -338,8 +340,6 @@ export class LinkedInAcceptInvitationsTool<
   }
 
   async performAction(): Promise<LinkedInAcceptInvitationsToolResult> {
-    const count = (this.params as { count?: number }).count ?? 5;
-
     try {
       await this.stepStartBrowserSession();
       await this.stepNavigateToInvitationManager();
@@ -347,7 +347,7 @@ export class LinkedInAcceptInvitationsTool<
       if (!pageReady)
         console.log('[AcceptInvitations] Page slow to load, continuing');
 
-      const { accepted, skipped } = await this.stepAcceptTopInvitations(count);
+      const { accepted, skipped } = await this.stepAcceptTopInvitations();
 
       return {
         operation: 'accept_invitations',
