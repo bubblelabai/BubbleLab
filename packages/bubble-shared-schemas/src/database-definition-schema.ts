@@ -195,6 +195,31 @@ export type ConfluenceOAuthMetadata = z.infer<
 >;
 
 /**
+ * Proxy configuration for browser session credentials (embedded in session payload)
+ */
+export const browserSessionProxyConfigSchema = z.object({
+  server: z.string().describe('Proxy server URL'),
+  username: z.string().optional().describe('Proxy authentication username'),
+  password: z.string().optional().describe('Proxy authentication password'),
+});
+
+export type BrowserSessionProxyConfig = z.infer<
+  typeof browserSessionProxyConfigSchema
+>;
+
+/**
+ * Metadata for browser session credentials (AMAZON_CRED, LINKEDIN_CRED)
+ * Stored when completing BrowserBase session; proxy is embedded in the session payload
+ */
+export const browserSessionMetadataSchema = z.object({
+  proxy: browserSessionProxyConfigSchema.optional(),
+});
+
+export type BrowserSessionMetadata = z.infer<
+  typeof browserSessionMetadataSchema
+>;
+
+/**
  * Union type for all credential metadata types
  * - DatabaseMetadata: For DATABASE_CRED (PostgreSQL, etc.)
  * - JiraOAuthMetadata: For JIRA_CRED OAuth credentials
@@ -214,4 +239,5 @@ export type CredentialMetadata =
   | NotionOAuthMetadata
   | ConfluenceOAuthMetadata
   | StripeOAuthMetadata
+  | BrowserSessionMetadata
   | CredentialPreferences;

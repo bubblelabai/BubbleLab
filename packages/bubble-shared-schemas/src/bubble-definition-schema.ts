@@ -50,14 +50,23 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.INSFORGE_BASE_URL]: {},
   [CredentialType.INSFORGE_API_KEY]: {},
   [CredentialType.CUSTOM_AUTH_KEY]: {},
-  [CredentialType.AMAZON_CRED]: {},
-  [CredentialType.LINKEDIN_CRED]: {},
+  [CredentialType.AMAZON_CRED]: {
+    proxyServer: BubbleParameterType.STRING,
+    proxyUsername: BubbleParameterType.STRING,
+    proxyPassword: BubbleParameterType.STRING,
+  },
+  [CredentialType.LINKEDIN_CRED]: {
+    proxyServer: BubbleParameterType.STRING,
+    proxyUsername: BubbleParameterType.STRING,
+    proxyPassword: BubbleParameterType.STRING,
+  },
   [CredentialType.CRUSTDATA_API_KEY]: {},
   [CredentialType.JIRA_CRED]: {},
   [CredentialType.ASHBY_CRED]: {},
   [CredentialType.FULLENRICH_API_KEY]: {},
   [CredentialType.STRIPE_CRED]: {},
   [CredentialType.CONFLUENCE_CRED]: {},
+  [CredentialType.PROXY_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

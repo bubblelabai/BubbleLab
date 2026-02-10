@@ -173,7 +173,25 @@ export {
   type LinkedInConnectionToolParamsInput,
   type LinkedInConnectionToolResult,
   type ProfileInfo,
-} from './bubbles/tool-bubble/linkedin-connection-tool/index.js';
+} from './bubbles/tool-bubble/browser-tools/linkedin-connection/index.js';
+export {
+  LinkedInSentInvitationsTool,
+  LinkedInSentInvitationsToolParamsSchema,
+  LinkedInSentInvitationsToolResultSchema,
+  SentInvitationInfoSchema,
+  type LinkedInSentInvitationsToolParamsInput,
+  type LinkedInSentInvitationsToolResult,
+  type SentInvitationInfo,
+} from './bubbles/tool-bubble/browser-tools/linkedin-sent-invitations/index.js';
+export {
+  LinkedInReceivedInvitationsTool,
+  LinkedInReceivedInvitationsToolParamsSchema,
+  LinkedInReceivedInvitationsToolResultSchema,
+  ReceivedInvitationInfoSchema,
+  type LinkedInReceivedInvitationsToolParamsInput,
+  type LinkedInReceivedInvitationsToolResult,
+  type ReceivedInvitationInfo,
+} from './bubbles/tool-bubble/browser-tools/linkedin-received-invitations/index.js';
 export { CompanyEnrichmentTool } from './bubbles/tool-bubble/company-enrichment-tool.js';
 export type {
   Contact,

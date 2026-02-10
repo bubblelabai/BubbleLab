@@ -267,6 +267,41 @@ export class BrowserBaseBubble<
   }
 
   /**
+   * Parse PROXY_CRED credential (base64 JSON: { server, username?, password? })
+   * Returns external proxy config for BrowserBase API or null if invalid
+   */
+  private parseProxyCredential(
+    credentialValue: string
+  ): Record<string, unknown> | null {
+    try {
+      const jsonString = Buffer.from(credentialValue, 'base64').toString(
+        'utf-8'
+      );
+      const parsed = JSON.parse(jsonString) as {
+        server?: string;
+        username?: string;
+        password?: string;
+      };
+      if (!parsed?.server || typeof parsed.server !== 'string') {
+        return null;
+      }
+      const config: Record<string, unknown> = {
+        type: 'external',
+        server: parsed.server,
+      };
+      if (parsed.username) {
+        config.username = parsed.username;
+      }
+      if (parsed.password) {
+        config.password = parsed.password;
+      }
+      return config;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Build proxy configuration for BrowserBase API
    * Converts our schema format to the API format
    */
@@ -496,15 +531,57 @@ export class BrowserBaseBubble<
       }
     }
 
+    // Apply session timeout (BrowserBase: 60-21600 seconds)
+    if (params.timeout_seconds !== undefined) {
+      browserSettings.timeout = params.timeout_seconds;
+    }
+
     // Build session creation request body
     const sessionRequestBody: Record<string, unknown> = {
       projectId: config.projectId,
       browserSettings,
     };
 
-    // Apply proxy configuration
+    // Apply proxy configuration: params.proxies > PROXY_CRED > embedded proxy in session credential
     if (params.proxies) {
       sessionRequestBody.proxies = this.buildProxyConfig(params.proxies);
+    } else if (params.credentials?.[CredentialType.PROXY_CRED]) {
+      const proxyConfig = this.parseProxyCredential(
+        params.credentials[CredentialType.PROXY_CRED]
+      );
+      if (proxyConfig) {
+        sessionRequestBody.proxies = [proxyConfig];
+        console.log('[BrowserBaseBubble] Using proxy from PROXY_CRED');
+      }
+    } else if (params.credentials) {
+      // Check embedded proxy in session credentials (AMAZON_CRED, LINKEDIN_CRED)
+      const sessionCredTypes = [
+        CredentialType.AMAZON_CRED,
+        CredentialType.LINKEDIN_CRED,
+      ];
+      for (const credType of sessionCredTypes) {
+        const credValue = params.credentials[credType];
+        if (credValue) {
+          const sessionData = this.parseBrowserSessionCredential(credValue);
+          if (sessionData?.proxy?.server) {
+            const proxyConfig: Record<string, unknown> = {
+              type: 'external',
+              server: sessionData.proxy.server,
+            };
+            if (sessionData.proxy.username) {
+              proxyConfig.username = sessionData.proxy.username;
+            }
+            if (sessionData.proxy.password) {
+              proxyConfig.password = sessionData.proxy.password;
+            }
+            sessionRequestBody.proxies = [proxyConfig];
+            console.log(
+              `[BrowserBaseBubble] Using embedded proxy from ${credType}`
+            );
+            break;
+          }
+        }
+      }
     }
 
     // Create session with context, stealth, and proxy settings

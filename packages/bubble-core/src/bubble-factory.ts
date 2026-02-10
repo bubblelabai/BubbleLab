@@ -161,6 +161,8 @@ export class BubbleFactory {
       'insforge-db',
       'amazon-shopping-tool',
       'linkedin-connection-tool',
+      'linkedin-sent-invitations-tool',
+      'linkedin-received-invitations-tool',
       'company-enrichment-tool',
       'people-search-tool',
       'jira',
@@ -370,9 +372,11 @@ export class BubbleFactory {
     const { FullEnrichBubble } = await import(
       './bubbles/service-bubble/fullenrich/index.js'
     );
-    const { LinkedInConnectionTool } = await import(
-      './bubbles/tool-bubble/linkedin-connection-tool/index.js'
-    );
+    const {
+      LinkedInConnectionTool,
+      LinkedInSentInvitationsTool,
+      LinkedInReceivedInvitationsTool,
+    } = await import('./bubbles/tool-bubble/browser-tools/index.js');
     const { StripeBubble } = await import(
       './bubbles/service-bubble/stripe/index.js'
     );
@@ -516,7 +520,15 @@ export class BubbleFactory {
     this.register('fullenrich', FullEnrichBubble as BubbleClassWithMetadata);
     this.register(
       'linkedin-connection-tool',
-      LinkedInConnectionTool as BubbleClassWithMetadata
+      LinkedInConnectionTool as unknown as BubbleClassWithMetadata
+    );
+    this.register(
+      'linkedin-sent-invitations-tool',
+      LinkedInSentInvitationsTool as unknown as BubbleClassWithMetadata
+    );
+    this.register(
+      'linkedin-received-invitations-tool',
+      LinkedInReceivedInvitationsTool as unknown as BubbleClassWithMetadata
     );
     this.register('stripe', StripeBubble as BubbleClassWithMetadata);
     this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
@@ -833,6 +845,8 @@ import {
   YouTubeTool, // bubble name: 'youtube-tool'
   AmazonShoppingTool, // bubble name: 'amazon-shopping-tool',
   LinkedInConnectionTool, // bubble name: 'linkedin-connection-tool'
+  LinkedInSentInvitationsTool, // bubble name: 'linkedin-sent-invitations-tool'
+  LinkedInReceivedInvitationsTool, // bubble name: 'linkedin-received-invitations-tool'
   PeopleSearchTool, // bubble name: 'people-search-tool'
   YCScraperTool, // bubble name: 'yc-scraper-tool'
 

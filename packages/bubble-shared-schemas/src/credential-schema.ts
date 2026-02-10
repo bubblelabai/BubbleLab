@@ -10,6 +10,7 @@ import {
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
   credentialPreferencesSchema,
+  browserSessionMetadataSchema,
 } from './database-definition-schema.js';
 
 /**
@@ -282,7 +283,9 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         'Browser session authentication for Amazon shopping (cart, orders, purchases). Authenticate by logging into your Amazon account in a secure browser session.',
       placeholder: '', // Not used for browser session auth
       namePlaceholder: 'My Amazon Account',
-      credentialConfigurations: {},
+      credentialConfigurations: {
+        proxy: { server: '', username: '', password: '' },
+      },
     },
     [CredentialType.LINKEDIN_CRED]: {
       label: 'LinkedIn',
@@ -290,7 +293,9 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         'Browser session authentication for LinkedIn automation (connections, messaging). Authenticate by logging into your LinkedIn account in a secure browser session.',
       placeholder: '', // Not used for browser session auth
       namePlaceholder: 'My LinkedIn Account',
-      credentialConfigurations: {},
+      credentialConfigurations: {
+        proxy: { server: '', username: '', password: '' },
+      },
     },
     [CredentialType.JIRA_CRED]: {
       label: 'Jira',
@@ -322,6 +327,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         'Stripe API secret key for payment processing (sk_live_... or sk_test_...)',
       placeholder: 'sk_...',
       namePlaceholder: 'My Stripe API Key',
+      credentialConfigurations: {},
+    },
+    [CredentialType.PROXY_CRED]: {
+      label: 'Proxy',
+      description:
+        'Proxy server for browser automation (server, username, password). Base64-encoded JSON.',
+      placeholder: 'http://proxy.example.com:8080',
+      namePlaceholder: 'My Proxy',
       credentialConfigurations: {},
     },
     [CredentialType.CONFLUENCE_CRED]: {
@@ -390,6 +403,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
   [CredentialType.LINKEDIN_CRED]: '', // Browser session credential, no env var
+  [CredentialType.PROXY_CRED]: '', // Proxy credential (base64 JSON), no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
   [CredentialType.ASHBY_CRED]: 'ASHBY_API_KEY',
@@ -425,6 +439,7 @@ export const SYSTEM_CREDENTIALS = new Set<CredentialType>([
 export const OPTIONAL_CREDENTIALS = new Set<CredentialType>([
   CredentialType.CUSTOM_AUTH_KEY,
   CredentialType.FULLENRICH_API_KEY,
+  CredentialType.PROXY_CRED, // Optional for BrowserBase - use when proxy needed
   CredentialType.CREDENTIAL_WILDCARD, // Wildcard means any credential is accepted, so it's always optional
 ]);
 
@@ -1410,6 +1425,17 @@ export type CredentialOptions = Partial<Record<CredentialType, string>>;
 export type BubbleCredentialOption = CredentialType[];
 
 /**
+ * Optional credentials shared by all BrowserBase tools (proxy, R2 for session storage).
+ * Add to any tool that uses BrowserBase to avoid repeating per-tool.
+ */
+export const BROWSERBASE_OPTIONAL_CREDENTIALS: CredentialType[] = [
+  CredentialType.PROXY_CRED,
+  CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
+  CredentialType.CLOUDFLARE_R2_SECRET_KEY,
+  CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+];
+
+/**
  * Collection of credential options for all bubbles
  */
 export const BUBBLE_CREDENTIAL_OPTIONS: Record<
@@ -1535,15 +1561,11 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   ],
   browserbase: [
     CredentialType.AMAZON_CRED,
-    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
-    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
-    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
   ],
   'amazon-shopping-tool': [
     CredentialType.AMAZON_CRED,
-    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
-    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
-    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
   ],
   crustdata: [CredentialType.CRUSTDATA_API_KEY],
   'company-enrichment-tool': [CredentialType.CRUSTDATA_API_KEY],
@@ -1556,9 +1578,15 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   fullenrich: [CredentialType.FULLENRICH_API_KEY],
   'linkedin-connection-tool': [
     CredentialType.LINKEDIN_CRED,
-    CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
-    CredentialType.CLOUDFLARE_R2_SECRET_KEY,
-    CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
+  ],
+  'linkedin-sent-invitations-tool': [
+    CredentialType.LINKEDIN_CRED,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
+  ],
+  'linkedin-received-invitations-tool': [
+    CredentialType.LINKEDIN_CRED,
+    ...BROWSERBASE_OPTIONAL_CREDENTIALS,
   ],
   stripe: [CredentialType.STRIPE_CRED],
   confluence: [CredentialType.CONFLUENCE_CRED],
@@ -1674,6 +1702,7 @@ export const credentialResponseSchema = z
         notionOAuthMetadataSchema,
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
+        browserSessionMetadataSchema,
         credentialPreferencesSchema,
       ])
       .optional()
@@ -1792,6 +1821,23 @@ export const browserbaseSessionCompleteRequestSchema = z
     name: z.string().optional().openapi({
       description: 'User-friendly name for the credential',
     }),
+    proxy: z
+      .object({
+        server: z.string().describe('Proxy server URL'),
+        username: z
+          .string()
+          .optional()
+          .describe('Proxy authentication username'),
+        password: z
+          .string()
+          .optional()
+          .describe('Proxy authentication password'),
+      })
+      .optional()
+      .openapi({
+        description:
+          'Optional proxy configuration to embed in the session credential',
+      }),
   })
   .openapi('BrowserbaseSessionCompleteRequest');
 

@@ -17,6 +17,18 @@ export const CDPCookieSchema = z.object({
 export type CDPCookie = z.infer<typeof CDPCookieSchema>;
 
 /**
+ * Embedded proxy config in browser session credential payload
+ * Backward compatible: old credentials omit proxy entirely
+ */
+export const BrowserSessionProxySchema = z
+  .object({
+    server: z.string(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+  })
+  .optional();
+
+/**
  * Browser session data returned from credential injection
  * This is what gets decrypted from AMAZON_CRED or similar browser session credentials
  */
@@ -25,6 +37,7 @@ export const BrowserSessionDataSchema = z.object({
     .string()
     .describe('BrowserBase context ID for session persistence'),
   cookies: z.array(CDPCookieSchema).describe('Array of cookies to inject'),
+  proxy: BrowserSessionProxySchema,
 });
 
 export type BrowserSessionData = z.infer<typeof BrowserSessionDataSchema>;
@@ -165,6 +178,15 @@ export const BrowserBaseParamsSchema = z.discriminatedUnion('operation', [
     stealth: StealthConfigSchema.optional().describe(
       'Stealth mode configuration for anti-bot avoidance and CAPTCHA solving'
     ),
+    // Session timeout (BrowserBase: 60-21600 seconds)
+    timeout_seconds: z
+      .number()
+      .min(60)
+      .max(21600)
+      .optional()
+      .describe(
+        'Session timeout in seconds. Duration after which the session automatically ends (60-21600).'
+      ),
   }),
 
   // Navigate operation - navigate to a URL
