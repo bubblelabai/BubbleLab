@@ -467,6 +467,31 @@ export const JiraParamsSchema = z.discriminatedUnion('operation', [
   }),
 
   // -------------------------------------------------------------------------
+  // SUPPORTING OPERATION: get_create_fields
+  // -------------------------------------------------------------------------
+  z.object({
+    operation: z
+      .literal('get_create_fields')
+      .describe(
+        'Get required and optional fields for creating issues in a project, grouped by issue type'
+      ),
+
+    project: z
+      .string()
+      .min(1, 'Project key is required')
+      .describe('Project key (e.g., "PROJ")'),
+
+    issue_type: z
+      .string()
+      .optional()
+      .describe(
+        'Filter by issue type name (e.g., "Bug", "Task"). If omitted, returns fields for all issue types'
+      ),
+
+    credentials: credentialsField,
+  }),
+
+  // -------------------------------------------------------------------------
   // SUPPORTING OPERATION: add_comment
   // -------------------------------------------------------------------------
   z.object({
@@ -607,6 +632,44 @@ export const JiraResultSchema = z.discriminatedUnion('operation', [
     error: z.string().describe('Error message if operation failed'),
   }),
 
+  // get_create_fields result
+  z.object({
+    operation: z.literal('get_create_fields'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    issue_types: z
+      .array(
+        z.object({
+          id: z.string().describe('Issue type ID'),
+          name: z.string().describe('Issue type name'),
+          fields: z
+            .array(
+              z.object({
+                fieldId: z
+                  .string()
+                  .describe('Field ID (e.g., "summary", "customfield_10319")'),
+                name: z.string().describe('Human-readable field name'),
+                required: z.boolean().describe('Whether the field is required'),
+                isCustom: z
+                  .boolean()
+                  .describe('Whether this is a custom field'),
+                schema: z
+                  .unknown()
+                  .optional()
+                  .describe('Field type schema from Jira'),
+                allowedValues: z
+                  .array(z.unknown())
+                  .optional()
+                  .describe('Allowed values for the field, if constrained'),
+              })
+            )
+            .describe('Fields available for this issue type'),
+        })
+      )
+      .optional()
+      .describe('Issue types with their fields'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
   // add_comment result
   z.object({
     operation: z.literal('add_comment'),
@@ -658,6 +721,10 @@ export type JiraListProjectsParams = Extract<
 export type JiraListIssueTypesParams = Extract<
   JiraParams,
   { operation: 'list_issue_types' }
+>;
+export type JiraGetCreateFieldsParams = Extract<
+  JiraParams,
+  { operation: 'get_create_fields' }
 >;
 export type JiraAddCommentParams = Extract<
   JiraParams,

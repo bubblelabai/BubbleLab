@@ -15,6 +15,7 @@ import {
   type JiraListTransitionsParams,
   type JiraListProjectsParams,
   type JiraListIssueTypesParams,
+  type JiraGetCreateFieldsParams,
   type JiraAddCommentParams,
   type JiraGetCommentsParams,
   type JiraIssue,
@@ -313,6 +314,10 @@ export class JiraBubble<
           case 'list_issue_types':
             return await this.listIssueTypes(
               parsedParams as JiraListIssueTypesParams
+            );
+          case 'get_create_fields':
+            return await this.getCreateFields(
+              parsedParams as JiraGetCreateFieldsParams
             );
           case 'add_comment':
             return await this.addComment(parsedParams as JiraAddCommentParams);
@@ -847,6 +852,97 @@ export class JiraBubble<
         description: it.description,
         subtask: it.subtask,
       })),
+      error: '',
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // SUPPORTING OPERATION: get_create_fields
+  // -------------------------------------------------------------------------
+  private async getCreateFields(
+    params: JiraGetCreateFieldsParams
+  ): Promise<Extract<JiraResult, { operation: 'get_create_fields' }>> {
+    const { project, issue_type } = params;
+
+    // Step 1: Fetch issue types for the project via the createmeta endpoint
+    const issueTypesResponse = await this.makeJiraApiRequest(
+      `/rest/api/3/issue/createmeta/${encodeURIComponent(project)}/issuetypes`,
+      'GET'
+    );
+
+    const rawIssueTypes = (issueTypesResponse.values ??
+      issueTypesResponse.issueTypes ??
+      []) as Array<{
+      id: string;
+      name: string;
+      description?: string;
+      subtask?: boolean;
+    }>;
+
+    // Filter by issue type name if specified
+    const filteredTypes = issue_type
+      ? rawIssueTypes.filter(
+          (it) => it.name.toLowerCase() === issue_type.toLowerCase()
+        )
+      : rawIssueTypes;
+
+    if (issue_type && filteredTypes.length === 0) {
+      const available = rawIssueTypes.map((it) => it.name).join(', ');
+      throw new Error(
+        `Issue type "${issue_type}" not found in project ${project}. Available types: ${available}`
+      );
+    }
+
+    // Step 2: For each issue type, fetch its fields
+    const issueTypesWithFields: Array<{
+      id: string;
+      name: string;
+      fields: Array<{
+        fieldId: string;
+        name: string;
+        required: boolean;
+        isCustom: boolean;
+        schema?: unknown;
+        allowedValues?: unknown[];
+      }>;
+    }> = [];
+
+    for (const it of filteredTypes) {
+      const fieldsResponse = await this.makeJiraApiRequest(
+        `/rest/api/3/issue/createmeta/${encodeURIComponent(project)}/issuetypes/${encodeURIComponent(it.id)}`,
+        'GET'
+      );
+
+      const rawFields = (fieldsResponse.values ??
+        fieldsResponse.fields ??
+        []) as Array<{
+        fieldId: string;
+        name: string;
+        required: boolean;
+        schema?: unknown;
+        allowedValues?: unknown[];
+      }>;
+
+      const fields = rawFields.map((f) => ({
+        fieldId: f.fieldId,
+        name: f.name,
+        required: f.required,
+        isCustom: f.fieldId.startsWith('customfield_'),
+        schema: f.schema,
+        allowedValues: f.allowedValues,
+      }));
+
+      issueTypesWithFields.push({
+        id: it.id,
+        name: it.name,
+        fields,
+      });
+    }
+
+    return {
+      operation: 'get_create_fields',
+      success: true,
+      issue_types: issueTypesWithFields,
       error: '',
     };
   }
