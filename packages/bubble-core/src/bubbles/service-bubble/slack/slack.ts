@@ -1511,7 +1511,7 @@ Comprehensive Slack integration for messaging and workspace management.
     if (!executionMeta?.studioBaseUrl || !executionMeta?.flowId) {
       return [];
     }
-    const viewUrl = `${executionMeta.studioBaseUrl}/flow/${executionMeta.flowId}${executionMeta.executionId != null ? `?executionId=${executionMeta.executionId}` : ''}`;
+    const viewUrl = `${executionMeta.studioBaseUrl}/flow/${executionMeta.flowId}`;
     return [
       { type: 'divider' },
       {
@@ -1519,7 +1519,7 @@ Comprehensive Slack integration for messaging and workspace management.
         elements: [
           {
             type: 'mrkdwn',
-            text: `Powered by <https://bubblelab.ai|BubbleLab> · <${viewUrl}|View execution>`,
+            text: `Powered by <https://bubblelab.ai|Bubble Lab> · <${viewUrl}|View Flow>`,
           },
         ],
       },
