@@ -12,7 +12,8 @@ export type CapabilityId =
   | 'chart-maker'
   | 'gmail-assistant'
   | 'google-calendar'
-  | 'jira-assistant';
+  | 'jira-assistant'
+  | 'notion-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
