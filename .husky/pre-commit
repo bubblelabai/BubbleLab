@@ -16,10 +16,5 @@ echo "✅ Lockfile is up to date"
 echo "🧹 Running lint-staged..."
 npx lint-staged
 
-# Run typecheck to catch type errors before committing
-echo "🔍 Running typecheck..."
-if ! pnpm run typecheck; then
-  echo "❌ Typecheck failed. Fix type errors before committing."
-  exit 1
-fi
-echo "✅ Typecheck passed"
+echo "✅ Pre-commit checks passed"
+echo "💡 Typecheck will run in commit-workflow.sh"
