@@ -46,6 +46,8 @@ export interface BubbleRunnerOptions {
     flowId?: number;
     executionId?: number;
     studioBaseUrl?: string;
+    _thinkingMessageTs?: string;
+    _thinkingMessageChannel?: string;
   };
 }
 
