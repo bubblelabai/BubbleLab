@@ -1016,13 +1016,10 @@ export class BrowserBaseBubble<
       ); // Ensure non-negative
 
       // Track service usage for browser session duration based on API response
-      // Using AMAZON_CRED as service type with subService 'browserbase' to distinguish
-      // TODO: Consider adding BROWSERBASE_CRED as a new CredentialType for proper tracking
       if (this.context?.logger && sessionDurationMinutes > 0) {
         this.context.logger.addServiceUsage(
           {
-            service: CredentialType.AMAZON_CRED, // Using AMAZON_CRED as workaround - BrowserBase doesn't have its own CredentialType
-            subService: 'browserbase',
+            service: CredentialType.BROWSERBASE_CRED,
             unit: 'per_minute',
             usage: sessionDurationMinutes,
           },

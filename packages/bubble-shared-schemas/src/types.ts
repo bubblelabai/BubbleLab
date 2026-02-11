@@ -61,6 +61,7 @@ export enum CredentialType {
   // Browser Session Credentials (BrowserBase-powered)
   AMAZON_CRED = 'AMAZON_CRED',
   LINKEDIN_CRED = 'LINKEDIN_CRED',
+  BROWSERBASE_CRED = 'BROWSERBASE_CRED', // Usage tracking for BrowserBase browser minutes
   // Crustdata Credentials
   CRUSTDATA_API_KEY = 'CRUSTDATA_API_KEY',
 

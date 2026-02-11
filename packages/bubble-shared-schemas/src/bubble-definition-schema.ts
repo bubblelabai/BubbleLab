@@ -55,6 +55,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
     proxyUsername: BubbleParameterType.STRING,
     proxyPassword: BubbleParameterType.STRING,
   },
+  [CredentialType.BROWSERBASE_CRED]: {},
   [CredentialType.LINKEDIN_CRED]: {
     proxyServer: BubbleParameterType.STRING,
     proxyUsername: BubbleParameterType.STRING,

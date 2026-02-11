@@ -322,7 +322,12 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
   // Create page operation
   z.object({
     operation: z.literal('create_page').describe('Create a new page in Notion'),
-    parent: ParentSchema.describe('Parent page, database, or workspace'),
+    parent: ParentSchema.describe(
+      'Parent page, database, or data source. IMPORTANT: To add a row to a database, ' +
+        'use type "data_source_id" with the data_source_id (NOT the database_id). ' +
+        'If you pass type "database_id", it will be auto-resolved to the correct data_source_id ' +
+        'via an extra API call. Get the data_source_id from retrieve_database response (data_sources[0].id).'
+    ),
     properties: z
       .record(z.unknown())
       .optional()
@@ -402,8 +407,36 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
   z.object({
     operation: z
       .literal('retrieve_database')
-      .describe('Retrieve a database by its ID'),
-    database_id: z.string().describe('UUID of the Notion database'),
+      .describe(
+        'Retrieve a database by its ID. The response includes a data_sources array — ' +
+          'use data_sources[0].id as the data_source_id for query_data_source and create_page operations. ' +
+          'In Notion API v2025+, database_id and data_source_id are different UUIDs.'
+      ),
+    database_id: z
+      .string()
+      .describe(
+        'UUID of the Notion database (the 32-character hex ID from the Notion URL)'
+      ),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe('Object mapping credential types to values'),
+  }),
+
+  // Retrieve data source operation
+  z.object({
+    operation: z
+      .literal('retrieve_data_source')
+      .describe(
+        'Retrieve a data source by its ID to get the schema (properties). ' +
+          'Returns the property definitions (names, types, options, etc.) for the data source. ' +
+          "NOTE: retrieve_database now auto-fetches this, so you typically don't need this operation."
+      ),
+    data_source_id: z
+      .string()
+      .describe(
+        'UUID of the Notion data source. Get this from retrieve_database response (data_sources[0].id).'
+      ),
     credentials: z
       .record(z.nativeEnum(CredentialType), z.string())
       .optional()
@@ -415,7 +448,23 @@ const NotionParamsSchema = z.discriminatedUnion('operation', [
     operation: z
       .literal('query_data_source')
       .describe('Query a data source to retrieve pages'),
-    data_source_id: z.string().describe('UUID of the Notion data source'),
+    data_source_id: z
+      .string()
+      .optional()
+      .describe(
+        'UUID of the Notion data source (NOT the database ID). ' +
+          'In Notion API v2025+, databases are containers and data sources are the queryable tables inside them — they have different IDs. ' +
+          'You can get the data_source_id from retrieve_database response (data_sources[0].id) or from a search result. ' +
+          'If you only have a database_id, pass it via the database_id parameter instead and it will be resolved automatically.'
+      ),
+    database_id: z
+      .string()
+      .optional()
+      .describe(
+        'UUID of the Notion database (from the URL). If provided instead of data_source_id, ' +
+          'the bubble will automatically resolve the correct data_source_id by calling retrieve_database. ' +
+          'This is a convenience parameter — using data_source_id directly is more efficient as it avoids an extra API call.'
+      ),
     filter: z
       .record(z.unknown())
       .optional()
@@ -850,7 +899,17 @@ const NotionResultSchema = z.discriminatedUnion('operation', [
     success: z.boolean().describe('Whether the operation succeeded'),
     error: z.string().describe('Error message if operation failed'),
     database: DatabaseObjectSchema.optional().describe(
-      'Retrieved database object'
+      'Retrieved database object (with auto-fetched properties schema from first data source)'
+    ),
+  }),
+  z.object({
+    operation: z
+      .literal('retrieve_data_source')
+      .describe('Retrieve data source operation result'),
+    success: z.boolean().describe('Whether the operation succeeded'),
+    error: z.string().describe('Error message if operation failed'),
+    data_source: DataSourceObjectSchema.optional().describe(
+      'Retrieved data source object with properties schema'
     ),
   }),
   z.object({
@@ -1194,6 +1253,13 @@ export class NotionBubble<
                 { operation: 'retrieve_database' }
               >
             );
+          case 'retrieve_data_source':
+            return await this.retrieveDataSource(
+              this.params as Extract<
+                NotionParams,
+                { operation: 'retrieve_data_source' }
+              >
+            );
           case 'query_data_source':
             return await this.queryDataSource(
               this.params as Extract<
@@ -1310,9 +1376,9 @@ export class NotionBubble<
       { operation: 'create_page' }
     >;
 
-    // Auto-convert database_id parent to data_source_id for Notion API v2025+
+    // Auto-resolve database_id parent to data_source_id for Notion API v2025+
     // In the 2025 API, databases are containers and data sources are the queryable tables.
-    // Users/AI often pass database_id when they mean data_source_id, so convert transparently.
+    // They have DIFFERENT UUIDs — we must call retrieve_database to get the real data_source_id.
     let effectiveParent = parent;
     if (
       parent &&
@@ -1320,24 +1386,61 @@ export class NotionBubble<
       parent.type === 'database_id' &&
       'database_id' in parent
     ) {
+      const databaseId = (parent as { database_id: string }).database_id;
+      const resolvedDataSourceId = await this.resolveDataSourceId(databaseId);
       effectiveParent = {
         type: 'data_source_id' as const,
-        data_source_id: (parent as { database_id: string }).database_id,
+        data_source_id: resolvedDataSourceId,
       };
     }
 
-    const body: Record<string, unknown> = {
-      parent: effectiveParent,
+    const buildBody = (p: typeof effectiveParent): Record<string, unknown> => {
+      const b: Record<string, unknown> = { parent: p };
+      if (properties) b.properties = properties;
+      if (children) b.children = children;
+      if (icon) b.icon = icon;
+      if (cover) b.cover = cover;
+      return b;
     };
 
-    if (properties) body.properties = properties;
-    if (children) body.children = children;
-    if (icon) body.icon = icon;
-    if (cover) body.cover = cover;
-
-    const page = await this.makeNotionApiCall<
-      z.output<typeof PageObjectSchema>
-    >('pages', body, 'POST');
+    let page: z.output<typeof PageObjectSchema>;
+    try {
+      page = await this.makeNotionApiCall<z.output<typeof PageObjectSchema>>(
+        'pages',
+        buildBody(effectiveParent),
+        'POST'
+      );
+    } catch (firstError) {
+      // Fallback: if parent is data_source_id but the value might actually be a database_id,
+      // try resolving it and retry once.
+      if (
+        effectiveParent &&
+        'type' in effectiveParent &&
+        effectiveParent.type === 'data_source_id' &&
+        'data_source_id' in effectiveParent
+      ) {
+        try {
+          const maybeDbId = (effectiveParent as { data_source_id: string })
+            .data_source_id;
+          const resolved = await this.resolveDataSourceId(maybeDbId);
+          if (resolved !== maybeDbId) {
+            const fallbackParent = {
+              type: 'data_source_id' as const,
+              data_source_id: resolved,
+            };
+            page = await this.makeNotionApiCall<
+              z.output<typeof PageObjectSchema>
+            >('pages', buildBody(fallbackParent), 'POST');
+          } else {
+            throw firstError;
+          }
+        } catch {
+          throw firstError;
+        }
+      } else {
+        throw firstError;
+      }
+    }
 
     return {
       operation: 'create_page',
@@ -1418,11 +1521,60 @@ export class NotionBubble<
       z.output<typeof DatabaseObjectSchema>
     >(`databases/${database_id}`, {}, 'GET');
 
+    // Auto-fetch schema from the first data source
+    // In Notion API v2025+, the database object doesn't include properties (schema).
+    // We must call GET /data_sources/{id} to get the schema.
+    const dbWithSchema = database as Record<string, unknown>;
+    const dataSources = dbWithSchema.data_sources as
+      | Array<{ id: string; name?: string }>
+      | undefined;
+
+    if (dataSources && dataSources.length > 0) {
+      try {
+        const dataSourceId = dataSources[0].id;
+        interface DataSourceSchema {
+          properties: Record<string, unknown>;
+        }
+        const dataSource = await this.makeNotionApiCall<DataSourceSchema>(
+          `data_sources/${dataSourceId}`,
+          {},
+          'GET'
+        );
+
+        // Merge the schema into the database response for convenience
+        dbWithSchema.properties = dataSource.properties;
+      } catch (error) {
+        // If schema fetch fails, continue without it (database object is still valid)
+        console.warn('Failed to auto-fetch data source schema:', error);
+      }
+    }
+
     return {
       operation: 'retrieve_database',
       success: true,
       error: '',
-      database,
+      database: dbWithSchema as z.output<typeof DatabaseObjectSchema>,
+    };
+  }
+
+  private async retrieveDataSource(
+    params: Extract<NotionParams, { operation: 'retrieve_data_source' }>
+  ): Promise<Extract<NotionResult, { operation: 'retrieve_data_source' }>> {
+    const parsed = NotionParamsSchema.parse(params);
+    const { data_source_id } = parsed as Extract<
+      NotionParamsParsed,
+      { operation: 'retrieve_data_source' }
+    >;
+
+    const data_source = await this.makeNotionApiCall<
+      z.output<typeof DataSourceObjectSchema>
+    >(`data_sources/${data_source_id}`, {}, 'GET');
+
+    return {
+      operation: 'retrieve_data_source',
+      success: true,
+      error: '',
+      data_source,
     };
   }
 
@@ -1443,6 +1595,26 @@ export class NotionBubble<
       { operation: 'query_data_source' }
     >;
 
+    // Also extract database_id if provided as a convenience alias
+    const databaseId = (parsed as Record<string, unknown>).database_id as
+      | string
+      | undefined;
+
+    // Resolve the effective data_source_id: use data_source_id if provided,
+    // otherwise auto-resolve from database_id via retrieve_database
+    let effectiveDataSourceId = data_source_id;
+    if (!effectiveDataSourceId && databaseId) {
+      effectiveDataSourceId = await this.resolveDataSourceId(databaseId);
+    }
+    if (!effectiveDataSourceId) {
+      throw new Error(
+        'Either data_source_id or database_id must be provided for query_data_source. ' +
+          'Tip: data_source_id is NOT the same as database_id in Notion API v2025+. ' +
+          'Get the data_source_id from retrieve_database response (data_sources[0].id), ' +
+          'or pass database_id and it will be resolved automatically.'
+      );
+    }
+
     const body: Record<string, unknown> = {};
 
     if (filter) body.filter = filter;
@@ -1451,14 +1623,17 @@ export class NotionBubble<
     if (page_size !== undefined) body.page_size = page_size;
     if (result_type) body.result_type = result_type;
 
-    let url = `data_sources/${data_source_id}/query`;
-    if (filter_properties && filter_properties.length > 0) {
-      const params = new URLSearchParams();
-      filter_properties.forEach((prop) => {
-        params.append('filter_properties', prop);
-      });
-      url += `?${params.toString()}`;
-    }
+    const buildUrl = (dsId: string): string => {
+      let u = `data_sources/${dsId}/query`;
+      if (filter_properties && filter_properties.length > 0) {
+        const qp = new URLSearchParams();
+        filter_properties.forEach((prop) => {
+          qp.append('filter_properties', prop);
+        });
+        u += `?${qp.toString()}`;
+      }
+      return u;
+    };
 
     interface QueryResultItem {
       object: 'page' | 'data_source';
@@ -1479,11 +1654,36 @@ export class NotionBubble<
       next_cursor: string | null;
       has_more: boolean;
     }
-    const response = await this.makeNotionApiCall<QueryResultList>(
-      url,
-      body,
-      'POST'
-    );
+
+    let response: QueryResultList;
+    try {
+      response = await this.makeNotionApiCall<QueryResultList>(
+        buildUrl(effectiveDataSourceId),
+        body,
+        'POST'
+      );
+    } catch (firstError) {
+      // Fallback: the caller may have passed a database_id as data_source_id.
+      // Try resolving the real data_source_id from the value and retry once.
+      if (!databaseId && data_source_id) {
+        try {
+          const resolved = await this.resolveDataSourceId(data_source_id);
+          if (resolved !== data_source_id) {
+            response = await this.makeNotionApiCall<QueryResultList>(
+              buildUrl(resolved),
+              body,
+              'POST'
+            );
+          } else {
+            throw firstError; // same ID, resolution didn't help
+          }
+        } catch {
+          throw firstError; // resolution itself failed, surface original error
+        }
+      } else {
+        throw firstError;
+      }
+    }
 
     return {
       operation: 'query_data_source',
@@ -1899,6 +2099,32 @@ export class NotionBubble<
       next_cursor: response.next_cursor,
       has_more: response.has_more,
     };
+  }
+
+  /**
+   * Resolves a database_id to its default data_source_id by calling retrieve_database.
+   * In Notion API v2025+, databases are containers and data sources are the queryable tables.
+   * They have different UUIDs — users typically only know the database_id from the URL.
+   */
+  private async resolveDataSourceId(databaseId: string): Promise<string> {
+    interface DatabaseWithDataSources {
+      data_sources?: Array<{ id: string; name?: string }>;
+    }
+    const database = await this.makeNotionApiCall<DatabaseWithDataSources>(
+      `databases/${databaseId}`,
+      {},
+      'GET'
+    );
+
+    if (!database.data_sources || database.data_sources.length === 0) {
+      throw new Error(
+        `Database "${databaseId}" has no data sources. ` +
+          'In Notion API v2025+, databases are containers and data sources are the queryable tables inside them. ' +
+          'This database may be empty or not properly configured.'
+      );
+    }
+
+    return database.data_sources[0].id;
   }
 
   private async makeNotionApiCall<T = unknown>(

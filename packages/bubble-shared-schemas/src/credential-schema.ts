@@ -287,6 +287,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         proxy: { server: '', username: '', password: '' },
       },
     },
+    [CredentialType.BROWSERBASE_CRED]: {
+      label: 'BrowserBase',
+      description:
+        'Usage tracking for BrowserBase browser automation (billed per minute of browser session time). Used internally for billing; credentials are AMAZON_CRED/LINKEDIN_CRED.',
+      placeholder: '',
+      namePlaceholder: 'BrowserBase Usage',
+      credentialConfigurations: {},
+    },
     [CredentialType.LINKEDIN_CRED]: {
       label: 'LinkedIn',
       description:
@@ -394,6 +402,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.INSFORGE_API_KEY]: 'INSFORGE_API_KEY',
   [CredentialType.CUSTOM_AUTH_KEY]: '', // User-provided, no env var
   [CredentialType.AMAZON_CRED]: '', // Browser session credential, no env var
+  [CredentialType.BROWSERBASE_CRED]: '', // Usage tracking only, no env var
   [CredentialType.LINKEDIN_CRED]: '', // Browser session credential, no env var
   [CredentialType.CRUSTDATA_API_KEY]: 'CRUSTDATA_API_KEY',
   [CredentialType.JIRA_CRED]: '', // OAuth credential, no env var
