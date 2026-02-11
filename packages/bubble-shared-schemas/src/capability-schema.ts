@@ -13,7 +13,8 @@ export type CapabilityId =
   | 'gmail-assistant'
   | 'google-calendar'
   | 'jira-assistant'
-  | 'notion-assistant';
+  | 'notion-assistant'
+  | 'stripe-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
