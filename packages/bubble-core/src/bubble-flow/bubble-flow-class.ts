@@ -14,6 +14,8 @@ export abstract class BubbleFlow<
     flowId?: number;
     executionId?: number;
     studioBaseUrl?: string;
+    _thinkingMessageTs?: string;
+    _thinkingMessageChannel?: string;
   };
   __triggerConversationHistory__?: Array<{ role: string; content: string }>;
 

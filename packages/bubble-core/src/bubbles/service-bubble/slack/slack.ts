@@ -1560,9 +1560,27 @@ Comprehensive Slack integration for messaging and workspace management.
 
     // Build "Powered by BubbleLab" footer from execution metadata
     const executionMeta = context?.executionMeta as
-      | { flowId?: number; executionId?: number; studioBaseUrl?: string }
+      | {
+          flowId?: number;
+          executionId?: number;
+          studioBaseUrl?: string;
+          _thinkingMessageTs?: string;
+          _thinkingMessageChannel?: string;
+        }
       | undefined;
     const footerBlocks = SlackBubble.buildFooterBlocks(executionMeta);
+
+    // Check if we should replace a thinking placeholder message
+    const thinkingTs = executionMeta?._thinkingMessageTs;
+    const thinkingChannel = executionMeta?._thinkingMessageChannel;
+    const shouldUpdateThinking =
+      thinkingTs && thinkingChannel && resolvedChannel === thinkingChannel;
+
+    // Clear thinking fields so subsequent sends in the same flow post normally
+    if (shouldUpdateThinking && executionMeta) {
+      delete executionMeta._thinkingMessageTs;
+      delete executionMeta._thinkingMessageChannel;
+    }
 
     // If we have more than 50 blocks, split into multiple messages
     if (
@@ -1583,7 +1601,8 @@ Comprehensive Slack integration for messaging and workspace management.
           unfurl_links,
           unfurl_media,
         },
-        footerBlocks
+        footerBlocks,
+        shouldUpdateThinking ? thinkingTs : undefined
       );
     }
 
@@ -1621,7 +1640,14 @@ Comprehensive Slack integration for messaging and workspace management.
       body.reply_broadcast = reply_broadcast;
     }
 
-    const response = await this.makeSlackApiCall('chat.postMessage', body);
+    // Replace thinking placeholder or post new message
+    if (shouldUpdateThinking) {
+      body.ts = thinkingTs;
+    }
+    const response = await this.makeSlackApiCall(
+      shouldUpdateThinking ? 'chat.update' : 'chat.postMessage',
+      body
+    );
 
     return {
       operation: 'send_message',
@@ -1660,7 +1686,8 @@ Comprehensive Slack integration for messaging and workspace management.
       unfurl_links?: boolean;
       unfurl_media?: boolean;
     },
-    footerBlocks: Record<string, unknown>[] = []
+    footerBlocks: Record<string, unknown>[] = [],
+    thinkingMessageTs?: string
   ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
     // Split blocks into chunks of 50
     const blockChunks: (typeof blocks)[] = [];
@@ -1718,7 +1745,14 @@ Comprehensive Slack integration for messaging and workspace management.
         body.attachments = options.attachments;
       }
 
-      const response = await this.makeSlackApiCall('chat.postMessage', body);
+      // First chunk replaces thinking placeholder if available; all others post normally
+      if (isFirstChunk && thinkingMessageTs) {
+        body.ts = thinkingMessageTs;
+      }
+      const response = await this.makeSlackApiCall(
+        isFirstChunk && thinkingMessageTs ? 'chat.update' : 'chat.postMessage',
+        body
+      );
 
       if (!response.ok) {
         errors.push(
