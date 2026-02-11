@@ -88,6 +88,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.INSFORGE_API_KEY]: 'InsForge',
     [CredentialType.CUSTOM_AUTH_KEY]: 'Custom',
     [CredentialType.AMAZON_CRED]: 'Amazon',
+    [CredentialType.BROWSERBASE_CRED]: 'BrowserBase',
     [CredentialType.CRUSTDATA_API_KEY]: 'Crustdata',
     [CredentialType.JIRA_CRED]: 'Jira',
     [CredentialType.ASHBY_CRED]: 'Ashby',
