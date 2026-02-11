@@ -120,11 +120,15 @@ export class LinkedInAcceptInvitationsTool<
   private async stepAcceptTopInvitations(): Promise<{
     accepted: AcceptedInvitationInfo[];
     skipped: number;
+    availableCount: number;
   }> {
     const count = (this.params as { count?: number }).count ?? 5;
     const accepted: AcceptedInvitationInfo[] = [];
     let skipped = 0;
+    let availableCount = 0;
     const TEMP_ID = '__bubblelab_accept_target__';
+    const MAX_CLICK_RETRIES = 2;
+    const POST_ACCEPT_SETTLE_MS = 1500;
 
     for (let i = 0; i < count; i++) {
       // Step 1: Find first visible Accept button, extract card info, tag it with a temp ID
@@ -247,26 +251,58 @@ export class LinkedInAcceptInvitationsTool<
         break;
       }
 
+      // Track available invitations on first iteration
+      if (i === 0) availableCount = extractResult.buttonCount;
+
       const prevButtonCount = extractResult.buttonCount;
 
-      // Step 2: Click the tagged button using BrowserBase (Puppeteer trusted click)
+      // Step 2: Click the tagged button with retries (re-tag on failure)
       if (!this.sessionId) throw new Error('No active session');
-      const clickBubble = new BrowserBaseBubble(
-        {
-          operation: 'click' as const,
-          session_id: this.sessionId,
-          selector: `#${TEMP_ID}`,
-          wait_for_navigation: false,
-          timeout: 5000,
-        },
-        this.context,
-        'clickaccept'
-      );
-      const clickResult = await clickBubble.action();
+      let clickSucceeded = false;
+      for (let retry = 0; retry <= MAX_CLICK_RETRIES; retry++) {
+        // On retry, wait for DOM to settle then re-tag the button
+        if (retry > 0) {
+          console.log(
+            `[AcceptInvitations] Retrying click for invitation ${i + 1} (attempt ${retry + 1})`
+          );
+          await new Promise((r) => setTimeout(r, 1500));
+          await this.evaluate(`
+            (() => {
+              const prev = document.getElementById('${TEMP_ID}');
+              if (prev) prev.removeAttribute('id');
+              const btns = Array.from(document.querySelectorAll('button')).filter(btn => {
+                const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+                return text === 'accept' && btn.offsetParent !== null && !btn.disabled;
+              });
+              if (btns.length === 0) return false;
+              btns[0].id = '${TEMP_ID}';
+              btns[0].scrollIntoView({ block: 'center', behavior: 'instant' });
+              return true;
+            })()
+          `);
+        }
 
-      if (!clickResult.data.success) {
+        const clickBubble = new BrowserBaseBubble(
+          {
+            operation: 'click' as const,
+            session_id: this.sessionId,
+            selector: `#${TEMP_ID}`,
+            wait_for_navigation: false,
+            timeout: 5000,
+          },
+          this.context,
+          'clickaccept'
+        );
+        const clickResult = await clickBubble.action();
+        if (clickResult.data.success) {
+          clickSucceeded = true;
+          break;
+        }
+      }
+
+      if (!clickSucceeded) {
         console.log(
-          `[AcceptInvitations] Click failed for invitation ${i + 1}, skipping`
+          `[AcceptInvitations] Click failed for invitation ${i + 1} after ${MAX_CLICK_RETRIES + 1} attempts, skipping`
         );
         skipped++;
         await new Promise((r) => setTimeout(r, 1000));
@@ -292,9 +328,12 @@ export class LinkedInAcceptInvitationsTool<
         `)) as number;
         if (currentCount < prevButtonCount) break;
       }
+
+      // Extra settle time for LinkedIn UI animations before next iteration
+      await new Promise((r) => setTimeout(r, POST_ACCEPT_SETTLE_MS));
     }
 
-    return { accepted, skipped };
+    return { accepted, skipped, availableCount };
   }
 
   private async stepEndBrowserSession(): Promise<void> {
@@ -347,16 +386,28 @@ export class LinkedInAcceptInvitationsTool<
       if (!pageReady)
         console.log('[AcceptInvitations] Page slow to load, continuing');
 
-      const { accepted, skipped } = await this.stepAcceptTopInvitations();
+      const { accepted, skipped, availableCount } =
+        await this.stepAcceptTopInvitations();
+      const count = (this.params as { count?: number }).count ?? 5;
+
+      // Success if we accepted all requested, OR if fewer were available than requested
+      const allAvailableAccepted =
+        availableCount < count
+          ? accepted.length >= availableCount
+          : accepted.length >= count;
 
       return {
         operation: 'accept_invitations',
-        success: true,
+        success: allAvailableAccepted,
         accepted,
         accepted_count: accepted.length,
         skipped_count: skipped,
-        message: `Accepted ${accepted.length} invitation(s)${skipped > 0 ? `, skipped ${skipped}` : ''}`,
-        error: '',
+        message: allAvailableAccepted
+          ? `Accepted ${accepted.length} invitation(s)${availableCount < count ? ` (only ${availableCount} available)` : ''}`
+          : `Accepted ${accepted.length}/${count} invitation(s), ${skipped} failed`,
+        error: allAvailableAccepted
+          ? ''
+          : `Failed to accept ${skipped} invitation(s)`,
       };
     } catch (error) {
       return {
