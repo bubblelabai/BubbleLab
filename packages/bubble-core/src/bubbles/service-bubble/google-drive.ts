@@ -1955,7 +1955,7 @@ export class GoogleDriveBubble<
   }
 
   /**
-   * Extracts plain text from a content array
+   * Extracts plain text from a content array, handling paragraphs, tables, and table of contents
    */
   private extractPlainTextFromContent(
     content: Array<Record<string, unknown>>
@@ -1963,6 +1963,7 @@ export class GoogleDriveBubble<
     const textParts: string[] = [];
 
     for (const element of content) {
+      // Handle paragraphs
       const paragraph = element.paragraph as
         | { elements?: Array<Record<string, unknown>> }
         | undefined;
@@ -1973,6 +1974,53 @@ export class GoogleDriveBubble<
             textParts.push(textRun.content);
           }
         }
+        continue;
+      }
+
+      // Handle tables — format as markdown tables
+      const table = element.table as
+        | {
+            tableRows?: Array<{
+              tableCells?: Array<{
+                content?: Array<Record<string, unknown>>;
+              }>;
+            }>;
+          }
+        | undefined;
+      if (table?.tableRows) {
+        const rows: string[][] = [];
+        for (const row of table.tableRows) {
+          const cells: string[] = [];
+          for (const cell of row.tableCells ?? []) {
+            // Recursively extract text from cell content, collapse newlines to spaces
+            const cellText = cell.content
+              ? this.extractPlainTextFromContent(cell.content)
+                  .replace(/\n+/g, ' ')
+                  .trim()
+              : '';
+            cells.push(cellText);
+          }
+          rows.push(cells);
+        }
+        if (rows.length > 0) {
+          const lines: string[] = [];
+          // First row as header
+          lines.push('| ' + rows[0].join(' | ') + ' |');
+          lines.push('| ' + rows[0].map(() => '---').join(' | ') + ' |');
+          for (let i = 1; i < rows.length; i++) {
+            lines.push('| ' + rows[i].join(' | ') + ' |');
+          }
+          textParts.push(lines.join('\n') + '\n\n');
+        }
+        continue;
+      }
+
+      // Handle table of contents — has a content[] array like paragraphs
+      const toc = element.tableOfContents as
+        | { content?: Array<Record<string, unknown>> }
+        | undefined;
+      if (toc?.content) {
+        textParts.push(this.extractPlainTextFromContent(toc.content));
       }
     }
 
