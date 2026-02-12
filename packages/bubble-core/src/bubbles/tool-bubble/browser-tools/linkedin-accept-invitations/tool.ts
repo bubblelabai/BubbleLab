@@ -1,5 +1,6 @@
 import { ToolBubble } from '../../../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../../../types/bubble.js';
+import { AIFallbackStep } from '../_shared/ai/ai-fallback-step.js';
 import {
   BrowserBaseBubble,
   type CDPCookie,
@@ -78,6 +79,9 @@ export class LinkedInAcceptInvitationsTool<
     if (ip) console.log(`[AcceptInvitations] Browser IP: ${ip}`);
   }
 
+  @AIFallbackStep('Navigate to invitation manager', {
+    taskDescription: 'Navigate to the LinkedIn invitation manager page',
+  })
   private async stepNavigateToInvitationManager(): Promise<void> {
     if (!this.sessionId) throw new Error('No active session');
     const browserbase = new BrowserBaseBubble(
@@ -96,6 +100,10 @@ export class LinkedInAcceptInvitationsTool<
       throw new Error(result.data.error || 'Navigation failed');
   }
 
+  @AIFallbackStep('Wait for invitations to load', {
+    taskDescription:
+      'Wait for the received invitations list to fully load with Accept buttons',
+  })
   private async stepWaitForInvitationsPage(): Promise<boolean> {
     const checkScript = `(() => {
       const buttons = document.querySelectorAll('button');
@@ -117,6 +125,10 @@ export class LinkedInAcceptInvitationsTool<
     return false;
   }
 
+  @AIFallbackStep('Accept top invitations', {
+    taskDescription:
+      'Click Accept on the top N connection invitations and extract their info',
+  })
   private async stepAcceptTopInvitations(): Promise<{
     accepted: AcceptedInvitationInfo[];
     skipped: number;

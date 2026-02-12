@@ -256,6 +256,29 @@ export const BrowserBaseParamsSchema = z.discriminatedUnion('operation', [
       .describe('Object mapping credential types to values'),
   }),
 
+  // Select operation - select an option in a <select> element
+  z.object({
+    operation: z
+      .literal('select')
+      .describe('Select an option in a dropdown/select element'),
+    session_id: z.string().min(1).describe('Active browser session ID'),
+    selector: z
+      .string()
+      .min(1)
+      .describe('CSS selector of the <select> element'),
+    value: z.string().describe('Value of the option to select'),
+    timeout: z
+      .number()
+      .min(1000)
+      .optional()
+      .default(5000)
+      .describe('Element wait timeout in milliseconds'),
+    credentials: z
+      .record(z.nativeEnum(CredentialType), z.string())
+      .optional()
+      .describe('Object mapping credential types to values'),
+  }),
+
   // Evaluate operation - run JavaScript in page context
   z.object({
     operation: z
@@ -411,6 +434,13 @@ export const BrowserBaseResultSchema = z.discriminatedUnion('operation', [
   // Type result
   z.object({
     operation: z.literal('type'),
+    success: z.boolean().describe('Whether the operation was successful'),
+    error: z.string().describe('Error message if operation failed'),
+  }),
+
+  // Select result
+  z.object({
+    operation: z.literal('select'),
     success: z.boolean().describe('Whether the operation was successful'),
     error: z.string().describe('Error message if operation failed'),
   }),

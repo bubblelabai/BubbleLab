@@ -372,6 +372,13 @@ export class BrowserBaseBubble<
             return await this.typeText(
               parsedParams as Extract<BrowserBaseParams, { operation: 'type' }>
             );
+          case 'select':
+            return await this.selectOption(
+              parsedParams as Extract<
+                BrowserBaseParams,
+                { operation: 'select' }
+              >
+            );
           case 'evaluate':
             return await this.evaluate(
               parsedParams as Extract<
@@ -594,6 +601,37 @@ export class BrowserBaseBubble<
     const pages = await browser.pages();
     const page = pages[0] || (await browser.newPage());
 
+    // Override browser dialogs (alert, confirm, prompt, print) to prevent them
+    // from blocking automation. Uses CDP to auto-inject on every new document.
+    try {
+      const cdpClient = await page.createCDPSession();
+      await cdpClient.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `
+          window.alert = (msg) => console.log('Suppressed alert:', msg);
+          window.confirm = (msg) => { console.log('Suppressed confirm:', msg); return true; };
+          window.prompt = (msg, def) => { console.log('Suppressed prompt:', msg); return def || ''; };
+          window.print = () => console.log('Suppressed print dialog');
+        `,
+      });
+      // Also inject into current page immediately
+      await page.evaluate(() => {
+        /* eslint-disable @typescript-eslint/no-explicit-any */
+        const w = globalThis as any;
+        w.alert = (msg?: string) => console.log('Suppressed alert:', msg);
+        w.confirm = (msg?: string) => {
+          console.log('Suppressed confirm:', msg);
+          return true;
+        };
+        w.prompt = (msg?: string, def?: string) => {
+          console.log('Suppressed prompt:', msg);
+          return def || '';
+        };
+        w.print = () => console.log('Suppressed print dialog');
+      });
+    } catch (e) {
+      console.warn('[BrowserBaseBubble] Failed to inject dialog overrides:', e);
+    }
+
     // Log exit IP when using proxies (helps verify proxy routing)
     if (sessionRequestBody.proxies) {
       try {
@@ -764,6 +802,60 @@ export class BrowserBaseBubble<
 
     return {
       operation: 'type',
+      success: true,
+      error: '',
+    };
+  }
+
+  /**
+   * Select an option in a <select> element using Puppeteer's page.select()
+   */
+  private async selectOption(
+    params: Extract<BrowserBaseParams, { operation: 'select' }>
+  ): Promise<Extract<BrowserBaseResult, { operation: 'select' }>> {
+    const session = BrowserBaseBubble.activeSessions.get(params.session_id);
+    if (!session) {
+      return {
+        operation: 'select',
+        success: false,
+        error: 'Session not found. Call start_session first.',
+      };
+    }
+
+    await session.page.waitForSelector(params.selector, {
+      timeout: params.timeout,
+    });
+
+    // Use page.select() for native Puppeteer select handling
+    await session.page.select(params.selector, params.value);
+
+    // Also dispatch events via the native prototype setter to ensure
+    // React-controlled selects pick up the change. React uses an internal
+    // _valueTracker that must be reset before dispatching, otherwise React
+    // sees no change and skips the onChange handler.
+    const escapedSelector = params.selector.replace(/'/g, "\\'");
+    const escapedValue = params.value.replace(/'/g, "\\'");
+    await session.page.evaluate(`(() => {
+      const el = document.querySelector('${escapedSelector}');
+      if (el) {
+        // Reset React's internal _valueTracker
+        const tracker = el._valueTracker;
+        if (tracker) {
+          tracker.setValue('');
+        }
+        const nativeSelectSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLSelectElement.prototype, 'value'
+        );
+        if (nativeSelectSetter && nativeSelectSetter.set) {
+          nativeSelectSetter.set.call(el, '${escapedValue}');
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    })()`);
+
+    return {
+      operation: 'select',
       success: true,
       error: '',
     };

@@ -1,14 +1,17 @@
 import { ToolBubble } from '../../../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../../../types/bubble.js';
+import { AIFallbackStep } from '../_shared/ai/ai-fallback-step.js';
 import {
   BrowserBaseBubble,
   type CDPCookie,
 } from '../../../service-bubble/browserbase/index.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { z } from 'zod';
 import { parseBrowserSessionData, buildProxyConfig } from '../_shared/utils.js';
 import {
   LinkedInReceivedInvitationsToolParamsSchema,
   LinkedInReceivedInvitationsToolResultSchema,
+  ReceivedInvitationInfoSchema,
   type LinkedInReceivedInvitationsToolParamsInput,
   type LinkedInReceivedInvitationsToolResult,
   type ReceivedInvitationInfo,
@@ -80,6 +83,9 @@ export class LinkedInReceivedInvitationsTool<
     if (ip) console.log(`[RecordableReceivedInvitations] Browser IP: ${ip}`);
   }
 
+  @AIFallbackStep('Navigate to received invitations', {
+    taskDescription: 'Navigate to the LinkedIn received invitations page',
+  })
   private async stepNavigateToReceivedInvitations(): Promise<void> {
     if (!this.sessionId) throw new Error('No active session');
     const browserbase = new BrowserBaseBubble(
@@ -98,6 +104,9 @@ export class LinkedInReceivedInvitationsTool<
       throw new Error(result.data.error || 'Navigation failed');
   }
 
+  @AIFallbackStep('Wait for invitations to load', {
+    taskDescription: 'Wait for the received invitations list to fully load',
+  })
   private async stepWaitForInvitationsPage(): Promise<boolean> {
     const checkScript = `(() => {
       const buttons = document.querySelectorAll('button');
@@ -119,6 +128,11 @@ export class LinkedInReceivedInvitationsTool<
     return false;
   }
 
+  @AIFallbackStep('Extract all received invitations', {
+    taskDescription:
+      'Extract all received connection invitations by scrolling and clicking View more',
+    extractionSchema: z.array(ReceivedInvitationInfoSchema),
+  })
   private async stepExtractAllInvitations(): Promise<{
     invitations: ReceivedInvitationInfo[];
     total: number;

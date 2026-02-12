@@ -1,5 +1,6 @@
 import { ToolBubble } from '../../../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../../../types/bubble.js';
+import { AIFallbackStep } from '../_shared/ai/ai-fallback-step.js';
 import {
   BrowserBaseBubble,
   type CDPCookie,
@@ -9,6 +10,7 @@ import { parseBrowserSessionData, buildProxyConfig } from '../_shared/utils.js';
 import {
   LinkedInConnectionToolParamsSchema,
   LinkedInConnectionToolResultSchema,
+  ProfileInfoSchema,
   type LinkedInConnectionToolParamsInput,
   type LinkedInConnectionToolResult,
   type ProfileInfo,
@@ -36,6 +38,25 @@ export class LinkedInConnectionTool<
   `;
   static readonly alias = 'linkedin-recordable';
   static readonly type = 'tool';
+
+  /** JS helper to query elements across main document, iframes, and shadow DOM */
+  private static readonly CROSS_DOM_QUERY = `
+    function queryAllDOMs(selector) {
+      const results = [...document.querySelectorAll(selector)];
+      for (const iframe of document.querySelectorAll('iframe')) {
+        try {
+          if (iframe.contentDocument) {
+            results.push(...iframe.contentDocument.querySelectorAll(selector));
+          }
+        } catch(e) {}
+      }
+      const shadowHost = document.querySelector('[data-testid="interop-shadowdom"]');
+      if (shadowHost && shadowHost.shadowRoot) {
+        results.push(...shadowHost.shadowRoot.querySelectorAll(selector));
+      }
+      return results;
+    }
+  `;
 
   private sessionId: string | null = null;
   private contextId: string | null = null;
@@ -105,6 +126,10 @@ export class LinkedInConnectionTool<
     }
   }
 
+  @AIFallbackStep('Navigate to profile', {
+    taskDescription:
+      'Navigate to the LinkedIn profile URL and wait for page to load',
+  })
   private async stepNavigateToProfile(): Promise<void> {
     if (!this.sessionId) throw new Error('No active session');
 
@@ -126,15 +151,19 @@ export class LinkedInConnectionTool<
     }
   }
 
+  @AIFallbackStep('Wait for profile page', {
+    taskDescription:
+      'Wait for LinkedIn profile page to fully load with action buttons (Connect, Message, Follow)',
+  })
   private async stepWaitForProfilePage(): Promise<boolean> {
     const checkScript = `
       (() => {
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-          const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+        const elements = document.querySelectorAll('button, a, [role="button"]');
+        for (const el of elements) {
+          const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+          const text = (el.innerText || el.textContent || '').trim().toLowerCase();
           if (ariaLabel.includes('connect') || text === 'connect') return true;
-          if (ariaLabel === 'more actions') return true;
+          if (ariaLabel === 'more' || ariaLabel.includes('more actions')) return true;
           if (text === 'message' || ariaLabel.includes('message')) return true;
           if (text === 'follow' || ariaLabel.includes('follow')) return true;
         }
@@ -150,6 +179,11 @@ export class LinkedInConnectionTool<
     return false;
   }
 
+  @AIFallbackStep('Extract profile info', {
+    taskDescription:
+      'Extract the LinkedIn profile name, headline, and location from the profile page',
+    extractionSchema: ProfileInfoSchema,
+  })
   private async stepExtractProfileInfo(): Promise<ProfileInfo | null> {
     const info = (await this.evaluate(`
       (() => {
@@ -180,20 +214,32 @@ export class LinkedInConnectionTool<
     return info.name ? info : null;
   }
 
+  @AIFallbackStep('Click Connect button', {
+    taskDescription:
+      'Find and click the Connect button to send a connection request. If there is no visible "Connect" button, first click the "More" button to open the dropdown menu, then click "Connect" inside the dropdown. The goal is to open the connection request modal.',
+  })
   private async stepClickConnect(): Promise<boolean> {
+    // Primary: find <a> with custom-invite href (new LinkedIn design)
     const directResult = (await this.evaluate(`
       (() => {
-        const buttons = document.querySelectorAll('button, [role="button"]');
-        for (const btn of buttons) {
-          const ariaLabel = btn.getAttribute('aria-label') || '';
-          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
-          if (ariaLabel.toLowerCase().includes('connect') || text === 'connect') {
-            if (btn.classList.contains('artdeco-button--primary') ||
-                btn.closest('.pvs-profile-actions') ||
-                btn.closest('.pv-top-card-v2-ctas') ||
-                btn.closest('.artdeco-dropdown__content')) {
-              btn.click();
-              return { clicked: true, element: btn.tagName + ' - ' + (ariaLabel || text) };
+        // New LinkedIn design: Connect is an <a> with /custom-invite/ href
+        const connectLink = document.querySelector('a[href*="/custom-invite/"]');
+        if (connectLink) {
+          connectLink.click();
+          return { clicked: true, element: 'A - ' + (connectLink.getAttribute('aria-label') || 'custom-invite') };
+        }
+
+        // Fallback: search all clickable elements by aria-label or text
+        const elements = document.querySelectorAll('button, a, [role="button"]');
+        for (const el of elements) {
+          const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+          const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+          if ((ariaLabel.includes('invite') && ariaLabel.includes('connect')) ||
+              text === 'connect') {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              el.click();
+              return { clicked: true, element: el.tagName + ' - ' + (ariaLabel || text) };
             }
           }
         }
@@ -203,15 +249,15 @@ export class LinkedInConnectionTool<
 
     if (directResult.clicked) return true;
 
+    // More dropdown fallback
     const moreResult = (await this.evaluate(`
       (() => {
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-          const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
-          if ((ariaLabel === 'more actions' || ariaLabel === 'more' || text === 'more') &&
-              (btn.classList.contains('artdeco-dropdown__trigger') || btn.closest('.pv-top-card-v2-ctas'))) {
-            btn.click();
+        const elements = document.querySelectorAll('button, a, [role="button"]');
+        for (const el of elements) {
+          const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+          const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+          if (ariaLabel === 'more' || ariaLabel.includes('more actions') || text === 'more') {
+            el.click();
             return { clicked: true, element: ariaLabel || text };
           }
         }
@@ -224,11 +270,13 @@ export class LinkedInConnectionTool<
 
       const dropdownResult = (await this.evaluate(`
         (() => {
-          const items = document.querySelectorAll('.artdeco-dropdown__item[role="button"], .artdeco-dropdown__content [role="button"]');
+          // Search dropdown items, menu items, and list items for Connect
+          const items = document.querySelectorAll('[role="button"], [role="menuitem"], [role="option"], li a, li button');
           for (const item of items) {
             const ariaLabel = (item.getAttribute('aria-label') || '').toLowerCase();
             const text = (item.innerText || item.textContent || '').trim().toLowerCase();
-            if (ariaLabel.includes('connect') || text === 'connect') {
+            if ((ariaLabel.includes('invite') && ariaLabel.includes('connect')) ||
+                ariaLabel.includes('connect') || text === 'connect') {
               item.click();
               return { clicked: true, element: ariaLabel || text };
             }
@@ -246,12 +294,17 @@ export class LinkedInConnectionTool<
     throw new Error('Could not find Connect button or More dropdown');
   }
 
+  @AIFallbackStep('Wait for connection modal', {
+    taskDescription:
+      'Wait for the connection modal to appear with "Add a note" or "Send without a note" buttons',
+  })
   private async stepWaitForModal(): Promise<boolean> {
     const checkScript = `
       (() => {
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+        ${LinkedInConnectionTool.CROSS_DOM_QUERY}
+        const elements = queryAllDOMs('button, a, [role="button"]');
+        for (const el of elements) {
+          const text = (el.innerText || el.textContent || '').trim().toLowerCase();
           if (text.includes('add a note') || text.includes('send without')) return true;
         }
         return false;
@@ -266,14 +319,19 @@ export class LinkedInConnectionTool<
     throw new Error('Connection modal did not appear within 8 seconds');
   }
 
+  @AIFallbackStep('Add note to connection', {
+    taskDescription:
+      'Click "Add a note" button and type the personalized message into the textarea',
+  })
   private async stepAddNote(message: string): Promise<void> {
     await this.evaluate(`
       (() => {
-        const buttons = document.querySelectorAll('button');
-        for (const btn of buttons) {
-          const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+        ${LinkedInConnectionTool.CROSS_DOM_QUERY}
+        const elements = queryAllDOMs('button, a, [role="button"]');
+        for (const el of elements) {
+          const text = (el.innerText || el.textContent || '').trim().toLowerCase();
           if (text.includes('add a note')) {
-            btn.click();
+            el.click();
             return true;
           }
         }
@@ -285,7 +343,12 @@ export class LinkedInConnectionTool<
 
     await this.evaluate(`
       (() => {
-        const textarea = document.querySelector('#custom-message');
+        ${LinkedInConnectionTool.CROSS_DOM_QUERY}
+        const textareas = queryAllDOMs('textarea');
+        const textarea = textareas.find(t => {
+          const rect = t.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        }) || textareas[0];
         if (textarea) {
           textarea.value = ${JSON.stringify(message)};
           textarea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -296,15 +359,20 @@ export class LinkedInConnectionTool<
     `);
   }
 
+  @AIFallbackStep('Send connection request', {
+    taskDescription:
+      'Click the Send button to submit the connection request. Look for a blue "Send" button or "Send without a note" button in the connection modal.',
+  })
   private async stepSendRequest(withNote: boolean): Promise<boolean> {
     if (withNote) {
       const result = (await this.evaluate(`
         (() => {
-          const buttons = document.querySelectorAll('button');
-          for (const btn of buttons) {
-            const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
-            if (text === 'send' && btn.classList.contains('artdeco-button--primary')) {
-              btn.click();
+          ${LinkedInConnectionTool.CROSS_DOM_QUERY}
+          const elements = queryAllDOMs('button, a, [role="button"]');
+          for (const el of elements) {
+            const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+            if (text === 'send') {
+              el.click();
               return { clicked: true };
             }
           }
@@ -317,11 +385,12 @@ export class LinkedInConnectionTool<
     } else {
       const result = (await this.evaluate(`
         (() => {
-          const buttons = document.querySelectorAll('button');
-          for (const btn of buttons) {
-            const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
+          ${LinkedInConnectionTool.CROSS_DOM_QUERY}
+          const elements = queryAllDOMs('button, a, [role="button"]');
+          for (const el of elements) {
+            const text = (el.innerText || el.textContent || '').trim().toLowerCase();
             if (text.includes('send without')) {
-              btn.click();
+              el.click();
               return { clicked: true };
             }
           }

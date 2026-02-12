@@ -248,6 +248,21 @@ function normalizeMarkdownNewlines(markdown: string): string {
   return result;
 }
 
+/**
+ * Strips markdown formatting from text, leaving only the plain content.
+ * Used for contexts where formatting can't be rendered (e.g. Slack raw_text table cells).
+ */
+function stripMarkdownFormatting(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold**
+    .replace(/__([^_]+)__/g, '$1') // __bold__
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1') // *italic*
+    .replace(/(?<!_)_([^_]+)_(?!_)/g, '$1') // _italic_
+    .replace(/~~([^~]+)~~/g, '$1') // ~~strike~~
+    .replace(/`([^`]+)`/g, '$1') // `code`
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // [text](url)
+}
+
 function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
   const blocks: ParsedBlock[] = [];
   // Normalize markdown to ensure block elements are on their own lines
@@ -430,12 +445,12 @@ function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
       const trimmed = tl.trim();
       // Skip separator rows like |---|---|
       if (/^\|[\s\-:|]+\|$/.test(trimmed)) continue;
-      // Parse cells
+      // Parse cells, stripping markdown since table cells use raw_text
       const cells = trimmed
         .replace(/^\|/, '')
         .replace(/\|$/, '')
         .split('|')
-        .map((c) => c.trim());
+        .map((c) => stripMarkdownFormatting(c.trim()));
       parsedRows.push(cells);
     }
     if (parsedRows.length > 0) {

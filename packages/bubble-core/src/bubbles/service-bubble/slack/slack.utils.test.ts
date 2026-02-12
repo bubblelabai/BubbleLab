@@ -773,6 +773,41 @@ It looks like you've been busy with those 720 workflows!
     expect(contextBlock.elements[0].text).toContain('110');
   });
 
+  it('should strip markdown bold from table cell values', () => {
+    const md = `| Metric | Requirement | Alina | Status |
+| :--- | :--- | :--- | :--- |
+| **Quality (Grade 3+)** | **90% – 95%** | **~74.6%** | **Below Level 2** |
+| **Throughput** | **90% – 100%** | Variable | **Below Level 2** |`;
+
+    const blocks = markdownToBlocks(md);
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // Data cells should NOT contain raw ** markers since raw_text can't render them
+    for (const row of tableBlock.rows) {
+      for (const cell of row) {
+        const text = (cell as { type: string; text: string }).text;
+        expect(text).not.toContain('**');
+      }
+    }
+
+    // Verify specific cells have bold stripped
+    expect(tableBlock.rows[1][0]).toEqual({
+      type: 'raw_text',
+      text: 'Quality (Grade 3+)',
+    });
+    expect(tableBlock.rows[1][1]).toEqual({
+      type: 'raw_text',
+      text: '90% – 95%',
+    });
+    expect(tableBlock.rows[2][2]).toEqual({
+      type: 'raw_text',
+      text: 'Variable',
+    });
+  });
+
   it('should convert markdown image syntax ![alt](url) to an image block', () => {
     const md = `Based on the performance data I retrieved from the database and the **L0 criteria** you shared (Throughput < 90% and Quality < 90%), I would categorize both **Renz Imson** and **Alina Zeynalova** as **Level 0**. Here is the breakdown of their performance over the last 6 months (Aug 2025 - Jan 2026) that leads to this categorization:
 

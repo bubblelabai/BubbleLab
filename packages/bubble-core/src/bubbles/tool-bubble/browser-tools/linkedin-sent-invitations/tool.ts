@@ -1,14 +1,17 @@
 import { ToolBubble } from '../../../../types/tool-bubble-class.js';
 import type { BubbleContext } from '../../../../types/bubble.js';
+import { AIFallbackStep } from '../_shared/ai/ai-fallback-step.js';
 import {
   BrowserBaseBubble,
   type CDPCookie,
 } from '../../../service-bubble/browserbase/index.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
+import { z } from 'zod';
 import { parseBrowserSessionData, buildProxyConfig } from '../_shared/utils.js';
 import {
   LinkedInSentInvitationsToolParamsSchema,
   LinkedInSentInvitationsToolResultSchema,
+  SentInvitationInfoSchema,
   type LinkedInSentInvitationsToolParamsInput,
   type LinkedInSentInvitationsToolResult,
   type SentInvitationInfo,
@@ -79,6 +82,9 @@ export class LinkedInSentInvitationsTool<
     if (ip) console.log(`[RecordableSentInvitations] Browser IP: ${ip}`);
   }
 
+  @AIFallbackStep('Navigate to sent invitations', {
+    taskDescription: 'Navigate to the LinkedIn sent invitations page',
+  })
   private async stepNavigateToSentInvitations(): Promise<void> {
     if (!this.sessionId) throw new Error('No active session');
     const browserbase = new BrowserBaseBubble(
@@ -97,6 +103,9 @@ export class LinkedInSentInvitationsTool<
       throw new Error(result.data.error || 'Navigation failed');
   }
 
+  @AIFallbackStep('Wait for invitations to load', {
+    taskDescription: 'Wait for the sent invitations list to load',
+  })
   private async stepWaitForInvitationsPage(): Promise<boolean> {
     const checkScript = `(() => {
       const buttons = document.querySelectorAll('button');
@@ -117,6 +126,10 @@ export class LinkedInSentInvitationsTool<
     return false;
   }
 
+  @AIFallbackStep('Extract sent invitations', {
+    taskDescription: 'Extract all sent connection invitations',
+    extractionSchema: z.array(SentInvitationInfoSchema),
+  })
   private async stepExtractInvitations(): Promise<{
     invitations: SentInvitationInfo[];
     total: number;
