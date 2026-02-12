@@ -117,9 +117,21 @@ export function markdownToMrkdwn(markdown: string): string {
 
   let result = markdown;
 
+  // Convert image links: ![alt](url) → <url|alt>
+  // Must be done BEFORE regular links so ![...] isn't partially matched
+  // Uses nested-paren-aware pattern to handle URLs containing parentheses
+  result = result.replace(
+    /!\[([^\]]*)\]\(((?:[^()]*|\([^()]*\))*)\)/g,
+    '<$2|$1>'
+  );
+
   // Convert links: [text](url) → <url|text>
   // Must be done first to preserve link text formatting
-  result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>');
+  // Uses nested-paren-aware pattern to handle URLs containing parentheses
+  result = result.replace(
+    /\[([^\]]+)\]\(((?:[^()]*|\([^()]*\))*)\)/g,
+    '<$2|$1>'
+  );
 
   // Convert bullet lists: - item or * item → • item
   // Must be done BEFORE italic/bold to avoid * being treated as formatting
@@ -279,8 +291,19 @@ function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
       continue;
     }
 
-    // Check for bare URL on its own line (image URLs become image blocks)
+    // Check for markdown image syntax: ![alt](url) on its own line
     const trimmedLine = line.trim();
+    const imageMarkdownMatch = trimmedLine.match(/^!\[([^\]]*)\]\((.+)\)$/);
+    if (imageMarkdownMatch) {
+      if (currentBlock) {
+        blocks.push(currentBlock);
+        currentBlock = null;
+      }
+      blocks.push({ type: 'image', content: imageMarkdownMatch[2] });
+      continue;
+    }
+
+    // Check for bare URL on its own line (image URLs become image blocks)
     if (/^https?:\/\/\S+$/.test(trimmedLine)) {
       if (currentBlock) {
         blocks.push(currentBlock);

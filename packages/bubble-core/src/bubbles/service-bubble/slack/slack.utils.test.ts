@@ -14,6 +14,7 @@ import {
   type SlackHeaderBlock,
   type SlackTableBlock,
   type SlackContextBlock,
+  type SlackImageBlock,
 } from './slack.utils.js';
 
 describe('markdownToMrkdwn', () => {
@@ -770,5 +771,50 @@ It looks like you've been busy with those 720 workflows!
     expect(contextBlock).toBeDefined();
     expect(contextBlock.elements[0].text).toContain('99');
     expect(contextBlock.elements[0].text).toContain('110');
+  });
+
+  it('should convert markdown image syntax ![alt](url) to an image block', () => {
+    const md = `Based on the performance data I retrieved from the database and the **L0 criteria** you shared (Throughput < 90% and Quality < 90%), I would categorize both **Renz Imson** and **Alina Zeynalova** as **Level 0**. Here is the breakdown of their performance over the last 6 months (Aug 2025 - Jan 2026) that leads to this categorization:
+
+### **1. Quality Ratings**
+
+The rubric for L0 specifies a rating of 3 or 4+ grade being **< 90%**. Both operators consistently fall below this threshold.
+
+* **Alina Zeynalova:**
+  * **Grade 3+:** ~74.6% average (High of 76.9% in Dec '25)
+  * **Grade 4+:** ~61.1% average
+  * *Result:* **Below 90%**
+* **Renz Imson:**
+  * **Grade 3+:** ~72.1% average (High of 75.1% in Jan '26)
+  * **Grade 4+:** ~64.7% average
+  * *Result:* **Below 90%**
+
+### **2. Throughput**
+
+While the exact "target" number isn't in the database, their daily episode counts show significant variability (e.g., Alina ranging from 134 to 288, Renz from 147 to 442). This inconsistency aligns with the L0 criteria of **< 90% throughput** attainment.
+
+### **Conclusion**
+
+Since both operators are consistently performing in the **70-75% range for quality**, they do not meet the requirements to graduate beyond **Level 0**. I generated a chart visualizing their quality ratings against the 90% threshold to illustrate this gap:
+
+![Quality Ratings vs Threshold](https://quickchart.io/chart?c={type:%27line%27,data:{labels:[%27Aug%2025%27,%27Sep%2025%27,%27Oct%2025%27,%27Nov%2025%27,%27Dec%2025%27,%27Jan%2026%27],datasets:[{label:%27Alina%20Zeynalova%20(3%2B)%27,data:[71.8,77.6,68.4,76.9,74.9],fill:false,borderColor:%27blue%27},{label:%27Renz%20Imson%20(3%2B)%27,data:[73.6,64.3,71.9,71.1,75.1],fill:false,borderColor:%27green%27},{label:%2790%25%20Threshold%27,data:[90,90,90,90,90],fill:false,borderColor:%27red%27,borderDash:[5,5]}]}})
+
+*(Note: I was still unable to read the full rubric table from the doc, but this categorization is solid based on the L0 criteria you provided in the chat. Let me know if you'd like me to look into specific project types for them!)*`;
+
+    const blocks = markdownToBlocks(md);
+
+    // Should have an image block for the quickchart URL
+    const imageBlock = blocks.find((b) => b.type === 'image');
+    expect(imageBlock).toBeDefined();
+    expect((imageBlock as SlackImageBlock).image_url).toContain(
+      'quickchart.io'
+    );
+
+    // The ![alt](url) should NOT appear as raw text in any section block
+    const sectionWithBangLink = blocks.find(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' && b.text.text.includes('![')
+    );
+    expect(sectionWithBangLink).toBeUndefined();
   });
 });
