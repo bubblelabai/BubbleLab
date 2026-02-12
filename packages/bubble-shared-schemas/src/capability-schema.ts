@@ -14,7 +14,23 @@ export type CapabilityId =
   | 'google-calendar'
   | 'jira-assistant'
   | 'notion-assistant'
-  | 'stripe-assistant';
+  | 'stripe-assistant'
+  | 'airtable-assistant'
+  | 'github-assistant'
+  | 'ashby-assistant'
+  | 'google-sheets-assistant'
+  | 'slack-assistant'
+  | 'google-drive-assistant'
+  | 'confluence-assistant'
+  | 'telegram-assistant'
+  | 'resend-assistant'
+  | 'eleven-labs-assistant'
+  | 'firecrawl-assistant'
+  | 'apify-assistant'
+  | 'browserbase-assistant'
+  | 'crustdata-assistant'
+  | 'fullenrich-assistant'
+  | 'followupboss-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
