@@ -1519,7 +1519,7 @@ Comprehensive Slack integration for messaging and workspace management.
         elements: [
           {
             type: 'mrkdwn',
-            text: `Powered by <https://bubblelab.ai|Bubble Lab> · <${viewUrl}|View Flow>`,
+            text: `Powered by Bubble Lab · <${viewUrl}|View Flow>`,
           },
         ],
       },
