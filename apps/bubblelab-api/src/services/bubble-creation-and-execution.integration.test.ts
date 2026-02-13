@@ -97,7 +97,7 @@ describe('Integration Tests', () => {
 
       expect(executions.length).toBe(3);
       expect(executions.every((e) => e.status === 'success')).toBe(true);
-    });
+    }, 90000); // 90s for CI (create + 3 executions + DB query can be slow on cold runners)
 
     it('should handle complex bubble flow with AI integration', async () => {
       // This tests the actual bubble integration

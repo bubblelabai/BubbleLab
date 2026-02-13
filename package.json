@@ -17,7 +17,7 @@
     "lint:src": "eslint \"packages/**/src/**/*.{js,ts,tsx}\" \"apps/**/src/**/*.{js,ts,tsx}\" --ignore-pattern \"**/external/**\" --ignore-pattern \"**/node_modules/**\" --ignore-pattern \"**/dist/**\" --ignore-pattern \"**/.next/**\" --fix",
     "lint:check": "eslint \"packages/**/src/**/*.{js,ts,tsx}\" \"apps/**/src/**/*.{js,ts,tsx}\" --ignore-pattern \"**/external/**\" --ignore-pattern \"**/node_modules/**\" --ignore-pattern \"**/dist/**\" --ignore-pattern \"**/.next/**\"",
     "typecheck": "turbo typecheck",
-    "test": "turbo test --filter=\"!create-bubblelab-app\"",
+    "test": "turbo test --filter=\"!create-bubblelab-app\" --output-logs=errors-only",
     "test:core": "turbo test --filter=\"@bubblelab/bubble-core\" --filter=\"@bubblelab/bubble-runtime\"",
     "test:coverage": "turbo run test:coverage",
     "bubble-to-request": "bun scripts/bubble-to-request.ts",
