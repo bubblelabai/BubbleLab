@@ -828,10 +828,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'remote_files:share',
           // Assistant (requires admin)
           'assistant:write',
-          // Search (requires admin)
-          'search:read.files',
-          'search:read.public',
-          'search:read.users',
           // Team Preferences (requires admin)
           'team.preferences:read',
         ],
@@ -1152,22 +1148,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           {
             scope: 'assistant:write',
             description: 'Respond in Slack AI threads',
-            defaultEnabled: true,
-          },
-          // Search
-          {
-            scope: 'search:read.files',
-            description: 'Search files',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'search:read.public',
-            description: 'Search public channels',
-            defaultEnabled: true,
-          },
-          {
-            scope: 'search:read.users',
-            description: 'Search for users',
             defaultEnabled: true,
           },
           // Team Preferences
