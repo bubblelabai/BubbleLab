@@ -523,24 +523,31 @@ export async function runCoffee(
                 };
               }
 
-              // Extract required credentials from the validated flow
-              // The validation result already has requiredCredentials extracted
+              // Extract required and optional credentials from the validated flow
               const requiredCredentialsMap =
                 validationResult.requiredCredentials || {};
+              const optionalCredentialsMap =
+                validationResult.optionalCredentials || {};
 
               // Flatten to unique credential types
               const requiredCredentials: CredentialType[] = [
                 ...new Set(Object.values(requiredCredentialsMap).flat()),
               ];
+              const optionalCredentials: CredentialType[] = [
+                ...new Set(Object.values(optionalCredentialsMap).flat()),
+              ];
 
               // Generate a unique flow ID for this context request
               const contextFlowId = `coffee-ctx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-              // Build the context request event
+              // Build the context request event with unified credentialRequirements
               const contextRequestEvent: CoffeeRequestExternalContextEvent = {
                 flowId: contextFlowId,
                 flowCode: flowCode,
-                requiredCredentials,
+                credentialRequirements: {
+                  required: requiredCredentials,
+                  optional: optionalCredentials,
+                },
                 description: flowDescription,
               };
 

@@ -51,7 +51,7 @@ async function runBubbleFlowCommon(
 
   // Parse & find credentials - always use fresh script-generated bubbles for credential finding and injection
   const injector: BubbleInjector = new BubbleInjector(bubbleScriptInstance);
-  const requiredCredentials = injector.findCredentials();
+  const credentialReqs = injector.findCredentials();
 
   // Get user credentials when needed
   const userCredentials: UserCredentialWithId[] = [];
@@ -128,8 +128,11 @@ async function runBubbleFlowCommon(
     };
   }
 
-  // Inject when needed
-  if (Object.keys(requiredCredentials).length > 0) {
+  // Inject when needed (check both required and optional)
+  const hasCredentials =
+    Object.keys(credentialReqs.required).length > 0 ||
+    Object.keys(credentialReqs.optional).length > 0;
+  if (hasCredentials) {
     const injectionResult = runner.injector.injectCredentials(
       userCredentials.map((uc) => ({
         bubbleVarId: uc.bubbleVarId,

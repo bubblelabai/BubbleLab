@@ -72,9 +72,9 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
       console.log(credentials);
       expect(credentials).toBeDefined();
-      expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
-      expect(credentials['404']).toContain(CredentialType.SLACK_API);
-      expect(credentials['404']).toHaveLength(2);
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_CRED);
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_API);
+      expect(credentials.required['404']).toHaveLength(2);
     });
 
     it('should return all credentials including system credentials', () => {
@@ -85,8 +85,10 @@ describe('BubbleInjector.findCredentials()', () => {
       const injector = new BubbleInjector(mockBubbleScript);
       const credentials = injector.findCredentials();
       // Should return all AI agent credentials (including system ones)
-      expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(Object.keys(credentials.required)).toHaveLength(1);
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
     });
   });
 
@@ -101,9 +103,13 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
 
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
+      expect(credentials.required['404']).toContain(
+        CredentialType.FIRECRAWL_API_KEY
+      ); // Base + tool
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
 
     it('should handle malformed tools parameter gracefully', () => {
@@ -116,8 +122,10 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
 
       // Should return AI agent base credentials but not crash on malformed tools
-      expect(Object.keys(credentials)).toHaveLength(1);
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(Object.keys(credentials.required)).toHaveLength(1);
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
     });
 
     it('should handle single tool object (not array)', () => {
@@ -129,10 +137,12 @@ describe('BubbleInjector.findCredentials()', () => {
 
       const credentials = injector.findCredentials();
       expect(credentials).toBeDefined();
-      expect(credentials['404']).toBeDefined();
+      expect(credentials.required['404']).toBeDefined();
       // Should contain AI agent base credentials plus tool credentials
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.SLACK_CRED); // From tool
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_CRED); // From tool
     });
   });
 
@@ -150,18 +160,24 @@ describe('BubbleInjector.findCredentials()', () => {
       console.log(credentials);
 
       // Slack bubble should require Slack credentials (OAuth + API key)
-      expect(credentials['404']).toContain(CredentialType.SLACK_CRED);
-      expect(credentials['404']).toContain(CredentialType.SLACK_API);
-      expect(credentials['404']).toHaveLength(2);
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_CRED);
+      expect(credentials.required['404']).toContain(CredentialType.SLACK_API);
+      expect(credentials.required['404']).toHaveLength(2);
 
       // AI agent should require base credentials plus tool credentials
-      expect(credentials['405']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['405']).toContain(CredentialType.DATABASE_CRED);
-      expect(credentials['405']).toContain(CredentialType.FIRECRAWL_API_KEY); // Base + tool
-      expect(credentials['405']).toHaveLength(3); // All AI agent credentials
+      expect(credentials.required['405']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
+      expect(credentials.required['405']).toContain(
+        CredentialType.DATABASE_CRED
+      );
+      expect(credentials.required['405']).toContain(
+        CredentialType.FIRECRAWL_API_KEY
+      ); // Base + tool
+      expect(credentials.required['405']).toHaveLength(3); // All AI agent credentials
 
-      // Should have 3 different bubble IDs with credentials
-      expect(Object.keys(credentials)).toHaveLength(2);
+      // Should have 2 different bubble IDs with required credentials
+      expect(Object.keys(credentials.required)).toHaveLength(2);
     });
   });
 
@@ -212,10 +228,14 @@ describe('BubbleInjector.findCredentials()', () => {
       const credentials = injector.findCredentials();
       console.log('Capability credentials:', credentials);
 
-      expect(Object.keys(credentials)).toHaveLength(1);
-      // Should include GOOGLE_GEMINI_CRED (from model) + GOOGLE_DRIVE_CRED (from capability)
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_GEMINI_CRED);
-      expect(credentials['404']).toContain(CredentialType.GOOGLE_DRIVE_CRED);
+      expect(Object.keys(credentials.required)).toHaveLength(1);
+      // Should include GOOGLE_GEMINI_CRED (from model) + GOOGLE_DRIVE_CRED (from capability required)
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_GEMINI_CRED
+      );
+      expect(credentials.required['404']).toContain(
+        CredentialType.GOOGLE_DRIVE_CRED
+      );
     });
 
     it('should inject capability credentials into AI agent', () => {
@@ -363,15 +383,16 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
         mockBubbleScript.getParsedBubbles()
       ).find((b) => b.bubbleName === 'ai-agent');
       expect(aiAgentBubble).toBeDefined();
-      const agentCreds = credentials[aiAgentBubble!.variableId];
+      const varId = String(aiAgentBubble!.variableId);
+      const requiredCreds = credentials.required[varId];
+      const optionalCreds = credentials.optional[varId];
 
-      // Required from capability: GOOGLE_GEMINI_CRED
-      expect(agentCreds).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      // Required: GOOGLE_GEMINI_CRED (from capability + model), FIRECRAWL_API_KEY (from web-search-tool)
+      expect(requiredCreds).toContain(CredentialType.GOOGLE_GEMINI_CRED);
+      expect(requiredCreds).toContain(CredentialType.FIRECRAWL_API_KEY);
       // Optional from capability: GOOGLE_DRIVE_CRED, CONFLUENCE_CRED
-      expect(agentCreds).toContain(CredentialType.GOOGLE_DRIVE_CRED);
-      expect(agentCreds).toContain(CredentialType.CONFLUENCE_CRED);
-      // From web-search-tool: FIRECRAWL_API_KEY
-      expect(agentCreds).toContain(CredentialType.FIRECRAWL_API_KEY);
+      expect(optionalCreds).toContain(CredentialType.GOOGLE_DRIVE_CRED);
+      expect(optionalCreds).toContain(CredentialType.CONFLUENCE_CRED);
     });
 
     it('should inject CONFLUENCE_CRED and GOOGLE_DRIVE_CRED into ai-agent bubble', () => {
@@ -464,7 +485,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       const credentials = injector.findCredentials();
 
       expect(credentials).toBeDefined();
-      expect(Object.keys(credentials)).toHaveLength(0);
+      expect(Object.keys(credentials.required)).toHaveLength(0);
+      expect(Object.keys(credentials.optional)).toHaveLength(0);
     });
 
     it('should handle bubbles with no credential requirements', () => {
@@ -474,7 +496,8 @@ export class UntitledFlow extends BubbleFlow<'webhook/http'> {
       const credentials = injector.findCredentials();
 
       expect(credentials).toBeDefined();
-      expect(Object.keys(credentials)).toHaveLength(0);
+      expect(Object.keys(credentials.required)).toHaveLength(0);
+      expect(Object.keys(credentials.optional)).toHaveLength(0);
     });
   });
 });
@@ -1074,12 +1097,12 @@ describe('BubbleInjector - Model Credential Type Resolution', () => {
 
     const mockBubbleScript = new BubbleScript(bubbleScript, bubbleFactory);
     const injector = new BubbleInjector(mockBubbleScript);
-    const credentials = injector.findCredentials();
+    const credentialReqs = injector.findCredentials();
 
     console.log(`=== generatePoem test for ${modelName} ===`);
     console.log('Model string:', model);
     console.log('Parsed bubbles:', mockBubbleScript.getParsedBubbles());
-    console.log('Required credentials:', credentials);
+    console.log('Required credentials:', credentialReqs);
 
     // Get the model parameter to see what was parsed
     const aiAgentBubble = Object.values(
@@ -1091,7 +1114,7 @@ describe('BubbleInjector - Model Credential Type Resolution', () => {
     console.log('Model param type:', modelParam?.type);
     console.log('Model param value:', modelParam?.value);
 
-    return JSON.stringify(credentials);
+    return JSON.stringify(credentialReqs.required);
   }
 
   it('should extract OpenAI credential type from model param', async () => {

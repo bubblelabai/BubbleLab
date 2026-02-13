@@ -25,6 +25,7 @@ export interface ValidationAndExtractionResult extends ValidationResult {
   inputSchema?: Record<string, unknown>;
   trigger?: BubbleTrigger;
   requiredCredentials?: Record<string, CredentialType[]>;
+  optionalCredentials?: Record<string, CredentialType[]>;
 }
 
 /**
@@ -136,16 +137,40 @@ export async function validateAndExtract(
     // Get current bubbles (with clones, workflow, etc.) with original line numbers restored
     const bubbleParameters = script.getParsedBubbles();
 
-    // Extract required credentials from bubble parameters
+    // Extract required and optional credentials from bubble parameters
     const requiredCredentials: Record<string, CredentialType[]> = {};
+    const optionalCredentials: Record<string, CredentialType[]> = {};
 
     const injector = new BubbleInjector(script);
-    const credentials = injector.findCredentials();
+    const credentialReqs = injector.findCredentials();
 
-    for (const [varId, credentialTypes] of Object.entries(credentials)) {
+    // Map variable IDs to bubble names for required credentials
+    for (const [varId, credentialTypes] of Object.entries(
+      credentialReqs.required
+    )) {
       const bubble = bubbleParameters[Number(varId)];
       if (bubble && credentialTypes.length > 0) {
-        requiredCredentials[bubble.bubbleName] = credentialTypes;
+        requiredCredentials[bubble.bubbleName] = [
+          ...new Set([
+            ...(requiredCredentials[bubble.bubbleName] || []),
+            ...credentialTypes,
+          ]),
+        ];
+      }
+    }
+
+    // Map variable IDs to bubble names for optional credentials
+    for (const [varId, credentialTypes] of Object.entries(
+      credentialReqs.optional
+    )) {
+      const bubble = bubbleParameters[Number(varId)];
+      if (bubble && credentialTypes.length > 0) {
+        optionalCredentials[bubble.bubbleName] = [
+          ...new Set([
+            ...(optionalCredentials[bubble.bubbleName] || []),
+            ...credentialTypes,
+          ]),
+        ];
       }
     }
 
@@ -158,6 +183,10 @@ export async function validateAndExtract(
       requiredCredentials:
         Object.keys(requiredCredentials).length > 0
           ? requiredCredentials
+          : undefined,
+      optionalCredentials:
+        Object.keys(optionalCredentials).length > 0
+          ? optionalCredentials
           : undefined,
     };
   } catch (error) {

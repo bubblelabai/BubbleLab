@@ -69,9 +69,16 @@ export const CoffeeRequestExternalContextEventSchema = z.object({
   flowCode: z
     .string()
     .describe('Validated BubbleFlow TypeScript code to execute'),
-  requiredCredentials: z
-    .array(z.nativeEnum(CredentialType))
-    .describe('List of credential types needed to run this flow'),
+  credentialRequirements: z
+    .object({
+      required: z
+        .array(z.nativeEnum(CredentialType))
+        .describe('Credential types that must be provided'),
+      optional: z
+        .array(z.nativeEnum(CredentialType))
+        .describe('Credential types that can optionally be provided'),
+    })
+    .describe('Required and optional credentials for this flow'),
   description: z
     .string()
     .describe('User-friendly description of what this flow will do'),

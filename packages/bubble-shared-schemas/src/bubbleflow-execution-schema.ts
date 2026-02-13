@@ -369,6 +369,13 @@ export const validateBubbleFlowCodeResponseSchema = z.object({
     .openapi({
       description: 'Required credentials for the bubbles in the code',
     }),
+  optionalCredentials: z
+    .record(z.string(), z.array(z.string()))
+    .optional()
+    .openapi({
+      description:
+        'Optional credentials keyed by bubble name (from wildcard bubbles, OPTIONAL_CREDENTIALS set, and capability optionalCredentials)',
+    }),
   metadata: z
     .object({
       validatedAt: z.string().openapi({

@@ -5,6 +5,8 @@ import {
   BUBBLE_CREDENTIAL_OPTIONS,
   BubbleName,
   CredentialMetadata,
+  OPTIONAL_CREDENTIALS,
+  type CredentialRequirements,
 } from '@bubblelab/shared-schemas';
 import { getCapabilityMetadataById } from '@bubblelab/bubble-core';
 import { BubbleScript } from '../parse/BubbleScript';
@@ -54,14 +56,16 @@ export class BubbleInjector {
    * @param bubbleParameters - Parsed bubble parameters with info
    * @returns Record mapping bubble variable IDs to their required credential types (excluding system credentials)
    */
-  findCredentials(): Record<string, CredentialType[]> {
-    const requiredCredentials: Record<string, CredentialType[]> = {};
+  findCredentials(): CredentialRequirements {
+    const required: Record<string, CredentialType[]> = {};
+    const optional: Record<string, CredentialType[]> = {};
 
     // Iterate through each bubble and check its credential requirements
     for (const [, bubble] of Object.entries(
       this.bubbleScript.getParsedBubblesRaw()
     )) {
-      const allCredentialTypes = new Set<CredentialType>();
+      const requiredSet = new Set<CredentialType>();
+      const optionalSet = new Set<CredentialType>();
 
       // Get bubble-level credentials
       const rawCredentialOptions =
@@ -70,12 +74,13 @@ export class BubbleInjector {
         ];
 
       // Handle wildcard - bubble accepts any credential type
-      let credentialOptions: CredentialType[];
-      if (
+      const isWildcard =
         Array.isArray(rawCredentialOptions) &&
-        rawCredentialOptions.includes(CredentialType.CREDENTIAL_WILDCARD)
-      ) {
-        // Wildcard means all credential types are accepted
+        rawCredentialOptions.includes(CredentialType.CREDENTIAL_WILDCARD);
+
+      let credentialOptions: CredentialType[];
+      if (isWildcard) {
+        // Wildcard means all credential types are accepted - all go to optional
         credentialOptions = Object.values(CredentialType).filter(
           (ct) => ct !== CredentialType.CREDENTIAL_WILDCARD
         );
@@ -95,9 +100,14 @@ export class BubbleInjector {
         // If modelCredentialTypes is null, model is dynamic - include all credentials
       }
 
+      // Add bubble-level credentials to required or optional
       if (credentialOptions && Array.isArray(credentialOptions)) {
         for (const credType of credentialOptions) {
-          allCredentialTypes.add(credType);
+          if (isWildcard || OPTIONAL_CREDENTIALS.has(credType)) {
+            optionalSet.add(credType);
+          } else {
+            requiredSet.add(credType);
+          }
         }
       }
 
@@ -105,26 +115,40 @@ export class BubbleInjector {
       if (bubble.bubbleName === 'ai-agent') {
         const toolCredentials = this.extractToolCredentials(bubble);
         for (const credType of toolCredentials) {
-          allCredentialTypes.add(credType);
+          if (OPTIONAL_CREDENTIALS.has(credType)) {
+            optionalSet.add(credType);
+          } else {
+            requiredSet.add(credType);
+          }
         }
 
-        // Also collect capability-level credential requirements
-        const capabilityCredentials = this.extractCapabilityCredentials(bubble);
-        for (const credType of capabilityCredentials) {
-          allCredentialTypes.add(credType);
+        // Also collect capability-level credential requirements (already split)
+        const capCreds = this.extractCapabilityCredentials(bubble);
+        for (const credType of capCreds.required) {
+          requiredSet.add(credType);
+        }
+        for (const credType of capCreds.optional) {
+          optionalSet.add(credType);
         }
       }
 
-      // Return all credentials (system and user credentials)
-      const allCredentials = Array.from(allCredentialTypes);
+      // Final dedup: required wins over optional for overlaps
+      for (const cred of requiredSet) {
+        optionalSet.delete(cred);
+      }
 
-      // Only add the bubble if it has credentials
-      if (allCredentials.length > 0) {
-        requiredCredentials[bubble.variableId] = allCredentials;
+      const reqArr = Array.from(requiredSet);
+      const optArr = Array.from(optionalSet);
+
+      if (reqArr.length > 0) {
+        required[bubble.variableId] = reqArr;
+      }
+      if (optArr.length > 0) {
+        optional[bubble.variableId] = optArr;
       }
     }
 
-    return requiredCredentials;
+    return { required, optional };
   }
 
   /**
@@ -334,21 +358,24 @@ export class BubbleInjector {
    * @param bubble - The parsed bubble to extract capability requirements from
    * @returns Array of credential types required by the bubble's capabilities
    */
-  private extractCapabilityCredentials(
-    bubble: ParsedBubbleWithInfo
-  ): CredentialType[] {
+  private extractCapabilityCredentials(bubble: ParsedBubbleWithInfo): {
+    required: CredentialType[];
+    optional: CredentialType[];
+  } {
+    const empty = { required: [], optional: [] };
     if (bubble.bubbleName !== 'ai-agent') {
-      return [];
+      return empty;
     }
 
-    const capCredentials: Set<CredentialType> = new Set();
+    const requiredSet: Set<CredentialType> = new Set();
+    const optionalSet: Set<CredentialType> = new Set();
 
     // Find the capabilities parameter in the bubble
     const capParam = bubble.parameters.find(
       (param) => param.name === 'capabilities'
     );
     if (!capParam || typeof capParam.value !== 'string') {
-      return [];
+      return empty;
     }
 
     try {
@@ -383,11 +410,11 @@ export class BubbleInjector {
         const meta = getCapabilityMetadataById(cap.id);
         if (meta) {
           for (const cred of meta.requiredCredentials) {
-            capCredentials.add(cred);
+            requiredSet.add(cred);
           }
           if (meta.optionalCredentials) {
             for (const cred of meta.optionalCredentials) {
-              capCredentials.add(cred);
+              optionalSet.add(cred);
             }
           }
         }
@@ -398,7 +425,15 @@ export class BubbleInjector {
       );
     }
 
-    return Array.from(capCredentials);
+    // Dedup: if a credential is in both required and optional, required wins
+    for (const cred of requiredSet) {
+      optionalSet.delete(cred);
+    }
+
+    return {
+      required: Array.from(requiredSet),
+      optional: Array.from(optionalSet),
+    };
   }
 
   /**
@@ -465,17 +500,18 @@ export class BubbleInjector {
             ? this.extractToolCredentials(bubble)
             : [];
 
-        const capabilityCredentialOptions =
+        const capCreds =
           bubble.bubbleName === 'ai-agent'
             ? this.extractCapabilityCredentials(bubble)
-            : [];
+            : { required: [], optional: [] };
 
-        // Combine bubble, tool, and capability credentials
+        // Combine bubble, tool, and capability credentials (injection needs all regardless of optionality)
         const allCredentialOptions = [
           ...new Set([
             ...bubbleCredentialOptions,
             ...toolCredentialOptions,
-            ...capabilityCredentialOptions,
+            ...capCreds.required,
+            ...capCreds.optional,
           ]),
         ];
 

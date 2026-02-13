@@ -14,6 +14,15 @@ import {
 } from './database-definition-schema.js';
 
 /**
+ * Structured credential requirements separating required from optional credentials.
+ * Used by BubbleInjector.findCredentials() and propagated through validation/execution layers.
+ */
+export interface CredentialRequirements {
+  required: Record<string, CredentialType[]>;
+  optional: Record<string, CredentialType[]>;
+}
+
+/**
  * Configuration for a credential type displayed in the UI
  */
 export interface CredentialConfig {

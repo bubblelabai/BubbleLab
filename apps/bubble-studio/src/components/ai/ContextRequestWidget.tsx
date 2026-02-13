@@ -40,17 +40,17 @@ export function ContextRequestWidget({
   const { data: availableCredentials = [] } = useCredentials(apiBaseUrl);
   const createCredentialMutation = useCreateCredential();
 
+  const { required: requiredCreds = [] } = request.credentialRequirements;
+
   // Check if all required credentials are provided
-  const allCredentialsProvided = request.requiredCredentials.every(
-    (credType) => {
-      const isSystem = SYSTEM_CREDENTIALS.has(credType);
-      // System credentials don't need explicit selection
-      if (isSystem) return true;
-      return (
-        credentials[credType] !== undefined && credentials[credType] !== null
-      );
-    }
-  );
+  const allCredentialsProvided = requiredCreds.every((credType) => {
+    const isSystem = SYSTEM_CREDENTIALS.has(credType);
+    // System credentials don't need explicit selection
+    if (isSystem) return true;
+    return (
+      credentials[credType] !== undefined && credentials[credType] !== null
+    );
+  });
 
   const renderCredentialControl = (credType: CredentialType) => {
     const availableForType = availableCredentials.filter(
@@ -130,11 +130,9 @@ export function ContextRequestWidget({
         </p>
 
         {/* Credential Selection */}
-        {request.requiredCredentials.length > 0 && (
+        {requiredCreds.length > 0 && (
           <div className="space-y-3">
-            {request.requiredCredentials.map((credType) =>
-              renderCredentialControl(credType)
-            )}
+            {requiredCreds.map((credType) => renderCredentialControl(credType))}
           </div>
         )}
       </div>
