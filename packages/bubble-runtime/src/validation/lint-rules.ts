@@ -1031,6 +1031,7 @@ export const singleBubbleFlowClassRule: LintRule = {
 const TRIGGER_PAYLOAD_TYPE_MAP: Record<string, string> = {
   'slack/bot_mentioned': 'SlackMentionEvent',
   'slack/message_received': 'SlackMessageReceivedEvent',
+  'slack/reaction_added': 'SlackReactionAddedEvent',
   'schedule/cron': 'CronEvent',
   'webhook/http': 'WebhookEvent',
 };

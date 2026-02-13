@@ -83,8 +83,9 @@ export function transformWebhookPayload(
   switch (eventType) {
     case 'slack/bot_mentioned': {
       // Transform Slack app_mention event
-      const slackBody = rawBody as SlackEventWrapper;
-      const event = slackBody.event as SlackAppMentionEvent;
+      const slackBody =
+        rawBody as unknown as SlackEventWrapper<SlackAppMentionEvent>;
+      const event = slackBody.event;
       const threadHistories = (
         rawBody as {
           thread_histories?: SlackThreadHistoryMessage[];
@@ -106,8 +107,9 @@ export function transformWebhookPayload(
 
     case 'slack/message_received': {
       // Transform Slack message event
-      const slackBody = rawBody as SlackEventWrapper;
-      const event = slackBody.event as SlackMessageEvent;
+      const slackBody =
+        rawBody as unknown as SlackEventWrapper<SlackMessageEvent>;
+      const event = slackBody.event;
       const threadHistories = (
         rawBody as {
           thread_histories?: SlackThreadHistoryMessage[];

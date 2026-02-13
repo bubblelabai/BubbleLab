@@ -1,6 +1,7 @@
 export interface BubbleTriggerEventRegistry {
   'slack/bot_mentioned': SlackMentionEvent;
   'slack/message_received': SlackMessageReceivedEvent;
+  'slack/reaction_added': SlackReactionAddedEvent;
   'airtable/record_created': AirtableRecordCreatedEvent;
   'airtable/record_updated': AirtableRecordUpdatedEvent;
   'airtable/record_deleted': AirtableRecordDeletedEvent;
@@ -13,6 +14,7 @@ export interface BubbleTriggerEventRegistry {
 export const BUBBLE_TRIGGER_EVENTS = {
   'slack/bot_mentioned': true,
   'slack/message_received': true,
+  'slack/reaction_added': true,
   'airtable/record_created': true,
   'airtable/record_updated': true,
   'airtable/record_deleted': true,
@@ -135,11 +137,17 @@ export interface SlackThreadHistoryMessage {
 }
 
 // Slack Event Wrapper (outer payload)
-export interface SlackEventWrapper {
+// Generic parameter narrows `.event` per trigger type; defaults to full union for routing code
+export interface SlackEventWrapper<
+  TEvent =
+    | SlackAppMentionEvent
+    | SlackMessageEvent
+    | SlackReactionAddedRawEvent,
+> {
   token: string;
   team_id: string;
   api_app_id: string;
-  event: SlackAppMentionEvent | SlackMessageEvent;
+  event: TEvent;
   type: 'event_callback';
   authorizations: Array<{
     enterprise_id?: string;
@@ -195,7 +203,7 @@ export interface SlackMessageEvent {
 
 // BubbleTrigger-specific event types that wrap Slack events
 export interface SlackMentionEvent extends BubbleTriggerEvent {
-  slack_event: SlackEventWrapper;
+  slack_event: SlackEventWrapper<SlackAppMentionEvent>;
   channel: string;
   user: string;
   text: string;
@@ -210,7 +218,7 @@ export interface SlackMentionEvent extends BubbleTriggerEvent {
 }
 
 export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
-  slack_event: SlackEventWrapper;
+  slack_event: SlackEventWrapper<SlackMessageEvent>;
   channel: string;
   user: string;
   text: string;
@@ -224,6 +232,48 @@ export interface SlackMessageReceivedEvent extends BubbleTriggerEvent {
   files?: SlackFile[];
   /** Thread history messages, including current message for non-threaded events */
   thread_histories: SlackThreadHistoryMessage[];
+}
+
+// Raw Slack reaction_added event (inner event data)
+export interface SlackReactionAddedRawEvent {
+  type: 'reaction_added';
+  user: string;
+  reaction: string;
+  item_user?: string;
+  item: {
+    type: 'message' | 'file' | 'file_comment';
+    channel?: string;
+    ts?: string;
+    file?: string;
+    file_comment?: string;
+  };
+  event_ts: string;
+}
+
+// Enriched payload for BubbleFlow
+export interface SlackReactionAddedEvent extends BubbleTriggerEvent {
+  slack_event: SlackEventWrapper<SlackReactionAddedRawEvent>;
+  /** The user who reacted */
+  user: string;
+  /** Emoji reaction name (e.g. "thumbsup") */
+  reaction: string;
+  /** Channel where the reacted message lives */
+  channel?: string;
+  /** Timestamp of the message that was reacted to */
+  item_ts?: string;
+  /** The user who authored the original item */
+  item_user?: string;
+  /** Full item reference from the reaction event */
+  item: {
+    type: 'message' | 'file' | 'file_comment';
+    channel?: string;
+    ts?: string;
+    file?: string;
+    file_comment?: string;
+  };
+  /** Text of the original message that was reacted to (fetched via API) */
+  message_text?: string;
+  event_ts: string;
 }
 
 // ============================================================================
@@ -755,6 +805,164 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
       required: ['text', 'channel', 'user', 'thread_histories', 'slack_event'],
     },
   },
+  'slack/reaction_added': {
+    serviceName: 'Slack',
+    friendlyName: 'When emoji reaction is added',
+    description:
+      'Triggered when a user adds an emoji reaction to a message in a Slack channel',
+    requiredCredentialType: 'SLACK_CRED',
+    requiredConfigFields: ['slack_active_channels'],
+    setupGuide: `## Slack Reaction Event Setup Guide
+
+### 1. Create a Slack App
+1. Go to [Slack API Apps](https://api.slack.com/apps)
+2. Click "Create New App" → "From scratch"
+3. Name your app and select your workspace
+
+### 2. Configure OAuth Scopes
+Navigate to **OAuth & Permissions** and add these Bot Token Scopes:
+- \`reactions:read\` - To receive reaction events
+- \`channels:history\` - To fetch the reacted message text
+- \`groups:history\` - To fetch messages in private channels
+- \`chat:write\` - To send messages
+- \`users:read\` - To look up user names
+
+### 3. Enable Event Subscriptions
+1. Go to **Event Subscriptions**
+2. Toggle "Enable Events" to ON
+3. Toggle the webhook active button above and copy the webhook URL
+4. Add your webhook URL to the Request URL field
+5. Subscribe to bot events: \`reaction_added\`
+
+### 4. Install to Workspace
+1. Go to **Install App**
+2. Click "Install to Workspace"
+3. Authorize the requested permissions
+
+### 5. Get Your Bot Token
+Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permissions page.`,
+    payloadSchema: {
+      type: 'object',
+      properties: {
+        reaction: {
+          type: 'string',
+          description: 'Emoji reaction name (e.g. "thumbsup", "heart")',
+        },
+        user: {
+          type: 'string',
+          description: 'User ID who added the reaction',
+        },
+        channel: {
+          type: 'string',
+          description: 'Channel ID where the reacted message lives',
+        },
+        item_ts: {
+          type: 'string',
+          description: 'Timestamp of the message that was reacted to',
+        },
+        item_user: {
+          type: 'string',
+          description: 'User ID who authored the original message',
+        },
+        item: {
+          type: 'object',
+          description: 'Full item reference from the reaction event',
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['message', 'file', 'file_comment'],
+              description: 'Type of item that was reacted to',
+            },
+            channel: { type: 'string', description: 'Channel ID' },
+            ts: { type: 'string', description: 'Message timestamp' },
+            file: { type: 'string', description: 'File ID (if file reaction)' },
+            file_comment: {
+              type: 'string',
+              description: 'File comment ID (if file comment reaction)',
+            },
+          },
+        },
+        message_text: {
+          type: 'string',
+          description:
+            'Text of the original message that was reacted to (fetched via API, best-effort)',
+        },
+        event_ts: {
+          type: 'string',
+          description: 'Event timestamp',
+        },
+        slack_event: {
+          type: 'object',
+          description: 'Full Slack event wrapper',
+          properties: {
+            token: { type: 'string', description: 'Verification token' },
+            team_id: { type: 'string', description: 'Workspace ID' },
+            api_app_id: { type: 'string', description: 'Slack App ID' },
+            type: {
+              type: 'string',
+              enum: ['event_callback'],
+              description: 'Event type',
+            },
+            event_id: { type: 'string', description: 'Unique event ID' },
+            event_time: { type: 'number', description: 'Event timestamp' },
+            event_context: { type: 'string', description: 'Event context' },
+            authorizations: {
+              type: 'array',
+              description: 'Bot authorizations',
+              items: {
+                type: 'object',
+                properties: {
+                  enterprise_id: { type: 'string' },
+                  team_id: { type: 'string' },
+                  user_id: { type: 'string' },
+                  is_bot: { type: 'boolean' },
+                },
+              },
+            },
+            event: {
+              type: 'object',
+              description: 'Inner reaction_added event data',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: ['reaction_added'],
+                  description: 'Event type',
+                },
+                user: {
+                  type: 'string',
+                  description: 'User ID who added the reaction',
+                },
+                reaction: {
+                  type: 'string',
+                  description: 'Emoji reaction name',
+                },
+                item_user: {
+                  type: 'string',
+                  description: 'User who authored the reacted item',
+                },
+                item: {
+                  type: 'object',
+                  description: 'The item that was reacted to',
+                },
+                event_ts: { type: 'string', description: 'Event timestamp' },
+              },
+              required: ['type', 'user', 'reaction', 'item', 'event_ts'],
+            },
+          },
+          required: [
+            'token',
+            'team_id',
+            'api_app_id',
+            'type',
+            'event_id',
+            'event_time',
+            'event',
+          ],
+        },
+      },
+      required: ['reaction', 'user', 'item', 'slack_event'],
+    },
+  },
   'airtable/record_created': {
     serviceName: 'Airtable',
     friendlyName: 'When Airtable record is created',
@@ -994,6 +1202,7 @@ export const TRIGGER_EVENT_INTERFACE_MAP: Record<
 > = {
   SlackMentionEvent: 'slack/bot_mentioned',
   SlackMessageReceivedEvent: 'slack/message_received',
+  SlackReactionAddedEvent: 'slack/reaction_added',
   AirtableRecordCreatedEvent: 'airtable/record_created',
   AirtableRecordUpdatedEvent: 'airtable/record_updated',
   AirtableRecordDeletedEvent: 'airtable/record_deleted',
