@@ -171,6 +171,7 @@ export class BubbleFactory {
       'fullenrich',
       'stripe',
       'yc-scraper-tool',
+      'posthog',
     ];
   }
 
@@ -384,6 +385,9 @@ export class BubbleFactory {
     const { YCScraperTool } = await import(
       './bubbles/tool-bubble/yc-scraper-tool.js'
     );
+    const { PosthogBubble } = await import(
+      './bubbles/service-bubble/posthog/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -537,6 +541,7 @@ export class BubbleFactory {
     );
     this.register('stripe', StripeBubble as BubbleClassWithMetadata);
     this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
+    this.register('posthog', PosthogBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -835,6 +840,7 @@ import {
   AshbyBubble, // bubble name: 'ashby'
   FullEnrichBubble, // bubble name: 'fullenrich'
   StripeBubble, // bubble name: 'stripe'
+  PosthogBubble, // bubble name: 'posthog'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

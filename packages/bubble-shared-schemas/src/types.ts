@@ -79,6 +79,9 @@ export enum CredentialType {
 
   // Confluence Credentials
   CONFLUENCE_CRED = 'CONFLUENCE_CRED',
+
+  // PostHog Credentials
+  POSTHOG_API_KEY = 'POSTHOG_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety
@@ -148,4 +151,5 @@ export type BubbleName =
   | 'linkedin-accept-invitations-tool'
   | 'stripe'
   | 'confluence'
-  | 'yc-scraper-tool';
+  | 'yc-scraper-tool'
+  | 'posthog';

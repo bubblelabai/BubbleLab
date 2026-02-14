@@ -104,6 +104,8 @@ export {
   type BrowserSessionData,
 } from './bubbles/service-bubble/browserbase/index.js';
 export { CrustdataBubble } from './bubbles/service-bubble/crustdata/index.js';
+export { PosthogBubble } from './bubbles/service-bubble/posthog/index.js';
+export type { PosthogParamsInput } from './bubbles/service-bubble/posthog/index.js';
 export type {
   CrustdataParams,
   CrustdataParamsInput,

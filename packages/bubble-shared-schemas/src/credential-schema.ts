@@ -354,6 +354,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Confluence Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.POSTHOG_API_KEY]: {
+      label: 'PostHog',
+      description:
+        'Personal API Key for PostHog product analytics (events, persons, insights, HogQL queries)',
+      placeholder: 'phx_...',
+      namePlaceholder: 'My PostHog API Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -419,6 +427,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.FULLENRICH_API_KEY]: 'FULLENRICH_API_KEY',
   [CredentialType.STRIPE_CRED]: 'STRIPE_SECRET_KEY',
   [CredentialType.CONFLUENCE_CRED]: '', // OAuth credential, no env var
+  [CredentialType.POSTHOG_API_KEY]: 'POSTHOG_API_KEY',
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -1582,6 +1591,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   stripe: [CredentialType.STRIPE_CRED],
   confluence: [CredentialType.CONFLUENCE_CRED],
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
+  posthog: [CredentialType.POSTHOG_API_KEY],
 };
 
 // POST /credentials - Create credential schema

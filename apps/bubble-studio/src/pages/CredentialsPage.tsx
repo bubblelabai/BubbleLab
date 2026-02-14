@@ -97,6 +97,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.STRIPE_CRED]: 'Stripe',
     [CredentialType.CREDENTIAL_WILDCARD]: 'Wiki',
     [CredentialType.CONFLUENCE_CRED]: 'Confluence',
+    [CredentialType.POSTHOG_API_KEY]: 'PostHog',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
