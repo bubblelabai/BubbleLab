@@ -1,6 +1,9 @@
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  decodeCredentialPayload,
+} from '@bubblelab/shared-schemas';
 import {
   ConfluenceParamsSchema,
   ConfluenceResultSchema,
@@ -128,10 +131,11 @@ export class ConfluenceBubble<
     }
 
     try {
-      const decoded = Buffer.from(confluenceCredRaw, 'base64').toString(
-        'utf-8'
-      );
-      const parsed = JSON.parse(decoded);
+      const parsed = decodeCredentialPayload<{
+        accessToken?: string;
+        cloudId?: string;
+        siteUrl?: string;
+      }>(confluenceCredRaw);
 
       if (parsed.accessToken && parsed.cloudId) {
         return {

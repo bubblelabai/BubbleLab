@@ -1,6 +1,9 @@
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import {
+  CredentialType,
+  decodeCredentialPayload,
+} from '@bubblelab/shared-schemas';
 import {
   JiraParamsSchema,
   JiraResultSchema,
@@ -143,10 +146,12 @@ export class JiraBubble<
       return null;
     }
 
-    // Decode base64-encoded JSON: { accessToken, cloudId, siteUrl }
     try {
-      const decoded = Buffer.from(jiraCredRaw, 'base64').toString('utf-8');
-      const parsed = JSON.parse(decoded);
+      const parsed = decodeCredentialPayload<{
+        accessToken?: string;
+        cloudId?: string;
+        siteUrl?: string;
+      }>(jiraCredRaw);
 
       if (parsed.accessToken && parsed.cloudId) {
         return {

@@ -6,6 +6,7 @@
  */
 
 import SendSafely from '@sendsafely/sendsafely';
+import { decodeCredentialPayload } from '@bubblelab/shared-schemas';
 
 /** Default timeout for SDK operations (30 seconds) */
 const SDK_TIMEOUT_MS = 30_000;
@@ -17,18 +18,14 @@ export interface SendSafelyCredentials {
 }
 
 /**
- * Parse the JSON-encoded multi-field credential value into typed fields
+ * Parse a multi-field credential value into typed SendSafely fields.
+ * Uses the shared decodeMultiFieldCredential() which handles both
+ * base64 (injection path) and raw JSON (validator path).
  */
 export function parseSendSafelyCredential(
-  jsonValue: string
+  value: string
 ): SendSafelyCredentials {
-  // The BubbleInjector.escapeString() escapes quotes for safe code injection,
-  // which corrupts JSON. Un-escape before parsing.
-  const unescaped = jsonValue
-    .replace(/\\"/g, '"')
-    .replace(/\\'/g, "'")
-    .replace(/\\\\/g, '\\');
-  const parsed = JSON.parse(unescaped) as Record<string, string>;
+  const parsed = decodeCredentialPayload<Record<string, string>>(value);
   if (!parsed.host || !parsed.apiKey || !parsed.apiSecret) {
     throw new Error(
       'SendSafely credential is missing required fields: host, apiKey, apiSecret'

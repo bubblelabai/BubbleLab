@@ -47,6 +47,38 @@ export interface CredentialConfig {
 }
 
 /**
+ * Base64-encode a JSON credential payload for safe injection into generated code.
+ * Structured credentials (multi-field, OAuth+metadata, browser sessions) contain JSON
+ * with quotes that get corrupted by BubbleInjector.escapeString(). Base64 avoids this.
+ */
+export function encodeCredentialPayload(jsonPayload: string): string {
+  return Buffer.from(jsonPayload).toString('base64');
+}
+
+/**
+ * Decode a credential payload that may be base64-encoded or raw JSON.
+ * Handles both formats:
+ * - **base64** (normal execution): credential-helper base64-encodes before injection
+ * - **raw JSON/string** (validator path): credential-validator passes decrypted value directly
+ *
+ * Used by any bubble that receives structured credential data:
+ * multi-field credentials (SendSafely), OAuth+metadata (Jira/Confluence),
+ * browser sessions (BrowserBase/Amazon/LinkedIn).
+ */
+export function decodeCredentialPayload<T = Record<string, unknown>>(
+  value: string
+): T {
+  let json: string;
+  try {
+    json = Buffer.from(value, 'base64').toString('utf-8');
+    JSON.parse(json); // validate it's JSON after decoding
+  } catch {
+    json = value; // already raw JSON (validator path)
+  }
+  return JSON.parse(json) as T;
+}
+
+/**
  * Configuration for all credential types - used by Credentials page and AI agents
  */
 export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
