@@ -23,6 +23,18 @@ export interface CredentialRequirements {
 }
 
 /**
+ * A single field within a multi-field credential.
+ * When a credential type has `fields`, the UI renders multiple labeled inputs
+ * and stores them as a single JSON-encoded `value`.
+ */
+export interface CredentialField {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: 'text' | 'password'; // default 'password'
+}
+
+/**
  * Configuration for a credential type displayed in the UI
  */
 export interface CredentialConfig {
@@ -31,6 +43,7 @@ export interface CredentialConfig {
   placeholder: string;
   namePlaceholder: string;
   credentialConfigurations: Record<string, unknown>;
+  fields?: CredentialField[]; // multi-field credentials (stored as JSON value)
 }
 
 /**
@@ -362,6 +375,33 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My PostHog API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.SENDSAFELY_CRED]: {
+      label: 'SendSafely',
+      description: 'SendSafely API credentials for encrypted file transfer',
+      placeholder: '',
+      namePlaceholder: 'My SendSafely Credentials',
+      credentialConfigurations: {},
+      fields: [
+        {
+          key: 'host',
+          label: 'Host URL',
+          placeholder: 'https://app.sendsafely.com',
+          type: 'text',
+        },
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          placeholder: 'Your API key from Profile > API Keys',
+          type: 'password',
+        },
+        {
+          key: 'apiSecret',
+          label: 'API Secret',
+          placeholder: 'Your API secret from Profile > API Keys',
+          type: 'password',
+        },
+      ],
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -428,6 +468,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.STRIPE_CRED]: 'STRIPE_SECRET_KEY',
   [CredentialType.CONFLUENCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.POSTHOG_API_KEY]: 'POSTHOG_API_KEY',
+  [CredentialType.SENDSAFELY_CRED]: '', // Multi-field credential (host + apiKey + apiSecret), no single env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -1590,6 +1631,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   ],
   stripe: [CredentialType.STRIPE_CRED],
   confluence: [CredentialType.CONFLUENCE_CRED],
+  sendsafely: [CredentialType.SENDSAFELY_CRED],
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
   posthog: [CredentialType.POSTHOG_API_KEY],
 };

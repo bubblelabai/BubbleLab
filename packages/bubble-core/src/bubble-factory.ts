@@ -170,6 +170,7 @@ export class BubbleFactory {
       'ashby',
       'fullenrich',
       'stripe',
+      'sendsafely',
       'yc-scraper-tool',
       'posthog',
     ];
@@ -382,6 +383,9 @@ export class BubbleFactory {
     const { StripeBubble } = await import(
       './bubbles/service-bubble/stripe/index.js'
     );
+    const { SendSafelyBubble } = await import(
+      './bubbles/service-bubble/sendsafely/index.js'
+    );
     const { YCScraperTool } = await import(
       './bubbles/tool-bubble/yc-scraper-tool.js'
     );
@@ -540,6 +544,7 @@ export class BubbleFactory {
       LinkedInAcceptInvitationsTool as unknown as BubbleClassWithMetadata
     );
     this.register('stripe', StripeBubble as BubbleClassWithMetadata);
+    this.register('sendsafely', SendSafelyBubble as BubbleClassWithMetadata);
     this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
     this.register('posthog', PosthogBubble as BubbleClassWithMetadata);
 
@@ -840,6 +845,7 @@ import {
   AshbyBubble, // bubble name: 'ashby'
   FullEnrichBubble, // bubble name: 'fullenrich'
   StripeBubble, // bubble name: 'stripe'
+  SendSafelyBubble, // bubble name: 'sendsafely'
   PosthogBubble, // bubble name: 'posthog'
 
   // Tool Bubbles (Perform useful actions)

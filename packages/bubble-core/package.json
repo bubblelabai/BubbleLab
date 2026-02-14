@@ -1,6 +1,6 @@
 {
   "name": "@bubblelab/bubble-core",
-  "version": "0.1.159",
+  "version": "0.1.160",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
@@ -49,6 +49,7 @@
     "@langchain/langgraph": "^0.3.10",
     "@langchain/openai": "^0.6.2",
     "@mendable/firecrawl-js": "^4.5.0",
+    "@sendsafely/sendsafely": "^3.0.1",
     "@types/pg": "^8.15.4",
     "@typescript-eslint/typescript-estree": "8.46.0",
     "chart.js": "^4.5.0",

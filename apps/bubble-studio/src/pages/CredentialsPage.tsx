@@ -98,6 +98,7 @@ const getServiceNameForCredentialType = (
     [CredentialType.CREDENTIAL_WILDCARD]: 'Wiki',
     [CredentialType.CONFLUENCE_CRED]: 'Confluence',
     [CredentialType.POSTHOG_API_KEY]: 'PostHog',
+    [CredentialType.SENDSAFELY_CRED]: 'SendSafely',
   };
 
   return typeToServiceMap[credentialType] || credentialType;
