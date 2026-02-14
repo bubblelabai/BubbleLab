@@ -13,7 +13,7 @@ import {
   createClient,
   verifyCredentials,
   createPackage,
-  addRecipient,
+  addRecipients,
   encryptAndUploadFile,
   encryptMessage,
   saveMessage,
@@ -178,8 +178,8 @@ export class SendSafelyBubble<
       await updatePackage(client, pkg.packageId, { life: params.lifeDays });
     }
 
-    // 4. Add recipient
-    await addRecipient(client, pkg.packageId, params.recipientEmail);
+    // 4. Add recipient(s)
+    await addRecipients(client, pkg.packageId, params.recipientEmail);
 
     // 5. Encrypt and upload file
     const fileBuffer = Buffer.from(params.fileData, 'base64');
@@ -247,8 +247,8 @@ export class SendSafelyBubble<
       await updatePackage(client, pkg.packageId, { life: params.lifeDays });
     }
 
-    // 4. Add recipient
-    await addRecipient(client, pkg.packageId, params.recipientEmail);
+    // 4. Add recipient(s)
+    await addRecipients(client, pkg.packageId, params.recipientEmail);
 
     // 5. Encrypt message and save to server
     const encrypted = await encryptMessage(
@@ -306,9 +306,13 @@ export class SendSafelyBubble<
         recipients: info.recipients as
           | Array<{ recipientId: string; email: string }>
           | undefined,
-        files: info.files as
-          | Array<{ fileId: string; fileName: string; fileSize?: number }>
-          | undefined,
+        files: Array.isArray(info.files)
+          ? (info.files as Array<Record<string, unknown>>).map((f) => ({
+              fileId: String(f.fileId),
+              fileName: String(f.fileName),
+              fileSize: f.fileSize != null ? Number(f.fileSize) : undefined,
+            }))
+          : undefined,
         state: info.state as string | undefined,
         life: info.life as number | undefined,
         secureLink: info.secureLink as string | undefined,

@@ -22,6 +22,20 @@ declare module '@sendsafely/sendsafely' {
       callback: (recipientId: string) => void
     ): void;
 
+    addRecipients(
+      packageId: string,
+      emails: string[],
+      keyCode: string | undefined,
+      callback: (response: {
+        recipients: Array<{
+          recipientId: string;
+          email: string;
+          approvalRequired: boolean;
+        }>;
+        approvalRequired: boolean;
+      }) => void
+    ): void;
+
     encryptAndUploadFiles(
       packageId: string,
       keyCode: string,

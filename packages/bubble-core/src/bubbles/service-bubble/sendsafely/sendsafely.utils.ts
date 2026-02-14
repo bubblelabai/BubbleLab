@@ -168,6 +168,27 @@ export function addRecipient(
 }
 
 /**
+ * Add multiple recipients to a package in a single API call.
+ * Also accepts a single email string for convenience.
+ */
+export function addRecipients(
+  client: SendSafely,
+  packageId: string,
+  emails: string | string[]
+): Promise<string[]> {
+  const emailList = Array.isArray(emails) ? emails : [emails];
+  return withTimeout(
+    client,
+    (resolve) => {
+      client.addRecipients(packageId, emailList, undefined, (response) =>
+        resolve(response.recipients.map((r) => r.recipientId))
+      );
+    },
+    'addRecipients'
+  );
+}
+
+/**
  * Encrypt and upload a file to a package
  */
 export function encryptAndUploadFile(

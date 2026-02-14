@@ -63,9 +63,13 @@ export const SendSafelyParamsSchema = z.discriminatedUnion('operation', [
         'Create an encrypted package with a file and send to a recipient'
       ),
     recipientEmail: z
-      .string()
-      .email('Invalid email format')
-      .describe('Email address of the recipient'),
+      .union([
+        z.string().email('Invalid email format'),
+        z.array(z.string().email('Invalid email format')).min(1),
+      ])
+      .describe(
+        'Email address of the recipient, or an array of email addresses for multiple recipients'
+      ),
     fileName: z
       .string()
       .min(1, 'File name is required')
@@ -94,9 +98,13 @@ export const SendSafelyParamsSchema = z.discriminatedUnion('operation', [
       .literal('send_message')
       .describe('Create an encrypted package with a secure message'),
     recipientEmail: z
-      .string()
-      .email('Invalid email format')
-      .describe('Email address of the recipient'),
+      .union([
+        z.string().email('Invalid email format'),
+        z.array(z.string().email('Invalid email format')).min(1),
+      ])
+      .describe(
+        'Email address of the recipient, or an array of email addresses for multiple recipients'
+      ),
     message: z
       .string()
       .min(1, 'Message is required')
