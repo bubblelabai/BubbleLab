@@ -89,6 +89,14 @@ export {
   type StripeParamsInput,
   type StripeResult,
 } from './bubbles/service-bubble/stripe/index.js';
+export {
+  SendSafelyBubble,
+  SendSafelyParamsSchema,
+  SendSafelyResultSchema,
+  type SendSafelyParams,
+  type SendSafelyParamsInput,
+  type SendSafelyResult,
+} from './bubbles/service-bubble/sendsafely/index.js';
 export type { FirecrawlParamsInput } from './bubbles/service-bubble/firecrawl.js';
 export { FirecrawlBubble } from './bubbles/service-bubble/firecrawl.js';
 export { InsForgeDbBubble } from './bubbles/service-bubble/insforge-db.js';

@@ -68,6 +68,7 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.STRIPE_CRED]: {},
   [CredentialType.CONFLUENCE_CRED]: {},
   [CredentialType.POSTHOG_API_KEY]: {},
+  [CredentialType.SENDSAFELY_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 

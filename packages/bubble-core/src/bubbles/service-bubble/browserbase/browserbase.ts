@@ -4,6 +4,7 @@ import type { BubbleContext } from '../../../types/bubble.js';
 import {
   CredentialType,
   BROWSER_SESSION_PROVIDERS,
+  decodeCredentialPayload,
 } from '@bubblelab/shared-schemas';
 import {
   BrowserBaseParamsSchema,
@@ -249,11 +250,7 @@ export class BrowserBaseBubble<
     credentialValue: string
   ): BrowserSessionData | null {
     try {
-      // Credential is base64-encoded JSON
-      const jsonString = Buffer.from(credentialValue, 'base64').toString(
-        'utf-8'
-      );
-      const parsed = JSON.parse(jsonString);
+      const parsed = decodeCredentialPayload(credentialValue);
       const validated = BrowserSessionDataSchema.safeParse(parsed);
       if (validated.success) {
         return validated.data;

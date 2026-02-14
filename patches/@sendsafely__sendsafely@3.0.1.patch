@@ -1,0 +1,12 @@
+diff --git a/lib/keyGeneratorWorker.js b/lib/keyGeneratorWorker.js
+index f52f65ab3d777568def54d7b866edc565246345f..628712d1d444b0e4f1a83c0b028f9273ad5f7b4c 100755
+--- a/lib/keyGeneratorWorker.js
++++ b/lib/keyGeneratorWorker.js
+@@ -312,3 +312,7 @@ function send(content) {
+     postMessage(content, '*');
+   }
+ }
++
++// Expose send() on the JSDOM window so self.send() works in Node.js/Bun
++// (eval'd function declarations don't become window properties)
++self.send = send;

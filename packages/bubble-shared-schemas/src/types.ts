@@ -82,6 +82,9 @@ export enum CredentialType {
 
   // PostHog Credentials
   POSTHOG_API_KEY = 'POSTHOG_API_KEY',
+
+  // SendSafely Credentials
+  SENDSAFELY_CRED = 'SENDSAFELY_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -151,5 +154,6 @@ export type BubbleName =
   | 'linkedin-accept-invitations-tool'
   | 'stripe'
   | 'confluence'
+  | 'sendsafely'
   | 'yc-scraper-tool'
   | 'posthog';
