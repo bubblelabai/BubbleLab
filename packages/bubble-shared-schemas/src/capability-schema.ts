@@ -30,7 +30,8 @@ export type CapabilityId =
   | 'browserbase-assistant'
   | 'crustdata-assistant'
   | 'fullenrich-assistant'
-  | 'followupboss-assistant';
+  | 'followupboss-assistant'
+  | 'posthog-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
