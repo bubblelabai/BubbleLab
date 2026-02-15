@@ -107,13 +107,13 @@ const SlackParamsSchema = z.discriminatedUnion('operation', [
     operation: z
       .literal('send_message')
       .describe(
-        'Send a message to a Slack channel or DM. Required scopes: chat:write (add chat:write.public for public channels bot has not joined, add im:write to send DMs to users)'
+        'Send a message to a Slack channel or DM. Required scopes: chat:write, chat:write.public (public channels bot has not joined), im:write (DMs to users). If a scope is missing, ask a workspace admin to reinstall the Bubble Lab Slack app with the required permissions, then contact the Bubble Lab team to relink your credential.'
       ),
     channel: z
       .string()
       .min(1, 'Channel ID or name is required')
       .describe(
-        'Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or user ID for DM (e.g., U1234567890 - requires im:write scope)'
+        'Channel ID (e.g., C1234567890), channel name (e.g., general or #general), or user ID for DM (e.g., U1234567890)'
       ),
     text: z
       .string()
@@ -2578,7 +2578,9 @@ Comprehensive Slack integration for messaging and workspace management.
     if (!response.ok) {
       throw new Error(
         `Failed to open DM with user ${userId}: ${response.error}. ` +
-          `Make sure you have the 'im:write' scope enabled in your Slack app.`
+          `This is likely a missing Slack scope. ` +
+          `Ask a workspace administrator to reinstall the Bubble Lab Slack app with the required permissions, ` +
+          `then contact the Bubble Lab team to relink your credential.`
       );
     }
 
