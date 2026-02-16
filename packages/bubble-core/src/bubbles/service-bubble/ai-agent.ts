@@ -46,7 +46,6 @@ import {
   applyCapabilityPostprocessing,
   applyCapabilityPreprocessing,
 } from './capability-pipeline.js';
-
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
   toolName: AvailableTool;
