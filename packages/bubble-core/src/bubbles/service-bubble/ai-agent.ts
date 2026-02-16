@@ -650,8 +650,8 @@ export class AIAgentBubble extends ServiceBubble<
 
       // Find where identity starts (after topics/events sections)
       // Topics and events are first, then identity files follow
-      let indexSections: string[] = [];
-      let identitySections: string[] = [];
+      const indexSections: string[] = [];
+      const identitySections: string[] = [];
       let foundIdentity = false;
       for (const part of memoryParts) {
         if (
@@ -697,7 +697,8 @@ export class AIAgentBubble extends ServiceBubble<
             credentials: this.params.credentials,
             maxIterations: 4,
           },
-          this.context
+          this.context,
+          'memory-agent'
         );
         const result = await memoryAgent.action();
         return result.data?.response ?? '';
@@ -1372,7 +1373,8 @@ export class AIAgentBubble extends ServiceBubble<
                 capabilities: [capConfig], // single cap = eager load in sub-agent
                 credentials: this.params.credentials,
               },
-              this.context
+              this.context,
+              `capability-${capabilityId}`
             );
 
             const result = await subAgent.action();
