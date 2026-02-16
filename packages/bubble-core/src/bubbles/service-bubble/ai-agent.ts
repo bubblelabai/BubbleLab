@@ -46,18 +46,6 @@ import {
   applyCapabilityPostprocessing,
   applyCapabilityPreprocessing,
 } from './capability-pipeline.js';
-import {
-  formatCoreMemoryForPrompt,
-  autoRecallPersonTopics,
-  buildMemoryRecallTool,
-  buildMemoryCreateTool,
-  buildMemoryUpdateTool,
-  runMemoryReflection,
-  MEMORY_SELF_IMPROVEMENT_PROMPT,
-  type AgentMemoryMap,
-  type AgentMemoryUpdateCallback,
-  type LLMCallFn,
-} from './agent-memory.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -466,7 +454,6 @@ export class AIAgentBubble extends ServiceBubble<
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
   private shouldContinueToAgent = false;
-  private memoryCallLLM: LLMCallFn | undefined;
 
   constructor(
     params: AIAgentParams = {
@@ -630,95 +617,62 @@ export class AIAgentBubble extends ServiceBubble<
       }
     }
 
-    // Agent memory injection — only for main agents (not sub-agents/capability agents)
+    // Memory injection — tools, prompt, and reflection are built externally (Pro)
+    // and passed via executionMeta. This keeps all memory logic out of OSS.
     const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
-    const agentMemory = execMeta?.agentMemory as AgentMemoryMap | undefined;
 
-    if (!isCapabilityAgent && agentMemory && this.params.memoryEnabled) {
-      // Inject memory AFTER the user's system prompt
-      // Order: topics/events index → auto-recalled person context → core identity → instructions
-      const memoryPrompt = formatCoreMemoryForPrompt(agentMemory);
-
-      // Auto-recall topics for people in this conversation (injected early so agent sees it upfront)
-      const convHistory = this.params.conversationHistory ?? [];
-      const personContext = autoRecallPersonTopics(agentMemory, convHistory);
-
-      // Split memoryPrompt to insert person context after indexes but before identity
-      // memoryPrompt structure: [indexes] ---separator--- [identity files]
-      const separatorPattern = /\n\n---\n\n/;
-      const memoryParts = memoryPrompt.split(separatorPattern);
-
-      // Find where identity starts (after topics/events sections)
-      // Topics and events are first, then identity files follow
-      const indexSections: string[] = [];
-      const identitySections: string[] = [];
-      let foundIdentity = false;
-      for (const part of memoryParts) {
-        if (
-          !foundIdentity &&
-          (part.startsWith('## Known Topics') ||
-            part.startsWith('## Recent Events'))
-        ) {
-          indexSections.push(part);
-        } else {
-          foundIdentity = true;
-          identitySections.push(part);
-        }
-      }
-
-      const orderedSections = [
-        ...indexSections,
-        ...(personContext ? [personContext] : []),
-        ...identitySections,
-        MEMORY_SELF_IMPROVEMENT_PROMPT,
-      ].join('\n\n---\n\n');
-
-      this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n## Persistent Memory\n\n${orderedSections}`;
-
-      // Register memory tools
-      const updateCallback = execMeta?.agentMemoryUpdateCallback as
-        | AgentMemoryUpdateCallback
+    if (!isCapabilityAgent && this.params.memoryEnabled) {
+      const memoryTools = execMeta?.memoryTools as
+        | Array<{
+            name: string;
+            description: string;
+            schema: ZodTypeAny;
+            func: (input: Record<string, unknown>) => Promise<string>;
+          }>
+        | undefined;
+      const memorySystemPrompt = execMeta?.memorySystemPrompt as
+        | string
         | undefined;
 
-      // Create callLLM function that routes through AIAgentBubble
-      const callLLM: LLMCallFn = async (prompt: string): Promise<string> => {
-        const memoryAgent = new AIAgentBubble(
-          {
-            message: prompt,
-            systemPrompt:
-              'Respond concisely. Follow the instructions in the user message.',
-            name: 'Capability Agent: Memory',
-            model: {
-              model: RECOMMENDED_MODELS.FAST,
-              temperature: 0,
-              maxTokens: 4096,
-              maxRetries: 2,
-            },
-            credentials: this.params.credentials,
-            maxIterations: 4,
-          },
-          this.context,
-          'memory-agent'
-        );
-        const result = await memoryAgent.action();
-        return result.data?.response ?? '';
-      };
-      this.memoryCallLLM = callLLM;
-
-      const recallTool = buildMemoryRecallTool(agentMemory);
-      if (!this.params.customTools) {
-        this.params.customTools = [];
+      if (memoryTools?.length) {
+        if (!this.params.customTools) {
+          this.params.customTools = [];
+        }
+        this.params.customTools.push(...memoryTools);
       }
-      this.params.customTools.push(recallTool);
 
-      if (updateCallback) {
-        const createTool = buildMemoryCreateTool(agentMemory, updateCallback);
-        const updateTool = buildMemoryUpdateTool(
-          agentMemory,
-          updateCallback,
-          callLLM
-        );
-        this.params.customTools.push(createTool, updateTool);
+      if (memorySystemPrompt) {
+        this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n${memorySystemPrompt}`;
+      }
+
+      // Initialize callLLM for memory tools that need it (update_memory merge, reflection)
+      const memoryCallLLMInit = execMeta?.memoryCallLLMInit as
+        | ((callLLM: (prompt: string) => Promise<string>) => void)
+        | undefined;
+      if (memoryCallLLMInit) {
+        const callLLM = async (prompt: string): Promise<string> => {
+          const memoryAgent = new AIAgentBubble(
+            {
+              message: prompt,
+              systemPrompt:
+                'Respond concisely. Follow the instructions in the user message.',
+              name: 'Capability Agent: Memory',
+              model: {
+                model: RECOMMENDED_MODELS.FAST,
+                temperature: 0,
+                maxTokens: 4096,
+                maxRetries: 2,
+              },
+              credentials: this.params.credentials,
+              maxIterations: 4,
+            },
+            this.context,
+            'memory-agent'
+          );
+          const result = await memoryAgent.action();
+          return result.data?.response ?? '';
+        };
+        memoryCallLLMInit(callLLM);
       }
     }
   }
@@ -755,7 +709,7 @@ export class AIAgentBubble extends ServiceBubble<
         );
       }
 
-      // Post-execution reflection — only updates soul.md and identity.md (implicit personality shaping)
+      // Post-execution memory reflection — callback built externally (Pro)
       this.runMemoryReflectionIfNeeded(result);
 
       return result;
@@ -776,28 +730,23 @@ export class AIAgentBubble extends ServiceBubble<
   }
 
   /**
-   * Run post-execution memory reflection if agent memory is available.
+   * Run post-execution memory reflection if a callback was provided via executionMeta.
    * Fire-and-forget: doesn't block the response.
    */
   private runMemoryReflectionIfNeeded(result: AIAgentResult): void {
     const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
+    if (isCapabilityAgent || !result.success || !this.params.memoryEnabled) {
+      return;
+    }
+
     const execMeta = this.context?.executionMeta as
       | Record<string, unknown>
       | undefined;
-    const agentMemory = execMeta?.agentMemory as AgentMemoryMap | undefined;
-    const updateCallback = execMeta?.agentMemoryUpdateCallback as
-      | AgentMemoryUpdateCallback
+    const memoryReflectionCallback = execMeta?.memoryReflectionCallback as
+      | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
       | undefined;
 
-    if (
-      isCapabilityAgent ||
-      !agentMemory ||
-      !updateCallback ||
-      !result.success ||
-      !this.memoryCallLLM
-    ) {
-      return;
-    }
+    if (!memoryReflectionCallback) return;
 
     // Build conversation messages from the conversation history + current exchange
     const messages: Array<{ role: string; content: string }> = [];
@@ -826,12 +775,7 @@ export class AIAgentBubble extends ServiceBubble<
     messages.push({ role: 'assistant', content: result.response });
 
     // Fire-and-forget
-    runMemoryReflection(
-      messages,
-      agentMemory,
-      updateCallback,
-      this.memoryCallLLM
-    ).catch((err) => {
+    memoryReflectionCallback(messages).catch((err) => {
       console.error('[AIAgent] Memory reflection failed:', err);
     });
   }
