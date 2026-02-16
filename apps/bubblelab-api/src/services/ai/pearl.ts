@@ -309,12 +309,12 @@ export async function runPearl(
       let applyModelInstructions: string[] = [];
       let savedValidationResult:
         | {
-            valid: boolean;
-            errors: string[];
-            bubbleParameters: Record<number, ParsedBubbleWithInfo>;
-            inputSchema: Record<string, unknown>;
-            requiredCredentials?: Record<string, CredentialType[]>;
-          }
+          valid: boolean;
+          errors: string[];
+          bubbleParameters: Record<number, ParsedBubbleWithInfo>;
+          inputSchema: Record<string, unknown>;
+          requiredCredentials?: Record<string, CredentialType[]>;
+        }
         | undefined;
 
       // Create hooks for editWorkflow tool
@@ -582,12 +582,34 @@ export async function runPearl(
         result.data?.response &&
         result.data?.response.trim() !== ''
       ) {
-        // Default to answer type if agent execution failed (likely due to JSON parsing error of response)
-        return {
-          type: 'answer',
-          message: result.data?.response,
-          success: true,
-        };
+        // Try to recover valid JSON even if the agent reported failure
+        const recoveryParse = parseJsonWithFallbacks(result.data.response);
+        if (recoveryParse.success && recoveryParse.parsed) {
+          try {
+            // If we can parse it as a valid Pearl message, use it
+            const recoveredOutput = PearlAgentOutputSchema.parse(recoveryParse.parsed);
+            // Return success immediately with the recovered output
+            // This will be handled by the same logic as the main success path, 
+            // but we need to jump there or just process it here.
+            // To avoid code duplication, we'll let it fall through to the main parsing logic
+            // by NOT returning here if parsing succeeds.
+            console.log('[Pearl] Recovered valid JSON from failed agent execution');
+          } catch (e) {
+            // Not a valid Pearl Schema, so fall back to answer type
+            return {
+              type: 'answer',
+              message: result.data.response,
+              success: true,
+            };
+          }
+        } else {
+          // Default to answer type if agent execution failed and we couldn't recover JSON
+          return {
+            type: 'answer',
+            message: result.data.response,
+            success: true,
+          };
+        }
       }
 
       // Parse the agent's JSON response
@@ -595,7 +617,14 @@ export async function runPearl(
       const responseText = result.data?.response || '';
       try {
         // Try to parse as object first, then as array (take first element)
-        let parsedResponse = JSON.parse(responseText);
+        // Use parseJsonWithFallbacks to handle markdown code blocks and other common issues
+        const parseResult = parseJsonWithFallbacks(responseText);
+
+        if (!parseResult.success || !parseResult.parsed) {
+          throw new Error(parseResult.error || 'Failed to parse JSON response');
+        }
+
+        let parsedResponse = parseResult.parsed;
         if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
           parsedResponse = parsedResponse[0];
         }
@@ -604,6 +633,7 @@ export async function runPearl(
         if (!agentOutput.type || !agentOutput.message) {
           console.error('[Pearl] Error parsing agent response:', responseText);
           lastError = 'Error parsing agent response';
+
 
           if (attempt < MAX_RETRIES) {
             console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
