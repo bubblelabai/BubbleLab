@@ -87,7 +87,7 @@ export function buildParametersObject(
       const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
       const invocationKeyPart =
         ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
-      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__, triggerConversationHistory: __bubbleFlowSelf?.__triggerConversationHistory__}`;
+      return `${paramValue}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__}`;
     }
 
     return paramValue;
@@ -142,7 +142,7 @@ export function buildParametersObject(
         const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
         const invocationKeyPart =
           ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
-        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__, triggerConversationHistory: __bubbleFlowSelf?.__triggerConversationHistory__}`;
+        return `{...${paramsValue}, credentials: ${credentialsValue}}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__}`;
       }
 
       return `{...${paramsValue}, credentials: ${credentialsValue}}`;
@@ -185,7 +185,7 @@ export function buildParametersObject(
     const currentIdPart = `, currentUniqueId: ${currentUniqueIdExpr}`;
     const invocationKeyPart =
       ', invocationCallSiteKey: __bubbleFlowSelf?.__getInvocationCallSiteKey?.()';
-    return `${paramsString}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__, triggerConversationHistory: __bubbleFlowSelf?.__triggerConversationHistory__}`;
+    return `${paramsString}, {logger: __bubbleFlowSelf.logger, variableId: ${variableIdExpr}${depGraphPart}${currentIdPart}${invocationKeyPart}, executionMeta: __bubbleFlowSelf?.__executionMeta__}`;
   }
 
   return paramsString;

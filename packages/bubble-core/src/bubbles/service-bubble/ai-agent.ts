@@ -46,6 +46,18 @@ import {
   applyCapabilityPostprocessing,
   applyCapabilityPreprocessing,
 } from './capability-pipeline.js';
+import {
+  formatCoreMemoryForPrompt,
+  autoRecallPersonTopics,
+  buildMemoryRecallTool,
+  buildMemoryCreateTool,
+  buildMemoryUpdateTool,
+  runMemoryReflection,
+  MEMORY_SELF_IMPROVEMENT_PROMPT,
+  type AgentMemoryMap,
+  type AgentMemoryUpdateCallback,
+  type LLMCallFn,
+} from './agent-memory.js';
 
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
@@ -360,6 +372,12 @@ const AIAgentParamsSchema = z.object({
   expectedOutputSchema: ExpectedOutputSchema.optional().describe(
     'Zod schema or JSON schema string that defines the expected structure of the AI response. When provided, automatically enables JSON mode and instructs the AI to output in the exact format. Example: z.object({ summary: z.string(), items: z.array(z.object({ name: z.string(), score: z.number() })) })'
   ),
+  memoryEnabled: z
+    .boolean()
+    .default(true)
+    .describe(
+      'Enable persistent memory across conversations. When true, the agent can recall and save information about people, topics, and events between conversations.'
+    ),
   // Note: beforeToolCall and afterToolCall are function hooks added via TypeScript interface
   // They cannot be part of the Zod schema but are available in the params
 });
@@ -448,6 +466,7 @@ export class AIAgentBubble extends ServiceBubble<
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
   private shouldContinueToAgent = false;
+  private memoryCallLLM: LLMCallFn | undefined;
 
   constructor(
     params: AIAgentParams = {
@@ -588,17 +607,118 @@ export class AIAgentBubble extends ServiceBubble<
       this.resolveCapabilityCredentials.bind(this)
     );
 
+    // Extract execution metadata (used for conversation history + agent memory)
+    const execMeta = this.context?.executionMeta as
+      | Record<string, unknown>
+      | undefined;
+
     // Auto-inject trigger conversation history if no explicit conversationHistory was provided
     // This enables Slack thread context to automatically flow into AI agents
-    if (
-      !this.params.conversationHistory?.length &&
-      this.context?.triggerConversationHistory
-    ) {
-      this.params.conversationHistory = this.context
-        .triggerConversationHistory as Array<{
-        role: 'user' | 'assistant';
-        content: string;
-      }>;
+    // Check both legacy path (context.triggerConversationHistory) and new path (executionMeta)
+    if (!this.params.conversationHistory?.length) {
+      const convHistory =
+        (execMeta?.triggerConversationHistory as Array<{
+          role: 'user' | 'assistant';
+          content: string;
+        }>) ??
+        (this.context?.triggerConversationHistory as Array<{
+          role: 'user' | 'assistant';
+          content: string;
+        }>);
+      if (convHistory?.length) {
+        this.params.conversationHistory = convHistory;
+      }
+    }
+
+    // Agent memory injection — only for main agents (not sub-agents/capability agents)
+    const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
+    const agentMemory = execMeta?.agentMemory as AgentMemoryMap | undefined;
+
+    if (!isCapabilityAgent && agentMemory && this.params.memoryEnabled) {
+      // Inject memory AFTER the user's system prompt
+      // Order: topics/events index → auto-recalled person context → core identity → instructions
+      const memoryPrompt = formatCoreMemoryForPrompt(agentMemory);
+
+      // Auto-recall topics for people in this conversation (injected early so agent sees it upfront)
+      const convHistory = this.params.conversationHistory ?? [];
+      const personContext = autoRecallPersonTopics(agentMemory, convHistory);
+
+      // Split memoryPrompt to insert person context after indexes but before identity
+      // memoryPrompt structure: [indexes] ---separator--- [identity files]
+      const separatorPattern = /\n\n---\n\n/;
+      const memoryParts = memoryPrompt.split(separatorPattern);
+
+      // Find where identity starts (after topics/events sections)
+      // Topics and events are first, then identity files follow
+      let indexSections: string[] = [];
+      let identitySections: string[] = [];
+      let foundIdentity = false;
+      for (const part of memoryParts) {
+        if (
+          !foundIdentity &&
+          (part.startsWith('## Known Topics') ||
+            part.startsWith('## Recent Events'))
+        ) {
+          indexSections.push(part);
+        } else {
+          foundIdentity = true;
+          identitySections.push(part);
+        }
+      }
+
+      const orderedSections = [
+        ...indexSections,
+        ...(personContext ? [personContext] : []),
+        ...identitySections,
+        MEMORY_SELF_IMPROVEMENT_PROMPT,
+      ].join('\n\n---\n\n');
+
+      this.params.systemPrompt = `${this.params.systemPrompt}\n\n---\n\n## Persistent Memory\n\n${orderedSections}`;
+
+      // Register memory tools
+      const updateCallback = execMeta?.agentMemoryUpdateCallback as
+        | AgentMemoryUpdateCallback
+        | undefined;
+
+      // Create callLLM function that routes through AIAgentBubble
+      const callLLM: LLMCallFn = async (prompt: string): Promise<string> => {
+        const memoryAgent = new AIAgentBubble(
+          {
+            message: prompt,
+            systemPrompt:
+              'Respond concisely. Follow the instructions in the user message.',
+            name: 'Capability Agent: Memory',
+            model: {
+              model: RECOMMENDED_MODELS.FAST,
+              temperature: 0,
+              maxTokens: 4096,
+              maxRetries: 2,
+            },
+            credentials: this.params.credentials,
+            maxIterations: 4,
+          },
+          this.context
+        );
+        const result = await memoryAgent.action();
+        return result.data?.response ?? '';
+      };
+      this.memoryCallLLM = callLLM;
+
+      const recallTool = buildMemoryRecallTool(agentMemory);
+      if (!this.params.customTools) {
+        this.params.customTools = [];
+      }
+      this.params.customTools.push(recallTool);
+
+      if (updateCallback) {
+        const createTool = buildMemoryCreateTool(agentMemory, updateCallback);
+        const updateTool = buildMemoryUpdateTool(
+          agentMemory,
+          updateCallback,
+          callLLM
+        );
+        this.params.customTools.push(createTool, updateTool);
+      }
     }
   }
 
@@ -634,6 +754,9 @@ export class AIAgentBubble extends ServiceBubble<
         );
       }
 
+      // Post-execution reflection — only updates soul.md and identity.md (implicit personality shaping)
+      this.runMemoryReflectionIfNeeded(result);
+
       return result;
     } catch (error) {
       const errorMessage =
@@ -649,6 +772,67 @@ export class AIAgentBubble extends ServiceBubble<
         iterations: 0,
       };
     }
+  }
+
+  /**
+   * Run post-execution memory reflection if agent memory is available.
+   * Fire-and-forget: doesn't block the response.
+   */
+  private runMemoryReflectionIfNeeded(result: AIAgentResult): void {
+    const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
+    const execMeta = this.context?.executionMeta as
+      | Record<string, unknown>
+      | undefined;
+    const agentMemory = execMeta?.agentMemory as AgentMemoryMap | undefined;
+    const updateCallback = execMeta?.agentMemoryUpdateCallback as
+      | AgentMemoryUpdateCallback
+      | undefined;
+
+    if (
+      isCapabilityAgent ||
+      !agentMemory ||
+      !updateCallback ||
+      !result.success ||
+      !this.memoryCallLLM
+    ) {
+      return;
+    }
+
+    // Build conversation messages from the conversation history + current exchange
+    const messages: Array<{ role: string; content: string }> = [];
+
+    // Add conversation history
+    if (this.params.conversationHistory?.length) {
+      for (const msg of this.params.conversationHistory) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+
+    // Add the current user message
+    messages.push({ role: 'user', content: this.params.message });
+
+    // Add tool calls as context
+    if (result.toolCalls?.length) {
+      for (const tc of result.toolCalls) {
+        messages.push({
+          role: 'assistant',
+          content: `[Used tool: ${tc.tool}] Input: ${JSON.stringify(tc.input).slice(0, 200)}`,
+        });
+      }
+    }
+
+    // Add the final response
+    messages.push({ role: 'assistant', content: result.response });
+
+    // Fire-and-forget
+    runMemoryReflection(
+      messages,
+      agentMemory,
+      updateCallback,
+      this.memoryCallLLM
+    ).catch((err) => {
+      console.error('[AIAgent] Memory reflection failed:', err);
+    });
   }
 
   protected getCredentialType(): CredentialType {

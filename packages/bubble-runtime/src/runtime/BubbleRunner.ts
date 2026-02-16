@@ -490,33 +490,6 @@ export class BubbleRunner {
         (flowInstance as any).__executionMeta__ = this.options.executionMeta;
       }
 
-      // Extract thread_histories from trigger payload and convert to conversation history
-      // format for auto-injection into AI agents (avoids Pearl needing to generate mapping code)
-      if (
-        webhookPayload &&
-        Array.isArray((webhookPayload as any).thread_histories)
-      ) {
-        const threadHistories = (webhookPayload as any)
-          .thread_histories as Array<{
-          user_id: string;
-          name: string;
-          message: string;
-        }>;
-        if (threadHistories.length > 0) {
-          // Convert to {role, content} format — all thread messages are "user" role
-          // The last entry is the current message that triggered the flow (already in `message` param),
-          // so we only include history up to but NOT including it to avoid duplication
-          const historyWithoutCurrent = threadHistories.slice(0, -1);
-          if (historyWithoutCurrent.length > 0) {
-            (flowInstance as any).__triggerConversationHistory__ =
-              historyWithoutCurrent.map((h) => ({
-                role: 'user' as const,
-                content: `[${h.name}]: ${h.message}`,
-              }));
-          }
-        }
-      }
-
       // Ensure the logger is set on the flow instance
       if (this.logger) {
         if (typeof flowInstance.setLogger === 'function') {
