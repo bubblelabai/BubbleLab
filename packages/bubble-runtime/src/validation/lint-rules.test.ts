@@ -251,7 +251,7 @@ const researchTool = new ResearchAgentTool({
 });
 
 describe('no-capability-inputs lint rule', () => {
-  it('should error when capabilities have inline inputs', () => {
+  it('should error when capability inputs reference variables (template expression)', () => {
     const code = `
 import { AIAgentBubble } from '@bubblelab/bubble-core';
 
@@ -276,7 +276,33 @@ const agent = new AIAgentBubble({
 
     expect(errors.length).toBe(1);
     expect(errors[0].message).toContain('inputs');
-    expect(errors[0].message).toContain('Capabilities panel');
+    expect(errors[0].message).toContain('variables');
+  });
+
+  it('should error when capability inputs reference a variable directly', () => {
+    const code = `
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const agent = new AIAgentBubble({
+  message: 'Do stuff',
+  capabilities: [{ id: 'knowledge-base', inputs: myInputs }],
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].message).toContain('inputs');
   });
 
   it('should not error when capabilities only have id', () => {
@@ -305,15 +331,16 @@ const agent = new AIAgentBubble({
     expect(errors.length).toBe(0);
   });
 
-  it('should error for multiple capabilities with inputs', () => {
+  it('should not error when capability inputs are all constants', () => {
     const code = `
 import { AIAgentBubble } from '@bubblelab/bubble-core';
 
 const agent = new AIAgentBubble({
   message: 'Do stuff',
   capabilities: [
-    { id: 'knowledge-base', inputs: { sources: ['doc1'] } },
-    { id: 'data-analyst', inputs: { db: 'main' } },
+    { id: 'knowledge-base', inputs: { sources: ['google-doc:1Kf-abc123:edit'] } },
+    { id: 'data-analyst', inputs: { schemaContext: '' } },
+    { id: 'google-calendar', inputs: { } },
   ],
 });
 `;
@@ -330,7 +357,35 @@ const agent = new AIAgentBubble({
 
     const errors = registry.validateAll(sourceFile);
 
-    expect(errors.length).toBe(2);
+    expect(errors.length).toBe(0);
+  });
+
+  it('should error only for capabilities with variable inputs, not constant ones', () => {
+    const code = `
+import { AIAgentBubble } from '@bubblelab/bubble-core';
+
+const agent = new AIAgentBubble({
+  message: 'Do stuff',
+  capabilities: [
+    { id: 'knowledge-base', inputs: { sources: ['doc1'] } },
+    { id: 'data-analyst', inputs: { db: someVariable } },
+  ],
+});
+`;
+
+    const sourceFile = ts.createSourceFile(
+      'test.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true
+    );
+
+    const registry = new LintRuleRegistry();
+    registry.register(noCapabilityInputsRule);
+
+    const errors = registry.validateAll(sourceFile);
+
+    expect(errors.length).toBe(1);
   });
 
   it('should not flag objects without an id property', () => {

@@ -89,15 +89,15 @@ WORKFLOW:
 IMPORTANT TOOL USAGE:
 - ALWAYS start with createWorkflow (not editWorkflow) to create the initial code
 - Use editWorkflow ONLY to fix validation errors from createWorkflow
-- When using editWorkflow, highlight the changes necessary and adds comments to indicate where unchanged code has been skipped. For example:
-// ... existing code ...
-{{ edit_1 }}
-// ... existing code ...
-{{ edit_2 }}
-// ... existing code ...
-Often this will mean that the start/end of the file will be skipped, but that's okay! Rewrite the entire file ONLY if specifically requested. Always provide a brief explanation of the updates, unless the user specifically requests only the code.
-These edit codeblocks are also read by a less intelligent language model, colloquially called the apply model, to update the file. To help specify the edit to the apply model, you will be very careful when generating the codeblock to not introduce ambiguity. You will specify all unchanged regions (code and comments) of the file with "// ... existing code ..." comment markers. This will ensure the apply model will not delete existing unchanged code or comments when editing the file.
-- editWorkflow will return both the updated code AND new validation errors
+- When using editWorkflow, provide the exact text to find (old_string) and its replacement (new_string).
+- old_string must be an EXACT match of text in the current code, including whitespace and indentation.
+- The edit will FAIL if old_string is not unique in the code. Provide a larger string with more surrounding context to make it unique, or set replace_all to true to change every instance.
+- new_string replaces the ENTIRE old_string — include all lines that should remain.
+- To ADD new code: set old_string to the line(s) above/below where you want to insert, and include those lines in new_string along with your new code.
+- To DELETE code: set new_string to empty string "".
+- Use replace_all for renaming variables or strings across the file.
+- KEEP EDITS MINIMAL — one logical change per editWorkflow call.
+- editWorkflow will return both the updated code AND new validation errors.
 `;
 
 // CRITICAL_INSTRUCTIONS and VALIDATION_PROCESS are now imported from @bubblelab/shared-schemas
@@ -360,18 +360,18 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
           );
         } else if (context.toolName === ('editWorkflow' as AvailableTool)) {
           console.debug('[BubbleFlowGenerator] Pre-hook: editWorkflow called');
-          // Update currentCode with the initial code from the tool input
           const input = context.toolInput as {
-            codeEdit?: string;
-            instructions?: string;
+            old_string?: string;
+            new_string?: string;
+            replace_all?: boolean;
           };
           console.debug(
-            '[BubbleFlowGenerator] EditWorkflow codeEdit:',
-            input.codeEdit
+            '[BubbleFlowGenerator] EditWorkflow old_string:',
+            input.old_string
           );
           console.debug(
-            '[BubbleFlowGenerator] EditWorkflow instructions:',
-            input.instructions
+            '[BubbleFlowGenerator] EditWorkflow new_string:',
+            input.new_string
           );
         }
 
@@ -584,30 +584,38 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
             {
               name: 'editWorkflow',
               description:
-                'Edit existing workflow code using Morph Fast Apply. Use this ONLY after createWorkflow has been called. Provide precise edits with "// ... existing code ..." markers. Returns both the updated code AND new validation errors.',
+                'Edit existing workflow code using find-and-replace. Use this ONLY after createWorkflow has been called. Provide the exact text to find (old_string) and its replacement (new_string). The edit FAILS if old_string is not unique — provide more surrounding context to disambiguate. Use replace_all for renaming. Returns both the updated code AND new validation errors.',
               schema: z.object({
-                instructions: z
+                old_string: z
                   .string()
                   .describe(
-                    'A single sentence instruction describing what you are going to do for the sketched edit. This is used to assist the less intelligent model in applying the edit. Use the first person to describe what you are going to do. Use it to disambiguate uncertainty in the edit.'
+                    'The exact text to replace. Must be unique in the code — if not unique, provide more surrounding context to disambiguate.'
                   ),
-                codeEdit: z
+                new_string: z
                   .string()
                   .describe(
-                    "Specify ONLY the precise lines of code that you wish to edit. NEVER specify or write out unchanged code. Instead, represent all unchanged code using the comment of the language you're editing in - example: // ... existing code ... "
+                    'The replacement text. Must be different from old_string.'
+                  ),
+                replace_all: z
+                  .boolean()
+                  .default(false)
+                  .optional()
+                  .describe(
+                    'Replace all occurrences of old_string (default false). Use for renaming variables/strings across the file.'
                   ),
               }),
               func: async (input: Record<string, unknown>) => {
-                const instructions = input.instructions as string;
-                const codeEdit = input.codeEdit as string;
+                const old_string = input.old_string as string;
+                const new_string = input.new_string as string;
+                const replace_all = (input.replace_all as boolean) || false;
 
                 // Use the EditBubbleFlowTool to apply edits
                 const editTool = new EditBubbleFlowTool(
                   {
                     initialCode: currentCode,
-                    instructions,
-                    codeEdit,
-                    credentials: this.params.credentials,
+                    old_string,
+                    new_string,
+                    replace_all,
                   },
                   this.context
                 );
