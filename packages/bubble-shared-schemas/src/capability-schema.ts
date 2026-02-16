@@ -83,6 +83,7 @@ export const CapabilityModelConfigOverrideSchema = z.object({
   model: z.string().optional(),
   reasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
   maxTokens: z.number().positive().optional(),
+  maxIterations: z.number().positive().optional(),
 });
 export type CapabilityModelConfigOverride = z.infer<
   typeof CapabilityModelConfigOverrideSchema

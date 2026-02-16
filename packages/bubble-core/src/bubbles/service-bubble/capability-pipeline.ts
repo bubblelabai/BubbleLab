@@ -45,6 +45,7 @@ export async function applyCapabilityPreprocessing(
           params.model.maxTokens ?? 0,
           override.maxTokens
         );
+      if (override.maxIterations) params.maxIterations = override.maxIterations;
     }
   }
 
