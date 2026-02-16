@@ -68,6 +68,7 @@ export const env = {
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   DATABASE_URL: process.env.DATABASE_URL!,
   PYTHON_PATH: process.env.PYTHON_PATH,
   BUBBLE_ENV: process.env.BUBBLE_ENV || 'dev',

@@ -456,20 +456,15 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
                 errors: editResult.validationResult.errors || [],
                 bubbleParameters: editResult.validationResult.bubbleParameters,
               };
-
-              return {
-                messages: context.messages,
-                shouldStop: true,
-              };
+            } else {
+              console.debug(
+                '[BubbleFlowGenerator] Edit applied, validation failed, will retry'
+              );
+              console.debug(
+                '[BubbleFlowGenerator] Validation errors:',
+                editResult.validationResult?.errors
+              );
             }
-
-            console.debug(
-              '[BubbleFlowGenerator] Edit applied, validation failed, will retry'
-            );
-            console.debug(
-              '[BubbleFlowGenerator] Validation errors:',
-              editResult.validationResult?.errors
-            );
           } catch (error) {
             console.warn(
               '[BubbleFlowGenerator] Failed to parse edit result:',

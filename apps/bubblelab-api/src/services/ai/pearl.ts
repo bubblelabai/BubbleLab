@@ -12,11 +12,8 @@
 import {
   type PearlRequest,
   type PearlResponse,
-  type PearlAgentOutput,
-  PearlAgentOutputSchema,
   CredentialType,
   ParsedBubbleWithInfo,
-  CREDENTIAL_ENV_MAP,
   BubbleName,
   TOOL_CALL_TO_DISCARD,
 } from '@bubblelab/shared-schemas';
@@ -43,10 +40,10 @@ import {
   ToolMessage,
 } from '@bubblelab/bubble-core';
 import { z } from 'zod';
-import { parseJsonWithFallbacks } from '@bubblelab/bubble-core';
 import { validateAndExtract } from '@bubblelab/bubble-runtime';
 import { getBubbleFactory } from '../bubble-factory-instance.js';
 import { env } from 'src/config/env.js';
+
 /**
  * Build the system prompt for General Chat agent
  */
@@ -80,52 +77,23 @@ ${bubbleDescriptions}
 DECISION PROCESS:
 1. Analyze the user's request carefully
 2. Determine the user's intent:
-   - Are they asking for information/guidance? → Use ANSWER
-   - Are they requesting workflow code generation? → Use CODE
-   - Is critical information missing? → Use QUESTION
-   - Is the request infeasible? → Use REJECT
+   - Are they asking for information/guidance? → Respond with a clear explanation
+   - Are they requesting workflow changes? → Use editWorkflow tool
+   - Is critical information missing? → Ask the user clarifying questions
+   - Is the request infeasible? → Explain why it cannot be done
 3. For code generation:
    - Identify all the bubbles/integrations needed
    - Check if all required information is provided
-   - If ANY critical information is missing → ASK QUESTION immediately
+   - If ANY critical information is missing → ASK the user immediately
    - DO NOT make assumptions or use placeholder values
    - DO NOT ask user to provide credentials, it will be handled automatically through bubble studio's credential management system.
    - If request is clear and feasible → PROPOSE workflow changes and call editWorkflow tool to validate it
 
-OUTPUT FORMAT (JSON):
-You MUST respond in JSON format with one of these structures. DO NOT include these in the <think> block. Include them in the response message:
-
-Question (when you need MORE information from user):
-{
-  "type": "question",
-  "message": "Specific question to ask the user to clarify their requirements"
-}
-
-Answer (when providing information or guidance WITHOUT generating code):
-{
-  "type": "answer",
-  "message": "Detailed explanation, guidance, or answer to the user's question"
-}
-
-Call editWorkflow tool until validation passes, then respond with the code snippet of the editWorkflow tool's response
-then, respond with the code snippet of the editWorkflow tool's response
-{
-  "type": "code",
-  "message": 'Code snippet of the editWorkflow tool\'s response',
-}
-
-Rejection (when infeasible):
-{
-  "type": "reject",
-  "message": "Clear explanation of why this request cannot be fulfilled"
-}
-
-WHEN TO USE EACH TYPE:
-- Use "question" when you need MORE information from the user to proceed with code generation
-- Use "answer" when providing helpful information, explanations, or guidance WITHOUT generating code
-  Examples: explaining features, listing available bubbles, providing usage guidance, answering how-to questions
-- Use editWorkflow tool when you have enough information to PROPOSE a complete workflow (you are NOT editing/executing, only suggesting for user review)
-- Use "reject" when the request is infeasible or outside your capabilities
+RESPONSE GUIDELINES:
+- Respond in natural language. Do NOT wrap your response in JSON.
+- After making code changes with editWorkflow, explain what you changed and why.
+- When you need more information, just ask directly.
+- When a request is infeasible, explain why clearly.
 
 CRITICAL CODE EDIT RULES:
 2. For each bubble, use the get-bubble-details-tool with the bubble name (not class name) in order to understand the proper usage. ALWAYS call this tool for each bubble you plan to use or modify so you know the correct parameters and output!!!!!
@@ -281,10 +249,17 @@ export async function runPearl(
   apiStreamingCallback?: StreamingCallback,
   maxRetries?: number
 ): Promise<PearlResponse> {
-  if (!env.OPENROUTER_API_KEY) {
+  // Validate that at least one AI credential is available
+  if (
+    !env.OPENROUTER_API_KEY &&
+    !env.ANTHROPIC_API_KEY &&
+    !env.OPENAI_API_KEY &&
+    !env.GOOGLE_API_KEY
+  ) {
     return {
       type: 'reject',
-      message: `OpenRouter API key is required to run Pearl, please make sure the environment variable ${CREDENTIAL_ENV_MAP[CredentialType.OPENROUTER_CRED]} is set, please obtain one https://openrouter.ai/settings/keys to run Pearl.`,
+      message:
+        'No AI API key configured. Please set at least one of: OPENROUTER_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY.',
       success: false,
     };
   }
@@ -303,18 +278,8 @@ export async function runPearl(
       const { messages: conversationMessages, images } =
         buildConversationMessages(request);
 
-      // State to preserve current code and validation results across hook calls
+      // State to preserve current code across hook calls
       let currentCode: string | undefined = request.currentCode;
-      let editHistory: string[] = [];
-      let savedValidationResult:
-        | {
-            valid: boolean;
-            errors: string[];
-            bubbleParameters: Record<number, ParsedBubbleWithInfo>;
-            inputSchema: Record<string, unknown>;
-            requiredCredentials?: Record<string, CredentialType[]>;
-          }
-        | undefined;
 
       // Create hooks for editWorkflow tool
       const beforeToolCall: ToolHookBefore = async (
@@ -328,9 +293,6 @@ export async function runPearl(
             new_string?: string;
             replace_all?: boolean;
           };
-          editHistory.push(
-            `Replaced: ${(input.old_string || '').substring(0, 80)}...`
-          );
           console.debug('[Pearl] EditWorkflow old_string:', input.old_string);
           console.debug('[Pearl] EditWorkflow new_string:', input.new_string);
         }
@@ -362,89 +324,11 @@ export async function runPearl(
 
             if (editResult.validationResult?.valid === true) {
               console.debug('[Pearl] Edit successful and validation passed!');
-
-              // Save validation result for later use
-              savedValidationResult = {
-                valid: editResult.validationResult.valid || false,
-                errors: editResult.validationResult.errors || [],
-                bubbleParameters:
-                  editResult.validationResult.bubbleParameters || [],
-                inputSchema: editResult.validationResult.inputSchema || {},
-                requiredCredentials:
-                  editResult.validationResult.requiredCredentials,
-              };
-
-              // Extract message from AI
-              let message = 'Changes applied successfully.';
-              const lastAIMessage = [...context.messages]
-                .reverse()
-                .find(
-                  (msg) =>
-                    msg.constructor.name === 'AIMessage' ||
-                    msg.constructor.name === 'AIMessageChunk'
-                );
-              if (lastAIMessage) {
-                const messageContent = lastAIMessage.content;
-
-                if (
-                  typeof messageContent === 'string' &&
-                  messageContent.trim()
-                ) {
-                  // Check if message is parsable JSON
-                  const result = parseJsonWithFallbacks(messageContent);
-                  if (result.success && result.parsed) {
-                    message = (result.parsed as { message: string }).message;
-                  } else {
-                    message = messageContent;
-                  }
-                } else if (Array.isArray(messageContent)) {
-                  const textBlock = messageContent.find(
-                    (block: unknown) =>
-                      typeof block === 'object' &&
-                      block !== null &&
-                      'type' in block &&
-                      block.type === 'text' &&
-                      'text' in block
-                  );
-
-                  if (
-                    textBlock &&
-                    typeof textBlock === 'object' &&
-                    'text' in textBlock
-                  ) {
-                    const text = (textBlock as { text: string }).text;
-                    if (text.trim()) {
-                      message = text;
-                    }
-
-                    // Check if message is parsable JSON
-                    const result = parseJsonWithFallbacks(message);
-                    if (result.success && result.parsed) {
-                      message = (result.parsed as { message: string }).message;
-                    }
-                  }
-                }
-
-                // Construct the JSON response
-                const response = {
-                  type: 'code',
-                  message,
-                  snippet: currentCode || '',
-                };
-
-                // Inject the response into the AI message
-                lastAIMessage.content = JSON.stringify(response);
-              }
-
-              return {
-                messages: context.messages,
-                shouldStop: true,
-              };
+            } else {
+              console.debug(
+                '[Pearl] Edit applied, validation failed, will retry'
+              );
             }
-
-            console.debug(
-              '[Pearl] Edit applied, validation failed, will retry'
-            );
           } catch (error) {
             console.warn('[Pearl] Failed to parse edit result:', error);
           }
@@ -465,8 +349,6 @@ export async function runPearl(
         model: {
           model: request.model,
           temperature: 1,
-          jsonMode: true,
-          provider: ['fireworks', 'cerebras'],
         },
         images: images.length > 0 ? images : undefined,
         tools: [
@@ -596,114 +478,31 @@ export async function runPearl(
       });
       const result = await agent.action();
 
-      // If response is not empty and agent execution failed, return answer type
-      if (
-        !result.success &&
-        result.data?.response &&
-        result.data?.response.trim() !== ''
-      ) {
-        // Default to answer type if agent execution failed (likely due to JSON parsing error of response)
-        return {
-          type: 'answer',
-          message: result.data?.response,
-          success: true,
-        };
-      }
-
-      // Parse the agent's JSON response
-      let agentOutput: PearlAgentOutput;
       const responseText = result.data?.response || '';
-      try {
-        // Try to parse as object first, then as array (take first element)
-        let parsedResponse = JSON.parse(responseText);
-        if (Array.isArray(parsedResponse) && parsedResponse.length > 0) {
-          parsedResponse = parsedResponse[0];
-        }
-        agentOutput = PearlAgentOutputSchema.parse(parsedResponse);
 
-        if (!agentOutput.type || !agentOutput.message) {
-          console.error('[Pearl] Error parsing agent response:', responseText);
-          lastError = 'Error parsing agent response';
-
-          if (attempt < MAX_RETRIES) {
-            console.warn(`[Pearl] Retrying... (${attempt}/${MAX_RETRIES})`);
-            continue;
-          }
-
-          return {
-            type: 'reject',
-            message:
-              'Error parsing agent response, original response: ' +
-              responseText,
-            success: false,
-          };
-        }
-        if (agentOutput.type === 'code') {
-          const finalCode = currentCode;
-          if (
-            editHistory.length == 0 ||
-            !finalCode ||
-            finalCode.trim() === ''
-          ) {
-            console.error('[Pearl] Did not generate any code');
-            continue;
-          }
-          return {
-            type: 'code',
-            message: agentOutput.message,
-            snippet: finalCode,
-            bubbleParameters: savedValidationResult?.bubbleParameters,
-            inputSchema: savedValidationResult?.inputSchema,
-            requiredCredentials: savedValidationResult?.requiredCredentials,
-            success: true,
-          };
-        } else if (agentOutput.type === 'question') {
-          return {
-            type: 'question',
-            message: agentOutput.message,
-            success: true,
-          };
-        } else if (
-          agentOutput.type === 'answer' ||
-          agentOutput.type === 'text'
-        ) {
-          if (!agentOutput.message || agentOutput.message.trim() === '') {
-            console.error('[Pearl] Did not generate any code');
-            continue;
-          }
-          return {
-            type: 'answer',
-            message: agentOutput.message,
-            success: true,
-          };
-        } else {
-          return {
-            type: 'reject',
-            message: agentOutput.message,
-            success: true,
-          };
-        }
-      } catch (error) {
-        lastError =
-          error instanceof Error ? error.message : 'Unknown parsing error';
-
+      if (!responseText || responseText.trim() === '') {
+        lastError = 'Empty response from agent';
         if (attempt < MAX_RETRIES) {
           console.warn(
-            `[Pearl] Retrying due to error: ${error instanceof Error ? error.message : 'Unknown error'} (${attempt}/${MAX_RETRIES})`
+            `[Pearl] Empty response, retrying... (${attempt}/${MAX_RETRIES})`
           );
           continue;
         }
-
         return {
-          type: 'reject',
-          message:
-            'Failed to parse agent response, original response: ' +
-            responseText,
+          type: 'answer',
+          message: 'Agent returned an empty response.',
           success: false,
-          error:
-            error instanceof Error ? error.message : 'Unknown parsing error',
+          error: lastError,
         };
       }
+
+      // Always return as 'answer' — the frontend determines if it's a code response
+      // by checking tool_call_complete events for editWorkflow
+      return {
+        type: 'answer',
+        message: responseText,
+        success: true,
+      };
     } catch (error) {
       console.error('[Pearl] Error during execution:', error);
       lastError = error instanceof Error ? error.message : 'Unknown error';
