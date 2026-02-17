@@ -329,8 +329,42 @@ export async function runPearl(
                 '[Pearl] Edit applied, validation failed, will retry'
               );
             }
+
+            // Trim mergedCode from PREVIOUS editWorkflow tool messages.
+            // The LLM only needs the latest code state, not intermediate versions.
+            const updatedMessages = context.messages.map((msg, idx) => {
+              // Skip the last message (current/latest tool result — keep it intact)
+              if (idx === context.messages.length - 1) return msg;
+              if (!(msg instanceof ToolMessage)) return msg;
+
+              try {
+                const parsed = JSON.parse(msg.content as string);
+                if (parsed?.data?.mergedCode) {
+                  const trimmed = {
+                    data: {
+                      applied: parsed.data.applied,
+                      validationResult: parsed.data.validationResult
+                        ? {
+                            valid: parsed.data.validationResult.valid,
+                            errors: parsed.data.validationResult.errors,
+                          }
+                        : undefined,
+                    },
+                  };
+                  return new ToolMessage({
+                    content: JSON.stringify(trimmed),
+                    tool_call_id: msg.tool_call_id,
+                  });
+                }
+              } catch {
+                /* not JSON or not editWorkflow — skip */
+              }
+              return msg;
+            });
+
+            return { messages: updatedMessages };
           } catch (error) {
-            console.warn('[Pearl] Failed to parse edit result:', error);
+            console.warn('[Pearl] Failed to process edit result:', error);
           }
         }
 
@@ -349,6 +383,7 @@ export async function runPearl(
         model: {
           model: request.model,
           temperature: 1,
+          reasoningEffort: 'medium',
         },
         images: images.length > 0 ? images : undefined,
         tools: [

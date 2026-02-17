@@ -92,6 +92,8 @@ interface PearlChatState {
   /** Messages array - derived from timeline for backward compat */
   messages: ChatMessage[];
   activeToolCallIds: Set<string>;
+  /** Message IDs where the user has applied the code change */
+  appliedMessageIds: Set<string>;
   prompt: string;
 
   // Context selection
@@ -117,6 +119,7 @@ interface PearlChatState {
   // ===== State Mutations =====
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  markMessageApplied: (messageId: string) => void;
 
   // Timeline management (unified)
   addToTimeline: (item: TimelineItem) => void;
@@ -203,6 +206,7 @@ function createPearlChatStore(_flowId: number) {
     // Messages array (kept in sync with timeline for backward compat)
     messages: [],
     activeToolCallIds: new Set(),
+    appliedMessageIds: new Set(),
     prompt: '',
     selectedBubbleContext: [],
     selectedTransformationContext: null,
@@ -341,7 +345,13 @@ function createPearlChatStore(_flowId: number) {
         messages: [],
         timeline: [],
         activeToolCallIds: new Set(),
+        appliedMessageIds: new Set(),
       }),
+
+    markMessageApplied: (messageId) =>
+      set((state) => ({
+        appliedMessageIds: new Set([...state.appliedMessageIds, messageId]),
+      })),
 
     setPrompt: (prompt) => set({ prompt }),
 
@@ -491,6 +501,7 @@ function createPearlChatStore(_flowId: number) {
         timeline: [],
         messages: [],
         activeToolCallIds: new Set(),
+        appliedMessageIds: new Set(),
         prompt: '',
         selectedBubbleContext: [],
         selectedTransformationContext: null,

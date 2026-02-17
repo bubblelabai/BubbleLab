@@ -1119,9 +1119,11 @@ export class AIAgentBubble extends ServiceBubble<
               }
             : undefined;
 
+        const isThinking = thinkingConfig != null;
         const anthropicModel = new ChatAnthropic({
           model: modelName,
-          temperature,
+          // Anthropic requires temperature=1 when thinking is enabled
+          temperature: isThinking ? 1 : temperature,
           anthropicApiKey: apiKey,
           maxTokens,
           streaming: true,
@@ -1132,7 +1134,11 @@ export class AIAgentBubble extends ServiceBubble<
         // LangChain 0.3.x defaults topP to -1 and only clears it for
         // hardcoded model names (opus-4-1, sonnet-4-5, haiku-4-5).
         // Newer models like opus-4-6 aren't whitelisted, so force-clear it.
-        anthropicModel.topP = undefined;
+        // When thinking is enabled, topP must stay at -1 (sentinel for "not set")
+        // because Anthropic rejects topP with thinking.
+        if (!isThinking) {
+          anthropicModel.topP = undefined;
+        }
         return anthropicModel;
       }
       case 'openrouter':
@@ -1603,6 +1609,7 @@ export class AIAgentBubble extends ServiceBubble<
 
     const toolMessages: BaseMessage[] = [];
     let currentMessages = [...messages];
+    let hooksModifiedMessages = false;
 
     // Reset stop flag at the start of tool execution
     this.shouldStopAfterTools = false;
@@ -1672,6 +1679,7 @@ export class AIAgentBubble extends ServiceBubble<
         if (hookResult_before) {
           if (hookResult_before.messages) {
             currentMessages = hookResult_before.messages;
+            hooksModifiedMessages = true;
           }
           toolCall.args = hookResult_before.toolInput;
         }
@@ -1703,6 +1711,7 @@ export class AIAgentBubble extends ServiceBubble<
         if (hookResult_after) {
           if (hookResult_after.messages) {
             currentMessages = hookResult_after.messages;
+            hooksModifiedMessages = true;
           }
           // Check if hook wants to stop execution
           if (hookResult_after.shouldStop === true) {
@@ -1745,18 +1754,12 @@ export class AIAgentBubble extends ServiceBubble<
       }
     }
 
-    // Return the updated messages
-    // If hooks modified messages, use those; otherwise use the original messages + tool messages
-    if (currentMessages.length !== messages.length + toolMessages.length) {
-      console.error(
-        '[AIAgent] Current messages length does not match expected length',
-        currentMessages.length,
-        messages.length,
-        toolMessages.length
-      );
+    // If hooks modified existing messages, return the full array so LangGraph's
+    // messagesStateReducer can merge by ID (update existing + append new).
+    // Otherwise, return only new tool messages for efficiency.
+    if (hooksModifiedMessages) {
       return { messages: currentMessages };
     }
-
     return { messages: toolMessages };
   }
 
@@ -1768,7 +1771,19 @@ export class AIAgentBubble extends ServiceBubble<
     // Define the agent node
     const agentNode = async ({ messages }: typeof MessagesAnnotation.State) => {
       // systemPrompt is already enhanced by beforeAction() if expectedOutputSchema was provided
-      const systemMessage = new HumanMessage(systemPrompt);
+      // Use cache_control for Anthropic models to cache the system prompt across iterations
+      const isAnthropic = llm instanceof ChatAnthropic;
+      const systemMessage = isAnthropic
+        ? new HumanMessage({
+            content: [
+              {
+                type: 'text' as const,
+                text: systemPrompt,
+                cache_control: { type: 'ephemeral' as const },
+              },
+            ],
+          })
+        : new HumanMessage(systemPrompt);
       const allMessages = [systemMessage, ...messages];
 
       // Helper function for exponential backoff with jitter

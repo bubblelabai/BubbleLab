@@ -117,10 +117,6 @@ export function PearlChat() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isVoiceBusy, setIsVoiceBusy] = useState(false);
-  const [updatedMessageIds, setUpdatedMessageIds] = useState<Set<string>>(
-    new Set()
-  );
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const promptInputRef = useRef<BubblePromptInputRef>(null);
   const { closeSidePanel } = useUIStore();
@@ -137,6 +133,9 @@ export function PearlChat() {
   // Pearl store hook - subscribes to state and provides generation API
   const pearl = usePearlChatStore(selectedFlowId);
   const queryClient = useQueryClient();
+  const pearlStore = selectedFlowId ? getPearlChatStore(selectedFlowId) : null;
+  const appliedMessageIds =
+    pearlStore?.((s) => s.appliedMessageIds) ?? new Set<string>();
 
   // Check if this is an initial generation (flow has prompt but no code)
   const isGenerating =
@@ -401,8 +400,8 @@ export function PearlChat() {
     editor.replaceAllContent(code);
     trackAIAssistant({ action: 'accept_response', message: code || '' });
 
-    // Mark message as updated
-    setUpdatedMessageIds((prev) => new Set(prev).add(messageId));
+    // Mark message as applied in store (persists across remounts)
+    pearlStore?.getState().markMessageApplied(messageId);
 
     // Update all workflow data from Pearl response
     if (bubbleParameters) {
@@ -1006,7 +1005,7 @@ export function PearlChat() {
                           <CodeDiffView
                             originalCode={editor.getCode() || ''}
                             modifiedCode={message.code}
-                            isAccepted={updatedMessageIds.has(message.id)}
+                            isAccepted={appliedMessageIds.has(message.id)}
                             onAccept={() =>
                               handleReplace(
                                 message.code!,

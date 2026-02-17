@@ -457,6 +457,7 @@ export function usePearlChatStore(flowId: number | null) {
 
       // Check tool call results for editWorkflow — extract code from last successful edit
       // Tool output shape: { data: { mergedCode, applied, validationResult } }
+      // Only scan within the current turn (after the last user message)
       const messages = storeState.messages;
       console.debug(
         '[Pearl onSuccess] Backend result type:',
@@ -465,7 +466,16 @@ export function usePearlChatStore(flowId: number | null) {
         messages.length
       );
 
+      // Find the last user message = start of current turn
+      let turnStartIndex = 0;
       for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].type === 'user') {
+          turnStartIndex = i;
+          break;
+        }
+      }
+
+      for (let i = messages.length - 1; i > turnStartIndex; i--) {
         const msg = messages[i];
         if (
           msg.type === 'tool_result' &&
