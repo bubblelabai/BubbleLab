@@ -1,6 +1,6 @@
 # Code Edit Tool
 
-Applies code edits to BubbleFlow files using Morph Fast Apply
+Applies code edits to BubbleFlow files using find-and-replace
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -9,15 +9,11 @@ import TabItem from '@theme/TabItem';
 
 ```typescript
 import { EditBubbleFlowTool } from '@bubblelab/bubble-core';
-import { CredentialType } from '@bubblelab/shared-schemas';
 const result = await new EditBubbleFlowTool({
 
-  initialCode: 'example', // The original code to be edited
-  instructions: 'example', // A single sentence instruction in first person describing what changes are being made (e.g., "I am adding error handling to the user auth and removing the old auth functions"). Used to help disambiguate uncertainty in the edit.
-  codeEdit: 'example', // The code changes to apply. Specify ONLY the precise lines of code that you wish to edit. Use "// ... existing code ..." to represent unchanged sections. DO NOT omit spans of pre-existing code without using the marker, as this may cause inadvertent deletion.
-  credentials: {
-    [CredentialType.OPENROUTER_CRED]: process.env.OPENROUTER_CRED as string,
-  },
+  initialCode: 'const x = 1;\nconst y = 2;', // The current code to apply the edit to
+  old_string: 'const x = 1;', // The exact text to replace
+  new_string: 'const x = 42;', // The replacement text
 }).action();
 ```
 
@@ -34,18 +30,18 @@ const result = await new EditBubbleFlowTool({
 <div className="schema-card">
 <dl>
   <dt><code>initialCode</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>The original code to be edited</dd>
+  <dd>The current code to apply the edit to</dd>
 
-  <dt><code>instructions</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>A single sentence instruction in first person describing what changes are being made (e.g., "I am adding error handling to the user auth and removing the old auth functions"). Used to help disambiguate uncertainty in the edit.</dd>
+  <dt><code>old_string</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The exact text to replace. Must be unique in the code — if not unique, provide more surrounding context to disambiguate.</dd>
 
-  <dt><code>codeEdit</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd>The code changes to apply. Specify ONLY the precise lines of code that you wish to edit. Use "// ... existing code ..." to represent unchanged sections. DO NOT omit spans of pre-existing code without using the marker, as this may cause inadvertent deletion.</dd>
+  <dt><code>new_string</code> <em>string</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
+  <dd>The replacement text. Must be different from old_string.</dd>
 
-  <dt><code>morphModel</code> <em>string</em> </dt>
-  <dd>Morph model to use for applying edits via OpenRouter</dd>
+  <dt><code>replace_all</code> <em>boolean</em> </dt>
+  <dd>Replace all occurrences of old_string (default false). Use for renaming variables/strings across the file.</dd>
 
-  <dt><code>credentials</code> <em>Record&lt;CredentialType,string&gt;</em> </dt>
+  <dt><code>credentials</code> <em>Record&lt;string,string&gt;</em> </dt>
   <dd>Credentials (HIDDEN from AI - injected at runtime)</dd>
 
   <dt><code>config</code> <em>Record&lt;string,unknown&gt;</em> </dt>
@@ -65,12 +61,6 @@ const result = await new EditBubbleFlowTool({
   <dt><code>applied</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Whether the edit was successfully applied</dd>
 
-  <dt><code>diff</code> <em>string</em> </dt>
-  <dd>Unified diff showing the changes made (if available)</dd>
-
-  <dt><code>metadata</code> <em>object</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
-  <dd></dd>
-
   <dt><code>success</code> <em>boolean</em> <span style={{color:'#d32f2f',fontWeight:600}}>required</span></dt>
   <dd>Whether the edit operation was successful</dd>
 
@@ -82,4 +72,3 @@ const result = await new EditBubbleFlowTool({
 
   </TabItem>
 </Tabs>
-

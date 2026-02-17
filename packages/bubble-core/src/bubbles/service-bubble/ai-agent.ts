@@ -46,7 +46,6 @@ import {
   applyCapabilityPostprocessing,
   applyCapabilityPreprocessing,
 } from './capability-pipeline.js';
-
 // Define tool hook context - provides access to messages and tool call details
 export type ToolHookContext = {
   toolName: AvailableTool;
@@ -1120,7 +1119,7 @@ export class AIAgentBubble extends ServiceBubble<
               }
             : undefined;
 
-        return new ChatAnthropic({
+        const anthropicModel = new ChatAnthropic({
           model: modelName,
           temperature,
           anthropicApiKey: apiKey,
@@ -1130,6 +1129,11 @@ export class AIAgentBubble extends ServiceBubble<
           ...(thinkingConfig && { thinking: thinkingConfig }),
           maxRetries: retries,
         });
+        // LangChain 0.3.x defaults topP to -1 and only clears it for
+        // hardcoded model names (opus-4-1, sonnet-4-5, haiku-4-5).
+        // Newer models like opus-4-6 aren't whitelisted, so force-clear it.
+        anthropicModel.topP = undefined;
+        return anthropicModel;
       }
       case 'openrouter':
         console.log('openrouter', modelName);

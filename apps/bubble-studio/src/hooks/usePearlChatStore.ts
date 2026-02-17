@@ -297,27 +297,21 @@ export function handleStreamingEvent(
         timestamp: new Date(),
       };
 
-      // Debug: Log the message being created
+      // Debug: Log editWorkflow tool results
+      if (event.data.tool === 'editWorkflow') {
+        console.debug(
+          '[Pearl tool_call_complete] editWorkflow raw output:',
+          JSON.stringify(event.data.output, null, 2)?.substring(0, 500)
+        );
+        console.debug('[Pearl tool_call_complete] success:', !isError);
+      }
 
       state.addMessage(toolResultMsg);
       break;
     }
 
     case 'think': {
-      let thinkingContent = event.data.content;
-      try {
-        const jsonMatch = thinkingContent.match(
-          /\{[\s\S]*"type"[\s\S]*"message"[\s\S]*\}/
-        );
-        if (jsonMatch) {
-          thinkingContent = thinkingContent
-            .substring(0, jsonMatch.index)
-            .trim();
-        }
-      } catch {
-        // Use content as-is
-      }
-
+      const thinkingContent = event.data.content;
       if (thinkingContent) {
         state.addEvent({
           type: 'think',
@@ -456,28 +450,78 @@ export function usePearlChatStore(flowId: number | null) {
 
       const storeState = store.getState();
 
-      let messageContent = result.message || '';
-      try {
-        const parsed = JSON.parse(messageContent.trim());
-        if (parsed && typeof parsed === 'object' && 'message' in parsed) {
-          messageContent = parsed.message;
+      const messageContent = result.message || '';
+      let effectiveResultType = result.type;
+      let code: string | undefined;
+      let bubbleParameters: Record<string, ParsedBubbleWithInfo> | undefined;
+
+      // Check tool call results for editWorkflow — extract code from last successful edit
+      // Tool output shape: { data: { mergedCode, applied, validationResult } }
+      const messages = storeState.messages;
+      console.debug(
+        '[Pearl onSuccess] Backend result type:',
+        result.type,
+        'messages:',
+        messages.length
+      );
+
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (
+          msg.type === 'tool_result' &&
+          msg.toolName === 'editWorkflow' &&
+          msg.success
+        ) {
+          // Tool returns { data: { mergedCode, applied, validationResult } }
+          const rawOutput = msg.output as {
+            data?: {
+              mergedCode?: string;
+              applied?: boolean;
+              validationResult?: {
+                valid: boolean;
+                bubbleParameters?: Record<string, ParsedBubbleWithInfo>;
+                inputSchema?: Record<string, unknown>;
+                requiredCredentials?: Record<string, unknown>;
+              };
+            };
+          };
+          const editData = rawOutput?.data;
+          console.debug('[Pearl onSuccess] editWorkflow output:', {
+            hasData: !!editData,
+            hasMergedCode: !!editData?.mergedCode,
+            applied: editData?.applied,
+            valid: editData?.validationResult?.valid,
+            hasBubbleParams: !!editData?.validationResult?.bubbleParameters,
+          });
+          if (editData?.mergedCode && editData?.applied) {
+            code = editData.mergedCode;
+            effectiveResultType = 'code';
+            if (editData.validationResult?.bubbleParameters) {
+              bubbleParameters = editData.validationResult
+                .bubbleParameters as Record<string, ParsedBubbleWithInfo>;
+            }
+            console.debug(
+              '[Pearl onSuccess] Extracted code edit, resultType -> code'
+            );
+            break; // Take the last successful edit
+          }
         }
-      } catch {
-        // Not JSON
       }
+
+      console.debug('[Pearl onSuccess] Final:', {
+        effectiveResultType,
+        hasCode: !!code,
+        hasBubbleParams: !!bubbleParameters,
+      });
 
       const assistantMessage: AssistantChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: messageContent,
-        code:
-          result.type === 'code' && result.snippet ? result.snippet : undefined,
-        resultType: result.type,
+        code,
+        resultType: effectiveResultType,
         timestamp: new Date(),
-        bubbleParameters: result.bubbleParameters as Record<
-          string,
-          ParsedBubbleWithInfo
-        >,
+        bubbleParameters,
       };
 
       storeState.addMessage(assistantMessage);
@@ -909,7 +953,7 @@ export function usePearlChatStore(flowId: number | null) {
     const retryMessage: SystemChatMessage = {
       id: `retry-${Date.now()}`,
       type: 'system',
-      content: `[Previous attempt failed with error: ${errorContext}]\n\nPlease try generating the response again, ensuring the output is valid JSON.`,
+      content: `[Previous attempt failed with error: ${errorContext}]\n\nPlease try generating the response again.`,
       timestamp: new Date(),
     };
     storeState.addMessage(retryMessage);

@@ -117,17 +117,7 @@ export const PearlResponseSchema = z.object({
     .describe('Error message if the operation failed'),
 });
 
-/**
- * Internal agent response format (JSON mode output from AI)
- */
-export const PearlAgentOutputSchema = z.object({
-  type: z.enum(['code', 'question', 'answer', 'reject', 'text']),
-  message: z.string(),
-  snippet: z.string().optional(),
-});
-
 // Export inferred TypeScript types
 export type PearlRequest = z.infer<typeof PearlRequestSchema>;
 export type PearlResponse = z.infer<typeof PearlResponseSchema>;
-export type PearlAgentOutput = z.infer<typeof PearlAgentOutputSchema>;
 // Note: ConversationMessage type is exported from milk-tea.ts to avoid duplication

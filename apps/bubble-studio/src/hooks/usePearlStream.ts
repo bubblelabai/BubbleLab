@@ -44,7 +44,7 @@ export function usePearlStream(options?: UsePearlStreamOptions) {
           pearlRequest.availableVariables.length > 0
             ? pearlRequest.availableVariables
             : codeContext?.availableVariables,
-        model: pearlRequest.model || 'google/gemini-2.5-pro',
+        model: pearlRequest.model,
         additionalContext: pearlRequest.additionalContext,
         uploadedFiles: pearlRequest.uploadedFiles,
       };

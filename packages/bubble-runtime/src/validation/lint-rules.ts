@@ -1505,7 +1505,43 @@ export const noCapabilityInputsRule: LintRule = {
 };
 
 /**
+ * Checks whether a node is a pure constant expression (no variable references).
+ * Allows: string/number/boolean literals, object literals with constant values,
+ * array literals with constant values, template literals without expressions.
+ * Disallows: identifiers (variables), template expressions, call expressions, etc.
+ */
+function isConstantExpression(node: ts.Node): boolean {
+  if (
+    ts.isStringLiteral(node) ||
+    ts.isNumericLiteral(node) ||
+    ts.isNoSubstitutionTemplateLiteral(node) ||
+    node.kind === ts.SyntaxKind.TrueKeyword ||
+    node.kind === ts.SyntaxKind.FalseKeyword ||
+    node.kind === ts.SyntaxKind.NullKeyword
+  ) {
+    return true;
+  }
+
+  if (ts.isArrayLiteralExpression(node)) {
+    return node.elements.every((el) => isConstantExpression(el));
+  }
+
+  if (ts.isObjectLiteralExpression(node)) {
+    return node.properties.every((prop) => {
+      if (ts.isPropertyAssignment(prop)) {
+        return isConstantExpression(prop.initializer);
+      }
+      // Spread, shorthand, etc. are not constant
+      return false;
+    });
+  }
+
+  return false;
+}
+
+/**
  * Checks if a capability object literal contains an 'inputs' property
+ * that references variables. Constant/literal inputs are allowed.
  */
 function checkCapabilityObjectForInputs(
   node: ts.Expression,
@@ -1531,7 +1567,7 @@ function checkCapabilityObjectForInputs(
 
   if (!hasIdProperty) return;
 
-  // Now check for 'inputs' property
+  // Now check for 'inputs' property — only flag if the value contains variables
   for (const prop of node.properties) {
     if (ts.isPropertyAssignment(prop)) {
       const name = prop.name;
@@ -1539,13 +1575,18 @@ function checkCapabilityObjectForInputs(
         (ts.isIdentifier(name) && name.text === 'inputs') ||
         (ts.isStringLiteral(name) && name.text === 'inputs')
       ) {
+        // Allow constant/literal inputs — only flag variable references
+        if (isConstantExpression(prop.initializer)) {
+          continue;
+        }
+
         const { line } = sourceFile.getLineAndCharacterOfPosition(
           prop.getStart(sourceFile)
         );
         errors.push({
           line: line + 1,
           message:
-            "Capability 'inputs' should not be defined in code. Remove the inputs property — use only { id: 'capability-id' }. Users configure capability inputs in the Capabilities panel. Also remove all references of this variable if it is only used for the agent (commonly flow input).",
+            "Capability 'inputs' should not reference variables in code. Use constant values only, or remove the inputs property and configure capability inputs in the Capabilities panel. Also remove all references of this variable if it is only used for the agent (commonly flow input).",
         });
       }
     }

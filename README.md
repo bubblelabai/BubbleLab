@@ -58,7 +58,7 @@ pnpm run dev
 
 Open **http://localhost:3000** and start building workflows!
 
-**⚠️ Note:** To create flow with pearl (our ai assistant), you'll need API keys (GOOGLE_API_KEY and OPENROUTER_API_KEY). By default gemini-3.0-pro is used for generation and morph-v3 is used for apply editing. Weaker model is not well tested and can lead to degraded/inconsistent performance. See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed setup instructions.
+**⚠️ Note:** To create flow with pearl (our ai assistant), you'll need API keys (GOOGLE_API_KEY). By default gemini-3.0-pro is used for generation and code edits use fast find-and-replace. Weaker model is not well tested and can lead to degraded/inconsistent performance. See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed setup instructions.
 
 ### 3. Create BubbleLab App
 
@@ -174,8 +174,9 @@ The documentation includes:
 ## 🤝 Community & Support
 
 > **⚠️ UPDATE (January 20, 2026)**: We are no longer accepting code contributions or pull requests at this time. However, we still welcome and encourage:
+>
 > - 🐛 **Bug reports** - Help us identify issues
-> - 💬 **Feature requests** - Share your ideas for improvements  
+> - 💬 **Feature requests** - Share your ideas for improvements
 > - 🗨️ **Community discussions** - Join conversations in Discord
 > - 📖 **Documentation feedback** - Suggest improvements to our docs
 >
@@ -186,7 +187,7 @@ The documentation includes:
 - [Join our Discord community](https://discord.gg/PkJvcU2myV) for discussions and support
 - [Open issues](https://github.com/bubblelabai/BubbleLab/issues) for bugs or feature requests
 - Check out **[CONTRIBUTING.md](./CONTRIBUTING.md)** for project setup and architecture details
-  
+
 ## License
 
 Apache 2.0
