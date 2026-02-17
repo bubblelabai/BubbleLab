@@ -28,8 +28,8 @@ export async function applyCapabilityPreprocessing(
   if (caps.length > 1) {
     // Multi-capability delegator: use Gemini 3 Pro for reliable tool-calling / routing.
     // Sub-agents apply their own modelConfigOverride in single-cap mode.
-    params.model.model = RECOMMENDED_MODELS.BEST as typeof params.model.model;
-    params.model.reasoningEffort = undefined;
+    params.model.model = RECOMMENDED_MODELS.CHAT as typeof params.model.model;
+    params.model.reasoningEffort = 'low';
   } else {
     // Single-cap: apply that capability's model override directly
     for (const capConfig of caps) {

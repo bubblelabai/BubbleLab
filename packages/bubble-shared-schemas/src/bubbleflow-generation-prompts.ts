@@ -15,5 +15,6 @@ export const RECOMMENDED_MODELS = {
   FAST: 'google/gemini-3-flash-preview',
   FAST_ALT: 'anthropic/claude-haiku-4-5',
   LITE: 'google/gemini-2.5-flash-lite',
+  CHAT: 'anthropic/claude-sonnet-4-6',
   IMAGE: 'google/gemini-3-pro-image-preview',
 } as Record<string, AvailableModel>;

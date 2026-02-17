@@ -578,6 +578,28 @@ export class BubbleInjector {
           }
         }
 
+        // For ai-agent bubbles, auto-inject all AI provider system credentials
+        // as fallbacks for runtime model overrides (capability overrides, etc.)
+        // These are NOT tracked in injectedCredentials (no credit impact)
+        if (bubble.bubbleName === 'ai-agent') {
+          const aiProviderCredentials = [
+            CredentialType.OPENAI_CRED,
+            CredentialType.GOOGLE_GEMINI_CRED,
+            CredentialType.ANTHROPIC_CRED,
+            CredentialType.OPENROUTER_CRED,
+          ];
+          for (const credType of aiProviderCredentials) {
+            if (
+              !(credType in credentialMapping) &&
+              systemCredentials[credType]
+            ) {
+              credentialMapping[credType] = this.escapeString(
+                systemCredentials[credType]
+              );
+            }
+          }
+        }
+
         // Inject credentials into bubble parameters
         if (Object.keys(credentialMapping).length > 0) {
           this.injectCredentialsIntoBubble(bubble, credentialMapping);
