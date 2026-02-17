@@ -471,7 +471,7 @@ export async function runPearl(
             },
           },
         ],
-        maxIterations: 20,
+        maxIterations: 100,
         credentials,
         beforeToolCall,
         afterToolCall,
