@@ -88,6 +88,12 @@ export enum CredentialType {
 
   // Linear Credentials
   LINEAR_CRED = 'LINEAR_CRED',
+
+  // Attio Credentials
+  ATTIO_CRED = 'ATTIO_CRED',
+
+  // HubSpot Credentials
+  HUBSPOT_CRED = 'HUBSPOT_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -160,4 +166,6 @@ export type BubbleName =
   | 'sendsafely'
   | 'yc-scraper-tool'
   | 'posthog'
-  | 'linear';
+  | 'linear'
+  | 'attio'
+  | 'hubspot';

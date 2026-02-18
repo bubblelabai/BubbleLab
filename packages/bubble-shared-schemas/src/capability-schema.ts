@@ -32,7 +32,9 @@ export type CapabilityId =
   | 'fullenrich-assistant'
   | 'followupboss-assistant'
   | 'posthog-assistant'
-  | 'linear-assistant';
+  | 'linear-assistant'
+  | 'attio-assistant'
+  | 'hubspot-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
