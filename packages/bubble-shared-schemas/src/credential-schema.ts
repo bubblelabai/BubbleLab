@@ -443,6 +443,22 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My Linear Connection',
       credentialConfigurations: {},
     },
+    [CredentialType.HUBSPOT_CRED]: {
+      label: 'HubSpot',
+      description:
+        'OAuth connection to HubSpot CRM for managing contacts, companies, deals, and tickets',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My HubSpot Connection',
+      credentialConfigurations: {},
+    },
+    [CredentialType.ATTIO_CRED]: {
+      label: 'Attio',
+      description:
+        'OAuth connection to Attio CRM for managing records, notes, tasks, and lists',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Attio Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -511,6 +527,8 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.POSTHOG_API_KEY]: 'POSTHOG_API_KEY',
   [CredentialType.SENDSAFELY_CRED]: '', // Multi-field credential (host + apiKey + apiSecret), no single env var
   [CredentialType.LINEAR_CRED]: '', // OAuth credential, no env var
+  [CredentialType.HUBSPOT_CRED]: '', // OAuth credential, no env var
+  [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -553,7 +571,9 @@ export type OAuthProvider =
   | 'jira'
   | 'slack'
   | 'airtable'
-  | 'linear';
+  | 'linear'
+  | 'attio'
+  | 'hubspot';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1365,6 +1385,150 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       prompt: 'consent',
     },
   },
+  attio: {
+    name: 'attio',
+    displayName: 'Attio',
+    credentialTypes: {
+      [CredentialType.ATTIO_CRED]: {
+        displayName: 'Attio CRM',
+        defaultScopes: [
+          'record_permission:read',
+          'record_permission:read-write',
+          'object_configuration:read',
+          'note:read-write',
+          'task:read-write',
+          'list_entry:read',
+          'list_entry:read-write',
+          'list_configuration:read',
+          'user_management:read',
+        ],
+        description:
+          'Access Attio CRM for managing records, notes, tasks, and lists',
+        scopeDescriptions: [
+          {
+            scope: 'record_permission:read',
+            description: 'View records (people, companies, custom objects)',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'record_permission:read-write',
+            description: 'Create, update, and delete records',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'object_configuration:read',
+            description: 'View object and attribute configurations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'note:read-write',
+            description: 'Create, view, and manage notes on records',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'task:read-write',
+            description: 'Create, view, update, and delete tasks',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'list_entry:read',
+            description: 'View list entries and pipeline data',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'list_entry:read-write',
+            description: 'Add and modify list entries',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'list_configuration:read',
+            description: 'View list configurations',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'user_management:read',
+            description: 'View workspace member information',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'consent',
+    },
+  },
+  hubspot: {
+    name: 'hubspot',
+    displayName: 'HubSpot',
+    credentialTypes: {
+      [CredentialType.HUBSPOT_CRED]: {
+        displayName: 'HubSpot CRM',
+        defaultScopes: [
+          'crm.objects.contacts.read',
+          'crm.objects.contacts.write',
+          'crm.objects.companies.read',
+          'crm.objects.companies.write',
+          'crm.objects.deals.read',
+          'crm.objects.deals.write',
+          'crm.objects.custom.read',
+          'crm.objects.custom.write',
+          'tickets',
+        ],
+        description:
+          'Access HubSpot CRM for managing contacts, companies, deals, and tickets',
+        scopeDescriptions: [
+          {
+            scope: 'crm.objects.contacts.read',
+            description: 'View contacts and their properties',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.contacts.write',
+            description: 'Create, update, and delete contacts',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.companies.read',
+            description: 'View companies and their properties',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.companies.write',
+            description: 'Create, update, and delete companies',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.deals.read',
+            description: 'View deals and their properties',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.deals.write',
+            description: 'Create, update, and delete deals',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.custom.read',
+            description: 'View custom objects including tickets',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'crm.objects.custom.write',
+            description: 'Create, update, and delete custom objects',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'tickets',
+            description: 'Manage support tickets',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'consent',
+    },
+  },
 };
 
 /**
@@ -1715,6 +1879,8 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
   posthog: [CredentialType.POSTHOG_API_KEY],
   linear: [CredentialType.LINEAR_CRED],
+  attio: [CredentialType.ATTIO_CRED],
+  hubspot: [CredentialType.HUBSPOT_CRED],
 };
 
 // POST /credentials - Create credential schema

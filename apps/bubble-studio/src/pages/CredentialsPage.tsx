@@ -100,6 +100,8 @@ const getServiceNameForCredentialType = (
     [CredentialType.POSTHOG_API_KEY]: 'PostHog',
     [CredentialType.SENDSAFELY_CRED]: 'SendSafely',
     [CredentialType.LINEAR_CRED]: 'Linear',
+    [CredentialType.ATTIO_CRED]: 'Attio',
+    [CredentialType.HUBSPOT_CRED]: 'HubSpot',
   };
 
   return typeToServiceMap[credentialType] || credentialType;

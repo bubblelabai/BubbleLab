@@ -70,6 +70,8 @@ export const CREDENTIAL_CONFIGURATION_MAP: Record<
   [CredentialType.POSTHOG_API_KEY]: {},
   [CredentialType.SENDSAFELY_CRED]: {},
   [CredentialType.LINEAR_CRED]: {},
+  [CredentialType.ATTIO_CRED]: {},
+  [CredentialType.HUBSPOT_CRED]: {},
   [CredentialType.CREDENTIAL_WILDCARD]: {}, // Wildcard marker, not a real credential
 };
 
