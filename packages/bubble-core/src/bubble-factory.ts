@@ -173,6 +173,7 @@ export class BubbleFactory {
       'sendsafely',
       'yc-scraper-tool',
       'posthog',
+      'linear',
     ];
   }
 
@@ -392,6 +393,9 @@ export class BubbleFactory {
     const { PosthogBubble } = await import(
       './bubbles/service-bubble/posthog/index.js'
     );
+    const { LinearBubble } = await import(
+      './bubbles/service-bubble/linear/index.js'
+    );
 
     // Create the default factory instance
     this.register('hello-world', HelloWorldBubble as BubbleClassWithMetadata);
@@ -547,6 +551,7 @@ export class BubbleFactory {
     this.register('sendsafely', SendSafelyBubble as BubbleClassWithMetadata);
     this.register('yc-scraper-tool', YCScraperTool as BubbleClassWithMetadata);
     this.register('posthog', PosthogBubble as BubbleClassWithMetadata);
+    this.register('linear', LinearBubble as BubbleClassWithMetadata);
 
     // After all default bubbles are registered, auto-populate bubbleDependencies
     if (!BubbleFactory.dependenciesPopulated) {
@@ -847,6 +852,7 @@ import {
   StripeBubble, // bubble name: 'stripe'
   SendSafelyBubble, // bubble name: 'sendsafely'
   PosthogBubble, // bubble name: 'posthog'
+  LinearBubble, // bubble name: 'linear'
 
   // Tool Bubbles (Perform useful actions)
   ResearchAgentTool, // bubble name: 'research-agent-tool'

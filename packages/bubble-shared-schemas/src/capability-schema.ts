@@ -31,7 +31,8 @@ export type CapabilityId =
   | 'crustdata-assistant'
   | 'fullenrich-assistant'
   | 'followupboss-assistant'
-  | 'posthog-assistant';
+  | 'posthog-assistant'
+  | 'linear-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
