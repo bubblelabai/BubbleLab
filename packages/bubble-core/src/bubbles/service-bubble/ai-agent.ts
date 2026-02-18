@@ -30,6 +30,7 @@ import {
   extractAndStreamThinkingTokens,
   formatFinalResponse,
   generationsToMessageContent,
+  isGarbageResponse,
 } from '../../utils/agent-formatter.js';
 import { isAIMessage, isAIMessageChunk } from '@langchain/core/messages';
 import { HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
@@ -453,6 +454,8 @@ export class AIAgentBubble extends ServiceBubble<
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
   private shouldContinueToAgent = false;
+  private rescueAttempts = 0;
+  private static readonly MAX_RESCUE_ATTEMPTS = 1;
 
   constructor(
     params: AIAgentParams = {
@@ -1957,6 +1960,28 @@ export class AIAgentBubble extends ServiceBubble<
       const hasToolCalls = !!(
         lastMessage.tool_calls && lastMessage.tool_calls.length > 0
       );
+
+      // Built-in rescue: detect garbage response after tool use
+      if (!hasToolCalls && isGarbageResponse(lastMessage.content)) {
+        const hadToolUse = messages.some((m) => m instanceof ToolMessage);
+        if (
+          hadToolUse &&
+          this.rescueAttempts < AIAgentBubble.MAX_RESCUE_ATTEMPTS
+        ) {
+          this.rescueAttempts++;
+          console.warn(
+            `[AIAgent] Garbage response detected ("${String(lastMessage.content).substring(0, 50)}"), attempting rescue (${this.rescueAttempts}/${AIAgentBubble.MAX_RESCUE_ATTEMPTS})`
+          );
+          this.shouldContinueToAgent = true;
+          return {
+            messages: [
+              new HumanMessage(
+                'Your last response was empty or invalid. Please provide a clear, helpful response summarizing what you did and the results.'
+              ),
+            ],
+          };
+        }
+      }
 
       // Only call hook if we're about to end (no tool calls) and hook is provided
       if (!hasToolCalls && this.afterLLMCallHook) {
