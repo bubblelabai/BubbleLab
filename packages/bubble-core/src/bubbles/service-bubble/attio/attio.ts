@@ -303,7 +303,7 @@ export class AttioBubble<
       data: { values: this.normalizeValues(params.values) },
     };
 
-    let path = `/objects/${encodeURIComponent(params.object)}/records`;
+    const path = `/objects/${encodeURIComponent(params.object)}/records`;
     let method = 'POST';
     let queryParams: Record<string, string> | undefined;
 
