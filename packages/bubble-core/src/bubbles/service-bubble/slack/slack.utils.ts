@@ -232,8 +232,9 @@ function normalizeMarkdownNewlines(markdown: string): string {
 
   // Add newlines before horizontal rules (--- or ***)
   // Exclude table separator rows (preceded by | or : as in |:---|)
+  // Also exclude - and _ so table separators like |--------|------| aren't broken
   result = result.replace(
-    /([^\n\s|:])\s*(---+|___+|\*\*\*+)\s*(?=\S|$)/g,
+    /([^\n\s|:\-_])\s*(---+|___+|\*\*\*+)\s*(?=\S|$)/g,
     '$1\n$2\n'
   );
 

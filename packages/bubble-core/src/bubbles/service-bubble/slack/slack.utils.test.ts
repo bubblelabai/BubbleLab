@@ -852,4 +852,64 @@ Since both operators are consistently performing in the **70-75% range for quali
     );
     expect(sectionWithBangLink).toBeUndefined();
   });
+
+  it('should handle table with inline markdown and backtick-wrapped brackets in surrounding text', () => {
+    const md = `All the real BUB tickets (BUB-1, 2, 3, 4, 5, 17) are already in Jira as KAN-62 through KAN-67. Nothing left to migrate — the \`[TEST]\` and \`[Integration Test]\` issues are skipped per the previous decision (dev noise).
+
+You're all caught up, Zach. ✅
+
+**Already in Jira (KAN project):**
+| Linear | Jira | Title |
+|--------|------|-------|
+| BUB-1 | KAN-65 | Get familiar with Linear |
+| BUB-2 | KAN-66 | Set up your teams |
+| BUB-3 | KAN-64 | Connect your tools |
+| BUB-4 | KAN-67 | Import your data |
+| BUB-5 | KAN-63 | Fix AI agent mode |
+| BUB-17 | KAN-62 | Make help button |
+
+Skipped as before: all \`[TEST]\` and \`[Integration Test]\` issues.`;
+
+    const blocks = markdownToBlocks(md);
+
+    // Should have a table block
+    const tableBlock = blocks.find(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock;
+    expect(tableBlock).toBeDefined();
+
+    // Table should have 1 header + 6 data rows = 7 rows
+    expect(tableBlock.rows).toHaveLength(7);
+
+    // Header row
+    expect(tableBlock.rows[0]).toHaveLength(3);
+    expect(tableBlock.rows[0][0]).toEqual({ type: 'raw_text', text: 'Linear' });
+    expect(tableBlock.rows[0][1]).toEqual({ type: 'raw_text', text: 'Jira' });
+    expect(tableBlock.rows[0][2]).toEqual({ type: 'raw_text', text: 'Title' });
+
+    // First data row
+    expect(tableBlock.rows[1][0]).toEqual({ type: 'raw_text', text: 'BUB-1' });
+    expect(tableBlock.rows[1][1]).toEqual({
+      type: 'raw_text',
+      text: 'KAN-65',
+    });
+    expect(tableBlock.rows[1][2]).toEqual({
+      type: 'raw_text',
+      text: 'Get familiar with Linear',
+    });
+
+    // All cells should have non-empty text
+    for (const row of tableBlock.rows) {
+      for (const cell of row) {
+        expect(
+          (cell as { type: string; text: string }).text.length
+        ).toBeGreaterThan(0);
+      }
+    }
+
+    // Verify the [TEST] and [Integration Test] in backticks don't get mangled as links
+    const introBlock = blocks[0] as SlackSectionBlock;
+    expect(introBlock.text.text).toContain('`[TEST]`');
+    expect(introBlock.text.text).toContain('`[Integration Test]`');
+  });
 });
