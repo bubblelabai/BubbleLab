@@ -85,6 +85,9 @@ export enum CredentialType {
 
   // SendSafely Credentials
   SENDSAFELY_CRED = 'SENDSAFELY_CRED',
+
+  // Linear Credentials
+  LINEAR_CRED = 'LINEAR_CRED',
 }
 
 // Define all bubble names as a union type for type safety
@@ -156,4 +159,5 @@ export type BubbleName =
   | 'confluence'
   | 'sendsafely'
   | 'yc-scraper-tool'
-  | 'posthog';
+  | 'posthog'
+  | 'linear';

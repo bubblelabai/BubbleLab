@@ -166,6 +166,17 @@ export const notionOAuthMetadataSchema = z.object({
 export type NotionOAuthMetadata = z.infer<typeof notionOAuthMetadataSchema>;
 
 /**
+ * Linear OAuth metadata - stored after OAuth callback with organization info
+ */
+export const linearOAuthMetadataSchema = z.object({
+  organizationName: z.string().optional(),
+  /** Human-readable display name for the credential */
+  displayName: z.string().optional(),
+});
+
+export type LinearOAuthMetadata = z.infer<typeof linearOAuthMetadataSchema>;
+
+/**
  * Base preference fields that can be added to any credential metadata.
  * These are used for default credential selection and usage tracking.
  */
@@ -239,5 +250,6 @@ export type CredentialMetadata =
   | NotionOAuthMetadata
   | ConfluenceOAuthMetadata
   | StripeOAuthMetadata
+  | LinearOAuthMetadata
   | BrowserSessionMetadata
   | CredentialPreferences;

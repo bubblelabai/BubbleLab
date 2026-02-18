@@ -9,6 +9,7 @@ import {
   notionOAuthMetadataSchema,
   confluenceOAuthMetadataSchema,
   stripeOAuthMetadataSchema,
+  linearOAuthMetadataSchema,
   credentialPreferencesSchema,
   browserSessionMetadataSchema,
 } from './database-definition-schema.js';
@@ -434,6 +435,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
         },
       ],
     },
+    [CredentialType.LINEAR_CRED]: {
+      label: 'Linear',
+      description:
+        'OAuth connection to Linear for issue tracking and project management',
+      placeholder: '', // Not used for OAuth
+      namePlaceholder: 'My Linear Connection',
+      credentialConfigurations: {},
+    },
     [CredentialType.CREDENTIAL_WILDCARD]: {
       label: 'Any Credential',
       description:
@@ -501,6 +510,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.CONFLUENCE_CRED]: '', // OAuth credential, no env var
   [CredentialType.POSTHOG_API_KEY]: 'POSTHOG_API_KEY',
   [CredentialType.SENDSAFELY_CRED]: '', // Multi-field credential (host + apiKey + apiSecret), no single env var
+  [CredentialType.LINEAR_CRED]: '', // OAuth credential, no env var
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
@@ -542,7 +552,8 @@ export type OAuthProvider =
   | 'notion'
   | 'jira'
   | 'slack'
-  | 'airtable';
+  | 'airtable'
+  | 'linear';
 
 /**
  * Scope description mapping - maps OAuth scope URLs to human-readable descriptions
@@ -1317,6 +1328,43 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
       },
     },
   },
+  linear: {
+    name: 'linear',
+    displayName: 'Linear',
+    credentialTypes: {
+      [CredentialType.LINEAR_CRED]: {
+        displayName: 'Linear',
+        defaultScopes: ['read', 'write', 'issues:create', 'comments:create'],
+        description: 'Access Linear for issue tracking and project management',
+        scopeDescriptions: [
+          {
+            scope: 'read',
+            description: 'Read access to your Linear workspace data',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'write',
+            description:
+              'Write access to create and update issues, comments, and projects',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'issues:create',
+            description: 'Create new issues',
+            defaultEnabled: true,
+          },
+          {
+            scope: 'comments:create',
+            description: 'Create comments on issues',
+            defaultEnabled: true,
+          },
+        ],
+      },
+    },
+    authorizationParams: {
+      prompt: 'consent',
+    },
+  },
 };
 
 /**
@@ -1666,6 +1714,7 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   sendsafely: [CredentialType.SENDSAFELY_CRED],
   'yc-scraper-tool': [CredentialType.APIFY_CRED],
   posthog: [CredentialType.POSTHOG_API_KEY],
+  linear: [CredentialType.LINEAR_CRED],
 };
 
 // POST /credentials - Create credential schema
@@ -1777,13 +1826,14 @@ export const credentialResponseSchema = z
         notionOAuthMetadataSchema,
         confluenceOAuthMetadataSchema,
         stripeOAuthMetadataSchema,
+        linearOAuthMetadataSchema,
         browserSessionMetadataSchema,
         credentialPreferencesSchema,
       ])
       .optional()
       .openapi({
         description:
-          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, NotionOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, or CredentialPreferences)',
+          'Credential metadata (DatabaseMetadata, JiraOAuthMetadata, SlackOAuthMetadata, AirtableOAuthMetadata, GoogleOAuthMetadata, NotionOAuthMetadata, ConfluenceOAuthMetadata, StripeOAuthMetadata, LinearOAuthMetadata, or CredentialPreferences)',
       }),
     createdAt: z.string().openapi({ description: 'Creation timestamp' }),
 
