@@ -53,6 +53,7 @@ export type ToolHookContext = {
   toolInput: unknown;
   toolOutput?: BubbleResult<unknown>; // Only available in afterToolCall
   messages: BaseMessage[];
+  bubbleContext?: BubbleContext; // Access to executionMeta, variableId, etc.
 };
 
 // Tool hooks can modify the entire messages array (including system prompt)
@@ -60,9 +61,12 @@ export type ToolHookAfter = (
   context: ToolHookContext
 ) => Promise<{ messages: BaseMessage[]; shouldStop?: boolean }>;
 
-export type ToolHookBefore = (
-  context: ToolHookContext
-) => Promise<{ messages: BaseMessage[]; toolInput: Record<string, any> }>;
+export type ToolHookBefore = (context: ToolHookContext) => Promise<{
+  messages: BaseMessage[];
+  toolInput: Record<string, any>;
+  shouldSkip?: boolean;
+  skipMessage?: string;
+}>;
 
 // Context for afterLLMCall hook - provides access to messages and the last AI response
 export type AfterLLMCallContext = {
@@ -456,6 +460,9 @@ export class AIAgentBubble extends ServiceBubble<
   private factory: BubbleFactory;
   private beforeToolCallHook: ToolHookBefore | undefined;
   private afterToolCallHook: ToolHookAfter | undefined;
+  /** Capability-scoped hooks: only fire for the capability's own tool names */
+  private capabilityBeforeHooks = new Map<string, ToolHookBefore>();
+  private capabilityAfterHooks = new Map<string, ToolHookAfter>();
   private afterLLMCallHook: AfterLLMCallHook | undefined;
   private streamingCallback: StreamingCallback | undefined;
   private shouldStopAfterTools = false;
@@ -1443,6 +1450,19 @@ export class AIAgentBubble extends ServiceBubble<
               `🔧 [AIAgent] Registered capability tool: ${toolMeta.name} (from ${capConfig.id}, variableId: ${capToolVariableId})`
             );
           }
+
+          // Wire capability-level hooks scoped to this capability's tool names
+          const capToolNames = capDef.metadata.tools.map((t) => t.name);
+          if (capDef.hooks?.beforeToolCall) {
+            for (const name of capToolNames) {
+              this.capabilityBeforeHooks.set(name, capDef.hooks.beforeToolCall);
+            }
+          }
+          if (capDef.hooks?.afterToolCall) {
+            for (const name of capToolNames) {
+              this.capabilityAfterHooks.set(name, capDef.hooks.afterToolCall);
+            }
+          }
         } catch (error) {
           console.error(
             `Error initializing capability '${capConfig.id}':`,
@@ -1667,11 +1687,15 @@ export class AIAgentBubble extends ServiceBubble<
 
       const startTime = Date.now();
       try {
-        // Call beforeToolCall hook if provided
-        const hookResult_before = await this.beforeToolCallHook?.({
+        // Call beforeToolCall hook — capability-scoped hook takes priority, then global
+        const beforeHook =
+          this.capabilityBeforeHooks.get(toolCall.name) ??
+          this.beforeToolCallHook;
+        const hookResult_before = await beforeHook?.({
           toolName: toolCall.name as AvailableTool,
           toolInput: toolCall.args,
           messages: currentMessages,
+          bubbleContext: this.context,
         });
 
         this.streamingCallback?.({
@@ -1691,6 +1715,19 @@ export class AIAgentBubble extends ServiceBubble<
             hooksModifiedMessages = true;
           }
           toolCall.args = hookResult_before.toolInput;
+
+          // If hook requests skipping, create synthetic ToolMessage and stop agent loop
+          if (hookResult_before.shouldSkip) {
+            const skipMsg = new ToolMessage({
+              content:
+                hookResult_before.skipMessage || 'Tool execution was skipped.',
+              tool_call_id: toolCall.id!,
+            });
+            toolMessages.push(skipMsg);
+            currentMessages = [...currentMessages, skipMsg];
+            this.shouldStopAfterTools = true;
+            continue;
+          }
         }
 
         // Execute the tool
@@ -1708,12 +1745,16 @@ export class AIAgentBubble extends ServiceBubble<
         toolMessages.push(toolMessage);
         currentMessages = [...currentMessages, toolMessage];
 
-        // Call afterToolCall hook if provided
-        const hookResult_after = await this.afterToolCallHook?.({
+        // Call afterToolCall hook — capability-scoped hook takes priority, then global
+        const afterHook =
+          this.capabilityAfterHooks.get(toolCall.name) ??
+          this.afterToolCallHook;
+        const hookResult_after = await afterHook?.({
           toolName: toolCall.name as AvailableTool,
           toolInput: toolCall.args,
           toolOutput,
           messages: currentMessages,
+          bubbleContext: this.context,
         });
 
         // If hook returns modified messages, update current messages
@@ -2052,6 +2093,16 @@ export class AIAgentBubble extends ServiceBubble<
       if (this.shouldStopAfterTools) {
         return '__end__';
       }
+      // Check for pending approval signal from sub-agent (shared via executionMeta).
+      // In multi-capability mode the master and sub-agent share the same BubbleContext,
+      // so a sub-agent setting _pendingApproval is visible here.
+      const execMeta = this.context?.executionMeta as
+        | Record<string, unknown>
+        | undefined;
+      if (execMeta?._pendingApproval) {
+        this.shouldStopAfterTools = true;
+        return '__end__';
+      }
       // Otherwise continue back to agent
       return 'agent';
     };
@@ -2103,9 +2154,45 @@ export class AIAgentBubble extends ServiceBubble<
       // Build messages array starting with conversation history (for KV cache optimization)
       const initialMessages: BaseMessage[] = [];
 
-      // Convert conversation history to LangChain messages if provided
-      // This enables KV cache optimization by keeping previous turns as separate messages
-      if (conversationHistory && conversationHistory.length > 0) {
+      // Resume from saved agent state (lossless — preserves tool_calls, etc.)
+      const resumeExecMeta = this.context?.executionMeta as
+        | Record<string, unknown>
+        | undefined;
+      const resumeState = resumeExecMeta?._resumeAgentState as
+        | Array<Record<string, unknown>>
+        | undefined;
+
+      if (resumeState && Array.isArray(resumeState) && resumeState.length > 0) {
+        const { mapStoredMessagesToChatMessages } = await import(
+          '@langchain/core/messages'
+        );
+        const restored = mapStoredMessagesToChatMessages(
+          resumeState as unknown as Parameters<
+            typeof mapStoredMessagesToChatMessages
+          >[0]
+        );
+        initialMessages.push(...restored);
+
+        // If last restored message is AIMessage with pending tool_calls,
+        // add synthetic ToolMessages so the message sequence is valid
+        const lastMsg = restored[restored.length - 1];
+        if (lastMsg && 'tool_calls' in lastMsg) {
+          const toolCalls = (lastMsg as AIMessage).tool_calls;
+          if (toolCalls?.length) {
+            for (const tc of toolCalls) {
+              initialMessages.push(
+                new ToolMessage({
+                  content:
+                    'This action has been approved by the user. You may now execute this tool.',
+                  tool_call_id: tc.id!,
+                })
+              );
+            }
+          }
+        }
+      } else if (conversationHistory && conversationHistory.length > 0) {
+        // Normal path: lossy ConversationMessage[] → BaseMessage[]
+        // This enables KV cache optimization by keeping previous turns as separate messages
         for (const historyMsg of conversationHistory) {
           switch (historyMsg.role) {
             case 'user':

@@ -18,6 +18,7 @@ const TRIGGER_PAYLOAD_TYPE_MAP: Record<
   'slack/bot_mentioned': 'SlackMentionEvent',
   'slack/message_received': 'SlackMessageReceivedEvent',
   'slack/reaction_added': 'SlackReactionAddedEvent',
+  'slack/approval_resumed': 'SlackApprovalResumedEvent',
   'airtable/record_created': 'AirtableRecordCreatedEvent',
   'airtable/record_updated': 'AirtableRecordUpdatedEvent',
   'airtable/record_deleted': 'AirtableRecordDeletedEvent',

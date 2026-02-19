@@ -2,6 +2,7 @@ export interface BubbleTriggerEventRegistry {
   'slack/bot_mentioned': SlackMentionEvent;
   'slack/message_received': SlackMessageReceivedEvent;
   'slack/reaction_added': SlackReactionAddedEvent;
+  'slack/approval_resumed': SlackApprovalResumedEvent;
   'airtable/record_created': AirtableRecordCreatedEvent;
   'airtable/record_updated': AirtableRecordUpdatedEvent;
   'airtable/record_deleted': AirtableRecordDeletedEvent;
@@ -15,6 +16,7 @@ export const BUBBLE_TRIGGER_EVENTS = {
   'slack/bot_mentioned': true,
   'slack/message_received': true,
   'slack/reaction_added': true,
+  'slack/approval_resumed': true,
   'airtable/record_created': true,
   'airtable/record_updated': true,
   'airtable/record_deleted': true,
@@ -274,6 +276,25 @@ export interface SlackReactionAddedEvent extends BubbleTriggerEvent {
   /** Text of the original message that was reacted to (fetched via API) */
   message_text?: string;
   event_ts: string;
+}
+
+/**
+ * Slack approval resumed event — fired when a human approves a pending
+ * flow action via the approval link buttons and the flow resumes execution.
+ */
+export interface SlackApprovalResumedEvent extends BubbleTriggerEvent {
+  /** The approval record ID */
+  approvalId: string;
+  /** The action that was approved (e.g. 'run-flow', 'activate-flow') */
+  action: string;
+  /** The target flow ID that the action applies to */
+  targetFlowId: number;
+  /** Slack channel where the approval thread lives */
+  channel: string;
+  /** Slack thread timestamp of the approval conversation */
+  threadTs: string;
+  /** User or identifier who approved the action */
+  approvedBy: string;
 }
 
 // ============================================================================
@@ -963,6 +984,52 @@ Copy the **Bot User OAuth Token** (starts with \`xoxb-\`) from the OAuth & Permi
       required: ['reaction', 'user', 'item', 'slack_event'],
     },
   },
+  'slack/approval_resumed': {
+    serviceName: 'Slack',
+    friendlyName: 'When approval is granted',
+    description:
+      'Triggered internally when a human approves a pending flow action via Slack approval buttons',
+    setupGuide:
+      'This trigger is used internally by the approval system. It fires automatically when a user clicks "Approve" on an approval request in Slack.',
+    payloadSchema: {
+      type: 'object',
+      properties: {
+        approvalId: {
+          type: 'string',
+          description: 'The approval record ID',
+        },
+        action: {
+          type: 'string',
+          description:
+            'The action that was approved (e.g. run-flow, activate-flow)',
+        },
+        targetFlowId: {
+          type: 'number',
+          description: 'The target flow ID',
+        },
+        channel: {
+          type: 'string',
+          description: 'Slack channel of the approval thread',
+        },
+        threadTs: {
+          type: 'string',
+          description: 'Slack thread timestamp',
+        },
+        approvedBy: {
+          type: 'string',
+          description: 'User who approved the action',
+        },
+      },
+      required: [
+        'approvalId',
+        'action',
+        'targetFlowId',
+        'channel',
+        'threadTs',
+        'approvedBy',
+      ],
+    },
+  },
   'airtable/record_created': {
     serviceName: 'Airtable',
     friendlyName: 'When Airtable record is created',
@@ -1189,7 +1256,11 @@ export function getTriggerEventConfig(
 export function isServiceTrigger(
   eventType: keyof BubbleTriggerEventRegistry
 ): boolean {
-  return eventType !== 'webhook/http' && eventType !== 'schedule/cron';
+  return (
+    eventType !== 'webhook/http' &&
+    eventType !== 'schedule/cron' &&
+    eventType !== 'slack/approval_resumed'
+  );
 }
 
 /**
@@ -1203,6 +1274,7 @@ export const TRIGGER_EVENT_INTERFACE_MAP: Record<
   SlackMentionEvent: 'slack/bot_mentioned',
   SlackMessageReceivedEvent: 'slack/message_received',
   SlackReactionAddedEvent: 'slack/reaction_added',
+  SlackApprovalResumedEvent: 'slack/approval_resumed',
   AirtableRecordCreatedEvent: 'airtable/record_created',
   AirtableRecordUpdatedEvent: 'airtable/record_updated',
   AirtableRecordDeletedEvent: 'airtable/record_deleted',

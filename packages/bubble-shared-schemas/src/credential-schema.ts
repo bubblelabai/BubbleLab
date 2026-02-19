@@ -881,8 +881,12 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'groups:read',
           'im:read',
           'mpim:read',
-          // Channels & Conversations - Write (non-admin)
+          // Channels & Conversations - Write
           'channels:join',
+          'im:write',
+          'im:write.topic',
+          'mpim:write',
+          'mpim:write.topic',
           // Users & Team (read-only)
           'users:read',
           'users:read.email',
@@ -917,11 +921,6 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthProviderConfig> = {
           'groups:write',
           'groups:write.invites',
           'groups:write.topic',
-          // DM management (requires admin)
-          'im:write',
-          'im:write.topic',
-          'mpim:write',
-          'mpim:write.topic',
           // User management (requires admin)
           'users:write',
           'usergroups:write',

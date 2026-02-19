@@ -34,7 +34,8 @@ export type CapabilityId =
   | 'posthog-assistant'
   | 'linear-assistant'
   | 'attio-assistant'
-  | 'hubspot-assistant';
+  | 'hubspot-assistant'
+  | 'flow-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
@@ -76,6 +77,8 @@ export const CapabilityToolDefSchema = z.object({
   parameterSchema: z.record(z.string(), z.unknown()),
   /** Bubble names used internally by this tool (e.g., ['google-drive']). Used for dependency graph hierarchy. */
   internalBubbles: z.array(z.string() as z.ZodType<BubbleName>).optional(),
+  /** Whether this tool requires human approval before execution. */
+  requiresApproval: z.boolean().optional(),
 });
 export type CapabilityToolDef = z.infer<typeof CapabilityToolDefSchema>;
 

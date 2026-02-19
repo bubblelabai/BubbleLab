@@ -72,6 +72,8 @@ export interface DefineCapabilityOptions {
     schema: z.ZodObject<z.ZodRawShape>;
     /** Bubble names used internally by this tool (e.g., ['google-drive']). */
     internalBubbles?: BubbleName[];
+    /** Whether this tool requires human approval before execution. */
+    requiresApproval?: boolean;
     func: (ctx: CapabilityRuntimeContext) => CapabilityToolFunc;
   }>;
   systemPrompt?: string | CapabilitySystemPromptFactory;
@@ -104,6 +106,9 @@ export function defineCapability(
       $refStrategy: 'none',
     }) as Record<string, unknown>,
     ...(tool.internalBubbles ? { internalBubbles: tool.internalBubbles } : {}),
+    ...(tool.requiresApproval
+      ? { requiresApproval: tool.requiresApproval }
+      : {}),
   }));
 
   // Build serializable metadata

@@ -903,8 +903,18 @@ export interface Output {
 
 export class ${className} extends BubbleFlow<'webhook/http'> {
   async handle(payload: WebhookEvent): Promise<Output> {
-    // Your workflow logic here
-    // Use get-bubble-details-tool to learn about available bubbles
+    // Example: instantiate a bubble and call .action() to execute it
+    // const calendar = new GoogleCalendarBubble({
+    //   operation: 'list_events',
+    //   calendar_id: 'primary',
+    //   time_min: '2025-01-01T00:00:00Z',
+    //   time_max: '2025-12-31T23:59:59Z',
+    // });
+    // const result = await calendar.action();
+    // if (!result.success) throw new Error(result.error);
+    // const events = result.data?.events || [];
+
+    // Use get-bubble to learn about each bubble's parameters and operations
     return { message: 'Hello from BubbleFlow!' };
   }
 }
