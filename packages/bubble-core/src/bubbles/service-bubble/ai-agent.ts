@@ -366,6 +366,12 @@ const AIAgentParamsSchema = z.object({
     .describe(
       'Enable persistent memory across conversations. When true, the agent can recall and save information about people, topics, and events between conversations.'
     ),
+  enableSlackHistory: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Enable Slack thread history injection. When true, the agent receives full conversation history from Slack threads including user names, timezones, and images.'
+    ),
   // Note: beforeToolCall and afterToolCall are function hooks added via TypeScript interface
   // They cannot be part of the Zod schema but are available in the params
 });

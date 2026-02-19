@@ -1714,6 +1714,7 @@ export const BROWSERBASE_OPTIONAL_CREDENTIALS: CredentialType[] = [
   CredentialType.CLOUDFLARE_R2_ACCESS_KEY,
   CredentialType.CLOUDFLARE_R2_SECRET_KEY,
   CredentialType.CLOUDFLARE_R2_ACCOUNT_ID,
+  CredentialType.GOOGLE_GEMINI_CRED,
 ];
 
 /**

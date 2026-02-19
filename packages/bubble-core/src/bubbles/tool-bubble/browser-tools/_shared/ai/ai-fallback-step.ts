@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { BubbleContext } from '../../../../../types/bubble.js';
 import { AIBrowserAgent } from './ai-browser-agent.js';
 
 /**
@@ -14,8 +15,23 @@ interface AIFallbackStepOptions {
  */
 interface AIFallbackTarget {
   sessionId: string | null;
-  context?: unknown;
+  context?: BubbleContext;
   params: { credentials?: Record<string, string> };
+}
+
+/**
+ * Log AI fallback events to both console and context.logger (if available).
+ * context.logger feeds into the BubbleFlow execution trace UI.
+ */
+function logAIFallback(message: string, context?: BubbleContext): void {
+  const prefixed = `[AIFallback] ${message}`;
+  console.log(prefixed);
+  if (context?.logger) {
+    context.logger.info(prefixed, {
+      bubbleName: 'ai-fallback',
+      operationType: 'bubble_execution',
+    });
+  }
 }
 
 /**
@@ -54,45 +70,52 @@ export function AIFallbackStep(
         const sessionId = self.sessionId;
         if (!sessionId) throw error;
 
+        const ctx = self.context;
         const aiAgent = new AIBrowserAgent({
           sessionId,
-          context: self.context,
+          context: ctx,
           credentials: self.params?.credentials,
         });
 
         const taskDesc = options.taskDescription || stepName;
 
         if (options.extractionSchema) {
-          console.log(`[AIFallback] Extracting data for "${stepName}"`);
+          logAIFallback(`Extracting data for "${stepName}"`, ctx);
           const extracted = await aiAgent.extractData(
             options.extractionSchema,
             taskDesc
           );
           if (extracted !== null) {
-            console.log(`[AIFallback] Extraction succeeded for "${stepName}"`);
+            logAIFallback(`Extraction succeeded for "${stepName}"`, ctx);
             return extracted as Return;
           }
         } else {
-          console.log(`[AIFallback] Suggesting recovery for "${stepName}"`);
+          logAIFallback(`Suggesting recovery for "${stepName}"`, ctx);
+          logAIFallback(`Error: ${errorMsg}`, ctx);
           const action = await aiAgent.suggestRecoveryAction(
             taskDesc,
             errorMsg
           );
-          console.log(`[AIFallback] AI suggested:`, action);
+          logAIFallback(`AI suggested: ${JSON.stringify(action)}`, ctx);
 
           if (action.action !== 'none') {
             const success = await aiAgent.executeAction(action);
             if (success) {
               if (action.action === 'wait' || action.action === 'scroll') {
-                console.log(
-                  `[AIFallback] Retrying "${stepName}" after ${action.action}`
+                logAIFallback(
+                  `Retrying "${stepName}" after ${action.action}`,
+                  ctx
                 );
                 try {
                   return await originalMethod.apply(this, args);
                 } catch (retryError) {
-                  console.log(
-                    `[AIFallback] Retry failed for "${stepName}":`,
-                    retryError
+                  const retryMsg =
+                    retryError instanceof Error
+                      ? retryError.message
+                      : String(retryError);
+                  logAIFallback(
+                    `Retry failed for "${stepName}": ${retryMsg}`,
+                    ctx
                   );
                 }
               } else if (
@@ -100,12 +123,12 @@ export function AIFallbackStep(
                 action.action === 'type' ||
                 action.action === 'click_coordinates'
               ) {
-                console.log(`[AIFallback] Action completed for "${stepName}"`);
+                logAIFallback(`Action completed for "${stepName}"`, ctx);
                 return true as Return;
               }
             }
           } else {
-            console.log(`[AIFallback] AI could not help: ${action.reason}`);
+            logAIFallback(`AI could not help: ${action.reason}`, ctx);
           }
         }
 
