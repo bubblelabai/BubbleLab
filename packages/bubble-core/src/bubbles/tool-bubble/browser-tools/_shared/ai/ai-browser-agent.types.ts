@@ -22,6 +22,7 @@ export type AIBrowserAction =
   | { action: 'click'; selector: string }
   | { action: 'click_coordinates'; coordinates: [number, number] }
   | { action: 'type'; selector: string; value: string }
+  | { action: 'type'; coordinates: [number, number]; value: string }
   | { action: 'scroll'; direction: 'up' | 'down'; amount: number }
   | { action: 'wait'; milliseconds: number }
   | { action: 'extract'; data: unknown } // AI extracted data matching schema

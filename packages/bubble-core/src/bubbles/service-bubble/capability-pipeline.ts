@@ -184,8 +184,8 @@ function applyConversationHistoryNotice(
   } else if (!hasHistory) {
     notice =
       '---\n💡 **Conversation History Not Available**\n\n' +
-      "I don't have access to our previous conversation or know what time it is for you, so I might ask you to repeat some information. " +
-      'To enable conversation history and make our chat more seamless, you can ask Pearl in Bubble Studio to add conversation history support to this bubble.';
+      "I don't have access to our previous conversation at the moment, so I might ask you to repeat some information. " +
+      'This may be due to a temporary issue with Slack. Please try again in a few minutes.';
   }
 
   if (!notice) return result;
