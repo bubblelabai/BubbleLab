@@ -83,7 +83,7 @@ export async function applyCapabilityPreprocessing(
         capDef.metadata.systemPromptAddition;
 
       if (addition) {
-        params.systemPrompt = `${params.systemPrompt}\n\n---\nSYSTEM CAPABILITY EXTENSION:\nThe following capability has been added to enhance your functionality:\n\n[${capDef.metadata.name}]\n${addition}\n---\n\nYour primary objective is to fulfill the user's request using both your base capabilities and the extended capability above.`;
+        params.systemPrompt = `${params.systemPrompt}\n\n---\nSYSTEM CAPABILITY EXTENSION:\nThe following capability has been added to enhance your functionality:\n\n[${capDef.metadata.name}]\n${addition}\n---\n\nYour primary objective is to fulfill the user's request using both your base capabilities and the extended capability above.\nAlways use the user's timezone for all time-related operations. If the user's timezone is known from context (conversation history, user profile), apply it consistently. If unknown, ask before making time-sensitive decisions.`;
       }
     }
   }

@@ -587,7 +587,7 @@ export class AIAgentBubble extends ServiceBubble<
       timeZone: 'UTC',
       timeZoneName: 'short',
     });
-    this.params.systemPrompt = `${this.params.systemPrompt}\n\n**System time:** ${now}`;
+    this.params.systemPrompt = `${this.params.systemPrompt}\n\n**System time (UTC):** ${now}\nIMPORTANT: The system time above is in UTC. Always interpret and present times from the user's perspective and timezone. If the user's timezone is known (from conversation history, user profile, or context), convert all times accordingly. If unknown, ask the user for their timezone before making time-sensitive decisions.`;
 
     // Apply capability model overrides and system prompt injections
     await applyCapabilityPreprocessing(
