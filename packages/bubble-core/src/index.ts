@@ -255,7 +255,12 @@ export { WebhookStreamLogger } from './logging/WebhookStreamLogger.js';
 export { MockDataGenerator } from '@bubblelab/shared-schemas';
 
 // Re-export langchain message types for use in API and other packages
-export { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
+export {
+  HumanMessage,
+  AIMessage,
+  ToolMessage,
+  mapChatMessagesToStoredMessages,
+} from '@langchain/core/messages';
 export type { BaseMessage } from '@langchain/core/messages';
 export {
   parseJsonWithFallbacks,
