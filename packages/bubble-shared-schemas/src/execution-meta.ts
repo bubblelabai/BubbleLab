@@ -44,6 +44,24 @@ export interface ExecutionMeta {
   memoryReflectionCallback?: (
     messages: Array<{ role: string; content: string }>
   ) => Promise<void>;
+  // Agent lifecycle callbacks (set by Pro, consumed by ai-agent bubble)
+  _onToolCallStart?: (toolName: string, toolInput: unknown) => void;
+  _onToolCallError?: (detail: {
+    toolName: string;
+    toolInput: unknown;
+    error: string;
+    errorType: string;
+    variableId?: number;
+    model?: string;
+  }) => void;
+  _onAgentError?: (detail: {
+    error: string;
+    model: string;
+    iterations: number;
+    toolCalls: Array<{ tool: string; input?: unknown; output?: unknown }>;
+    conversationHistory?: Array<{ role: string; content: string }>;
+    variableId?: number;
+  }) => void;
   // Forward compat
   [key: string]: unknown;
 }

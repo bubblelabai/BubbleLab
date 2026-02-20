@@ -727,6 +727,19 @@ export class AIAgentBubble extends ServiceBubble<
         error instanceof Error ? error.message : 'Unknown error';
       console.warn('[AIAgent] Execution error:', errorMessage);
 
+      // Notify executionMeta callback for agent-level errors (e.g. PostHog tracking)
+      this.context?.executionMeta?._onAgentError?.({
+        error: errorMessage,
+        model: this.params.model.model,
+        iterations: 0,
+        toolCalls: [],
+        conversationHistory: this.params.conversationHistory?.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        variableId: this.context?.variableId,
+      });
+
       // Return error information but mark as recoverable
       return {
         response: `Error: ${errorMessage}`,
@@ -1758,11 +1771,10 @@ export class AIAgentBubble extends ServiceBubble<
         });
 
         // Notify executionMeta callback (e.g. Slack thinking-message status updates)
-        (
-          this.context?.executionMeta?._onToolCallStart as
-            | ((toolName: string, toolInput: unknown) => void)
-            | undefined
-        )?.(toolCall.name, toolCall.args);
+        this.context?.executionMeta?._onToolCallStart?.(
+          toolCall.name,
+          toolCall.args
+        );
 
         // Send tool_complete event with error
         this.streamingCallback?.({
@@ -1775,6 +1787,16 @@ export class AIAgentBubble extends ServiceBubble<
             duration: Date.now() - startTime,
             variableId: this.context?.variableId,
           },
+        });
+
+        // Notify executionMeta callback for tool call errors (e.g. PostHog tracking)
+        this.context?.executionMeta?._onToolCallError?.({
+          toolName: toolCall.name,
+          toolInput: toolCall.args,
+          error: errorContent,
+          errorType: 'not_found',
+          variableId: this.context?.variableId,
+          model: this.params.model.model,
         });
 
         const errorMessage = new ToolMessage({
@@ -1810,11 +1832,10 @@ export class AIAgentBubble extends ServiceBubble<
         });
 
         // Notify executionMeta callback (e.g. Slack thinking-message status updates)
-        (
-          this.context?.executionMeta?._onToolCallStart as
-            | ((toolName: string, toolInput: unknown) => void)
-            | undefined
-        )?.(toolCall.name, toolCall.args);
+        this.context?.executionMeta?._onToolCallStart?.(
+          toolCall.name,
+          toolCall.args
+        );
 
         // If hook returns modified messages/toolInput, apply them
         if (hookResult_before) {
@@ -1908,6 +1929,16 @@ export class AIAgentBubble extends ServiceBubble<
             duration: Date.now() - startTime,
             variableId: this.context?.variableId,
           },
+        });
+
+        // Notify executionMeta callback for tool call errors (e.g. PostHog tracking)
+        this.context?.executionMeta?._onToolCallError?.({
+          toolName: toolCall.name,
+          toolInput: toolCall.args,
+          error: errorContent,
+          errorType: 'execution_error',
+          variableId: this.context?.variableId,
+          model: this.params.model.model,
         });
       }
     }
@@ -2616,6 +2647,19 @@ export class AIAgentBubble extends ServiceBubble<
       );
       // If there's an error from formatting (e.g., invalid JSON), return early
       if (formattedResult.error) {
+        // Notify executionMeta callback for agent-level errors (e.g. PostHog tracking)
+        this.context?.executionMeta?._onAgentError?.({
+          error: formattedResult.error,
+          model: modelConfig.model,
+          iterations,
+          toolCalls: toolCalls.length > 0 ? toolCalls : [],
+          conversationHistory: this.params.conversationHistory?.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          variableId: this.context?.variableId,
+        });
+
         return {
           response: formattedResult.response,
           toolCalls: toolCalls.length > 0 ? toolCalls : [],
@@ -2680,6 +2724,19 @@ export class AIAgentBubble extends ServiceBubble<
 
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
+
+      // Notify executionMeta callback for agent-level errors (e.g. PostHog tracking)
+      this.context?.executionMeta?._onAgentError?.({
+        error: errorMessage,
+        model: modelConfig.model,
+        iterations,
+        toolCalls: toolCalls.length > 0 ? toolCalls : [],
+        conversationHistory: this.params.conversationHistory?.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        variableId: this.context?.variableId,
+      });
 
       // Return partial results to allow execution to continue
       // Include any tool calls that were completed before the error
