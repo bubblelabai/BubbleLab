@@ -14,6 +14,89 @@
 import { z } from 'zod';
 import { ToolBubble } from '../../types/tool-bubble-class.js';
 
+// ---------------------------------------------------------------------------
+// Standalone find-and-replace utility (reusable outside the ToolBubble class)
+// ---------------------------------------------------------------------------
+
+export interface CodeEditResult {
+  code: string;
+  applied: boolean;
+  error?: string;
+}
+
+function countOccurrences(str: string, substr: string): number {
+  let count = 0;
+  let pos = 0;
+  while ((pos = str.indexOf(substr, pos)) !== -1) {
+    count++;
+    pos += substr.length;
+  }
+  return count;
+}
+
+/**
+ * Apply a find-and-replace edit to source code.
+ *
+ * - `oldString` must exist in `initialCode`.
+ * - Unless `replaceAll` is true, `oldString` must be unique (appear exactly once).
+ * - `newString` must differ from `oldString`.
+ */
+export function applyCodeEdit(
+  initialCode: string,
+  oldString: string,
+  newString: string,
+  replaceAll = false
+): CodeEditResult {
+  if (!initialCode || initialCode.trim().length === 0) {
+    return { code: '', applied: false, error: 'Initial code cannot be empty' };
+  }
+  if (!oldString || oldString.length === 0) {
+    return {
+      code: initialCode,
+      applied: false,
+      error: 'old_string cannot be empty',
+    };
+  }
+  if (oldString === newString) {
+    return {
+      code: initialCode,
+      applied: false,
+      error: 'new_string must be different from old_string',
+    };
+  }
+  if (!initialCode.includes(oldString)) {
+    return {
+      code: initialCode,
+      applied: false,
+      error: 'old_string not found in code',
+    };
+  }
+
+  if (replaceAll) {
+    return {
+      code: initialCode.replaceAll(oldString, newString),
+      applied: true,
+    };
+  }
+
+  const count = countOccurrences(initialCode, oldString);
+  if (count > 1) {
+    return {
+      code: initialCode,
+      applied: false,
+      error:
+        'old_string is not unique in the code. Provide a larger string with more surrounding context to make it unique, or use replace_all to change every instance.',
+    };
+  }
+
+  const index = initialCode.indexOf(oldString);
+  const result =
+    initialCode.slice(0, index) +
+    newString +
+    initialCode.slice(index + oldString.length);
+  return { code: result, applied: true };
+}
+
 /**
  * Define the parameters schema using Zod
  * This schema validates and types the input parameters for the edit tool
@@ -136,96 +219,24 @@ export class EditBubbleFlowTool extends ToolBubble<
   static readonly alias = 'code-edit';
 
   /**
-   * Count occurrences of a substring in a string
-   */
-  private countOccurrences(str: string, substr: string): number {
-    let count = 0;
-    let pos = 0;
-    while ((pos = str.indexOf(substr, pos)) !== -1) {
-      count++;
-      pos += substr.length;
-    }
-    return count;
-  }
-
-  /**
    * Main action method - performs find-and-replace code editing
    */
   async performAction(): Promise<EditBubbleFlowToolResult> {
     try {
       const { initialCode, old_string, new_string, replace_all } = this.params;
 
-      // Validate initialCode is not empty
-      if (!initialCode || initialCode.trim().length === 0) {
-        return {
-          mergedCode: '',
-          applied: false,
-          success: false,
-          error: 'Initial code cannot be empty',
-        };
-      }
-
-      // Validate old_string is not empty
-      if (!old_string || old_string.length === 0) {
-        return {
-          mergedCode: initialCode,
-          applied: false,
-          success: false,
-          error: 'old_string cannot be empty',
-        };
-      }
-
-      // Validate old_string !== new_string
-      if (old_string === new_string) {
-        return {
-          mergedCode: initialCode,
-          applied: false,
-          success: false,
-          error: 'new_string must be different from old_string',
-        };
-      }
-
-      // Check old_string exists in initialCode
-      if (!initialCode.includes(old_string)) {
-        return {
-          mergedCode: initialCode,
-          applied: false,
-          success: false,
-          error: 'old_string not found in code',
-        };
-      }
-
-      let result: string;
-
-      if (replace_all) {
-        // Replace ALL occurrences
-        result = initialCode.replaceAll(old_string, new_string);
-      } else {
-        // Check uniqueness
-        const count = this.countOccurrences(initialCode, old_string);
-        if (count > 1) {
-          return {
-            mergedCode: initialCode,
-            applied: false,
-            success: false,
-            error:
-              'old_string is not unique in the code. Provide a larger string with more surrounding context to make it unique, or use replace_all to change every instance.',
-          };
-        }
-
-        // Replace the single occurrence
-        const index = initialCode.indexOf(old_string);
-        result =
-          initialCode.slice(0, index) +
-          new_string +
-          initialCode.slice(index + old_string.length);
-      }
+      const result = applyCodeEdit(
+        initialCode,
+        old_string,
+        new_string,
+        replace_all ?? false
+      );
 
       return {
-        mergedCode: result,
-        applied: true,
-        success: true,
-        error: '',
+        mergedCode: result.code,
+        applied: result.applied,
+        success: result.applied,
+        error: result.error ?? '',
       };
     } catch (error) {
       return {

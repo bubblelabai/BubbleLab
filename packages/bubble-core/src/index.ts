@@ -146,7 +146,11 @@ export { ListAirtableBasesTool } from './bubbles/tool-bubble/list-airtable-bases
 export { ListAirtableTablesTool } from './bubbles/tool-bubble/list-airtable-tables-tool.js';
 export { SQLQueryTool } from './bubbles/tool-bubble/sql-query-tool.js';
 export { BubbleFlowValidationTool } from './bubbles/tool-bubble/bubbleflow-validation-tool.js';
-export { EditBubbleFlowTool } from './bubbles/tool-bubble/code-edit-tool.js';
+export {
+  EditBubbleFlowTool,
+  applyCodeEdit,
+  type CodeEditResult,
+} from './bubbles/tool-bubble/code-edit-tool.js';
 export { WebSearchTool } from './bubbles/tool-bubble/web-search-tool.js';
 export { WebScrapeTool } from './bubbles/tool-bubble/web-scrape-tool.js';
 export { WebCrawlTool } from './bubbles/tool-bubble/web-crawl-tool.js';

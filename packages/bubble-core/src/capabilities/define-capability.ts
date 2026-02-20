@@ -74,6 +74,8 @@ export interface DefineCapabilityOptions {
     internalBubbles?: BubbleName[];
     /** Whether this tool requires human approval before execution. */
     requiresApproval?: boolean;
+    /** Expose this tool directly on the master agent in multi-capability delegation mode. */
+    masterTool?: boolean;
     func: (ctx: CapabilityRuntimeContext) => CapabilityToolFunc;
   }>;
   systemPrompt?: string | CapabilitySystemPromptFactory;
@@ -109,6 +111,7 @@ export function defineCapability(
     ...(tool.requiresApproval
       ? { requiresApproval: tool.requiresApproval }
       : {}),
+    ...(tool.masterTool ? { masterTool: tool.masterTool } : {}),
   }));
 
   // Build serializable metadata

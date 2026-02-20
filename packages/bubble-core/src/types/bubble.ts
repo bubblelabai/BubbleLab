@@ -5,6 +5,7 @@ import type {
   DependencyGraphNode,
   BubbleOperationResult,
   BubbleResult,
+  ExecutionMeta,
 } from '@bubblelab/shared-schemas';
 import type { BubbleLogger } from '../logging/BubbleLogger';
 
@@ -96,6 +97,7 @@ export interface BubbleContext {
    * Internal usage counters keyed by `${currentUniqueId||'ROOT'}|${childName}` to derive next ordinal.
    */
   __uniqueIdCounters__?: Record<string, number>;
+  executionMeta?: ExecutionMeta;
   [key: string]: unknown;
 }
 

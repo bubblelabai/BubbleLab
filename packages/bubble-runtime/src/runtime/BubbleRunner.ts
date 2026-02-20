@@ -2,6 +2,7 @@ import {
   ExecutionResult,
   ParsedBubbleWithInfo,
   CredentialType,
+  type ExecutionMeta,
 } from '@bubblelab/shared-schemas';
 import {
   BubbleFactory,
@@ -42,13 +43,7 @@ export interface BubbleRunnerOptions {
   useWebhookLogger?: boolean;
   pricingTable: Record<string, { unit: string; unitCost: number }>;
   userCredentialMapping?: Map<number, Set<CredentialType>>;
-  executionMeta?: {
-    flowId?: number;
-    executionId?: number;
-    studioBaseUrl?: string;
-    _thinkingMessageTs?: string;
-    _thinkingMessageChannel?: string;
-  };
+  executionMeta?: ExecutionMeta;
 }
 
 export class BubbleRunner {

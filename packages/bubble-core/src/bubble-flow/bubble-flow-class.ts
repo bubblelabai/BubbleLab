@@ -1,4 +1,7 @@
-import type { BubbleTriggerEventRegistry } from '@bubblelab/shared-schemas';
+import type {
+  BubbleTriggerEventRegistry,
+  ExecutionMeta,
+} from '@bubblelab/shared-schemas';
 import { hashToVariableId } from '@bubblelab/shared-schemas';
 import type { BubbleFlowOperationResult } from '../types/bubble.js';
 import type { BubbleLogger } from '../logging/BubbleLogger.js';
@@ -10,13 +13,7 @@ export abstract class BubbleFlow<
   public readonly description: string;
   protected logger?: BubbleLogger;
   private __currentInvocationCallSiteKey?: string;
-  __executionMeta__?: {
-    flowId?: number;
-    executionId?: number;
-    studioBaseUrl?: string;
-    _thinkingMessageTs?: string;
-    _thinkingMessageChannel?: string;
-  };
+  __executionMeta__?: ExecutionMeta;
   __triggerConversationHistory__?: Array<{ role: string; content: string }>;
 
   /**

@@ -26,6 +26,7 @@ export const AvailableModels = z.enum([
   'openrouter/z-ai/glm-4.6',
   'openrouter/z-ai/glm-4.7',
   'openrouter/anthropic/claude-sonnet-4.5',
+  'openrouter/anthropic/claude-sonnet-4.6',
   'openrouter/anthropic/claude-opus-4.5',
   'openrouter/anthropic/claude-opus-4.6',
   'openrouter/google/gemini-3-pro-preview',

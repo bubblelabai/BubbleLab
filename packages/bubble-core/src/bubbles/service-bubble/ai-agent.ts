@@ -610,23 +610,25 @@ export class AIAgentBubble extends ServiceBubble<
     );
 
     // Extract execution metadata (used for conversation history + agent memory)
-    const execMeta = this.context?.executionMeta as
-      | Record<string, unknown>
-      | undefined;
+    const execMeta = this.context?.executionMeta;
+
+    // Inject Slack channel context into system prompt
+    const slackChannel = execMeta?._slackChannel;
+    if (slackChannel) {
+      this.params.systemPrompt = `${this.params.systemPrompt}\n**Current Slack channel:** ${slackChannel}`;
+    }
 
     // Auto-inject trigger conversation history if no explicit conversationHistory was provided
     // This enables Slack thread context to automatically flow into AI agents
     // Check both legacy path (context.triggerConversationHistory) and new path (executionMeta)
     if (!this.params.conversationHistory?.length) {
       const convHistory =
-        (execMeta?.triggerConversationHistory as Array<{
-          role: 'user' | 'assistant';
-          content: string;
-        }>) ??
-        (this.context?.triggerConversationHistory as Array<{
-          role: 'user' | 'assistant';
-          content: string;
-        }>);
+        (execMeta?.triggerConversationHistory as
+          | Array<{ role: 'user' | 'assistant'; content: string }>
+          | undefined) ??
+        (this.context?.triggerConversationHistory as
+          | Array<{ role: 'user' | 'assistant'; content: string }>
+          | undefined);
       if (convHistory?.length) {
         this.params.conversationHistory = convHistory;
       }
@@ -637,17 +639,8 @@ export class AIAgentBubble extends ServiceBubble<
     const isCapabilityAgent = this.params.name?.startsWith('Capability Agent:');
 
     if (!isCapabilityAgent && this.params.memoryEnabled) {
-      const memoryTools = execMeta?.memoryTools as
-        | Array<{
-            name: string;
-            description: string;
-            schema: ZodTypeAny;
-            func: (input: Record<string, unknown>) => Promise<string>;
-          }>
-        | undefined;
-      const memorySystemPrompt = execMeta?.memorySystemPrompt as
-        | string
-        | undefined;
+      const memoryTools = execMeta?.memoryTools;
+      const memorySystemPrompt = execMeta?.memorySystemPrompt;
 
       if (memoryTools?.length) {
         if (!this.params.customTools) {
@@ -754,12 +747,8 @@ export class AIAgentBubble extends ServiceBubble<
       return;
     }
 
-    const execMeta = this.context?.executionMeta as
-      | Record<string, unknown>
-      | undefined;
-    const memoryReflectionCallback = execMeta?.memoryReflectionCallback as
-      | ((messages: Array<{ role: string; content: string }>) => Promise<void>)
-      | undefined;
+    const execMeta = this.context?.executionMeta;
+    const memoryReflectionCallback = execMeta?.memoryReflectionCallback;
 
     if (!memoryReflectionCallback) return;
 
@@ -1309,7 +1298,111 @@ export class AIAgentBubble extends ServiceBubble<
     // 3. Capability tools
     const caps = this.params.capabilities ?? [];
     if (caps.length > 1) {
-      // Multi-capability: delegation mode — register a single use-capability tool
+      // Multi-capability: register master-level tools directly on the master agent
+      for (const capConfig of caps) {
+        const capDef = getCapability(capConfig.id);
+        if (!capDef) continue;
+
+        const masterTools = capDef.metadata.tools.filter((t) => t.masterTool);
+        if (masterTools.length === 0) continue;
+
+        try {
+          const ctx: CapabilityRuntimeContext = {
+            credentials: this.resolveCapabilityCredentials(capDef, capConfig),
+            inputs: capConfig.inputs ?? {},
+            bubbleContext: this.context,
+          };
+          const toolFuncs = capDef.createTools(ctx);
+          const logger = this.context?.logger;
+
+          for (const toolMeta of masterTools) {
+            const func = toolFuncs[toolMeta.name];
+            if (!func) continue;
+
+            const { variableId: capToolVariableId, uniqueId: capToolUniqueId } =
+              this.resolveCapabilityToolNode(toolMeta.name);
+
+            const capToolContext: BubbleContext | undefined = this.context
+              ? {
+                  ...this.context,
+                  variableId: capToolVariableId,
+                  currentUniqueId: capToolUniqueId,
+                  __uniqueIdCounters__: {},
+                }
+              : undefined;
+
+            const wrappedFunc = async (
+              input: Record<string, unknown>
+            ): Promise<unknown> => {
+              logger?.logBubbleExecution(
+                capToolVariableId,
+                toolMeta.name,
+                toolMeta.name,
+                input
+              );
+              try {
+                ctx.bubbleContext = capToolContext;
+                const result = await func(input);
+                ctx.bubbleContext = this.context;
+                logger?.logBubbleExecutionComplete(
+                  capToolVariableId,
+                  toolMeta.name,
+                  toolMeta.name,
+                  result
+                );
+                return result;
+              } catch (error) {
+                ctx.bubbleContext = this.context;
+                logger?.logBubbleExecutionComplete(
+                  capToolVariableId,
+                  toolMeta.name,
+                  toolMeta.name,
+                  { success: false, error: String(error) }
+                );
+                throw error;
+              }
+            };
+
+            const toolSchema = this.jsonSchemaToZod(toolMeta.parameterSchema);
+            const dynamicTool = new DynamicStructuredTool({
+              name: toolMeta.name,
+              description: toolMeta.description,
+              schema: toolSchema,
+              func: wrappedFunc as (
+                input: Record<string, unknown>
+              ) => Promise<unknown>,
+            } as any);
+
+            tools.push(dynamicTool);
+            console.log(
+              `🔧 [AIAgent] Registered master-level tool: ${toolMeta.name} (from ${capConfig.id})`
+            );
+          }
+
+          // Register hooks for master-level tools
+          if (capDef.hooks?.beforeToolCall) {
+            for (const t of masterTools) {
+              this.capabilityBeforeHooks.set(
+                t.name,
+                capDef.hooks.beforeToolCall
+              );
+            }
+          }
+          if (capDef.hooks?.afterToolCall) {
+            for (const t of masterTools) {
+              this.capabilityAfterHooks.set(t.name, capDef.hooks.afterToolCall);
+            }
+          }
+        } catch (error) {
+          console.error(
+            `Error initializing master-level tools for capability '${capConfig.id}':`,
+            error
+          );
+          continue;
+        }
+      }
+
+      // Register use-capability delegation tool
       const capIds = caps.map((c) => c.id);
       tools.push(
         new DynamicStructuredTool({
@@ -2096,9 +2189,7 @@ export class AIAgentBubble extends ServiceBubble<
       // Check for pending approval signal from sub-agent (shared via executionMeta).
       // In multi-capability mode the master and sub-agent share the same BubbleContext,
       // so a sub-agent setting _pendingApproval is visible here.
-      const execMeta = this.context?.executionMeta as
-        | Record<string, unknown>
-        | undefined;
+      const execMeta = this.context?.executionMeta;
       if (execMeta?._pendingApproval) {
         this.shouldStopAfterTools = true;
         return '__end__';
@@ -2155,12 +2246,8 @@ export class AIAgentBubble extends ServiceBubble<
       const initialMessages: BaseMessage[] = [];
 
       // Resume from saved agent state (lossless — preserves tool_calls, etc.)
-      const resumeExecMeta = this.context?.executionMeta as
-        | Record<string, unknown>
-        | undefined;
-      const resumeState = resumeExecMeta?._resumeAgentState as
-        | Array<Record<string, unknown>>
-        | undefined;
+      const resumeExecMeta = this.context?.executionMeta;
+      const resumeState = resumeExecMeta?._resumeAgentState;
 
       if (resumeState && Array.isArray(resumeState) && resumeState.length > 0) {
         const { mapStoredMessagesToChatMessages } = await import(

@@ -56,7 +56,10 @@ export async function applyCapabilityPreprocessing(
       .map((c, idx) => {
         const def = getCapability(c.id);
         if (!def) return null;
-        const toolNames = def.metadata.tools.map((t) => t.name).join(', ');
+        const toolNames = def.metadata.tools
+          .filter((t) => !t.masterTool)
+          .map((t) => t.name)
+          .join(', ');
         let summary = `${idx + 1}. "${def.metadata.name}" (id: ${c.id})\n   Purpose: ${def.metadata.description}`;
         if (toolNames) summary += `\n   Tools: ${toolNames}`;
         if (def.metadata.delegationHint)

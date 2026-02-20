@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
-import { CredentialType } from '@bubblelab/shared-schemas';
+import { CredentialType, type ExecutionMeta } from '@bubblelab/shared-schemas';
 import { markdownToBlocks, containsMarkdown } from './slack.utils.js';
 
 // Slack API base URL
@@ -1503,11 +1503,9 @@ Comprehensive Slack integration for messaging and workspace management.
    * Build "Powered by BubbleLab" footer blocks from execution metadata.
    * Returns empty array if no metadata is available.
    */
-  private static buildFooterBlocks(executionMeta?: {
-    flowId?: number;
-    executionId?: number;
-    studioBaseUrl?: string;
-  }): Record<string, unknown>[] {
+  private static buildFooterBlocks(
+    executionMeta?: ExecutionMeta
+  ): Record<string, unknown>[] {
     if (!executionMeta?.studioBaseUrl || !executionMeta?.flowId) {
       return [];
     }
@@ -1559,15 +1557,7 @@ Comprehensive Slack integration for messaging and workspace management.
     }
 
     // Build "Powered by BubbleLab" footer from execution metadata
-    const executionMeta = context?.executionMeta as
-      | {
-          flowId?: number;
-          executionId?: number;
-          studioBaseUrl?: string;
-          _thinkingMessageTs?: string;
-          _thinkingMessageChannel?: string;
-        }
-      | undefined;
+    const executionMeta = context?.executionMeta;
     const footerBlocks = SlackBubble.buildFooterBlocks(executionMeta);
 
     // Check if we should replace a thinking placeholder message

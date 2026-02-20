@@ -79,6 +79,8 @@ export const CapabilityToolDefSchema = z.object({
   internalBubbles: z.array(z.string() as z.ZodType<BubbleName>).optional(),
   /** Whether this tool requires human approval before execution. */
   requiresApproval: z.boolean().optional(),
+  /** Expose this tool directly on the master agent in multi-capability delegation mode. */
+  masterTool: z.boolean().optional(),
 });
 export type CapabilityToolDef = z.infer<typeof CapabilityToolDefSchema>;
 
