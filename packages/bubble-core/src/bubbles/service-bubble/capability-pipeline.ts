@@ -52,21 +52,39 @@ export async function applyCapabilityPreprocessing(
   // Inject capability system prompts
   if (caps.length > 1) {
     // Multi-capability: summaries with tool names + delegation hints — sub-agents get full prompts
-    const summaries = caps
-      .map((c, idx) => {
-        const def = getCapability(c.id);
-        if (!def) return null;
-        const toolNames = def.metadata.tools
-          .filter((t) => !t.masterTool)
-          .map((t) => t.name)
-          .join(', ');
-        let summary = `${idx + 1}. "${def.metadata.name}" (id: ${c.id})\n   Purpose: ${def.metadata.description}`;
-        if (toolNames) summary += `\n   Tools: ${toolNames}`;
-        if (def.metadata.delegationHint)
-          summary += `\n   When to use: ${def.metadata.delegationHint}`;
-        return summary;
-      })
-      .filter((summary): summary is string => Boolean(summary));
+    const summaries = (
+      await Promise.all(
+        caps.map(async (c, idx) => {
+          const def = getCapability(c.id);
+          if (!def) return null;
+          const toolNames = def.metadata.tools
+            .filter((t) => !t.masterTool)
+            .map((t) => t.name)
+            .join(', ');
+          let summary = `${idx + 1}. "${def.metadata.name}" (id: ${c.id})\n   Purpose: ${def.metadata.description}`;
+          if (toolNames) summary += `\n   Tools: ${toolNames}`;
+
+          // Resolve async delegation hint (mirrors systemPrompt pattern)
+          let hint: string | undefined;
+          if (def.createDelegationHint) {
+            try {
+              const ctx: CapabilityRuntimeContext = {
+                credentials: resolveCapabilityCredentials(def, c),
+                inputs: c.inputs ?? {},
+                bubbleContext,
+              };
+              hint = await def.createDelegationHint(ctx);
+            } catch {
+              // Fall through to static metadata hint
+            }
+          }
+          hint ??= def.metadata.delegationHint;
+          if (hint) summary += `\n   When to use: ${hint}`;
+
+          return summary;
+        })
+      )
+    ).filter((summary): summary is string => Boolean(summary));
 
     params.systemPrompt += `\n\n---\nSYSTEM CAPABILITY EXTENSIONS:\nMultiple specialized capabilities are available. You MUST delegate to them using the 'use-capability' tool.\n\nAvailable Capabilities:\n${summaries.join('\n\n')}\n\nDELEGATION RULES:\n- Use 'use-capability' tool to delegate tasks to the appropriate capability\n- Do NOT attempt to handle capability tasks yourself\n- Include full context when delegating, including all known user details and preferences from context (especially timezone)\n- Can chain multiple capabilities if needed\n- Only respond directly for: greetings, clarifications, or tasks outside all capabilities\n---\n\nYour role is to understand the user's request and delegate to the appropriate capability or respond directly when appropriate.`;
   } else {

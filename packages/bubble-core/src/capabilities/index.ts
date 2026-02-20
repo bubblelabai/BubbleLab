@@ -5,6 +5,7 @@ export {
   type CapabilityToolFunc,
   type CapabilityToolFactory,
   type CapabilitySystemPromptFactory,
+  type CapabilityDelegationHintFactory,
   type CapabilityResponseAppendFactory,
   type DefineCapabilityOptions,
 } from './define-capability.js';

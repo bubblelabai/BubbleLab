@@ -1883,6 +1883,52 @@ export const BUBBLE_CREDENTIAL_OPTIONS: Record<
   hubspot: [CredentialType.HUBSPOT_CRED],
 };
 
+export interface CredentialSiblingEntry {
+  oauthType: CredentialType;
+  apiType: CredentialType;
+  canonicalType: CredentialType;
+}
+
+/** Auto-derived sibling map: for OAuth-provider bubbles with exactly 2 cred types
+ *  (one OAuth + one API key), maps both types to their sibling pair. */
+export const CREDENTIAL_TYPE_SIBLINGS: Partial<
+  Record<CredentialType, CredentialSiblingEntry>
+> = (() => {
+  const oauthProviderNames = new Set(Object.keys(OAUTH_PROVIDERS));
+  const map: Partial<Record<CredentialType, CredentialSiblingEntry>> = {};
+  for (const [bubbleName, credTypes] of Object.entries(
+    BUBBLE_CREDENTIAL_OPTIONS
+  )) {
+    if (!oauthProviderNames.has(bubbleName) || credTypes.length !== 2) continue;
+    const oauthType = credTypes.find((ct) => isOAuthCredential(ct));
+    const apiType = credTypes.find((ct) => !isOAuthCredential(ct));
+    if (!oauthType || !apiType) continue;
+    const entry: CredentialSiblingEntry = {
+      oauthType,
+      apiType,
+      canonicalType: oauthType,
+    };
+    map[oauthType] = entry;
+    map[apiType] = entry;
+  }
+  return map;
+})();
+
+/** Get all sibling types for a credential (both OAuth and API), or just itself if no siblings. */
+export function getSiblingCredentialTypes(
+  credType: CredentialType
+): CredentialType[] {
+  const sibling = CREDENTIAL_TYPE_SIBLINGS[credType];
+  return sibling ? [sibling.oauthType, sibling.apiType] : [credType];
+}
+
+/** Collapse sibling types to canonical (OAuth) type. */
+export function getCanonicalCredentialType(
+  credType: CredentialType
+): CredentialType {
+  return CREDENTIAL_TYPE_SIBLINGS[credType]?.canonicalType || credType;
+}
+
 // POST /credentials - Create credential schema
 export const createCredentialSchema = z
   .object({

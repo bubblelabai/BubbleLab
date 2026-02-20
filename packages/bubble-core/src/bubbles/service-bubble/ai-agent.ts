@@ -552,7 +552,8 @@ export class AIAgentBubble extends ServiceBubble<
       images,
       maxIterations,
       modelConfig,
-      conversationHistory
+      conversationHistory,
+      agentTools
     );
   }
 
@@ -1756,6 +1757,13 @@ export class AIAgentBubble extends ServiceBubble<
           },
         });
 
+        // Notify executionMeta callback (e.g. Slack thinking-message status updates)
+        (
+          this.context?.executionMeta?._onToolCallStart as
+            | ((toolName: string, toolInput: unknown) => void)
+            | undefined
+        )?.(toolCall.name, toolCall.args);
+
         // Send tool_complete event with error
         this.streamingCallback?.({
           type: 'tool_call_complete',
@@ -1800,6 +1808,13 @@ export class AIAgentBubble extends ServiceBubble<
             variableId: this.context?.variableId,
           },
         });
+
+        // Notify executionMeta callback (e.g. Slack thinking-message status updates)
+        (
+          this.context?.executionMeta?._onToolCallStart as
+            | ((toolName: string, toolInput: unknown) => void)
+            | undefined
+        )?.(toolCall.name, toolCall.args);
 
         // If hook returns modified messages/toolInput, apply them
         if (hookResult_before) {
@@ -2235,7 +2250,8 @@ export class AIAgentBubble extends ServiceBubble<
     images: AIAgentParamsParsed['images'],
     maxIterations: number,
     modelConfig: AIAgentParamsParsed['model'],
-    conversationHistory?: AIAgentParamsParsed['conversationHistory']
+    conversationHistory?: AIAgentParamsParsed['conversationHistory'],
+    tools?: DynamicStructuredTool[]
   ): Promise<AIAgentResult> {
     const jsonMode = modelConfig.jsonMode;
     const toolCalls: AIAgentResult['toolCalls'] = [];
@@ -2258,16 +2274,82 @@ export class AIAgentBubble extends ServiceBubble<
             typeof mapStoredMessagesToChatMessages
           >[0]
         );
-        initialMessages.push(...restored);
+        // Collect existing tool_call_ids that already have ToolMessage responses
+        const existingToolResultIds = new Set<string>();
+        for (const msg of restored) {
+          if (msg._getType() === 'tool') {
+            const tm = msg as ToolMessage;
+            if (tm.tool_call_id) existingToolResultIds.add(tm.tool_call_id);
+          }
+        }
 
-        // If last restored message is AIMessage with pending tool_calls,
-        // add synthetic ToolMessages so the message sequence is valid
-        const lastMsg = restored[restored.length - 1];
-        if (lastMsg && 'tool_calls' in lastMsg) {
-          const toolCalls = (lastMsg as AIMessage).tool_calls;
-          if (toolCalls?.length) {
-            for (const tc of toolCalls) {
-              initialMessages.push(
+        // Find AIMessages with unresolved tool_calls (no matching ToolMessage)
+        // The LAST such AIMessage is the one that triggered approval
+        let approvalAiMsgIndex = -1;
+        for (let i = restored.length - 1; i >= 0; i--) {
+          const msg = restored[i];
+          if (msg._getType() === 'ai') {
+            const aiMsg = msg as AIMessage;
+            const pending = aiMsg.tool_calls?.filter(
+              (tc) => tc.id && !existingToolResultIds.has(tc.id)
+            );
+            if (pending?.length) {
+              approvalAiMsgIndex = i;
+              break;
+            }
+          }
+        }
+
+        // Build a lookup of available tools by name for direct execution
+        const toolsByName = new Map<string, DynamicStructuredTool>();
+        if (tools) {
+          for (const t of tools) toolsByName.set(t.name, t);
+        }
+
+        // Process all AIMessages: execute or add synthetic results for unresolved tool_calls
+        // We iterate in order and insert ToolMessages right after their AIMessage
+        const repairedMessages: BaseMessage[] = [];
+        for (let i = 0; i < restored.length; i++) {
+          repairedMessages.push(restored[i]);
+          const msg = restored[i];
+          if (msg._getType() !== 'ai') continue;
+
+          const aiMsg = msg as AIMessage;
+          const pendingCalls = aiMsg.tool_calls?.filter(
+            (tc) => tc.id && !existingToolResultIds.has(tc.id)
+          );
+          if (!pendingCalls?.length) continue;
+
+          for (const tc of pendingCalls) {
+            if (i === approvalAiMsgIndex && toolsByName.has(tc.name)) {
+              // This is the approval-triggering AIMessage — execute the tool directly
+              // This bypasses beforeToolCall (no re-approval check) and gives real results
+              try {
+                console.log(
+                  `[AIAgent] Resume: executing approved tool "${tc.name}" directly`
+                );
+                const tool = toolsByName.get(tc.name)!;
+                const result = await tool.invoke(tc.args);
+                const content =
+                  typeof result === 'string' ? result : JSON.stringify(result);
+                repairedMessages.push(
+                  new ToolMessage({ content, tool_call_id: tc.id! })
+                );
+              } catch (err) {
+                console.warn(
+                  `[AIAgent] Resume: direct tool execution failed for "${tc.name}":`,
+                  err
+                );
+                repairedMessages.push(
+                  new ToolMessage({
+                    content: `Tool execution failed: ${err instanceof Error ? err.message : String(err)}`,
+                    tool_call_id: tc.id!,
+                  })
+                );
+              }
+            } else {
+              // Safety net: synthetic result for any other unresolved tool_calls
+              repairedMessages.push(
                 new ToolMessage({
                   content:
                     'This action has been approved by the user. You may now execute this tool.',
@@ -2275,8 +2357,11 @@ export class AIAgentBubble extends ServiceBubble<
                 })
               );
             }
+            existingToolResultIds.add(tc.id!);
           }
         }
+
+        initialMessages.push(...repairedMessages);
       } else if (conversationHistory && conversationHistory.length > 0) {
         // Normal path: lossy ConversationMessage[] → BaseMessage[]
         // This enables KV cache optimization by keeping previous turns as separate messages

@@ -5,6 +5,10 @@ export interface PendingApproval {
   action: string;
   targetFlowId: number;
   expiresAt: number;
+  /** Display enrichments (optional, for richer approval messages) */
+  targetFlowName?: string;
+  aiReasoning?: string;
+  toolInputSummary?: string;
 }
 
 export interface MemoryToolDef {
