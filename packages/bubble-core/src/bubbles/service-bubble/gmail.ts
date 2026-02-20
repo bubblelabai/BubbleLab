@@ -11,6 +11,7 @@ import { markdownToHtml } from '../../utils/markdown-to-html.js';
  * in =?UTF-8?B?<base64>?= to be displayed correctly by mail clients.
  */
 function encodeRFC2047(str: string): string {
+  // eslint-disable-next-line no-control-regex -- intentionally matching full ASCII range (0x00-0x7F)
   if (!str || /^[\x00-\x7f]*$/.test(str)) return str;
   const encoded = Buffer.from(str, 'utf-8').toString('base64');
   return `=?UTF-8?B?${encoded}?=`;

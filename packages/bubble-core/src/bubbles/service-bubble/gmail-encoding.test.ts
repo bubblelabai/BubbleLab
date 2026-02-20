@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
  * The real version lives in gmail.ts as a module-level function.
  */
 function encodeRFC2047(str: string): string {
+  // eslint-disable-next-line no-control-regex -- intentionally matching full ASCII range (0x00-0x7F)
   if (!str || /^[\x00-\x7f]*$/.test(str)) return str;
   const encoded = Buffer.from(str, 'utf-8').toString('base64');
   return `=?UTF-8?B?${encoded}?=`;
