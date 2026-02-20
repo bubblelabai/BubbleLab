@@ -4,6 +4,19 @@ import type { BubbleContext } from '../../types/bubble.js';
 import { CredentialType } from '@bubblelab/shared-schemas';
 import { markdownToHtml } from '../../utils/markdown-to-html.js';
 
+/**
+ * RFC 2047 encode a header value if it contains non-ASCII characters.
+ * Email headers are assumed Latin-1 unless explicitly encoded, so any
+ * non-ASCII content (emojis, accented chars, CJK, etc.) must be wrapped
+ * in =?UTF-8?B?<base64>?= to be displayed correctly by mail clients.
+ */
+function encodeRFC2047(str: string): string {
+  // eslint-disable-next-line no-control-regex -- intentionally matching full ASCII range (0x00-0x7F)
+  if (!str || /^[\x00-\x7f]*$/.test(str)) return str;
+  const encoded = Buffer.from(str, 'utf-8').toString('base64');
+  return `=?UTF-8?B?${encoded}?=`;
+}
+
 // Essential headers that users typically care about
 const ESSENTIAL_HEADERS = [
   'Subject',
@@ -1153,7 +1166,7 @@ export class GmailBubble<
       emailContent += `Bcc: ${bcc.join(', ')}\r\n`;
     }
 
-    emailContent += `Subject: ${subject}\r\n`;
+    emailContent += `Subject: ${encodeRFC2047(subject)}\r\n`;
 
     if (reply_to) {
       emailContent += `Reply-To: ${reply_to}\r\n`;
