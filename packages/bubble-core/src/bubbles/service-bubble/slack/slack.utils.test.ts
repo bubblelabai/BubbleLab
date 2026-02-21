@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   markdownToMrkdwn,
   markdownToBlocks,
+  splitBlocksByTable,
   createTextBlock,
   createDividerBlock,
   createHeaderBlock,
@@ -9,6 +10,7 @@ import {
   createTableBlock,
   SLACK_TABLE_MAX_ROWS,
   SLACK_TABLE_MAX_COLUMNS,
+  type SlackBlock,
   type SlackSectionBlock,
   type SlackDividerBlock,
   type SlackHeaderBlock,
@@ -443,7 +445,7 @@ describe('helper functions', () => {
       );
       const dataRow = result.tableBlock.rows[1];
       expect(dataRow).toHaveLength(3);
-      expect(dataRow[2]).toEqual({ type: 'raw_text', text: '' });
+      expect(dataRow[2]).toEqual({ type: 'raw_text', text: ' ' });
     });
 
     it('should truncate columns beyond 20', () => {
@@ -582,7 +584,7 @@ More text.`;
     expect(blocks.some((b) => b.type === 'table')).toBe(true);
   });
 
-  it('should render second table as code block', () => {
+  it('should produce multiple table blocks for multiple tables', () => {
     const md = `| A | B |
 | --- | --- |
 | 1 | 2 |
@@ -592,13 +594,11 @@ More text.`;
 | 3 | 4 |`;
     const blocks = markdownToBlocks(md);
     const tableBlocks = blocks.filter((b) => b.type === 'table');
-    expect(tableBlocks).toHaveLength(1); // Only first table
-    // Second table should be a code block (section with ```)
-    const codeBlocks = blocks.filter(
-      (b): b is SlackSectionBlock =>
-        b.type === 'section' && b.text.text.startsWith('```')
-    );
-    expect(codeBlocks.length).toBeGreaterThanOrEqual(1);
+    // Both tables should be proper table blocks (splitting into
+    // separate messages is handled at the send level in SlackBubble)
+    expect(tableBlocks).toHaveLength(2);
+    expect(tableBlocks[0].rows[0][0]).toEqual({ type: 'raw_text', text: 'A' });
+    expect(tableBlocks[1].rows[0][0]).toEqual({ type: 'raw_text', text: 'C' });
   });
 
   it('should truncate table with >20 columns', () => {
@@ -853,6 +853,112 @@ Since both operators are consistently performing in the **70-75% range for quali
     expect(sectionWithBangLink).toBeUndefined();
   });
 
+  it('should handle multi-table status report with emojis, dividers, and inline code', () => {
+    const md = `:bar_chart: *Pearl AI Status Report* · Friday, Feb 20, 2026 · Last 24h
+
+---
+
+*:large_purple_circle: Frontend Pearl — \`ai_assistant\`*
+| Metric | Value |
+|---|---|
+| Initiated | 134 |
+| Received | 106 |
+| Accepted | 70 |
+| Drop Rate | :warning: 20.9% (28 dropped) |
+| Success Rate | 79.1% |
+
+---
+
+*:large_blue_circle: Backend Pearl*
+| Event | Count | Status |
+|---|---|---|
+| \`pearl_success\` | 140 | :white_check_mark: |
+| \`pearl_error\` | 0 | :white_check_mark: |
+
+> Backend > Frontend — Slack-triggered requests bypass \`ai_assistant\`
+
+---
+
+*:coffee: Frontend Coffee — \`workflow_generation\`*
+| Event | Count | Status |
+|---|---|---|
+| Success | 40 | :white_check_mark: |
+| Error | 0 | :white_check_mark: |
+
+---
+
+*:ocean: Stream Errors*
+| Event | Count | Status |
+|---|---|---|
+| \`stream_error\` | 2 | :warning: |
+
+---
+
+*:rotating_light: Top KPI to Watch:* Stream errors at *2* — streaming reliability degraded.`;
+
+    const blocks = markdownToBlocks(md);
+
+    // Should have intro section, dividers, section headers, table(s), blockquote, and outro
+    expect(blocks.length).toBeGreaterThanOrEqual(5);
+
+    // First block should be the title line
+    const firstSection = blocks[0] as SlackSectionBlock;
+    expect(firstSection.type).toBe('section');
+    expect(firstSection.text.text).toContain('Pearl AI Status Report');
+
+    // Should have divider blocks
+    const dividers = blocks.filter((b) => b.type === 'divider');
+    expect(dividers.length).toBeGreaterThanOrEqual(1);
+
+    // All 4 tables should produce proper table blocks
+    const tableBlocks = blocks.filter(
+      (b) => b.type === 'table'
+    ) as SlackTableBlock[];
+    expect(tableBlocks).toHaveLength(4);
+
+    // First table: Frontend Pearl (2 columns, 5 data rows)
+    expect(tableBlocks[0].rows[0]).toHaveLength(2);
+    expect(tableBlocks[0].rows[0][0]).toEqual({
+      type: 'raw_text',
+      text: 'Metric',
+    });
+    expect(tableBlocks[0].rows).toHaveLength(6); // 1 header + 5 data rows
+
+    // Emoji shortcodes in table cells should be converted to Unicode
+    const dropRateRow = tableBlocks[0].rows[4];
+    expect(dropRateRow[1]).toEqual({
+      type: 'raw_text',
+      text: '\u26A0\uFE0F 20.9% (28 dropped)',
+    });
+
+    // Second table: Backend Pearl (3 columns, 2 data rows)
+    expect(tableBlocks[1].rows[0]).toHaveLength(3);
+    expect(tableBlocks[1].rows[0][0]).toEqual({
+      type: 'raw_text',
+      text: 'Event',
+    });
+    expect(tableBlocks[1].rows).toHaveLength(3); // 1 header + 2 data rows
+    // Emoji shortcodes converted to Unicode
+    expect(tableBlocks[1].rows[1][2]).toEqual({
+      type: 'raw_text',
+      text: '\u2705',
+    });
+
+    // Blockquote should be preserved
+    const quoteBlock = blocks.find(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' && b.text.text.includes('Backend > Frontend')
+    );
+    expect(quoteBlock).toBeDefined();
+
+    // Outro should be preserved
+    const outroBlock = blocks.find(
+      (b): b is SlackSectionBlock =>
+        b.type === 'section' && b.text.text.includes('Top KPI to Watch')
+    );
+    expect(outroBlock).toBeDefined();
+  });
+
   it('should handle table with inline markdown and backtick-wrapped brackets in surrounding text', () => {
     const md = `All the real BUB tickets (BUB-1, 2, 3, 4, 5, 17) are already in Jira as KAN-62 through KAN-67. Nothing left to migrate — the \`[TEST]\` and \`[Integration Test]\` issues are skipped per the previous decision (dev noise).
 
@@ -911,5 +1017,107 @@ Skipped as before: all \`[TEST]\` and \`[Integration Test]\` issues.`;
     const introBlock = blocks[0] as SlackSectionBlock;
     expect(introBlock.text.text).toContain('`[TEST]`');
     expect(introBlock.text.text).toContain('`[Integration Test]`');
+  });
+});
+
+describe('splitBlocksByTable', () => {
+  const section = (text: string): SlackSectionBlock => ({
+    type: 'section',
+    text: { type: 'mrkdwn', text },
+  });
+  const divider: SlackDividerBlock = { type: 'divider' };
+  const table = (label: string): SlackTableBlock => ({
+    type: 'table',
+    rows: [[{ type: 'raw_text', text: label }]],
+  });
+
+  it('should return single chunk when no tables', () => {
+    const blocks: SlackBlock[] = [section('hello'), divider, section('world')];
+    const chunks = splitBlocksByTable(blocks);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toEqual(blocks);
+  });
+
+  it('should return single chunk when one table', () => {
+    const blocks: SlackBlock[] = [
+      section('intro'),
+      table('T1'),
+      section('outro'),
+    ];
+    const chunks = splitBlocksByTable(blocks);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toEqual(blocks);
+  });
+
+  it('should split into chunks for two tables', () => {
+    const blocks: SlackBlock[] = [
+      section('intro'),
+      table('T1'),
+      divider,
+      section('header2'),
+      table('T2'),
+      section('outro'),
+    ];
+    const chunks = splitBlocksByTable(blocks);
+    expect(chunks).toHaveLength(2);
+    // First chunk: intro + first table
+    expect(chunks[0].filter((b) => b.type === 'table')).toHaveLength(1);
+    // Second chunk: divider + header + second table + outro
+    expect(chunks[1].filter((b) => b.type === 'table')).toHaveLength(1);
+  });
+
+  it('should group preceding header/divider with the next table', () => {
+    const blocks: SlackBlock[] = [
+      section('intro'),
+      table('T1'),
+      divider,
+      section('Section Header'),
+      table('T2'),
+    ];
+    const chunks = splitBlocksByTable(blocks);
+    expect(chunks).toHaveLength(2);
+    // Divider and header should be in the second chunk with T2
+    expect(chunks[1][0].type).toBe('divider');
+    expect((chunks[1][1] as SlackSectionBlock).text.text).toBe(
+      'Section Header'
+    );
+    expect(chunks[1][2].type).toBe('table');
+  });
+
+  it('should handle multi-table status report from production', () => {
+    const md = `:bar_chart: *Pearl AI Status Report*
+
+---
+
+*Frontend Pearl*
+| Metric | Value |
+|---|---|
+| Initiated | 134 |
+
+---
+
+*Backend Pearl*
+| Event | Count |
+|---|---|
+| success | 140 |
+
+---
+
+*Stream Errors*
+| Event | Count |
+|---|---|
+| stream_error | 2 |`;
+
+    const blocks = markdownToBlocks(md);
+    const chunks = splitBlocksByTable(blocks);
+
+    // Should split into 3 chunks (one per table)
+    expect(chunks).toHaveLength(3);
+
+    // Each chunk should have exactly 1 table block
+    for (const chunk of chunks) {
+      const tables = chunk.filter((b) => b.type === 'table');
+      expect(tables).toHaveLength(1);
+    }
   });
 });

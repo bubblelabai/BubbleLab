@@ -240,6 +240,122 @@ To generate this analysis, I followed these steps:
     expect(result.data?.ts).toBeDefined();
   });
 
+  it('should send message with multi-table status report, emojis, and dividers', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+
+    const text = `:bar_chart: *Pearl AI Status Report* · Friday, Feb 20, 2026 · Last 24h
+
+---
+
+*:large_purple_circle: Frontend Pearl — \`ai_assistant\`*
+| Metric | Value |
+|---|---|
+| Initiated | 134 |
+| Received | 106 |
+| Accepted | 70 |
+| Drop Rate | :warning: 20.9% (28 dropped) |
+| Success Rate | 79.1% |
+
+---
+
+*:large_blue_circle: Backend Pearl*
+| Event | Count | Status |
+|---|---|---|
+| \`pearl_success\` | 140 | :white_check_mark: |
+| \`pearl_error\` | 0 | :white_check_mark: |
+
+> Backend > Frontend — Slack-triggered requests bypass \`ai_assistant\`
+
+---
+
+*:coffee: Frontend Coffee — \`workflow_generation\`*
+| Event | Count | Status |
+|---|---|---|
+| Success | 40 | :white_check_mark: |
+| Error | 0 | :white_check_mark: |
+
+---
+
+*:ocean: Stream Errors*
+| Event | Count | Status |
+|---|---|---|
+| \`stream_error\` | 2 | :warning: |
+
+---
+
+*:rotating_light: Top KPI to Watch:* Stream errors at *2* — streaming reliability degraded.`;
+
+    const bubble = new SlackBubble({
+      operation: 'send_message',
+      channel: SLACK_CHANNEL,
+      text,
+      credentials,
+    });
+
+    const result = await bubble.action();
+
+    console.log('Result:', JSON.stringify(result, null, 2));
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+  it('should send message with calendar flow announcement', async () => {
+    if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
+      console.log(
+        'Skipping: SLACK_BOT_TOKEN or SLACK_REMINDER_CHANNEL not set'
+      );
+      return;
+    }
+
+    const text = `### 📅 Flow #150 — "Read My Calendar" is ready!
+
+**What it does:**
+1. Fetches your next 7 days of events from Google Calendar
+2. Formats them with title, time, location, Meet links, and attendee count
+3. DMs the summary to you on Slack
+
+**Your calendars available:**
+
+| | Calendar |
+|---|---|
+| 💼 | \`zachzhong@bubblelab.ai\` (work) |
+| 👤 | \`zachzhong.zz@gmail.com\` (personal) |
+| 🇺🇸 | US Holidays |
+
+By default it reads your **primary** calendar, but you can point it at any of the above.
+
+---
+
+**A couple of things to sort out before activating:**
+
+1. **Which calendar(s)** should it read? Work, personal, or all three?
+2. **How should it trigger?**
+   - 🔁 Daily schedule (e.g. 8am PT every morning)?
+   - 💬 On-demand via Slack message?
+   - Or keep it as a manual webhook for now?
+
+Once you tell me, I'll finalize and activate it!`;
+
+    const bubble = new SlackBubble({
+      operation: 'send_message',
+      channel: SLACK_CHANNEL,
+      text,
+      credentials,
+    });
+
+    const result = await bubble.action();
+
+    console.log('Result:', JSON.stringify(result, null, 2));
+    expect(result.success).toBe(true);
+    expect(result.data?.ok).toBe(true);
+    expect(result.data?.ts).toBeDefined();
+  });
+
   it('should send all test messages at once', async () => {
     if (!SLACK_BOT_TOKEN || !SLACK_CHANNEL) {
       console.log(

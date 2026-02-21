@@ -254,7 +254,14 @@ function normalizeMarkdownNewlines(markdown: string): string {
  * Used for contexts where formatting can't be rendered (e.g. Slack raw_text table cells).
  */
 function stripMarkdownFormatting(text: string): string {
-  return text
+  // Protect emoji shortcodes (e.g. :white_check_mark:) from underscore stripping
+  const emojiPlaceholders: string[] = [];
+  let result = text.replace(/:[a-z0-9_+-]+:/g, (match) => {
+    emojiPlaceholders.push(match);
+    return `\u00ABE${emojiPlaceholders.length - 1}\u00BB`;
+  });
+
+  result = result
     .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold**
     .replace(/__([^_]+)__/g, '$1') // __bold__
     .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1') // *italic*
@@ -262,6 +269,12 @@ function stripMarkdownFormatting(text: string): string {
     .replace(/~~([^~]+)~~/g, '$1') // ~~strike~~
     .replace(/`([^`]+)`/g, '$1') // `code`
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // [text](url)
+
+  // Restore emoji shortcodes
+  return result.replace(
+    /\u00ABE(\d+)\u00BB/g,
+    (_, idx) => emojiPlaceholders[parseInt(idx)]
+  );
 }
 
 function parseMarkdownBlocks(markdown: string): ParsedBlock[] {
@@ -518,7 +531,6 @@ export function markdownToBlocks(
 
   const parsedBlocks = parseMarkdownBlocks(markdown.trim());
   const slackBlocks: SlackBlock[] = [];
-  let tableBlockUsed = false; // Slack allows only one table per message
 
   for (const block of parsedBlocks) {
     switch (block.type) {
@@ -599,7 +611,6 @@ export function markdownToBlocks(
 
       case 'table': {
         if (
-          !tableBlockUsed &&
           block.tableHeaders &&
           block.tableHeaders.length > 0 &&
           block.tableRows &&
@@ -607,7 +618,6 @@ export function markdownToBlocks(
         ) {
           const result = createTableBlock(block.tableHeaders, block.tableRows);
           slackBlocks.push(result.tableBlock);
-          tableBlockUsed = true;
           if (result.wasTruncated) {
             slackBlocks.push({
               type: 'context',
@@ -620,7 +630,7 @@ export function markdownToBlocks(
             });
           }
         } else {
-          // Second+ table or failed parse: render as code block
+          // Failed to parse table: render as code block
           slackBlocks.push({
             type: 'section',
             text: {
@@ -752,6 +762,67 @@ export interface CreateTableBlockResult {
   originalRowCount: number;
 }
 
+/**
+ * Common Slack emoji shortcodes mapped to Unicode.
+ * raw_text table cells don't render shortcodes, so we convert to Unicode.
+ */
+const EMOJI_SHORTCODE_MAP: Record<string, string> = {
+  ':white_check_mark:': '\u2705',
+  ':heavy_check_mark:': '\u2714\uFE0F',
+  ':x:': '\u274C',
+  ':warning:': '\u26A0\uFE0F',
+  ':rotating_light:': '\uD83D\uDEA8',
+  ':red_circle:': '\uD83D\uDD34',
+  ':large_blue_circle:': '\uD83D\uDD35',
+  ':large_purple_circle:': '\uD83D\uDFE3',
+  ':green_circle:': '\uD83D\uDFE2',
+  ':yellow_circle:': '\uD83D\uDFE1',
+  ':orange_circle:': '\uD83D\uDFE0',
+  ':white_circle:': '\u26AA',
+  ':black_circle:': '\u26AB',
+  ':star:': '\u2B50',
+  ':fire:': '\uD83D\uDD25',
+  ':rocket:': '\uD83D\uDE80',
+  ':chart_with_upwards_trend:': '\uD83D\uDCC8',
+  ':chart_with_downwards_trend:': '\uD83D\uDCC9',
+  ':bar_chart:': '\uD83D\uDCCA',
+  ':check:': '\u2713',
+  ':heavy_minus_sign:': '\u2796',
+  ':heavy_plus_sign:': '\u2795',
+  ':thumbsup:': '\uD83D\uDC4D',
+  ':thumbsdown:': '\uD83D\uDC4E',
+  ':coffee:': '\u2615',
+  ':ocean:': '\uD83C\uDF0A',
+  ':tada:': '\uD83C\uDF89',
+  ':sparkles:': '\u2728',
+  ':boom:': '\uD83D\uDCA5',
+  ':zap:': '\u26A1',
+  ':bug:': '\uD83D\uDC1B',
+  ':memo:': '\uD83D\uDCDD',
+  ':gear:': '\u2699\uFE0F',
+  ':lock:': '\uD83D\uDD12',
+  ':unlock:': '\uD83D\uDD13',
+  ':bell:': '\uD83D\uDD14',
+  ':clock1:': '\uD83D\uDD50',
+  ':hourglass:': '\u231B',
+  ':arrows_counterclockwise:': '\uD83D\uDD04',
+  ':arrow_up:': '\u2B06\uFE0F',
+  ':arrow_down:': '\u2B07\uFE0F',
+  ':information_source:': '\u2139\uFE0F',
+  ':exclamation:': '\u2757',
+  ':question:': '\u2753',
+};
+
+/**
+ * Replaces Slack emoji shortcodes with Unicode equivalents.
+ * Used for raw_text table cells which don't render shortcodes.
+ */
+function replaceEmojiShortcodes(text: string): string {
+  return text.replace(/:[a-z0-9_+-]+:/g, (match) => {
+    return EMOJI_SHORTCODE_MAP[match] ?? match;
+  });
+}
+
 function escapeCsvValue(value: string): string {
   if (
     value.includes(',') ||
@@ -799,19 +870,20 @@ export function createTableBlock(
   const wasTruncated = originalRowCount > maxDataRows;
   const truncatedRows = rows.slice(0, maxDataRows);
 
-  // Build header row cells
+  // Build header row cells (convert emoji shortcodes, pad empty cells)
   const headerRowCells: SlackTableCellRawText[] = truncatedHeaders.map((h) => ({
     type: 'raw_text' as const,
-    text: String(h),
+    text: replaceEmojiShortcodes(String(h)) || ' ',
   }));
 
   // Build data row cells, padding short rows with empty cells
   const dataRowCells: SlackTableCellRawText[][] = truncatedRows.map((row) => {
     const cells: SlackTableCellRawText[] = [];
     for (let i = 0; i < colCount; i++) {
+      const value = i < row.length ? String(row[i]) : '';
       cells.push({
         type: 'raw_text' as const,
-        text: i < row.length ? String(row[i]) : '',
+        text: replaceEmojiShortcodes(value) || ' ',
       });
     }
     return cells;
@@ -955,6 +1027,73 @@ function splitLongBlock(block: SlackBlock): SlackBlock[] {
  */
 export function splitLongBlocks(blocks: SlackBlock[]): SlackBlock[] {
   return blocks.flatMap(splitLongBlock);
+}
+
+/**
+ * Splits an array of Slack blocks into chunks so that each chunk contains
+ * at most one table block. Slack only allows a single table block per message,
+ * so this lets the caller send each chunk as a separate message.
+ *
+ * Non-table blocks are grouped with the nearest following table. If there are
+ * no subsequent tables, trailing blocks stay in the last chunk.
+ *
+ * @returns The original array wrapped in a single-element array if there are
+ *          0 or 1 table blocks; otherwise an array of chunk arrays.
+ */
+export function splitBlocksByTable(blocks: SlackBlock[]): SlackBlock[][] {
+  const tableIndices = blocks
+    .map((b, i) => (b.type === 'table' ? i : -1))
+    .filter((i) => i !== -1);
+
+  // 0 or 1 table — nothing to split
+  if (tableIndices.length <= 1) {
+    return [blocks];
+  }
+
+  const chunks: SlackBlock[][] = [];
+
+  // Walk through table indices and create a chunk boundary just before each
+  // table (except the first one that appears).
+  // The first chunk runs from the start up to (and including) the first table
+  // plus any non-table blocks until the next table.
+  let chunkStart = 0;
+  for (let t = 1; t < tableIndices.length; t++) {
+    // Find the split point: the first non-table block after the previous table
+    // that contextually belongs to the next table. We split right before the
+    // divider or section header that precedes the next table.
+    const nextTableIdx = tableIndices[t];
+
+    // Look backwards from the next table to find the natural break point.
+    // A divider or header/section right before a table is part of the next chunk.
+    let splitAt = nextTableIdx;
+    while (splitAt > chunkStart) {
+      const prev = blocks[splitAt - 1];
+      if (
+        prev.type === 'divider' ||
+        prev.type === 'header' ||
+        (prev.type === 'section' &&
+          prev.text.text.length < 200 &&
+          !prev.text.text.startsWith('```'))
+      ) {
+        splitAt--;
+      } else {
+        break;
+      }
+    }
+
+    // Don't create empty first chunk
+    if (splitAt > chunkStart) {
+      chunks.push(blocks.slice(chunkStart, splitAt));
+      chunkStart = splitAt;
+    }
+  }
+
+  // Push the remaining blocks as the last chunk
+  if (chunkStart < blocks.length) {
+    chunks.push(blocks.slice(chunkStart));
+  }
+
+  return chunks;
 }
 
 /**

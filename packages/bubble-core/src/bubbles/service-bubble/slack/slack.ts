@@ -2,7 +2,11 @@ import { z } from 'zod';
 import { ServiceBubble } from '../../../types/service-bubble-class.js';
 import type { BubbleContext } from '../../../types/bubble.js';
 import { CredentialType, type ExecutionMeta } from '@bubblelab/shared-schemas';
-import { markdownToBlocks, containsMarkdown } from './slack.utils.js';
+import {
+  markdownToBlocks,
+  containsMarkdown,
+  splitBlocksByTable,
+} from './slack.utils.js';
 
 // Slack API base URL
 const SLACK_API_BASE = 'https://slack.com/api';
@@ -1572,6 +1576,37 @@ Comprehensive Slack integration for messaging and workspace management.
       delete executionMeta._thinkingMessageChannel;
     }
 
+    // Slack only allows one table block per message.
+    // If there are multiple tables, split into separate messages.
+    if (finalBlocks) {
+      const tableChunks = splitBlocksByTable(
+        finalBlocks as unknown as import('./slack.utils.js').SlackBlock[]
+      );
+      if (tableChunks.length > 1) {
+        // Flatten chunks back into a single array but keep the chunk
+        // boundaries aligned so sendMessageWithBlockChunks sends each
+        // chunk as its own message (each with at most 1 table block).
+        return await this.sendMessageWithBlockChunks(
+          resolvedChannel,
+          finalText,
+          finalBlocks,
+          {
+            username,
+            icon_emoji,
+            icon_url,
+            attachments,
+            thread_ts,
+            reply_broadcast,
+            unfurl_links,
+            unfurl_media,
+          },
+          footerBlocks,
+          shouldUpdateThinking ? thinkingTs : undefined,
+          tableChunks as unknown as (typeof finalBlocks)[]
+        );
+      }
+    }
+
     // If we have more than 50 blocks, split into multiple messages
     if (
       finalBlocks &&
@@ -1654,8 +1689,9 @@ Comprehensive Slack integration for messaging and workspace management.
   }
 
   /**
-   * Sends a message with blocks split into multiple messages when exceeding Slack's 50 block limit.
-   * Subsequent chunks are sent as thread replies to the first message.
+   * Sends a message with blocks split into multiple messages.
+   * Used when exceeding Slack's 50 block limit or when multiple table blocks
+   * need separate messages. Subsequent chunks are sent as thread replies.
    */
   private async sendMessageWithBlockChunks(
     channel: string,
@@ -1677,16 +1713,24 @@ Comprehensive Slack integration for messaging and workspace management.
       unfurl_media?: boolean;
     },
     footerBlocks: Record<string, unknown>[] = [],
-    thinkingMessageTs?: string
+    thinkingMessageTs?: string,
+    preSplitChunks?: (typeof blocks)[]
   ): Promise<Extract<SlackResult, { operation: 'send_message' }>> {
-    // Split blocks into chunks of 50
-    const blockChunks: (typeof blocks)[] = [];
-    for (
-      let i = 0;
-      i < blocks.length;
-      i += SlackBubble.MAX_BLOCKS_PER_MESSAGE
-    ) {
-      blockChunks.push(blocks.slice(i, i + SlackBubble.MAX_BLOCKS_PER_MESSAGE));
+    // Use pre-split chunks (e.g. from multi-table splitting) or split by size
+    let blockChunks: (typeof blocks)[];
+    if (preSplitChunks) {
+      blockChunks = preSplitChunks;
+    } else {
+      blockChunks = [];
+      for (
+        let i = 0;
+        i < blocks.length;
+        i += SlackBubble.MAX_BLOCKS_PER_MESSAGE
+      ) {
+        blockChunks.push(
+          blocks.slice(i, i + SlackBubble.MAX_BLOCKS_PER_MESSAGE)
+        );
+      }
     }
 
     let firstMessageTs: string | undefined;
