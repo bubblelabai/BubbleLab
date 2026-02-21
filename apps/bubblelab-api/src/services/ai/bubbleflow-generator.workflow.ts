@@ -526,10 +526,10 @@ ${AI_AGENT_BEHAVIOR_INSTRUCTIONS}`;
 
           model: {
             reasoningEffort: 'medium',
-            model: 'google/gemini-3-flash-preview',
+            model: 'google/gemini-2.5-flash',
             temperature: 0.3,
             backupModel: {
-              model: 'anthropic/claude-sonnet-4-5',
+              model: 'google/gemini-2.5-flash-lite',
               temperature: 0.3,
             },
           },

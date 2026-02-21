@@ -10,7 +10,7 @@ import { CredentialType } from './types.js';
 // Constants
 export const COFFEE_MAX_ITERATIONS = 30;
 export const COFFEE_MAX_QUESTIONS = 5;
-export const COFFEE_DEFAULT_MODEL = 'google/gemini-3-pro-preview' as const;
+export const COFFEE_DEFAULT_MODEL = 'google/gemini-2.5-flash' as const;
 
 // ============================================================================
 // Clarification Schemas
