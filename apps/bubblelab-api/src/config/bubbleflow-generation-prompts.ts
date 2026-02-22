@@ -416,13 +416,13 @@ GOOD EXAMPLE:
 \`\`\`typescript
 // Searches for academic papers related to the topic variable and summarizes each one's key findings.
 // The search behavior is controlled by the task prompt - modify it to focus on specific aspects,
-// add date ranges, or filter by publication type. Currently using gemini-3-pro-preview for thorough
-// multi-step research; switch to gemini-2.5-flash if you need faster results with less depth.
+// add date ranges, or filter by publication type. Currently using gemini-2.5-flash for thorough
+// multi-step research; current default is gemini-2.5-flash for balanced speed and cost.
 // Returns an array of papers (each with title, url, authors, publicationDate, summary, and
 // relevance explanation) plus an overallSummary that synthesizes all findings for downstream use.
 const researchTool = new ResearchAgentTool({
-  task: \`Find research papers about \${topic}...\`,
-  model: 'google/gemini-3-pro-preview',
+  task: \`Find research papers about \${ topic }...\`,
+  model: 'google/gemini-2.5-flash',
   expectedResultSchema: z.object({...})
 });
 
@@ -500,7 +500,7 @@ MODEL SELECTION
 
 TIER 1 - BEST (${RECOMMENDED_MODELS.BEST}):
 Use for: Complex reasoning, tool-calling agents, research-agent-tool, code generation,
-high-iteration tasks (50+), critical accuracy requirements
+high-iteration tasks (50+), critical accuracy requirements (Note: gemini-2.5-flash is now the default for BEST)
 
 TIER 2 - PRO (${RECOMMENDED_MODELS.PRO}, ${RECOMMENDED_MODELS.PRO_ALT}):
 Use for: Multi-step reasoning, strategic planning, complex data analysis
