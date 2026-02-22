@@ -35,7 +35,8 @@ export type CapabilityId =
   | 'linear-assistant'
   | 'attio-assistant'
   | 'hubspot-assistant'
-  | 'flow-assistant';
+  | 'flow-assistant'
+  | 'research-assistant';
 
 /**
  * Schema for a provider entry in a capability's metadata.
