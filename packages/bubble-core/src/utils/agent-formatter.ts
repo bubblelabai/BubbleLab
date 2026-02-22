@@ -1,5 +1,5 @@
 import type { MessageContent } from '@langchain/core/messages';
-import { parseJsonWithFallbacks } from './json-parsing';
+import { parseJsonWithFallbacks } from './json-parsing.js';
 import type { LLMResult, Generation } from '@langchain/core/outputs';
 
 /**

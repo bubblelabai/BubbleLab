@@ -1,6 +1,6 @@
 // Main bubble export (must come FIRST - bundler processes in order, and slack.ts
 // imports from schema, so schema gets properly inlined with correct declaration order)
-export { SlackBubble } from './slack';
+export { SlackBubble } from './slack.js';
 
 // Utility exports
 export {
