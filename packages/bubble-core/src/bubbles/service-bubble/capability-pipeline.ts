@@ -125,7 +125,7 @@ export async function applyCapabilityPostprocessing(
     bubbleContext,
     resolveCapabilityCredentials
   );
-  updated = applyConversationHistoryNotice(updated, params, bubbleContext);
+  updated = applyResponseNotices(updated, params, bubbleContext);
   return updated;
 }
 
@@ -179,7 +179,53 @@ function hasUnenhancedConversationHistory(
   return /^U[A-Z0-9]{8,12}$/.test(name);
 }
 
-function applyConversationHistoryNotice(
+interface ResponseNotice {
+  id: string;
+  icon: string;
+  title: string;
+  body: string;
+  condition: (
+    params: AIAgentParamsParsed,
+    context: BubbleContext | undefined
+  ) => boolean;
+}
+
+const RESPONSE_NOTICES: ResponseNotice[] = [
+  {
+    id: 'history-temporarily-unavailable',
+    icon: '⚠️',
+    title: 'Conversation History Temporarily Unavailable',
+    body: "I couldn't remember your past conversation at the moment due to a rate limit. Please contact the Bubble Lab team if this issue persists.",
+    condition: (params) => {
+      const hasHistory =
+        params.conversationHistory && params.conversationHistory.length > 0;
+      return (
+        !!hasHistory &&
+        hasUnenhancedConversationHistory(params.conversationHistory)
+      );
+    },
+  },
+  {
+    id: 'history-not-available',
+    icon: '💡',
+    title: 'Conversation History Not Available',
+    body: "I don't have access to our previous conversation at the moment, so I might ask you to repeat some information. This may be due to a temporary issue with Slack. Please try again in a few minutes.",
+    condition: (params) => {
+      const hasHistory =
+        params.conversationHistory && params.conversationHistory.length > 0;
+      return !hasHistory;
+    },
+  },
+  {
+    id: 'pearl-automation',
+    icon: '💡',
+    title: 'Note',
+    body: 'If this is a recurring task, ask Pearl to automate this. This will be faster, cheaper, and more reliable.',
+    condition: () => true, // always show for capability-enabled Slack bots
+  },
+];
+
+function applyResponseNotices(
   result: AIAgentResult,
   params: AIAgentParamsParsed,
   bubbleContext: BubbleContext | undefined
@@ -194,31 +240,18 @@ function applyConversationHistoryNotice(
     return result;
   }
 
-  const hasHistory =
-    params.conversationHistory && params.conversationHistory.length > 0;
+  const notices = RESPONSE_NOTICES.filter((n) =>
+    n.condition(params, bubbleContext)
+  );
+  if (notices.length === 0) return result;
 
-  let notice: string | null = null;
-
-  if (
-    hasHistory &&
-    hasUnenhancedConversationHistory(params.conversationHistory)
-  ) {
-    notice =
-      '---\n⚠️ **Conversation History Temporarily Unavailable**\n\n' +
-      "I couldn't remember your past conversation at the moment due to a rate limit. " +
-      'Please contact the Bubble Lab team if this issue persists.';
-  } else if (!hasHistory) {
-    notice =
-      '---\n💡 **Conversation History Not Available**\n\n' +
-      "I don't have access to our previous conversation at the moment, so I might ask you to repeat some information. " +
-      'This may be due to a temporary issue with Slack. Please try again in a few minutes.';
-  }
-
-  if (!notice) return result;
+  const formatted = notices
+    .map((n) => `---\n${n.icon} **${n.title}**\n\n${n.body}`)
+    .join('\n\n');
 
   const separator = result.response?.trim().length ? '\n\n' : '';
   return {
     ...result,
-    response: `${result.response}${separator}${notice}`,
+    response: `${result.response}${separator}${formatted}`,
   };
 }
