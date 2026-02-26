@@ -94,6 +94,9 @@ export enum CredentialType {
 
   // HubSpot Credentials
   HUBSPOT_CRED = 'HUBSPOT_CRED',
+
+  // Sortly Credentials
+  SORTLY_API_KEY = 'SORTLY_API_KEY',
 }
 
 // Define all bubble names as a union type for type safety

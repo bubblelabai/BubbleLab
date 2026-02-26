@@ -408,6 +408,14 @@ export const CREDENTIAL_TYPE_CONFIG: Record<CredentialType, CredentialConfig> =
       namePlaceholder: 'My PostHog API Key',
       credentialConfigurations: {},
     },
+    [CredentialType.SORTLY_API_KEY]: {
+      label: 'Sortly',
+      description:
+        'API key for Sortly inventory management (Enterprise plan required)',
+      placeholder: 'Your Sortly API key',
+      namePlaceholder: 'My Sortly API Key',
+      credentialConfigurations: {},
+    },
     [CredentialType.SENDSAFELY_CRED]: {
       label: 'SendSafely',
       description: 'SendSafely API credentials for encrypted file transfer',
@@ -529,6 +537,7 @@ export const CREDENTIAL_ENV_MAP: Record<CredentialType, string> = {
   [CredentialType.LINEAR_CRED]: '', // OAuth credential, no env var
   [CredentialType.HUBSPOT_CRED]: '', // OAuth credential, no env var
   [CredentialType.ATTIO_CRED]: '', // OAuth credential, no env var
+  [CredentialType.SORTLY_API_KEY]: 'SORTLY_API_KEY',
   [CredentialType.CREDENTIAL_WILDCARD]: '', // Wildcard marker, not a real credential
 };
 
