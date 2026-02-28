@@ -1516,19 +1516,21 @@ Comprehensive Slack integration for messaging and workspace management.
       return [];
     }
     const viewUrl = `${executionMeta.studioBaseUrl}/flow/${executionMeta.flowId}`;
-    const firstName = executionMeta._ownerFirstName || 'Your';
+    const firstName = executionMeta._ownerFirstName || '';
 
     const pearlFlowId = executionMeta._pearlFlowId;
     const pearlUrl = pearlFlowId
       ? `${executionMeta.studioBaseUrl}/flow/${pearlFlowId}`
       : undefined;
 
+    const pearlLabel = firstName ? `${firstName}'s Pearl` : 'Pearl';
+
     let text: string;
     if (executionMeta._isPearlFlow) {
-      text = `<${viewUrl}|${firstName}'s Pearl>`;
+      text = `<${viewUrl}|${pearlLabel}>`;
     } else if (pearlUrl) {
       const flowName = executionMeta._flowName || 'Flow';
-      text = `<${pearlUrl}|${firstName}'s Pearl> · <${viewUrl}|${flowName}>`;
+      text = `<${pearlUrl}|${pearlLabel}> · <${viewUrl}|${flowName}>`;
     } else {
       text = `Powered by Bubble Lab · <${viewUrl}|View Flow>`;
     }
