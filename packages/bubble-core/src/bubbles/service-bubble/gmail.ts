@@ -843,21 +843,20 @@ export class GmailBubble<
       throw new Error('Gmail credentials are required');
     }
 
-    try {
-      // Test the credentials by making a simple API call
-      const response = await fetch(
-        'https://www.googleapis.com/gmail/v1/users/me/profile',
-        {
-          headers: {
-            Authorization: `Bearer ${credential}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      return response.ok;
-    } catch {
-      return false;
+    const response = await fetch(
+      'https://www.googleapis.com/gmail/v1/users/me/profile',
+      {
+        headers: {
+          Authorization: `Bearer ${credential}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Gmail API error (${response.status}): ${text}`);
     }
+    return true;
   }
 
   private async makeGmailApiRequest(

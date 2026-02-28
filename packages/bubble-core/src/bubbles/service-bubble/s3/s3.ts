@@ -121,10 +121,41 @@ export class S3Bubble<
    * "...endpoint: gymii-test.s3.us-east-2.amazonaws.com"
    */
   private extractRegionFromRedirectError(error: unknown): string | undefined {
+    // AWS SDK v3 PermanentRedirect errors include region in multiple places
+    const err = error as Record<string, unknown>;
+
+    // Check if this is a PermanentRedirect error
+    if (
+      err?.name !== 'PermanentRedirect' &&
+      err?.Code !== 'PermanentRedirect'
+    ) {
+      return undefined;
+    }
+
+    // 1. Check $response headers for x-amz-bucket-region
+    const response = err?.$response as Record<string, unknown> | undefined;
+    const headers = response?.headers as Record<string, string> | undefined;
+    if (headers?.['x-amz-bucket-region']) {
+      return headers['x-amz-bucket-region'];
+    }
+
+    // 2. Extract region from Endpoint in error message or body
     const message = error instanceof Error ? error.message : String(error);
-    // Match patterns like "bucketname.s3.us-east-2.amazonaws.com" or just "s3.us-west-1.amazonaws.com"
-    const match = message.match(/s3[.-]([a-z0-9-]+)\.amazonaws\.com/);
-    return match?.[1];
+    const regionFromEndpoint = message.match(
+      /s3[.-]([a-z0-9-]+)\.amazonaws\.com/
+    );
+    if (regionFromEndpoint?.[1]) {
+      return regionFromEndpoint[1];
+    }
+
+    // 3. Check Endpoint field on the error object itself
+    const endpoint = err?.Endpoint as string | undefined;
+    if (endpoint) {
+      const match = endpoint.match(/s3[.-]([a-z0-9-]+)\.amazonaws\.com/);
+      if (match?.[1]) return match[1];
+    }
+
+    return undefined;
   }
 
   public async testCredential(): Promise<boolean> {
@@ -212,11 +243,37 @@ export class S3Bubble<
         throw error;
       }
     } catch (error) {
+      // Surface S3-specific error names (e.g., NotFound, NoSuchKey, AccessDenied)
+      const err = error as Record<string, unknown>;
+      const errorName = (err?.name as string) || (err?.Code as string) || '';
+      const errorMessage = error instanceof Error ? error.message : '';
+
+      // Map common S3 error names to human-readable messages
+      const s3ErrorMessages: Record<string, string> = {
+        NotFound: 'The specified file does not exist',
+        NoSuchKey: 'The specified file does not exist',
+        NoSuchBucket: 'The specified bucket does not exist',
+        AccessDenied:
+          'Access denied — check your S3 credentials and bucket permissions',
+        PermanentRedirect:
+          'Bucket is in a different region — set the correct region',
+        InvalidAccessKeyId: 'The AWS access key ID is invalid',
+        SignatureDoesNotMatch: 'The secret access key is invalid',
+      };
+
+      const friendlyMessage = s3ErrorMessages[errorName];
+      const displayError =
+        friendlyMessage ||
+        (errorMessage && errorMessage !== errorName
+          ? `${errorName}: ${errorMessage}`
+          : '') ||
+        errorName ||
+        'Unknown error occurred';
+
       return {
         operation,
         success: false,
-        error:
-          error instanceof Error ? error.message : 'Unknown error occurred',
+        error: displayError,
       } as Extract<S3Result, { operation: T['operation'] }>;
     }
   }
@@ -260,6 +317,15 @@ export class S3Bubble<
   ): Promise<Extract<S3Result, { operation: 'getFile' }>> {
     if (!this.s3Client) throw new Error('S3 client not initialized');
 
+    // Check if file exists and get metadata
+    const headCommand = new HeadObjectCommand({
+      Bucket: params.bucketName,
+      Key: params.fileName,
+    });
+
+    const metadata = await this.s3Client.send(headCommand);
+
+    // Generate presigned download URL
     const command = new GetObjectCommand({
       Bucket: params.bucketName,
       Key: params.fileName,
@@ -269,37 +335,17 @@ export class S3Bubble<
       expiresIn: params.expirationMinutes! * 60,
     });
 
-    // Also get file metadata
-    try {
-      const headCommand = new HeadObjectCommand({
-        Bucket: params.bucketName,
-        Key: params.fileName,
-      });
-
-      const metadata = await this.s3Client.send(headCommand);
-
-      return {
-        operation: 'getFile',
-        success: true,
-        downloadUrl,
-        fileUrl: downloadUrl,
-        fileName: params.fileName,
-        fileSize: metadata.ContentLength,
-        contentType: metadata.ContentType,
-        lastModified: metadata.LastModified?.toISOString(),
-        error: '',
-      };
-    } catch {
-      // If metadata fetch fails, still return the download URL
-      return {
-        operation: 'getFile',
-        success: true,
-        downloadUrl,
-        fileUrl: downloadUrl,
-        fileName: params.fileName,
-        error: '',
-      };
-    }
+    return {
+      operation: 'getFile',
+      success: true,
+      downloadUrl,
+      fileUrl: downloadUrl,
+      fileName: params.fileName,
+      fileSize: metadata.ContentLength,
+      contentType: metadata.ContentType,
+      lastModified: metadata.LastModified?.toISOString(),
+      error: '',
+    };
   }
 
   private async deleteFile(
@@ -323,17 +369,37 @@ export class S3Bubble<
     };
   }
 
+  /** Check if a fileName already has a secure prefix (timestamp-UUID pattern) */
+  private isSecureFileName(fileName: string): boolean {
+    // Matches patterns like "2026-02-28T00-42-37-653Z-b2f0c3bd-7d29-492c-bea1-394042d33ee2-..."
+    // or with userId prefix like "alice/2026-02-28T00-42-37-653Z-..."
+    const nameWithoutUserPrefix = fileName.includes('/')
+      ? fileName.split('/').slice(1).join('/')
+      : fileName;
+    return /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-[0-9a-f]{8}-/.test(
+      nameWithoutUserPrefix
+    );
+  }
+
   private async updateFile(
     params: Extract<S3Params, { operation: 'updateFile' }>
   ): Promise<Extract<S3Result, { operation: 'updateFile' }>> {
     if (!this.s3Client) throw new Error('S3 client not initialized');
 
-    // Generate secure filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileExtension = params.fileName.split('.').pop() || 'bin';
-    const baseName = params.fileName.replace(/\.[^/.]+$/, '');
-    const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
-    const secureFileName = `${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
+    let key: string;
+
+    if (this.isSecureFileName(params.fileName)) {
+      // Already a secure filename (from a previous operation) — use as-is
+      key = params.fileName;
+    } else {
+      // Generate new secure filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileExtension = params.fileName.split('.').pop() || 'bin';
+      const baseName = params.fileName.replace(/\.[^/.]+$/, '');
+      const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const userPrefix = params.userId ? `${params.userId}/` : '';
+      key = `${userPrefix}${timestamp}-${crypto.randomUUID()}-${sanitizedBaseName}.${fileExtension}`;
+    }
 
     // Handle base64 encoded content
     let bodyContent: Buffer | string;
@@ -347,7 +413,7 @@ export class S3Bubble<
 
     const command = new PutObjectCommand({
       Bucket: params.bucketName,
-      Key: secureFileName,
+      Key: key,
       ContentType: params.contentType,
       Body: bodyContent,
     });
@@ -357,7 +423,7 @@ export class S3Bubble<
     return {
       operation: 'updateFile',
       success: true,
-      fileName: secureFileName,
+      fileName: key,
       updated: true,
       contentType: params.contentType,
       error: '',

@@ -711,26 +711,24 @@ export class GithubBubble<
   }
 
   public async testCredential(): Promise<boolean> {
-    try {
-      // Test the credential by fetching the authenticated user
-      const token = this.chooseCredential();
-      if (!token) {
-        return false;
-      }
-
-      const response = await fetch(`${GITHUB_API_BASE}/user`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('GitHub credential test failed:', error);
-      return false;
+    const token = this.chooseCredential();
+    if (!token) {
+      throw new Error('GitHub credentials are required');
     }
+
+    const response = await fetch(`${GITHUB_API_BASE}/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`GitHub API error (${response.status}): ${text}`);
+    }
+    return true;
   }
 
   protected chooseCredential(): string | undefined {

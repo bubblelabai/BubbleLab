@@ -112,16 +112,12 @@ export class JiraBubble<
       throw new Error('Jira credentials are required');
     }
 
-    try {
-      // Test credentials by fetching user info
-      const response = await this.makeJiraApiRequest(
-        '/rest/api/3/myself',
-        'GET'
-      );
-      return Boolean(response && response.accountId);
-    } catch {
-      return false;
+    // Test credentials by fetching user info
+    const response = await this.makeJiraApiRequest('/rest/api/3/myself', 'GET');
+    if (!response?.accountId) {
+      throw new Error('Jira API returned no account data');
     }
+    return true;
   }
 
   /**

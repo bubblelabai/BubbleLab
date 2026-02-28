@@ -98,15 +98,14 @@ export class ConfluenceBubble<
       throw new Error('Confluence credentials are required');
     }
 
-    try {
-      const response = await this.makeConfluenceApiRequest(
-        '/wiki/api/v2/spaces?limit=1',
-        'GET'
-      );
-      return Boolean(response && 'results' in response);
-    } catch {
-      return false;
+    const response = await this.makeConfluenceApiRequest(
+      '/wiki/api/v2/spaces?limit=1',
+      'GET'
+    );
+    if (!response || !('results' in response)) {
+      throw new Error('Confluence API returned unexpected response');
     }
+    return true;
   }
 
   /**

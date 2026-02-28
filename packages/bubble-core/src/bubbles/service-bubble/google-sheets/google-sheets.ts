@@ -89,16 +89,17 @@ export class GoogleSheetsBubble<
       throw new Error('Google Sheets credentials are required');
     }
 
-    try {
-      // Test the credentials by validating the OAuth access token using Google's tokeninfo endpoint
-      const response = await fetch(
-        `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(credential)}`
+    // Test the credentials by validating the OAuth access token using Google's tokeninfo endpoint
+    const response = await fetch(
+      `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(credential)}`
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Google OAuth token validation failed (${response.status}): ${text}`
       );
-      // A successful response indicates that the access token is valid
-      return response.ok;
-    } catch {
-      return false;
     }
+    return true;
   }
 
   private async makeSheetsApiRequest(

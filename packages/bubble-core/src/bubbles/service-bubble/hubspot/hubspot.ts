@@ -84,19 +84,19 @@ export class HubSpotBubble<
       throw new Error('HubSpot credentials are required');
     }
 
-    try {
-      const response = await fetch(
-        'https://api.hubapi.com/crm/v3/objects/contacts?limit=1',
-        {
-          headers: {
-            Authorization: `Bearer ${credential}`,
-          },
-        }
-      );
-      return response.ok;
-    } catch {
-      return false;
+    const response = await fetch(
+      'https://api.hubapi.com/crm/v3/objects/contacts?limit=1',
+      {
+        headers: {
+          Authorization: `Bearer ${credential}`,
+        },
+      }
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HubSpot API error (${response.status}): ${text}`);
     }
+    return true;
   }
 
   protected chooseCredential(): string | undefined {

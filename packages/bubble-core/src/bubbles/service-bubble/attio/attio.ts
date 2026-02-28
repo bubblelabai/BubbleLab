@@ -122,18 +122,18 @@ export class AttioBubble<
       throw new Error('Attio credentials are required');
     }
 
-    try {
-      const response = await fetch(`${ATTIO_API_BASE}/self`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      return response.ok;
-    } catch {
-      return false;
+    const response = await fetch(`${ATTIO_API_BASE}/self`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Attio API error (${response.status}): ${text}`);
     }
+    return true;
   }
 
   protected async performAction(

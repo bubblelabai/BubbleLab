@@ -107,16 +107,15 @@ export class LinearBubble<
       throw new Error('Linear credentials are required');
     }
 
-    try {
-      const data = await makeGraphQLRequest(
-        accessToken,
-        `query { viewer { id } }`
-      );
-      const viewer = data.viewer as { id?: string } | undefined;
-      return Boolean(viewer && viewer.id);
-    } catch {
-      return false;
+    const data = await makeGraphQLRequest(
+      accessToken,
+      `query { viewer { id } }`
+    );
+    const viewer = data.viewer as { id?: string } | undefined;
+    if (!viewer?.id) {
+      throw new Error('Linear API returned no viewer data');
     }
+    return true;
   }
 
   /**

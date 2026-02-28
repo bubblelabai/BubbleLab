@@ -80,7 +80,9 @@ export const S3ParamsSchema = z.discriminatedUnion('operation', [
 
   // Update file operation
   z.object({
-    operation: z.literal('updateFile').describe('Update/replace file content'),
+    operation: z
+      .literal('updateFile')
+      .describe('Upload or replace file content'),
     bucketName: z
       .string()
       .min(1, 'Bucket name is required')
@@ -88,7 +90,9 @@ export const S3ParamsSchema = z.discriminatedUnion('operation', [
     fileName: z
       .string()
       .min(1, 'File name is required')
-      .describe('Name of the file to update'),
+      .describe(
+        'Name of the file. Pass a secure fileName from a previous operation to overwrite it, or a new name to create a new file'
+      ),
     region: z
       .string()
       .optional()
@@ -98,6 +102,7 @@ export const S3ParamsSchema = z.discriminatedUnion('operation', [
       .string()
       .min(1, 'File content is required for updates')
       .describe('Base64 encoded file content or raw text content'),
+    userId: z.string().optional().describe('User ID for secure file isolation'),
     credentials: BaseCredentialsSchema,
   }),
 

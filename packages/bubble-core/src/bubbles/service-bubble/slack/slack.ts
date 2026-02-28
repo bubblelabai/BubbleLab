@@ -1359,10 +1359,11 @@ export class SlackBubble<
   public async testCredential(): Promise<boolean> {
     // Make a test API call to the Slack API
     const response = await this.makeSlackApiCall('auth.test', {});
-    if (response.ok) {
-      return true;
+    if (!response.ok) {
+      const errorResponse = response as unknown as { error?: string };
+      throw new Error(errorResponse.error || 'Slack auth test failed');
     }
-    return false;
+    return true;
   }
   static readonly type = 'service' as const;
   static readonly service = 'slack';
