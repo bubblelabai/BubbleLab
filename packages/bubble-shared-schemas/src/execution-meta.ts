@@ -51,6 +51,7 @@ export interface ExecutionMeta {
   _slackThreadTs?: string;
   _slackTriggerCredentialId?: number;
   _isSlackBot?: boolean;
+  _slackBotToken?: string;
   // Approval system
   _originalTriggerPayload?: Record<string, unknown>;
   _resumeAgentState?: Array<Record<string, unknown>>;
@@ -85,6 +86,11 @@ export interface ExecutionMeta {
     conversationHistory?: Array<{ role: string; content: string }>;
     variableId?: number;
   }) => void;
+  // Bot notice metadata
+  _flowName?: string;
+  _ownerFirstName?: string;
+  _isPearlFlow?: boolean;
+  _pearlFlowId?: number;
   // Forward compat
   [key: string]: unknown;
 }

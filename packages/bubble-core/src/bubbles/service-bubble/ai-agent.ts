@@ -600,7 +600,7 @@ export class AIAgentBubble extends ServiceBubble<
   /**
    * Modify params before execution - centralizes all param transformations
    */
-  private async beforeAction(): Promise<void> {
+  protected override async beforeAction(): Promise<void> {
     // Deduplicate capabilities by id — keep the first occurrence of each
     if (this.params.capabilities && this.params.capabilities.length > 1) {
       const seen = new Set<string>();
@@ -743,6 +743,27 @@ export class AIAgentBubble extends ServiceBubble<
         memoryCallLLMInit(callLLM);
       }
     }
+
+    // Auto-inject Slack image reading tool for Slack bot flows
+    if (
+      !isCapabilityAgent &&
+      execMeta?._isSlackBot &&
+      execMeta?._slackBotToken
+    ) {
+      const { buildSlackReadImageTool } = await import(
+        './ai-agent-slack-tools.js'
+      );
+      const slackImageTool = buildSlackReadImageTool(
+        execMeta._slackBotToken!,
+        this.params.credentials ?? {}
+      );
+      if (!this.params.customTools) {
+        this.params.customTools = [];
+      }
+      this.params.customTools.push(slackImageTool);
+
+      this.params.systemPrompt += `\n\n**Image Reading:** When users share images in Slack, the message will include \`[Attached files: ...]\` with Slack file URLs. Use the \`read_slack_image\` tool with these URLs to see and describe the image contents.`;
+    }
   }
 
   protected async performAction(
@@ -750,9 +771,6 @@ export class AIAgentBubble extends ServiceBubble<
   ): Promise<AIAgentResult> {
     // Context is available but not currently used in this implementation
     void context;
-
-    // Apply param transformations before execution
-    await this.beforeAction();
 
     try {
       let result: AIAgentResult;

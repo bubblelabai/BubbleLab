@@ -201,10 +201,24 @@ export abstract class BaseBubble<
   }
 
   /**
+   * Hook called before action execution. Subclasses can override to
+   * transform params (e.g., inject memory, conversation history).
+   * Runs BEFORE parameter logging so the logged params reflect overrides.
+   */
+  protected async beforeAction(): Promise<void> {
+    // No-op by default — subclasses override as needed
+  }
+
+  /**
    * Execute the bubble - just runs the action
    */
   async action(): Promise<BubbleResult<TResult>> {
     const logger = this.context?.logger;
+
+    // Run pre-action hook (e.g., AI agent injects memory/conversation)
+    await this.beforeAction();
+
+    // Log params AFTER beforeAction so overrides are captured
     logger?.logBubbleExecution(
       this.context?.variableId ?? -999,
       this.name,
