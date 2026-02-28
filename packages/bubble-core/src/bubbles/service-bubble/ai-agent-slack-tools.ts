@@ -11,20 +11,22 @@ interface CustomTool {
   func: (input: Record<string, unknown>) => Promise<string>;
 }
 
-export function buildSlackReadImageTool(
-  slackToken: string,
+/**
+ * Build a generic image reading tool that fetches a public image URL,
+ * converts to base64, and uses a vision model to describe it.
+ *
+ * Slack images are pre-uploaded to R2 in conversation history building,
+ * so no Slack auth is needed here — all URLs are publicly accessible.
+ */
+export function buildReadImageTool(
   credentials: Partial<Record<CredentialType, string>>
 ): CustomTool {
   return {
-    name: 'read_slack_image',
+    name: 'read_image',
     description:
-      'Read and describe an image from a Slack file URL. Use this when a user shares an image in Slack and you need to see its contents. Pass the Slack file URL (url_private or url_private_download).',
+      'Read and describe an image from a URL. Use this when a user shares an image and you need to see its contents.',
     schema: z.object({
-      url: z
-        .string()
-        .describe(
-          'The Slack file URL (url_private or url_private_download) to read'
-        ),
+      url: z.string().describe('The image URL to read'),
       question: z
         .string()
         .optional()
@@ -37,9 +39,7 @@ export function buildSlackReadImageTool(
       const question = input.question as string | undefined;
 
       try {
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${slackToken}` },
-        });
+        const response = await fetch(url);
         if (!response.ok) {
           return `Failed to download image: ${response.status} ${response.statusText}`;
         }

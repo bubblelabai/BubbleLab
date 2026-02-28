@@ -744,25 +744,17 @@ export class AIAgentBubble extends ServiceBubble<
       }
     }
 
-    // Auto-inject Slack image reading tool for Slack bot flows
-    if (
-      !isCapabilityAgent &&
-      execMeta?._isSlackBot &&
-      execMeta?._slackBotToken
-    ) {
-      const { buildSlackReadImageTool } = await import(
-        './ai-agent-slack-tools.js'
-      );
-      const slackImageTool = buildSlackReadImageTool(
-        execMeta._slackBotToken!,
-        this.params.credentials ?? {}
-      );
+    // Auto-inject image reading tool for Slack bot flows
+    // Slack images are pre-uploaded to R2 in conversation history, so URLs are public
+    if (!isCapabilityAgent && execMeta?._isSlackBot) {
+      const { buildReadImageTool } = await import('./ai-agent-slack-tools.js');
+      const imageTool = buildReadImageTool(this.params.credentials ?? {});
       if (!this.params.customTools) {
         this.params.customTools = [];
       }
-      this.params.customTools.push(slackImageTool);
+      this.params.customTools.push(imageTool);
 
-      this.params.systemPrompt += `\n\n**Image Reading:** When users share images in Slack, the message will include \`[Attached files: ...]\` with Slack file URLs. Use the \`read_slack_image\` tool with these URLs to see and describe the image contents.`;
+      this.params.systemPrompt += `\n\n**Image Reading:** When users share images, the message will include \`[Attached files: ...]\` with image URLs. Use the \`read_image\` tool with these URLs to see and describe the image contents.`;
     }
   }
 
