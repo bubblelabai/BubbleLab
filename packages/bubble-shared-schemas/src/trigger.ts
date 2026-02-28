@@ -132,6 +132,8 @@ export interface SlackThreadHistoryMessage {
   name: string;
   /** User timezone (best effort) */
   timezone: string | null;
+  /** UTC offset in seconds (e.g. -28800 for PST). From Slack user profile. */
+  tz_offset?: number | null;
   /** Message text */
   message: string;
   /** Private download URLs for images attached to the message */
